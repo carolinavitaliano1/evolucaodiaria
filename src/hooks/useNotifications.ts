@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
 import {
   isNativePlatform,
   requestNotificationPermission,
@@ -26,11 +27,17 @@ interface UseNotificationsReturn {
   refreshPendingCount: () => Promise<void>;
 }
 
+const getReminderMinutes = (): number => {
+  const saved = localStorage.getItem('reminder_minutes');
+  return saved ? parseInt(saved, 10) : 15;
+};
+
 export function useNotifications(): UseNotificationsReturn {
   const [hasPermission, setHasPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const { appointments, patients, clinics, selectedDate } = useApp();
+  const { getAppointmentsForDate } = usePrivateAppointments();
   const { toast } = useToast();
 
   const isNative = isNativePlatform();
@@ -106,16 +113,17 @@ export function useNotifications(): UseNotificationsReturn {
   const scheduleForAppointment = useCallback(async (
     config: Omit<NotificationConfig, 'minutesBefore'>
   ): Promise<boolean> => {
+    const minutesBefore = getReminderMinutes();
     const success = await scheduleAppointmentNotification({
       ...config,
-      minutesBefore: 5, // Default 5 minutes before
+      minutesBefore,
     });
 
     if (success) {
       await refreshPendingCount();
       toast({
         title: '🔔 Lembrete agendado',
-        description: `Você será notificado 5 min antes do atendimento de ${config.patientName}.`,
+        description: `Você será notificado ${minutesBefore} min antes do atendimento de ${config.patientName}.`,
       });
     }
 
@@ -139,20 +147,23 @@ export function useNotifications(): UseNotificationsReturn {
     if (success) {
       setPendingCount(0);
       toast({
-        title: 'Notificações canceladas',
+        title: 'Lembretes cancelados',
         description: 'Todos os lembretes foram removidos.',
       });
     }
     return success;
   }, [toast]);
 
-  // Schedule notifications for all of today's appointments
+  // Schedule notifications for all of today's appointments (including private)
   const scheduleAllTodayAppointments = useCallback(async (): Promise<number> => {
     const today = selectedDate.toISOString().split('T')[0];
     const todayAppointments = appointments.filter(a => a.date === today);
+    const todayPrivate = getAppointmentsForDate(today);
+    const minutesBefore = getReminderMinutes();
 
     let scheduledCount = 0;
 
+    // Schedule regular appointments
     for (const appointment of todayAppointments) {
       const success = await scheduleAppointmentNotification({
         appointmentId: appointment.id,
@@ -160,7 +171,23 @@ export function useNotifications(): UseNotificationsReturn {
         clinicName: getClinicName(appointment.clinicId),
         date: appointment.date,
         time: appointment.time,
-        minutesBefore: 5,
+        minutesBefore,
+      });
+
+      if (success) {
+        scheduledCount++;
+      }
+    }
+
+    // Schedule private appointments
+    for (const privateApt of todayPrivate) {
+      const success = await scheduleAppointmentNotification({
+        appointmentId: privateApt.id,
+        patientName: privateApt.client_name,
+        clinicName: 'Particular',
+        date: privateApt.date,
+        time: privateApt.time,
+        minutesBefore,
       });
 
       if (success) {
@@ -175,10 +202,15 @@ export function useNotifications(): UseNotificationsReturn {
         title: '🔔 Lembretes agendados',
         description: `${scheduledCount} notificação(ões) para hoje.`,
       });
+    } else {
+      toast({
+        title: 'Nenhum lembrete',
+        description: 'Não há atendimentos para hoje.',
+      });
     }
 
     return scheduledCount;
-  }, [appointments, selectedDate, getPatientName, getClinicName, refreshPendingCount, toast]);
+  }, [appointments, selectedDate, getPatientName, getClinicName, getAppointmentsForDate, refreshPendingCount, toast]);
 
   return {
     isNative,
