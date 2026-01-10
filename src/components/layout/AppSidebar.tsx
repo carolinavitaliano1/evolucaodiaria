@@ -6,9 +6,9 @@ import {
   Calendar,
   DollarSign,
   ClipboardList,
-  Settings,
   Heart,
-  BarChart3
+  BarChart3,
+  User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -74,15 +74,23 @@ export function AppSidebar() {
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <NavLink
-          to="/settings"
+          to="/profile"
           className={cn(
             'flex items-center gap-3 px-4 py-3 rounded-xl transition-all',
             'hover:bg-secondary/80 group',
-            location.pathname === '/settings' && 'bg-primary text-primary-foreground'
+            location.pathname === '/profile' && 'bg-primary text-primary-foreground'
           )}
         >
-          <Settings className="w-5 h-5 text-muted-foreground group-hover:rotate-90 transition-transform" />
-          <span className="font-medium text-foreground">Configurações</span>
+          <User className={cn(
+            'w-5 h-5 transition-transform group-hover:scale-110',
+            location.pathname === '/profile' ? 'text-primary-foreground' : 'text-muted-foreground'
+          )} />
+          <span className={cn(
+            'font-medium',
+            location.pathname === '/profile' ? 'text-primary-foreground' : 'text-foreground'
+          )}>
+            Meu Perfil
+          </span>
         </NavLink>
       </div>
     </aside>

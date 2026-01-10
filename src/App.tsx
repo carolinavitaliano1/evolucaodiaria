@@ -13,6 +13,7 @@ import Financial from "./pages/Financial";
 import Reports from "./pages/Reports";
 import Tasks from "./pages/Tasks";
 import CalendarPage from "./pages/Calendar";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/reports" element={<Reports />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/profile" element={<Profile />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

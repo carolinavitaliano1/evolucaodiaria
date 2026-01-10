@@ -164,6 +164,7 @@ export type Database = {
           id: string
           patient_id: string
           signature: string | null
+          stamp_id: string | null
           text: string
           updated_at: string
           user_id: string
@@ -176,6 +177,7 @@ export type Database = {
           id?: string
           patient_id: string
           signature?: string | null
+          stamp_id?: string | null
           text?: string
           updated_at?: string
           user_id: string
@@ -188,6 +190,7 @@ export type Database = {
           id?: string
           patient_id?: string
           signature?: string | null
+          stamp_id?: string | null
           text?: string
           updated_at?: string
           user_id?: string
@@ -205,6 +208,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolutions_stamp_id_fkey"
+            columns: ["stamp_id"]
+            isOneToOne: false
+            referencedRelation: "stamps"
             referencedColumns: ["id"]
           },
         ]
@@ -282,6 +292,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          professional_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          professional_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          professional_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stamps: {
+        Row: {
+          clinical_area: string
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          signature_image: string | null
+          stamp_image: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clinical_area: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          signature_image?: string | null
+          stamp_image?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clinical_area?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          signature_image?: string | null
+          stamp_image?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       tasks: {
         Row: {

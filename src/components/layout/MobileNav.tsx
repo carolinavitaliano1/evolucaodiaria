@@ -4,7 +4,7 @@ import {
   Building2, 
   Calendar,
   DollarSign,
-  BarChart3
+  User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -13,7 +13,7 @@ const navItems = [
   { to: '/clinics', icon: Building2, label: 'Clínicas' },
   { to: '/calendar', icon: Calendar, label: 'Agenda' },
   { to: '/financial', icon: DollarSign, label: 'Finanças' },
-  { to: '/reports', icon: BarChart3, label: 'Relatórios' },
+  { to: '/profile', icon: User, label: 'Perfil' },
 ];
 
 export function MobileNav() {
