@@ -1,12 +1,14 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
+import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
 
 export default function Financial() {
   const { clinics, patients, evolutions, payments } = useApp();
+  const { getMonthlyAppointments } = usePrivateAppointments();
 
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -47,9 +49,15 @@ export default function Financial() {
     return patientAbsences.length * patient.paymentValue;
   };
 
+  // Get private appointments revenue
+  const monthlyPrivateAppointments = getMonthlyAppointments(currentMonth, currentYear);
+  const privateRevenue = monthlyPrivateAppointments
+    .filter(a => a.status === 'concluído' || a.status === 'agendado')
+    .reduce((sum, a) => sum + (a.price || 0), 0);
+
   const totalRevenue = patients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
   const totalLoss = patients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
-  const netRevenue = totalRevenue - totalLoss;
+  const netRevenue = totalRevenue + privateRevenue - totalLoss;
 
   const clinicStats = clinics.map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
@@ -176,7 +184,7 @@ export default function Financial() {
         <div className="space-y-6">
           {clinicStats.map(({ clinic, patientCount, revenue, loss, absences }) => {
             const netClinicRevenue = revenue - loss;
-            const percentage = totalRevenue > 0 ? (revenue / totalRevenue) * 100 : 0;
+            const percentage = (totalRevenue + privateRevenue) > 0 ? (revenue / (totalRevenue + privateRevenue)) * 100 : 0;
             const isPropria = clinic.type === 'propria';
 
             return (
@@ -222,7 +230,39 @@ export default function Financial() {
             );
           })}
 
-          {clinicStats.length === 0 && (
+          {/* Private Appointments Section */}
+          {privateRevenue > 0 && (
+            <div className="border-b border-border pb-6 last:border-0 last:pb-0">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-foreground text-lg flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" />
+                      Atendimentos Particulares
+                    </h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{monthlyPrivateAppointments.length} atendimentos</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-xl text-foreground">
+                    R$ {privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {((privateRevenue / (totalRevenue + privateRevenue)) * 100).toFixed(0)}% do total
+                  </p>
+                </div>
+              </div>
+
+              <div className="relative w-full h-3 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className="absolute h-full transition-all duration-500 rounded-full bg-gradient-to-r from-amber-500 to-orange-500"
+                  style={{ width: `${(privateRevenue / (totalRevenue + privateRevenue)) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {clinicStats.length === 0 && privateRevenue === 0 && (
             <p className="text-center text-muted-foreground py-8">
               Nenhuma clínica cadastrada
             </p>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Clock, User, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, User, MapPin, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
+import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
 
 export default function CalendarPage() {
   const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment } = useApp();
+  const { getAppointmentsForDate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState('');
@@ -37,8 +39,20 @@ export default function CalendarPage() {
     return appointments.filter(a => a.date === dateStr);
   };
 
-  const selectedDayAppointments = getAppointmentsForDay(selectedDate)
-    .sort((a, b) => a.time.localeCompare(b.time));
+  const getPrivateForDay = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return getAppointmentsForDate(dateStr);
+  };
+
+  const getAllAppointmentsForDay = (date: Date) => {
+    const regular = getAppointmentsForDay(date);
+    const privateAppts = getPrivateForDay(date);
+    return { regular, private: privateAppts, total: regular.length + privateAppts.length };
+  };
+
+  const selectedDayData = getAllAppointmentsForDay(selectedDate);
+  const selectedDayAppointments = selectedDayData.regular.sort((a, b) => a.time.localeCompare(b.time));
+  const selectedDayPrivate = selectedDayData.private.sort((a, b) => a.time.localeCompare(b.time));
 
   const clinicPatients = patients.filter(p => p.clinicId === formData.clinicId);
 
@@ -202,8 +216,9 @@ export default function CalendarPage() {
             
             {days.map((day) => {
               const isSelected = isSameDay(day, selectedDate);
-              const dayAppointments = getAppointmentsForDay(day);
-              const hasAppointments = dayAppointments.length > 0;
+              const dayData = getAllAppointmentsForDay(day);
+              const hasAppointments = dayData.total > 0;
+              const hasPrivate = dayData.private.length > 0;
               
               return (
                 <button
@@ -226,15 +241,23 @@ export default function CalendarPage() {
                   
                   {hasAppointments && (
                     <div className="flex gap-0.5 mt-1">
-                      {dayAppointments.slice(0, 3).map((_, i) => (
+                      {dayData.regular.slice(0, 2).map((_, i) => (
                         <div
-                          key={i}
+                          key={`r-${i}`}
                           className={cn(
                             'w-1.5 h-1.5 rounded-full',
                             isSelected ? 'bg-primary-foreground' : 'bg-primary'
                           )}
                         />
                       ))}
+                      {hasPrivate && (
+                        <div
+                          className={cn(
+                            'w-1.5 h-1.5 rounded-full',
+                            isSelected ? 'bg-amber-200' : 'bg-amber-500'
+                          )}
+                        />
+                      )}
                     </div>
                   )}
                 </button>
@@ -249,13 +272,14 @@ export default function CalendarPage() {
             {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
           </h3>
 
-          {selectedDayAppointments.length === 0 ? (
+          {selectedDayAppointments.length === 0 && selectedDayPrivate.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-5xl mb-3">📅</div>
               <p className="text-muted-foreground text-sm">Nenhum atendimento</p>
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Regular Appointments */}
               {selectedDayAppointments.map((apt) => {
                 const patient = patients.find(p => p.id === apt.patientId);
                 const clinic = clinics.find(c => c.id === apt.clinicId);
@@ -277,6 +301,29 @@ export default function CalendarPage() {
                   </div>
                 );
               })}
+
+              {/* Private Appointments */}
+              {selectedDayPrivate.map((apt) => (
+                <div key={apt.id} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold">
+                      <Clock className="w-4 h-4" />
+                      {apt.time}
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                      <Briefcase className="w-3 h-3" />
+                      Particular
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-foreground mb-1">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    {apt.client_name}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-success font-medium">
+                    R$ {apt.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

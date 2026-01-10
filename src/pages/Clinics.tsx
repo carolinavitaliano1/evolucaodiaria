@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, Users, MapPin, Clock, DollarSign, Edit, Trash2, Stamp } from 'lucide-react';
+import { Plus, Building2, Users, MapPin, Clock, DollarSign, Edit, Trash2, Stamp, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { Clinic } from '@/types';
+import { ServiceDialog } from '@/components/services/ServiceDialog';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -30,6 +31,7 @@ export default function Clinics() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'propria' | 'terceirizada'>('all');
   const [stampFile, setStampFile] = useState<UploadedFile | null>(null);
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -139,13 +141,23 @@ export default function Clinics() {
           ))}
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gradient-primary shadow-glow gap-2">
-              <Plus className="w-4 h-4" />
-              Nova Clínica
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            className="gap-2"
+            onClick={() => setServiceDialogOpen(true)}
+          >
+            <Briefcase className="w-4 h-4" />
+            Serviço Particular
+          </Button>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gradient-primary shadow-glow gap-2">
+                <Plus className="w-4 h-4" />
+                Nova Clínica
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nova Clínica</DialogTitle>
@@ -345,7 +357,11 @@ export default function Clinics() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* Service Dialog */}
+      <ServiceDialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen} />
 
       {/* Clinics Grid */}
       {filteredClinics.length === 0 ? (
