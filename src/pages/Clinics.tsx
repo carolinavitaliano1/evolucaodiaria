@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, Users, MapPin, Clock, DollarSign, Edit, Trash2 } from 'lucide-react';
+import { Plus, Building2, Users, MapPin, Clock, DollarSign, Edit, Trash2, Stamp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TimePicker } from '@/components/ui/time-picker';
+import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { Clinic } from '@/types';
@@ -28,6 +29,7 @@ export default function Clinics() {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'propria' | 'terceirizada'>('all');
+  const [stampFile, setStampFile] = useState<UploadedFile | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -58,6 +60,7 @@ export default function Clinics() {
       paymentType: formData.paymentType as any,
       paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
       paysOnAbsence: formData.paysOnAbsence,
+      stamp: stampFile?.url,
     });
 
     setFormData({
@@ -72,6 +75,7 @@ export default function Clinics() {
       paymentAmount: '',
       paysOnAbsence: true,
     });
+    setStampFile(null);
     setIsDialogOpen(false);
   };
 
@@ -308,6 +312,26 @@ export default function Clinics() {
                     )}
                   </div>
                 )}
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="font-semibold mb-3 flex items-center gap-2">
+                  <Stamp className="w-4 h-4" />
+                  Carimbo para Evoluções
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Adicione um carimbo que aparecerá nas evoluções dos pacientes desta clínica.
+                </p>
+                <FileUpload
+                  parentType="clinic"
+                  parentId="new"
+                  existingFiles={stampFile ? [stampFile] : []}
+                  onUpload={(files) => setStampFile(files[0])}
+                  onRemove={() => setStampFile(null)}
+                  accept="image/*"
+                  multiple={false}
+                  maxFiles={1}
+                />
               </div>
 
               <div className="flex gap-2 pt-4">

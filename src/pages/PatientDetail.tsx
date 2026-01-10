@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 
 function calculateAge(birthdate: string) {
   const today = new Date();
@@ -38,6 +39,7 @@ export default function PatientDetail() {
   const [evolutionText, setEvolutionText] = useState('');
   const [evolutionDate, setEvolutionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta'>('presente');
+  const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
 
   if (!patient) {
     return (
@@ -52,7 +54,7 @@ export default function PatientDetail() {
 
   const handleSubmitEvolution = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!evolutionText.trim()) return;
+    if (!evolutionText.trim() && attachedFiles.length === 0) return;
 
     addEvolution({
       patientId: patient.id,
@@ -60,9 +62,27 @@ export default function PatientDetail() {
       date: evolutionDate,
       text: evolutionText,
       attendanceStatus,
+      attachments: attachedFiles.map(f => ({
+        id: f.id,
+        parentId: '',
+        parentType: 'evolution' as const,
+        name: f.name,
+        data: f.filePath,
+        type: f.fileType,
+        createdAt: new Date().toISOString(),
+      })),
     });
 
     setEvolutionText('');
+    setAttachedFiles([]);
+  };
+
+  const handleFileUpload = (files: UploadedFile[]) => {
+    setAttachedFiles(prev => [...prev, ...files]);
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    setAttachedFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
   const handleBack = () => {
@@ -202,6 +222,31 @@ export default function PatientDetail() {
             />
           </div>
 
+          <div>
+            <Label className="flex items-center gap-2 mb-2">
+              <Image className="w-4 h-4" />
+              Anexos (opcional)
+            </Label>
+            <FileUpload
+              parentType="evolution"
+              parentId={patient.id}
+              existingFiles={attachedFiles}
+              onUpload={handleFileUpload}
+              onRemove={handleRemoveFile}
+              maxFiles={5}
+            />
+          </div>
+
+          {clinic?.stamp && (
+            <div className="p-3 rounded-xl bg-secondary/50 border border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <Stamp className="w-4 h-4" />
+                Carimbo da clínica será incluído
+              </div>
+              <img src={clinic.stamp} alt="Carimbo" className="h-16 object-contain" />
+            </div>
+          )}
+
           <Button type="submit" className="gradient-primary gap-2">
             <Plus className="w-4 h-4" />
             Salvar Evolução
@@ -251,6 +296,39 @@ export default function PatientDetail() {
                   </Button>
                 </div>
                 <p className="text-foreground whitespace-pre-wrap">{evo.text}</p>
+                
+                {/* Show attachments if any */}
+                {evo.attachments && evo.attachments.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {evo.attachments.map((att) => (
+                      <a
+                        key={att.id}
+                        href={att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs hover:bg-primary/20 transition-colors"
+                      >
+                        {att.type.startsWith('image/') ? (
+                          <Image className="w-3 h-3" />
+                        ) : (
+                          <FileText className="w-3 h-3" />
+                        )}
+                        {att.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {/* Show clinic stamp if available */}
+                {clinic?.stamp && (
+                  <div className="mt-4 pt-3 border-t border-border/50">
+                    <img 
+                      src={clinic.stamp} 
+                      alt="Carimbo" 
+                      className="h-12 object-contain opacity-70"
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
