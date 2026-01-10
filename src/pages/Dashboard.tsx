@@ -6,6 +6,7 @@ import { StatsCards } from '@/components/dashboard/StatsCards';
 import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
 import { Timeline } from '@/components/dashboard/Timeline';
 import { TaskList } from '@/components/dashboard/TaskList';
+import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -88,8 +89,9 @@ export default function Dashboard() {
           <Timeline />
         </div>
 
-        {/* Right Column - Tasks */}
-        <div className="lg:col-span-3">
+        {/* Right Column - Tasks & Notifications */}
+        <div className="lg:col-span-3 space-y-6">
+          <NotificationSettings />
           <TaskList />
         </div>
       </div>
