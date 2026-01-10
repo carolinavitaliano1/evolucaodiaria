@@ -53,6 +53,7 @@ const sampleClinics: Clinic[] = [
     scheduleTime: '08:00 às 18:00',
     paymentType: 'sessao',
     paymentAmount: 150,
+    paysOnAbsence: true, // Clínica própria - recebe mesmo com falta
     createdAt: new Date().toISOString(),
   },
   {
@@ -64,6 +65,7 @@ const sampleClinics: Clinic[] = [
     scheduleTime: '14:00 às 20:00',
     paymentType: 'fixo_mensal',
     paymentAmount: 3500,
+    paysOnAbsence: false, // Terceirizada - não paga por faltas
     createdAt: new Date().toISOString(),
   },
 ];

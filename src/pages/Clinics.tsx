@@ -39,6 +39,7 @@ export default function Clinics() {
     scheduleTimeEnd: '',
     paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
     paymentAmount: '',
+    paysOnAbsence: true,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -56,6 +57,7 @@ export default function Clinics() {
         : '',
       paymentType: formData.paymentType as any,
       paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
+      paysOnAbsence: formData.paysOnAbsence,
     });
 
     setFormData({
@@ -68,6 +70,7 @@ export default function Clinics() {
       scheduleTimeEnd: '',
       paymentType: '',
       paymentAmount: '',
+      paysOnAbsence: true,
     });
     setIsDialogOpen(false);
   };
@@ -266,6 +269,43 @@ export default function Clinics() {
                       onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
                       placeholder="Ex: 3500.00"
                     />
+                  </div>
+                )}
+
+                {formData.paymentType === 'sessao' && (
+                  <div className="mt-4 p-4 rounded-xl bg-secondary/50 border border-border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-base font-medium">Recebe por faltas?</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Você recebe o valor da sessão mesmo quando o paciente falta?
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={formData.paysOnAbsence ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setFormData({ ...formData, paysOnAbsence: true })}
+                        >
+                          Sim
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={!formData.paysOnAbsence ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setFormData({ ...formData, paysOnAbsence: false })}
+                          className={!formData.paysOnAbsence ? "bg-destructive hover:bg-destructive/90" : ""}
+                        >
+                          Não
+                        </Button>
+                      </div>
+                    </div>
+                    {!formData.paysOnAbsence && (
+                      <p className="text-sm text-amber-600 mt-2 flex items-center gap-2">
+                        ⚠️ Faltas de pacientes aparecerão como perda no financeiro
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

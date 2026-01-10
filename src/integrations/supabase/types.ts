@@ -75,6 +75,7 @@ export type Database = {
           notes: string | null
           payment_amount: number | null
           payment_type: string | null
+          pays_on_absence: boolean
           schedule_time: string | null
           stamp: string | null
           type: string
@@ -91,6 +92,7 @@ export type Database = {
           notes?: string | null
           payment_amount?: number | null
           payment_type?: string | null
+          pays_on_absence?: boolean
           schedule_time?: string | null
           stamp?: string | null
           type?: string
@@ -107,6 +109,7 @@ export type Database = {
           notes?: string | null
           payment_amount?: number | null
           payment_type?: string | null
+          pays_on_absence?: boolean
           schedule_time?: string | null
           stamp?: string | null
           type?: string

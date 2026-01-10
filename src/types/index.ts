@@ -8,6 +8,7 @@ export interface Clinic {
   scheduleTime?: string;
   paymentType?: 'fixo_mensal' | 'fixo_diario' | 'sessao';
   paymentAmount?: number;
+  paysOnAbsence?: boolean; // Se a clínica paga o terapeuta quando paciente falta
   letterhead?: string;
   stamp?: string;
   createdAt: string;
