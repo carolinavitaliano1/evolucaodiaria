@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
+import { Clock, ChevronUp, ChevronDown, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -14,21 +15,6 @@ interface TimePickerProps {
   className?: string;
 }
 
-// Generate time slots from 06:00 to 22:00
-const generateTimeSlots = () => {
-  const slots: string[] = [];
-  for (let hour = 6; hour <= 22; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-      const h = hour.toString().padStart(2, '0');
-      const m = minute.toString().padStart(2, '0');
-      slots.push(`${h}:${m}`);
-    }
-  }
-  return slots;
-};
-
-const TIME_SLOTS = generateTimeSlots();
-
 const SESSION_DURATIONS = [
   { value: '30', label: '30 min' },
   { value: '40', label: '40 min' },
@@ -38,6 +24,8 @@ const SESSION_DURATIONS = [
 
 export function TimePicker({ value, onChange, label, placeholder = "Selecione o horário", className }: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<'spinner' | 'manual'>('spinner');
+  const [manualInput, setManualInput] = useState(value || '');
   const [selectedHour, setSelectedHour] = useState(() => {
     if (value) {
       const [h] = value.split(':');
@@ -65,15 +53,25 @@ export function TimePicker({ value, onChange, label, placeholder = "Selecione o 
   };
 
   const handleMinuteChange = (direction: 'up' | 'down') => {
-    let newMinute = direction === 'up' ? selectedMinute + 30 : selectedMinute - 30;
+    let newMinute = direction === 'up' ? selectedMinute + 5 : selectedMinute - 5;
     if (newMinute >= 60) newMinute = 0;
-    if (newMinute < 0) newMinute = 30;
+    if (newMinute < 0) newMinute = 55;
     setSelectedMinute(newMinute);
   };
 
   const handleConfirm = () => {
-    onChange(formatTime(selectedHour, selectedMinute));
-    setIsOpen(false);
+    if (mode === 'manual') {
+      // Validate manual input
+      const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+      if (timeRegex.test(manualInput)) {
+        const [h, m] = manualInput.split(':').map(Number);
+        onChange(formatTime(h, m));
+        setIsOpen(false);
+      }
+    } else {
+      onChange(formatTime(selectedHour, selectedMinute));
+      setIsOpen(false);
+    }
   };
 
   const handleQuickSelect = (time: string) => {
@@ -82,6 +80,27 @@ export function TimePicker({ value, onChange, label, placeholder = "Selecione o 
     setSelectedMinute(m);
     onChange(time);
     setIsOpen(false);
+  };
+
+  const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/[^\d:]/g, '');
+    
+    // Auto-format: add colon after 2 digits
+    if (val.length === 2 && !val.includes(':')) {
+      val = val + ':';
+    }
+    
+    // Limit to HH:MM format
+    if (val.length > 5) {
+      val = val.slice(0, 5);
+    }
+    
+    setManualInput(val);
+  };
+
+  const isValidManualTime = () => {
+    const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+    return timeRegex.test(manualInput);
   };
 
   return (
@@ -103,86 +122,135 @@ export function TimePicker({ value, onChange, label, placeholder = "Selecione o 
         </PopoverTrigger>
         <PopoverContent className="w-80 p-0 bg-popover border border-border z-50" align="start">
           <div className="p-4 space-y-4">
-            {/* Time Spinner */}
-            <div className="flex items-center justify-center gap-4">
-              {/* Hours */}
-              <div className="flex flex-col items-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleHourChange('up')}
-                >
-                  <ChevronUp className="h-4 w-4" />
-                </Button>
-                <div className="text-4xl font-bold text-primary w-16 text-center py-2">
-                  {selectedHour.toString().padStart(2, '0')}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleHourChange('down')}
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-muted-foreground mt-1">Hora</span>
-              </div>
-
-              <span className="text-4xl font-bold text-muted-foreground">:</span>
-
-              {/* Minutes */}
-              <div className="flex flex-col items-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleMinuteChange('up')}
-                >
-                  <ChevronUp className="h-4 w-4" />
-                </Button>
-                <div className="text-4xl font-bold text-primary w-16 text-center py-2">
-                  {selectedMinute.toString().padStart(2, '0')}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleMinuteChange('down')}
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-muted-foreground mt-1">Minuto</span>
-              </div>
+            {/* Mode Toggle */}
+            <div className="flex gap-2 p-1 bg-secondary rounded-lg">
+              <Button
+                variant={mode === 'spinner' ? 'default' : 'ghost'}
+                size="sm"
+                className="flex-1 gap-2"
+                onClick={() => setMode('spinner')}
+              >
+                <Clock className="h-4 w-4" />
+                Seletor
+              </Button>
+              <Button
+                variant={mode === 'manual' ? 'default' : 'ghost'}
+                size="sm"
+                className="flex-1 gap-2"
+                onClick={() => setMode('manual')}
+              >
+                <Keyboard className="h-4 w-4" />
+                Digitar
+              </Button>
             </div>
 
-            {/* Quick Select Grid */}
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Horários rápidos:</p>
-              <div className="grid grid-cols-4 gap-2">
-                {['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'].map((time) => (
-                  <Button
-                    key={time}
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "text-xs",
-                      value === time && "bg-primary text-primary-foreground"
-                    )}
-                    onClick={() => handleQuickSelect(time)}
-                  >
-                    {time}
-                  </Button>
-                ))}
+            {mode === 'manual' ? (
+              /* Manual Input Mode */
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm text-muted-foreground mb-2 block">
+                    Digite o horário (ex: 08:45, 14:30)
+                  </Label>
+                  <Input
+                    value={manualInput}
+                    onChange={handleManualInputChange}
+                    placeholder="HH:MM"
+                    className="text-center text-2xl font-bold h-14"
+                    maxLength={5}
+                  />
+                </div>
+                {manualInput && !isValidManualTime() && (
+                  <p className="text-sm text-destructive">
+                    Formato inválido. Use HH:MM (ex: 08:45)
+                  </p>
+                )}
               </div>
-            </div>
+            ) : (
+              /* Spinner Mode */
+              <>
+                {/* Time Spinner */}
+                <div className="flex items-center justify-center gap-4">
+                  {/* Hours */}
+                  <div className="flex flex-col items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleHourChange('up')}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <div className="text-4xl font-bold text-primary w-16 text-center py-2">
+                      {selectedHour.toString().padStart(2, '0')}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleHourChange('down')}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs text-muted-foreground mt-1">Hora</span>
+                  </div>
+
+                  <span className="text-4xl font-bold text-muted-foreground">:</span>
+
+                  {/* Minutes */}
+                  <div className="flex flex-col items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleMinuteChange('up')}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <div className="text-4xl font-bold text-primary w-16 text-center py-2">
+                      {selectedMinute.toString().padStart(2, '0')}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleMinuteChange('down')}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs text-muted-foreground mt-1">Minuto (±5)</span>
+                  </div>
+                </div>
+
+                {/* Quick Select Grid */}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Horários rápidos:</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'].map((time) => (
+                      <Button
+                        key={time}
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "text-xs",
+                          value === time && "bg-primary text-primary-foreground"
+                        )}
+                        onClick={() => handleQuickSelect(time)}
+                      >
+                        {time}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Confirm Button */}
             <Button 
               className="w-full gradient-primary"
               onClick={handleConfirm}
+              disabled={mode === 'manual' && !isValidManualTime()}
             >
-              Confirmar {formatTime(selectedHour, selectedMinute)}
+              Confirmar {mode === 'manual' ? (isValidManualTime() ? manualInput : '') : formatTime(selectedHour, selectedMinute)}
             </Button>
           </div>
         </PopoverContent>
