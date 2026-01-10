@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TimeWithDurationPicker } from '@/components/ui/time-picker';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -106,6 +107,7 @@ export default function ClinicDetail() {
     contractStartDate: '',
     weekdays: [] as string[],
     scheduleTime: '',
+    sessionDuration: '50',
   });
 
   // Quick evolution state
@@ -161,6 +163,7 @@ export default function ClinicDetail() {
       contractStartDate: '',
       weekdays: [],
       scheduleTime: '',
+      sessionDuration: '50',
     });
     setIsDialogOpen(false);
     toast.success('Paciente cadastrado com sucesso!');
@@ -653,12 +656,13 @@ export default function ClinicDetail() {
                         ))}
                       </div>
 
-                      <div className="mt-3">
-                        <Label>Horário</Label>
-                        <Input
-                          value={formData.scheduleTime}
-                          onChange={(e) => setFormData({ ...formData, scheduleTime: e.target.value })}
-                          placeholder="Ex: 14:00"
+                      <div className="mt-4">
+                        <TimeWithDurationPicker
+                          time={formData.scheduleTime}
+                          duration={formData.sessionDuration}
+                          onTimeChange={(time) => setFormData({ ...formData, scheduleTime: time })}
+                          onDurationChange={(duration) => setFormData({ ...formData, sessionDuration: duration })}
+                          label="⏰ Horário do Atendimento"
                         />
                       </div>
                     </div>
