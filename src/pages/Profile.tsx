@@ -29,6 +29,9 @@ interface StampItem {
   is_default: boolean;
 }
 
+// Fixed UUID for demo until auth is implemented
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+
 export default function Profile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stamps, setStamps] = useState<StampItem[]>([]);
@@ -77,12 +80,11 @@ export default function Profile() {
   async function loadData() {
     try {
       setLoading(true);
-      const mockUserId = 'mock-user-id';
 
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', mockUserId)
+        .eq('user_id', DEMO_USER_ID)
         .maybeSingle();
 
       if (profileData) {
@@ -97,7 +99,7 @@ export default function Profile() {
       const { data: stampsData } = await supabase
         .from('stamps')
         .select('*')
-        .eq('user_id', mockUserId)
+        .eq('user_id', DEMO_USER_ID)
         .order('created_at', { ascending: true });
 
       if (stampsData) {
@@ -144,7 +146,6 @@ export default function Profile() {
   async function saveProfile() {
     try {
       setSaving(true);
-      const mockUserId = 'mock-user-id';
 
       if (profile) {
         const { error } = await supabase
@@ -163,7 +164,7 @@ export default function Profile() {
         const { error } = await supabase
           .from('profiles')
           .insert({
-            user_id: mockUserId,
+            user_id: DEMO_USER_ID,
             name,
             email,
             phone,
@@ -206,7 +207,6 @@ export default function Profile() {
   async function saveStamp() {
     try {
       setSaving(true);
-      const mockUserId = 'mock-user-id';
 
       if (!stampName || !stampArea) {
         toast.error('Preencha o nome e a área clínica');
@@ -218,7 +218,7 @@ export default function Profile() {
         await supabase
           .from('stamps')
           .update({ is_default: false })
-          .eq('user_id', mockUserId);
+          .eq('user_id', DEMO_USER_ID);
       }
 
       if (editingStamp) {
@@ -238,7 +238,7 @@ export default function Profile() {
         const { error } = await supabase
           .from('stamps')
           .insert({
-            user_id: mockUserId,
+            user_id: DEMO_USER_ID,
             name: stampName,
             clinical_area: stampArea,
             stamp_image: stampImage,
