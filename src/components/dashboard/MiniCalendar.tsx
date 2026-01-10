@@ -73,19 +73,19 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
 
   return (
     <>
-      <div className="bg-card rounded-2xl p-4 shadow-lg border border-border">
+      <div className="bg-card rounded-xl p-4 border border-border">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setViewDate(subMonths(viewDate, 1))}
-            className="h-8 w-8"
+            className="h-7 w-7"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
-          <h3 className="font-semibold text-foreground capitalize">
+          <h3 className="font-medium text-foreground capitalize text-sm">
             {format(viewDate, 'MMMM yyyy', { locale: ptBR })}
           </h3>
           
@@ -93,23 +93,23 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
             variant="ghost"
             size="icon"
             onClick={() => setViewDate(addMonths(viewDate, 1))}
-            className="h-8 w-8"
+            className="h-7 w-7"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Week days */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
+        <div className="grid grid-cols-7 gap-0.5 mb-1">
           {weekDays.map((day, i) => (
-            <div key={i} className="text-center text-xs font-medium text-muted-foreground py-1">
+            <div key={i} className="text-center text-[10px] font-medium text-muted-foreground py-1">
               {day}
             </div>
           ))}
         </div>
 
         {/* Days */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5">
           {emptyDays.map((_, i) => (
             <div key={`empty-${i}`} />
           ))}
@@ -124,15 +124,15 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
                 key={day.toISOString()}
                 onClick={() => handleDateClick(day)}
                 className={cn(
-                  'relative p-2 text-sm rounded-lg transition-all hover:bg-secondary',
-                  isToday(day) && !isSelected && 'bg-primary/10 font-bold text-primary',
-                  isSelected && 'gradient-primary text-primary-foreground font-semibold shadow-glow',
+                  'relative p-1.5 text-xs rounded-md transition-colors hover:bg-accent',
+                  isToday(day) && !isSelected && 'bg-primary/10 font-semibold text-primary',
+                  isSelected && 'bg-primary text-primary-foreground font-semibold',
                   !isSelected && !isToday(day) && 'text-foreground'
                 )}
               >
                 {format(day, 'd')}
                 {(hasApts || hasEvts) && !isSelected && (
-                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                  <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
                     {hasApts && <div className="w-1 h-1 rounded-full bg-primary" />}
                     {hasEvts && <div className="w-1 h-1 rounded-full bg-amber-500" />}
                   </div>

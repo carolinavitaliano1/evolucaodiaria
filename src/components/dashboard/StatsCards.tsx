@@ -1,4 +1,4 @@
-import { Building2, Users, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { Building2, Users, Calendar, DollarSign } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 
@@ -34,28 +34,30 @@ export function StatsCards() {
       label: 'Clínicas',
       value: clinics.length,
       icon: Building2,
-      gradient: 'gradient-primary',
-      change: null,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       label: 'Pacientes',
       value: patients.length,
       icon: Users,
-      gradient: 'gradient-secondary',
-      change: null,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       label: 'Hoje',
       value: todayAppointments.length,
       icon: Calendar,
-      gradient: 'gradient-warm',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
       suffix: 'atendimentos',
     },
     {
       label: 'Faturamento',
       value: monthlyRevenue,
       icon: DollarSign,
-      gradient: 'gradient-success',
+      color: 'text-success',
+      bgColor: 'bg-success/10',
       prefix: 'R$',
       format: true,
     },
@@ -67,24 +69,23 @@ export function StatsCards() {
         <div
           key={stat.label}
           className={cn(
-            'rounded-2xl p-5 text-primary-foreground relative overflow-hidden',
-            stat.gradient,
-            'animate-scale-in opacity-0',
+            'rounded-xl p-5 bg-card border border-border relative overflow-hidden',
+            'animate-scale-in opacity-0 hover:shadow-md transition-shadow',
             `stagger-${index + 1}`
           )}
           style={{ animationFillMode: 'forwards' }}
         >
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-          
           <div className="relative z-10">
-            <stat.icon className="w-8 h-8 mb-3 opacity-90" />
-            
-            <p className="text-sm opacity-90 mb-1">{stat.label}</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+              <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', stat.bgColor)}>
+                <stat.icon className={cn('w-[18px] h-[18px]', stat.color)} />
+              </div>
+            </div>
             
             <div className="flex items-baseline gap-1">
-              {stat.prefix && <span className="text-lg">{stat.prefix}</span>}
-              <span className="text-2xl lg:text-3xl font-bold">
+              {stat.prefix && <span className="text-sm text-muted-foreground">{stat.prefix}</span>}
+              <span className="text-2xl font-semibold text-foreground">
                 {stat.format 
                   ? stat.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
                   : stat.value
@@ -93,7 +94,7 @@ export function StatsCards() {
             </div>
             
             {stat.suffix && (
-              <p className="text-xs opacity-75 mt-1">{stat.suffix}</p>
+              <p className="text-xs text-muted-foreground mt-1">{stat.suffix}</p>
             )}
           </div>
         </div>
