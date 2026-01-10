@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp, Download, CalendarRange, PenLine, Eye, Edit } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp, Download, CalendarRange, PenLine, Eye, Edit, X } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -309,11 +309,11 @@ export default function PatientDetail() {
       </div>
 
       {/* Evolution History */}
-      <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="font-bold text-foreground flex items-center gap-2">
+      <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <h2 className="font-bold text-foreground flex flex-wrap items-center gap-2 text-sm sm:text-base">
             📜 Histórico de Evoluções
-            <span className="text-sm font-normal text-muted-foreground">
+            <span className="text-xs sm:text-sm font-normal text-muted-foreground">
               ({patientEvolutions.length} registros)
             </span>
           </h2>
@@ -321,9 +321,9 @@ export default function PatientDetail() {
           {patientEvolutions.length > 0 && (
             <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm w-full sm:w-auto">
                   <CalendarRange className="w-4 h-4" />
-                  Gerar PDF por Período
+                  PDF por Período
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
@@ -417,14 +417,14 @@ export default function PatientDetail() {
         ) : (
           <div className="space-y-4">
             {patientEvolutions.map((evo) => (
-              <div key={evo.id} className="bg-secondary/50 rounded-xl p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-foreground">
+              <div key={evo.id} className="bg-secondary/50 rounded-xl p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-foreground text-sm sm:text-base">
                       {format(new Date(evo.date), 'dd/MM/yyyy', { locale: ptBR })}
                     </span>
                     <span className={cn(
-                      'text-xs px-2 py-1 rounded-full font-medium',
+                      'text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
                       evo.attendanceStatus === 'presente' 
                         ? 'bg-success/10 text-success' 
                         : 'bg-destructive/10 text-destructive'
@@ -432,20 +432,20 @@ export default function PatientDetail() {
                       {evo.attendanceStatus === 'presente' ? '✅ Presente' : '❌ Falta'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="gap-1"
+                      className="gap-1 h-8 px-2 text-xs sm:text-sm"
                       onClick={() => setEditingEvolution(evo)}
                     >
                       <Edit className="w-3 h-3" />
-                      Editar
+                      <span className="hidden xs:inline">Editar</span>
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-1"
+                      className="gap-1 h-8 px-2 text-xs sm:text-sm"
                       onClick={() => generateEvolutionPdf({ evolution: evo, patient, clinic })}
                     >
                       <Download className="w-3 h-3" />
@@ -454,10 +454,11 @@ export default function PatientDetail() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive h-8 px-2 text-xs sm:text-sm"
                       onClick={() => deleteEvolution(evo.id)}
                     >
-                      Excluir
+                      <span className="hidden xs:inline">Excluir</span>
+                      <X className="w-3 h-3 xs:hidden" />
                     </Button>
                   </div>
                 </div>

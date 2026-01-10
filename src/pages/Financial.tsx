@@ -256,41 +256,41 @@ export default function Financial() {
   };
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-          <span className="text-4xl">💰</span>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+          <span className="text-2xl sm:text-4xl">💰</span>
           Financeiro
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground text-sm sm:text-base">
           {monthName}
         </p>
       </div>
 
       {/* Main Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-2 rounded-3xl p-8 gradient-primary shadow-glow">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="lg:col-span-2 rounded-2xl sm:rounded-3xl p-4 sm:p-8 gradient-primary shadow-glow">
           <div className="flex items-start justify-between">
-            <div>
-              <p className="text-primary-foreground/80 mb-2">Faturamento do Mês</p>
-              <h2 className="text-4xl lg:text-5xl font-bold text-primary-foreground mb-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-primary-foreground/80 mb-1 sm:mb-2 text-sm sm:text-base">Faturamento do Mês</p>
+              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-primary-foreground mb-2 sm:mb-4 break-words">
                 R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </h2>
-              <div className="flex items-center gap-4 text-primary-foreground/80">
-                <span className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  {presentEvolutions.length} atendimentos
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-primary-foreground/80 text-xs sm:text-base">
+                <span className="flex items-center gap-1 sm:gap-2">
+                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                  {presentEvolutions.length} atend.
                 </span>
                 {totalLoss > 0 && (
-                  <span className="flex items-center gap-2 text-amber-200">
-                    <TrendingDown className="w-5 h-5" />
+                  <span className="flex items-center gap-1 sm:gap-2 text-amber-200">
+                    <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />
                     {absentEvolutions.length} faltas
                   </span>
                 )}
               </div>
             </div>
-            <DollarSign className="w-16 h-16 text-primary-foreground/30" />
+            <DollarSign className="w-10 h-10 sm:w-16 sm:h-16 text-primary-foreground/30 shrink-0" />
           </div>
         </div>
 
@@ -336,43 +336,43 @@ export default function Financial() {
       </div>
 
       {/* Revenue by Clinic */}
-      <div className="bg-card rounded-2xl p-6 border border-border mb-8">
-        <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
+      <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border mb-6 sm:mb-8">
+        <h2 className="font-bold text-foreground mb-4 sm:mb-6 flex items-center gap-2 text-sm sm:text-base">
           🏥 Faturamento por Clínica
         </h2>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {clinicStats.map(({ clinic, patientCount, revenue, loss, absences }) => {
             const netClinicRevenue = revenue - loss;
             const percentage = (totalRevenue + privateRevenue) > 0 ? (revenue / (totalRevenue + privateRevenue)) * 100 : 0;
             const isPropria = clinic.type === 'propria';
 
             return (
-              <div key={clinic.id} className="border-b border-border pb-6 last:border-0 last:pb-0">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-foreground text-lg">{clinic.name}</h3>
+              <div key={clinic.id} className="border-b border-border pb-4 sm:pb-6 last:border-0 last:pb-0">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h3 className="font-bold text-foreground text-sm sm:text-lg truncate">{clinic.name}</h3>
                       {clinic.paysOnAbsence === false && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
                           Não paga faltas
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">{patientCount} pacientes</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{patientCount} pacientes</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-xl text-foreground">
+                  <div className="text-left sm:text-right">
+                    <p className="font-bold text-base sm:text-xl text-foreground">
                       R$ {netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                     {loss > 0 && (
-                      <p className="text-sm text-destructive flex items-center justify-end gap-1">
+                      <p className="text-xs sm:text-sm text-destructive flex items-center sm:justify-end gap-1">
                         <AlertTriangle className="w-3 h-3" />
                         {absences} faltas (-R$ {loss.toFixed(2)})
                       </p>
                     )}
                     {loss === 0 && (
-                      <p className="text-sm text-muted-foreground">{percentage.toFixed(0)}% do total</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">{percentage.toFixed(0)}% do total</p>
                     )}
                   </div>
                 </div>
@@ -431,14 +431,14 @@ export default function Financial() {
       </div>
 
       {/* Payments Table */}
-      <div className="bg-card rounded-2xl p-6 border border-border">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-bold text-foreground flex items-center gap-2">
+      <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <h2 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
             💳 Controle de Pagamentos
           </h2>
           <Button 
             variant="outline" 
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto text-xs sm:text-sm"
             onClick={handleExportPDF}
             disabled={isExporting}
           >
@@ -451,16 +451,16 @@ export default function Financial() {
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full min-w-[500px]">
             <thead>
               <tr className="border-b-2 border-border">
-                <th className="text-left py-3 px-2 font-semibold text-foreground">Paciente</th>
-                <th className="text-left py-3 px-2 font-semibold text-foreground">Clínica</th>
-                <th className="text-left py-3 px-2 font-semibold text-foreground">Tipo</th>
-                <th className="text-center py-3 px-2 font-semibold text-foreground">Sessões</th>
-                <th className="text-center py-3 px-2 font-semibold text-foreground">Faltas</th>
-                <th className="text-right py-3 px-2 font-semibold text-foreground">Valor</th>
+                <th className="text-left py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Paciente</th>
+                <th className="text-left py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm hidden sm:table-cell">Clínica</th>
+                <th className="text-left py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Tipo</th>
+                <th className="text-center py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Sess.</th>
+                <th className="text-center py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Faltas</th>
+                <th className="text-right py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Valor</th>
               </tr>
             </thead>
             <tbody>
@@ -469,41 +469,43 @@ export default function Financial() {
                 
                 return (
                   <tr key={patient.id} className="border-b border-border hover:bg-secondary/50">
-                    <td className="py-3 px-2 text-foreground">{patient.name}</td>
-                    <td className="py-3 px-2 text-muted-foreground text-sm">{clinic?.name}</td>
-                    <td className="py-3 px-2 text-sm">
+                    <td className="py-2 sm:py-3 px-2 text-foreground text-xs sm:text-sm">
+                      <span className="truncate block max-w-[100px] sm:max-w-none">{patient.name}</span>
+                    </td>
+                    <td className="py-2 sm:py-3 px-2 text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">{clinic?.name}</td>
+                    <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm">
                       <span className={cn(
-                        'px-2 py-1 rounded-full text-xs font-medium',
+                        'px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium whitespace-nowrap',
                         paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
                       )}>
-                        {paymentType === 'fixo' ? 'Fixo Mensal' : `R$ ${paymentValue}/sessão`}
+                        {paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}`}
                       </span>
                     </td>
-                    <td className="py-3 px-2 text-center text-foreground">{sessions}</td>
-                    <td className="py-3 px-2 text-center">
+                    <td className="py-2 sm:py-3 px-2 text-center text-foreground text-xs sm:text-sm">{sessions}</td>
+                    <td className="py-2 sm:py-3 px-2 text-center text-xs sm:text-sm">
                       {absences > 0 ? (
                         <span className={cn(
-                          'inline-flex items-center gap-1',
+                          'inline-flex items-center gap-0.5',
                           loss > 0 ? 'text-destructive' : 'text-amber-600'
                         )}>
                           {absences}
-                          {loss > 0 && <AlertTriangle className="w-3 h-3" />}
+                          {loss > 0 && <AlertTriangle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">0</span>
                       )}
                     </td>
-                    <td className="py-3 px-2 text-right">
+                    <td className="py-2 sm:py-3 px-2 text-right">
                       <div className="flex flex-col items-end">
                         <span className={cn(
-                          'font-bold',
+                          'font-bold text-xs sm:text-sm',
                           loss > 0 ? 'text-foreground' : 'text-success'
                         )}>
                           R$ {netPatientRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </span>
                         {loss > 0 && (
-                          <span className="text-xs text-destructive">
-                            -R$ {loss.toFixed(2)} em faltas
+                          <span className="text-xs text-destructive hidden sm:block">
+                            -R$ {loss.toFixed(2)}
                           </span>
                         )}
                       </div>
