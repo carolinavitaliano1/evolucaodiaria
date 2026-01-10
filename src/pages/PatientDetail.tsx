@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp, Download } from 'lucide-react';
+import { generateEvolutionPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -286,14 +287,25 @@ export default function PatientDetail() {
                       {evo.attendanceStatus === 'presente' ? '✅ Presente' : '❌ Falta'}
                     </span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => deleteEvolution(evo.id)}
-                  >
-                    Excluir
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => generateEvolutionPdf({ evolution: evo, patient, clinic })}
+                    >
+                      <Download className="w-3 h-3" />
+                      PDF
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => deleteEvolution(evo.id)}
+                    >
+                      Excluir
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-foreground whitespace-pre-wrap">{evo.text}</p>
                 
