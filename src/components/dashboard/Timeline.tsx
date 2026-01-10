@@ -1,16 +1,25 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, User, MapPin, CheckCircle2, XCircle, Bell, BellOff } from 'lucide-react';
+import { Clock, User, MapPin, CheckCircle2, XCircle, Bell, BellOff, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 
 export function Timeline() {
   const { selectedDate, appointments, patients, clinics, addEvolution, setCurrentPatient, setCurrentClinic } = useApp();
   const navigate = useNavigate();
   const { isNative, hasPermission, scheduleForAppointment } = useNotifications();
+  
+  const [attachDialog, setAttachDialog] = useState<{ open: boolean; apt: typeof appointments[0] | null }>({
+    open: false,
+    apt: null,
+  });
+  const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
   
   const dateAppointments = appointments
     .filter(a => a.date === format(selectedDate, 'yyyy-MM-dd'))
@@ -20,9 +29,14 @@ export function Timeline() {
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const isToday = format(now, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
 
-  const handleMarkPresent = (apt: typeof dateAppointments[0]) => {
+  const handleMarkPresent = (apt: typeof dateAppointments[0], withAttachments = false) => {
     const patient = patients.find(p => p.id === apt.patientId);
     const clinic = clinics.find(c => c.id === apt.clinicId);
+    
+    if (withAttachments) {
+      setAttachDialog({ open: true, apt });
+      return;
+    }
     
     if (patient && clinic) {
       addEvolution({
@@ -36,6 +50,38 @@ export function Timeline() {
       setCurrentPatient(patient);
       navigate(`/patients/${patient.id}`);
     }
+  };
+
+  const handleConfirmWithAttachments = () => {
+    if (!attachDialog.apt) return;
+    
+    const patient = patients.find(p => p.id === attachDialog.apt!.patientId);
+    const clinic = clinics.find(c => c.id === attachDialog.apt!.clinicId);
+    
+    if (patient && clinic) {
+      addEvolution({
+        patientId: attachDialog.apt.patientId,
+        clinicId: attachDialog.apt.clinicId,
+        date: attachDialog.apt.date,
+        text: '',
+        attendanceStatus: 'presente',
+        attachments: pendingFiles.map(f => ({
+          id: f.id,
+          parentId: '',
+          parentType: 'evolution' as const,
+          name: f.name,
+          data: f.filePath,
+          type: f.fileType,
+          createdAt: new Date().toISOString(),
+        })),
+      });
+      setCurrentClinic(clinic);
+      setCurrentPatient(patient);
+      navigate(`/patients/${patient.id}`);
+    }
+    
+    setAttachDialog({ open: false, apt: null });
+    setPendingFiles([]);
   };
 
   const handleMarkAbsent = (apt: typeof dateAppointments[0]) => {
@@ -161,6 +207,15 @@ export function Timeline() {
                     <Button
                       size="sm"
                       variant="outline"
+                      className="text-primary border-primary/30 hover:bg-primary/10"
+                      onClick={() => handleMarkPresent(apt, true)}
+                      title="Presente com anexo"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="text-success border-success hover:bg-success hover:text-success-foreground"
                       onClick={() => handleMarkPresent(apt)}
                     >
@@ -181,6 +236,48 @@ export function Timeline() {
           );
         })}
       </div>
+
+      {/* Dialog for adding attachments */}
+      <Dialog open={attachDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setAttachDialog({ open: false, apt: null });
+          setPendingFiles([]);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anexar arquivos à evolução</DialogTitle>
+          </DialogHeader>
+          
+          <FileUpload
+            parentType="evolution"
+            parentId={attachDialog.apt?.patientId}
+            existingFiles={pendingFiles}
+            onUpload={(files) => setPendingFiles(prev => [...prev, ...files])}
+            onRemove={(id) => setPendingFiles(prev => prev.filter(f => f.id !== id))}
+            maxFiles={5}
+          />
+          
+          <div className="flex gap-2 mt-4">
+            <Button
+              onClick={handleConfirmWithAttachments}
+              className="flex-1 gradient-primary"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Confirmar Presença
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAttachDialog({ open: false, apt: null });
+                setPendingFiles([]);
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

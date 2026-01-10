@@ -65,6 +65,42 @@ export type Database = {
           },
         ]
       }
+      attachments: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_size: number | null
+          file_type: string
+          id: string
+          name: string
+          parent_id: string
+          parent_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          file_type: string
+          id?: string
+          name: string
+          parent_id: string
+          parent_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          name?: string
+          parent_id?: string
+          parent_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clinics: {
         Row: {
           address: string | null
@@ -118,6 +154,57 @@ export type Database = {
           weekdays?: string[] | null
         }
         Relationships: []
+      }
+      evolutions: {
+        Row: {
+          attendance_status: string
+          clinic_id: string
+          created_at: string
+          date: string
+          id: string
+          patient_id: string
+          text: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendance_status?: string
+          clinic_id: string
+          created_at?: string
+          date: string
+          id?: string
+          patient_id: string
+          text?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendance_status?: string
+          clinic_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          patient_id?: string
+          text?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolutions_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patients: {
         Row: {
