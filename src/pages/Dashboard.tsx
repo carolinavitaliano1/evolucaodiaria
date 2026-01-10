@@ -22,22 +22,23 @@ export default function Dashboard() {
   const pendingTasks = tasks.filter(t => !t.completed);
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto pb-24">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-1">
+            <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-0.5">
               Bom dia! 👋
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <Button 
               variant="outline" 
+              size="sm"
               className="gap-2"
               onClick={() => navigate('/financial')}
             >
@@ -46,6 +47,7 @@ export default function Dashboard() {
             </Button>
             <Button 
               variant="outline" 
+              size="sm"
               className="gap-2"
               onClick={() => navigate('/clinics')}
             >
@@ -53,7 +55,8 @@ export default function Dashboard() {
               Clínicas
             </Button>
             <Button 
-              className="gradient-primary gap-2 shadow-glow"
+              size="sm"
+              className="gap-2"
               onClick={() => setServiceDialogOpen(true)}
             >
               <Briefcase className="w-4 h-4" />
@@ -64,27 +67,27 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-8">
+      <div className="mb-6">
         <StatsCards />
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column - Calendar */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-3 space-y-5">
           <MiniCalendar />
           
           {/* Day Summary */}
-          <div className="bg-card rounded-2xl p-5 shadow-lg border border-border">
-            <h3 className="font-semibold text-foreground mb-4">📊 Resumo do Dia</h3>
-            <div className="space-y-4">
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <h3 className="font-medium text-foreground mb-3 text-sm">Resumo do Dia</h3>
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">👤 Atendimentos</span>
-                <span className="text-foreground font-bold text-xl">{todayAppointments.length}</span>
+                <span className="text-muted-foreground text-sm">Atendimentos</span>
+                <span className="text-foreground font-semibold">{todayAppointments.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">✅ Tarefas Pendentes</span>
-                <span className="text-foreground font-bold text-xl">{pendingTasks.length}</span>
+                <span className="text-muted-foreground text-sm">Tarefas Pendentes</span>
+                <span className="text-foreground font-semibold">{pendingTasks.length}</span>
               </div>
             </div>
           </div>
