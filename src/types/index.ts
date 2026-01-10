@@ -41,6 +41,7 @@ export interface Evolution {
   date: string;
   text: string;
   attendanceStatus: 'presente' | 'falta';
+  signature?: string;
   attachments?: Attachment[];
   createdAt: string;
 }

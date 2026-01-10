@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp, Download } from 'lucide-react';
-import { generateEvolutionPdf } from '@/utils/generateEvolutionPdf';
+import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp, Download, CalendarRange, PenLine } from 'lucide-react';
+import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -12,6 +12,10 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
+import { SignaturePad } from '@/components/ui/signature-pad';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 function calculateAge(birthdate: string) {
   const today = new Date();
@@ -41,6 +45,12 @@ export default function PatientDetail() {
   const [evolutionDate, setEvolutionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta'>('presente');
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
+  const [signature, setSignature] = useState<string>('');
+  
+  // PDF period selection
+  const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
 
   if (!patient) {
     return (
@@ -53,6 +63,30 @@ export default function PatientDetail() {
     );
   }
 
+  const handleGeneratePeriodPdf = () => {
+    if (!startDate || !endDate) return;
+    
+    const filteredEvolutions = patientEvolutions.filter(evo => {
+      const evoDate = new Date(evo.date);
+      return evoDate >= startDate && evoDate <= endDate;
+    });
+    
+    if (filteredEvolutions.length === 0) {
+      alert('Nenhuma evolução encontrada no período selecionado.');
+      return;
+    }
+    
+    generateMultipleEvolutionsPdf({
+      evolutions: filteredEvolutions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+      patient,
+      clinic,
+      startDate,
+      endDate,
+    });
+    
+    setPeriodDialogOpen(false);
+  };
+
   const handleSubmitEvolution = (e: React.FormEvent) => {
     e.preventDefault();
     if (!evolutionText.trim() && attachedFiles.length === 0) return;
@@ -63,6 +97,7 @@ export default function PatientDetail() {
       date: evolutionDate,
       text: evolutionText,
       attendanceStatus,
+      signature: signature || undefined,
       attachments: attachedFiles.map(f => ({
         id: f.id,
         parentId: '',
@@ -76,6 +111,7 @@ export default function PatientDetail() {
 
     setEvolutionText('');
     setAttachedFiles([]);
+    setSignature('');
   };
 
   const handleFileUpload = (files: UploadedFile[]) => {
@@ -238,6 +274,18 @@ export default function PatientDetail() {
             />
           </div>
 
+          {/* Signature Pad */}
+          <div>
+            <Label className="flex items-center gap-2 mb-2">
+              <PenLine className="w-4 h-4" />
+              Assinatura Digital (opcional)
+            </Label>
+            <SignaturePad
+              value={signature}
+              onChange={setSignature}
+            />
+          </div>
+
           {clinic?.stamp && (
             <div className="p-3 rounded-xl bg-secondary/50 border border-border">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -257,12 +305,104 @@ export default function PatientDetail() {
 
       {/* Evolution History */}
       <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
-        <h2 className="font-bold text-foreground mb-6 flex items-center gap-2">
-          📜 Histórico de Evoluções
-          <span className="text-sm font-normal text-muted-foreground">
-            ({patientEvolutions.length} registros)
-          </span>
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="font-bold text-foreground flex items-center gap-2">
+            📜 Histórico de Evoluções
+            <span className="text-sm font-normal text-muted-foreground">
+              ({patientEvolutions.length} registros)
+            </span>
+          </h2>
+          
+          {patientEvolutions.length > 0 && (
+            <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <CalendarRange className="w-4 h-4" />
+                  Gerar PDF por Período
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Gerar PDF de Evoluções</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Data Início</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !startDate && "text-muted-foreground"
+                            )}
+                          >
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {startDate ? format(startDate, "dd/MM/yyyy") : "Selecione"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={startDate}
+                            onSelect={setStartDate}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div>
+                      <Label>Data Fim</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !endDate && "text-muted-foreground"
+                            )}
+                          >
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {endDate ? format(endDate, "dd/MM/yyyy") : "Selecione"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={endDate}
+                            onSelect={setEndDate}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  
+                  {startDate && endDate && (
+                    <p className="text-sm text-muted-foreground">
+                      {patientEvolutions.filter(evo => {
+                        const evoDate = new Date(evo.date);
+                        return evoDate >= startDate && evoDate <= endDate;
+                      }).length} evolução(ões) no período selecionado
+                    </p>
+                  )}
+                  
+                  <Button 
+                    className="w-full gap-2" 
+                    onClick={handleGeneratePeriodPdf}
+                    disabled={!startDate || !endDate}
+                  >
+                    <Download className="w-4 h-4" />
+                    Gerar PDF
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
 
         {patientEvolutions.length === 0 ? (
           <div className="text-center py-8">
@@ -328,6 +468,21 @@ export default function PatientDetail() {
                         {att.name}
                       </a>
                     ))}
+                  </div>
+                )}
+
+                {/* Show signature if available */}
+                {evo.signature && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <PenLine className="w-3 h-3" />
+                      Assinatura:
+                    </span>
+                    <img 
+                      src={evo.signature} 
+                      alt="Assinatura" 
+                      className="h-8 object-contain"
+                    />
                   </div>
                 )}
 

@@ -163,6 +163,7 @@ export type Database = {
           date: string
           id: string
           patient_id: string
+          signature: string | null
           text: string
           updated_at: string
           user_id: string
@@ -174,6 +175,7 @@ export type Database = {
           date: string
           id?: string
           patient_id: string
+          signature?: string | null
           text?: string
           updated_at?: string
           user_id: string
@@ -185,6 +187,7 @@ export type Database = {
           date?: string
           id?: string
           patient_id?: string
+          signature?: string | null
           text?: string
           updated_at?: string
           user_id?: string
