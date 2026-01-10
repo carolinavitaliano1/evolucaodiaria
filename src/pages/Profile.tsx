@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Plus, Trash2, Stamp, Pencil, Camera, X } from 'lucide-react';
+import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Profile {
   id: string;
@@ -29,10 +30,10 @@ interface StampItem {
   is_default: boolean;
 }
 
-// Fixed UUID for demo until auth is implemented
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
-
 export default function Profile() {
+  const { user, signOut } = useAuth();
+  const userId = user?.id;
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stamps, setStamps] = useState<StampItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,8 +61,10 @@ export default function Profile() {
   const [isDrawing, setIsDrawing] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (userId) {
+      loadData();
+    }
+  }, [userId]);
 
   useEffect(() => {
     if (stampDialogOpen && signatureImage && canvasRef.current) {
@@ -78,13 +81,15 @@ export default function Profile() {
   }, [stampDialogOpen, signatureImage]);
 
   async function loadData() {
+    if (!userId) return;
+    
     try {
       setLoading(true);
 
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', DEMO_USER_ID)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (profileData) {
@@ -99,7 +104,7 @@ export default function Profile() {
       const { data: stampsData } = await supabase
         .from('stamps')
         .select('*')
-        .eq('user_id', DEMO_USER_ID)
+        .eq('user_id', userId)
         .order('created_at', { ascending: true });
 
       if (stampsData) {
@@ -144,6 +149,8 @@ export default function Profile() {
   }
 
   async function saveProfile() {
+    if (!userId) return;
+    
     try {
       setSaving(true);
 
@@ -164,7 +171,7 @@ export default function Profile() {
         const { error } = await supabase
           .from('profiles')
           .insert({
-            user_id: DEMO_USER_ID,
+            user_id: userId,
             name,
             email,
             phone,
@@ -205,6 +212,8 @@ export default function Profile() {
   }
 
   async function saveStamp() {
+    if (!userId) return;
+    
     try {
       setSaving(true);
 
@@ -218,7 +227,7 @@ export default function Profile() {
         await supabase
           .from('stamps')
           .update({ is_default: false })
-          .eq('user_id', DEMO_USER_ID);
+          .eq('user_id', userId);
       }
 
       if (editingStamp) {
@@ -238,7 +247,7 @@ export default function Profile() {
         const { error } = await supabase
           .from('stamps')
           .insert({
-            user_id: DEMO_USER_ID,
+            user_id: userId,
             name: stampName,
             clinical_area: stampArea,
             stamp_image: stampImage,
@@ -357,16 +366,33 @@ export default function Profile() {
     );
   }
 
+  const handleLogout = async () => {
+    await signOut();
+    toast.success('Você saiu do sistema');
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto pb-24">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-          <User className="w-6 h-6 text-primary-foreground" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+            <User className="w-6 h-6 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Meu Perfil</h1>
+            <p className="text-muted-foreground">Gerencie suas informações e carimbos</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Meu Perfil</h1>
-          <p className="text-muted-foreground">Gerencie suas informações e carimbos</p>
-        </div>
+        
+        {/* Logout button visible on mobile */}
+        <Button 
+          variant="outline" 
+          onClick={handleLogout}
+          className="lg:hidden flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <LogOut className="w-4 h-4" />
+          Sair
+        </Button>
       </div>
 
       {/* Profile Info */}

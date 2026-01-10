@@ -8,8 +8,11 @@ import {
   ClipboardList,
   BarChart3,
   User,
-  Stethoscope
+  Stethoscope,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -24,6 +27,12 @@ const navItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    toast.success('Você saiu do sistema');
+  };
 
   return (
     <aside className="hidden lg:flex flex-col w-60 min-h-screen bg-card border-r border-border">
@@ -72,7 +81,7 @@ export function AppSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border space-y-0.5">
         <NavLink
           to="/profile"
           className={cn(
@@ -92,6 +101,19 @@ export function AppSidebar() {
             Meu Perfil
           </span>
         </NavLink>
+
+        <button
+          onClick={handleLogout}
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full',
+            'hover:bg-destructive/10 group text-left'
+          )}
+        >
+          <LogOut className="w-[18px] h-[18px] text-muted-foreground group-hover:text-destructive" />
+          <span className="text-sm font-medium text-foreground group-hover:text-destructive">
+            Sair
+          </span>
+        </button>
       </div>
     </aside>
   );
