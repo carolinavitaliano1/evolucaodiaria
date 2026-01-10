@@ -1,25 +1,28 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Calendar, DollarSign, Building2 } from 'lucide-react';
+import { Plus, DollarSign, Building2, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
 import { Timeline } from '@/components/dashboard/Timeline';
 import { TaskList } from '@/components/dashboard/TaskList';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
+import { ServiceDialog } from '@/components/services/ServiceDialog';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const { selectedDate, appointments, tasks } = useApp();
   const navigate = useNavigate();
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const todayAppointments = appointments.filter(a => a.date === dateStr);
   const pendingTasks = tasks.filter(t => !t.completed);
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -32,7 +35,7 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button 
               variant="outline" 
               className="gap-2"
@@ -49,9 +52,12 @@ export default function Dashboard() {
               <Building2 className="w-4 h-4" />
               Clínicas
             </Button>
-            <Button className="gradient-primary gap-2 shadow-glow">
-              <Plus className="w-4 h-4" />
-              Novo Atendimento
+            <Button 
+              className="gradient-primary gap-2 shadow-glow"
+              onClick={() => setServiceDialogOpen(true)}
+            >
+              <Briefcase className="w-4 h-4" />
+              Serviço Particular
             </Button>
           </div>
         </div>
@@ -95,6 +101,9 @@ export default function Dashboard() {
           <TaskList />
         </div>
       </div>
+
+      {/* Service Dialog */}
+      <ServiceDialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen} />
     </div>
   );
 }
