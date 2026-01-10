@@ -522,22 +522,22 @@ export default function Clinics() {
                           </p>
                         )}
 
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="flex items-center gap-1.5 text-muted-foreground">
-                            <Users className="w-3.5 h-3.5" />
-                            {patientCount} pacientes
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            {patientCount} pac.
                           </span>
                           {clinic.scheduleTime && (
-                            <span className="flex items-center gap-1.5 text-muted-foreground">
-                              <Clock className="w-3.5 h-3.5" />
-                              {clinic.scheduleTime}
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="truncate max-w-[80px] sm:max-w-none">{clinic.scheduleTime}</span>
                             </span>
                           )}
                           {clinic.paymentAmount && (
-                            <span className="flex items-center gap-1.5 text-success font-medium">
-                              <DollarSign className="w-3.5 h-3.5" />
+                            <span className="flex items-center gap-1 text-success font-medium">
+                              <DollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                               R$ {clinic.paymentAmount.toFixed(0)}
-                              {clinic.paymentType === 'sessao' && '/sessão'}
+                              <span className="hidden sm:inline">{clinic.paymentType === 'sessao' && '/sessão'}</span>
                             </span>
                           )}
                         </div>
@@ -575,49 +575,49 @@ export default function Clinics() {
                   key={apt.id}
                   className="bg-card rounded-xl border border-border p-4"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-foreground">{apt.client_name}</h3>
-                        <Badge className={cn("text-xs", getStatusColor(apt.status))}>
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                        <h3 className="font-medium text-foreground text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{apt.client_name}</h3>
+                        <Badge className={cn("text-xs shrink-0", getStatusColor(apt.status))}>
                           {apt.status === 'agendado' && 'Agendado'}
                           {apt.status === 'concluído' && 'Concluído'}
                           {apt.status === 'cancelado' && 'Cancelado'}
                         </Badge>
                         {apt.paid && (
-                          <Badge variant="outline" className="text-xs border-success/50 text-success">
+                          <Badge variant="outline" className="text-xs border-success/50 text-success shrink-0">
                             Pago
                           </Badge>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {format(new Date(apt.date + 'T00:00:00'), "dd/MM/yyyy", { locale: ptBR })}
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          {format(new Date(apt.date + 'T00:00:00'), "dd/MM/yy", { locale: ptBR })}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           {apt.time}
                         </span>
-                        <span className="flex items-center gap-1.5 text-success font-medium">
-                          <DollarSign className="w-3.5 h-3.5" />
+                        <span className="flex items-center gap-1 text-success font-medium">
+                          <DollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           R$ {apt.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
 
                       {(apt.client_phone || apt.client_email) && (
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
                           {apt.client_phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {apt.client_phone}
+                            <span className="flex items-center gap-1 truncate">
+                              <Phone className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{apt.client_phone}</span>
                             </span>
                           )}
                           {apt.client_email && (
-                            <span className="flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              {apt.client_email}
+                            <span className="flex items-center gap-1 truncate max-w-[180px] sm:max-w-none">
+                              <Mail className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{apt.client_email}</span>
                             </span>
                           )}
                         </div>
@@ -625,7 +625,7 @@ export default function Clinics() {
                     </div>
 
                     {apt.status === 'agendado' && (
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0">
                         <Button
                           size="icon"
                           variant="ghost"
@@ -651,11 +651,12 @@ export default function Clinics() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-success border-success/50 hover:bg-success/10"
+                        className="text-success border-success/50 hover:bg-success/10 text-xs w-full sm:w-auto mt-2 sm:mt-0"
                         onClick={() => togglePaid(apt.id, apt.paid || false)}
                       >
                         <DollarSign className="w-4 h-4 mr-1" />
-                        Confirmar Pagamento
+                        <span className="sm:hidden">Pago</span>
+                        <span className="hidden sm:inline">Confirmar Pagamento</span>
                       </Button>
                     )}
                   </div>

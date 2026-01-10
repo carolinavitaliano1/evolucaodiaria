@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      screens: {
+        'xs': '400px',
+      },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
