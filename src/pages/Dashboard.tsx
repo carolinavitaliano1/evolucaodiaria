@@ -1,21 +1,14 @@
-import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, DollarSign, Building2, Briefcase } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
 import { Timeline } from '@/components/dashboard/Timeline';
 import { TaskList } from '@/components/dashboard/TaskList';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
-import { ServiceDialog } from '@/components/services/ServiceDialog';
 import { useApp } from '@/contexts/AppContext';
-import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const { selectedDate, appointments, tasks } = useApp();
-  const navigate = useNavigate();
-  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const todayAppointments = appointments.filter(a => a.date === dateStr);
@@ -25,44 +18,13 @@ export default function Dashboard() {
     <div className="p-4 lg:p-6 max-w-7xl mx-auto pb-24">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-0.5">
-              Bom dia! 👋
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="gap-2"
-              onClick={() => navigate('/financial')}
-            >
-              <DollarSign className="w-4 h-4" />
-              Financeiro
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="gap-2"
-              onClick={() => navigate('/clinics')}
-            >
-              <Building2 className="w-4 h-4" />
-              Clínicas
-            </Button>
-            <Button 
-              size="sm"
-              className="gap-2"
-              onClick={() => setServiceDialogOpen(true)}
-            >
-              <Briefcase className="w-4 h-4" />
-              Serviço Particular
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-0.5">
+            Bom dia! 👋
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          </p>
         </div>
       </div>
 
@@ -105,8 +67,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Service Dialog */}
-      <ServiceDialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen} />
     </div>
   );
 }
