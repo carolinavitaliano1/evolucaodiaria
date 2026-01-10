@@ -1,18 +1,23 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import jsPDF from 'jspdf';
 
 export default function Financial() {
   const { clinics, patients, evolutions, payments } = useApp();
   const { getMonthlyAppointments } = usePrivateAppointments();
+  const [isExporting, setIsExporting] = useState(false);
 
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
+  const monthName = format(now, "MMMM 'de' yyyy", { locale: ptBR });
 
   // Get all evolutions for the current month
   const monthlyEvolutions = evolutions.filter(e => {
@@ -95,6 +100,161 @@ export default function Financial() {
     };
   }).filter(p => p.paymentValue > 0);
 
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      let y = 20;
+
+      // Header
+      doc.setFontSize(20);
+      doc.setTextColor(51, 51, 51);
+      doc.text('Relatório Financeiro', margin, y);
+      y += 10;
+      
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), margin, y);
+      y += 15;
+
+      // Summary Section
+      doc.setFontSize(14);
+      doc.setTextColor(51, 51, 51);
+      doc.text('Resumo Mensal', margin, y);
+      y += 8;
+
+      doc.setFontSize(11);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Faturamento Líquido: R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      y += 6;
+      doc.text(`Receita Bruta (Clínicas): R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      y += 6;
+      doc.text(`Receita Particulares: R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      y += 6;
+      if (totalLoss > 0) {
+        doc.setTextColor(220, 53, 69);
+        doc.text(`Perdas por Faltas: - R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+        doc.setTextColor(80, 80, 80);
+      }
+      y += 6;
+      doc.text(`Total de Atendimentos: ${presentEvolutions.length}`, margin, y);
+      y += 6;
+      doc.text(`Total de Faltas: ${absentEvolutions.length}`, margin, y);
+      y += 15;
+
+      // Clinic Stats
+      if (clinicStats.length > 0) {
+        doc.setFontSize(14);
+        doc.setTextColor(51, 51, 51);
+        doc.text('Faturamento por Clínica', margin, y);
+        y += 10;
+
+        doc.setFontSize(10);
+        clinicStats.forEach(({ clinic, patientCount, revenue, loss, absences }) => {
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+          const netClinicRevenue = revenue - loss;
+          doc.setTextColor(51, 51, 51);
+          doc.text(clinic.name, margin, y);
+          doc.setTextColor(80, 80, 80);
+          doc.text(`R$ ${netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 40, y);
+          y += 5;
+          doc.setFontSize(9);
+          doc.text(`${patientCount} pacientes | ${absences} faltas`, margin + 5, y);
+          doc.setFontSize(10);
+          y += 8;
+        });
+        y += 5;
+      }
+
+      // Private Appointments
+      if (privateRevenue > 0) {
+        if (y > 250) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFontSize(14);
+        doc.setTextColor(51, 51, 51);
+        doc.text('Atendimentos Particulares', margin, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setTextColor(80, 80, 80);
+        doc.text(`${monthlyPrivateAppointments.length} atendimentos`, margin, y);
+        y += 5;
+        doc.text(`R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+        y += 15;
+      }
+
+      // Patient Table
+      if (patientStats.length > 0) {
+        if (y > 200) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFontSize(14);
+        doc.setTextColor(51, 51, 51);
+        doc.text('Detalhamento por Paciente', margin, y);
+        y += 10;
+
+        // Table header
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Paciente', margin, y);
+        doc.text('Clínica', margin + 50, y);
+        doc.text('Tipo', margin + 95, y);
+        doc.text('Sessões', margin + 120, y);
+        doc.text('Valor', pageWidth - margin - 20, y);
+        y += 3;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
+
+        doc.setFontSize(9);
+        patientStats.forEach(({ patient, clinic, revenue, loss, sessions, absences, paymentType, paymentValue }) => {
+          if (y > 275) {
+            doc.addPage();
+            y = 20;
+          }
+          const netPatientRevenue = revenue - loss;
+          doc.setTextColor(51, 51, 51);
+          doc.text(patient.name.substring(0, 20), margin, y);
+          doc.setTextColor(80, 80, 80);
+          doc.text((clinic?.name || '').substring(0, 15), margin + 50, y);
+          doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', margin + 95, y);
+          doc.text(sessions.toString(), margin + 125, y);
+          doc.text(`R$ ${netPatientRevenue.toFixed(2)}`, pageWidth - margin - 20, y);
+          y += 6;
+        });
+      }
+
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`,
+          pageWidth / 2,
+          290,
+          { align: 'center' }
+        );
+      }
+
+      doc.save(`financeiro-${format(now, 'yyyy-MM')}.pdf`);
+      toast.success('Relatório exportado com sucesso!');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('Erro ao exportar relatório');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
@@ -104,7 +264,7 @@ export default function Financial() {
           Financeiro
         </h1>
         <p className="text-muted-foreground">
-          {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
+          {monthName}
         </p>
       </div>
 
@@ -276,9 +436,18 @@ export default function Financial() {
           <h2 className="font-bold text-foreground flex items-center gap-2">
             💳 Controle de Pagamentos
           </h2>
-          <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Exportar
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleExportPDF}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {isExporting ? 'Exportando...' : 'Exportar PDF'}
           </Button>
         </div>
 
