@@ -1,4 +1,4 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -12,13 +12,15 @@ export default function Financial() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  // Calculate monthly stats
+  // Get all evolutions for the current month
   const monthlyEvolutions = evolutions.filter(e => {
     const date = new Date(e.date);
-    return date.getMonth() === currentMonth && 
-           date.getFullYear() === currentYear &&
-           e.attendanceStatus === 'presente';
+    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   });
+
+  // Separate by attendance status
+  const presentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente');
+  const absentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
 
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
@@ -28,33 +30,58 @@ export default function Financial() {
       return patient.paymentValue;
     }
 
-    const patientEvos = monthlyEvolutions.filter(e => e.patientId === patientId);
+    const patientEvos = presentEvolutions.filter(e => e.patientId === patientId);
     return patientEvos.length * patient.paymentValue;
   };
 
+  // Calculate losses from absences (only for clinics that don't pay on absence)
+  const calculatePatientLoss = (patientId: string) => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient || !patient.paymentValue || patient.paymentType === 'fixo') return 0;
+
+    const clinic = clinics.find(c => c.id === patient.clinicId);
+    // If clinic pays on absence, no loss
+    if (clinic?.paysOnAbsence !== false) return 0;
+
+    const patientAbsences = absentEvolutions.filter(e => e.patientId === patientId);
+    return patientAbsences.length * patient.paymentValue;
+  };
+
   const totalRevenue = patients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
+  const totalLoss = patients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
+  const netRevenue = totalRevenue - totalLoss;
 
   const clinicStats = clinics.map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
     const revenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
+    const loss = clinicPatients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
+    const absences = absentEvolutions.filter(e => 
+      clinicPatients.some(p => p.id === e.patientId)
+    ).length;
     
     return {
       clinic,
       patientCount: clinicPatients.length,
       revenue,
+      loss,
+      absences,
     };
   });
 
   const patientStats = patients.map(patient => {
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const revenue = calculatePatientRevenue(patient.id);
-    const sessions = monthlyEvolutions.filter(e => e.patientId === patient.id).length;
+    const loss = calculatePatientLoss(patient.id);
+    const sessions = presentEvolutions.filter(e => e.patientId === patient.id).length;
+    const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
 
     return {
       patient,
       clinic,
       revenue,
+      loss,
       sessions,
+      absences,
       paymentType: patient.paymentType,
       paymentValue: patient.paymentValue || 0,
     };
@@ -80,11 +107,19 @@ export default function Financial() {
             <div>
               <p className="text-primary-foreground/80 mb-2">Faturamento do Mês</p>
               <h2 className="text-4xl lg:text-5xl font-bold text-primary-foreground mb-4">
-                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </h2>
-              <div className="flex items-center gap-2 text-primary-foreground/80">
-                <TrendingUp className="w-5 h-5" />
-                <span>Baseado em {monthlyEvolutions.length} atendimentos</span>
+              <div className="flex items-center gap-4 text-primary-foreground/80">
+                <span className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  {presentEvolutions.length} atendimentos
+                </span>
+                {totalLoss > 0 && (
+                  <span className="flex items-center gap-2 text-amber-200">
+                    <TrendingDown className="w-5 h-5" />
+                    {absentEvolutions.length} faltas
+                  </span>
+                )}
               </div>
             </div>
             <DollarSign className="w-16 h-16 text-primary-foreground/30" />
@@ -95,22 +130,40 @@ export default function Financial() {
           <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 rounded-xl bg-success/10">
-                <Building2 className="w-5 h-5 text-success" />
+                <TrendingUp className="w-5 h-5 text-success" />
               </div>
-              <span className="text-muted-foreground">Clínicas Ativas</span>
+              <span className="text-muted-foreground">Receita Bruta</span>
             </div>
-            <p className="text-3xl font-bold text-foreground">{clinics.length}</p>
+            <p className="text-2xl font-bold text-success">
+              R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
           </div>
 
-          <div className="bg-card rounded-2xl p-5 border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-xl bg-accent/10">
-                <Users className="w-5 h-5 text-accent" />
+          {totalLoss > 0 && (
+            <div className="bg-card rounded-2xl p-5 border border-destructive/30">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl bg-destructive/10">
+                  <TrendingDown className="w-5 h-5 text-destructive" />
+                </div>
+                <span className="text-muted-foreground">Perdas por Faltas</span>
               </div>
-              <span className="text-muted-foreground">Pacientes Ativos</span>
+              <p className="text-2xl font-bold text-destructive">
+                - R$ {totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
             </div>
-            <p className="text-3xl font-bold text-foreground">{patients.length}</p>
-          </div>
+          )}
+
+          {totalLoss === 0 && (
+            <div className="bg-card rounded-2xl p-5 border border-border">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl bg-accent/10">
+                  <Users className="w-5 h-5 text-accent" />
+                </div>
+                <span className="text-muted-foreground">Pacientes Ativos</span>
+              </div>
+              <p className="text-3xl font-bold text-foreground">{patients.length}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -121,7 +174,8 @@ export default function Financial() {
         </h2>
 
         <div className="space-y-6">
-          {clinicStats.map(({ clinic, patientCount, revenue }) => {
+          {clinicStats.map(({ clinic, patientCount, revenue, loss, absences }) => {
+            const netClinicRevenue = revenue - loss;
             const percentage = totalRevenue > 0 ? (revenue / totalRevenue) * 100 : 0;
             const isPropria = clinic.type === 'propria';
 
@@ -129,14 +183,29 @@ export default function Financial() {
               <div key={clinic.id} className="border-b border-border pb-6 last:border-0 last:pb-0">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h3 className="font-bold text-foreground text-lg">{clinic.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-foreground text-lg">{clinic.name}</h3>
+                      {clinic.paysOnAbsence === false && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                          Não paga faltas
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">{patientCount} pacientes</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-xl text-foreground">
-                      R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
-                    <p className="text-sm text-muted-foreground">{percentage.toFixed(0)}% do total</p>
+                    {loss > 0 && (
+                      <p className="text-sm text-destructive flex items-center justify-end gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        {absences} faltas (-R$ {loss.toFixed(2)})
+                      </p>
+                    )}
+                    {loss === 0 && (
+                      <p className="text-sm text-muted-foreground">{percentage.toFixed(0)}% do total</p>
+                    )}
                   </div>
                 </div>
 
@@ -180,33 +249,63 @@ export default function Financial() {
                 <th className="text-left py-3 px-2 font-semibold text-foreground">Paciente</th>
                 <th className="text-left py-3 px-2 font-semibold text-foreground">Clínica</th>
                 <th className="text-left py-3 px-2 font-semibold text-foreground">Tipo</th>
-                <th className="text-right py-3 px-2 font-semibold text-foreground">Sessões</th>
+                <th className="text-center py-3 px-2 font-semibold text-foreground">Sessões</th>
+                <th className="text-center py-3 px-2 font-semibold text-foreground">Faltas</th>
                 <th className="text-right py-3 px-2 font-semibold text-foreground">Valor</th>
               </tr>
             </thead>
             <tbody>
-              {patientStats.map(({ patient, clinic, revenue, sessions, paymentType, paymentValue }) => (
-                <tr key={patient.id} className="border-b border-border hover:bg-secondary/50">
-                  <td className="py-3 px-2 text-foreground">{patient.name}</td>
-                  <td className="py-3 px-2 text-muted-foreground text-sm">{clinic?.name}</td>
-                  <td className="py-3 px-2 text-sm">
-                    <span className={cn(
-                      'px-2 py-1 rounded-full text-xs font-medium',
-                      paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
-                    )}>
-                      {paymentType === 'fixo' ? 'Fixo Mensal' : `R$ ${paymentValue}/sessão`}
-                    </span>
-                  </td>
-                  <td className="py-3 px-2 text-right text-foreground">{sessions}</td>
-                  <td className="py-3 px-2 text-right font-bold text-success">
-                    R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </td>
-                </tr>
-              ))}
+              {patientStats.map(({ patient, clinic, revenue, loss, sessions, absences, paymentType, paymentValue }) => {
+                const netPatientRevenue = revenue - loss;
+                
+                return (
+                  <tr key={patient.id} className="border-b border-border hover:bg-secondary/50">
+                    <td className="py-3 px-2 text-foreground">{patient.name}</td>
+                    <td className="py-3 px-2 text-muted-foreground text-sm">{clinic?.name}</td>
+                    <td className="py-3 px-2 text-sm">
+                      <span className={cn(
+                        'px-2 py-1 rounded-full text-xs font-medium',
+                        paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
+                      )}>
+                        {paymentType === 'fixo' ? 'Fixo Mensal' : `R$ ${paymentValue}/sessão`}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-center text-foreground">{sessions}</td>
+                    <td className="py-3 px-2 text-center">
+                      {absences > 0 ? (
+                        <span className={cn(
+                          'inline-flex items-center gap-1',
+                          loss > 0 ? 'text-destructive' : 'text-amber-600'
+                        )}>
+                          {absences}
+                          {loss > 0 && <AlertTriangle className="w-3 h-3" />}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-2 text-right">
+                      <div className="flex flex-col items-end">
+                        <span className={cn(
+                          'font-bold',
+                          loss > 0 ? 'text-foreground' : 'text-success'
+                        )}>
+                          R$ {netPatientRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                        {loss > 0 && (
+                          <span className="text-xs text-destructive">
+                            -R$ {loss.toFixed(2)} em faltas
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
 
               {patientStats.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
                     Nenhum paciente com valor configurado
                   </td>
                 </tr>
