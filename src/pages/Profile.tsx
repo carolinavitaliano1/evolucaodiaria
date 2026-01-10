@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
-import { SignaturePad } from '@/components/ui/signature-pad';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Plus, Trash2, Stamp, Pencil, Check } from 'lucide-react';
+import { User, Plus, Trash2, Stamp, Pencil, Camera, X } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -17,6 +16,7 @@ interface Profile {
   email: string | null;
   phone: string | null;
   professional_id: string | null;
+  avatar_url: string | null;
 }
 
 interface StampItem {
@@ -36,12 +36,14 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [stampDialogOpen, setStampDialogOpen] = useState(false);
   const [editingStamp, setEditingStamp] = useState<StampItem | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [professionalId, setProfessionalId] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Stamp form states
   const [stampName, setStampName] = useState('');
@@ -50,18 +52,33 @@ export default function Profile() {
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState(false);
 
+  // Signature pad states
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (stampDialogOpen && signatureImage && canvasRef.current) {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvasRef.current?.getContext('2d');
+        if (ctx && canvasRef.current) {
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          ctx.drawImage(img, 0, 0);
+        }
+      };
+      img.src = signatureImage;
+    }
+  }, [stampDialogOpen, signatureImage]);
+
   async function loadData() {
     try {
       setLoading(true);
-      
-      // For now, use a mock user_id since auth isn't implemented
       const mockUserId = 'mock-user-id';
 
-      // Load profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -74,9 +91,9 @@ export default function Profile() {
         setEmail(profileData.email || '');
         setPhone(profileData.phone || '');
         setProfessionalId(profileData.professional_id || '');
+        setAvatarUrl(profileData.avatar_url);
       }
 
-      // Load stamps
       const { data: stampsData } = await supabase
         .from('stamps')
         .select('*')
@@ -94,6 +111,36 @@ export default function Profile() {
     }
   }
 
+  async function uploadAvatar(file: File) {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `avatars/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('attachments')
+        .getPublicUrl(data.path);
+
+      setAvatarUrl(urlData.publicUrl);
+      toast.success('Foto atualizada!');
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error('Erro ao enviar foto');
+    }
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadAvatar(file);
+    }
+  }
+
   async function saveProfile() {
     try {
       setSaving(true);
@@ -106,7 +153,8 @@ export default function Profile() {
             name,
             email,
             phone,
-            professional_id: professionalId
+            professional_id: professionalId,
+            avatar_url: avatarUrl
           })
           .eq('id', profile.id);
 
@@ -119,7 +167,8 @@ export default function Profile() {
             name,
             email,
             phone,
-            professional_id: professionalId
+            professional_id: professionalId,
+            avatar_url: avatarUrl
           });
 
         if (error) throw error;
@@ -161,10 +210,10 @@ export default function Profile() {
 
       if (!stampName || !stampArea) {
         toast.error('Preencha o nome e a área clínica');
+        setSaving(false);
         return;
       }
 
-      // If setting as default, unset others first
       if (isDefault) {
         await supabase
           .from('stamps')
@@ -229,9 +278,75 @@ export default function Profile() {
   }
 
   function handleStampUpload(files: UploadedFile[]) {
-    if (files.length > 0) {
+    if (files.length > 0 && files[0].url) {
       setStampImage(files[0].url);
     }
+  }
+
+  // Signature pad functions
+  function startDrawing(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    setIsDrawing(true);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    let x, y;
+    if ('touches' in e) {
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+
+  function draw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    let x, y;
+    if ('touches' in e) {
+      e.preventDefault();
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+
+  function stopDrawing() {
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      setSignatureImage(canvas.toDataURL('image/png'));
+    }
+  }
+
+  function clearSignature() {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    setSignatureImage(null);
   }
 
   if (loading) {
@@ -243,7 +358,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="p-6 space-y-6 max-w-4xl mx-auto pb-24">
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
           <User className="w-6 h-6 text-primary-foreground" />
@@ -260,6 +375,36 @@ export default function Profile() {
           <CardTitle>Informações Pessoais</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Avatar Section */}
+          <div className="flex flex-col items-center gap-4 pb-4 border-b border-border">
+            <div className="relative">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              <div 
+                onClick={() => avatarInputRef.current?.click()}
+                className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition-opacity border-2 border-border"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-12 h-12 text-muted-foreground" />
+                )}
+              </div>
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">Clique para alterar a foto</p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nome Completo</Label>
@@ -428,7 +573,7 @@ export default function Profile() {
                   id: 'stamp-img',
                   name: 'Carimbo',
                   filePath: stampImage,
-                  fileType: 'image',
+                  fileType: 'image/png',
                   fileSize: 0,
                   url: stampImage
                 }] : []}
@@ -438,11 +583,31 @@ export default function Profile() {
             </div>
 
             <div className="space-y-2">
-              <Label>Assinatura Digital</Label>
-              <SignaturePad
-                value={signatureImage || ''}
-                onChange={setSignatureImage}
-              />
+              <div className="flex items-center justify-between">
+                <Label>Assinatura Digital</Label>
+                {signatureImage && (
+                  <Button type="button" variant="ghost" size="sm" onClick={clearSignature}>
+                    <X className="w-4 h-4 mr-1" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
+              <div className="border rounded-lg p-2 bg-white">
+                <canvas
+                  ref={canvasRef}
+                  width={400}
+                  height={150}
+                  className="w-full border rounded cursor-crosshair touch-none"
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onTouchStart={startDrawing}
+                  onTouchMove={draw}
+                  onTouchEnd={stopDrawing}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Desenhe sua assinatura acima</p>
             </div>
 
             <div className="flex items-center gap-2">
