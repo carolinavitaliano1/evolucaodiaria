@@ -9,7 +9,7 @@ interface FileUploadProps {
   existingFiles?: UploadedFile[];
   onRemove?: (fileId: string) => void;
   parentId?: string;
-  parentType: 'evolution' | 'clinic';
+  parentType: string;
   accept?: string;
   multiple?: boolean;
   maxFiles?: number;

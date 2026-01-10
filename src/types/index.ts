@@ -42,8 +42,28 @@ export interface Evolution {
   text: string;
   attendanceStatus: 'presente' | 'falta';
   signature?: string;
+  stampId?: string;
   attachments?: Attachment[];
   createdAt: string;
+}
+
+export interface Profile {
+  id: string;
+  userId: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  professionalId: string | null;
+}
+
+export interface StampItem {
+  id: string;
+  userId: string;
+  name: string;
+  clinicalArea: string;
+  stampImage: string | null;
+  signatureImage: string | null;
+  isDefault: boolean;
 }
 
 export interface Appointment {
