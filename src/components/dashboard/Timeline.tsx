@@ -1,14 +1,16 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, User, MapPin, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, User, MapPin, CheckCircle2, XCircle, Bell, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export function Timeline() {
   const { selectedDate, appointments, patients, clinics, addEvolution, setCurrentPatient, setCurrentClinic } = useApp();
   const navigate = useNavigate();
+  const { isNative, hasPermission, scheduleForAppointment } = useNotifications();
   
   const dateAppointments = appointments
     .filter(a => a.date === format(selectedDate, 'yyyy-MM-dd'))
@@ -139,6 +141,23 @@ export function Timeline() {
                   </div>
                   
                   <div className="flex gap-2">
+                    {isNative && hasPermission && !isPast && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-amber-600 border-amber-300 hover:bg-amber-100"
+                        onClick={() => scheduleForAppointment({
+                          appointmentId: apt.id,
+                          patientName: patient.name,
+                          clinicName: clinic.name,
+                          date: apt.date,
+                          time: apt.time,
+                        })}
+                        title="Agendar lembrete"
+                      >
+                        <Bell className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
