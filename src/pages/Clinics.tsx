@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TimePicker } from '@/components/ui/time-picker';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { Clinic } from '@/types';
@@ -34,7 +35,8 @@ export default function Clinics() {
     address: '',
     notes: '',
     weekdays: [] as string[],
-    scheduleTime: '',
+    scheduleTimeStart: '',
+    scheduleTimeEnd: '',
     paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
     paymentAmount: '',
   });
@@ -49,7 +51,9 @@ export default function Clinics() {
       address: formData.address,
       notes: formData.notes,
       weekdays: formData.weekdays,
-      scheduleTime: formData.scheduleTime,
+      scheduleTime: formData.scheduleTimeStart && formData.scheduleTimeEnd 
+        ? `${formData.scheduleTimeStart} às ${formData.scheduleTimeEnd}` 
+        : '',
       paymentType: formData.paymentType as any,
       paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
     });
@@ -60,7 +64,8 @@ export default function Clinics() {
       address: '',
       notes: '',
       weekdays: [],
-      scheduleTime: '',
+      scheduleTimeStart: '',
+      scheduleTimeEnd: '',
       paymentType: '',
       paymentAmount: '',
     });
@@ -208,14 +213,29 @@ export default function Clinics() {
                   ))}
                 </div>
 
-                <div className="mt-4">
-                  <Label>Horário de Atendimento</Label>
-                  <Input
-                    value={formData.scheduleTime}
-                    onChange={(e) => setFormData({ ...formData, scheduleTime: e.target.value })}
-                    placeholder="Ex: 14h às 18h"
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <TimePicker
+                    value={formData.scheduleTimeStart}
+                    onChange={(time) => setFormData({ ...formData, scheduleTimeStart: time })}
+                    label="Início"
+                    placeholder="Horário inicial"
+                  />
+                  <TimePicker
+                    value={formData.scheduleTimeEnd}
+                    onChange={(time) => setFormData({ ...formData, scheduleTimeEnd: time })}
+                    label="Término"
+                    placeholder="Horário final"
                   />
                 </div>
+                {formData.scheduleTimeStart && formData.scheduleTimeEnd && (
+                  <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-secondary/50 text-sm">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">Funcionamento:</span>
+                    <span className="font-semibold text-foreground">
+                      {formData.scheduleTimeStart} às {formData.scheduleTimeEnd}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="border-t pt-4">
