@@ -26,6 +26,7 @@ interface AppContextType extends AppState {
   updatePatient: (id: string, updates: Partial<Patient>) => void;
   deletePatient: (id: string) => void;
   addEvolution: (evolution: Omit<Evolution, 'id' | 'createdAt'>) => void;
+  updateEvolution: (id: string, updates: Partial<Evolution>) => void;
   deleteEvolution: (id: string) => void;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'>) => void;
   deleteAppointment: (id: string) => void;
@@ -278,6 +279,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, evolutions: [...prev.evolutions, newEvolution] }));
   }, []);
 
+  const updateEvolution = useCallback((id: string, updates: Partial<Evolution>) => {
+    setState(prev => ({
+      ...prev,
+      evolutions: prev.evolutions.map(e => e.id === id ? { ...e, ...updates } : e),
+    }));
+  }, []);
+
   const deleteEvolution = useCallback((id: string) => {
     setState(prev => ({
       ...prev,
@@ -362,6 +370,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePatient,
       deletePatient,
       addEvolution,
+      updateEvolution,
       deleteEvolution,
       addAppointment,
       deleteAppointment,

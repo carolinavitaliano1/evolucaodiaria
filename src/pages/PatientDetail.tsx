@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp, Download, CalendarRange, PenLine } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp, Download, CalendarRange, PenLine, Eye, Edit } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -16,6 +16,8 @@ import { SignaturePad } from '@/components/ui/signature-pad';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
+import { Evolution } from '@/types';
 
 function calculateAge(birthdate: string) {
   const today = new Date();
@@ -33,7 +35,7 @@ function calculateAge(birthdate: string) {
 export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { patients, clinics, evolutions, addEvolution, deleteEvolution, currentClinic } = useApp();
+  const { patients, clinics, evolutions, addEvolution, updateEvolution, deleteEvolution, currentClinic } = useApp();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
@@ -51,6 +53,9 @@ export default function PatientDetail() {
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+
+  // Edit evolution
+  const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
 
   if (!patient) {
     return (
@@ -427,7 +432,16 @@ export default function PatientDetail() {
                       {evo.attendanceStatus === 'presente' ? '✅ Presente' : '❌ Falta'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => setEditingEvolution(evo)}
+                    >
+                      <Edit className="w-3 h-3" />
+                      Editar
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -501,6 +515,16 @@ export default function PatientDetail() {
           </div>
         )}
       </div>
+
+      {/* Edit Evolution Dialog */}
+      {editingEvolution && (
+        <EditEvolutionDialog
+          evolution={editingEvolution}
+          open={!!editingEvolution}
+          onOpenChange={(open) => !open && setEditingEvolution(null)}
+          onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
+        />
+      )}
     </div>
   );
 }
