@@ -9,7 +9,7 @@ import {
   MoreHorizontal,
   BarChart3,
   ClipboardList,
-  X
+  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -17,11 +17,12 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 const mainNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
   { to: '/clinics', icon: Building2, label: 'Clínicas' },
+  { to: '/patients', icon: Users, label: 'Pacientes' },
   { to: '/calendar', icon: Calendar, label: 'Agenda' },
-  { to: '/financial', icon: DollarSign, label: 'Finanças' },
 ];
 
 const moreNavItems = [
+  { to: '/financial', icon: DollarSign, label: 'Finanças' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
   { to: '/profile', icon: User, label: 'Perfil' },

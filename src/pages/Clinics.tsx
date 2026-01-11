@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TimePicker } from '@/components/ui/time-picker';
+
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -66,8 +66,7 @@ export default function Clinics() {
     address: '',
     notes: '',
     weekdays: [] as string[],
-    scheduleTimeStart: '',
-    scheduleTimeEnd: '',
+    scheduleByDay: {} as { [day: string]: string },
     paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
     paymentAmount: '',
     paysOnAbsence: true,
@@ -129,15 +128,19 @@ export default function Clinics() {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    // Calcular scheduleTime a partir do primeiro horário do scheduleByDay
+    const firstDayTime = formData.weekdays.length > 0 
+      ? formData.scheduleByDay[formData.weekdays[0]] || ''
+      : '';
+
     addClinic({
       name: formData.name,
       type: formData.type,
       address: formData.address,
       notes: formData.notes,
       weekdays: formData.weekdays,
-      scheduleTime: formData.scheduleTimeStart && formData.scheduleTimeEnd 
-        ? `${formData.scheduleTimeStart} às ${formData.scheduleTimeEnd}` 
-        : '',
+      scheduleTime: firstDayTime,
+      scheduleByDay: formData.scheduleByDay,
       paymentType: formData.paymentType as any,
       paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
       paysOnAbsence: formData.paysOnAbsence,
@@ -150,8 +153,7 @@ export default function Clinics() {
       address: '',
       notes: '',
       weekdays: [],
-      scheduleTimeStart: '',
-      scheduleTimeEnd: '',
+      scheduleByDay: {},
       paymentType: '',
       paymentAmount: '',
       paysOnAbsence: true,
@@ -349,48 +351,63 @@ export default function Clinics() {
                   </div>
 
                   <div className="border-t pt-4">
-                    <Label className="text-sm font-medium">Dias de Atendimento</Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {WEEKDAYS.map((day) => (
-                        <label 
-                          key={day.value} 
-                          className={cn(
-                            "flex items-center justify-center px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm",
-                            formData.weekdays.includes(day.value) 
-                              ? "bg-primary text-primary-foreground border-primary" 
-                              : "bg-card border-border hover:bg-secondary"
-                          )}
-                        >
-                          <Checkbox
-                            checked={formData.weekdays.includes(day.value)}
-                            onCheckedChange={(checked) => {
-                              setFormData({
-                                ...formData,
-                                weekdays: checked
-                                  ? [...formData.weekdays, day.value]
-                                  : formData.weekdays.filter(d => d !== day.value),
-                              });
-                            }}
-                            className="sr-only"
-                          />
-                          {day.label}
-                        </label>
-                      ))}
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <TimePicker
-                        value={formData.scheduleTimeStart}
-                        onChange={(time) => setFormData({ ...formData, scheduleTimeStart: time })}
-                        label="Início"
-                        placeholder="08:00"
-                      />
-                      <TimePicker
-                        value={formData.scheduleTimeEnd}
-                        onChange={(time) => setFormData({ ...formData, scheduleTimeEnd: time })}
-                        label="Término"
-                        placeholder="18:00"
-                      />
+                    <Label className="text-sm font-medium">Dias e Horários de Atendimento</Label>
+                    <p className="text-xs text-muted-foreground mt-1 mb-3">
+                      Selecione os dias e defina o horário para cada um
+                    </p>
+                    <div className="space-y-3">
+                      {WEEKDAYS.map((day) => {
+                        const isSelected = formData.weekdays.includes(day.value);
+                        return (
+                          <div key={day.value} className="flex items-center gap-3">
+                            <label 
+                              className={cn(
+                                "flex items-center justify-center px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm w-14",
+                                isSelected 
+                                  ? "bg-primary text-primary-foreground border-primary" 
+                                  : "bg-card border-border hover:bg-secondary"
+                              )}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setFormData({
+                                      ...formData,
+                                      weekdays: [...formData.weekdays, day.value],
+                                    });
+                                  } else {
+                                    const newScheduleByDay = { ...formData.scheduleByDay };
+                                    delete newScheduleByDay[day.value];
+                                    setFormData({
+                                      ...formData,
+                                      weekdays: formData.weekdays.filter(d => d !== day.value),
+                                      scheduleByDay: newScheduleByDay,
+                                    });
+                                  }
+                                }}
+                                className="sr-only"
+                              />
+                              {day.label}
+                            </label>
+                            {isSelected && (
+                              <Input
+                                type="time"
+                                value={formData.scheduleByDay[day.value] || ''}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  scheduleByDay: {
+                                    ...formData.scheduleByDay,
+                                    [day.value]: e.target.value
+                                  }
+                                })}
+                                className="w-28"
+                                placeholder="08:00"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 

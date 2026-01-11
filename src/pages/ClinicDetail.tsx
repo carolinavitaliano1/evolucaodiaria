@@ -207,6 +207,7 @@ export default function ClinicDetail() {
       attendanceStatus: quickEvolutionStatus,
     });
     
+    // Limpar e fechar o modal
     setQuickEvolutionPatient(null);
     setQuickEvolutionText('');
     setQuickEvolutionStatus('presente');
