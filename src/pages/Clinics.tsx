@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar } from 'lucide-react';
+import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TimePicker } from '@/components/ui/time-picker';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
@@ -20,6 +22,7 @@ import { ServiceDialog } from '@/components/services/ServiceDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -45,15 +48,17 @@ interface PrivateAppointment {
 }
 
 export default function Clinics() {
-  const { clinics, patients, addClinic, setCurrentClinic } = useApp();
+  const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic } = useApp();
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'propria' | 'terceirizada'>('all');
+  const [filter, setFilter] = useState<'all' | 'propria' | 'terceirizada' | 'archived'>('all');
   const [stampFile, setStampFile] = useState<UploadedFile | null>(null);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('clinics');
   const [privateAppointments, setPrivateAppointments] = useState<PrivateAppointment[]>([]);
   const [loadingPrivate, setLoadingPrivate] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clinicToDelete, setClinicToDelete] = useState<Clinic | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -160,9 +165,34 @@ export default function Clinics() {
     navigate(`/clinics/${clinic.id}`);
   };
 
-  const filteredClinics = clinics.filter(c => 
-    filter === 'all' || c.type === filter
-  );
+  const handleArchiveClinic = (clinic: Clinic, e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateClinic(clinic.id, { isArchived: !clinic.isArchived });
+    toast.success(clinic.isArchived ? 'Clínica restaurada!' : 'Clínica arquivada!');
+  };
+
+  const handleDeleteClinic = (clinic: Clinic, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setClinicToDelete(clinic);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteClinic = () => {
+    if (clinicToDelete) {
+      deleteClinic(clinicToDelete.id);
+      toast.success('Clínica excluída!');
+      setDeleteDialogOpen(false);
+      setClinicToDelete(null);
+    }
+  };
+
+  // Clínicas ativas (não arquivadas)
+  const activeClinics = clinics.filter(c => !c.isArchived);
+  const archivedClinics = clinics.filter(c => c.isArchived);
+
+  const filteredClinics = filter === 'archived' 
+    ? archivedClinics 
+    : activeClinics.filter(c => filter === 'all' || c.type === filter);
 
   const totalPatients = patients.length;
   const pendingAppointments = privateAppointments.filter(a => a.status === 'agendado');
@@ -457,7 +487,7 @@ export default function Clinics() {
         <TabsContent value="clinics" className="space-y-4">
           {/* Filter Chips */}
           <div className="flex gap-2 flex-wrap">
-            {(['all', 'propria', 'terceirizada'] as const).map((type) => (
+            {(['all', 'propria', 'terceirizada', 'archived'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setFilter(type)}
@@ -468,9 +498,10 @@ export default function Clinics() {
                     : 'bg-secondary text-muted-foreground hover:text-foreground'
                 )}
               >
-                {type === 'all' && `Todas (${clinics.length})`}
-                {type === 'propria' && `Próprias (${clinics.filter(c => c.type === 'propria').length})`}
-                {type === 'terceirizada' && `Terceirizadas (${clinics.filter(c => c.type === 'terceirizada').length})`}
+                {type === 'all' && `Ativas (${activeClinics.length})`}
+                {type === 'propria' && `Próprias (${activeClinics.filter(c => c.type === 'propria').length})`}
+                {type === 'terceirizada' && `Terceirizadas (${activeClinics.filter(c => c.type === 'terceirizada').length})`}
+                {type === 'archived' && `Arquivadas (${archivedClinics.length})`}
               </button>
             ))}
           </div>
@@ -498,7 +529,10 @@ export default function Clinics() {
                   <div
                     key={clinic.id}
                     onClick={() => handleOpenClinic(clinic)}
-                    className="bg-card rounded-xl border border-border p-4 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all"
+                    className={cn(
+                      "bg-card rounded-xl border border-border p-4 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all",
+                      clinic.isArchived && "opacity-60"
+                    )}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -513,6 +547,11 @@ export default function Clinics() {
                           >
                             {isPropria ? 'Própria' : 'Terceirizada'}
                           </Badge>
+                          {clinic.isArchived && (
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              Arquivada
+                            </Badge>
+                          )}
                         </div>
                         
                         {clinic.address && (
@@ -542,6 +581,37 @@ export default function Clinics() {
                           )}
                         </div>
                       </div>
+
+                      {/* Actions Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => handleArchiveClinic(clinic, e as any)}>
+                            {clinic.isArchived ? (
+                              <>
+                                <ArchiveRestore className="w-4 h-4 mr-2" />
+                                Restaurar
+                              </>
+                            ) : (
+                              <>
+                                <Archive className="w-4 h-4 mr-2" />
+                                Arquivar
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={(e) => handleDeleteClinic(clinic, e as any)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 );
@@ -675,6 +745,25 @@ export default function Clinics() {
           if (!open) loadPrivateAppointments();
         }} 
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir clínica?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente a clínica 
+              <span className="font-semibold"> {clinicToDelete?.name}</span> e todos os pacientes associados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteClinic} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
