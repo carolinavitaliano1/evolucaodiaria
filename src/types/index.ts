@@ -11,7 +11,13 @@ export interface Clinic {
   paysOnAbsence?: boolean; // Se a clínica paga o terapeuta quando paciente falta
   letterhead?: string;
   stamp?: string;
+  isArchived?: boolean; // Se a clínica está arquivada
   createdAt: string;
+}
+
+// Horário por dia da semana
+export interface ScheduleByDay {
+  [day: string]: string; // Ex: { 'Segunda': '10:00', 'Quarta': '14:00' }
 }
 
 export interface Patient {
@@ -30,7 +36,8 @@ export interface Patient {
   paymentValue?: number;
   contractStartDate?: string;
   weekdays?: string[];
-  scheduleTime?: string;
+  scheduleTime?: string; // Horário único (compatibilidade)
+  scheduleByDay?: ScheduleByDay; // Horários por dia
   createdAt: string;
 }
 

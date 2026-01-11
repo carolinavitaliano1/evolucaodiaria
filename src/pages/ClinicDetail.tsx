@@ -102,11 +102,9 @@ export default function ClinicDetail() {
     observations: '',
     responsibleName: '',
     responsibleEmail: '',
-    paymentType: '' as '' | 'sessao' | 'fixo',
-    paymentValue: '',
     contractStartDate: '',
     weekdays: [] as string[],
-    scheduleTime: '',
+    scheduleByDay: {} as { [day: string]: string },
     sessionDuration: '50',
   });
 
@@ -130,6 +128,11 @@ export default function ClinicDetail() {
     e.preventDefault();
     if (!formData.name.trim() || !formData.birthdate) return;
 
+    // Determinar scheduleTime a partir de scheduleByDay (pegar o primeiro horário para compatibilidade)
+    const firstDayTime = formData.weekdays.length > 0 
+      ? formData.scheduleByDay[formData.weekdays[0]] || ''
+      : '';
+
     addPatient({
       clinicId: clinic.id,
       name: formData.name,
@@ -141,11 +144,13 @@ export default function ClinicDetail() {
       observations: formData.observations,
       responsibleName: formData.responsibleName,
       responsibleEmail: formData.responsibleEmail,
-      paymentType: formData.paymentType as any,
-      paymentValue: formData.paymentValue ? parseFloat(formData.paymentValue) : undefined,
+      // Herda pagamento da clínica
+      paymentType: clinic.paymentType === 'sessao' ? 'sessao' : clinic.paymentType === 'fixo_mensal' ? 'fixo' : 'sessao',
+      paymentValue: clinic.paymentAmount,
       contractStartDate: formData.contractStartDate,
       weekdays: formData.weekdays,
-      scheduleTime: formData.scheduleTime,
+      scheduleTime: firstDayTime,
+      scheduleByDay: formData.scheduleByDay,
     });
 
     setFormData({
@@ -158,11 +163,9 @@ export default function ClinicDetail() {
       observations: '',
       responsibleName: '',
       responsibleEmail: '',
-      paymentType: '',
-      paymentValue: '',
       contractStartDate: '',
       weekdays: [],
-      scheduleTime: '',
+      scheduleByDay: {},
       sessionDuration: '50',
     });
     setIsDialogOpen(false);
@@ -602,68 +605,85 @@ export default function ClinicDetail() {
                       />
                     </div>
 
-                    <div className="border-t pt-4">
-                      <p className="font-semibold mb-3">💰 Informações Financeiras</p>
-                      
-                      <Label>Tipo de Pagamento</Label>
-                      <Select
-                        value={formData.paymentType}
-                        onValueChange={(v) => setFormData({ ...formData, paymentType: v as any })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sessao">Por Sessão</SelectItem>
-                          <SelectItem value="fixo">Fixo Mensal</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {formData.paymentType && (
-                        <div className="mt-3">
-                          <Label>Valor (R$)</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={formData.paymentValue}
-                            onChange={(e) => setFormData({ ...formData, paymentValue: e.target.value })}
-                            placeholder="150.00"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    {/* Mostra informação de pagamento da clínica */}
+                    {clinic.paymentAmount && (
+                      <div className="border-t pt-4">
+                        <p className="font-semibold mb-2">💰 Pagamento</p>
+                        <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
+                          Valor herdado da clínica: <span className="font-semibold text-foreground">R$ {clinic.paymentAmount.toFixed(2)}</span>
+                          {clinic.paymentType === 'sessao' && ' por sessão'}
+                          {clinic.paymentType === 'fixo_mensal' && ' mensal'}
+                          {clinic.paymentType === 'fixo_diario' && ' por dia'}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="border-t pt-4">
-                      <p className="font-semibold mb-3">📅 Horários</p>
+                      <p className="font-semibold mb-3">📅 Horários de Atendimento</p>
                       
-                      <Label>Dias da Semana</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        {WEEKDAYS.map((day) => (
-                          <label key={day.value} className="flex items-center gap-2 cursor-pointer">
-                            <Checkbox
-                              checked={formData.weekdays.includes(day.value)}
-                              onCheckedChange={(checked) => {
-                                setFormData({
-                                  ...formData,
-                                  weekdays: checked
-                                    ? [...formData.weekdays, day.value]
-                                    : formData.weekdays.filter(d => d !== day.value),
-                                });
-                              }}
-                            />
-                            <span className="text-sm">{day.label}</span>
-                          </label>
-                        ))}
+                      <Label className="mb-2 block">Selecione os dias e defina o horário para cada um:</Label>
+                      <div className="space-y-3 mt-2">
+                        {WEEKDAYS.map((day) => {
+                          const isSelected = formData.weekdays.includes(day.value);
+                          return (
+                            <div key={day.value} className="flex items-center gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setFormData({
+                                      ...formData,
+                                      weekdays: [...formData.weekdays, day.value],
+                                    });
+                                  } else {
+                                    const newScheduleByDay = { ...formData.scheduleByDay };
+                                    delete newScheduleByDay[day.value];
+                                    setFormData({
+                                      ...formData,
+                                      weekdays: formData.weekdays.filter(d => d !== day.value),
+                                      scheduleByDay: newScheduleByDay,
+                                    });
+                                  }
+                                }}
+                              />
+                              <span className="text-sm w-24">{day.label}</span>
+                              {isSelected && (
+                                <Input
+                                  type="time"
+                                  value={formData.scheduleByDay[day.value] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    scheduleByDay: {
+                                      ...formData.scheduleByDay,
+                                      [day.value]: e.target.value
+                                    }
+                                  })}
+                                  className="w-28"
+                                  placeholder="08:00"
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
 
-                      <div className="mt-4">
-                        <TimeWithDurationPicker
-                          time={formData.scheduleTime}
-                          duration={formData.sessionDuration}
-                          onTimeChange={(time) => setFormData({ ...formData, scheduleTime: time })}
-                          onDurationChange={(duration) => setFormData({ ...formData, sessionDuration: duration })}
-                          label="⏰ Horário do Atendimento"
-                        />
+                      <div className="mt-4 flex items-center gap-3">
+                        <Label>Duração da sessão:</Label>
+                        <Select
+                          value={formData.sessionDuration}
+                          onValueChange={(v) => setFormData({ ...formData, sessionDuration: v })}
+                        >
+                          <SelectTrigger className="w-28">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30">30 min</SelectItem>
+                            <SelectItem value="40">40 min</SelectItem>
+                            <SelectItem value="50">50 min</SelectItem>
+                            <SelectItem value="60">60 min</SelectItem>
+                            <SelectItem value="90">90 min</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
