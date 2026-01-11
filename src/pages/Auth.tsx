@@ -10,8 +10,9 @@ import { toast } from 'sonner';
 import { Loader2, Stethoscope } from 'lucide-react';
 
 export default function Auth() {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -22,6 +23,9 @@ export default function Auth() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+
+  // Forgot password state
+  const [resetEmail, setResetEmail] = useState('');
 
   if (loading) {
     return (
@@ -84,6 +88,88 @@ export default function Auth() {
     setIsSubmitting(false);
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const { error } = await resetPassword(resetEmail);
+
+    if (error) {
+      toast.error('Erro ao enviar email', {
+        description: error.message,
+      });
+    } else {
+      toast.success('Email enviado!', {
+        description: 'Verifique sua caixa de entrada para redefinir a senha.',
+      });
+      setShowForgotPassword(false);
+      setResetEmail('');
+    }
+
+    setIsSubmitting(false);
+  };
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <div className="w-full max-w-md">
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Stethoscope className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">Clini Pro</h1>
+          </div>
+
+          <Card>
+            <form onSubmit={handleResetPassword}>
+              <CardHeader>
+                <CardTitle>Recuperar Senha</CardTitle>
+                <CardDescription>
+                  Digite seu email para receber um link de recuperação
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+
+              <CardFooter className="flex flex-col gap-3">
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    'Enviar Link de Recuperação'
+                  )}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={() => setShowForgotPassword(false)}
+                >
+                  Voltar para o login
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <div className="w-full max-w-md">
@@ -134,6 +220,15 @@ export default function Auth() {
                       required
                     />
                   </div>
+
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    className="px-0 text-sm text-muted-foreground"
+                    onClick={() => setShowForgotPassword(true)}
+                  >
+                    Esqueceu a senha?
+                  </Button>
                 </CardContent>
 
                 <CardFooter>
