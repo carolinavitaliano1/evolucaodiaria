@@ -1,3 +1,8 @@
+// Horário por dia da semana
+export interface ScheduleByDay {
+  [day: string]: string; // Ex: { 'Segunda': '10:00', 'Quarta': '14:00' }
+}
+
 export interface Clinic {
   id: string;
   name: string;
@@ -6,6 +11,7 @@ export interface Clinic {
   notes?: string;
   weekdays?: string[];
   scheduleTime?: string;
+  scheduleByDay?: ScheduleByDay; // Horários por dia
   paymentType?: 'fixo_mensal' | 'fixo_diario' | 'sessao';
   paymentAmount?: number;
   paysOnAbsence?: boolean; // Se a clínica paga o terapeuta quando paciente falta
@@ -13,11 +19,6 @@ export interface Clinic {
   stamp?: string;
   isArchived?: boolean; // Se a clínica está arquivada
   createdAt: string;
-}
-
-// Horário por dia da semana
-export interface ScheduleByDay {
-  [day: string]: string; // Ex: { 'Segunda': '10:00', 'Quarta': '14:00' }
 }
 
 export interface Patient {
