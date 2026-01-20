@@ -55,30 +55,9 @@ export function NotificationSettings() {
     localStorage.setItem('auto_schedule_reminders', String(checked));
   };
 
+  // Don't show anything if not on native app
   if (!isNative) {
-    return (
-      <Card className="border-border bg-card">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base font-medium">Lembretes</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-            <Smartphone className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                Disponível no app nativo
-              </p>
-              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                Instale o app no seu celular para receber lembretes de atendimentos.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   return (
