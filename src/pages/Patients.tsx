@@ -15,9 +15,12 @@ import { Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-function calculateAge(birthdate: string) {
+function calculateAge(birthdate: string | null | undefined): number | null {
+  if (!birthdate) return null;
   const today = new Date();
   const birth = new Date(birthdate);
+  if (isNaN(birth.getTime())) return null;
+  
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
   
@@ -153,14 +156,20 @@ export default function Patients() {
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto pb-24">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-1 flex items-center gap-2">
-          <Users className="w-6 h-6 text-primary" />
-          Pacientes
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Busque e gerencie todos os seus pacientes
-        </p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-1 flex items-center gap-2">
+            <Users className="w-6 h-6 text-primary" />
+            Pacientes
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Busque e gerencie todos os seus pacientes
+          </p>
+        </div>
+        <Button onClick={() => navigate('/clinics')} className="gap-2">
+          <Users className="w-4 h-4" />
+          Novo Paciente
+        </Button>
       </div>
 
       {/* Search */}
@@ -234,7 +243,7 @@ export default function Patients() {
                       </p>
                     </div>
                     <div className="text-right">
-                      {patient.birthdate && (
+                      {patient.birthdate && calculateAge(patient.birthdate) !== null && (
                         <p className="text-sm text-muted-foreground flex items-center gap-1 justify-end">
                           <Cake className="w-3.5 h-3.5" />
                           {calculateAge(patient.birthdate)} anos

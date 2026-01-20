@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { SignaturePad } from '@/components/ui/signature-pad';
@@ -19,9 +20,12 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { Evolution } from '@/types';
 
-function calculateAge(birthdate: string) {
+function calculateAge(birthdate: string | null | undefined): number | null {
+  if (!birthdate) return null;
   const today = new Date();
   const birth = new Date(birthdate);
+  if (isNaN(birth.getTime())) return null;
+  
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
   
@@ -77,7 +81,7 @@ export default function PatientDetail() {
     });
     
     if (filteredEvolutions.length === 0) {
-      alert('Nenhuma evolução encontrada no período selecionado.');
+      toast.error('Nenhuma evolução encontrada no período selecionado.');
       return;
     }
     
@@ -150,7 +154,7 @@ export default function PatientDetail() {
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-3">{patient.name}</h1>
             
             <div className="flex flex-wrap gap-3">
-              {patient.birthdate && (
+              {patient.birthdate && calculateAge(patient.birthdate) !== null && (
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm">
                   <Cake className="w-4 h-4" />
                   {calculateAge(patient.birthdate)} anos
