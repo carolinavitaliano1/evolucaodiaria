@@ -106,12 +106,14 @@ export type Database = {
           address: string | null
           created_at: string
           id: string
+          is_archived: boolean | null
           letterhead: string | null
           name: string
           notes: string | null
           payment_amount: number | null
           payment_type: string | null
           pays_on_absence: boolean
+          schedule_by_day: Json | null
           schedule_time: string | null
           stamp: string | null
           type: string
@@ -123,12 +125,14 @@ export type Database = {
           address?: string | null
           created_at?: string
           id?: string
+          is_archived?: boolean | null
           letterhead?: string | null
           name: string
           notes?: string | null
           payment_amount?: number | null
           payment_type?: string | null
           pays_on_absence?: boolean
+          schedule_by_day?: Json | null
           schedule_time?: string | null
           stamp?: string | null
           type?: string
@@ -140,12 +144,14 @@ export type Database = {
           address?: string | null
           created_at?: string
           id?: string
+          is_archived?: boolean | null
           letterhead?: string | null
           name?: string
           notes?: string | null
           payment_amount?: number | null
           payment_type?: string | null
           pays_on_absence?: boolean
+          schedule_by_day?: Json | null
           schedule_time?: string | null
           stamp?: string | null
           type?: string
@@ -287,6 +293,7 @@ export type Database = {
           professionals: string | null
           responsible_email: string | null
           responsible_name: string | null
+          schedule_by_day: Json | null
           schedule_time: string | null
           updated_at: string
           user_id: string
@@ -308,6 +315,7 @@ export type Database = {
           professionals?: string | null
           responsible_email?: string | null
           responsible_name?: string | null
+          schedule_by_day?: Json | null
           schedule_time?: string | null
           updated_at?: string
           user_id: string
@@ -329,6 +337,7 @@ export type Database = {
           professionals?: string | null
           responsible_email?: string | null
           responsible_name?: string | null
+          schedule_by_day?: Json | null
           schedule_time?: string | null
           updated_at?: string
           user_id?: string

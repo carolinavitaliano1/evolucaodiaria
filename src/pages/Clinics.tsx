@@ -66,7 +66,7 @@ export default function Clinics() {
     address: '',
     notes: '',
     weekdays: [] as string[],
-    scheduleByDay: {} as { [day: string]: string },
+    scheduleByDay: {} as { [day: string]: { start: string; end: string } },
     paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
     paymentAmount: '',
     paysOnAbsence: true,
@@ -130,7 +130,7 @@ export default function Clinics() {
 
     // Calcular scheduleTime a partir do primeiro horário do scheduleByDay
     const firstDayTime = formData.weekdays.length > 0 
-      ? formData.scheduleByDay[formData.weekdays[0]] || ''
+      ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
     addClinic({
@@ -141,7 +141,7 @@ export default function Clinics() {
       weekdays: formData.weekdays,
       scheduleTime: firstDayTime,
       scheduleByDay: formData.scheduleByDay,
-      paymentType: formData.paymentType as any,
+      paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
       paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
       paysOnAbsence: formData.paysOnAbsence,
       stamp: stampFile?.url,
@@ -353,13 +353,13 @@ export default function Clinics() {
                   <div className="border-t pt-4">
                     <Label className="text-sm font-medium">Dias e Horários de Atendimento</Label>
                     <p className="text-xs text-muted-foreground mt-1 mb-3">
-                      Selecione os dias e defina o horário para cada um
+                      Selecione os dias e defina o horário de entrada e saída
                     </p>
                     <div className="space-y-3">
                       {WEEKDAYS.map((day) => {
                         const isSelected = formData.weekdays.includes(day.value);
                         return (
-                          <div key={day.value} className="flex items-center gap-3">
+                          <div key={day.value} className="flex items-center gap-3 flex-wrap">
                             <label 
                               className={cn(
                                 "flex items-center justify-center px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm w-14",
@@ -391,19 +391,46 @@ export default function Clinics() {
                               {day.label}
                             </label>
                             {isSelected && (
-                              <Input
-                                type="time"
-                                value={formData.scheduleByDay[day.value] || ''}
-                                onChange={(e) => setFormData({
-                                  ...formData,
-                                  scheduleByDay: {
-                                    ...formData.scheduleByDay,
-                                    [day.value]: e.target.value
-                                  }
-                                })}
-                                className="w-28"
-                                placeholder="08:00"
-                              />
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-muted-foreground">Entrada:</span>
+                                  <Input
+                                    type="time"
+                                    value={formData.scheduleByDay[day.value]?.start || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      scheduleByDay: {
+                                        ...formData.scheduleByDay,
+                                        [day.value]: {
+                                          ...formData.scheduleByDay[day.value],
+                                          start: e.target.value,
+                                          end: formData.scheduleByDay[day.value]?.end || ''
+                                        }
+                                      }
+                                    })}
+                                    className="w-24"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-muted-foreground">Saída:</span>
+                                  <Input
+                                    type="time"
+                                    value={formData.scheduleByDay[day.value]?.end || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      scheduleByDay: {
+                                        ...formData.scheduleByDay,
+                                        [day.value]: {
+                                          ...formData.scheduleByDay[day.value],
+                                          start: formData.scheduleByDay[day.value]?.start || '',
+                                          end: e.target.value
+                                        }
+                                      }
+                                    })}
+                                    className="w-24"
+                                  />
+                                </div>
+                              </div>
                             )}
                           </div>
                         );

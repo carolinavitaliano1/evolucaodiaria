@@ -1,6 +1,12 @@
+// Horário de entrada e saída
+export interface ScheduleTimeRange {
+  start: string; // Ex: '08:00'
+  end: string;   // Ex: '12:00'
+}
+
 // Horário por dia da semana
 export interface ScheduleByDay {
-  [day: string]: string; // Ex: { 'Segunda': '10:00', 'Quarta': '14:00' }
+  [day: string]: ScheduleTimeRange; // Ex: { 'Segunda': { start: '08:00', end: '12:00' } }
 }
 
 export interface Clinic {
@@ -11,7 +17,7 @@ export interface Clinic {
   notes?: string;
   weekdays?: string[];
   scheduleTime?: string;
-  scheduleByDay?: ScheduleByDay; // Horários por dia
+  scheduleByDay?: ScheduleByDay; // Horários por dia com entrada e saída
   paymentType?: 'fixo_mensal' | 'fixo_diario' | 'sessao';
   paymentAmount?: number;
   paysOnAbsence?: boolean; // Se a clínica paga o terapeuta quando paciente falta
@@ -38,7 +44,7 @@ export interface Patient {
   contractStartDate?: string;
   weekdays?: string[];
   scheduleTime?: string; // Horário único (compatibilidade)
-  scheduleByDay?: ScheduleByDay; // Horários por dia
+  scheduleByDay?: ScheduleByDay; // Horários por dia com entrada e saída
   createdAt: string;
 }
 

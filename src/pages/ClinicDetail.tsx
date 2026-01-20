@@ -104,7 +104,7 @@ export default function ClinicDetail() {
     responsibleEmail: '',
     contractStartDate: '',
     weekdays: [] as string[],
-    scheduleByDay: {} as { [day: string]: string },
+    scheduleByDay: {} as { [day: string]: { start: string; end: string } },
     sessionDuration: '50',
   });
 
@@ -130,7 +130,7 @@ export default function ClinicDetail() {
 
     // Determinar scheduleTime a partir de scheduleByDay (pegar o primeiro horário para compatibilidade)
     const firstDayTime = formData.weekdays.length > 0 
-      ? formData.scheduleByDay[formData.weekdays[0]] || ''
+      ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
     addPatient({
@@ -622,12 +622,12 @@ export default function ClinicDetail() {
                     <div className="border-t pt-4">
                       <p className="font-semibold mb-3">📅 Horários de Atendimento</p>
                       
-                      <Label className="mb-2 block">Selecione os dias e defina o horário para cada um:</Label>
+                      <Label className="mb-2 block">Selecione os dias e defina o horário de entrada e saída:</Label>
                       <div className="space-y-3 mt-2">
                         {WEEKDAYS.map((day) => {
                           const isSelected = formData.weekdays.includes(day.value);
                           return (
-                            <div key={day.value} className="flex items-center gap-3">
+                            <div key={day.value} className="flex items-center gap-3 flex-wrap">
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={(checked) => {
@@ -649,19 +649,41 @@ export default function ClinicDetail() {
                               />
                               <span className="text-sm w-24">{day.label}</span>
                               {isSelected && (
-                                <Input
-                                  type="time"
-                                  value={formData.scheduleByDay[day.value] || ''}
-                                  onChange={(e) => setFormData({
-                                    ...formData,
-                                    scheduleByDay: {
-                                      ...formData.scheduleByDay,
-                                      [day.value]: e.target.value
-                                    }
-                                  })}
-                                  className="w-28"
-                                  placeholder="08:00"
-                                />
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="time"
+                                    value={formData.scheduleByDay[day.value]?.start || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      scheduleByDay: {
+                                        ...formData.scheduleByDay,
+                                        [day.value]: {
+                                          start: e.target.value,
+                                          end: formData.scheduleByDay[day.value]?.end || ''
+                                        }
+                                      }
+                                    })}
+                                    className="w-24"
+                                    placeholder="Entrada"
+                                  />
+                                  <span className="text-xs text-muted-foreground">até</span>
+                                  <Input
+                                    type="time"
+                                    value={formData.scheduleByDay[day.value]?.end || ''}
+                                    onChange={(e) => setFormData({
+                                      ...formData,
+                                      scheduleByDay: {
+                                        ...formData.scheduleByDay,
+                                        [day.value]: {
+                                          start: formData.scheduleByDay[day.value]?.start || '',
+                                          end: e.target.value
+                                        }
+                                      }
+                                    })}
+                                    className="w-24"
+                                    placeholder="Saída"
+                                  />
+                                </div>
                               )}
                             </div>
                           );
