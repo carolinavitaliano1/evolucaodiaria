@@ -7,6 +7,13 @@ import { TaskList } from '@/components/dashboard/TaskList';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useApp } from '@/contexts/AppContext';
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'Bom dia';
+  if (hour >= 12 && hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
 export default function Dashboard() {
   const { selectedDate, appointments, tasks } = useApp();
 
@@ -20,7 +27,7 @@ export default function Dashboard() {
       <div className="mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-0.5">
-            Bom dia! 👋
+            {getGreeting()}! 👋
           </h1>
           <p className="text-sm text-muted-foreground">
             {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}

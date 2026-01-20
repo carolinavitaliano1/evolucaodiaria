@@ -23,9 +23,12 @@ const WEEKDAYS = [
   { value: 'Sábado', label: 'Sábado' },
 ];
 
-function calculateAge(birthdate: string) {
+function calculateAge(birthdate: string | null | undefined): number | null {
+  if (!birthdate) return null;
   const today = new Date();
   const birth = new Date(birthdate);
+  if (isNaN(birth.getTime())) return null;
+  
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
   
@@ -382,7 +385,7 @@ export default function ClinicDetail() {
                           {patient.name}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {patient.clinicalArea} • {calculateAge(patient.birthdate)} anos
+                          {patient.clinicalArea}{calculateAge(patient.birthdate) !== null ? ` • ${calculateAge(patient.birthdate)} anos` : ''}
                         </p>
                       </div>
                     </div>
