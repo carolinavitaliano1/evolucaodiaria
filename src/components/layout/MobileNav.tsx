@@ -10,7 +10,8 @@ import {
   BarChart3,
   ClipboardList,
   Users,
-  CreditCard
+  CreditCard,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -26,6 +27,7 @@ const mainNavItems = [
 const moreNavItems = [
   { to: '/financial', icon: DollarSign, label: 'Finanças' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
+  { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
   { to: '/pricing', icon: CreditCard, label: 'Planos' },
   { to: '/profile', icon: User, label: 'Perfil' },

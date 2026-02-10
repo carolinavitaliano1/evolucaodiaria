@@ -22,6 +22,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Pricing from "./pages/Pricing";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
+import AIReports from "./pages/AIReports";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
                 <Route path="/patients/:id" element={<PatientDetail />} />
                 <Route path="/financial" element={<Financial />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/ai-reports" element={<AIReports />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/profile" element={<Profile />} />

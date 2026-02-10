@@ -1,0 +1,169 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header");
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error("Unauthorized");
+
+    const { mode, patientId, clinicId, period, command } = await req.json();
+
+    let contextData = "";
+
+    if (mode === "guided") {
+      // Fetch patient data
+      const { data: patient } = await supabase
+        .from("patients")
+        .select("*")
+        .eq("id", patientId)
+        .single();
+
+      const { data: clinic } = await supabase
+        .from("clinics")
+        .select("name")
+        .eq("id", patient?.clinic_id || clinicId)
+        .single();
+
+      // Fetch evolutions for the patient
+      let query = supabase
+        .from("evolutions")
+        .select("*")
+        .eq("patient_id", patientId)
+        .order("date", { ascending: true });
+
+      if (period === "month") {
+        const start = new Date();
+        start.setMonth(start.getMonth() - 1);
+        query = query.gte("date", start.toISOString().split("T")[0]);
+      } else if (period === "quarter") {
+        const start = new Date();
+        start.setMonth(start.getMonth() - 3);
+        query = query.gte("date", start.toISOString().split("T")[0]);
+      } else if (period === "semester") {
+        const start = new Date();
+        start.setMonth(start.getMonth() - 6);
+        query = query.gte("date", start.toISOString().split("T")[0]);
+      }
+
+      const { data: evolutions } = await query;
+
+      const totalSessions = evolutions?.length || 0;
+      const present = evolutions?.filter((e) => e.attendance_status === "presente").length || 0;
+      const absent = totalSessions - present;
+
+      contextData = `
+DADOS DO PACIENTE:
+- Nome: ${patient?.name}
+- Data de nascimento: ${patient?.birthdate}
+- Clínica: ${clinic?.name || "N/A"}
+- Área clínica: ${patient?.clinical_area || "N/A"}
+- Diagnóstico: ${patient?.diagnosis || "N/A"}
+- Profissionais: ${patient?.professionals || "N/A"}
+- Observações: ${patient?.observations || "N/A"}
+
+RESUMO DE FREQUÊNCIA (${period === "month" ? "Último mês" : period === "quarter" ? "Último trimestre" : period === "semester" ? "Último semestre" : "Todo o período"}):
+- Total de sessões: ${totalSessions}
+- Presenças: ${present}
+- Faltas: ${absent}
+- Taxa de presença: ${totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0}%
+
+EVOLUÇÕES REGISTRADAS:
+${evolutions?.map((e) => `- ${e.date}: [${e.attendance_status}] ${e.text}`).join("\n") || "Nenhuma evolução registrada."}
+`;
+    } else {
+      // Free mode: fetch all data for the user
+      const [{ data: clinics }, { data: patients }, { data: evolutions }] = await Promise.all([
+        supabase.from("clinics").select("*"),
+        supabase.from("patients").select("*"),
+        supabase.from("evolutions").select("*").order("date", { ascending: false }).limit(200),
+      ]);
+
+      contextData = `
+DADOS DISPONÍVEIS:
+
+CLÍNICAS (${clinics?.length || 0}):
+${clinics?.map((c) => `- ${c.name} (${c.type})`).join("\n") || "Nenhuma"}
+
+PACIENTES (${patients?.length || 0}):
+${patients?.map((p) => `- ${p.name} | Clínica: ${clinics?.find((c) => c.id === p.clinic_id)?.name || "N/A"} | Área: ${p.clinical_area || "N/A"} | Diagnóstico: ${p.diagnosis || "N/A"}`).join("\n") || "Nenhum"}
+
+ÚLTIMAS EVOLUÇÕES (${evolutions?.length || 0}):
+${evolutions?.slice(0, 50).map((e) => {
+  const pat = patients?.find((p) => p.id === e.patient_id);
+  return `- ${e.date} | ${pat?.name || "?"} | [${e.attendance_status}] ${e.text.slice(0, 100)}`;
+}).join("\n") || "Nenhuma"}
+`;
+    }
+
+    const systemPrompt = `Você é um assistente especializado em gerar relatórios clínicos profissionais para terapeutas.
+Gere relatórios bem estruturados, com linguagem técnica e profissional.
+Use formatação Markdown com títulos, subtítulos, listas e tabelas quando apropriado.
+O relatório deve incluir: cabeçalho, resumo executivo, dados detalhados, análise e considerações finais.
+Sempre inclua a data de geração do relatório.
+Data atual: ${new Date().toLocaleDateString("pt-BR")}.`;
+
+    const userPrompt = mode === "guided"
+      ? `Gere um relatório clínico detalhado e profissional com base nos seguintes dados:\n${contextData}`
+      : `${command}\n\nUse os seguintes dados como base:\n${contextData}`;
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns instantes." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos na sua conta." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const t = await response.text();
+      console.error("AI gateway error:", response.status, t);
+      throw new Error("AI gateway error");
+    }
+
+    return new Response(response.body, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
+  } catch (e) {
+    console.error("generate-report error:", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
