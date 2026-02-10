@@ -388,7 +388,7 @@ export default function AIReports() {
     toast.success('Copiado!');
   };
 
-  const handleExportPDF = (isAIReport = true) => {
+  const handleExportPDF = () => {
     if (!editor) return;
     const text = editor.getText();
     if (!text.trim()) return;
@@ -396,44 +396,87 @@ export default function AIReports() {
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 15;
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    const title = reportTitle || 'Relatório Clínico';
+    const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    pdf.setFillColor(124, 58, 237);
-    pdf.rect(0, 0, pageWidth, 35, 'F');
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(20);
+    // --- Header: clean line-based ---
+    pdf.setTextColor(30, 30, 30);
+    pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(reportTitle || 'Relatório Clínico', margin, 16);
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, margin, 28);
+    pdf.text(title, margin, 25);
 
-    pdf.setTextColor(50, 50, 50);
-    pdf.setFontSize(11);
+    pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
-    const lines = pdf.splitTextToSize(text, pageWidth - margin * 2);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(`Gerado em ${dateStr}`, margin, 33);
+
+    // Thin separator line
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, 37, pageWidth - margin, 37);
+
+    // --- Body text ---
+    pdf.setTextColor(40, 40, 40);
+    pdf.setFontSize(10.5);
+    pdf.setFont('helvetica', 'normal');
+
+    const rawLines = text.split('\n');
     let yPos = 45;
-    for (const line of lines) {
-      if (yPos > pageHeight - 30) { pdf.addPage(); yPos = margin; }
-      pdf.text(line, margin, yPos);
-      yPos += 6;
+
+    for (const rawLine of rawLines) {
+      const trimmed = rawLine.trim();
+
+      // Detect heading-like lines (all caps or short bold-like text)
+      const isHeading = /^(\d+\.\s|#{1,3}\s)/.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 80);
+
+      if (isHeading) {
+        yPos += 3;
+        if (yPos > pageHeight - 25) { pdf.addPage(); yPos = 20; }
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(11.5);
+        pdf.setTextColor(30, 30, 30);
+        const headingLines = pdf.splitTextToSize(trimmed.replace(/^#{1,3}\s/, ''), contentWidth);
+        for (const hl of headingLines) {
+          if (yPos > pageHeight - 25) { pdf.addPage(); yPos = 20; }
+          pdf.text(hl, margin, yPos);
+          yPos += 6;
+        }
+        yPos += 1;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10.5);
+        pdf.setTextColor(40, 40, 40);
+        continue;
+      }
+
+      if (trimmed === '') { yPos += 4; continue; }
+
+      // Bullet points
+      const isBullet = trimmed.startsWith('- ') || trimmed.startsWith('• ');
+      const lineText = isBullet ? `  •  ${trimmed.slice(2)}` : trimmed;
+      const wrapped = pdf.splitTextToSize(lineText, contentWidth);
+
+      for (const wl of wrapped) {
+        if (yPos > pageHeight - 25) { pdf.addPage(); yPos = 20; }
+        pdf.text(wl, margin, yPos);
+        yPos += 5.5;
+      }
     }
 
+    // --- Footer on all pages ---
     const total = pdf.getNumberOfPages();
     for (let i = 1; i <= total; i++) {
       pdf.setPage(i);
-      pdf.setTextColor(150, 150, 150);
-      pdf.setFontSize(8);
-      pdf.text(`Página ${i} de ${total}`, pageWidth - margin - 20, pageHeight - 10);
-
-      // Add app branding footer only on non-AI reports
-      if (!isAIReport) {
-        pdf.setFontSize(7);
-        pdf.setTextColor(180, 180, 180);
-        pdf.text('📘 Evolução Diária — evolucaodiaria.com', margin, pageHeight - 10);
-      }
+      pdf.setDrawColor(220, 220, 220);
+      pdf.setLineWidth(0.2);
+      pdf.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+      pdf.setTextColor(160, 160, 160);
+      pdf.setFontSize(7.5);
+      pdf.text(`Página ${i} de ${total}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
     }
-    pdf.save(`${reportTitle || 'relatorio'}-${new Date().toISOString().split('T')[0]}.pdf`);
+
+    pdf.save(`${title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.pdf`);
     toast.success('PDF exportado!');
   };
 
@@ -479,7 +522,7 @@ export default function AIReports() {
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar
           </Button>
-          <Button size="sm" onClick={() => handleExportPDF(true)} className="gap-2">
+          <Button size="sm" onClick={() => handleExportPDF()} className="gap-2">
             <Download className="w-4 h-4" /> PDF
           </Button>
         </div>
@@ -548,8 +591,8 @@ export default function AIReports() {
       </Tabs>
 
       {/* Editor */}
-      <Card className={cn("glass-card overflow-hidden", isLilas && "border-purple-300/30")}>
-        <CardHeader className={cn("border-b border-border pb-3", isLilas ? "bg-gradient-to-r from-purple-500/10 to-violet-500/10" : "bg-muted/30")}>
+      <Card className="glass-card overflow-hidden">
+        <CardHeader className="border-b border-border pb-3 bg-muted/30">
           <div className="flex items-center gap-3">
             <Sparkles className={cn("w-5 h-5", isLilas ? "text-purple-400" : "text-primary")} />
             <Input
