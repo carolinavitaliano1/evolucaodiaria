@@ -8,7 +8,7 @@ import {
   ClipboardList,
   BarChart3,
   User,
-  Stethoscope,
+  BookOpen,
   LogOut
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,10 +40,10 @@ export function AppSidebar() {
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-            <Stethoscope className="w-5 h-5 text-primary-foreground" />
+            <BookOpen className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-foreground text-base">Clini Pro</h1>
+            <h1 className="font-bold text-foreground text-base">Evolução Diária</h1>
           </div>
         </div>
       </div>
