@@ -101,8 +101,53 @@ export type Database = {
         }
         Relationships: []
       }
+      clinic_packages: {
+        Row: {
+          clinic_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_packages_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinics: {
         Row: {
+          absence_payment_type: string | null
           address: string | null
           created_at: string
           id: string
@@ -122,6 +167,7 @@ export type Database = {
           weekdays: string[] | null
         }
         Insert: {
+          absence_payment_type?: string | null
           address?: string | null
           created_at?: string
           id?: string
@@ -141,6 +187,7 @@ export type Database = {
           weekdays?: string[] | null
         }
         Update: {
+          absence_payment_type?: string | null
           address?: string | null
           created_at?: string
           id?: string
@@ -216,6 +263,7 @@ export type Database = {
         Row: {
           attendance_status: string
           clinic_id: string
+          confirmed_attendance: boolean | null
           created_at: string
           date: string
           id: string
@@ -229,6 +277,7 @@ export type Database = {
         Insert: {
           attendance_status?: string
           clinic_id: string
+          confirmed_attendance?: boolean | null
           created_at?: string
           date: string
           id?: string
@@ -242,6 +291,7 @@ export type Database = {
         Update: {
           attendance_status?: string
           clinic_id?: string
+          confirmed_attendance?: boolean | null
           created_at?: string
           date?: string
           id?: string
@@ -287,6 +337,7 @@ export type Database = {
           id: string
           name: string
           observations: string | null
+          package_id: string | null
           payment_type: string | null
           payment_value: number | null
           phone: string | null
@@ -309,6 +360,7 @@ export type Database = {
           id?: string
           name: string
           observations?: string | null
+          package_id?: string | null
           payment_type?: string | null
           payment_value?: number | null
           phone?: string | null
@@ -331,6 +383,7 @@ export type Database = {
           id?: string
           name?: string
           observations?: string | null
+          package_id?: string | null
           payment_type?: string | null
           payment_value?: number | null
           phone?: string | null
@@ -349,6 +402,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_packages"
             referencedColumns: ["id"]
           },
         ]

@@ -13,7 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
-import { SignaturePad } from '@/components/ui/signature-pad';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -51,7 +51,7 @@ export default function PatientDetail() {
   const [evolutionDate, setEvolutionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta'>('presente');
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
-  const [signature, setSignature] = useState<string>('');
+  
   
   // PDF period selection
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
@@ -106,7 +106,6 @@ export default function PatientDetail() {
       date: evolutionDate,
       text: evolutionText,
       attendanceStatus,
-      signature: signature || undefined,
       attachments: attachedFiles.map(f => ({
         id: f.id,
         parentId: '',
@@ -120,7 +119,7 @@ export default function PatientDetail() {
 
     setEvolutionText('');
     setAttachedFiles([]);
-    setSignature('');
+    
   };
 
   const handleFileUpload = (files: UploadedFile[]) => {
@@ -280,18 +279,6 @@ export default function PatientDetail() {
               onUpload={handleFileUpload}
               onRemove={handleRemoveFile}
               maxFiles={5}
-            />
-          </div>
-
-          {/* Signature Pad */}
-          <div>
-            <Label className="flex items-center gap-2 mb-2">
-              <PenLine className="w-4 h-4" />
-              Assinatura Digital (opcional)
-            </Label>
-            <SignaturePad
-              value={signature}
-              onChange={setSignature}
             />
           </div>
 

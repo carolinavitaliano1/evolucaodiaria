@@ -69,7 +69,7 @@ export default function Clinics() {
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
     paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
     paymentAmount: '',
-    paysOnAbsence: true,
+    absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
   });
 
   useEffect(() => {
@@ -143,7 +143,8 @@ export default function Clinics() {
       scheduleByDay: formData.scheduleByDay,
       paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
       paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
-      paysOnAbsence: formData.paysOnAbsence,
+      paysOnAbsence: formData.absencePaymentType !== 'never',
+      absencePaymentType: formData.absencePaymentType,
       stamp: stampFile?.url,
     });
 
@@ -156,7 +157,7 @@ export default function Clinics() {
       scheduleByDay: {},
       paymentType: '',
       paymentAmount: '',
-      paysOnAbsence: true,
+      absencePaymentType: 'always',
     });
     setStampFile(null);
     setIsDialogOpen(false);
@@ -467,26 +468,39 @@ export default function Clinics() {
                     )}
 
                     {formData.paymentType === 'sessao' && (
-                      <div className="mt-3 flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                        <span className="text-sm">Recebe por faltas?</span>
+                      <div className="mt-3 space-y-2 p-3 rounded-lg bg-secondary/50">
+                        <span className="text-sm font-medium">Recebe por faltas?</span>
                         <div className="flex gap-2">
                           <Button
                             type="button"
-                            variant={formData.paysOnAbsence ? "default" : "outline"}
+                            variant={formData.absencePaymentType === 'always' ? "default" : "outline"}
                             size="sm"
-                            onClick={() => setFormData({ ...formData, paysOnAbsence: true })}
+                            onClick={() => setFormData({ ...formData, absencePaymentType: 'always' })}
                           >
-                            Sim
+                            Sempre
                           </Button>
                           <Button
                             type="button"
-                            variant={!formData.paysOnAbsence ? "destructive" : "outline"}
+                            variant={formData.absencePaymentType === 'confirmed_only' ? "default" : "outline"}
                             size="sm"
-                            onClick={() => setFormData({ ...formData, paysOnAbsence: false })}
+                            onClick={() => setFormData({ ...formData, absencePaymentType: 'confirmed_only' })}
                           >
-                            Não
+                            Só confirmados
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={formData.absencePaymentType === 'never' ? "destructive" : "outline"}
+                            size="sm"
+                            onClick={() => setFormData({ ...formData, absencePaymentType: 'never' })}
+                          >
+                            Nunca
                           </Button>
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          {formData.absencePaymentType === 'always' && 'A clínica sempre paga por faltas'}
+                          {formData.absencePaymentType === 'never' && 'A clínica nunca paga por faltas'}
+                          {formData.absencePaymentType === 'confirmed_only' && 'Paga apenas quando o paciente confirmou e faltou'}
+                        </p>
                       </div>
                     )}
                   </div>

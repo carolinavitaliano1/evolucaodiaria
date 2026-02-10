@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -47,11 +47,13 @@ function getTodayWeekday() {
 export default function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clinics, patients, appointments, evolutions, addPatient, addEvolution, setCurrentPatient } = useApp();
+  const { clinics, patients, appointments, evolutions, addPatient, addEvolution, setCurrentPatient, getClinicPackages, addPackage, deletePackage } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [batchEvolutionText, setBatchEvolutionText] = useState('');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
+  const [packageDialogOpen, setPackageDialogOpen] = useState(false);
+  const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
 
   const clinic = clinics.find(c => c.id === id);
   const clinicPatients = patients.filter(p => p.clinicId === id);
@@ -109,7 +111,10 @@ export default function ClinicDetail() {
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
     sessionDuration: '50',
+    packageId: '',
   });
+
+  const clinicPackages = clinic ? getClinicPackages(clinic.id) : [];
 
   // Quick evolution state
   const [quickEvolutionPatient, setQuickEvolutionPatient] = useState<string | null>(null);
@@ -136,6 +141,8 @@ export default function ClinicDetail() {
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
+    const selectedPkg = formData.packageId ? clinicPackages.find(p => p.id === formData.packageId) : null;
+
     addPatient({
       clinicId: clinic.id,
       name: formData.name,
@@ -147,13 +154,13 @@ export default function ClinicDetail() {
       observations: formData.observations,
       responsibleName: formData.responsibleName,
       responsibleEmail: formData.responsibleEmail,
-      // Herda pagamento da clínica
       paymentType: clinic.paymentType === 'sessao' ? 'sessao' : clinic.paymentType === 'fixo_mensal' ? 'fixo' : 'sessao',
-      paymentValue: clinic.paymentAmount,
+      paymentValue: selectedPkg ? selectedPkg.price : clinic.paymentAmount,
       contractStartDate: formData.contractStartDate,
       weekdays: formData.weekdays,
       scheduleTime: firstDayTime,
       scheduleByDay: formData.scheduleByDay,
+      packageId: formData.packageId || undefined,
     });
 
     setFormData({
@@ -170,6 +177,7 @@ export default function ClinicDetail() {
       weekdays: [],
       scheduleByDay: {},
       sessionDuration: '50',
+      packageId: '',
     });
     setIsDialogOpen(false);
     toast.success('Paciente cadastrado com sucesso!');
@@ -331,18 +339,22 @@ export default function ClinicDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="today" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
           <TabsTrigger value="today" className="gap-2">
             <ClipboardList className="w-4 h-4" />
             Hoje
           </TabsTrigger>
           <TabsTrigger value="batch" className="gap-2">
             <FileText className="w-4 h-4" />
-            Evolução em Lote
+            Lote
           </TabsTrigger>
           <TabsTrigger value="patients" className="gap-2">
             <Users className="w-4 h-4" />
             Pacientes
+          </TabsTrigger>
+          <TabsTrigger value="packages" className="gap-2">
+            <Package className="w-4 h-4" />
+            Pacotes
           </TabsTrigger>
         </TabsList>
 
@@ -609,18 +621,48 @@ export default function ClinicDetail() {
                       />
                     </div>
 
-                    {/* Mostra informação de pagamento da clínica */}
-                    {clinic.paymentAmount && (
-                      <div className="border-t pt-4">
-                        <p className="font-semibold mb-2">💰 Pagamento</p>
+                    {/* Package selection and payment info */}
+                    <div className="border-t pt-4">
+                      <p className="font-semibold mb-2">💰 Pagamento</p>
+                      
+                      {clinicPackages.length > 0 && (
+                        <div className="mb-3">
+                          <Label>Pacote</Label>
+                          <Select
+                            value={formData.packageId}
+                            onValueChange={(v) => setFormData({ ...formData, packageId: v })}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Selecione um pacote (opcional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Sem pacote (valor da clínica)</SelectItem>
+                              {clinicPackages.map(pkg => (
+                                <SelectItem key={pkg.id} value={pkg.id}>
+                                  {pkg.name} - R$ {pkg.price.toFixed(2)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {formData.packageId ? (
+                        <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
+                          Pacote: <span className="font-semibold text-foreground">{clinicPackages.find(p => p.id === formData.packageId)?.name}</span>
+                          {' - '}
+                          <span className="font-semibold text-success">R$ {clinicPackages.find(p => p.id === formData.packageId)?.price.toFixed(2)}</span>
+                        </p>
+                      ) : clinic.paymentAmount ? (
                         <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
                           Valor herdado da clínica: <span className="font-semibold text-foreground">R$ {clinic.paymentAmount.toFixed(2)}</span>
                           {clinic.paymentType === 'sessao' && ' por sessão'}
                           {clinic.paymentType === 'fixo_mensal' && ' mensal'}
                           {clinic.paymentType === 'fixo_diario' && ' por dia'}
                         </p>
-                      </div>
-                    )}
+                      ) : null}
+                    </div>
+
 
                     <div className="border-t pt-4">
                       <p className="font-semibold mb-3">📅 Horários de Atendimento</p>
@@ -767,6 +809,113 @@ export default function ClinicDetail() {
                         </span>
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Packages Tab */}
+        <TabsContent value="packages">
+          <div className="bg-card rounded-2xl p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary" />
+                Pacotes
+              </h2>
+              
+              <Dialog open={packageDialogOpen} onOpenChange={setPackageDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Novo Pacote
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Novo Pacote</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <div>
+                      <Label>Nome do Pacote *</Label>
+                      <Input
+                        value={newPackage.name}
+                        onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
+                        placeholder="Ex: Pacote Social, Pacote Premium"
+                      />
+                    </div>
+                    <div>
+                      <Label>Descrição</Label>
+                      <Textarea
+                        value={newPackage.description}
+                        onChange={(e) => setNewPackage({ ...newPackage, description: e.target.value })}
+                        placeholder="Detalhes do pacote..."
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <Label>Valor (R$) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={newPackage.price}
+                        onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <Button
+                      className="w-full"
+                      disabled={!newPackage.name.trim() || !newPackage.price}
+                      onClick={() => {
+                        addPackage({
+                          userId: '',
+                          clinicId: clinic.id,
+                          name: newPackage.name,
+                          description: newPackage.description || undefined,
+                          price: parseFloat(newPackage.price),
+                          isActive: true,
+                        });
+                        setNewPackage({ name: '', description: '', price: '' });
+                        setPackageDialogOpen(false);
+                      }}
+                    >
+                      Criar Pacote
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {clinicPackages.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">📦</div>
+                <p className="text-muted-foreground mb-2">Nenhum pacote cadastrado</p>
+                <p className="text-sm text-muted-foreground">
+                  Crie pacotes com valores diferentes para organizar seus atendimentos
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {clinicPackages.map((pkg) => (
+                  <div key={pkg.id} className="bg-secondary/50 rounded-xl p-4 border border-border">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-semibold text-foreground">{pkg.name}</h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => deletePackage(pkg.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    {pkg.description && (
+                      <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
+                    )}
+                    <p className="text-lg font-bold text-success">
+                      R$ {pkg.price.toFixed(2)}
+                    </p>
                   </div>
                 ))}
               </div>

@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SignaturePad } from '@/components/ui/signature-pad';
+
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { Evolution, Attachment } from '@/types';
 import { Image, PenLine, Save } from 'lucide-react';
@@ -21,7 +21,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave }: E
   const [text, setText] = useState(evolution.text);
   const [date, setDate] = useState(evolution.date);
   const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta'>(evolution.attendanceStatus);
-  const [signature, setSignature] = useState(evolution.signature || '');
+  
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>(
     evolution.attachments?.map(att => ({
       id: att.id,
@@ -36,7 +36,6 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave }: E
       text,
       date,
       attendanceStatus,
-      signature: signature || undefined,
       attachments: attachedFiles.map(f => ({
         id: f.id,
         parentId: evolution.id,
@@ -114,17 +113,6 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave }: E
               onUpload={handleFileUpload}
               onRemove={handleRemoveFile}
               maxFiles={5}
-            />
-          </div>
-
-          <div>
-            <Label className="flex items-center gap-2 mb-2">
-              <PenLine className="w-4 h-4" />
-              Assinatura Digital
-            </Label>
-            <SignaturePad
-              value={signature}
-              onChange={setSignature}
             />
           </div>
 
