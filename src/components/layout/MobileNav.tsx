@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const mainNavItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Home' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
   { to: '/clinics', icon: Building2, label: 'Clínicas' },
   { to: '/patients', icon: Users, label: 'Pacientes' },
   { to: '/calendar', icon: Calendar, label: 'Agenda' },

@@ -21,6 +21,7 @@ import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Pricing from "./pages/Pricing";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
 
 const queryClient = new QueryClient();
 
@@ -33,9 +34,10 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/landing" element={<Landing />} />
+              <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
               <Route
                 element={
                   <ProtectedRoute requireSubscription>
@@ -43,7 +45,7 @@ const App = () => (
                   </ProtectedRoute>
                 }
               >
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/clinics" element={<Clinics />} />
                 <Route path="/clinics/:id" element={<ClinicDetail />} />
                 <Route path="/patients" element={<Patients />} />
