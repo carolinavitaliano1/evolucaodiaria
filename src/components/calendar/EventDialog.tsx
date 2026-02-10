@@ -41,6 +41,7 @@ const EVENT_TYPES = [
   { value: 'lembrete', label: 'Lembrete', icon: Bell, color: '#f59e0b' },
   { value: 'evento', label: 'Evento', icon: Calendar, color: '#6366f1' },
   { value: 'reuniao', label: 'Reunião', icon: Users, color: '#ec4899' },
+  { value: 'sessao', label: 'Sessão', icon: Clock, color: '#0ea5e9' },
 ];
 
 const REMINDER_OPTIONS = [

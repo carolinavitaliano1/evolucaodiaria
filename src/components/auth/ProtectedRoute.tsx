@@ -1,13 +1,16 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requireSubscription?: boolean;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireSubscription = false }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
+  const { subscribed, loading: subLoading } = useSubscription();
 
   if (loading) {
     return (
@@ -19,6 +22,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (requireSubscription && !subLoading && !subscribed) {
+    return <Navigate to="/pricing" replace />;
   }
 
   return <>{children}</>;

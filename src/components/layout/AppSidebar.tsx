@@ -9,7 +9,8 @@ import {
   BarChart3,
   User,
   BookOpen,
-  LogOut
+  LogOut,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ const navItems = [
   { to: '/financial', icon: DollarSign, label: 'Financeiro' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
+  { to: '/pricing', icon: CreditCard, label: 'Planos' },
 ];
 
 export function AppSidebar() {

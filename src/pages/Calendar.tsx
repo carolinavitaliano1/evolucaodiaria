@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, Clock, User, MapPin, Briefcase } from 'lucide-react';
+import { EventDialog } from '@/components/calendar/EventDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,7 @@ export default function CalendarPage() {
   const [viewDate, setViewDate] = useState(selectedDate);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState('');
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     clinicId: '',
@@ -223,7 +225,10 @@ export default function CalendarPage() {
               return (
                 <button
                   key={day.toISOString()}
-                  onClick={() => setSelectedDate(day)}
+                  onClick={() => {
+                    setSelectedDate(day);
+                    setEventDialogOpen(true);
+                  }}
                   className={cn(
                     'aspect-square rounded-xl p-2 transition-all relative flex flex-col items-center justify-center',
                     'hover:bg-secondary',
@@ -328,6 +333,12 @@ export default function CalendarPage() {
           )}
         </div>
       </div>
+
+      <EventDialog
+        open={eventDialogOpen}
+        onOpenChange={setEventDialogOpen}
+        selectedDate={selectedDate}
+      />
     </div>
   );
 }
