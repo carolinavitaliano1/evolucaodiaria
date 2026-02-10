@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -24,27 +24,36 @@ serve(async (req) => {
 
     const { mode, patientId, clinicId, period, command } = await req.json();
 
+    // Use service role for data fetching to avoid RLS issues in edge function
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
     let contextData = "";
 
     if (mode === "guided") {
-      // Fetch patient data
-      const { data: patient } = await supabase
+      const { data: patient } = await serviceClient
         .from("patients")
         .select("*")
         .eq("id", patientId)
+        .eq("user_id", user.id)
         .single();
 
-      const { data: clinic } = await supabase
+      if (!patient) throw new Error("Paciente não encontrado");
+
+      const { data: clinic } = await serviceClient
         .from("clinics")
         .select("name")
-        .eq("id", patient?.clinic_id || clinicId)
+        .eq("id", patient.clinic_id || clinicId)
+        .eq("user_id", user.id)
         .single();
 
-      // Fetch evolutions for the patient
-      let query = supabase
+      let query = serviceClient
         .from("evolutions")
         .select("*")
         .eq("patient_id", patientId)
+        .eq("user_id", user.id)
         .order("date", { ascending: true });
 
       if (period === "month") {
@@ -64,7 +73,7 @@ serve(async (req) => {
       const { data: evolutions } = await query;
 
       const totalSessions = evolutions?.length || 0;
-      const present = evolutions?.filter((e) => e.attendance_status === "presente").length || 0;
+      const present = evolutions?.filter((e: any) => e.attendance_status === "presente").length || 0;
       const absent = totalSessions - present;
 
       contextData = `
@@ -84,28 +93,27 @@ RESUMO DE FREQUÊNCIA (${period === "month" ? "Último mês" : period === "quart
 - Taxa de presença: ${totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0}%
 
 EVOLUÇÕES REGISTRADAS:
-${evolutions?.map((e) => `- ${e.date}: [${e.attendance_status}] ${e.text}`).join("\n") || "Nenhuma evolução registrada."}
+${evolutions?.map((e: any) => `- ${e.date}: [${e.attendance_status}] ${e.text}`).join("\n") || "Nenhuma evolução registrada."}
 `;
     } else {
-      // Free mode: fetch all data for the user
       const [{ data: clinics }, { data: patients }, { data: evolutions }] = await Promise.all([
-        supabase.from("clinics").select("*"),
-        supabase.from("patients").select("*"),
-        supabase.from("evolutions").select("*").order("date", { ascending: false }).limit(200),
+        serviceClient.from("clinics").select("*").eq("user_id", user.id),
+        serviceClient.from("patients").select("*").eq("user_id", user.id),
+        serviceClient.from("evolutions").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(200),
       ]);
 
       contextData = `
 DADOS DISPONÍVEIS:
 
 CLÍNICAS (${clinics?.length || 0}):
-${clinics?.map((c) => `- ${c.name} (${c.type})`).join("\n") || "Nenhuma"}
+${clinics?.map((c: any) => `- ${c.name} (${c.type})`).join("\n") || "Nenhuma"}
 
 PACIENTES (${patients?.length || 0}):
-${patients?.map((p) => `- ${p.name} | Clínica: ${clinics?.find((c) => c.id === p.clinic_id)?.name || "N/A"} | Área: ${p.clinical_area || "N/A"} | Diagnóstico: ${p.diagnosis || "N/A"}`).join("\n") || "Nenhum"}
+${patients?.map((p: any) => `- ${p.name} | Clínica: ${clinics?.find((c: any) => c.id === p.clinic_id)?.name || "N/A"} | Área: ${p.clinical_area || "N/A"} | Diagnóstico: ${p.diagnosis || "N/A"}`).join("\n") || "Nenhum"}
 
 ÚLTIMAS EVOLUÇÕES (${evolutions?.length || 0}):
-${evolutions?.slice(0, 50).map((e) => {
-  const pat = patients?.find((p) => p.id === e.patient_id);
+${evolutions?.slice(0, 50).map((e: any) => {
+  const pat = patients?.find((p: any) => p.id === e.patient_id);
   return `- ${e.date} | ${pat?.name || "?"} | [${e.attendance_status}] ${e.text.slice(0, 100)}`;
 }).join("\n") || "Nenhuma"}
 `;
