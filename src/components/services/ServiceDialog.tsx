@@ -46,6 +46,8 @@ const SERVICE_TYPES = [
   { value: 'outro', label: 'Outro' },
 ];
 
+const INITIAL_CUSTOM_TYPES: string[] = [];
+
 interface ServiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -55,7 +57,10 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('agendar');
+  const [activeTab, setActiveTab] = useState('servicos');
+  const [customTypes, setCustomTypes] = useState<string[]>([]);
+  const [newCustomType, setNewCustomType] = useState('');
+  const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
 
   // Service form states
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -387,18 +392,60 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
 
               <div className="space-y-2">
                 <Label>Tipo</Label>
-                <Select value={serviceType} onValueChange={setServiceType}>
+                <Select value={serviceType} onValueChange={(val) => {
+                  if (val === 'outro') {
+                    setShowCustomTypeInput(true);
+                  } else {
+                    setServiceType(val);
+                  }
+                }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SERVICE_TYPES.map(type => (
+                    {SERVICE_TYPES.filter(t => t.value !== 'outro').map(type => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
                     ))}
+                    {customTypes.map(ct => (
+                      <SelectItem key={ct} value={ct}>
+                        {ct}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="outro">+ Outro (cadastrar novo tipo)</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {showCustomTypeInput && (
+                  <div className="flex gap-2 items-end mt-2 p-3 border rounded-lg bg-muted/30">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Nome do novo tipo</Label>
+                      <Input
+                        value={newCustomType}
+                        onChange={(e) => setNewCustomType(e.target.value)}
+                        placeholder="Ex: Terapia Online"
+                        autoFocus
+                      />
+                    </div>
+                    <Button size="sm" onClick={() => {
+                      if (newCustomType.trim()) {
+                        setCustomTypes(prev => [...prev, newCustomType.trim()]);
+                        setServiceType(newCustomType.trim());
+                        setNewCustomType('');
+                        setShowCustomTypeInput(false);
+                      }
+                    }}>
+                      Adicionar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setShowCustomTypeInput(false);
+                      setNewCustomType('');
+                    }}>
+                      Cancelar
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
