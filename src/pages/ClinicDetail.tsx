@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimeWithDurationPicker } from '@/components/ui/time-picker';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { EditClinicDialog } from '@/components/clinics/EditClinicDialog';
+import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -47,8 +49,11 @@ function getTodayWeekday() {
 export default function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clinics, patients, appointments, evolutions, addPatient, addEvolution, setCurrentPatient, getClinicPackages, addPackage, updatePackage, deletePackage } = useApp();
+  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editClinicOpen, setEditClinicOpen] = useState(false);
+  const [editPatientOpen, setEditPatientOpen] = useState(false);
+  const [patientToEdit, setPatientToEdit] = useState<typeof patients[0] | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [batchEvolutionText, setBatchEvolutionText] = useState('');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
@@ -286,21 +291,32 @@ export default function ClinicDetail() {
           <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-white/20 text-primary-foreground">
             {isPropria ? 'Clínica Própria' : 'Terceirizada / Convênio'}
           </span>
-          <h1 className="text-2xl lg:text-3xl font-bold text-primary-foreground mb-2">{clinic.name}</h1>
-          
-          <div className="flex flex-wrap gap-4 text-primary-foreground/80">
-            {clinic.address && (
-              <span className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                {clinic.address}
-              </span>
-            )}
-            {clinic.scheduleTime && (
-              <span className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                {clinic.scheduleTime}
-              </span>
-            )}
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-primary-foreground mb-2">{clinic.name}</h1>
+              <div className="flex flex-wrap gap-4 text-primary-foreground/80">
+                {clinic.address && (
+                  <span className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    {clinic.address}
+                  </span>
+                )}
+                {clinic.scheduleTime && (
+                  <span className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    {clinic.scheduleTime}
+                  </span>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20"
+              onClick={() => setEditClinicOpen(true)}
+            >
+              <Pencil className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </div>
@@ -779,12 +795,30 @@ export default function ClinicDetail() {
                 {clinicPatients.map((patient) => (
                   <div
                     key={patient.id}
-                    onClick={() => handleOpenPatient(patient.id)}
-                    className="bg-secondary/50 rounded-xl p-4 cursor-pointer hover:bg-secondary transition-colors"
+                    className="bg-secondary/50 rounded-xl p-4 hover:bg-secondary transition-colors"
                   >
-                    <h3 className="font-semibold text-foreground mb-2">{patient.name}</h3>
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 
+                        className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => handleOpenPatient(patient.id)}
+                      >
+                        {patient.name}
+                      </h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPatientToEdit(patient);
+                          setEditPatientOpen(true);
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                     
-                    <div className="space-y-1 text-sm text-muted-foreground">
+                    <div className="space-y-1 text-sm text-muted-foreground cursor-pointer" onClick={() => handleOpenPatient(patient.id)}>
                       {patient.birthdate && (
                         <p className="flex items-center gap-2">
                           <Cake className="w-4 h-4" />
@@ -1034,6 +1068,28 @@ export default function ClinicDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Clinic Dialog */}
+      <EditClinicDialog
+        clinic={clinic}
+        open={editClinicOpen}
+        onOpenChange={setEditClinicOpen}
+        onSave={updateClinic}
+      />
+
+      {/* Edit Patient Dialog */}
+      {patientToEdit && (
+        <EditPatientDialog
+          patient={patientToEdit}
+          open={editPatientOpen}
+          onOpenChange={(open) => {
+            setEditPatientOpen(open);
+            if (!open) setPatientToEdit(null);
+          }}
+          onSave={updatePatient}
+          clinicPackages={clinicPackages}
+        />
+      )}
     </div>
   );
 }

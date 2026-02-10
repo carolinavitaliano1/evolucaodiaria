@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar, Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
+import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import jsPDF from 'jspdf';
@@ -128,7 +129,7 @@ export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { patients, clinics, evolutions, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
-    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages } = useApp();
+    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, getClinicPackages } = useApp();
   const { user } = useAuth();
 
   const patient = patients.find(p => p.id === id);
@@ -151,6 +152,7 @@ export default function PatientDetail() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
+  const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean }[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
 
@@ -267,7 +269,17 @@ export default function PatientDetail() {
         </Button>
         <div className="flex flex-col lg:flex-row lg:items-start gap-6">
           <div className="flex-1">
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-3">{patient.name}</h1>
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-3 flex items-center gap-3">
+              {patient.name}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                onClick={() => setEditPatientOpen(true)}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            </h1>
             <div className="flex flex-wrap gap-3">
               {patient.birthdate && calculateAge(patient.birthdate) !== null && (
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm">
@@ -685,6 +697,15 @@ export default function PatientDetail() {
           onOpenChange={(open) => !open && setEditingEvolution(null)}
           onSave={(updates) => updateEvolution(editingEvolution.id, updates)} />
       )}
+
+      {/* Edit Patient Dialog */}
+      <EditPatientDialog
+        patient={patient}
+        open={editPatientOpen}
+        onOpenChange={setEditPatientOpen}
+        onSave={updatePatient}
+        clinicPackages={clinic ? getClinicPackages(clinic.id) : []}
+      />
     </div>
   );
 }
