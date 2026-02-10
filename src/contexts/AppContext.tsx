@@ -118,6 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: e.id, patientId: e.patient_id, clinicId: e.clinic_id, date: e.date, text: e.text,
         attendanceStatus: e.attendance_status as 'presente' | 'falta',
         confirmedAttendance: (e as any).confirmed_attendance || false,
+        mood: (e as any).mood || undefined,
         signature: e.signature || undefined, stampId: e.stamp_id || undefined, createdAt: e.created_at,
       }));
 
@@ -298,12 +299,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         date: evolution.date, text: evolution.text, attendance_status: evolution.attendanceStatus,
         signature: evolution.signature || null, stamp_id: evolution.stampId || null,
         confirmed_attendance: evolution.confirmedAttendance || false,
+        mood: evolution.mood || null,
       }).select().single();
       if (error) throw error;
       const newEvolution: Evolution = {
         id: data.id, patientId: data.patient_id, clinicId: data.clinic_id, date: data.date, text: data.text,
         attendanceStatus: data.attendance_status as 'presente' | 'falta',
         confirmedAttendance: (data as any).confirmed_attendance || false,
+        mood: (data as any).mood || undefined,
         signature: data.signature || undefined, stampId: data.stamp_id || undefined, createdAt: data.created_at,
       };
       setState(prev => ({ ...prev, evolutions: [newEvolution, ...prev.evolutions] }));
@@ -320,6 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.attendanceStatus !== undefined) updateData.attendance_status = updates.attendanceStatus;
       if (updates.signature !== undefined) updateData.signature = updates.signature || null;
       if (updates.stampId !== undefined) updateData.stamp_id = updates.stampId || null;
+      if (updates.mood !== undefined) updateData.mood = updates.mood || null;
       const { error } = await supabase.from('evolutions').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, evolutions: prev.evolutions.map(e => e.id === id ? { ...e, ...updates } : e) }));
