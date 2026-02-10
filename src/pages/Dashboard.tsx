@@ -6,6 +6,8 @@ import { Timeline } from '@/components/dashboard/Timeline';
 import { TaskList } from '@/components/dashboard/TaskList';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useApp } from '@/contexts/AppContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -16,6 +18,7 @@ function getGreeting(): string {
 
 export default function Dashboard() {
   const { selectedDate, appointments, tasks } = useApp();
+  const { theme } = useTheme();
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const todayAppointments = appointments.filter(a => a.date === dateStr);
@@ -47,7 +50,10 @@ export default function Dashboard() {
           <MiniCalendar />
           
           {/* Day Summary */}
-          <div className="bg-card rounded-xl p-4 border border-border">
+          <div className={cn(
+            "rounded-xl p-4 border",
+            theme === 'lilas' ? 'calendar-grid border-0' : 'bg-card border-border'
+          )}>
             <h3 className="font-medium text-foreground mb-3 text-sm">Resumo do Dia</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">

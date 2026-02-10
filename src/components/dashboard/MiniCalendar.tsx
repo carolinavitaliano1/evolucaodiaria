@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,7 @@ interface MiniCalendarProps {
 
 export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
   const { selectedDate, setSelectedDate, appointments } = useApp();
+  const { theme } = useTheme();
   const [viewDate, setViewDate] = useState(selectedDate);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [clickedDate, setClickedDate] = useState<Date>(selectedDate);
@@ -73,7 +75,10 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
 
   return (
     <>
-      <div className="bg-card rounded-xl p-4 border border-border">
+      <div className={cn(
+        "rounded-xl p-4 border",
+        theme === 'lilas' ? 'calendar-grid border-0' : 'bg-card border-border'
+      )}>
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <Button

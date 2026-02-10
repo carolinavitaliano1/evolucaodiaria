@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export function TaskList() {
   const { tasks, addTask, toggleTask, deleteTask } = useApp();
+  const { theme } = useTheme();
   const [newTask, setNewTask] = useState('');
 
   const handleAddTask = (e: React.FormEvent) => {
@@ -21,7 +23,10 @@ export function TaskList() {
   const completedTasks = tasks.filter(t => t.completed);
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
+    <div className={cn(
+      "rounded-2xl p-6 shadow-lg border",
+      theme === 'lilas' ? 'calendar-grid border-0' : 'bg-card border-border'
+    )}>
       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
         📝 Tarefas
         <span className="text-sm font-normal text-muted-foreground">
