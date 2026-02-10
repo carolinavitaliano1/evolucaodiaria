@@ -769,7 +769,16 @@ export default function AIReports() {
           <Card className="glass-card">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><FileText className="w-5 h-5" /> Relatório por Paciente</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Select value={selectedClinic} onValueChange={setSelectedClinic}>
+                  <SelectTrigger><SelectValue placeholder="Clínica (timbrado no PDF)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem timbrado</SelectItem>
+                    {clinics.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={selectedPatient} onValueChange={setSelectedPatient}>
                   <SelectTrigger><SelectValue placeholder="Selecione um paciente" /></SelectTrigger>
                   <SelectContent>
