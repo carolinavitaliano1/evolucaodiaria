@@ -20,7 +20,7 @@ const PLANS = [
       'Agenda completa',
       'Evoluções e relatórios',
       'Controle financeiro',
-      '30 dias grátis para testar',
+      '15 dias grátis para testar',
     ],
   },
   {
@@ -34,7 +34,7 @@ const PLANS = [
       'Tudo do plano Mensal',
       'Economia de R$ 9 vs mensal',
       'Suporte prioritário',
-      '30 dias grátis para testar',
+      '15 dias grátis para testar',
     ],
   },
   {
@@ -47,7 +47,7 @@ const PLANS = [
       'Tudo do plano Mensal',
       'Economia de R$ 28 vs mensal',
       'Suporte prioritário',
-      '30 dias grátis para testar',
+      '15 dias grátis para testar',
     ],
   },
 ];
@@ -89,8 +89,8 @@ export default function Pricing() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Escolha o plano ideal para gerenciar suas clínicas, pacientes e evoluções.
             <span className="block mt-1 font-semibold text-primary">
-              <Sparkles className="inline w-4 h-4 mr-1" />
-              30 dias grátis em todos os planos!
+            <Sparkles className="inline w-4 h-4 mr-1" />
+              15 dias grátis em todos os planos!
             </span>
           </p>
         </div>
@@ -151,8 +151,8 @@ export default function Pricing() {
         </div>
 
         <div className="text-center mt-8">
-          <Button variant="ghost" onClick={() => navigate('/')}>
-            ← Voltar ao Dashboard
+          <Button variant="ghost" onClick={() => navigate(-1)}>
+            ← Voltar
           </Button>
         </div>
       </div>
