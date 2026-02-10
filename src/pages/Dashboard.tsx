@@ -13,9 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Crown, CalendarClock } from 'lucide-react';
 
 const PLAN_NAMES: Record<string, string> = {
-  'prod_SQUlLf3TIu4bWi': 'Mensal',
-  'prod_SQUmiR8CezCpT7': 'Bimestral',
-  'prod_SQUnJkqLMqQLOe': 'Trimestral',
+  'prod_Tx2Ctdcx5Gt6DS': 'Mensal',
+  'prod_Tx2CuaO7IPAo8f': 'Bimestral',
+  'prod_Tx2CjumgxfBFM6': 'Trimestral',
 };
 
 function getGreeting(): string {
