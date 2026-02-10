@@ -19,6 +19,7 @@ import CalendarPage from "./pages/Calendar";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Pricing from "./pages/Pricing";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
               <Route
                 element={
                   <ProtectedRoute>
