@@ -396,84 +396,257 @@ export default function AIReports() {
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 20;
+    const margin = 22;
     const contentWidth = pageWidth - margin * 2;
     const title = reportTitle || 'Relatório Clínico';
     const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const footerY = pageHeight - 12;
 
-    // --- Header: clean line-based ---
+    // Helper: check page break
+    const checkPage = (y: number, needed = 20) => {
+      if (y > pageHeight - needed) {
+        pdf.addPage();
+        return 22;
+      }
+      return y;
+    };
+
+    // ==========================================
+    // COVER / HEADER — centered, institutional
+    // ==========================================
+    let yPos = 35;
     pdf.setTextColor(30, 30, 30);
-    pdf.setFontSize(18);
+    pdf.setFontSize(16);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(title, margin, 25);
+    pdf.text('RELATÓRIO CLÍNICO EVOLUTIVO', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 10;
+
+    // Subtle divider
+    pdf.setDrawColor(180, 180, 180);
+    pdf.setLineWidth(0.4);
+    pdf.line(margin + 30, yPos, pageWidth - margin - 30, yPos);
+    yPos += 8;
+
+    // Report title & date
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(50, 50, 50);
+    pdf.text(title, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 7;
 
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(120, 120, 120);
-    pdf.text(`Gerado em ${dateStr}`, margin, 33);
+    pdf.text(`Data de Emissão: ${dateStr}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 12;
 
-    // Thin separator line
-    pdf.setDrawColor(200, 200, 200);
-    pdf.setLineWidth(0.3);
-    pdf.line(margin, 37, pageWidth - margin, 37);
+    // Light divider
+    pdf.setDrawColor(210, 210, 210);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 10;
 
-    // --- Body text ---
-    pdf.setTextColor(40, 40, 40);
-    pdf.setFontSize(10.5);
-    pdf.setFont('helvetica', 'normal');
-
+    // ==========================================
+    // BODY — parse text intelligently
+    // ==========================================
     const rawLines = text.split('\n');
-    let yPos = 45;
+    let inTable = false;
+    let tableRows: string[][] = [];
+    let tableColWidths: number[] = [];
 
-    for (const rawLine of rawLines) {
+    const flushTable = () => {
+      if (tableRows.length === 0) return;
+      
+      const cols = tableRows[0].length;
+      const colW = contentWidth / cols;
+      const rowH = 7;
+      
+      // Check if table fits
+      const tableHeight = tableRows.length * rowH + 2;
+      yPos = checkPage(yPos, tableHeight + 10);
+
+      for (let r = 0; r < tableRows.length; r++) {
+        const row = tableRows[r];
+        const isHeader = r === 0;
+        
+        if (isHeader) {
+          pdf.setFillColor(240, 240, 240);
+          pdf.rect(margin, yPos - 4.5, contentWidth, rowH, 'F');
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(9);
+          pdf.setTextColor(40, 40, 40);
+        } else {
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(9);
+          pdf.setTextColor(60, 60, 60);
+          // Alternate row shading
+          if (r % 2 === 0) {
+            pdf.setFillColor(250, 250, 250);
+            pdf.rect(margin, yPos - 4.5, contentWidth, rowH, 'F');
+          }
+        }
+
+        // Draw cell borders
+        pdf.setDrawColor(220, 220, 220);
+        pdf.setLineWidth(0.15);
+        pdf.line(margin, yPos + 2.5, pageWidth - margin, yPos + 2.5);
+
+        for (let c = 0; c < row.length; c++) {
+          const cellX = margin + c * colW + 3;
+          const cellText = (row[c] || '').trim();
+          const truncated = cellText.length > 45 ? cellText.slice(0, 42) + '...' : cellText;
+          pdf.text(truncated, cellX, yPos);
+        }
+        yPos += rowH;
+        yPos = checkPage(yPos);
+      }
+      yPos += 5;
+      tableRows = [];
+      inTable = false;
+    };
+
+    for (let li = 0; li < rawLines.length; li++) {
+      const rawLine = rawLines[li];
       const trimmed = rawLine.trim();
 
-      // Detect heading-like lines (all caps or short bold-like text)
-      const isHeading = /^(\d+\.\s|#{1,3}\s)/.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 80);
+      // Skip markdown-style dividers (---, ***, ===)
+      if (/^[-*=]{3,}$/.test(trimmed)) continue;
+      // Skip table separator rows (|---|---|)
+      if (/^\|[\s-:|]+\|$/.test(trimmed)) continue;
 
-      if (isHeading) {
-        yPos += 3;
-        if (yPos > pageHeight - 25) { pdf.addPage(); yPos = 20; }
+      // Detect table rows
+      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+        const cells = trimmed.split('|').filter(c => c.trim() !== '');
+        if (cells.length >= 2) {
+          inTable = true;
+          tableRows.push(cells.map(c => c.trim()));
+          continue;
+        }
+      }
+
+      // If we were in a table, flush it
+      if (inTable) flushTable();
+
+      // Empty line → spacing
+      if (trimmed === '') { yPos += 3; continue; }
+
+      // Detect numbered section headings: "1.", "2.", "1.1", "3.1."
+      const isSectionHeading = /^\d+(\.\d+)?\.?\s/.test(trimmed) && trimmed.length < 100;
+      // Detect ALL CAPS headings
+      const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 80 && !/^\d/.test(trimmed);
+      // Detect markdown headings
+      const isMdHeading = /^#{1,3}\s/.test(trimmed);
+
+      if (isSectionHeading || isAllCaps || isMdHeading) {
+        yPos += 5;
+        yPos = checkPage(yPos, 15);
+
+        const headingText = trimmed.replace(/^#{1,3}\s/, '');
+
+        // Draw a subtle left accent bar for section headings
+        if (isSectionHeading) {
+          pdf.setFillColor(80, 80, 80);
+          pdf.rect(margin - 1, yPos - 4, 1.5, 5, 'F');
+        }
+
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(11.5);
-        pdf.setTextColor(30, 30, 30);
-        const headingLines = pdf.splitTextToSize(trimmed.replace(/^#{1,3}\s/, ''), contentWidth);
+        pdf.setFontSize(isSectionHeading ? 11.5 : 11);
+        pdf.setTextColor(25, 25, 25);
+        const headingLines = pdf.splitTextToSize(headingText, contentWidth - 5);
         for (const hl of headingLines) {
-          if (yPos > pageHeight - 25) { pdf.addPage(); yPos = 20; }
-          pdf.text(hl, margin, yPos);
+          yPos = checkPage(yPos, 10);
+          pdf.text(hl, margin + 2, yPos);
           yPos += 6;
         }
-        yPos += 1;
+        yPos += 2;
+
+        // Reset to body style
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(10.5);
-        pdf.setTextColor(40, 40, 40);
+        pdf.setFontSize(10);
+        pdf.setTextColor(45, 45, 45);
         continue;
       }
 
-      if (trimmed === '') { yPos += 4; continue; }
+      // Bullet / numbered list items
+      const isBullet = /^[-•]\s/.test(trimmed);
+      const isNumberedItem = /^\d+\)\s/.test(trimmed);
 
-      // Bullet points
-      const isBullet = trimmed.startsWith('- ') || trimmed.startsWith('• ');
-      const lineText = isBullet ? `  •  ${trimmed.slice(2)}` : trimmed;
-      const wrapped = pdf.splitTextToSize(lineText, contentWidth);
+      if (isBullet || isNumberedItem) {
+        const itemText = isBullet ? trimmed.slice(2) : trimmed;
+        const prefix = isBullet ? '•' : '';
+        const indent = isBullet ? 6 : 0;
+        const displayText = isBullet ? `${prefix}  ${itemText}` : itemText;
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(45, 45, 45);
+        const wrapped = pdf.splitTextToSize(displayText, contentWidth - indent);
 
-      for (const wl of wrapped) {
-        if (yPos > pageHeight - 25) { pdf.addPage(); yPos = 20; }
-        pdf.text(wl, margin, yPos);
-        yPos += 5.5;
+        for (let w = 0; w < wrapped.length; w++) {
+          yPos = checkPage(yPos);
+          pdf.text(wrapped[w], margin + indent, yPos);
+          yPos += 5;
+        }
+        yPos += 1.5;
+        continue;
       }
+
+      // Regular paragraph text
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.setTextColor(45, 45, 45);
+      const wrapped = pdf.splitTextToSize(trimmed, contentWidth);
+      for (const wl of wrapped) {
+        yPos = checkPage(yPos);
+        pdf.text(wl, margin, yPos);
+        yPos += 5;
+      }
+      yPos += 2;
     }
 
-    // --- Footer on all pages ---
+    // Flush any remaining table
+    if (inTable) flushTable();
+
+    // ==========================================
+    // SIGNATURE SECTION
+    // ==========================================
+    yPos += 10;
+    yPos = checkPage(yPos, 40);
+
+    // Divider before signature
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 15;
+
+    // Signature line
+    const sigLineW = 65;
+    const sigX = pageWidth / 2 - sigLineW / 2;
+    pdf.setDrawColor(100, 100, 100);
+    pdf.setLineWidth(0.3);
+    pdf.line(sigX, yPos, sigX + sigLineW, yPos);
+    yPos += 5;
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(60, 60, 60);
+    pdf.text('Responsável Técnico', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 4;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(130, 130, 130);
+    pdf.text('(Assinatura e Carimbo)', pageWidth / 2, yPos, { align: 'center' });
+
+    // ==========================================
+    // FOOTER — all pages, centered page number
+    // ==========================================
     const total = pdf.getNumberOfPages();
     for (let i = 1; i <= total; i++) {
       pdf.setPage(i);
-      pdf.setDrawColor(220, 220, 220);
-      pdf.setLineWidth(0.2);
-      pdf.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
-      pdf.setTextColor(160, 160, 160);
+      pdf.setTextColor(170, 170, 170);
       pdf.setFontSize(7.5);
-      pdf.text(`Página ${i} de ${total}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Página ${i} de ${total}`, pageWidth / 2, footerY, { align: 'center' });
     }
 
     pdf.save(`${title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.pdf`);
