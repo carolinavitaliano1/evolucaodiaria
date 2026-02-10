@@ -16,6 +16,7 @@ const PLAN_NAMES: Record<string, string> = {
   'prod_Tx2Ctdcx5Gt6DS': 'Mensal',
   'prod_Tx2CuaO7IPAo8f': 'Bimestral',
   'prod_Tx2CjumgxfBFM6': 'Trimestral',
+  'owner': 'Owner',
 };
 
 function getGreeting(): string {
