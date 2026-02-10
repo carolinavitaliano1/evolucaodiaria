@@ -1,8 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import demoDashboard from '@/assets/demo-dashboard.jpg';
-import demoEvolutions from '@/assets/demo-evolutions.jpg';
-import demoCalendar from '@/assets/demo-calendar.jpg';
-import demoReports from '@/assets/demo-reports.jpg';
 import { Button } from '@/components/ui/button';
 import { motion, type Variants } from 'framer-motion';
 import {
@@ -224,34 +220,32 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Demo / Screenshots */}
+      {/* Inside the App */}
       <section className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              <Monitor className="w-4 h-4" /> Veja o sistema por dentro
+              <Monitor className="w-4 h-4" /> Por dentro do sistema
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Interface limpa e intuitiva</h2>
-            <p className="text-muted-foreground text-lg">Projetada para você focar no paciente, não no sistema</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Tudo que você precisa, em um só lugar</h2>
+            <p className="text-muted-foreground text-lg">Uma plataforma completa projetada para a sua rotina clínica</p>
           </motion.div>
           <div className="grid md:grid-cols-2 gap-6">
             {[
-              { title: 'Dashboard Completo', desc: 'Visão geral dos seus atendimentos, tarefas e agenda do dia em uma única tela.', img: demoDashboard },
-              { title: 'Evoluções com Carimbo', desc: 'Registre sessões com texto, humor do paciente e seu carimbo profissional digital.', img: demoEvolutions },
-              { title: 'Agenda Visual', desc: 'Calendário integrado com eventos, sessões e lembretes automáticos.', img: demoCalendar },
-              { title: 'Relatórios com IA', desc: 'Crie relatórios clínicos com inteligência artificial, edite com editor rico e exporte em PDF.', img: demoReports },
+              { icon: '📊', title: 'Dashboard Inteligente', desc: 'Visão geral com agenda do dia, tarefas pendentes, mini-calendário e resumo dos seus atendimentos. Tudo atualizado em tempo real.' },
+              { icon: '📝', title: 'Evoluções Completas', desc: 'Registre cada sessão com editor de texto, humor do paciente, anexos e carimbo profissional digital. Exporte em PDF quando quiser.' },
+              { icon: '📅', title: 'Agenda Visual Integrada', desc: 'Calendário com eventos, sessões agendadas e lembretes. Visualização por dia, semana ou mês — nunca mais perca um atendimento.' },
+              { icon: '✨', title: 'Relatórios com IA', desc: 'Gere relatórios clínicos com inteligência artificial de forma guiada ou livre. Edite com editor rico, salve e compartilhe em PDF.' },
+              { icon: '💰', title: 'Controle Financeiro', desc: 'Acompanhe ganhos por clínica, sessão ou pacote. Veja presenças, faltas e o impacto financeiro automaticamente.' },
+              { icon: '📋', title: 'Gestão de Pacientes', desc: 'Ficha completa com diagnóstico, histórico de humor, documentos, tarefas e evolução — tudo organizado por paciente.' },
             ].map((item, i) => (
               <motion.div key={item.title} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
-                className="glass-card rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                <div className="aspect-video overflow-hidden bg-muted">
-                  <img src={item.img} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
-                </div>
-                <div className="p-5">
-                  <h3 className="font-semibold text-foreground mb-1">{item.title}</h3>
-                  <p className="text-muted-foreground text-sm">{item.desc}</p>
-                </div>
+                className="glass-card rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="text-4xl mb-4">{item.icon}</div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
           </div>

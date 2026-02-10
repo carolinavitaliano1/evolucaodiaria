@@ -29,6 +29,11 @@ import FontSize from '@tiptap/extension-font-size';
 
 const REPORT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-report`;
 
+async function getAuthToken() {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token || '';
+}
+
 async function streamReport({
   body, onDelta, onDone, onError,
 }: {
@@ -37,11 +42,13 @@ async function streamReport({
   onDone: () => void;
   onError: (msg: string) => void;
 }) {
+  const token = await getAuthToken();
   const resp = await fetch(REPORT_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${token}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
     body: JSON.stringify(body),
   });
