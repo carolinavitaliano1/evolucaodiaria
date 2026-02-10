@@ -11,7 +11,8 @@ import {
   BookOpen,
   LogOut,
   CreditCard,
-  Sparkles
+  Sparkles,
+  Smartphone
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -29,6 +30,7 @@ const navItems = [
   { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
   { to: '/pricing', icon: CreditCard, label: 'Planos' },
+  { to: '/install', icon: Smartphone, label: 'Instalar App' },
 ];
 
 export function AppSidebar() {
