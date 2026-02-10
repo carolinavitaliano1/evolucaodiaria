@@ -250,7 +250,9 @@ export async function generateMultipleEvolutionsPdf({
     // Discrete app branding
     pdf.setFontSize(6);
     pdf.setTextColor(190, 190, 190);
-    pdf.text('📘 Evolução Diária', margin, pageHeight - 5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Plataforma Clínica - Evolução Diária', margin, pageHeight - 5);
+    pdf.setFont('helvetica', 'normal');
   }
 
   // Save the PDF
