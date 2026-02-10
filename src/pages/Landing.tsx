@@ -1,4 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import demoDashboard from '@/assets/demo-dashboard.jpg';
+import demoEvolutions from '@/assets/demo-evolutions.jpg';
+import demoCalendar from '@/assets/demo-calendar.jpg';
+import demoReports from '@/assets/demo-reports.jpg';
 import { Button } from '@/components/ui/button';
 import { motion, type Variants } from 'framer-motion';
 import {
@@ -233,18 +237,16 @@ export default function Landing() {
           </motion.div>
           <div className="grid md:grid-cols-2 gap-6">
             {[
-              { title: 'Dashboard Completo', desc: 'Visão geral dos seus atendimentos, tarefas e agenda do dia em uma única tela.', color: 'from-primary/20 to-primary/5' },
-              { title: 'Evoluções com Carimbo', desc: 'Registre sessões com texto, humor do paciente e seu carimbo profissional digital.', color: 'from-accent/30 to-accent/5' },
-              { title: 'Agenda Visual', desc: 'Calendário integrado com eventos, sessões e lembretes automáticos.', color: 'from-secondary/40 to-secondary/10' },
-              { title: 'Relatórios em PDF', desc: 'Exporte evoluções por período com carimbo e assinatura em um clique.', color: 'from-primary/15 to-accent/10' },
+              { title: 'Dashboard Completo', desc: 'Visão geral dos seus atendimentos, tarefas e agenda do dia em uma única tela.', img: demoDashboard },
+              { title: 'Evoluções com Carimbo', desc: 'Registre sessões com texto, humor do paciente e seu carimbo profissional digital.', img: demoEvolutions },
+              { title: 'Agenda Visual', desc: 'Calendário integrado com eventos, sessões e lembretes automáticos.', img: demoCalendar },
+              { title: 'Relatórios em PDF', desc: 'Exporte evoluções por período com carimbo e assinatura em um clique.', img: demoReports },
             ].map((item, i) => (
               <motion.div key={item.title} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
-                className="glass-card rounded-2xl overflow-hidden">
-                <div className={`h-40 bg-gradient-to-br ${item.color} flex items-center justify-center`}>
-                  <div className="w-3/4 h-24 rounded-lg bg-background/60 backdrop-blur-sm border border-border/50 shadow-sm flex items-center justify-center">
-                    <span className="text-muted-foreground text-sm font-medium">{item.title}</span>
-                  </div>
+                className="glass-card rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                <div className="aspect-video overflow-hidden bg-muted">
+                  <img src={item.img} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
                 </div>
                 <div className="p-5">
                   <h3 className="font-semibold text-foreground mb-1">{item.title}</h3>
