@@ -9,7 +9,8 @@ import {
   MoreHorizontal,
   BarChart3,
   ClipboardList,
-  Users
+  Users,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -25,6 +26,7 @@ const moreNavItems = [
   { to: '/financial', icon: DollarSign, label: 'Finanças' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
+  { to: '/pricing', icon: CreditCard, label: 'Planos' },
   { to: '/profile', icon: User, label: 'Perfil' },
 ];
 

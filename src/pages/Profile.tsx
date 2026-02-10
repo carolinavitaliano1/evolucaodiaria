@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut } from 'lucide-react';
+import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Profile {
@@ -59,6 +59,7 @@ export default function Profile() {
   // Signature pad states
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -371,6 +372,22 @@ export default function Profile() {
     toast.success('Você saiu do sistema');
   };
 
+  async function handleManageSubscription() {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast.error('Erro ao abrir portal de assinatura. Verifique se você possui uma assinatura ativa.');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto pb-24">
       <div className="flex items-center justify-between">
@@ -475,6 +492,34 @@ export default function Profile() {
               {saving ? 'Salvando...' : 'Salvar Perfil'}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Subscription Management */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5" />
+            Assinatura
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Gerencie seu plano, método de pagamento e visualize faturas.
+          </p>
+          <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline">
+            {portalLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Abrindo...
+              </>
+            ) : (
+              <>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Gerenciar Assinatura
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 
