@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
@@ -22,6 +22,7 @@ import { Calendar, Calendar as CalendarComponent } from '@/components/ui/calenda
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import jsPDF from 'jspdf';
 
 const MOOD_OPTIONS = [
   { value: 'otima', emoji: '😄', label: 'Ótima', score: 5 },
@@ -57,6 +58,71 @@ const MoodTooltip = ({ active, payload }: any) => {
     </div>
   );
 };
+
+function PatientSavedReports({ patientId }: { patientId: string }) {
+  const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
+
+  useEffect(() => {
+    supabase.from('saved_reports').select('id, title, content, created_at')
+      .eq('patient_id', patientId).order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setReports(data); });
+  }, [patientId]);
+
+  const handleDownloadPdf = (report: { title: string; content: string }) => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+
+    pdf.setFillColor(124, 58, 237);
+    pdf.rect(0, 0, pageWidth, 35, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(18);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(report.title, margin, 16);
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, margin, 28);
+
+    const plainText = report.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    pdf.setTextColor(50, 50, 50);
+    pdf.setFontSize(11);
+    const lines = pdf.splitTextToSize(plainText, pageWidth - margin * 2);
+    let yPos = 45;
+    for (const line of lines) {
+      if (yPos > pageHeight - 20) { pdf.addPage(); yPos = margin; }
+      pdf.text(line, margin, yPos);
+      yPos += 6;
+    }
+    pdf.save(`${report.title.replace(/\s+/g, '_')}.pdf`);
+    toast.success('PDF exportado!');
+  };
+
+  if (reports.length === 0) return null;
+
+  return (
+    <div className="pt-4 border-t border-border">
+      <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
+        <Sparkles className="w-4 h-4 text-primary" /> Relatórios IA deste paciente
+      </h3>
+      <div className="space-y-2">
+        {reports.map(r => (
+          <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+            <div>
+              <p className="font-medium text-foreground text-sm">{r.title}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(r.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDownloadPdf(r)}>
+              <Download className="w-3 h-3" /> PDF
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function PatientDetail() {
   const { id } = useParams();
@@ -561,7 +627,7 @@ export default function PatientDetail() {
 
         {/* Documents Tab - persisted */}
         <TabsContent value="documents">
-          <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
+          <div className="bg-card rounded-2xl p-6 shadow-lg border border-border space-y-6">
             <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
               <Paperclip className="w-5 h-5 text-primary" /> Documentos do Paciente
             </h2>
@@ -569,6 +635,9 @@ export default function PatientDetail() {
               existingFiles={patientDocsAsUploadedFiles}
               onUpload={handleDocUpload} onRemove={handleDocRemove}
               maxFiles={20} label="Anexe laudos, receitas, documentos e outros arquivos do paciente" />
+            
+            {/* AI Reports linked to this patient */}
+            <PatientSavedReports patientId={patient.id} />
           </div>
         </TabsContent>
 

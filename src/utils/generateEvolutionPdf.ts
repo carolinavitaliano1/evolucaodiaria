@@ -235,7 +235,7 @@ export async function generateMultipleEvolutionsPdf({
     }
   }
 
-  // Footer with date
+  // Footer with date and app branding
   const totalPages = pdf.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
@@ -247,6 +247,10 @@ export async function generateMultipleEvolutionsPdf({
       pageHeight - 10,
       { align: 'center' }
     );
+    // Discrete app branding
+    pdf.setFontSize(6);
+    pdf.setTextColor(190, 190, 190);
+    pdf.text('📘 Evolução Diária', margin, pageHeight - 5);
   }
 
   // Save the PDF

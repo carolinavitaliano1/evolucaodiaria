@@ -44,7 +44,7 @@ const FEATURES = [
   { icon: Calendar, title: 'Agenda Integrada', desc: 'Sessões, tarefas e eventos em uma agenda visual. Nunca mais esqueça um atendimento.' },
   { icon: BarChart3, title: 'Financeiro Automático', desc: 'Controle por sessão, pacote ou fixo mensal. Saiba exatamente quanto cada clínica rende.' },
   { icon: Shield, title: 'Segurança de Verdade', desc: 'Seus dados ficam criptografados na nuvem. Só você acessa. Sem planilhas vulneráveis.' },
-  { icon: Sparkles, title: 'Relatórios Profissionais', desc: 'Gere PDFs de evoluções por período, com carimbo e assinatura. Pronto para laudos e convênios.' },
+  { icon: Sparkles, title: 'Relatórios com IA', desc: 'Crie relatórios clínicos com inteligência artificial — guiados por paciente ou com comando livre. Edite, salve e exporte em PDF.' },
 ];
 
 const TESTIMONIALS = [
@@ -69,7 +69,7 @@ const TESTIMONIALS = [
 ];
 
 const FAQ_ITEMS = [
-  { q: 'O teste grátis é realmente sem compromisso?', a: 'Sim! Você tem 15 dias para testar todas as funcionalidades sem precisar cadastrar cartão de crédito. Se não gostar, é só não assinar.' },
+  { q: 'O teste grátis é realmente sem compromisso?', a: 'Sim! Você tem 15 dias para testar todas as funcionalidades. Se não gostar, é só cancelar antes do fim do período de teste.' },
   { q: 'Meus dados ficam seguros?', a: 'Totalmente. Utilizamos criptografia de ponta a ponta e servidores seguros na nuvem. Apenas você tem acesso aos seus dados — nem mesmo nossa equipe consegue visualizá-los.' },
   { q: 'Posso usar em mais de uma clínica?', a: 'Sim! Você pode cadastrar quantas clínicas quiser e gerenciar pacientes, agenda e financeiro de cada uma separadamente.' },
   { q: 'Funciona no celular?', a: 'Sim. O sistema é totalmente responsivo e funciona perfeitamente no navegador do seu celular ou tablet, sem precisar instalar nada.' },
@@ -125,7 +125,7 @@ export default function Landing() {
               className="gradient-primary gap-2 text-lg px-8 py-6 shadow-glow">
               Experimentar 15 Dias Grátis <ArrowRight className="w-5 h-5" />
             </Button>
-            <p className="text-sm text-muted-foreground">Sem cartão de crédito. Cancele quando quiser.</p>
+            <p className="text-sm text-muted-foreground">15 dias grátis. Cancele quando quiser.</p>
           </motion.div>
         </div>
       </header>
@@ -240,7 +240,7 @@ export default function Landing() {
               { title: 'Dashboard Completo', desc: 'Visão geral dos seus atendimentos, tarefas e agenda do dia em uma única tela.', img: demoDashboard },
               { title: 'Evoluções com Carimbo', desc: 'Registre sessões com texto, humor do paciente e seu carimbo profissional digital.', img: demoEvolutions },
               { title: 'Agenda Visual', desc: 'Calendário integrado com eventos, sessões e lembretes automáticos.', img: demoCalendar },
-              { title: 'Relatórios em PDF', desc: 'Exporte evoluções por período com carimbo e assinatura em um clique.', img: demoReports },
+              { title: 'Relatórios com IA', desc: 'Crie relatórios clínicos com inteligência artificial, edite com editor rico e exporte em PDF.', img: demoReports },
             ].map((item, i) => (
               <motion.div key={item.title} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
@@ -340,7 +340,7 @@ export default function Landing() {
             <span className="text-primary">Você merece uma ferramenta que ajude nisso.</span>
           </h2>
           <p className="text-muted-foreground text-lg mb-8">
-            Comece agora. São 15 dias grátis, sem compromisso, sem cartão de crédito.
+            Comece agora. São 15 dias grátis, sem compromisso.
           </p>
           <Button size="lg" onClick={() => navigate('/auth')}
             className="gradient-primary gap-2 text-lg px-10 py-6 shadow-glow">
