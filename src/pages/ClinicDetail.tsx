@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -47,13 +47,14 @@ function getTodayWeekday() {
 export default function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clinics, patients, appointments, evolutions, addPatient, addEvolution, setCurrentPatient, getClinicPackages, addPackage, deletePackage } = useApp();
+  const { clinics, patients, appointments, evolutions, addPatient, addEvolution, setCurrentPatient, getClinicPackages, addPackage, updatePackage, deletePackage } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [batchEvolutionText, setBatchEvolutionText] = useState('');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
+  const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
 
   const clinic = clinics.find(c => c.id === id);
   const clinicPatients = patients.filter(p => p.clinicId === id);
@@ -901,14 +902,16 @@ export default function ClinicDetail() {
                   <div key={pkg.id} className="bg-secondary/50 rounded-xl p-4 border border-border">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-foreground">{pkg.name}</h3>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => deletePackage(pkg.id)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => setEditingPackage({ id: pkg.id, name: pkg.name, description: pkg.description || '', price: pkg.price.toString() })}>
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => deletePackage(pkg.id)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     {pkg.description && (
                       <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
@@ -923,6 +926,47 @@ export default function ClinicDetail() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Package Dialog */}
+      {editingPackage && (
+        <Dialog open={!!editingPackage} onOpenChange={(open) => !open && setEditingPackage(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Editar Pacote</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label>Nome do Pacote *</Label>
+                <Input value={editingPackage.name}
+                  onChange={(e) => setEditingPackage({ ...editingPackage, name: e.target.value })}
+                  placeholder="Ex: Pacote Social" />
+              </div>
+              <div>
+                <Label>Descrição</Label>
+                <Textarea value={editingPackage.description}
+                  onChange={(e) => setEditingPackage({ ...editingPackage, description: e.target.value })}
+                  placeholder="Detalhes do pacote..." rows={2} />
+              </div>
+              <div>
+                <Label>Valor (R$) *</Label>
+                <Input type="number" step="0.01" value={editingPackage.price}
+                  onChange={(e) => setEditingPackage({ ...editingPackage, price: e.target.value })}
+                  placeholder="0.00" />
+              </div>
+              <Button className="w-full" disabled={!editingPackage.name.trim() || !editingPackage.price}
+                onClick={() => {
+                  updatePackage(editingPackage.id, {
+                    name: editingPackage.name,
+                    description: editingPackage.description || undefined,
+                    price: parseFloat(editingPackage.price),
+                  });
+                  setEditingPackage(null);
+                  toast.success('Pacote atualizado!');
+                }}>
+                Salvar Alterações
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Quick Evolution Dialog */}
       <Dialog open={!!quickEvolutionPatient} onOpenChange={(open) => !open && setQuickEvolutionPatient(null)}>
