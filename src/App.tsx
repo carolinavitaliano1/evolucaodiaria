@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
 import Clinics from "./pages/Clinics";
 import ClinicDetail from "./pages/ClinicDetail";
 import PatientDetail from "./pages/PatientDetail";
@@ -32,8 +33,9 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              <Route path="/landing" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+              <Route path="/pricing" element={<Pricing />} />
               <Route
                 element={
                   <ProtectedRoute requireSubscription>

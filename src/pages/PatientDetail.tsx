@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
@@ -7,6 +8,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -61,6 +63,7 @@ export default function PatientDetail() {
   const navigate = useNavigate();
   const { patients, clinics, evolutions, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
     addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages } = useApp();
+  const { user } = useAuth();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
@@ -82,6 +85,20 @@ export default function PatientDetail() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
+  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean }[]>([]);
+  const [selectedStampId, setSelectedStampId] = useState<string>('');
+
+  // Load stamps
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('stamps').select('*').eq('user_id', user.id).order('created_at').then(({ data }) => {
+      if (data) {
+        setStamps(data);
+        const defaultStamp = data.find(s => s.is_default);
+        if (defaultStamp) setSelectedStampId(defaultStamp.id);
+      }
+    });
+  }, [user]);
 
   // Convert attachments to UploadedFile format for FileUpload component
   const patientDocsAsUploadedFiles: UploadedFile[] = useMemo(() => patientAttachments.map(a => ({
@@ -145,6 +162,7 @@ export default function PatientDetail() {
       patientId: patient.id, clinicId: patient.clinicId, date: evolutionDate,
       text: evolutionText, attendanceStatus,
       mood: (selectedMood || undefined) as Evolution['mood'],
+      stampId: selectedStampId || undefined,
       attachments: attachedFiles.map(f => ({
         id: f.id, parentId: '', parentType: 'evolution' as const,
         name: f.name, data: f.filePath, type: f.fileType, createdAt: new Date().toISOString(),
@@ -376,12 +394,22 @@ export default function PatientDetail() {
                   onUpload={(files) => setAttachedFiles(prev => [...prev, ...files])}
                   onRemove={(fileId) => setAttachedFiles(prev => prev.filter(f => f.id !== fileId))} maxFiles={5} />
               </div>
-              {clinic?.stamp && (
-                <div className="p-3 rounded-xl bg-secondary/50 border border-border">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                    <Stamp className="w-4 h-4" /> Carimbo da clínica será incluído
-                  </div>
-                  <img src={clinic.stamp} alt="Carimbo" className="h-16 object-contain" />
+              {stamps.length > 0 && (
+                <div>
+                  <Label className="flex items-center gap-2 mb-2"><StampIcon className="w-4 h-4" /> Carimbo</Label>
+                  <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um carimbo (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem carimbo</SelectItem>
+                      {stamps.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} — {s.clinical_area} {s.is_default ? '⭐' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               <Button type="submit" className="gradient-primary gap-2"><Plus className="w-4 h-4" /> Salvar Evolução</Button>
@@ -508,11 +536,21 @@ export default function PatientDetail() {
                           <img src={evo.signature} alt="Assinatura" className="h-8 object-contain" />
                         </div>
                       )}
-                      {clinic?.stamp && (
-                        <div className="mt-4 pt-3 border-t border-border/50">
-                          <img src={clinic.stamp} alt="Carimbo" className="h-12 object-contain opacity-70" />
-                        </div>
-                      )}
+                      {evo.stampId && (() => {
+                        const stamp = stamps.find(s => s.id === evo.stampId);
+                        return stamp?.stamp_image ? (
+                          <div className="mt-4 pt-3 border-t border-border/50">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                              <StampIcon className="w-3 h-3" /> {stamp.name} — {stamp.clinical_area}
+                            </div>
+                            <img src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain opacity-70" />
+                          </div>
+                        ) : stamp ? (
+                          <div className="mt-4 pt-3 border-t border-border/50 text-xs text-muted-foreground flex items-center gap-1">
+                            <StampIcon className="w-3 h-3" /> {stamp.name} — {stamp.clinical_area}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                   );
                 })}
