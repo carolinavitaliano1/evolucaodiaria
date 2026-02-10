@@ -106,6 +106,16 @@ async function streamReport({
   onDone();
 }
 
+function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 function markdownToHtml(md: string): string {
   let html = md
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -252,6 +262,7 @@ export default function AIReports() {
   const isLilas = theme === 'lilas';
 
   const [selectedPatient, setSelectedPatient] = useState('');
+  const [selectedClinic, setSelectedClinic] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('month');
   const [freeCommand, setFreeCommand] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -388,7 +399,7 @@ export default function AIReports() {
     toast.success('Copiado!');
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!editor) return;
     const text = editor.getText();
     if (!text.trim()) return;
@@ -412,9 +423,52 @@ export default function AIReports() {
     };
 
     // ==========================================
+    // LETTERHEAD — clinic logo/letterhead if selected
+    // ==========================================
+    const clinic = clinics.find(c => c.id === selectedClinic);
+    let yPos = margin;
+
+    if (clinic?.letterhead) {
+      try {
+        const img = await loadImageFromUrl(clinic.letterhead);
+        const imgWidth = contentWidth;
+        const imgHeight = (img.height / img.width) * imgWidth;
+        const maxH = 35;
+        const finalH = Math.min(imgHeight, maxH);
+        pdf.addImage(clinic.letterhead, 'PNG', margin, yPos, imgWidth, finalH);
+        yPos += finalH + 5;
+      } catch (e) {
+        console.error('Error loading letterhead:', e);
+      }
+    }
+
+    // Clinic name if available
+    if (clinic) {
+      pdf.setTextColor(40, 40, 40);
+      pdf.setFontSize(13);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(clinic.name, pageWidth / 2, yPos + 8, { align: 'center' });
+      yPos += 12;
+      if (clinic.address) {
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(clinic.address, pageWidth / 2, yPos + 4, { align: 'center' });
+        yPos += 8;
+      }
+      // divider after clinic info
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, yPos + 2, pageWidth - margin, yPos + 2);
+      yPos += 8;
+    } else {
+      yPos = 25;
+    }
+
+    // ==========================================
     // COVER / HEADER — centered, institutional
     // ==========================================
-    let yPos = 35;
+    yPos += 5;
     pdf.setTextColor(30, 30, 30);
     pdf.setFontSize(16);
     pdf.setFont('helvetica', 'bold');
