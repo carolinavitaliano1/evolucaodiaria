@@ -69,6 +69,7 @@ export interface Evolution {
   text: string;
   attendanceStatus: 'presente' | 'falta';
   confirmedAttendance?: boolean;
+  mood?: 'otima' | 'boa' | 'neutra' | 'ruim' | 'muito_ruim';
   signature?: string;
   stampId?: string;
   attachments?: Attachment[];

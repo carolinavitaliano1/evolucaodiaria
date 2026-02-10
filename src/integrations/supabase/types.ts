@@ -267,6 +267,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          mood: string | null
           patient_id: string
           signature: string | null
           stamp_id: string | null
@@ -281,6 +282,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          mood?: string | null
           patient_id: string
           signature?: string | null
           stamp_id?: string | null
@@ -295,6 +297,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          mood?: string | null
           patient_id?: string
           signature?: string | null
           stamp_id?: string | null
