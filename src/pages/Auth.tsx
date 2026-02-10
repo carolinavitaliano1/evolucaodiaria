@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Stethoscope } from 'lucide-react';
+import { Loader2, BookOpen } from 'lucide-react';
 
 export default function Auth() {
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
@@ -115,9 +115,9 @@ export default function Auth() {
         <div className="w-full max-w-md">
           <div className="flex items-center justify-center gap-2 mb-8">
             <div className="p-2 rounded-lg bg-primary/10">
-              <Stethoscope className="h-8 w-8 text-primary" />
+              <BookOpen className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Clini Pro</h1>
+            <h1 className="text-2xl font-bold text-foreground">Evolução Diária</h1>
           </div>
 
           <Card>
@@ -175,9 +175,9 @@ export default function Auth() {
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-8">
           <div className="p-2 rounded-lg bg-primary/10">
-            <Stethoscope className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Clini Pro</h1>
+             <BookOpen className="h-8 w-8 text-primary" />
+           </div>
+           <h1 className="text-2xl font-bold text-foreground">Evolução Diária</h1>
         </div>
 
         <Card>

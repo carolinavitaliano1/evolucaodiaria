@@ -83,8 +83,25 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
   useEffect(() => {
     if (open) {
       loadServices();
+      loadCustomTypes();
     }
   }, [open]);
+
+  async function loadCustomTypes() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('custom_service_types' as any)
+        .select('name')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setCustomTypes((data || []).map((d: any) => d.name));
+    } catch (error) {
+      console.error('Error loading custom types:', error);
+    }
+  }
 
   async function loadServices() {
     try {
@@ -428,12 +445,24 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
                         autoFocus
                       />
                     </div>
-                    <Button size="sm" onClick={() => {
+                    <Button size="sm" onClick={async () => {
                       if (newCustomType.trim()) {
-                        setCustomTypes(prev => [...prev, newCustomType.trim()]);
-                        setServiceType(newCustomType.trim());
-                        setNewCustomType('');
-                        setShowCustomTypeInput(false);
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) { toast.error('Faça login primeiro'); return; }
+                          const { error } = await supabase
+                            .from('custom_service_types' as any)
+                            .insert({ user_id: user.id, name: newCustomType.trim() } as any);
+                          if (error) throw error;
+                          setCustomTypes(prev => [...prev, newCustomType.trim()]);
+                          setServiceType(newCustomType.trim());
+                          setNewCustomType('');
+                          setShowCustomTypeInput(false);
+                          toast.success('Tipo personalizado salvo!');
+                        } catch (error) {
+                          console.error('Error saving custom type:', error);
+                          toast.error('Erro ao salvar tipo personalizado');
+                        }
                       }
                     }}>
                       Adicionar
