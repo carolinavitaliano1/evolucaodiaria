@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/clinics', icon: Building2, label: 'Clínicas' },
   { to: '/patients', icon: Users, label: 'Pacientes' },
   { to: '/calendar', icon: Calendar, label: 'Agenda' },

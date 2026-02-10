@@ -47,8 +47,8 @@ serve(async (req) => {
       subscription_data: {
         trial_period_days: 15,
       },
-      success_url: `${origin}/?checkout=success`,
-      cancel_url: `${origin}/pricing?checkout=canceled`,
+      success_url: `${origin}/checkout-success`,
+      cancel_url: `${origin}/pricing`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
