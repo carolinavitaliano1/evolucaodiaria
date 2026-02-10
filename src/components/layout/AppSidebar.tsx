@@ -10,7 +10,8 @@ import {
   User,
   BookOpen,
   LogOut,
-  CreditCard
+  CreditCard,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -25,6 +26,7 @@ const navItems = [
   { to: '/calendar', icon: Calendar, label: 'Agenda' },
   { to: '/financial', icon: DollarSign, label: 'Financeiro' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
+  { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
   { to: '/pricing', icon: CreditCard, label: 'Planos' },
 ];
