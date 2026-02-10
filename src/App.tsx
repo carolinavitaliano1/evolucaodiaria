@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import Pricing from "./pages/Pricing";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import AIReports from "./pages/AIReports";
+import InstallApp from "./pages/InstallApp";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/install" element={<InstallApp />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
