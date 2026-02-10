@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Cake, MapPin, Clock, DollarSign, Calendar, User, FileText, Plus, CheckCircle2, XCircle, Image, Stamp, Download, CalendarRange, PenLine, Eye, Edit, X, ClipboardList, Paperclip, ListTodo } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -14,19 +14,19 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar, Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { Evolution } from '@/types';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const MOOD_OPTIONS = [
-  { value: 'otima', emoji: '😄', label: 'Ótima' },
-  { value: 'boa', emoji: '😊', label: 'Boa' },
-  { value: 'neutra', emoji: '😐', label: 'Neutra' },
-  { value: 'ruim', emoji: '😟', label: 'Ruim' },
-  { value: 'muito_ruim', emoji: '😢', label: 'Muito ruim' },
+  { value: 'otima', emoji: '😄', label: 'Ótima', score: 5 },
+  { value: 'boa', emoji: '😊', label: 'Boa', score: 4 },
+  { value: 'neutra', emoji: '😐', label: 'Neutra', score: 3 },
+  { value: 'ruim', emoji: '😟', label: 'Ruim', score: 2 },
+  { value: 'muito_ruim', emoji: '😢', label: 'Muito ruim', score: 1 },
 ] as const;
 
 function getMoodInfo(mood?: string) {
@@ -44,10 +44,23 @@ function calculateAge(birthdate: string | null | undefined): number | null {
   return age;
 }
 
+const MoodTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  const data = payload[0].payload;
+  const moodInfo = MOOD_OPTIONS.find(m => m.score === data.score);
+  return (
+    <div className="bg-card border border-border rounded-lg p-2 shadow-lg text-xs">
+      <p className="font-medium">{data.dateLabel}</p>
+      <p>{moodInfo?.emoji} {moodInfo?.label}</p>
+    </div>
+  );
+};
+
 export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { patients, clinics, evolutions, addEvolution, updateEvolution, deleteEvolution, currentClinic } = useApp();
+  const { patients, clinics, evolutions, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
+    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages } = useApp();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
@@ -55,24 +68,26 @@ export default function PatientDetail() {
     .filter(e => e.patientId === id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const patientTasksList = id ? getPatientTasks(id) : [];
+  const patientAttachments = id ? getPatientAttachments(id) : [];
+  const patientPackage = patient?.packageId ? clinicPackages.find(p => p.id === patient.packageId) : null;
+
   const [evolutionText, setEvolutionText] = useState('');
   const [evolutionDate, setEvolutionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta'>('presente');
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
-  
-  // Document attachments for patient
-  const [patientDocs, setPatientDocs] = useState<UploadedFile[]>([]);
-  
-  // Patient tasks
-  const [patientTasks, setPatientTasks] = useState<{id: string; title: string; completed: boolean}[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-
-  // PDF period selection
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
+
+  // Convert attachments to UploadedFile format for FileUpload component
+  const patientDocsAsUploadedFiles: UploadedFile[] = useMemo(() => patientAttachments.map(a => ({
+    id: a.id, name: a.name, filePath: a.data, fileType: a.type,
+    url: a.data.startsWith('http') ? a.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${a.data}`,
+  })), [patientAttachments]);
 
   if (!patient) {
     return (
@@ -88,26 +103,36 @@ export default function PatientDetail() {
   const totalAbsent = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const totalSessions = patientEvolutions.length;
   const attendanceRate = totalSessions > 0 ? Math.round((totalPresent / totalSessions) * 100) : 0;
-
-  const totalFinancial = patientEvolutions
-    .filter(e => e.attendanceStatus === 'presente')
-    .length * (patient.paymentValue || 0);
+  const totalFinancial = totalPresent * (patient.paymentValue || 0);
 
   const moodCounts = MOOD_OPTIONS.map(m => ({
-    ...m,
-    count: patientEvolutions.filter(e => e.mood === m.value).length,
+    ...m, count: patientEvolutions.filter(e => e.mood === m.value).length,
   }));
   const totalMoods = moodCounts.reduce((sum, m) => sum + m.count, 0);
 
+  // Mood chart data (chronological)
+  const moodChartData = patientEvolutions
+    .filter(e => e.mood)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .map(e => {
+      const moodInfo = getMoodInfo(e.mood);
+      return {
+        date: e.date,
+        dateLabel: format(new Date(e.date), 'dd/MM', { locale: ptBR }),
+        score: moodInfo?.score || 3,
+        emoji: moodInfo?.emoji || '😐',
+      };
+    });
+
   const handleGeneratePeriodPdf = () => {
     if (!startDate || !endDate) return;
-    const filteredEvolutions = patientEvolutions.filter(evo => {
-      const evoDate = new Date(evo.date);
-      return evoDate >= startDate && evoDate <= endDate;
+    const filtered = patientEvolutions.filter(evo => {
+      const d = new Date(evo.date);
+      return d >= startDate && d <= endDate;
     });
-    if (filteredEvolutions.length === 0) { toast.error('Nenhuma evolução encontrada no período.'); return; }
+    if (filtered.length === 0) { toast.error('Nenhuma evolução no período.'); return; }
     generateMultipleEvolutionsPdf({
-      evolutions: filteredEvolutions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+      evolutions: filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
       patient, clinic, startDate, endDate,
     });
     setPeriodDialogOpen(false);
@@ -133,10 +158,20 @@ export default function PatientDetail() {
     else navigate('/clinics');
   };
 
-  const addPatientTask = () => {
+  const handleAddPatientTask = () => {
     if (!newTaskTitle.trim()) return;
-    setPatientTasks(prev => [...prev, { id: `task_${Date.now()}`, title: newTaskTitle, completed: false }]);
+    addTask(newTaskTitle, patient.id);
     setNewTaskTitle('');
+  };
+
+  const handleDocUpload = (files: UploadedFile[]) => {
+    files.forEach(f => {
+      addAttachment({ parentId: patient.id, parentType: 'patient', name: f.name, data: f.filePath, type: f.fileType });
+    });
+  };
+
+  const handleDocRemove = (fileId: string) => {
+    deleteAttachment(fileId);
   };
 
   return (
@@ -165,6 +200,11 @@ export default function PatientDetail() {
                   {patient.clinicalArea}
                 </span>
               )}
+              {patientPackage && (
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-foreground text-sm">
+                  <Package className="w-4 h-4" /> {patientPackage.name}
+                </span>
+              )}
             </div>
           </div>
           {clinic && (
@@ -178,7 +218,6 @@ export default function PatientDetail() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {/* Attendance */}
         <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <p className="text-sm font-medium text-muted-foreground mb-3">📊 Frequência</p>
           <div className="flex items-baseline gap-2 mb-2">
@@ -192,18 +231,14 @@ export default function PatientDetail() {
           </div>
         </div>
 
-        {/* Financial */}
         <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <p className="text-sm font-medium text-muted-foreground mb-3">💰 Financeiro</p>
-          <p className="text-2xl font-bold text-success mb-1">
-            R$ {totalFinancial.toFixed(2)}
-          </p>
+          <p className="text-2xl font-bold text-success mb-1">R$ {totalFinancial.toFixed(2)}</p>
           <p className="text-sm text-muted-foreground">
             {totalPresent} sessões × R$ {(patient.paymentValue || 0).toFixed(2)}
           </p>
         </div>
 
-        {/* Mood Summary */}
         <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <p className="text-sm font-medium text-muted-foreground mb-3">🎭 Humor</p>
           {totalMoods === 0 ? (
@@ -220,6 +255,30 @@ export default function PatientDetail() {
           )}
         </div>
       </div>
+
+      {/* Mood Chart */}
+      {moodChartData.length >= 2 && (
+        <div className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-8">
+          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">📈 Evolução do Humor</h2>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={moodChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="dateLabel" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))"
+                  tickFormatter={(v) => {
+                    const m = MOOD_OPTIONS.find(o => o.score === v);
+                    return m?.emoji || '';
+                  }}
+                />
+                <Tooltip content={<MoodTooltip />} />
+                <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2.5}
+                  dot={{ fill: 'hsl(var(--primary))', r: 4 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Clinical Info */}
       {(patient.diagnosis || patient.observations || patient.paymentValue) && (
@@ -244,6 +303,7 @@ export default function PatientDetail() {
                 <p className="text-success font-bold">
                   R$ {patient.paymentValue.toFixed(2)}
                   {patient.paymentType === 'sessao' ? '/sessão' : '/mês'}
+                  {patientPackage && <span className="text-muted-foreground font-normal text-sm ml-2">({patientPackage.name})</span>}
                 </p>
               </div>
             )}
@@ -261,20 +321,13 @@ export default function PatientDetail() {
       {/* Tabs */}
       <Tabs defaultValue="evolutions" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="evolutions" className="gap-2">
-            <FileText className="w-4 h-4" /> Evoluções
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-2">
-            <Paperclip className="w-4 h-4" /> Documentos
-          </TabsTrigger>
-          <TabsTrigger value="tasks" className="gap-2">
-            <ListTodo className="w-4 h-4" /> Tarefas
-          </TabsTrigger>
+          <TabsTrigger value="evolutions" className="gap-2"><FileText className="w-4 h-4" /> Evoluções</TabsTrigger>
+          <TabsTrigger value="documents" className="gap-2"><Paperclip className="w-4 h-4" /> Documentos</TabsTrigger>
+          <TabsTrigger value="tasks" className="gap-2"><ListTodo className="w-4 h-4" /> Tarefas</TabsTrigger>
         </TabsList>
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-6">
-          {/* Evolution Form */}
           <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
             <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" /> Nova Evolução
@@ -299,18 +352,12 @@ export default function PatientDetail() {
                   <Label>Humor da Sessão</Label>
                   <div className="flex gap-1 mt-1">
                     {MOOD_OPTIONS.map(m => (
-                      <button
-                        key={m.value}
-                        type="button"
+                      <button key={m.value} type="button"
                         onClick={() => setSelectedMood(selectedMood === m.value ? '' : m.value)}
                         className={cn(
                           "flex-1 flex flex-col items-center gap-0.5 p-2 rounded-lg border-2 transition-all text-center",
-                          selectedMood === m.value
-                            ? "border-primary bg-primary/10"
-                            : "border-transparent bg-secondary hover:bg-secondary/80"
-                        )}
-                        title={m.label}
-                      >
+                          selectedMood === m.value ? "border-primary bg-primary/10" : "border-transparent bg-secondary hover:bg-secondary/80"
+                        )} title={m.label}>
                         <span className="text-lg">{m.emoji}</span>
                         <span className="text-[10px] text-muted-foreground leading-tight">{m.label}</span>
                       </button>
@@ -318,26 +365,17 @@ export default function PatientDetail() {
                   </div>
                 </div>
               </div>
-
               <div>
                 <Label>Evolução</Label>
-                <Textarea
-                  value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)}
-                  placeholder="Digite a evolução do paciente..." className="min-h-32"
-                />
+                <Textarea value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)}
+                  placeholder="Digite a evolução do paciente..." className="min-h-32" />
               </div>
-
               <div>
                 <Label className="flex items-center gap-2 mb-2"><Image className="w-4 h-4" /> Anexos (opcional)</Label>
-                <FileUpload
-                  parentType="evolution" parentId={patient.id}
-                  existingFiles={attachedFiles}
+                <FileUpload parentType="evolution" parentId={patient.id} existingFiles={attachedFiles}
                   onUpload={(files) => setAttachedFiles(prev => [...prev, ...files])}
-                  onRemove={(fileId) => setAttachedFiles(prev => prev.filter(f => f.id !== fileId))}
-                  maxFiles={5}
-                />
+                  onRemove={(fileId) => setAttachedFiles(prev => prev.filter(f => f.id !== fileId))} maxFiles={5} />
               </div>
-
               {clinic?.stamp && (
                 <div className="p-3 rounded-xl bg-secondary/50 border border-border">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -346,19 +384,15 @@ export default function PatientDetail() {
                   <img src={clinic.stamp} alt="Carimbo" className="h-16 object-contain" />
                 </div>
               )}
-
-              <Button type="submit" className="gradient-primary gap-2">
-                <Plus className="w-4 h-4" /> Salvar Evolução
-              </Button>
+              <Button type="submit" className="gradient-primary gap-2"><Plus className="w-4 h-4" /> Salvar Evolução</Button>
             </form>
           </div>
 
-          {/* Evolution History */}
+          {/* History */}
           <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
               <h2 className="font-bold text-foreground flex flex-wrap items-center gap-2 text-sm sm:text-base">
-                📜 Histórico de Evoluções
-                <span className="text-xs sm:text-sm font-normal text-muted-foreground">({patientEvolutions.length} registros)</span>
+                📜 Histórico ({patientEvolutions.length})
               </h2>
               {patientEvolutions.length > 0 && (
                 <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
@@ -376,7 +410,7 @@ export default function PatientDetail() {
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
-                                <Calendar className="mr-2 h-4 w-4" />
+                                <CalendarRange className="mr-2 h-4 w-4" />
                                 {startDate ? format(startDate, "dd/MM/yyyy") : "Selecione"}
                               </Button>
                             </PopoverTrigger>
@@ -390,7 +424,7 @@ export default function PatientDetail() {
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
-                                <Calendar className="mr-2 h-4 w-4" />
+                                <CalendarRange className="mr-2 h-4 w-4" />
                                 {endDate ? format(endDate, "dd/MM/yyyy") : "Selecione"}
                               </Button>
                             </PopoverTrigger>
@@ -402,7 +436,7 @@ export default function PatientDetail() {
                       </div>
                       {startDate && endDate && (
                         <p className="text-sm text-muted-foreground">
-                          {patientEvolutions.filter(evo => { const d = new Date(evo.date); return d >= startDate && d <= endDate; }).length} evolução(ões) no período
+                          {patientEvolutions.filter(evo => { const d = new Date(evo.date); return d >= startDate && d <= endDate; }).length} evolução(ões)
                         </p>
                       )}
                       <Button className="w-full gap-2" onClick={handleGeneratePeriodPdf} disabled={!startDate || !endDate}>
@@ -430,56 +464,50 @@ export default function PatientDetail() {
                           <span className="font-bold text-foreground text-sm sm:text-base">
                             {format(new Date(evo.date), 'dd/MM/yyyy', { locale: ptBR })}
                           </span>
-                          <span className={cn(
-                            'text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
+                          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
                             evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
                           )}>
                             {evo.attendanceStatus === 'presente' ? '✅ Presente' : '❌ Falta'}
                           </span>
                           {moodInfo && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium" title={moodInfo.label}>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
                               {moodInfo.emoji} {moodInfo.label}
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-1 flex-wrap">
-                          <Button variant="ghost" size="sm" className="gap-1 h-8 px-2 text-xs sm:text-sm" onClick={() => setEditingEvolution(evo)}>
-                            <Edit className="w-3 h-3" /> <span className="hidden xs:inline">Editar</span>
+                          <Button variant="ghost" size="sm" className="gap-1 h-8 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
+                            <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
                           </Button>
-                          <Button variant="outline" size="sm" className="gap-1 h-8 px-2 text-xs sm:text-sm"
+                          <Button variant="outline" size="sm" className="gap-1 h-8 px-2 text-xs"
                             onClick={() => generateEvolutionPdf({ evolution: evo, patient, clinic })}>
                             <Download className="w-3 h-3" /> PDF
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8 px-2 text-xs sm:text-sm"
-                            onClick={() => deleteEvolution(evo.id)}>
-                            <span className="hidden xs:inline">Excluir</span>
-                            <X className="w-3 h-3 xs:hidden" />
+                          <Button variant="ghost" size="sm" className="text-destructive h-8 px-2 text-xs" onClick={() => deleteEvolution(evo.id)}>
+                            <X className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
                       <p className="text-foreground whitespace-pre-wrap">{evo.text}</p>
-
                       {evo.attachments && evo.attachments.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {evo.attachments.map((att) => (
                             <a key={att.id}
                               href={att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`}
                               target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs hover:bg-primary/20 transition-colors">
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs hover:bg-primary/20">
                               {att.type.startsWith('image/') ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
                               {att.name}
                             </a>
                           ))}
                         </div>
                       )}
-
                       {evo.signature && (
                         <div className="mt-3 flex items-center gap-2">
                           <span className="text-xs text-muted-foreground flex items-center gap-1"><PenLine className="w-3 h-3" /> Assinatura:</span>
                           <img src={evo.signature} alt="Assinatura" className="h-8 object-contain" />
                         </div>
                       )}
-
                       {clinic?.stamp && (
                         <div className="mt-4 pt-3 border-t border-border/50">
                           <img src={clinic.stamp} alt="Carimbo" className="h-12 object-contain opacity-70" />
@@ -493,63 +521,48 @@ export default function PatientDetail() {
           </div>
         </TabsContent>
 
-        {/* Documents Tab */}
+        {/* Documents Tab - persisted */}
         <TabsContent value="documents">
           <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
             <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
               <Paperclip className="w-5 h-5 text-primary" /> Documentos do Paciente
             </h2>
-            <FileUpload
-              parentType="patient"
-              parentId={patient.id}
-              existingFiles={patientDocs}
-              onUpload={(files) => setPatientDocs(prev => [...prev, ...files])}
-              onRemove={(fileId) => setPatientDocs(prev => prev.filter(f => f.id !== fileId))}
-              maxFiles={20}
-              label="Anexe laudos, receitas, documentos e outros arquivos do paciente"
-            />
+            <FileUpload parentType="patient" parentId={patient.id}
+              existingFiles={patientDocsAsUploadedFiles}
+              onUpload={handleDocUpload} onRemove={handleDocRemove}
+              maxFiles={20} label="Anexe laudos, receitas, documentos e outros arquivos do paciente" />
           </div>
         </TabsContent>
 
-        {/* Tasks Tab */}
+        {/* Tasks Tab - persisted */}
         <TabsContent value="tasks">
           <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
             <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
               <ListTodo className="w-5 h-5 text-primary" /> Tarefas do Paciente
             </h2>
-            
             <div className="flex gap-2 mb-6">
-              <Input
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder="Nova tarefa..."
-                onKeyDown={(e) => e.key === 'Enter' && addPatientTask()}
-              />
-              <Button onClick={addPatientTask} disabled={!newTaskTitle.trim()} className="gap-2">
+              <Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder="Nova tarefa..." onKeyDown={(e) => e.key === 'Enter' && handleAddPatientTask()} />
+              <Button onClick={handleAddPatientTask} disabled={!newTaskTitle.trim()} className="gap-2">
                 <Plus className="w-4 h-4" /> Adicionar
               </Button>
             </div>
-
-            {patientTasks.length === 0 ? (
+            {patientTasksList.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-5xl mb-3">📋</div>
                 <p className="text-muted-foreground">Nenhuma tarefa cadastrada.</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {patientTasks.map(task => (
+                {patientTasksList.map(task => (
                   <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
-                    <button
-                      onClick={() => setPatientTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t))}
+                    <button onClick={() => toggleTask(task.id)}
                       className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
-                        task.completed ? "bg-success border-success text-success-foreground" : "border-muted-foreground"
-                      )}
-                    >
+                        task.completed ? "bg-success border-success text-success-foreground" : "border-muted-foreground")}>
                       {task.completed && <CheckCircle2 className="w-3 h-3" />}
                     </button>
                     <span className={cn("flex-1 text-foreground", task.completed && "line-through text-muted-foreground")}>{task.title}</span>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                      onClick={() => setPatientTasks(prev => prev.filter(t => t.id !== task.id))}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteTask(task.id)}>
                       <X className="w-3.5 h-3.5" />
                     </Button>
                   </div>
@@ -560,14 +573,10 @@ export default function PatientDetail() {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Evolution Dialog */}
       {editingEvolution && (
-        <EditEvolutionDialog
-          evolution={editingEvolution}
-          open={!!editingEvolution}
+        <EditEvolutionDialog evolution={editingEvolution} open={!!editingEvolution}
           onOpenChange={(open) => !open && setEditingEvolution(null)}
-          onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
-        />
+          onSave={(updates) => updateEvolution(editingEvolution.id, updates)} />
       )}
     </div>
   );

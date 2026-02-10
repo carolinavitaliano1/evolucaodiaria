@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 
 export default function Financial() {
-  const { clinics, patients, evolutions, payments } = useApp();
+  const { clinics, patients, evolutions, payments, clinicPackages } = useApp();
   const { getMonthlyAppointments } = usePrivateAppointments();
   const [isExporting, setIsExporting] = useState(false);
 
@@ -489,6 +489,10 @@ export default function Financial() {
                   <tr key={patient.id} className="border-b border-border hover:bg-secondary/50">
                     <td className="py-2 sm:py-3 px-2 text-foreground text-xs sm:text-sm">
                       <span className="truncate block max-w-[100px] sm:max-w-none">{patient.name}</span>
+                      {patient.packageId && (() => {
+                        const pkg = clinicPackages.find(p => p.id === patient.packageId);
+                        return pkg ? <span className="block text-[10px] text-muted-foreground">{pkg.name}</span> : null;
+                      })()}
                     </td>
                     <td className="py-2 sm:py-3 px-2 text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">{clinic?.name}</td>
                     <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm">

@@ -591,6 +591,7 @@ export type Database = {
           completed: boolean
           created_at: string
           id: string
+          patient_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -599,6 +600,7 @@ export type Database = {
           completed?: boolean
           created_at?: string
           id?: string
+          patient_id?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -607,11 +609,20 @@ export type Database = {
           completed?: boolean
           created_at?: string
           id?: string
+          patient_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

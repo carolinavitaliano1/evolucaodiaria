@@ -35,9 +35,13 @@ interface AppContextType extends AppState {
   deleteEvolution: (id: string) => void;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'>) => void;
   deleteAppointment: (id: string) => void;
-  addTask: (title: string) => void;
+  addTask: (title: string, patientId?: string) => void;
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  getPatientTasks: (patientId: string) => Task[];
+  getPatientAttachments: (patientId: string) => Attachment[];
+  addAttachment: (attachment: Omit<Attachment, 'id' | 'createdAt'>) => void;
+  deleteAttachment: (id: string) => void;
   addPayment: (payment: Omit<Payment, 'id' | 'createdAt'>) => void;
   getClinicPatients: (clinicId: string) => Patient[];
   getPatientEvolutions: (patientId: string) => Evolution[];
@@ -78,13 +82,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setState(prev => ({ ...prev, isLoading: true }));
     try {
-      const [clinicsRes, patientsRes, evolutionsRes, appointmentsRes, tasksRes, packagesRes] = await Promise.all([
+      const [clinicsRes, patientsRes, evolutionsRes, appointmentsRes, tasksRes, packagesRes, attachmentsRes] = await Promise.all([
         supabase.from('clinics').select('*').order('created_at', { ascending: false }),
         supabase.from('patients').select('*').order('created_at', { ascending: false }),
         supabase.from('evolutions').select('*').order('date', { ascending: false }),
         supabase.from('appointments').select('*').order('date', { ascending: false }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('clinic_packages').select('*').order('created_at', { ascending: false }),
+        supabase.from('attachments').select('*').order('created_at', { ascending: false }),
       ]);
 
       const clinics: Clinic[] = (clinicsRes.data || []).map(c => ({
@@ -128,7 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
 
       const tasks: Task[] = (tasksRes.data || []).map(t => ({
-        id: t.id, title: t.title, completed: t.completed, createdAt: t.created_at,
+        id: t.id, title: t.title, completed: t.completed, patientId: (t as any).patient_id || undefined, createdAt: t.created_at,
       }));
 
       const clinicPackages: ClinicPackage[] = (packagesRes.data || []).map(p => ({
@@ -137,7 +142,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isActive: p.is_active ?? true, createdAt: p.created_at,
       }));
 
-      setState(prev => ({ ...prev, clinics, patients, evolutions, appointments, tasks, clinicPackages, isLoading: false }));
+      const loadedAttachments: Attachment[] = (attachmentsRes.data || []).map(a => ({
+        id: a.id, parentId: a.parent_id, parentType: a.parent_type as Attachment['parentType'],
+        name: a.name, data: a.file_path, type: a.file_type, createdAt: a.created_at,
+      }));
+
+      setState(prev => ({ ...prev, clinics, patients, evolutions, appointments, tasks, clinicPackages, attachments: loadedAttachments, isLoading: false }));
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Erro ao carregar dados');
@@ -364,12 +374,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao excluir agendamento'); }
   }, [user]);
 
-  const addTask = useCallback(async (title: string) => {
+  const addTask = useCallback(async (title: string, patientId?: string) => {
     if (!user) return;
     try {
-      const { data, error } = await supabase.from('tasks').insert({ user_id: user.id, title, completed: false }).select().single();
+      const insertData: Record<string, unknown> = { user_id: user.id, title, completed: false };
+      if (patientId) insertData.patient_id = patientId;
+      const { data, error } = await supabase.from('tasks').insert(insertData).select().single();
       if (error) throw error;
-      const newTask: Task = { id: data.id, title: data.title, completed: data.completed, createdAt: data.created_at };
+      const newTask: Task = { id: data.id, title: data.title, completed: data.completed, patientId: (data as any).patient_id || undefined, createdAt: data.created_at };
       setState(prev => ({ ...prev, tasks: [newTask, ...prev.tasks] }));
     } catch (error) { console.error(error); toast.error('Erro ao adicionar tarefa'); }
   }, [user]);
@@ -446,8 +458,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao excluir pacote'); }
   }, [user]);
 
+  const getPatientTasks = useCallback((patientId: string) => state.tasks.filter(t => t.patientId === patientId), [state.tasks]);
+  const getPatientAttachments = useCallback((patientId: string) => state.attachments.filter(a => a.parentType === 'patient' && a.parentId === patientId), [state.attachments]);
+
+  const addAttachment = useCallback(async (attachment: Omit<Attachment, 'id' | 'createdAt'>) => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase.from('attachments').insert({
+        user_id: user.id, parent_id: attachment.parentId, parent_type: attachment.parentType,
+        name: attachment.name, file_path: attachment.data, file_type: attachment.type,
+      }).select().single();
+      if (error) throw error;
+      const newAtt: Attachment = {
+        id: data.id, parentId: data.parent_id, parentType: data.parent_type as Attachment['parentType'],
+        name: data.name, data: data.file_path, type: data.file_type, createdAt: data.created_at,
+      };
+      setState(prev => ({ ...prev, attachments: [newAtt, ...prev.attachments] }));
+    } catch (error) { console.error(error); toast.error('Erro ao salvar anexo'); }
+  }, [user]);
+
+  const deleteAttachment = useCallback(async (id: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from('attachments').delete().eq('id', id);
+      if (error) throw error;
+      setState(prev => ({ ...prev, attachments: prev.attachments.filter(a => a.id !== id) }));
+    } catch (error) { console.error(error); toast.error('Erro ao excluir anexo'); }
+  }, [user]);
+
   return (
-    <AppContext.Provider value={{ ...state, setCurrentClinic, setCurrentPatient, setSelectedDate, addClinic, updateClinic, deleteClinic, addPatient, updatePatient, deletePatient, addEvolution, updateEvolution, deleteEvolution, addAppointment, deleteAppointment, addTask, toggleTask, deleteTask, addPayment, getClinicPatients, getPatientEvolutions, getDateAppointments, addPackage, updatePackage, deletePackage, getClinicPackages, refreshData }}>
+    <AppContext.Provider value={{ ...state, setCurrentClinic, setCurrentPatient, setSelectedDate, addClinic, updateClinic, deleteClinic, addPatient, updatePatient, deletePatient, addEvolution, updateEvolution, deleteEvolution, addAppointment, deleteAppointment, addTask, toggleTask, deleteTask, addPayment, getClinicPatients, getPatientEvolutions, getDateAppointments, addPackage, updatePackage, deletePackage, getClinicPackages, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, refreshData }}>
       {children}
     </AppContext.Provider>
   );
