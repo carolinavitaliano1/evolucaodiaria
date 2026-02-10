@@ -47,11 +47,24 @@ export default function Financial() {
     if (!patient || !patient.paymentValue || patient.paymentType === 'fixo') return 0;
 
     const clinic = clinics.find(c => c.id === patient.clinicId);
-    // If clinic pays on absence, no loss
-    if (clinic?.paysOnAbsence !== false) return 0;
-
+    const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
+    
+    // If clinic always pays on absence, no loss
+    if (absenceType === 'always') return 0;
+    
     const patientAbsences = absentEvolutions.filter(e => e.patientId === patientId);
-    return patientAbsences.length * patient.paymentValue;
+    
+    if (absenceType === 'never') {
+      return patientAbsences.length * patient.paymentValue;
+    }
+    
+    // confirmed_only: loss only when patient confirmed and didn't show up
+    if (absenceType === 'confirmed_only') {
+      const confirmedAbsences = patientAbsences.filter(e => !e.confirmedAttendance);
+      return confirmedAbsences.length * patient.paymentValue;
+    }
+    
+    return 0;
   };
 
   // Get private appointments revenue
@@ -353,9 +366,14 @@ export default function Financial() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <h3 className="font-bold text-foreground text-sm sm:text-lg truncate">{clinic.name}</h3>
-                      {clinic.paysOnAbsence === false && (
+                      {(clinic.absencePaymentType === 'never' || (clinic.paysOnAbsence === false && !clinic.absencePaymentType)) && (
                         <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
                           Não paga faltas
+                        </span>
+                      )}
+                      {clinic.absencePaymentType === 'confirmed_only' && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
+                          Paga só confirmados
                         </span>
                       )}
                     </div>

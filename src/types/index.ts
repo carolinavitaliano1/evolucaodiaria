@@ -17,13 +17,14 @@ export interface Clinic {
   notes?: string;
   weekdays?: string[];
   scheduleTime?: string;
-  scheduleByDay?: ScheduleByDay; // Horários por dia com entrada e saída
+  scheduleByDay?: ScheduleByDay;
   paymentType?: 'fixo_mensal' | 'fixo_diario' | 'sessao';
   paymentAmount?: number;
-  paysOnAbsence?: boolean; // Se a clínica paga o terapeuta quando paciente falta
+  paysOnAbsence?: boolean;
+  absencePaymentType?: 'always' | 'never' | 'confirmed_only';
   letterhead?: string;
   stamp?: string;
-  isArchived?: boolean; // Se a clínica está arquivada
+  isArchived?: boolean;
   createdAt: string;
 }
 
@@ -43,8 +44,20 @@ export interface Patient {
   paymentValue?: number;
   contractStartDate?: string;
   weekdays?: string[];
-  scheduleTime?: string; // Horário único (compatibilidade)
-  scheduleByDay?: ScheduleByDay; // Horários por dia com entrada e saída
+  scheduleTime?: string;
+  scheduleByDay?: ScheduleByDay;
+  packageId?: string;
+  createdAt: string;
+}
+
+export interface ClinicPackage {
+  id: string;
+  userId: string;
+  clinicId: string;
+  name: string;
+  description?: string;
+  price: number;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -55,6 +68,7 @@ export interface Evolution {
   date: string;
   text: string;
   attendanceStatus: 'presente' | 'falta';
+  confirmedAttendance?: boolean;
   signature?: string;
   stampId?: string;
   attachments?: Attachment[];
