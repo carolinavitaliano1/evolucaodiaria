@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -31,6 +32,7 @@ const navItems = [
 export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { theme } = useTheme();
 
   const handleLogout = async () => {
     await signOut();
@@ -38,7 +40,10 @@ export function AppSidebar() {
   };
 
   return (
-    <aside className="hidden lg:flex flex-col w-60 min-h-screen bg-card border-r border-border">
+    <aside className={cn(
+      "hidden lg:flex flex-col w-60 min-h-screen border-r border-border",
+      theme === 'lilas' ? 'sidebar-lilas' : 'bg-card'
+    )}>
       {/* Logo */}
       <div className="p-5 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">

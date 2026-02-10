@@ -10,10 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
 
 export default function CalendarPage() {
   const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment } = useApp();
+  const { theme } = useTheme();
   const { getAppointmentsForDate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -177,7 +179,10 @@ export default function CalendarPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
-        <div className="lg:col-span-2 bg-card rounded-2xl p-6 shadow-lg border border-border">
+        <div className={cn(
+          "lg:col-span-2 rounded-2xl p-6 shadow-lg border",
+          theme === 'lilas' ? 'calendar-grid border-0' : 'bg-card border-border'
+        )}>
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-6">
             <Button
@@ -272,7 +277,10 @@ export default function CalendarPage() {
         </div>
 
         {/* Selected Day */}
-        <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
+        <div className={cn(
+          "rounded-2xl p-6 shadow-lg border",
+          theme === 'lilas' ? 'calendar-grid border-0' : 'bg-card border-border'
+        )}>
           <h3 className="font-bold text-foreground mb-4">
             {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
           </h3>

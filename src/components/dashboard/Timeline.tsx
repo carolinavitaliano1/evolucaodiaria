@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Clock, User, MapPin, CheckCircle2, XCircle, Bell, Paperclip, ListTodo, Circle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,7 @@ interface TimelineItem {
 
 export function Timeline() {
   const { selectedDate, appointments, patients, clinics, tasks, toggleTask, addEvolution, setCurrentPatient, setCurrentClinic } = useApp();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const { isNative, hasPermission, scheduleForAppointment } = useNotifications();
   
@@ -131,7 +133,10 @@ export function Timeline() {
 
   if (timelineItems.length === 0) {
     return (
-      <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border">
+      <div className={cn(
+        "bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border",
+        theme === 'lilas' && "calendar-grid border-0"
+      )}>
         <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-primary" />
           Linha do Tempo
@@ -149,7 +154,10 @@ export function Timeline() {
   }
 
   return (
-    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border">
+    <div className={cn(
+      "bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border",
+      theme === 'lilas' && "calendar-grid border-0"
+    )}>
       <h3 className="font-semibold text-foreground mb-4 sm:mb-6 flex flex-wrap items-center gap-2">
         <Clock className="w-5 h-5 text-primary" />
         Linha do Tempo
