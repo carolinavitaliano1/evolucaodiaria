@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Sparkles, FileText, Send, Loader2, Download, Copy, UserSearch, MessageSquare,
   Save, FolderOpen, Trash2, Bold, Italic, Underline as UnderlineIcon, AlignLeft,
-  AlignCenter, AlignRight, Image as ImageIcon, Type, List
+  AlignCenter, AlignRight, Image as ImageIcon, Type, List, Share2, Mail, Link2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -381,13 +381,14 @@ export default function AIReports() {
     toast.success('Copiado!');
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = (isAIReport = true) => {
     if (!editor) return;
     const text = editor.getText();
     if (!text.trim()) return;
 
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 15;
 
     pdf.setFillColor(124, 58, 237);
@@ -406,19 +407,45 @@ export default function AIReports() {
     const lines = pdf.splitTextToSize(text, pageWidth - margin * 2);
     let yPos = 45;
     for (const line of lines) {
-      if (yPos > pdf.internal.pageSize.getHeight() - 20) { pdf.addPage(); yPos = margin; }
+      if (yPos > pageHeight - 30) { pdf.addPage(); yPos = margin; }
       pdf.text(line, margin, yPos);
       yPos += 6;
     }
+
     const total = pdf.getNumberOfPages();
     for (let i = 1; i <= total; i++) {
       pdf.setPage(i);
       pdf.setTextColor(150, 150, 150);
       pdf.setFontSize(8);
-      pdf.text(`Página ${i} de ${total}`, pageWidth - margin - 20, pdf.internal.pageSize.getHeight() - 10);
+      pdf.text(`Página ${i} de ${total}`, pageWidth - margin - 20, pageHeight - 10);
+
+      // Add app branding footer only on non-AI reports
+      if (!isAIReport) {
+        pdf.setFontSize(7);
+        pdf.setTextColor(180, 180, 180);
+        pdf.text('📘 Evolução Diária — evolucaodiaria.com', margin, pageHeight - 10);
+      }
     }
     pdf.save(`${reportTitle || 'relatorio'}-${new Date().toISOString().split('T')[0]}.pdf`);
     toast.success('PDF exportado!');
+  };
+
+  const handleShareEmail = () => {
+    const text = editor?.getText() || '';
+    const subject = encodeURIComponent(reportTitle || 'Relatório Clínico');
+    const body = encodeURIComponent(text);
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+  };
+
+  const handleShareLink = async () => {
+    const text = editor?.getText() || '';
+    if (!text.trim()) { toast.error('Nada para compartilhar'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Texto do relatório copiado! Cole em qualquer app para compartilhar.');
+    } catch {
+      toast.error('Erro ao copiar');
+    }
   };
 
   return (
@@ -435,14 +462,17 @@ export default function AIReports() {
           <Button variant="outline" size="sm" onClick={() => { loadSavedReports(); setShowSavedDialog(true); }} className="gap-2">
             <FolderOpen className="w-4 h-4" /> Salvos ({savedReports.length})
           </Button>
-          <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2">
-            <Copy className="w-4 h-4" /> Copiar
+          <Button variant="outline" size="sm" onClick={handleShareEmail} className="gap-2">
+            <Mail className="w-4 h-4" /> E-mail
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleShareLink} className="gap-2">
+            <Link2 className="w-4 h-4" /> Copiar
           </Button>
           <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} className="gap-2">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar
           </Button>
-          <Button size="sm" onClick={handleExportPDF} className="gap-2">
+          <Button size="sm" onClick={() => handleExportPDF(true)} className="gap-2">
             <Download className="w-4 h-4" /> PDF
           </Button>
         </div>
