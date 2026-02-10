@@ -7,7 +7,16 @@ import { TaskList } from '@/components/dashboard/TaskList';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useApp } from '@/contexts/AppContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Crown, CalendarClock } from 'lucide-react';
+
+const PLAN_NAMES: Record<string, string> = {
+  'prod_SQUlLf3TIu4bWi': 'Mensal',
+  'prod_SQUmiR8CezCpT7': 'Bimestral',
+  'prod_SQUnJkqLMqQLOe': 'Trimestral',
+};
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -19,15 +28,21 @@ function getGreeting(): string {
 export default function Dashboard() {
   const { selectedDate, appointments, tasks } = useApp();
   const { theme } = useTheme();
+  const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const todayAppointments = appointments.filter(a => a.date === dateStr);
   const pendingTasks = tasks.filter(t => !t.completed);
 
+  const planName = productId ? (PLAN_NAMES[productId] || 'Ativo') : null;
+  const endDateStr = subscriptionEnd
+    ? format(new Date(subscriptionEnd), "dd/MM/yyyy")
+    : null;
+
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto pb-24">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-0.5">
             {getGreeting()}! 👋
@@ -36,6 +51,32 @@ export default function Dashboard() {
             {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </p>
         </div>
+
+        {/* Subscription badge */}
+        {!subLoading && (
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-xl border text-sm",
+            subscribed
+              ? "bg-primary/5 border-primary/20 text-primary"
+              : "bg-muted border-border text-muted-foreground"
+          )}>
+            <Crown className="w-4 h-4" />
+            <span className="font-medium">
+              {subscribed
+                ? `Plano ${planName || 'Ativo'}`
+                : 'Teste Gratuito'}
+            </span>
+            {subscribed && endDateStr && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarClock className="w-3 h-3" />
+                até {endDateStr}
+              </span>
+            )}
+            {!subscribed && (
+              <Badge variant="secondary" className="text-xs">30 dias</Badge>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -79,7 +120,6 @@ export default function Dashboard() {
           <TaskList />
         </div>
       </div>
-
     </div>
   );
 }
