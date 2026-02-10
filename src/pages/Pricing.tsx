@@ -77,15 +77,28 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+      {/* Nav */}
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+            <div className="p-1.5 rounded-lg bg-primary/10">
+              <BookOpen className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-lg font-bold text-foreground">Evolução Diária</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>Já tenho conta</Button>
+            <Button size="sm" onClick={() => navigate('/auth')} className="gradient-primary">
+              Entrar
+            </Button>
+          </div>
+        </div>
+      </nav>
+
       <div className="max-w-5xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <BookOpen className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="text-3xl font-bold text-foreground">Evolução Diária</h1>
-          </div>
+          <h1 className="text-3xl font-bold text-foreground mb-4">Escolha seu plano</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Escolha o plano ideal para gerenciar suas clínicas, pacientes e evoluções.
             <span className="block mt-1 font-semibold text-primary">
