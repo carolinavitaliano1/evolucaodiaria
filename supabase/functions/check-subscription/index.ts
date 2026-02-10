@@ -31,6 +31,19 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
+    // Owner bypass - always grant full access
+    const OWNER_EMAILS = ["carolinavitaliano1@gmail.com"];
+    if (OWNER_EMAILS.includes(user.email.toLowerCase())) {
+      return new Response(JSON.stringify({
+        subscribed: true,
+        product_id: "owner",
+        subscription_end: null,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
