@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from './ThemeToggle';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -39,7 +40,7 @@ export function AppSidebar() {
   return (
     <aside className="hidden lg:flex flex-col w-60 min-h-screen bg-card border-r border-border">
       {/* Logo */}
-      <div className="p-5 border-b border-border">
+      <div className="p-5 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-primary-foreground" />
@@ -48,6 +49,7 @@ export function AppSidebar() {
             <h1 className="font-bold text-foreground text-base">Evolução Diária</h1>
           </div>
         </div>
+        <ThemeToggle />
       </div>
 
       {/* Navigation */}
