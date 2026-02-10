@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { ThemeToggle } from './ThemeToggle';
 
 const mainNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
@@ -101,7 +102,11 @@ export function MobileNav() {
             </button>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-auto rounded-t-2xl">
-            <div className="py-4 space-y-2">
+            <div className="flex items-center justify-between px-4 mb-2">
+              <span className="text-sm font-semibold text-muted-foreground">Mais opções</span>
+              <ThemeToggle />
+            </div>
+            <div className="py-2 space-y-2">
               {moreNavItems.map(({ to, icon: Icon, label }) => {
                 const isActive = location.pathname === to || 
                   (to !== '/' && location.pathname.startsWith(to));

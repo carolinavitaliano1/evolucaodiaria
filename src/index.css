@@ -111,6 +111,62 @@
     --sidebar-border: 240 10% 14%;
     --sidebar-ring: 252 56% 62%;
   }
+
+  /* Tema Lilás */
+  [data-theme="lilas"] {
+    --background: 270 30% 95%;
+    --foreground: 270 15% 15%;
+
+    --card: 270 25% 92%;
+    --card-foreground: 270 15% 15%;
+
+    --popover: 270 25% 94%;
+    --popover-foreground: 270 15% 15%;
+
+    --primary: 270 60% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 270 30% 88%;
+    --secondary-foreground: 270 15% 25%;
+
+    --muted: 270 20% 90%;
+    --muted-foreground: 270 10% 45%;
+
+    --accent: 270 40% 86%;
+    --accent-foreground: 270 60% 40%;
+
+    --success: 152 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 270 20% 82%;
+    --input: 270 20% 85%;
+    --ring: 270 60% 55%;
+
+    --radius: 0.75rem;
+
+    --gradient-primary: linear-gradient(135deg, hsl(270 60% 55%) 0%, hsl(285 50% 50%) 100%);
+    --gradient-subtle: linear-gradient(135deg, hsl(270 30% 93%) 0%, hsl(285 20% 91%) 100%);
+
+    --shadow-sm: 0 1px 3px 0 hsl(270 30% 70% / 0.1);
+    --shadow-md: 0 2px 10px -2px hsl(270 30% 60% / 0.15);
+    --shadow-lg: 0 8px 30px -8px hsl(270 30% 50% / 0.2);
+    --shadow-glow: 0 0 28px -6px hsl(270 60% 55% / 0.3);
+
+    --sidebar-background: 270 30% 92%;
+    --sidebar-foreground: 270 15% 25%;
+    --sidebar-primary: 270 60% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 35% 86%;
+    --sidebar-accent-foreground: 270 60% 40%;
+    --sidebar-border: 270 20% 82%;
+    --sidebar-ring: 270 60% 55%;
+  }
 }
 
 @layer base {
