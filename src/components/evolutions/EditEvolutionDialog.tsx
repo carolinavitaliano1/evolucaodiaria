@@ -28,7 +28,7 @@ interface EditEvolutionDialogProps {
 export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave }: EditEvolutionDialogProps) {
   const [text, setText] = useState(evolution.text);
   const [date, setDate] = useState(evolution.date);
-  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta'>(evolution.attendanceStatus);
+  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada'>(evolution.attendanceStatus);
   const [mood, setMood] = useState<string>(evolution.mood || '');
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>(
     evolution.attachments?.map(att => ({
@@ -70,6 +70,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave }: E
                 <SelectContent>
                   <SelectItem value="presente">✅ Presente</SelectItem>
                   <SelectItem value="falta">❌ Falta</SelectItem>
+                  <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                 </SelectContent>
               </Select>
             </div>

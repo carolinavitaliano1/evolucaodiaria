@@ -67,7 +67,7 @@ export default function ClinicDetail() {
   const [batchStampMode, setBatchStampMode] = useState<'same' | 'individual'>('same');
   const [batchGlobalStampId, setBatchGlobalStampId] = useState<string>('none');
   const [batchIndividualStamps, setBatchIndividualStamps] = useState<Record<string, string>>({});
-  const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, 'presente' | 'falta'>>({});
+  const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, 'presente' | 'falta' | 'falta_remunerada'>>({});
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean | null }[]>([]);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
@@ -452,7 +452,9 @@ export default function ClinicDetail() {
                       hasEvolution 
                         ? evolution?.attendanceStatus === 'presente'
                           ? "bg-success/10 border-success/30"
-                          : "bg-destructive/10 border-destructive/30"
+                          : evolution?.attendanceStatus === 'falta_remunerada'
+                            ? "bg-warning/10 border-warning/30"
+                            : "bg-destructive/10 border-destructive/30"
                         : "bg-secondary/50 border-border"
                     )}
                   >
@@ -479,12 +481,19 @@ export default function ClinicDetail() {
                           "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
                           evolution?.attendanceStatus === 'presente'
                             ? "bg-success/20 text-success"
-                            : "bg-destructive/20 text-destructive"
+                            : evolution?.attendanceStatus === 'falta_remunerada'
+                              ? "bg-warning/20 text-warning"
+                              : "bg-destructive/20 text-destructive"
                         )}>
                           {evolution?.attendanceStatus === 'presente' ? (
                             <>
                               <Check className="w-4 h-4" />
                               Presente
+                            </>
+                          ) : evolution?.attendanceStatus === 'falta_remunerada' ? (
+                            <>
+                              <DollarSign className="w-4 h-4" />
+                              Falta Remunerada
                             </>
                           ) : (
                             <>
@@ -593,7 +602,7 @@ export default function ClinicDetail() {
                           )}
                         </label>
                         {isSelected && !hasEvolution && (
-                          <div className="flex items-center gap-2 pl-7">
+                          <div className="flex items-center gap-2 pl-7 flex-wrap">
                             <Button
                               type="button"
                               size="sm"
@@ -611,6 +620,15 @@ export default function ClinicDetail() {
                               onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'falta' }))}
                             >
                               <X className="w-3 h-3" /> Falta
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={status === 'falta_remunerada' ? 'default' : 'outline'}
+                              className={cn("h-7 text-xs gap-1", status === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground")}
+                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'falta_remunerada' }))}
+                            >
+                              <DollarSign className="w-3 h-3" /> Falta Remunerada
                             </Button>
                           </div>
                         )}

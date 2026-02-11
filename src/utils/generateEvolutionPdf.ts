@@ -3,10 +3,19 @@ import { Evolution, Patient, Clinic } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+interface StampData {
+  id: string;
+  name: string;
+  clinical_area: string;
+  stamp_image: string | null;
+  signature_image: string | null;
+}
+
 interface GenerateSinglePdfOptions {
   evolution: Evolution;
   patient: Patient;
   clinic?: Clinic;
+  stamps?: StampData[];
 }
 
 interface GenerateMultiplePdfOptions {
@@ -15,10 +24,11 @@ interface GenerateMultiplePdfOptions {
   clinic?: Clinic;
   startDate?: Date;
   endDate?: Date;
+  stamps?: StampData[];
 }
 
-export async function generateEvolutionPdf({ evolution, patient, clinic }: GenerateSinglePdfOptions): Promise<void> {
-  return generateMultipleEvolutionsPdf({ evolutions: [evolution], patient, clinic });
+export async function generateEvolutionPdf({ evolution, patient, clinic, stamps }: GenerateSinglePdfOptions): Promise<void> {
+  return generateMultipleEvolutionsPdf({ evolutions: [evolution], patient, clinic, stamps });
 }
 
 export async function generateMultipleEvolutionsPdf({ 
@@ -26,7 +36,8 @@ export async function generateMultipleEvolutionsPdf({
   patient, 
   clinic,
   startDate,
-  endDate 
+  endDate,
+  stamps 
 }: GenerateMultiplePdfOptions): Promise<void> {
   const pdf = new jsPDF({
     orientation: 'portrait',
@@ -118,7 +129,10 @@ export async function generateMultipleEvolutionsPdf({
   pdf.setFont('helvetica', 'normal');
   const presentes = evolutions.filter(e => e.attendanceStatus === 'presente').length;
   const faltas = evolutions.filter(e => e.attendanceStatus === 'falta').length;
-  pdf.text(`${presentes} presenças, ${faltas} faltas`, margin + 48, yPosition + 14);
+  const faltasRemuneradas = evolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+  const summaryParts = [`${presentes} presenças`, `${faltas} faltas`];
+  if (faltasRemuneradas > 0) summaryParts.push(`${faltasRemuneradas} faltas remuneradas`);
+  pdf.text(summaryParts.join(', '), margin + 48, yPosition + 14);
 
   yPosition += 28;
 
@@ -145,8 +159,8 @@ export async function generateMultipleEvolutionsPdf({
     );
 
     // Attendance status
-    const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE' : 'FALTA';
-    const statusColor = evo.attendanceStatus === 'presente' ? [34, 197, 94] : [239, 68, 68];
+    const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE' : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA' : 'FALTA';
+    const statusColor = evo.attendanceStatus === 'presente' ? [34, 197, 94] : evo.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68];
     pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
     pdf.text(statusText, pageWidth - margin - 5, yPosition + 7, { align: 'right' });
     pdf.setTextColor(0, 0, 0);
@@ -189,6 +203,46 @@ export async function generateMultipleEvolutionsPdf({
       }
     }
 
+    // Add stamp per evolution if stampId matches
+    if (evo.stampId && stamps) {
+      const stamp = stamps.find(s => s.id === evo.stampId);
+      if (stamp) {
+        // Render stamp image
+        if (stamp.stamp_image) {
+          try {
+            const stampImg = await loadImage(stamp.stamp_image);
+            const maxW = 45;
+            const maxH = 25;
+            let sw = maxW;
+            let sh = (stampImg.height / stampImg.width) * sw;
+            if (sh > maxH) { sh = maxH; sw = (stampImg.width / stampImg.height) * sh; }
+            if (yPosition + sh + 10 > pageHeight - 40) { pdf.addPage(); await addHeader(); }
+            pdf.addImage(stamp.stamp_image, 'PNG', pageWidth - margin - sw, yPosition, sw, sh);
+            yPosition += sh + 3;
+          } catch (e) { console.error('Error loading stamp image:', e); }
+        }
+        // Render signature image from stamp
+        if (stamp.signature_image) {
+          try {
+            const sigImg = await loadImage(stamp.signature_image);
+            const maxW = 40;
+            const maxH = 18;
+            let sw = maxW;
+            let sh = (sigImg.height / sigImg.width) * sw;
+            if (sh > maxH) { sh = maxH; sw = (sigImg.width / sigImg.height) * sh; }
+            if (yPosition + sh + 10 > pageHeight - 40) { pdf.addPage(); await addHeader(); }
+            pdf.addImage(stamp.signature_image, 'PNG', pageWidth - margin - sw, yPosition, sw, sh);
+            yPosition += sh + 3;
+          } catch (e) { console.error('Error loading stamp signature:', e); }
+        }
+        // Stamp text label
+        pdf.setFontSize(7);
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`${stamp.name} — ${stamp.clinical_area}`, pageWidth - margin - 5, yPosition, { align: 'right' });
+        pdf.setTextColor(0, 0, 0);
+        yPosition += 5;
+      }
+    }
     // Separator between evolutions
     if (i < evolutions.length - 1) {
       yPosition += 3;
