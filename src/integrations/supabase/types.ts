@@ -534,6 +534,7 @@ export type Database = {
       }
       saved_reports: {
         Row: {
+          clinic_id: string | null
           content: string
           created_at: string
           id: string
@@ -544,6 +545,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          clinic_id?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -554,6 +556,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          clinic_id?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -564,6 +567,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "saved_reports_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "saved_reports_patient_id_fkey"
             columns: ["patient_id"]

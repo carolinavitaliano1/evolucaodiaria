@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2 } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
@@ -166,6 +166,7 @@ export default function PatientDetail() {
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
+  const [isImprovingText, setIsImprovingText] = useState(false);
 
   // Load stamps
   useEffect(() => {
@@ -485,6 +486,33 @@ export default function PatientDetail() {
                 <Label>Evolução</Label>
                 <Textarea value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)}
                   placeholder="Digite a evolução do paciente..." className="min-h-32" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 gap-2"
+                  disabled={!evolutionText.trim() || isImprovingText}
+                  onClick={async () => {
+                    setIsImprovingText(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                        body: { text: evolutionText },
+                      });
+                      if (error) throw error;
+                      if (data?.improved) {
+                        setEvolutionText(data.improved);
+                        toast.success('Texto melhorado com IA!');
+                      }
+                    } catch (e) {
+                      toast.error('Erro ao melhorar texto');
+                    } finally {
+                      setIsImprovingText(false);
+                    }
+                  }}
+                >
+                  {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                  Melhorar com IA
+                </Button>
               </div>
               <div>
                 <Label className="flex items-center gap-2 mb-2"><Image className="w-4 h-4" /> Anexos (opcional)</Label>

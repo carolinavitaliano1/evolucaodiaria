@@ -271,6 +271,8 @@ export default function AIReports() {
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
   const [showSavedDialog, setShowSavedDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveDestination, setSaveDestination] = useState<'patient' | 'clinic'>('patient');
+  const [saveClinicId, setSaveClinicId] = useState('');
 
   const editor = useEditor({
     extensions: [
@@ -361,7 +363,8 @@ export default function AIReports() {
             title,
             content: htmlContent,
             mode: 'free',
-            patient_id: selectedPatient || null,
+            patient_id: saveDestination === 'patient' && selectedPatient ? selectedPatient : null,
+            clinic_id: saveDestination === 'clinic' && saveClinicId ? saveClinicId : null,
           })
           .select()
           .single();
@@ -753,6 +756,44 @@ export default function AIReports() {
             <Download className="w-4 h-4" /> PDF
           </Button>
         </div>
+      </div>
+
+      {/* Save destination */}
+      <div className="flex flex-wrap items-center gap-3 p-3 bg-secondary/50 rounded-xl border border-border">
+        <span className="text-sm font-medium text-muted-foreground">Salvar em:</span>
+        <div className="flex gap-2">
+          <Button
+            variant={saveDestination === 'patient' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSaveDestination('patient')}
+            className="gap-1 text-xs"
+          >
+            📋 Pasta do Paciente
+          </Button>
+          <Button
+            variant={saveDestination === 'clinic' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSaveDestination('clinic')}
+            className="gap-1 text-xs"
+          >
+            🏥 Pasta da Clínica
+          </Button>
+        </div>
+        {saveDestination === 'clinic' && (
+          <Select value={saveClinicId} onValueChange={setSaveClinicId}>
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <SelectValue placeholder="Selecione a clínica" />
+            </SelectTrigger>
+            <SelectContent>
+              {clinics.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {saveDestination === 'patient' && !selectedPatient && (
+          <span className="text-xs text-muted-foreground italic">Selecione um paciente acima para vincular</span>
+        )}
       </div>
 
       <Tabs defaultValue="guided" className="space-y-4">
