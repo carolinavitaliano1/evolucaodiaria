@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,10 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimeWithDurationPicker } from '@/components/ui/time-picker';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { EditClinicDialog } from '@/components/clinics/EditClinicDialog';
 import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -57,9 +63,27 @@ export default function ClinicDetail() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [batchEvolutionText, setBatchEvolutionText] = useState('');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
+  const [batchDate, setBatchDate] = useState<Date>(new Date());
+  const [batchStampMode, setBatchStampMode] = useState<'same' | 'individual'>('same');
+  const [batchGlobalStampId, setBatchGlobalStampId] = useState<string>('none');
+  const [batchIndividualStamps, setBatchIndividualStamps] = useState<Record<string, string>>({});
+  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean | null }[]>([]);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
+  const { user } = useAuth();
+
+  // Load stamps
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
+      if (data) {
+        setStamps(data);
+        const defaultStamp = data.find(s => s.is_default);
+        if (defaultStamp) setBatchGlobalStampId(defaultStamp.id);
+      }
+    });
+  }, [user]);
 
   const clinic = clinics.find(c => c.id === id);
   const clinicPatients = patients.filter(p => p.clinicId === id);
@@ -241,21 +265,27 @@ export default function ClinicDetail() {
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const dateStr = format(batchDate, 'yyyy-MM-dd');
     
     selectedPatients.forEach(patientId => {
+      const stampId = batchStampMode === 'same' 
+        ? (batchGlobalStampId !== 'none' ? batchGlobalStampId : undefined)
+        : (batchIndividualStamps[patientId] && batchIndividualStamps[patientId] !== 'none' ? batchIndividualStamps[patientId] : undefined);
+      
       addEvolution({
         patientId,
         clinicId: clinic.id,
-        date: today,
+        date: dateStr,
         text: batchEvolutionText,
         attendanceStatus: 'presente',
+        stampId,
       });
     });
 
     toast.success(`Evolução registrada para ${selectedPatients.length} paciente(s)!`);
     setSelectedPatients([]);
     setBatchEvolutionText('');
+    setBatchIndividualStamps({});
   };
 
   const togglePatientSelection = (patientId: string) => {
@@ -550,14 +580,99 @@ export default function ClinicDetail() {
                 </div>
               )}
 
-              <div className="pt-4 border-t border-border">
-                <Label className="mb-2 block">Texto da Evolução</Label>
-                <Textarea
-                  value={batchEvolutionText}
-                  onChange={(e) => setBatchEvolutionText(e.target.value)}
-                  placeholder="Digite a evolução que será aplicada a todos os pacientes selecionados..."
-                  className="min-h-[120px]"
-                />
+              <div className="pt-4 border-t border-border space-y-4">
+                {/* Date Picker */}
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <CalendarIcon className="w-4 h-4" /> Data da Evolução
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full sm:w-[280px] justify-start text-left font-normal", !batchDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(batchDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={batchDate}
+                        onSelect={(d) => d && setBatchDate(d)}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Stamp Selection */}
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <StampIcon className="w-4 h-4" /> Carimbo
+                  </Label>
+                  <div className="flex items-center gap-4 mb-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="stampMode" checked={batchStampMode === 'same'} onChange={() => setBatchStampMode('same')} className="accent-primary" />
+                      <span className="text-sm">Mesmo para todos</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="stampMode" checked={batchStampMode === 'individual'} onChange={() => setBatchStampMode('individual')} className="accent-primary" />
+                      <span className="text-sm">Individual por paciente</span>
+                    </label>
+                  </div>
+
+                  {batchStampMode === 'same' ? (
+                    <Select value={batchGlobalStampId} onValueChange={setBatchGlobalStampId}>
+                      <SelectTrigger className="w-full sm:w-[280px]">
+                        <SelectValue placeholder="Selecione um carimbo (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem carimbo</SelectItem>
+                        {stamps.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    selectedPatients.length > 0 ? (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {selectedPatients.map(pid => {
+                          const patient = clinicPatients.find(p => p.id === pid);
+                          if (!patient) return null;
+                          return (
+                            <div key={pid} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50">
+                              <span className="text-sm font-medium min-w-[120px] truncate">{patient.name}</span>
+                              <Select value={batchIndividualStamps[pid] || 'none'} onValueChange={(v) => setBatchIndividualStamps(prev => ({ ...prev, [pid]: v }))}>
+                                <SelectTrigger className="flex-1">
+                                  <SelectValue placeholder="Carimbo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Sem carimbo</SelectItem>
+                                  {stamps.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Selecione pacientes primeiro para atribuir carimbos individuais.</p>
+                    )
+                  )}
+                </div>
+
+                {/* Evolution Text */}
+                <div>
+                  <Label className="mb-2 block">Texto da Evolução</Label>
+                  <Textarea
+                    value={batchEvolutionText}
+                    onChange={(e) => setBatchEvolutionText(e.target.value)}
+                    placeholder="Digite a evolução que será aplicada a todos os pacientes selecionados..."
+                    className="min-h-[120px]"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-4">
