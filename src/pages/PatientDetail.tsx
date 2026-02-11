@@ -138,7 +138,7 @@ export default function PatientDetail() {
   const patientEvolutions = useMemo(() => {
     const evos = evolutions
       .filter(e => e.patientId === id)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => new Date(b.date + 'T12:00:00').getTime() - new Date(a.date + 'T12:00:00').getTime());
     // Join attachments from state to evolutions
     return evos.map(evo => ({
       ...evo,
@@ -229,7 +229,7 @@ export default function PatientDetail() {
     });
     if (filtered.length === 0) { toast.error('Nenhuma evolução no período.'); return; }
     generateMultipleEvolutionsPdf({
-      evolutions: filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+      evolutions: filtered.sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime()),
       patient, clinic, startDate, endDate, stamps,
     });
     setPeriodDialogOpen(false);
