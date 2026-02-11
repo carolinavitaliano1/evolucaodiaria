@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore } from 'lucide-react';
+import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { Clinic } from '@/types';
 import { ServiceDialog } from '@/components/services/ServiceDialog';
+import { EditClinicDialog } from '@/components/clinics/EditClinicDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -59,6 +60,8 @@ export default function Clinics() {
   const [loadingPrivate, setLoadingPrivate] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clinicToDelete, setClinicToDelete] = useState<Clinic | null>(null);
+  const [editClinicOpen, setEditClinicOpen] = useState(false);
+  const [clinicToEdit, setClinicToEdit] = useState<Clinic | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -648,6 +651,14 @@ export default function Clinics() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            setClinicToEdit(clinic);
+                            setEditClinicOpen(true);
+                          }}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => handleArchiveClinic(clinic, e as any)}>
                             {clinic.isArchived ? (
                               <>
@@ -822,6 +833,19 @@ export default function Clinics() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Clinic Dialog */}
+      {clinicToEdit && (
+        <EditClinicDialog
+          clinic={clinicToEdit}
+          open={editClinicOpen}
+          onOpenChange={(open) => {
+            setEditClinicOpen(open);
+            if (!open) setClinicToEdit(null);
+          }}
+          onSave={updateClinic}
+        />
+      )}
     </div>
   );
 }

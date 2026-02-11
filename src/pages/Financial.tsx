@@ -37,7 +37,19 @@ export default function Financial() {
       return patient.paymentValue;
     }
 
+    const clinic = clinics.find(c => c.id === patient.clinicId);
+    const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
+
+    // Only count sessions where attendance was confirmed (confirmedAttendance = true)
+    // or where the clinic policy doesn't require confirmation
     const patientEvos = presentEvolutions.filter(e => e.patientId === patientId);
+    
+    if (absenceType === 'confirmed_only') {
+      // Only count revenue for confirmed sessions
+      const confirmedSessions = patientEvos.filter(e => e.confirmedAttendance);
+      return confirmedSessions.length * patient.paymentValue;
+    }
+
     return patientEvos.length * patient.paymentValue;
   };
 
@@ -58,9 +70,9 @@ export default function Financial() {
       return patientAbsences.length * patient.paymentValue;
     }
     
-    // confirmed_only: loss only when patient confirmed and didn't show up
+    // confirmed_only: loss only when patient confirmed attendance and then didn't show up
     if (absenceType === 'confirmed_only') {
-      const confirmedAbsences = patientAbsences.filter(e => !e.confirmedAttendance);
+      const confirmedAbsences = patientAbsences.filter(e => e.confirmedAttendance);
       return confirmedAbsences.length * patient.paymentValue;
     }
     
@@ -69,8 +81,9 @@ export default function Financial() {
 
   // Get private appointments revenue
   const monthlyPrivateAppointments = getMonthlyAppointments(currentMonth, currentYear);
+  // Only count completed private appointments as revenue (not scheduled ones)
   const privateRevenue = monthlyPrivateAppointments
-    .filter(a => a.status === 'concluído' || a.status === 'agendado')
+    .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
 
   const totalRevenue = patients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);

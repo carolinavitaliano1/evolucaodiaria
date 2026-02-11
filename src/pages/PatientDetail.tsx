@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2 } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar, Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import jsPDF from 'jspdf';
@@ -129,7 +130,7 @@ export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { patients, clinics, evolutions, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
-    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, getClinicPackages } = useApp();
+    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages } = useApp();
   const { user } = useAuth();
 
   const patient = patients.find(p => p.id === id);
@@ -153,6 +154,7 @@ export default function PatientDetail() {
   const [endDate, setEndDate] = useState<Date>();
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
+  const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean }[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
 
@@ -278,6 +280,14 @@ export default function PatientDetail() {
                 onClick={() => setEditPatientOpen(true)}
               >
                 <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={() => setDeletePatientOpen(true)}
+              >
+                <Trash2 className="w-4 h-4" />
               </Button>
             </h1>
             <div className="flex flex-wrap gap-3">
@@ -706,6 +716,32 @@ export default function PatientDetail() {
         onSave={updatePatient}
         clinicPackages={clinic ? getClinicPackages(clinic.id) : []}
       />
+
+      {/* Delete Patient Dialog */}
+      <AlertDialog open={deletePatientOpen} onOpenChange={setDeletePatientOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir paciente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o paciente
+              <span className="font-semibold"> {patient.name}</span> e todas as evoluções associadas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                deletePatient(patient.id);
+                toast.success('Paciente excluído!');
+                handleBack();
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
