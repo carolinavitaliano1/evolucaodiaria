@@ -83,8 +83,10 @@ export default function Patients() {
     const patientEvolutions = evolutions
       .filter(e => e.patientId === selectedPatientId)
       .filter(e => {
-        const evoDate = new Date(e.date);
-        return evoDate >= startDate && evoDate <= endDate;
+        const evoDate = new Date(e.date + 'T00:00:00');
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        return evoDate >= start && evoDate <= end;
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -102,8 +104,12 @@ export default function Patients() {
       });
       toast.success('PDF de evoluções gerado com sucesso!');
     } else if (exportType === 'attendance') {
+      if (patientEvolutions.length === 0) {
+        toast.error('Nenhuma evolução encontrada no período selecionado.');
+        return;
+      }
       const attendanceData = patientEvolutions.map(e => ({
-        date: format(new Date(e.date), 'dd/MM/yyyy', { locale: ptBR }),
+        date: format(new Date(e.date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
         status: e.attendanceStatus === 'presente' ? 'Presente' : 'Falta'
       }));
 
@@ -163,6 +169,10 @@ export default function Patients() {
       pdf.save(`frequencia_${patient.name.replace(/\s+/g, '_')}_${format(startDate, 'dd-MM-yyyy')}_${format(endDate, 'dd-MM-yyyy')}.pdf`);
       toast.success('PDF de frequência exportado com sucesso!');
     } else if (exportType === 'financial') {
+      if (patientEvolutions.length === 0) {
+        toast.error('Nenhuma evolução encontrada no período selecionado.');
+        return;
+      }
       const presences = patientEvolutions.filter(e => e.attendanceStatus === 'presente').length;
       const absences = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const valuePerSession = patient.paymentValue || clinic?.paymentAmount || 0;
