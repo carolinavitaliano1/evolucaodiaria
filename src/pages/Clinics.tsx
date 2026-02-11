@@ -200,9 +200,37 @@ export default function Clinics() {
     ? archivedClinics 
     : activeClinics.filter(c => filter === 'all' || c.type === filter);
 
+  const { evolutions } = useApp();
   const totalPatients = patients.length;
   const pendingAppointments = privateAppointments.filter(a => a.status === 'agendado');
   const completedAppointments = privateAppointments.filter(a => a.status === 'concluído');
+
+  // Calculate total revenue: clinics (evolutions) + private appointments
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const monthlyEvolutions = evolutions.filter(e => {
+    const date = new Date(e.date);
+    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+  });
+
+  const clinicRevenue = patients.reduce((sum, p) => {
+    if (p.paymentType === 'fixo' && p.paymentValue) {
+      return sum + p.paymentValue;
+    }
+    if (p.paymentType === 'sessao' && p.paymentValue) {
+      const patientEvolutions = monthlyEvolutions.filter(
+        e => e.patientId === p.id && e.attendanceStatus === 'presente'
+      );
+      return sum + (patientEvolutions.length * p.paymentValue);
+    }
+    return sum;
+  }, 0);
+
+  const privateRevenue = privateAppointments
+    .filter(a => a.status === 'concluído')
+    .reduce((sum, a) => sum + a.price, 0);
+
+  const totalRevenue = clinicRevenue + privateRevenue;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -267,7 +295,7 @@ export default function Clinics() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">
-                R$ {privateAppointments.filter(a => a.status === 'concluído').reduce((sum, a) => sum + a.price, 0).toLocaleString('pt-BR')}
+                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
               <p className="text-xs text-muted-foreground">Faturado</p>
             </div>
