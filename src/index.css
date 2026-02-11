@@ -197,6 +197,10 @@
     background: var(--gradient-primary);
   }
 
+  .gradient-secondary {
+    background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--muted)) 100%);
+  }
+
   .gradient-subtle {
     background: var(--gradient-subtle);
   }

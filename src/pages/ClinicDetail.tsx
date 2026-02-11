@@ -288,13 +288,22 @@ export default function ClinicDetail() {
           'rounded-3xl p-6 lg:p-8',
           isPropria ? 'gradient-primary' : 'gradient-secondary'
         )}>
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-white/20 text-primary-foreground">
+          <span className={cn(
+            "inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3",
+            isPropria ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"
+          )}>
             {isPropria ? 'Clínica Própria' : 'Terceirizada / Convênio'}
           </span>
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-primary-foreground mb-2">{clinic.name}</h1>
-              <div className="flex flex-wrap gap-4 text-primary-foreground/80">
+              <h1 className={cn(
+                "text-2xl lg:text-3xl font-bold mb-2",
+                isPropria ? "text-primary-foreground" : "text-foreground"
+              )}>{clinic.name}</h1>
+              <div className={cn(
+                "flex flex-wrap gap-4",
+                isPropria ? "text-primary-foreground/80" : "text-muted-foreground"
+              )}>
                 {clinic.address && (
                   <span className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
@@ -312,7 +321,11 @@ export default function ClinicDetail() {
             <Button
               variant="ghost"
               size="icon"
-              className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20"
+              className={cn(
+                isPropria 
+                  ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
               onClick={() => setEditClinicOpen(true)}
             >
               <Pencil className="w-5 h-5" />
