@@ -895,17 +895,18 @@ export default function AIReports() {
 
       {/* Editor */}
       <Card className="glass-card overflow-hidden">
-        <CardHeader className="border-b border-border pb-3 bg-muted/30">
-          <div className="flex items-center gap-3">
+        <CardHeader className="border-b border-border pb-3 bg-muted/30 space-y-2">
+          <div className="flex items-center gap-2">
             <Sparkles className={cn("w-5 h-5", isLilas ? "text-purple-400" : "text-primary")} />
-            <Input
-              value={reportTitle}
-              onChange={(e) => setReportTitle(e.target.value)}
-              placeholder="Título do relatório..."
-              className="text-lg font-semibold border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
-            />
-            {isGenerating && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+            <span className="text-sm font-medium text-muted-foreground">Título do Relatório</span>
+            {isGenerating && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground ml-auto" />}
           </div>
+          <Input
+            value={reportTitle}
+            onChange={(e) => setReportTitle(e.target.value)}
+            placeholder="Digite o título do relatório..."
+            className="text-lg font-semibold h-11 bg-background/50 border-border"
+          />
         </CardHeader>
         <EditorToolbar editor={editor} />
         <CardContent className="p-0">
