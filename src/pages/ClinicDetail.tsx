@@ -67,6 +67,7 @@ export default function ClinicDetail() {
   const [batchStampMode, setBatchStampMode] = useState<'same' | 'individual'>('same');
   const [batchGlobalStampId, setBatchGlobalStampId] = useState<string>('none');
   const [batchIndividualStamps, setBatchIndividualStamps] = useState<Record<string, string>>({});
+  const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, 'presente' | 'falta'>>({});
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean | null }[]>([]);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
@@ -256,6 +257,7 @@ export default function ClinicDetail() {
   };
 
   const handleBatchEvolution = () => {
+    if (!clinic) return;
     if (selectedPatients.length === 0) {
       toast.error('Selecione pelo menos um paciente');
       return;
@@ -272,12 +274,14 @@ export default function ClinicDetail() {
         ? (batchGlobalStampId !== 'none' ? batchGlobalStampId : undefined)
         : (batchIndividualStamps[patientId] && batchIndividualStamps[patientId] !== 'none' ? batchIndividualStamps[patientId] : undefined);
       
+      const status = batchAttendanceStatus[patientId] || 'presente';
+      
       addEvolution({
         patientId,
         clinicId: clinic.id,
         date: dateStr,
         text: batchEvolutionText,
-        attendanceStatus: 'presente',
+        attendanceStatus: status,
         stampId,
       });
     });
@@ -286,6 +290,7 @@ export default function ClinicDetail() {
     setSelectedPatients([]);
     setBatchEvolutionText('');
     setBatchIndividualStamps({});
+    setBatchAttendanceStatus({});
   };
 
   const togglePatientSelection = (patientId: string) => {
@@ -557,33 +562,59 @@ export default function ClinicDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {clinicPatients.map((patient) => {
                     const hasEvolution = !!getPatientBatchDateEvolution(patient.id);
+                    const isSelected = selectedPatients.includes(patient.id);
+                    const status = batchAttendanceStatus[patient.id] || 'presente';
                     return (
-                      <label
+                      <div
                         key={patient.id}
                         className={cn(
-                          "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
+                          "flex flex-col gap-2 p-3 rounded-xl border transition-colors",
                           hasEvolution 
-                            ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
-                            : selectedPatients.includes(patient.id)
+                            ? "bg-muted/50 border-muted opacity-60"
+                            : isSelected
                               ? "bg-primary/10 border-primary"
                               : "bg-secondary/50 border-border hover:border-primary/50"
                         )}
                       >
-                        <Checkbox
-                          checked={selectedPatients.includes(patient.id)}
-                          onCheckedChange={() => !hasEvolution && togglePatientSelection(patient.id)}
-                          disabled={hasEvolution}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">{patient.name}</p>
-                          <p className="text-xs text-muted-foreground">{patient.scheduleTime || '--:--'} • {patient.clinicalArea || 'Sem área'}</p>
-                        </div>
-                        {hasEvolution && (
-                          <span className="text-xs bg-success/20 text-success px-2 py-1 rounded-full">
-                            Feito
-                          </span>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => !hasEvolution && togglePatientSelection(patient.id)}
+                            disabled={hasEvolution}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground truncate">{patient.name}</p>
+                            <p className="text-xs text-muted-foreground">{patient.scheduleTime || '--:--'} • {patient.clinicalArea || 'Sem área'}</p>
+                          </div>
+                          {hasEvolution && (
+                            <span className="text-xs bg-success/20 text-success px-2 py-1 rounded-full">
+                              Feito
+                            </span>
+                          )}
+                        </label>
+                        {isSelected && !hasEvolution && (
+                          <div className="flex items-center gap-2 pl-7">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={status === 'presente' ? 'default' : 'outline'}
+                              className={cn("h-7 text-xs gap-1", status === 'presente' && "bg-success hover:bg-success/90 text-success-foreground")}
+                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'presente' }))}
+                            >
+                              <Check className="w-3 h-3" /> Presente
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={status === 'falta' ? 'default' : 'outline'}
+                              className={cn("h-7 text-xs gap-1", status === 'falta' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground")}
+                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'falta' }))}
+                            >
+                              <X className="w-3 h-3" /> Falta
+                            </Button>
+                          </div>
                         )}
-                      </label>
+                      </div>
                     );
                   })}
                 </div>
