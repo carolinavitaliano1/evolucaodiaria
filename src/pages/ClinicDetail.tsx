@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -21,6 +21,7 @@ import { EditClinicDialog } from '@/components/clinics/EditClinicDialog';
 import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import jsPDF from 'jspdf';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -50,6 +51,85 @@ function calculateAge(birthdate: string | null | undefined): number | null {
 function getTodayWeekday() {
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   return days[new Date().getDay()];
+}
+
+function ClinicReports({ clinicId }: { clinicId: string }) {
+  const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
+
+  useEffect(() => {
+    supabase.from('saved_reports').select('id, title, content, created_at')
+      .eq('clinic_id', clinicId).order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setReports(data); });
+  }, [clinicId]);
+
+  const handleDownloadPdf = (report: { title: string; content: string }) => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(report.title, margin, 20);
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, margin, 28);
+
+    const plainText = report.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    pdf.setFontSize(11);
+    const lines = pdf.splitTextToSize(plainText, pageWidth - margin * 2);
+    let yPos = 38;
+    for (const line of lines) {
+      if (yPos > pageHeight - 20) { pdf.addPage(); yPos = margin; }
+      pdf.text(line, margin, yPos);
+      yPos += 6;
+    }
+    pdf.save(`${report.title.replace(/\s+/g, '_')}.pdf`);
+    toast.success('PDF exportado!');
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('saved_reports').delete().eq('id', id);
+    if (error) { toast.error('Erro ao excluir'); return; }
+    setReports(prev => prev.filter(r => r.id !== id));
+    toast.success('Relatório excluído!');
+  };
+
+  return (
+    <div className="bg-card rounded-2xl p-6 border border-border">
+      <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+        <Sparkles className="w-5 h-5 text-primary" /> Relatórios IA desta Clínica
+      </h2>
+      {reports.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">📄</div>
+          <p className="text-muted-foreground">Nenhum relatório salvo nesta clínica</p>
+          <p className="text-sm text-muted-foreground mt-1">Gere relatórios na página de Relatórios IA e salve na pasta da clínica</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {reports.map(r => (
+            <div key={r.id} className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 border border-border">
+              <div>
+                <p className="font-medium text-foreground">{r.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(r.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDownloadPdf(r)}>
+                  <Download className="w-3 h-3" /> PDF
+                </Button>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(r.id)}>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ClinicDetail() {
@@ -411,7 +491,7 @@ export default function ClinicDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="today" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
           <TabsTrigger value="today" className="gap-2">
             <ClipboardList className="w-4 h-4" />
             Hoje
@@ -427,6 +507,10 @@ export default function ClinicDetail() {
           <TabsTrigger value="packages" className="gap-2">
             <Package className="w-4 h-4" />
             Pacotes
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="gap-2">
+            <Sparkles className="w-4 h-4" />
+            Relatórios
           </TabsTrigger>
         </TabsList>
 
@@ -1172,6 +1256,11 @@ export default function ClinicDetail() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* Reports Tab */}
+        <TabsContent value="reports">
+          <ClinicReports clinicId={clinic.id} />
         </TabsContent>
       </Tabs>
 
