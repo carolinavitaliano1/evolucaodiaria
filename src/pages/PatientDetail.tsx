@@ -129,15 +129,24 @@ function PatientSavedReports({ patientId }: { patientId: string }) {
 export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { patients, clinics, evolutions, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
+  const { patients, clinics, evolutions, attachments, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
     addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages } = useApp();
   const { user } = useAuth();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
-  const patientEvolutions = evolutions
-    .filter(e => e.patientId === id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const patientEvolutions = useMemo(() => {
+    const evos = evolutions
+      .filter(e => e.patientId === id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Join attachments from state to evolutions
+    return evos.map(evo => ({
+      ...evo,
+      attachments: evo.attachments && evo.attachments.length > 0
+        ? evo.attachments
+        : attachments.filter(a => a.parentId === evo.id && a.parentType === 'evolution'),
+    }));
+  }, [evolutions, attachments, id]);
 
   const patientTasksList = id ? getPatientTasks(id) : [];
   const patientAttachments = id ? getPatientAttachments(id) : [];
@@ -232,7 +241,7 @@ export default function PatientDetail() {
       patientId: patient.id, clinicId: patient.clinicId, date: evolutionDate,
       text: evolutionText, attendanceStatus,
       mood: (selectedMood || undefined) as Evolution['mood'],
-      stampId: selectedStampId || undefined,
+      stampId: selectedStampId && selectedStampId !== 'none' ? selectedStampId : undefined,
       attachments: attachedFiles.map(f => ({
         id: f.id, parentId: '', parentType: 'evolution' as const,
         name: f.name, data: f.filePath, type: f.fileType, createdAt: new Date().toISOString(),

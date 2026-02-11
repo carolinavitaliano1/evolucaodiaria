@@ -312,14 +312,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
         mood: evolution.mood || null,
       }).select().single();
       if (error) throw error;
+
+      // Save attachment records to DB
+      const savedAttachments: Attachment[] = [];
+      if (evolution.attachments && evolution.attachments.length > 0) {
+        for (const att of evolution.attachments) {
+          const { data: attData, error: attError } = await supabase.from('attachments').insert({
+            user_id: user.id, parent_id: data.id, parent_type: 'evolution',
+            name: att.name, file_path: att.data, file_type: att.type,
+          }).select().single();
+          if (!attError && attData) {
+            savedAttachments.push({
+              id: attData.id, parentId: attData.parent_id, parentType: attData.parent_type as Attachment['parentType'],
+              name: attData.name, data: attData.file_path, type: attData.file_type, createdAt: attData.created_at,
+            });
+          }
+        }
+      }
+
       const newEvolution: Evolution = {
         id: data.id, patientId: data.patient_id, clinicId: data.clinic_id, date: data.date, text: data.text,
         attendanceStatus: data.attendance_status as 'presente' | 'falta',
         confirmedAttendance: (data as any).confirmed_attendance || false,
         mood: (data as any).mood || undefined,
         signature: data.signature || undefined, stampId: data.stamp_id || undefined, createdAt: data.created_at,
+        attachments: savedAttachments.length > 0 ? savedAttachments : undefined,
       };
-      setState(prev => ({ ...prev, evolutions: [newEvolution, ...prev.evolutions] }));
+      setState(prev => ({
+        ...prev,
+        evolutions: [newEvolution, ...prev.evolutions],
+        attachments: [...savedAttachments, ...prev.attachments],
+      }));
       toast.success('Evolução adicionada!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar evolução'); }
   }, [user]);
