@@ -348,10 +348,13 @@ export default function AIReports() {
     setIsSaving(true);
 
     try {
+      const patientId = saveDestination === 'patient' && selectedPatient ? selectedPatient : null;
+      const clinicId = saveDestination === 'clinic' && saveClinicId ? saveClinicId : null;
+
       if (currentReportId) {
         const { error } = await supabase
           .from('saved_reports')
-          .update({ title, content: htmlContent })
+          .update({ title, content: htmlContent, patient_id: patientId, clinic_id: clinicId })
           .eq('id', currentReportId);
         if (error) throw error;
         toast.success('Relatório atualizado!');
@@ -363,8 +366,8 @@ export default function AIReports() {
             title,
             content: htmlContent,
             mode: 'free',
-            patient_id: saveDestination === 'patient' && selectedPatient ? selectedPatient : null,
-            clinic_id: saveDestination === 'clinic' && saveClinicId ? saveClinicId : null,
+            patient_id: patientId,
+            clinic_id: clinicId,
           })
           .select()
           .single();
