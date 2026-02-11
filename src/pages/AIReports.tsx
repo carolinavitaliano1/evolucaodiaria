@@ -748,19 +748,15 @@ export default function AIReports() {
           <Button variant="outline" size="sm" onClick={handleShareLink} className="gap-2">
             <Link2 className="w-4 h-4" /> Copiar
           </Button>
-          <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} className="gap-2">
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar
-          </Button>
           <Button size="sm" onClick={() => handleExportPDF()} className="gap-2">
             <Download className="w-4 h-4" /> PDF
           </Button>
         </div>
       </div>
 
-      {/* Save destination */}
-      <div className="flex flex-wrap items-center gap-3 p-3 bg-secondary/50 rounded-xl border border-border">
-        <span className="text-sm font-medium text-muted-foreground">Salvar em:</span>
+      {/* Save destination with integrated save button */}
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-secondary/50 rounded-xl border border-border">
+        <span className="text-sm font-medium text-foreground">💾 Salvar em:</span>
         <div className="flex gap-2">
           <Button
             variant={saveDestination === 'patient' ? 'default' : 'outline'}
@@ -805,6 +801,15 @@ export default function AIReports() {
             </SelectContent>
           </Select>
         )}
+        <Button 
+          size="sm" 
+          onClick={handleSave} 
+          disabled={isSaving || (saveDestination === 'patient' && !selectedPatient) || (saveDestination === 'clinic' && !saveClinicId)} 
+          className="gap-2 ml-auto"
+        >
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Salvar Relatório
+        </Button>
       </div>
 
       <Tabs defaultValue="guided" className="space-y-4">

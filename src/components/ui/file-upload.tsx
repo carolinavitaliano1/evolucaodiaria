@@ -244,11 +244,13 @@ export function FileUpload({
               className="relative group rounded-xl overflow-hidden bg-secondary border border-border"
             >
               {file.fileType.startsWith('image/') && file.url ? (
-                <img
-                  src={file.url}
-                  alt={file.name}
-                  className="w-full h-24 object-cover"
-                />
+                <a href={file.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                  <img
+                    src={file.url}
+                    alt={file.name}
+                    className="w-full h-24 object-cover cursor-pointer"
+                  />
+                </a>
               ) : file.fileType.startsWith('video/') && file.url ? (
                 <video
                   src={file.url}
@@ -267,7 +269,7 @@ export function FileUpload({
               {onRemove && (
                 <button
                   type="button"
-                  onClick={() => onRemove(file.id)}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onRemove(file.id); }}
                   className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="w-3 h-3" />
