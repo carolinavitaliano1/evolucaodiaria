@@ -317,15 +317,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const savedAttachments: Attachment[] = [];
       if (evolution.attachments && evolution.attachments.length > 0) {
         for (const att of evolution.attachments) {
-          const { data: attData, error: attError } = await supabase.from('attachments').insert({
-            user_id: user.id, parent_id: data.id, parent_type: 'evolution',
-            name: att.name, file_path: att.data, file_type: att.type,
-          }).select().single();
-          if (!attError && attData) {
-            savedAttachments.push({
-              id: attData.id, parentId: attData.parent_id, parentType: attData.parent_type as Attachment['parentType'],
-              name: attData.name, data: attData.file_path, type: attData.file_type, createdAt: attData.created_at,
-            });
+          try {
+            const { data: attData, error: attError } = await supabase.from('attachments').insert({
+              user_id: user.id, parent_id: data.id, parent_type: 'evolution',
+              name: att.name, file_path: att.data, file_type: att.type,
+            }).select().single();
+            if (attError) {
+              console.error('Error saving attachment record:', attError);
+              continue;
+            }
+            if (attData) {
+              savedAttachments.push({
+                id: attData.id, parentId: attData.parent_id, parentType: attData.parent_type as Attachment['parentType'],
+                name: attData.name, data: attData.file_path, type: attData.file_type, createdAt: attData.created_at,
+              });
+            }
+          } catch (attErr) {
+            console.error('Error inserting attachment:', attErr);
           }
         }
       }
