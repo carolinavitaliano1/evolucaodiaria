@@ -61,7 +61,7 @@ const MoodTooltip = ({ active, payload }: any) => {
   );
 };
 
-function PatientSavedReports({ patientId }: { patientId: string }) {
+function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLetterhead }: { patientId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string }) {
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
 
   useEffect(() => {
@@ -71,8 +71,13 @@ function PatientSavedReports({ patientId }: { patientId: string }) {
   }, [patientId]);
 
   const handleDownloadPdf = (report: { title: string; content: string }) => {
-    generateReportPdf({ title: report.title, content: report.content });
-    toast.success('PDF exportado!');
+    generateReportPdf({
+      title: report.title,
+      content: report.content,
+      clinicName,
+      clinicAddress,
+      clinicLetterhead,
+    });
   };
 
   if (reports.length === 0) return null;
@@ -729,7 +734,7 @@ export default function PatientDetail() {
             })()}
             
             {/* AI Reports linked to this patient */}
-            <PatientSavedReports patientId={patient.id} />
+            <PatientSavedReports patientId={patient.id} clinicName={clinic?.name} clinicAddress={clinic?.address || undefined} clinicLetterhead={clinic?.letterhead || undefined} />
           </div>
         </TabsContent>
 

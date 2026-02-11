@@ -5,13 +5,26 @@ interface ReportPdfOptions {
   title: string;
   content: string;
   fileName?: string;
+  clinicName?: string;
+  clinicAddress?: string;
+  clinicLetterhead?: string;
+}
+
+function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 }
 
 /**
  * Generates a professional institutional PDF from report content (HTML or plain text).
  * Handles markdown tables, headings, bullet lists, and numbered sections.
  */
-export function generateReportPdf({ title, content, fileName }: ReportPdfOptions) {
+export async function generateReportPdf({ title, content, fileName, clinicName, clinicAddress, clinicLetterhead }: ReportPdfOptions) {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -26,26 +39,66 @@ export function generateReportPdf({ title, content, fileName }: ReportPdfOptions
 
   let yPos = margin;
 
-  // ── Header ──
+  // ── Letterhead (logo) ──
+  if (clinicLetterhead) {
+    try {
+      const img = await loadImageFromUrl(clinicLetterhead);
+      const imgWidth = contentWidth;
+      const imgHeight = (img.height / img.width) * imgWidth;
+      const maxH = 35;
+      const finalH = Math.min(imgHeight, maxH);
+      pdf.addImage(clinicLetterhead, 'PNG', margin, yPos, imgWidth, finalH);
+      yPos += finalH + 5;
+    } catch { /* skip */ }
+  }
+
+  // ── Clinic name & address ──
+  if (clinicName) {
+    pdf.setTextColor(40, 40, 40);
+    pdf.setFontSize(13);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(clinicName, pageWidth / 2, yPos + 4, { align: 'center' });
+    yPos += 10;
+    if (clinicAddress) {
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(clinicAddress, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 6;
+    }
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, yPos + 2, pageWidth - margin, yPos + 2);
+    yPos += 8;
+  }
+
+  // ── Title (only what user typed) ──
+  yPos += 5;
   pdf.setTextColor(30, 30, 30);
-  pdf.setFontSize(16);
+  pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(title.toUpperCase(), pageWidth / 2, yPos, { align: 'center' });
+  const titleLines = pdf.splitTextToSize(title.toUpperCase(), contentWidth - 20);
+  for (const tl of titleLines) {
+    pdf.text(tl, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 7;
+  }
+  yPos += 4;
+
+  // Divider
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.4);
+  pdf.line(margin + 30, yPos, pageWidth - margin - 30, yPos);
   yPos += 8;
 
+  // Date
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(130, 130, 130);
+  pdf.setTextColor(120, 120, 120);
   pdf.text(
-    `Gerado em ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+    `Data de Emissão: ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
     pageWidth / 2, yPos, { align: 'center' }
   );
-  yPos += 6;
-
-  pdf.setDrawColor(200, 200, 200);
-  pdf.setLineWidth(0.3);
-  pdf.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 10;
+  yPos += 12;
 
   // ── Parse content ──
   const plainText = content.replace(/<[^>]+>/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -107,11 +160,9 @@ export function generateReportPdf({ title, content, fileName }: ReportPdfOptions
   for (const rawLine of rawLines) {
     const trimmed = rawLine.trim();
 
-    // Skip markdown dividers / table separator rows
     if (/^[-*=]{3,}$/.test(trimmed)) continue;
     if (/^\|[\s-:|]+\|$/.test(trimmed)) continue;
 
-    // Detect table rows
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       const cells = trimmed.split('|').filter(c => c.trim() !== '');
       if (cells.length >= 2) {
@@ -125,7 +176,6 @@ export function generateReportPdf({ title, content, fileName }: ReportPdfOptions
 
     if (trimmed === '') { yPos += 3; continue; }
 
-    // Detect headings
     const isSectionHeading = /^\d+(\.\d+)?\.?\s/.test(trimmed) && trimmed.length < 100;
     const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 80 && !/^\d/.test(trimmed);
     const isMdHeading = /^#{1,3}\s/.test(trimmed);
@@ -154,7 +204,6 @@ export function generateReportPdf({ title, content, fileName }: ReportPdfOptions
       continue;
     }
 
-    // Bullet / numbered list
     const isBullet = /^[-•]\s/.test(trimmed);
     const isNumberedItem = /^\d+\)\s/.test(trimmed);
 
@@ -176,7 +225,6 @@ export function generateReportPdf({ title, content, fileName }: ReportPdfOptions
       continue;
     }
 
-    // Regular paragraph
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(10);
     pdf.setTextColor(45, 45, 45);
@@ -213,10 +261,30 @@ export function generateReportPdf({ title, content, fileName }: ReportPdfOptions
   pdf.setTextColor(130, 130, 130);
   pdf.text('(Assinatura e Carimbo)', pageWidth / 2, yPos, { align: 'center' });
 
-  // ── Footer ──
+  // ── Footer — all pages: clinic info + page number ──
   const total = pdf.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     pdf.setPage(i);
+
+    if (clinicName) {
+      const footerInfoY = pageHeight - 22;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.2);
+      pdf.line(margin, footerInfoY - 3, pageWidth - margin, footerInfoY - 3);
+
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(140, 140, 140);
+
+      let fy = footerInfoY;
+      pdf.text(clinicName, pageWidth / 2, fy, { align: 'center' });
+      fy += 3;
+      if (clinicAddress) {
+        pdf.text(clinicAddress, pageWidth / 2, fy, { align: 'center' });
+        fy += 3;
+      }
+    }
+
     pdf.setTextColor(170, 170, 170);
     pdf.setFontSize(7.5);
     pdf.setFont('helvetica', 'normal');

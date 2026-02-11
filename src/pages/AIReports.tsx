@@ -150,7 +150,6 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      // Upload to Supabase storage
       const fileName = `report-images/${Date.now()}-${file.name}`;
       const { data, error } = await supabase.storage.from('attachments').upload(fileName, file);
       if (error) { toast.error('Erro ao enviar imagem'); return; }
@@ -158,6 +157,25 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
       editor.chain().focus().setImage({ src: urlData.publicUrl }).run();
     };
     input.click();
+  };
+
+  const resizeImage = (scale: number) => {
+    const { state } = editor;
+    const { selection } = state;
+    const node = state.doc.nodeAt(selection.from);
+    if (node?.type.name === 'image') {
+      const currentWidth = node.attrs.width;
+      let newWidth: string;
+      if (currentWidth) {
+        const num = parseInt(currentWidth);
+        newWidth = `${Math.max(50, Math.min(1200, num * scale))}px`;
+      } else {
+        newWidth = scale > 1 ? '600px' : '300px';
+      }
+      editor.chain().focus().updateAttributes('image', { width: newWidth }).run();
+    } else {
+      toast.info('Selecione uma imagem primeiro');
+    }
   };
 
   return (
@@ -195,62 +213,36 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 
       <div className="w-px h-8 bg-border mx-1" />
 
-      <Button
-        variant={editor.isActive('bold') ? 'default' : 'ghost'}
-        size="icon" className="h-8 w-8"
-        onClick={() => editor.chain().focus().toggleBold().run()}
-      ><Bold className="w-3.5 h-3.5" /></Button>
-
-      <Button
-        variant={editor.isActive('italic') ? 'default' : 'ghost'}
-        size="icon" className="h-8 w-8"
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-      ><Italic className="w-3.5 h-3.5" /></Button>
-
-      <Button
-        variant={editor.isActive('underline') ? 'default' : 'ghost'}
-        size="icon" className="h-8 w-8"
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-      ><UnderlineIcon className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive('bold') ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().toggleBold().run()}><Bold className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive('italic') ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().toggleItalic().run()}><Italic className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive('underline') ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon className="w-3.5 h-3.5" /></Button>
 
       <div className="w-px h-8 bg-border mx-1" />
 
-      <Button
-        variant={editor.isActive({ textAlign: 'left' }) ? 'default' : 'ghost'}
-        size="icon" className="h-8 w-8"
-        onClick={() => editor.chain().focus().setTextAlign('left').run()}
-      ><AlignLeft className="w-3.5 h-3.5" /></Button>
-
-      <Button
-        variant={editor.isActive({ textAlign: 'center' }) ? 'default' : 'ghost'}
-        size="icon" className="h-8 w-8"
-        onClick={() => editor.chain().focus().setTextAlign('center').run()}
-      ><AlignCenter className="w-3.5 h-3.5" /></Button>
-
-      <Button
-        variant={editor.isActive({ textAlign: 'right' }) ? 'default' : 'ghost'}
-        size="icon" className="h-8 w-8"
-        onClick={() => editor.chain().focus().setTextAlign('right').run()}
-      ><AlignRight className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive({ textAlign: 'left' }) ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().setTextAlign('left').run()}><AlignLeft className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive({ textAlign: 'center' }) ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().setTextAlign('center').run()}><AlignCenter className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive({ textAlign: 'right' }) ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().setTextAlign('right').run()}><AlignRight className="w-3.5 h-3.5" /></Button>
 
       <div className="w-px h-8 bg-border mx-1" />
 
-      <Button
-        variant={editor.isActive('bulletList') ? 'default' : 'ghost'}
-        size="icon" className="h-8 w-8"
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-      ><List className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive('bulletList') ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().toggleBulletList().run()}><List className="w-3.5 h-3.5" /></Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={addImage}><ImageIcon className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive('heading', { level: 1 }) ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}><Type className="w-3.5 h-3.5" /></Button>
 
-      <Button
-        variant="ghost" size="icon" className="h-8 w-8"
-        onClick={addImage}
-      ><ImageIcon className="w-3.5 h-3.5" /></Button>
+      <div className="w-px h-8 bg-border mx-1" />
 
-      <Button
-        variant={editor.isActive('heading', { level: 1 }) ? 'default' : 'ghost'}
-        size="icon" className="h-8 w-8"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-      ><Type className="w-3.5 h-3.5" /></Button>
+      <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => resizeImage(0.75)}
+        title="Diminuir imagem">🔍➖</Button>
+      <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => resizeImage(1.33)}
+        title="Aumentar imagem">🔍➕</Button>
     </div>
   );
 }
@@ -277,7 +269,7 @@ export default function AIReports() {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      ImageExt.configure({ allowBase64: false, HTMLAttributes: { class: 'max-w-full rounded-lg cursor-pointer' } }),
+      ImageExt.configure({ allowBase64: false, inline: false, HTMLAttributes: { class: 'max-w-full rounded-lg cursor-pointer transition-all' } }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       UnderlineExt,
       TextStyle,
@@ -472,14 +464,18 @@ export default function AIReports() {
     }
 
     // ==========================================
-    // COVER / HEADER — centered, institutional
+    // HEADER — only user title + date
     // ==========================================
     yPos += 5;
     pdf.setTextColor(30, 30, 30);
-    pdf.setFontSize(16);
+    pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('RELATÓRIO CLÍNICO EVOLUTIVO', pageWidth / 2, yPos, { align: 'center' });
-    yPos += 10;
+    const titleLines = pdf.splitTextToSize(title.toUpperCase(), contentWidth - 20);
+    for (const tl of titleLines) {
+      pdf.text(tl, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 7;
+    }
+    yPos += 4;
 
     // Subtle divider
     pdf.setDrawColor(180, 180, 180);
@@ -487,24 +483,12 @@ export default function AIReports() {
     pdf.line(margin + 30, yPos, pageWidth - margin - 30, yPos);
     yPos += 8;
 
-    // Report title & date
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(50, 50, 50);
-    pdf.text(title, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 7;
-
+    // Date
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(120, 120, 120);
     pdf.text(`Data de Emissão: ${dateStr}`, pageWidth / 2, yPos, { align: 'center' });
     yPos += 12;
-
-    // Light divider
-    pdf.setDrawColor(210, 210, 210);
-    pdf.setLineWidth(0.2);
-    pdf.line(margin, yPos, pageWidth - margin, yPos);
-    yPos += 10;
 
     // ==========================================
     // BODY — parse text intelligently
@@ -698,11 +682,34 @@ export default function AIReports() {
     pdf.text('(Assinatura e Carimbo)', pageWidth / 2, yPos, { align: 'center' });
 
     // ==========================================
-    // FOOTER — all pages, centered page number
+    // FOOTER — all pages: clinic info + page number
     // ==========================================
     const total = pdf.getNumberOfPages();
     for (let i = 1; i <= total; i++) {
       pdf.setPage(i);
+
+      // Clinic info footer (like reference PDF)
+      if (clinic) {
+        const footerInfoY = pageHeight - 22;
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.2);
+        pdf.line(margin, footerInfoY - 3, pageWidth - margin, footerInfoY - 3);
+
+        pdf.setFontSize(6.5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(140, 140, 140);
+
+        const footerLines: string[] = [];
+        if (clinic.name) footerLines.push(clinic.name);
+        if (clinic.address) footerLines.push(clinic.address);
+
+        let fy = footerInfoY;
+        for (const fl of footerLines) {
+          pdf.text(fl, pageWidth / 2, fy, { align: 'center' });
+          fy += 3;
+        }
+      }
+
       pdf.setTextColor(170, 170, 170);
       pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'normal');
@@ -902,7 +909,7 @@ export default function AIReports() {
         </CardHeader>
         <EditorToolbar editor={editor} />
         <CardContent className="p-0">
-          <EditorContent editor={editor} className="[&_.ProseMirror]:min-h-[400px] [&_.ProseMirror]:p-6 [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:my-4 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mb-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:ml-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:ml-6 [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_p]:leading-relaxed" />
+          <EditorContent editor={editor} className="[&_.ProseMirror]:min-h-[400px] [&_.ProseMirror]:p-6 [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:cursor-pointer [&_.ProseMirror_img]:transition-all [&_.ProseMirror_img.ProseMirror-selectednode]:ring-2 [&_.ProseMirror_img.ProseMirror-selectednode]:ring-primary [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mb-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:ml-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:ml-6 [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_p]:leading-relaxed" />
         </CardContent>
       </Card>
 

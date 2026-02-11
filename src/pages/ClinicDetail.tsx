@@ -53,7 +53,7 @@ function getTodayWeekday() {
   return days[new Date().getDay()];
 }
 
-function ClinicReports({ clinicId }: { clinicId: string }) {
+function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string }) {
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
 
   useEffect(() => {
@@ -63,7 +63,13 @@ function ClinicReports({ clinicId }: { clinicId: string }) {
   }, [clinicId]);
 
   const handleDownloadPdf = (report: { title: string; content: string }) => {
-    generateReportPdf({ title: report.title, content: report.content });
+    generateReportPdf({
+      title: report.title,
+      content: report.content,
+      clinicName,
+      clinicAddress,
+      clinicLetterhead,
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -1240,7 +1246,7 @@ export default function ClinicDetail() {
 
         {/* Reports Tab */}
         <TabsContent value="reports">
-          <ClinicReports clinicId={clinic.id} />
+          <ClinicReports clinicId={clinic.id} clinicName={clinic.name} clinicAddress={clinic.address || undefined} clinicLetterhead={clinic.letterhead || undefined} />
         </TabsContent>
       </Tabs>
 
