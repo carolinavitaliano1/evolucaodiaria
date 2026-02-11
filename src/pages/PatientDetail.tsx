@@ -616,16 +616,34 @@ export default function PatientDetail() {
                       </div>
                       <p className="text-foreground whitespace-pre-wrap">{evo.text}</p>
                       {evo.attachments && evo.attachments.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {evo.attachments.map((att) => (
-                            <a key={att.id}
-                              href={att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`}
-                              target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs hover:bg-primary/20">
-                              {att.type.startsWith('image/') ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                              {att.name}
-                            </a>
-                          ))}
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                            <Paperclip className="w-3 h-3" /> {evo.attachments.length} anexo(s)
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {evo.attachments.map((att) => {
+                              const fileUrl = att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`;
+                              const isImage = att.type.startsWith('image/');
+                              return (
+                                <div key={att.id} className="flex flex-col gap-1">
+                                  {isImage && (
+                                    <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                                      <img src={fileUrl} alt={att.name} className="w-20 h-20 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                                    </a>
+                                  )}
+                                  <a
+                                    href={fileUrl}
+                                    target="_blank" rel="noopener noreferrer"
+                                    download={att.name}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs hover:bg-primary/20">
+                                    {isImage ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                                    <span className="max-w-[120px] truncate">{att.name}</span>
+                                    <Download className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                       {evo.signature && (
@@ -667,6 +685,43 @@ export default function PatientDetail() {
               existingFiles={patientDocsAsUploadedFiles}
               onUpload={handleDocUpload} onRemove={handleDocRemove}
               maxFiles={20} label="Anexe laudos, receitas, documentos e outros arquivos do paciente" />
+            
+            {/* Evolution attachments */}
+            {(() => {
+              const evoAttachments = patientEvolutions.flatMap(evo => 
+                (evo.attachments || []).map(att => ({ ...att, evoDate: evo.date }))
+              );
+              if (evoAttachments.length === 0) return null;
+              return (
+                <div className="pt-4 border-t border-border">
+                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
+                    <FileText className="w-4 h-4 text-primary" /> Anexos das Evoluções ({evoAttachments.length})
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {evoAttachments.map(att => {
+                      const fileUrl = att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`;
+                      return (
+                        <a key={att.id} href={fileUrl} target="_blank" rel="noopener noreferrer" download={att.name}
+                          className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border hover:border-primary/50 transition-colors">
+                          {att.type.startsWith('image/') ? (
+                            <img src={fileUrl} alt={att.name} className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-5 h-5 text-primary" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{att.name}</p>
+                            <p className="text-xs text-muted-foreground">Evolução de {format(new Date(att.evoDate + 'T00:00:00'), "dd/MM/yyyy")}</p>
+                          </div>
+                          <Download className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
             
             {/* AI Reports linked to this patient */}
             <PatientSavedReports patientId={patient.id} />
