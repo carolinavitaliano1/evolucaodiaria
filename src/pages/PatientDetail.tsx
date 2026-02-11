@@ -74,28 +74,109 @@ function PatientSavedReports({ patientId }: { patientId: string }) {
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 15;
+    const margin = 22;
+    const contentWidth = pageWidth - margin * 2;
+    const footerY = pageHeight - 12;
 
-    pdf.setFillColor(124, 58, 237);
-    pdf.rect(0, 0, pageWidth, 35, 'F');
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(18);
+    const checkPage = (y: number, needed = 20) => {
+      if (y > pageHeight - needed) { pdf.addPage(); return 22; }
+      return y;
+    };
+
+    let yPos = margin;
+
+    // Header
+    pdf.setTextColor(30, 30, 30);
+    pdf.setFontSize(16);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(report.title, margin, 16);
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, margin, 28);
+    pdf.text(report.title.toUpperCase(), pageWidth / 2, yPos, { align: 'center' });
+    yPos += 8;
 
-    const plainText = report.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    pdf.setTextColor(50, 50, 50);
-    pdf.setFontSize(11);
-    const lines = pdf.splitTextToSize(plainText, pageWidth - margin * 2);
-    let yPos = 45;
-    for (const line of lines) {
-      if (yPos > pageHeight - 20) { pdf.addPage(); yPos = margin; }
-      pdf.text(line, margin, yPos);
-      yPos += 6;
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(130, 130, 130);
+    pdf.text(`Gerado em ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 6;
+
+    // Divider
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 10;
+
+    // Content - parse HTML content properly
+    const plainText = report.content.replace(/<[^>]+>/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    const paragraphs = plainText.split('\n');
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.setTextColor(45, 45, 45);
+
+    for (const para of paragraphs) {
+      const trimmed = para.trim();
+      if (!trimmed) { yPos += 3; continue; }
+
+      // Detect headings (lines in ALL CAPS or short bold lines)
+      const isHeading = /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9\s.:\-–—]+$/.test(trimmed) && trimmed.length < 80;
+
+      if (isHeading) {
+        yPos += 3;
+        yPos = checkPage(yPos, 12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(11);
+        pdf.setTextColor(25, 25, 25);
+        const headingLines = pdf.splitTextToSize(trimmed, contentWidth);
+        for (const hl of headingLines) {
+          pdf.text(hl, margin, yPos);
+          yPos += 6;
+        }
+        yPos += 2;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(45, 45, 45);
+        continue;
+      }
+
+      const wrapped = pdf.splitTextToSize(trimmed, contentWidth);
+      for (const wl of wrapped) {
+        yPos = checkPage(yPos);
+        pdf.text(wl, margin, yPos);
+        yPos += 5;
+      }
+      yPos += 2;
     }
+
+    // Signature section
+    yPos += 10;
+    yPos = checkPage(yPos, 40);
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 15;
+    const sigLineW = 65;
+    const sigX = pageWidth / 2 - sigLineW / 2;
+    pdf.setDrawColor(100, 100, 100);
+    pdf.line(sigX, yPos, sigX + sigLineW, yPos);
+    yPos += 5;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(60, 60, 60);
+    pdf.text('Responsável Técnico', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 4;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(130, 130, 130);
+    pdf.text('(Assinatura e Carimbo)', pageWidth / 2, yPos, { align: 'center' });
+
+    // Footer - page numbers
+    const total = pdf.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      pdf.setPage(i);
+      pdf.setTextColor(170, 170, 170);
+      pdf.setFontSize(7.5);
+      pdf.text(`Página ${i} de ${total}`, pageWidth / 2, footerY, { align: 'center' });
+    }
+
     pdf.save(`${report.title.replace(/\s+/g, '_')}.pdf`);
     toast.success('PDF exportado!');
   };
