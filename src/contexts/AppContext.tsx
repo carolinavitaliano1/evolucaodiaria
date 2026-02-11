@@ -121,7 +121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const evolutions: Evolution[] = (evolutionsRes.data || []).map(e => ({
         id: e.id, patientId: e.patient_id, clinicId: e.clinic_id, date: e.date, text: e.text,
-        attendanceStatus: e.attendance_status as 'presente' | 'falta',
+        attendanceStatus: e.attendance_status as 'presente' | 'falta' | 'falta_remunerada',
         confirmedAttendance: (e as any).confirmed_attendance || false,
         mood: (e as any).mood || undefined,
         signature: e.signature || undefined, stampId: e.stamp_id || undefined, createdAt: e.created_at,
@@ -332,7 +332,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const newEvolution: Evolution = {
         id: data.id, patientId: data.patient_id, clinicId: data.clinic_id, date: data.date, text: data.text,
-        attendanceStatus: data.attendance_status as 'presente' | 'falta',
+        attendanceStatus: data.attendance_status as 'presente' | 'falta' | 'falta_remunerada',
         confirmedAttendance: (data as any).confirmed_attendance || false,
         mood: (data as any).mood || undefined,
         signature: data.signature || undefined, stampId: data.stamp_id || undefined, createdAt: data.created_at,

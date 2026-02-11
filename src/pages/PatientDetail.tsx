@@ -154,7 +154,7 @@ export default function PatientDetail() {
 
   const [evolutionText, setEvolutionText] = useState('');
   const [evolutionDate, setEvolutionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta'>('presente');
+  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada'>('presente');
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -164,7 +164,7 @@ export default function PatientDetail() {
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
-  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean }[]>([]);
+  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
 
   // Load stamps
@@ -229,7 +229,7 @@ export default function PatientDetail() {
     if (filtered.length === 0) { toast.error('Nenhuma evolução no período.'); return; }
     generateMultipleEvolutionsPdf({
       evolutions: filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-      patient, clinic, startDate, endDate,
+      patient, clinic, startDate, endDate, stamps,
     });
     setPeriodDialogOpen(false);
   };
@@ -460,6 +460,7 @@ export default function PatientDetail() {
                     <SelectContent>
                       <SelectItem value="presente">✅ Presente</SelectItem>
                       <SelectItem value="falta">❌ Falta</SelectItem>
+                      <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -590,9 +591,9 @@ export default function PatientDetail() {
                             {format(new Date(evo.date), 'dd/MM/yyyy', { locale: ptBR })}
                           </span>
                           <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
-                            evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+                            evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' : evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'
                           )}>
-                            {evo.attendanceStatus === 'presente' ? '✅ Presente' : '❌ Falta'}
+                            {evo.attendanceStatus === 'presente' ? '✅ Presente' : evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Remunerada' : '❌ Falta'}
                           </span>
                           {moodInfo && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
@@ -605,7 +606,7 @@ export default function PatientDetail() {
                             <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
                           </Button>
                           <Button variant="outline" size="sm" className="gap-1 h-8 px-2 text-xs"
-                            onClick={() => generateEvolutionPdf({ evolution: evo, patient, clinic })}>
+                            onClick={() => generateEvolutionPdf({ evolution: evo, patient, clinic, stamps })}>
                             <Download className="w-3 h-3" /> PDF
                           </Button>
                           <Button variant="ghost" size="sm" className="text-destructive h-8 px-2 text-xs" onClick={() => deleteEvolution(evo.id)}>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import { Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 function calculateAge(birthdate: string | null | undefined): number | null {
   if (!birthdate) return null;
@@ -35,12 +37,21 @@ function calculateAge(birthdate: string | null | undefined): number | null {
 export default function Patients() {
   const navigate = useNavigate();
   const { patients, clinics, evolutions, setCurrentPatient } = useApp();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [exportType, setExportType] = useState<'evolutions' | 'attendance' | 'financial'>('evolutions');
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
+      if (data) setStamps(data);
+    });
+  }, [user]);
 
   const filteredPatients = useMemo(() => {
     if (!searchTerm.trim()) return patients;
@@ -101,6 +112,7 @@ export default function Patients() {
         clinic,
         startDate,
         endDate,
+        stamps,
       });
       toast.success('PDF de evoluções gerado com sucesso!');
     } else if (exportType === 'attendance') {
