@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,8 @@ import { Check, Loader2, BookOpen, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const PLANS = [
   {
@@ -55,6 +57,15 @@ const PLANS = [
 export default function Pricing() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { subscribed, loading: subLoading } = useSubscription();
+
+  // Redirect authenticated+subscribed users to dashboard
+  useEffect(() => {
+    if (!authLoading && !subLoading && user && subscribed) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [authLoading, subLoading, user, subscribed, navigate]);
 
   async function handleSubscribe(priceId: string) {
     setLoadingPlan(priceId);
@@ -164,8 +175,8 @@ export default function Pricing() {
         </div>
 
         <div className="text-center mt-8">
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            ← Voltar
+          <Button variant="ghost" onClick={() => navigate('/auth')}>
+            ← Voltar para Login
           </Button>
         </div>
       </div>
