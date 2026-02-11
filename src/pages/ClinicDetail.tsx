@@ -98,7 +98,7 @@ function ClinicReports({ clinicId }: { clinicId: string }) {
   return (
     <div className="bg-card rounded-2xl p-6 border border-border">
       <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-        <Sparkles className="w-5 h-5 text-primary" /> Relatórios IA desta Clínica
+        <Sparkles className="w-5 h-5 text-primary" /> Documentos desta Clínica
       </h2>
       {reports.length === 0 ? (
         <div className="text-center py-12">
@@ -510,7 +510,7 @@ export default function ClinicDetail() {
           </TabsTrigger>
           <TabsTrigger value="reports" className="gap-2">
             <Sparkles className="w-4 h-4" />
-            Relatórios
+            Documentos
           </TabsTrigger>
         </TabsList>
 

@@ -210,12 +210,12 @@ export default function PatientDetail() {
   // Mood chart data (chronological)
   const moodChartData = patientEvolutions
     .filter(e => e.mood)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime())
     .map(e => {
       const moodInfo = getMoodInfo(e.mood);
       return {
         date: e.date,
-        dateLabel: format(new Date(e.date), 'dd/MM', { locale: ptBR }),
+        dateLabel: format(new Date(e.date + 'T12:00:00'), 'dd/MM', { locale: ptBR }),
         score: moodInfo?.score || 3,
         emoji: moodInfo?.emoji || '😐',
       };
@@ -224,7 +224,7 @@ export default function PatientDetail() {
   const handleGeneratePeriodPdf = () => {
     if (!startDate || !endDate) return;
     const filtered = patientEvolutions.filter(evo => {
-      const d = new Date(evo.date);
+      const d = new Date(evo.date + 'T12:00:00');
       return d >= startDate && d <= endDate;
     });
     if (filtered.length === 0) { toast.error('Nenhuma evolução no período.'); return; }
@@ -590,7 +590,7 @@ export default function PatientDetail() {
                       </div>
                       {startDate && endDate && (
                         <p className="text-sm text-muted-foreground">
-                          {patientEvolutions.filter(evo => { const d = new Date(evo.date); return d >= startDate && d <= endDate; }).length} evolução(ões)
+                          {patientEvolutions.filter(evo => { const d = new Date(evo.date + 'T12:00:00'); return d >= startDate && d <= endDate; }).length} evolução(ões)
                         </p>
                       )}
                       <Button className="w-full gap-2" onClick={handleGeneratePeriodPdf} disabled={!startDate || !endDate}>
@@ -616,7 +616,7 @@ export default function PatientDetail() {
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-bold text-foreground text-sm sm:text-base">
-                            {format(new Date(evo.date), 'dd/MM/yyyy', { locale: ptBR })}
+                            {format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                           </span>
                           <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
                             evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' : evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'

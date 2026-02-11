@@ -378,7 +378,7 @@ export default function AIReports() {
     } finally {
       setIsSaving(false);
     }
-  }, [user, editor, reportTitle, currentReportId, selectedPatient, loadSavedReports]);
+  }, [user, editor, reportTitle, currentReportId, selectedPatient, saveDestination, saveClinicId, loadSavedReports]);
 
   const handleLoadReport = (report: SavedReport) => {
     editor?.commands.setContent(report.content);
@@ -791,8 +791,19 @@ export default function AIReports() {
             </SelectContent>
           </Select>
         )}
-        {saveDestination === 'patient' && !selectedPatient && (
-          <span className="text-xs text-muted-foreground italic">Selecione um paciente acima para vincular</span>
+        {saveDestination === 'patient' && (
+          <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <SelectValue placeholder="Selecione o paciente" />
+            </SelectTrigger>
+            <SelectContent>
+              {patients.map(p => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name} — {clinics.find(c => c.id === p.clinicId)?.name || ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 
