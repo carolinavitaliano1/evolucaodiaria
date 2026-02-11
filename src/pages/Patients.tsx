@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 
 function calculateAge(birthdate: string | null | undefined): number | null {
@@ -101,52 +102,126 @@ export default function Patients() {
       });
       toast.success('PDF de evoluções gerado com sucesso!');
     } else if (exportType === 'attendance') {
-      // Gerar lista de frequência
       const attendanceData = patientEvolutions.map(e => ({
         date: format(new Date(e.date), 'dd/MM/yyyy', { locale: ptBR }),
         status: e.attendanceStatus === 'presente' ? 'Presente' : 'Falta'
       }));
-      
-      // Criar CSV
-      const csvContent = [
-        'Data,Status',
-        ...attendanceData.map(row => `${row.date},${row.status}`)
-      ].join('\n');
-      
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `frequencia_${patient.name.replace(/\s+/g, '_')}_${format(startDate, 'dd-MM-yyyy')}_${format(endDate, 'dd-MM-yyyy')}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Lista de frequência exportada com sucesso!');
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 15;
+
+      pdf.setFillColor(124, 58, 237);
+      pdf.rect(0, 0, pageWidth, 30, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Lista de Frequência', margin, 14);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${patient.name} — ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`, margin, 24);
+
+      pdf.setTextColor(50, 50, 50);
+      let y = 40;
+
+      // Table header
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Data', margin, y);
+      pdf.text('Status', margin + 60, y);
+      y += 2;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      for (const row of attendanceData) {
+        if (y > pdf.internal.pageSize.getHeight() - 20) { pdf.addPage(); y = 15; }
+        pdf.text(row.date, margin, y);
+        pdf.text(row.status, margin + 60, y);
+        y += 6;
+      }
+
+      // Summary
+      y += 4;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 8;
+      const presences = attendanceData.filter(r => r.status === 'Presente').length;
+      const absences = attendanceData.filter(r => r.status === 'Falta').length;
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`Total: ${attendanceData.length} sessões | Presenças: ${presences} | Faltas: ${absences}`, margin, y);
+
+      // Footer
+      const footerY = pdf.internal.pageSize.getHeight() - 10;
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(150, 150, 150);
+      pdf.text('Plataforma Clínica - Evolução Diária', pageWidth / 2, footerY, { align: 'center' });
+
+      pdf.save(`frequencia_${patient.name.replace(/\s+/g, '_')}_${format(startDate, 'dd-MM-yyyy')}_${format(endDate, 'dd-MM-yyyy')}.pdf`);
+      toast.success('PDF de frequência exportado com sucesso!');
     } else if (exportType === 'financial') {
-      // Gerar relatório financeiro
       const presences = patientEvolutions.filter(e => e.attendanceStatus === 'presente').length;
       const absences = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const valuePerSession = patient.paymentValue || clinic?.paymentAmount || 0;
       const totalValue = presences * valuePerSession;
-      
-      const financialData = [
-        'Relatório Financeiro',
-        `Paciente: ${patient.name}`,
-        `Clínica: ${clinic?.name || 'N/A'}`,
-        `Período: ${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`,
-        '',
-        `Sessões Realizadas: ${presences}`,
-        `Faltas: ${absences}`,
-        `Valor por Sessão: R$ ${valuePerSession.toFixed(2)}`,
-        `Total: R$ ${totalValue.toFixed(2)}`,
-      ].join('\n');
-      
-      const blob = new Blob([financialData], { type: 'text/plain;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `financeiro_${patient.name.replace(/\s+/g, '_')}_${format(startDate, 'dd-MM-yyyy')}_${format(endDate, 'dd-MM-yyyy')}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 15;
+
+      pdf.setFillColor(124, 58, 237);
+      pdf.rect(0, 0, pageWidth, 30, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Relatório Financeiro', margin, 14);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${patient.name} — ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`, margin, 24);
+
+      pdf.setTextColor(50, 50, 50);
+      let y = 42;
+      pdf.setFontSize(11);
+
+      const clinicName = clinic?.name || 'N/A';
+      const lines = [
+        { label: 'Paciente:', value: patient.name },
+        { label: 'Clínica:', value: clinicName },
+        { label: 'Período:', value: `${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}` },
+        { label: '', value: '' },
+        { label: 'Sessões Realizadas:', value: String(presences) },
+        { label: 'Faltas:', value: String(absences) },
+        { label: 'Valor por Sessão:', value: `R$ ${valuePerSession.toFixed(2)}` },
+      ];
+
+      for (const line of lines) {
+        if (!line.label && !line.value) { y += 4; continue; }
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(line.label, margin, y);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(line.value, margin + 50, y);
+        y += 7;
+      }
+
+      y += 4;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 8;
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`Total: R$ ${totalValue.toFixed(2)}`, margin, y);
+
+      // Footer
+      const footerY = pdf.internal.pageSize.getHeight() - 10;
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(150, 150, 150);
+      pdf.text('Plataforma Clínica - Evolução Diária', pageWidth / 2, footerY, { align: 'center' });
+
+      pdf.save(`financeiro_${patient.name.replace(/\s+/g, '_')}_${format(startDate, 'dd-MM-yyyy')}_${format(endDate, 'dd-MM-yyyy')}.pdf`);
       toast.success('Relatório financeiro exportado com sucesso!');
     }
 
