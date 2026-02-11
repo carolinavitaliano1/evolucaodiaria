@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { Evolution, Attachment } from '@/types';
-import { Image, PenLine, Save } from 'lucide-react';
+import { Image, PenLine, Save, Wand2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const MOOD_OPTIONS = [
   { value: 'otima', emoji: '😄', label: 'Ótima' },
@@ -30,6 +32,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave }: E
   const [date, setDate] = useState(evolution.date);
   const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada'>(evolution.attendanceStatus);
   const [mood, setMood] = useState<string>(evolution.mood || '');
+  const [isImprovingText, setIsImprovingText] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>(
     evolution.attachments?.map(att => ({
       id: att.id, name: att.name, filePath: att.data, fileType: att.type,
@@ -103,6 +106,33 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave }: E
             <Label>Evolução</Label>
             <Textarea value={text} onChange={(e) => setText(e.target.value)}
               placeholder="Digite a evolução do paciente..." className="min-h-32" />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 gap-2"
+              disabled={!text.trim() || isImprovingText}
+              onClick={async () => {
+                setIsImprovingText(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                    body: { text },
+                  });
+                  if (error) throw error;
+                  if (data?.improved) {
+                    setText(data.improved);
+                    toast.success('Texto melhorado com IA!');
+                  }
+                } catch (e) {
+                  toast.error('Erro ao melhorar texto');
+                } finally {
+                  setIsImprovingText(false);
+                }
+              }}
+            >
+              {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              Melhorar com IA
+            </Button>
           </div>
 
           <div>

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -72,6 +72,7 @@ export default function ClinicDetail() {
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
+  const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const { user } = useAuth();
 
   // Load stamps
@@ -730,6 +731,33 @@ export default function ClinicDetail() {
                     placeholder="Digite a evolução que será aplicada a todos os pacientes selecionados..."
                     className="min-h-[120px]"
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 gap-2"
+                    disabled={!batchEvolutionText.trim() || isImprovingBatchText}
+                    onClick={async () => {
+                      setIsImprovingBatchText(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                          body: { text: batchEvolutionText },
+                        });
+                        if (error) throw error;
+                        if (data?.improved) {
+                          setBatchEvolutionText(data.improved);
+                          toast.success('Texto melhorado com IA!');
+                        }
+                      } catch (e) {
+                        toast.error('Erro ao melhorar texto');
+                      } finally {
+                        setIsImprovingBatchText(false);
+                      }
+                    }}
+                  >
+                    {isImprovingBatchText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                    Melhorar com IA
+                  </Button>
                 </div>
               </div>
 
