@@ -461,7 +461,9 @@ export default function PatientDetail() {
                     <SelectContent>
                       <SelectItem value="presente">✅ Presente</SelectItem>
                       <SelectItem value="falta">❌ Falta</SelectItem>
-                      <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
+                      {clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false) && (
+                        <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -798,7 +800,8 @@ export default function PatientDetail() {
       {editingEvolution && (
         <EditEvolutionDialog evolution={editingEvolution} open={!!editingEvolution}
           onOpenChange={(open) => !open && setEditingEvolution(null)}
-          onSave={(updates) => updateEvolution(editingEvolution.id, updates)} />
+          onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
+          showFaltaRemunerada={!!(clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false))} />
       )}
 
       {/* Edit Patient Dialog */}

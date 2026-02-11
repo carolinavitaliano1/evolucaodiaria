@@ -706,15 +706,17 @@ export default function ClinicDetail() {
                             >
                               <X className="w-3 h-3" /> Falta
                             </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={status === 'falta_remunerada' ? 'default' : 'outline'}
-                              className={cn("h-7 text-xs gap-1", status === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground")}
-                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'falta_remunerada' }))}
-                            >
-                              <DollarSign className="w-3 h-3" /> Falta Remunerada
-                            </Button>
+                            {clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false) && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={status === 'falta_remunerada' ? 'default' : 'outline'}
+                                className={cn("h-7 text-xs gap-1", status === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground")}
+                                onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'falta_remunerada' }))}
+                              >
+                                <DollarSign className="w-3 h-3" /> Falta Remunerada
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
