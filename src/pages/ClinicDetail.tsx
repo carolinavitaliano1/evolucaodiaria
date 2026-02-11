@@ -660,13 +660,13 @@ export default function ClinicDetail() {
                           <Label>Pacote</Label>
                           <Select
                             value={formData.packageId}
-                            onValueChange={(v) => setFormData({ ...formData, packageId: v })}
+                            onValueChange={(v) => setFormData({ ...formData, packageId: v === 'none' ? '' : v })}
                           >
                             <SelectTrigger className="mt-1">
                               <SelectValue placeholder="Selecione um pacote (opcional)" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Sem pacote (valor da clínica)</SelectItem>
+                              <SelectItem value="none">Sem pacote (valor da clínica)</SelectItem>
                               {clinicPackages.map(pkg => (
                                 <SelectItem key={pkg.id} value={pkg.id}>
                                   {pkg.name} - R$ {pkg.price.toFixed(2)}
