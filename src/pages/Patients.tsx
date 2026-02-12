@@ -362,7 +362,7 @@ export default function Patients() {
                       </span>
                     )}
                     <span className="bg-secondary px-2 py-0.5 rounded-full">
-                      {patientEvolutions.length} evolução(ões)
+                      {patientEvolutions.length} evoluções
                     </span>
                   </div>
                 </div>

@@ -588,7 +588,7 @@ export default function PatientDetail() {
                       </div>
                       {startDate && endDate && (
                         <p className="text-sm text-muted-foreground">
-                          {patientEvolutions.filter(evo => { const d = new Date(evo.date + 'T12:00:00'); return d >= startDate && d <= endDate; }).length} evolução(ões)
+                          {patientEvolutions.filter(evo => { const d = new Date(evo.date + 'T12:00:00'); return d >= startDate && d <= endDate; }).length} evoluções
                         </p>
                       )}
                       <Button className="w-full gap-2" onClick={handleGeneratePeriodPdf} disabled={!startDate || !endDate}>
