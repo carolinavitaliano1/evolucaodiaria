@@ -136,10 +136,22 @@ function markdownToHtml(md: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
-    .replace(/\n\n/g, '<br/><br/>')
-    .replace(/\n/g, '<br/>');
-  return html;
+    .replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
+  
+  // Wrap remaining text lines in justified paragraphs
+  const lines = html.split('\n');
+  const result: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) { result.push('<p></p>'); continue; }
+    if (/^<(h[1-3]|ul|ol|li|blockquote)/.test(trimmed)) { result.push(trimmed); continue; }
+    if (!trimmed.startsWith('<p')) {
+      result.push(`<p style="text-align: justify">${trimmed}</p>`);
+    } else {
+      result.push(trimmed);
+    }
+  }
+  return result.join('');
 }
 
 interface SavedReport {
