@@ -335,6 +335,8 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     const kvMatch = trimmed.match(/^([A-ZÀ-Ú][^:]{2,40}):\s*(.+)$/);
     if (kvMatch && !trimmed.startsWith('http')) {
       ensureSpace(LINE_HEIGHT * 2);
+      // Render as single justified paragraph: "Label: value text..."
+      const fullText = `${kvMatch[1]}: ${kvMatch[2]}`;
       pdf.setFont(FONT, 'bold');
       pdf.setFontSize(BODY_SIZE);
       pdf.setTextColor(40, 40, 40);
@@ -342,13 +344,20 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       const labelW = pdf.getTextWidth(label);
       pdf.text(label, MARGIN, y);
       pdf.setFont(FONT, 'normal');
-      const valueLines = pdf.splitTextToSize(kvMatch[2], CONTENT_W - labelW);
-      pdf.text(valueLines[0], MARGIN + labelW, y);
+      // First line: value starts after label
+      const firstLineWidth = CONTENT_W - labelW;
+      const firstLineWords = pdf.splitTextToSize(kvMatch[2], firstLineWidth);
+      pdf.text(firstLineWords[0], MARGIN + labelW, y);
       y += LINE_HEIGHT;
-      for (let vi = 1; vi < valueLines.length; vi++) {
-        ensureSpace(LINE_HEIGHT);
-        pdf.text(valueLines[vi], MARGIN + labelW, y);
-        y += LINE_HEIGHT;
+      // Remaining text wraps from left margin (not indented after label)
+      if (firstLineWords.length > 1) {
+        const remainingText = firstLineWords.slice(1).join(' ');
+        const wrappedRemaining = pdf.splitTextToSize(remainingText, CONTENT_W);
+        for (const wl of wrappedRemaining) {
+          ensureSpace(LINE_HEIGHT);
+          pdf.text(wl, MARGIN, y);
+          y += LINE_HEIGHT;
+        }
       }
       y += 1;
       continue;
