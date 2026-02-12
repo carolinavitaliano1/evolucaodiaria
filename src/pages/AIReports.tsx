@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Sparkles, FileText, Send, Loader2, Download, Copy, UserSearch, MessageSquare,
   Save, FolderOpen, Trash2, Bold, Italic, Underline as UnderlineIcon, AlignLeft,
-  AlignCenter, AlignRight, Image as ImageIcon, Type, List, Share2, Mail, Link2
+  AlignCenter, AlignRight, Image as ImageIcon, Type, List, Share2, Mail, Link2,
+  MoveLeft, MoveHorizontal, MoveRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -21,6 +22,25 @@ import jsPDF from 'jspdf';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import ImageExt from '@tiptap/extension-image';
+import { mergeAttributes } from '@tiptap/react';
+
+const CustomImage = ImageExt.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      dataAlign: {
+        default: 'center',
+        parseHTML: (el) => el.getAttribute('data-align') || 'center',
+        renderHTML: (attrs) => ({ 'data-align': attrs.dataAlign, style: `display:block;${attrs.dataAlign === 'center' ? 'margin:0 auto;' : attrs.dataAlign === 'right' ? 'margin-left:auto;margin-right:0;' : 'margin-right:auto;margin-left:0;'}${attrs.width ? `width:${attrs.width};` : ''}` }),
+      },
+      width: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('width') || el.style.width || null,
+        renderHTML: (attrs) => attrs.width ? { width: attrs.width } : {},
+      },
+    };
+  },
+});
 import TextAlign from '@tiptap/extension-text-align';
 import UnderlineExt from '@tiptap/extension-underline';
 import FontFamily from '@tiptap/extension-font-family';
@@ -243,6 +263,21 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         title="Diminuir imagem">🔍➖</Button>
       <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => resizeImage(1.33)}
         title="Aumentar imagem">🔍➕</Button>
+
+      <div className="w-px h-8 bg-border mx-1" />
+
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="Imagem à esquerda"
+        onClick={() => { const { state } = editor; const node = state.doc.nodeAt(state.selection.from); if (node?.type.name === 'image') editor.chain().focus().updateAttributes('image', { dataAlign: 'left' }).run(); else toast.info('Selecione uma imagem'); }}>
+        <MoveLeft className="w-3.5 h-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="Imagem centralizada"
+        onClick={() => { const { state } = editor; const node = state.doc.nodeAt(state.selection.from); if (node?.type.name === 'image') editor.chain().focus().updateAttributes('image', { dataAlign: 'center' }).run(); else toast.info('Selecione uma imagem'); }}>
+        <MoveHorizontal className="w-3.5 h-3.5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="Imagem à direita"
+        onClick={() => { const { state } = editor; const node = state.doc.nodeAt(state.selection.from); if (node?.type.name === 'image') editor.chain().focus().updateAttributes('image', { dataAlign: 'right' }).run(); else toast.info('Selecione uma imagem'); }}>
+        <MoveRight className="w-3.5 h-3.5" />
+      </Button>
     </div>
   );
 }
@@ -269,7 +304,7 @@ export default function AIReports() {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      ImageExt.configure({ allowBase64: false, inline: false, HTMLAttributes: { class: 'max-w-full rounded-lg cursor-pointer transition-all' } }),
+      CustomImage.configure({ allowBase64: false, inline: false, HTMLAttributes: { class: 'max-w-full rounded-lg cursor-pointer transition-all' } }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       UnderlineExt,
       TextStyle,
@@ -399,8 +434,8 @@ export default function AIReports() {
 
   const handleExportPDF = async () => {
     if (!editor) return;
-    const text = editor.getText();
-    if (!text.trim()) return;
+    const htmlCheck = editor.getText();
+    if (!htmlCheck.trim()) return;
 
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -491,111 +526,80 @@ export default function AIReports() {
     yPos += 12;
 
     // ==========================================
-    // BODY — parse text intelligently
+    // BODY — parse HTML to extract text + images
     // ==========================================
-    const rawLines = text.split('\n');
-    let inTable = false;
-    let tableRows: string[][] = [];
-    let tableColWidths: number[] = [];
+    const htmlContent = editor.getHTML();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+    const elements = doc.body.childNodes;
 
-    const flushTable = () => {
-      if (tableRows.length === 0) return;
-      
-      const cols = tableRows[0].length;
-      const colW = contentWidth / cols;
-      const rowH = 7;
-      
-      // Check if table fits
-      const tableHeight = tableRows.length * rowH + 2;
-      yPos = checkPage(yPos, tableHeight + 10);
-
-      for (let r = 0; r < tableRows.length; r++) {
-        const row = tableRows[r];
-        const isHeader = r === 0;
-        
-        if (isHeader) {
-          pdf.setFillColor(240, 240, 240);
-          pdf.rect(margin, yPos - 4.5, contentWidth, rowH, 'F');
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(9);
-          pdf.setTextColor(40, 40, 40);
-        } else {
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(9);
-          pdf.setTextColor(60, 60, 60);
-          // Alternate row shading
-          if (r % 2 === 0) {
-            pdf.setFillColor(250, 250, 250);
-            pdf.rect(margin, yPos - 4.5, contentWidth, rowH, 'F');
-          }
-        }
-
-        // Draw cell borders
-        pdf.setDrawColor(220, 220, 220);
-        pdf.setLineWidth(0.15);
-        pdf.line(margin, yPos + 2.5, pageWidth - margin, yPos + 2.5);
-
-        for (let c = 0; c < row.length; c++) {
-          const cellX = margin + c * colW + 3;
-          const cellText = (row[c] || '').trim();
-          const truncated = cellText.length > 45 ? cellText.slice(0, 42) + '...' : cellText;
-          pdf.text(truncated, cellX, yPos);
-        }
-        yPos += rowH;
+    const processTextBlock = (text: string) => {
+      if (!text.trim()) { yPos += 3; return; }
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.setTextColor(45, 45, 45);
+      const wrapped = pdf.splitTextToSize(text.trim(), contentWidth);
+      for (const wl of wrapped) {
         yPos = checkPage(yPos);
+        pdf.text(wl, margin, yPos);
+        yPos += 5;
       }
-      yPos += 5;
-      tableRows = [];
-      inTable = false;
+      yPos += 2;
     };
 
-    for (let li = 0; li < rawLines.length; li++) {
-      const rawLine = rawLines[li];
-      const trimmed = rawLine.trim();
+    const processElement = async (el: Node) => {
+      if (el.nodeType === Node.TEXT_NODE) {
+        const t = el.textContent?.trim();
+        if (t) processTextBlock(t);
+        return;
+      }
+      if (el.nodeType !== Node.ELEMENT_NODE) return;
+      const elem = el as HTMLElement;
+      const tag = elem.tagName.toLowerCase();
 
-      // Skip markdown-style dividers (---, ***, ===)
-      if (/^[-*=]{3,}$/.test(trimmed)) continue;
-      // Skip table separator rows (|---|---|)
-      if (/^\|[\s-:|]+\|$/.test(trimmed)) continue;
+      // Images
+      if (tag === 'img') {
+        const src = elem.getAttribute('src');
+        if (!src) return;
+        try {
+          const img = await loadImageFromUrl(src);
+          const widthAttr = elem.getAttribute('width') || elem.style.width;
+          let imgWidthPx = img.width;
+          if (widthAttr) {
+            const parsed = parseInt(widthAttr);
+            if (!isNaN(parsed)) imgWidthPx = parsed;
+          }
+          // Convert px to mm (roughly 3.78 px per mm)
+          let imgWidthMm = imgWidthPx / 3.78;
+          if (imgWidthMm > contentWidth) imgWidthMm = contentWidth;
+          const imgHeightMm = (img.height / img.width) * imgWidthMm;
+          const maxImgH = pageHeight - 60;
+          const finalH = Math.min(imgHeightMm, maxImgH);
+          const finalW = (finalH < imgHeightMm) ? (img.width / img.height) * finalH : imgWidthMm;
 
-      // Detect table rows
-      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-        const cells = trimmed.split('|').filter(c => c.trim() !== '');
-        if (cells.length >= 2) {
-          inTable = true;
-          tableRows.push(cells.map(c => c.trim()));
-          continue;
+          yPos = checkPage(yPos, finalH + 10);
+
+          const align = elem.getAttribute('data-align') || 'center';
+          let imgX = margin;
+          if (align === 'center') imgX = margin + (contentWidth - finalW) / 2;
+          else if (align === 'right') imgX = margin + contentWidth - finalW;
+
+          pdf.addImage(src, 'PNG', imgX, yPos, finalW, finalH);
+          yPos += finalH + 5;
+        } catch (e) {
+          console.error('Error loading image for PDF:', e);
         }
+        return;
       }
 
-      // If we were in a table, flush it
-      if (inTable) flushTable();
-
-      // Empty line → spacing
-      if (trimmed === '') { yPos += 3; continue; }
-
-      // Detect numbered section headings: "1.", "2.", "1.1", "3.1."
-      const isSectionHeading = /^\d+(\.\d+)?\.?\s/.test(trimmed) && trimmed.length < 100;
-      // Detect ALL CAPS headings
-      const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 80 && !/^\d/.test(trimmed);
-      // Detect markdown headings
-      const isMdHeading = /^#{1,3}\s/.test(trimmed);
-
-      if (isSectionHeading || isAllCaps || isMdHeading) {
+      // Headings
+      if (['h1', 'h2', 'h3'].includes(tag)) {
         yPos += 5;
         yPos = checkPage(yPos, 15);
-
-        const headingText = trimmed.replace(/^#{1,3}\s/, '');
-
-        // Draw a subtle left accent bar for section headings
-        if (isSectionHeading) {
-          pdf.setFillColor(80, 80, 80);
-          pdf.rect(margin - 1, yPos - 4, 1.5, 5, 'F');
-        }
-
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(isSectionHeading ? 11.5 : 11);
+        pdf.setFontSize(tag === 'h1' ? 14 : tag === 'h2' ? 12 : 11);
         pdf.setTextColor(25, 25, 25);
+        const headingText = elem.textContent || '';
         const headingLines = pdf.splitTextToSize(headingText, contentWidth - 5);
         for (const hl of headingLines) {
           yPos = checkPage(yPos, 10);
@@ -603,53 +607,59 @@ export default function AIReports() {
           yPos += 6;
         }
         yPos += 2;
-
-        // Reset to body style
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(10);
         pdf.setTextColor(45, 45, 45);
-        continue;
+        return;
       }
 
-      // Bullet / numbered list items
-      const isBullet = /^[-•]\s/.test(trimmed);
-      const isNumberedItem = /^\d+\)\s/.test(trimmed);
-
-      if (isBullet || isNumberedItem) {
-        const itemText = isBullet ? trimmed.slice(2) : trimmed;
-        const prefix = isBullet ? '•' : '';
-        const indent = isBullet ? 6 : 0;
-        const displayText = isBullet ? `${prefix}  ${itemText}` : itemText;
-        
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(10);
-        pdf.setTextColor(45, 45, 45);
-        const wrapped = pdf.splitTextToSize(displayText, contentWidth - indent);
-
-        for (let w = 0; w < wrapped.length; w++) {
-          yPos = checkPage(yPos);
-          pdf.text(wrapped[w], margin + indent, yPos);
-          yPos += 5;
+      // Lists
+      if (tag === 'ul' || tag === 'ol') {
+        let idx = 0;
+        for (const li of Array.from(elem.children)) {
+          idx++;
+          const itemText = li.textContent || '';
+          const prefix = tag === 'ul' ? '•  ' : `${idx})  `;
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(10);
+          pdf.setTextColor(45, 45, 45);
+          const wrapped = pdf.splitTextToSize(`${prefix}${itemText}`, contentWidth - 6);
+          for (const wl of wrapped) {
+            yPos = checkPage(yPos);
+            pdf.text(wl, margin + 6, yPos);
+            yPos += 5;
+          }
+          yPos += 1.5;
         }
-        yPos += 1.5;
-        continue;
+        yPos += 2;
+        return;
       }
 
-      // Regular paragraph text
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-      pdf.setTextColor(45, 45, 45);
-      const wrapped = pdf.splitTextToSize(trimmed, contentWidth);
-      for (const wl of wrapped) {
-        yPos = checkPage(yPos);
-        pdf.text(wl, margin, yPos);
-        yPos += 5;
+      // Paragraphs and other block elements — recurse children
+      if (tag === 'p' || tag === 'div' || tag === 'blockquote') {
+        // Check if it contains images
+        const imgs = elem.querySelectorAll('img');
+        if (imgs.length > 0) {
+          // Process children individually to handle mixed text+images
+          for (const child of Array.from(elem.childNodes)) {
+            await processElement(child);
+          }
+        } else {
+          const t = elem.textContent || '';
+          if (t.trim()) processTextBlock(t);
+        }
+        return;
       }
-      yPos += 2;
+
+      // Fallback: process children
+      for (const child of Array.from(elem.childNodes)) {
+        await processElement(child);
+      }
+    };
+
+    for (const el of Array.from(elements)) {
+      await processElement(el);
     }
-
-    // Flush any remaining table
-    if (inTable) flushTable();
 
     // ==========================================
     // SIGNATURE SECTION
