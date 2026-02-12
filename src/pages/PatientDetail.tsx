@@ -84,6 +84,13 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
     });
   };
 
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('saved_reports').delete().eq('id', id);
+    if (error) { toast.error('Erro ao excluir'); return; }
+    setReports(prev => prev.filter(r => r.id !== id));
+    toast.success('Relatório excluído!');
+  };
+
   if (reports.length === 0) return null;
 
   return (
@@ -100,9 +107,14 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
                 {new Date(r.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
               </p>
             </div>
-            <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDownloadPdf(r)}>
-              <Download className="w-3 h-3" /> PDF
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDownloadPdf(r)}>
+                <Download className="w-3 h-3" /> PDF
+              </Button>
+              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(r.id)}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
           </div>
         ))}
       </div>
