@@ -292,6 +292,7 @@ export default function AIReports() {
   const [selectedClinic, setSelectedClinic] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('month');
   const [freeCommand, setFreeCommand] = useState('');
+  const [guidedCommand, setGuidedCommand] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportTitle, setReportTitle] = useState('');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
@@ -339,7 +340,7 @@ export default function AIReports() {
     setCurrentReportId(null);
 
     await streamReport({
-      body: { mode: 'guided', patientId: selectedPatient, period: selectedPeriod },
+      body: { mode: 'guided', patientId: selectedPatient, period: selectedPeriod, command: guidedCommand || undefined },
       onDelta: (chunk) => {
         content += chunk;
         editor?.commands.setContent(markdownToHtml(content));
@@ -347,7 +348,7 @@ export default function AIReports() {
       onDone: () => setIsGenerating(false),
       onError: (msg) => { toast.error(msg); setIsGenerating(false); },
     });
-  }, [selectedPatient, selectedPeriod, editor, patients]);
+  }, [selectedPatient, selectedPeriod, editor, patients, guidedCommand]);
 
   const generateFree = useCallback(async () => {
     if (!freeCommand.trim()) { toast.error('Digite um comando'); return; }
@@ -836,7 +837,7 @@ export default function AIReports() {
           <Card className="glass-card">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><FileText className="w-5 h-5" /> Relatório por Paciente</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Select value={selectedClinic} onValueChange={setSelectedClinic}>
                   <SelectTrigger><SelectValue placeholder="Clínica (timbrado no PDF)" /></SelectTrigger>
                   <SelectContent>
@@ -865,11 +866,17 @@ export default function AIReports() {
                     <SelectItem value="all">Todo o período</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={generateGuided} disabled={isGenerating || !selectedPatient} className="gap-2">
-                  {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  Gerar
-                </Button>
               </div>
+              <Textarea
+                placeholder="Ex: Foque nos aspectos psicomotores, inclua recomendações para a escola..."
+                value={guidedCommand}
+                onChange={(e) => setGuidedCommand(e.target.value)}
+                rows={2}
+              />
+              <Button onClick={generateGuided} disabled={isGenerating || !selectedPatient} className="gap-2">
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Gerar
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

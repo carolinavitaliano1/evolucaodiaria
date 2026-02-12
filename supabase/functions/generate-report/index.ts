@@ -137,8 +137,9 @@ REGRAS DE FORMATAÇÃO OBRIGATÓRIAS:
 
 Data atual: ${new Date().toLocaleDateString("pt-BR")}.`;
 
+    const guidedExtra = mode === "guided" && command ? `\n\nINSTRUÇÃO ADICIONAL DO TERAPEUTA: ${command}` : "";
     const userPrompt = mode === "guided"
-      ? `Gere um relatório clínico evolutivo institucional detalhado e profissional com base nos seguintes dados. Siga rigorosamente as regras de formatação do sistema:\n${contextData}`
+      ? `Gere um relatório clínico evolutivo institucional detalhado e profissional com base nos seguintes dados. Siga rigorosamente as regras de formatação do sistema:\n${contextData}${guidedExtra}`
       : `${command}\n\nSiga rigorosamente as regras de formatação institucional do sistema. Use os seguintes dados como base:\n${contextData}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
