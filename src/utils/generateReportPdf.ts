@@ -372,10 +372,11 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     y += PARAGRAPH_GAP;
   }
 
-  // ── Signature Block (side by side, pushed near footer for stamp space) ──
-  const SIG_BLOCK_H = 15; // height of signature lines + labels
-  // Position signatures just above the footer area, leaving max space for stamps
-  const sigY = USABLE_BOTTOM - SIG_BLOCK_H;
+  // ── Signature Block (side by side, as close to footer as possible) ──
+  const SIG_BLOCK_H = 12; // signature line + labels height
+  // Place signatures just above footer reserve (PAGE_H - FOOTER_RESERVE)
+  // Push them as far down as possible: ~5mm above the footer divider
+  const sigY = PAGE_H - FOOTER_RESERVE - 3;
 
   // Thin separator after content
   const sepY = Math.min(y + 8, sigY - 5);
