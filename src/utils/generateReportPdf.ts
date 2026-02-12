@@ -97,10 +97,18 @@ function isSignatureLine(line: string): boolean {
   );
 }
 
-/** Check if line is a section heading */
+/** Check if line is a section heading vs numbered list item */
 function classifyLine(trimmed: string): 'section' | 'subsection' | 'allcaps' | 'mdheading' | null {
   if (/^\d+\.\d+/.test(trimmed) && trimmed.length < 120) return 'subsection';
-  if (/^\d+\.?\s/.test(trimmed) && trimmed.length < 120) return 'section';
+  // Only treat as section heading if it looks like a title (short, or has UPPERCASE words after the number)
+  if (/^\d+\.?\s/.test(trimmed) && trimmed.length < 120) {
+    const afterNum = trimmed.replace(/^\d+\.?\s*/, '');
+    // If the text after the number is mostly uppercase or very short (< 60 chars), it's a section heading
+    // Otherwise it's a numbered list item (long sentence)
+    const upperRatio = (afterNum.match(/[A-ZÀ-Ú]/g) || []).length / Math.max(afterNum.length, 1);
+    if (upperRatio > 0.5 || afterNum.length < 50) return 'section';
+    return null; // treat as numbered list item
+  }
   if (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 100 && !/^\d/.test(trimmed)) return 'allcaps';
   if (/^#{1,3}\s/.test(trimmed)) return 'mdheading';
   return null;
