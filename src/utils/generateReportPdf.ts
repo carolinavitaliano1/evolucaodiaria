@@ -31,16 +31,16 @@ const MARGIN = 25; // ~2.5 cm
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const FONT = 'helvetica';
 
-// Font sizes (matching user spec)
-const TITLE_SIZE = 16;
-const SECTION_SIZE = 14;
-const SUBSECTION_SIZE = 13;
-const BODY_SIZE = 12;
-const SMALL_SIZE = 9;
-const FOOTER_FONT_SIZE = 7;
+// Font sizes (max 11pt)
+const TITLE_SIZE = 11;
+const SECTION_SIZE = 11;
+const SUBSECTION_SIZE = 10.5;
+const BODY_SIZE = 10;
+const SMALL_SIZE = 8;
+const FOOTER_FONT_SIZE = 6.5;
 
 // Spacing
-const LINE_HEIGHT = 6; // ~1.5 spacing for 12pt
+const LINE_HEIGHT = 5; // ~1.5 spacing for 10pt
 const SECTION_GAP = 7; // 18px ≈ 7mm
 const PARAGRAPH_GAP = 3; // 8px ≈ 3mm
 
