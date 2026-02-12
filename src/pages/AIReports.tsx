@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Sparkles, FileText, Send, Loader2, Download, Copy, UserSearch, MessageSquare,
   Save, FolderOpen, Trash2, Bold, Italic, Underline as UnderlineIcon, AlignLeft,
-  AlignCenter, AlignRight, Image as ImageIcon, Type, List, Share2, Mail, Link2,
+  AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Type, List, Share2, Mail, Link2,
   MoveLeft, MoveHorizontal, MoveRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -240,6 +240,8 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         onClick={() => editor.chain().focus().setTextAlign('center').run()}><AlignCenter className="w-3.5 h-3.5" /></Button>
       <Button variant={editor.isActive({ textAlign: 'right' }) ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
         onClick={() => editor.chain().focus().setTextAlign('right').run()}><AlignRight className="w-3.5 h-3.5" /></Button>
+      <Button variant={editor.isActive({ textAlign: 'justify' }) ? 'default' : 'ghost'} size="icon" className="h-8 w-8"
+        onClick={() => editor.chain().focus().setTextAlign('justify').run()}><AlignJustify className="w-3.5 h-3.5" /></Button>
 
       <div className="w-px h-8 bg-border mx-1" />
 
@@ -298,7 +300,7 @@ export default function AIReports() {
     extensions: [
       StarterKit,
       CustomImage.configure({ allowBase64: false, inline: false, HTMLAttributes: { class: 'max-w-full rounded-lg cursor-pointer transition-all' } }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextAlign.configure({ types: ['heading', 'paragraph'], alignments: ['left', 'center', 'right', 'justify'] }),
       UnderlineExt,
       TextStyle,
       FontFamily,
