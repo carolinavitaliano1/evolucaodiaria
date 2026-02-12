@@ -521,32 +521,32 @@ export default function Financial() {
       doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy')}`, margin, y);
       y += 15;
 
-      const sigX = margin;
-      const stampX = pageWidth / 2 + 10;
-      const lineWidth = (contentW / 2) - 15;
+      const centerX = pageWidth / 2;
+      const lineWidth = contentW * 0.5;
+      const lineStartX = centerX - lineWidth / 2;
+
+      if (stamp?.stamp_image) {
+        try {
+          doc.addImage(stamp.stamp_image, 'PNG', centerX - 25, y - 15, 50, 25);
+          y += 15;
+        } catch (e) { /* ignore */ }
+      }
 
       if (stamp?.signature_image) {
         try {
-          doc.addImage(stamp.signature_image, 'PNG', sigX + 10, y - 12, 50, 20);
+          doc.addImage(stamp.signature_image, 'PNG', centerX - 25, y - 5, 50, 20);
+          y += 10;
         } catch (e) { /* ignore */ }
       }
 
       doc.setDrawColor(100, 100, 100);
-      doc.line(sigX, y + 10, sigX + lineWidth, y + 10);
+      doc.line(lineStartX, y + 10, lineStartX + lineWidth, y + 10);
       doc.setFontSize(9);
       doc.setTextColor(60, 60, 60);
-      doc.text(therapistName, sigX + lineWidth / 2, y + 15, { align: 'center' });
+      doc.text(therapistName, centerX, y + 15, { align: 'center' });
       if (stamp) {
-        doc.text(stamp.clinical_area, sigX + lineWidth / 2, y + 20, { align: 'center' });
+        doc.text(stamp.clinical_area, centerX, y + 20, { align: 'center' });
       }
-
-      if (stamp?.stamp_image) {
-        try {
-          doc.addImage(stamp.stamp_image, 'PNG', stampX + 10, y - 15, 45, 25);
-        } catch (e) { /* ignore */ }
-      }
-      doc.line(stampX, y + 10, stampX + lineWidth, y + 10);
-      doc.text('Carimbo', stampX + lineWidth / 2, y + 15, { align: 'center' });
 
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
