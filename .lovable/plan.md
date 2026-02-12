@@ -1,84 +1,53 @@
 
-# Plano: Rebranding + Persistencia de Tipos + Integração Stripe
 
-## Resumo
+## Rodape Institucional Completo no PDF
 
-Quatro frentes de trabalho: renomear o app para "Evolução Diária" com novo ícone, persistir tipos de serviço personalizados no banco, e integrar o Stripe para planos de assinatura com teste gratuito de 30 dias.
+### Objetivo
+Adicionar campos institucionais na clinica (email, CNPJ, telefone, servicos/especialidades) e exibir todas essas informacoes no rodape do PDF, seguindo o modelo enviado.
 
----
+### O que muda
 
-## 1. Renomear App para "Evolução Diária" e Trocar Logo
+**1. Banco de dados -- novos campos na tabela `clinics`**
+- `email` (text, nullable) -- email institucional
+- `cnpj` (text, nullable) -- CNPJ ou inscricao
+- `phone` (text, nullable) -- telefone(s) da clinica
+- `services_description` (text, nullable) -- linha descritiva de servicos/especialidades (ex: "Psicologia - Psicopedagogia - Fonoaudiologia")
 
-- Substituir todas as ocorrências de "Clini Pro" por "Evolução Diária" em:
-  - `src/components/layout/AppSidebar.tsx`
-  - `src/pages/Auth.tsx` (2 ocorrências)
-  - `index.html` (title e meta tags)
-- Trocar o ícone `Stethoscope` por `BookOpen` (lucide-react) em todos os locais acima, representando um caderno/diário
+**2. Tipo `Clinic` em `src/types/index.ts`**
+- Adicionar os 4 campos opcionais: `email`, `cnpj`, `phone`, `servicesDescription`
 
----
+**3. Formulario de edicao da clinica (`EditClinicDialog.tsx`)**
+- Adicionar campos de entrada para Email, CNPJ, Telefone e Descricao de Servicos
 
-## 2. Persistir Tipos Personalizados de Serviço
+**4. Mapeamento Supabase nas paginas que carregam clinicas**
+- Garantir que `ClinicDetail.tsx`, `AIReports.tsx`, `PatientDetail.tsx` leiam e passem os novos campos
 
-**Banco de dados:** Criar tabela `custom_service_types` com colunas:
-- `id` (uuid, PK)
-- `user_id` (uuid, NOT NULL)
-- `name` (text, NOT NULL)
-- `created_at` (timestamptz, default now())
+**5. Utilitario PDF (`generateReportPdf.ts`)**
+- Ampliar a interface `ReportPdfOptions` com `clinicEmail`, `clinicCnpj`, `clinicPhone`, `clinicServicesDescription`
+- Redesenhar o rodape em todas as paginas para exibir (quando disponivel):
+  - Linha 1: Descricao dos servicos (ex: "Psicologia - Psicopedagogia - Musicoterapia")
+  - Linha 2: CNPJ e inscricoes
+  - Linha 3: Endereco completo + telefones
+  - Linha 4: Email
+  - Linha divisoria sutil acima e numeracao de pagina abaixo
 
-Com políticas RLS para CRUD restrito ao próprio usuário.
+### Secao Tecnica
 
-**Código:** Atualizar `ServiceDialog.tsx` para:
-- Carregar tipos personalizados do banco ao abrir o dialog
-- Salvar novos tipos na tabela ao clicar "Adicionar"
-- Exibir tipos salvos no dropdown junto com os pré-definidos
-
----
-
-## 3. Integração Stripe - Planos de Assinatura
-
-Habilitar o Stripe no projeto (será solicitada a chave secreta) e criar:
-
-**Planos:**
-| Plano | Período | Preço | Trial |
-|-------|---------|-------|-------|
-| Mensal | 1 mês | R$29,00 | 30 dias grátis |
-| Bimestral | 2 meses | R$49,00 | 30 dias grátis |
-| Trimestral | 3 meses | R$59,00 | 30 dias grátis |
-
-**Implementação:**
-- Criar página `/pricing` com cards dos planos
-- Edge function para criar checkout session do Stripe com trial de 30 dias
-- Edge function webhook para processar eventos do Stripe
-- Lógica de verificação de assinatura ativa para proteger rotas (opcional, pode ser adicionado depois)
-
----
-
-## Detalhes Técnicos
-
-### Migração SQL
+**Migracao SQL:**
 ```sql
-CREATE TABLE custom_service_types (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  name text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE custom_service_types ENABLE ROW LEVEL SECURITY;
--- Políticas RLS padrão (SELECT, INSERT, DELETE para auth.uid() = user_id)
+ALTER TABLE public.clinics
+  ADD COLUMN IF NOT EXISTS email text,
+  ADD COLUMN IF NOT EXISTS cnpj text,
+  ADD COLUMN IF NOT EXISTS phone text,
+  ADD COLUMN IF NOT EXISTS services_description text;
 ```
 
-### Arquivos Modificados
-- `index.html` - titulo e meta tags
-- `src/components/layout/AppSidebar.tsx` - nome e ícone
-- `src/pages/Auth.tsx` - nome e ícone
-- `src/components/services/ServiceDialog.tsx` - persistência de tipos
+**Arquivos modificados:**
+- `src/types/index.ts` -- adicionar campos ao tipo Clinic
+- `src/components/clinics/EditClinicDialog.tsx` -- formulario com novos inputs
+- `src/utils/generateReportPdf.ts` -- rodape expandido com todas as informacoes
+- `src/pages/ClinicDetail.tsx` -- passar novos campos ao PDF
+- `src/pages/PatientDetail.tsx` -- passar novos campos ao PDF
+- `src/pages/AIReports.tsx` -- passar novos campos ao PDF
+- Paginas que mapeiam dados da clinica (ex: `Clinics.tsx`, `ClinicDetail.tsx`) -- mapear colunas novas
 
-### Arquivos Novos
-- `src/pages/Pricing.tsx` - página de planos
-- Edge functions para Stripe (checkout, webhook)
-
-### Ordem de Execução
-1. Migração do banco (custom_service_types)
-2. Rebranding (nome + logo)
-3. Persistência dos tipos de serviço
-4. Habilitar Stripe e implementar planos
