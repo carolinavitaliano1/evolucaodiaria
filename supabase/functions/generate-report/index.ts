@@ -123,17 +123,18 @@ ${evolutions?.slice(0, 50).map((e: any) => {
 
 REGRAS DE FORMATAÇÃO OBRIGATÓRIAS:
 1. O relatório DEVE seguir padrão institucional profissional.
-2. Estruture com seções numeradas (1., 2., 3., etc.) e subtítulos claros.
-3. Use tabelas Markdown (com | e ---) para dados tabulares como identificação do paciente, resumo de frequência etc.
-4. Use listas numeradas (1), 2), 3)) para recomendações e considerações.
+2. Estruture com seções numeradas (1., 2., 3., etc.) e subtítulos com sub-numeração (4.1., 4.2.).
+3. NÃO use tabelas Markdown (sem | ou ---). Dados de identificação e resumo devem ser em formato "Campo: Valor", um por linha.
+4. Use listas numeradas (1., 2., 3.) para recomendações e considerações.
 5. Use bullet points (- item) para detalhamentos dentro de seções.
 6. NÃO use linhas horizontais (---) como divisores visuais entre seções.
-7. NÃO use ### markdown headers — use apenas texto em CAPS ou numeração.
+7. NÃO use ### markdown headers — use apenas numeração de seção (1. TÍTULO, 2. TÍTULO).
 8. Parágrafos curtos e objetivos. Linguagem técnica e profissional.
 9. Inclua SEMPRE ao final uma seção "CONSIDERAÇÕES FINAIS E CONDUTA" com recomendações numeradas.
-10. Inclua ao final: "Responsável Técnico: (Espaço para assinatura e carimbo do profissional)"
-11. A primeira seção deve ser "CABEÇALHO E IDENTIFICAÇÃO" com uma tabela de dados do paciente.
-12. Inclua uma seção "RESUMO EXECUTIVO" com dados de frequência.
+10. NÃO inclua bloco de assinatura ou "Responsável Técnico" no texto — o sistema adiciona automaticamente.
+11. A primeira seção deve ser "1. CABEÇALHO E IDENTIFICAÇÃO" com dados do paciente em formato campo-valor.
+12. Inclua uma seção "2. RESUMO EXECUTIVO" com dados de frequência em formato campo-valor.
+13. Cada sessão/evolução deve ter subtítulo "Sessão – DD/MM/AAAA" seguido de texto corrido.
 
 Data atual: ${new Date().toLocaleDateString("pt-BR")}.`;
 

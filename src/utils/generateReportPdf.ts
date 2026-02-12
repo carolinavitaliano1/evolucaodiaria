@@ -180,6 +180,11 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       continue;
     }
 
+    // Skip AI-generated signature block (the PDF adds its own)
+    if (/^respons[áa]vel\s+t[ée]cnico/i.test(trimmed)) continue;
+    if (/^\(espa[çc]o para assinatura/i.test(trimmed)) continue;
+    if (/^\(assinatura e carimbo\)/i.test(trimmed)) continue;
+
     // Skip markdown table separators and pipe lines
     if (/^[-*=]{3,}$/.test(trimmed)) continue;
     if (/^\|[\s-:|]+\|$/.test(trimmed)) continue;
