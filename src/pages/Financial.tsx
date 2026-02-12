@@ -1,5 +1,5 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp } from 'lucide-react';
-import { format } from 'date-fns';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -25,10 +25,17 @@ export default function Financial() {
   const [selectedStampId, setSelectedStampId] = useState<string>('');
   const [profile, setProfile] = useState<any>(null);
 
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const monthName = format(now, "MMMM 'de' yyyy", { locale: ptBR });
+  // Month filter state
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const selectedMonth = selectedDate.getMonth();
+  const selectedYear = selectedDate.getFullYear();
+  const monthName = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
+
+  const goToPreviousMonth = () => setSelectedDate(prev => subMonths(prev, 1));
+  const goToNextMonth = () => setSelectedDate(prev => addMonths(prev, 1));
+  const goToCurrentMonth = () => setSelectedDate(new Date());
+
+  const isCurrentMonth = selectedMonth === new Date().getMonth() && selectedYear === new Date().getFullYear();
 
   // Load stamps and profile
   useEffect(() => {
@@ -42,10 +49,10 @@ export default function Financial() {
     });
   }, [user]);
 
-  // Get all evolutions for the current month
+  // Get all evolutions for the selected month
   const monthlyEvolutions = evolutions.filter(e => {
     const date = new Date(e.date + 'T12:00:00');
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
   });
 
   // Separate by attendance status
@@ -61,13 +68,9 @@ export default function Financial() {
       return patient.paymentValue;
     }
 
-    // Count all present sessions - these ALWAYS count as revenue
     const presentCount = presentEvolutions.filter(e => e.patientId === patientId).length;
-    
-    // Count falta_remunerada - these ALWAYS count as revenue
     const paidAbsenceCount = paidAbsenceEvolutions.filter(e => e.patientId === patientId).length;
 
-    // For regular absences (falta), check clinic policy
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
     
@@ -79,12 +82,10 @@ export default function Financial() {
     } else if (absenceType === 'confirmed_only') {
       paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
     }
-    // 'never' = 0
 
     return (presentCount + paidAbsenceCount + paidRegularAbsences) * patient.paymentValue;
   };
 
-  // Calculate losses from absences
   const calculatePatientLoss = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !patient.paymentValue || patient.paymentType === 'fixo') return 0;
@@ -92,7 +93,6 @@ export default function Financial() {
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
     
-    // If clinic always pays on absence, no loss
     if (absenceType === 'always') return 0;
     
     const patientAbsences = absentEvolutions.filter(e => e.patientId === patientId);
@@ -101,7 +101,6 @@ export default function Financial() {
       return patientAbsences.length * patient.paymentValue;
     }
     
-    // confirmed_only: loss for non-confirmed absences
     if (absenceType === 'confirmed_only') {
       const nonConfirmedAbsences = patientAbsences.filter(e => !e.confirmedAttendance);
       return nonConfirmedAbsences.length * patient.paymentValue;
@@ -110,8 +109,7 @@ export default function Financial() {
     return 0;
   };
 
-  // Get private appointments revenue
-  const monthlyPrivateAppointments = getMonthlyAppointments(currentMonth, currentYear);
+  const monthlyPrivateAppointments = getMonthlyAppointments(selectedMonth, selectedYear);
   const privateRevenue = monthlyPrivateAppointments
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
@@ -292,7 +290,7 @@ export default function Financial() {
         );
       }
 
-      doc.save(`financeiro-${format(now, 'yyyy-MM')}.pdf`);
+      doc.save(`financeiro-${format(selectedDate, 'yyyy-MM')}.pdf`);
       toast.success('Relatório exportado com sucesso!');
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -317,7 +315,7 @@ export default function Financial() {
         clinicPatients.some(p => p.id === e.patientId)
       ).sort((a, b) => a.date.localeCompare(b.date));
 
-      const stamp = selectedStampId ? stamps.find(s => s.id === selectedStampId) : null;
+      const stamp = selectedStampId && selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
       const therapistName = profile?.name || user?.user_metadata?.full_name || 'Terapeuta';
 
       const doc = new jsPDF();
@@ -469,7 +467,7 @@ export default function Financial() {
         y += 6;
       });
 
-      // Add fixed-payment patients who don't have per-session value in the table
+      // Add fixed-payment patients
       const fixedPatients = clinicPatients.filter(p => p.paymentType === 'fixo' && p.paymentValue);
       fixedPatients.forEach(patient => {
         ensureSpace(8);
@@ -517,23 +515,20 @@ export default function Financial() {
       doc.line(margin, y, pageWidth - margin, y);
       y += 8;
 
-      // Date
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
       doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy')}`, margin, y);
       y += 15;
 
-      // Signature line and stamp side by side
       const sigX = margin;
       const stampX = pageWidth / 2 + 10;
       const lineWidth = (contentW / 2) - 15;
 
-      // Add signature image if stamp has one
       if (stamp?.signature_image) {
         try {
           doc.addImage(stamp.signature_image, 'PNG', sigX + 10, y - 12, 50, 20);
-        } catch (e) { /* ignore image errors */ }
+        } catch (e) { /* ignore */ }
       }
 
       doc.setDrawColor(100, 100, 100);
@@ -545,16 +540,14 @@ export default function Financial() {
         doc.text(stamp.clinical_area, sigX + lineWidth / 2, y + 20, { align: 'center' });
       }
 
-      // Stamp image
       if (stamp?.stamp_image) {
         try {
           doc.addImage(stamp.stamp_image, 'PNG', stampX + 10, y - 15, 45, 25);
-        } catch (e) { /* ignore image errors */ }
+        } catch (e) { /* ignore */ }
       }
       doc.line(stampX, y + 10, stampX + lineWidth, y + 10);
       doc.text('Carimbo', stampX + lineWidth / 2, y + 15, { align: 'center' });
 
-      // Footer
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -566,7 +559,7 @@ export default function Financial() {
         );
       }
 
-      doc.save(`extrato-${clinic.name.trim().replace(/\s+/g, '-').toLowerCase()}-${format(now, 'yyyy-MM')}.pdf`);
+      doc.save(`extrato-${clinic.name.trim().replace(/\s+/g, '-').toLowerCase()}-${format(selectedDate, 'yyyy-MM')}.pdf`);
       toast.success('Extrato exportado com sucesso!');
       setInvoiceDialogOpen(false);
     } catch (error) {
@@ -585,9 +578,30 @@ export default function Financial() {
           <span className="text-2xl sm:text-4xl">💰</span>
           Financeiro
         </h1>
-        <p className="text-muted-foreground text-sm sm:text-base">
-          {monthName}
-        </p>
+        
+        {/* Month selector */}
+        <div className="flex items-center gap-2 mt-2">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToPreviousMonth}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <button 
+            onClick={goToCurrentMonth}
+            className={cn(
+              "text-sm sm:text-base font-medium px-3 py-1 rounded-lg transition-colors capitalize",
+              isCurrentMonth ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {monthName}
+          </button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToNextMonth} disabled={isCurrentMonth}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+          {!isCurrentMonth && (
+            <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={goToCurrentMonth}>
+              Mês atual
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Main Stats */}
@@ -812,7 +826,7 @@ export default function Financial() {
                     </Select>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    O extrato incluirá todas as sessões do mês atual com detalhamento por paciente, valores e totais.
+                    O extrato incluirá todas as sessões de <strong className="capitalize">{monthName}</strong> com detalhamento por paciente, valores e totais.
                   </p>
                   <Button 
                     onClick={handleExportClinicInvoice} 

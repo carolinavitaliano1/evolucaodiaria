@@ -173,10 +173,10 @@ export default function ClinicDetail() {
     return appointments.filter(a => a.clinicId === id && a.date === today);
   }, [appointments, id]);
 
-  // Check if evolution already exists for patient today
+  // Check if evolution already exists for patient today at this clinic
   const getPatientTodayEvolution = (patientId: string) => {
     const today = new Date().toISOString().split('T')[0];
-    return evolutions.find(e => e.patientId === patientId && e.date === today);
+    return evolutions.find(e => e.patientId === patientId && e.clinicId === id && e.date === today);
   };
 
   // Combine scheduled patients with appointments

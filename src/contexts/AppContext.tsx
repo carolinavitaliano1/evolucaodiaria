@@ -396,7 +396,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.mood !== undefined) updateData.mood = updates.mood || null;
       const { error } = await supabase.from('evolutions').update(updateData).eq('id', id);
       if (error) throw error;
-      setState(prev => ({ ...prev, evolutions: prev.evolutions.map(e => e.id === id ? { ...e, ...updates } : e) }));
+
+      // Handle attachment sync
+      if (updates.attachments !== undefined) {
+        // Get existing DB attachments for this evolution
+        const { data: existingAtts } = await supabase.from('attachments')
+          .select('id')
+          .eq('parent_id', id)
+          .eq('parent_type', 'evolution');
+        
+        const existingIds = new Set((existingAtts || []).map(a => a.id));
+        const newAttIds = new Set((updates.attachments || []).map(a => a.id));
+        
+        // Delete removed attachments
+        const toDelete = [...existingIds].filter(aid => !newAttIds.has(aid));
+        for (const aid of toDelete) {
+          await supabase.from('attachments').delete().eq('id', aid);
+        }
+        
+        // Insert new attachments (those with temp_ ids)
+        const toInsert = (updates.attachments || []).filter(a => a.id.startsWith('temp_'));
+        const savedAttachments: Attachment[] = [];
+        for (const att of toInsert) {
+          const { data: attData, error: attError } = await supabase.from('attachments').insert({
+            user_id: user.id, parent_id: id, parent_type: 'evolution',
+            name: att.name, file_path: att.data, file_type: att.type,
+          }).select().single();
+          if (!attError && attData) {
+            savedAttachments.push({
+              id: attData.id, parentId: attData.parent_id, parentType: attData.parent_type as Attachment['parentType'],
+              name: attData.name, data: attData.file_path, type: attData.file_type, createdAt: attData.created_at,
+            });
+          }
+        }
+
+        // Update attachments in global state
+        setState(prev => ({
+          ...prev,
+          attachments: [
+            ...prev.attachments.filter(a => !(a.parentId === id && a.parentType === 'evolution' && toDelete.includes(a.id))),
+            ...savedAttachments,
+          ],
+        }));
+      }
+
+      // Update evolution in state WITHOUT attachments (let the join handle it)
+      const { attachments: _removed, ...evolutionUpdates } = updates;
+      setState(prev => ({ ...prev, evolutions: prev.evolutions.map(e => e.id === id ? { ...e, ...evolutionUpdates } : e) }));
     } catch (error) { console.error(error); toast.error('Erro ao atualizar evolução'); }
   }, [user]);
 
