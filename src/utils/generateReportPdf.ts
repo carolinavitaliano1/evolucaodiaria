@@ -39,10 +39,10 @@ const BODY_SIZE = 10;
 const SMALL_SIZE = 8;
 const FOOTER_FONT_SIZE = 6.5;
 
-// Spacing
+// Spacing - kept minimal so user edits in the editor control spacing via empty paragraphs
 const LINE_HEIGHT = 5; // ~1.5 spacing for 10pt
-const SECTION_GAP = 7; // 18px ≈ 7mm
-const PARAGRAPH_GAP = 3; // 8px ≈ 3mm
+const SECTION_GAP = 4; // reduced from 7 so user controls spacing
+const PARAGRAPH_GAP = 1.5; // reduced from 3 - empty lines from user add this gap
 
 // Footer area
 const FOOTER_RESERVE = 28;
@@ -149,10 +149,28 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
 
   const writeJustified = (text: string, indent = 0) => {
     setBody();
-    const lines = pdf.splitTextToSize(text, CONTENT_W - indent);
-    for (const line of lines) {
+    const maxWidth = CONTENT_W - indent;
+    const lines = pdf.splitTextToSize(text, maxWidth);
+    for (let i = 0; i < lines.length; i++) {
       ensureSpace(LINE_HEIGHT);
-      pdf.text(line, MARGIN + indent, y, { align: 'left' });
+      const isLastLine = i === lines.length - 1;
+      if (isLastLine || lines[i].trim() === '') {
+        pdf.text(lines[i], MARGIN + indent, y, { align: 'left' });
+      } else {
+        // Justify: distribute words evenly across the line width
+        const words = lines[i].split(/\s+/).filter((w: string) => w);
+        if (words.length <= 1) {
+          pdf.text(lines[i], MARGIN + indent, y, { align: 'left' });
+        } else {
+          const totalWordsWidth = words.reduce((sum: number, w: string) => sum + pdf.getTextWidth(w), 0);
+          const extraSpace = (maxWidth - totalWordsWidth) / (words.length - 1);
+          let x = MARGIN + indent;
+          for (const word of words) {
+            pdf.text(word, x, y);
+            x += pdf.getTextWidth(word) + extraSpace;
+          }
+        }
+      }
       y += LINE_HEIGHT;
     }
   };
@@ -271,7 +289,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
         pdf.text(hl, MARGIN + 3, y);
         y += 7;
       }
-      y += 3;
+      y += 1;
       setBody();
       continue;
     }
@@ -290,7 +308,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
         pdf.text(hl, MARGIN + 2, y);
         y += 7;
       }
-      y += 2;
+      y += 1;
       setBody();
       continue;
     }
@@ -308,7 +326,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
         pdf.text(sl, MARGIN + 2, y);
         y += LINE_HEIGHT;
       }
-      y += LINE_HEIGHT + 2;
+      y += 1;
       setBody();
       continue;
     }
