@@ -31,15 +31,15 @@ const MARGIN = 25; // ~2.5 cm
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const FONT = 'helvetica'; // closest built-in to Arial/Inter
 
-const TITLE_SIZE = 16;
-const SUBTITLE_SIZE = 14;
-const BODY_SIZE = 12;
-const SMALL_SIZE = 9;
-const FOOTER_FONT_SIZE = 7;
+const TITLE_SIZE = 14;
+const SUBTITLE_SIZE = 12;
+const BODY_SIZE = 10;
+const SMALL_SIZE = 8.5;
+const FOOTER_FONT_SIZE = 6.5;
 
-const LINE_HEIGHT = 6; // ~1.5 spacing for 12pt
-const SECTION_GAP = 10; // gap before a new section title
-const PARAGRAPH_GAP = 4;
+const LINE_HEIGHT = 5; // ~1.5 spacing for 10pt
+const SECTION_GAP = 8;
+const PARAGRAPH_GAP = 3;
 
 // Footer area reserved at the bottom of every page
 const FOOTER_RESERVE = 30;
