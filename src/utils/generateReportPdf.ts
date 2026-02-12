@@ -36,8 +36,10 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
   const contentWidth = pageWidth - margin * 2;
   const footerY = pageHeight - 12;
 
+  // Reserve ~30mm at the bottom for footer block + page number
+  const footerReserve = 35;
   const checkPage = (y: number, needed = 20) => {
-    if (y > pageHeight - needed) { pdf.addPage(); return 22; }
+    if (y > pageHeight - footerReserve - needed) { pdf.addPage(); return 22; }
     return y;
   };
 
@@ -52,28 +54,13 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
       const maxH = 35;
       const finalH = Math.min(imgHeight, maxH);
       pdf.addImage(clinicLetterhead, 'PNG', margin, yPos, imgWidth, finalH);
-      yPos += finalH + 5;
+      yPos += finalH + 3;
+      // Divider after letterhead
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 5;
     } catch { /* skip */ }
-  }
-
-  // ── Clinic name & address ──
-  if (clinicName) {
-    pdf.setTextColor(40, 40, 40);
-    pdf.setFontSize(13);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(clinicName, pageWidth / 2, yPos + 4, { align: 'center' });
-    yPos += 10;
-    if (clinicAddress) {
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(100, 100, 100);
-      pdf.text(clinicAddress, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 6;
-    }
-    pdf.setDrawColor(200, 200, 200);
-    pdf.setLineWidth(0.3);
-    pdf.line(margin, yPos + 2, pageWidth - margin, yPos + 2);
-    yPos += 8;
   }
 
   // ── Title (only what user typed) ──
@@ -245,7 +232,8 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
 
   // ── Signature section ──
   yPos += 10;
-  yPos = checkPage(yPos, 40);
+  // Reserve enough space: signature block (~30mm) + footer (~25mm)
+  yPos = checkPage(yPos, 55);
   pdf.setDrawColor(200, 200, 200);
   pdf.setLineWidth(0.3);
   pdf.line(margin, yPos, pageWidth - margin, yPos);
@@ -271,8 +259,8 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
     pdf.setPage(i);
 
     if (clinicName) {
-      // Build footer lines
-      const footerLines: string[] = [];
+      // Build footer lines — always include clinic name first
+      const footerLines: string[] = [clinicName];
       if (clinicServicesDescription) footerLines.push(clinicServicesDescription);
       if (clinicCnpj) footerLines.push(`CNPJ: ${clinicCnpj}`);
       const addressPhone: string[] = [];
@@ -280,8 +268,6 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
       if (clinicPhone) addressPhone.push(`Tel: ${clinicPhone}`);
       if (addressPhone.length > 0) footerLines.push(addressPhone.join(' | '));
       if (clinicEmail) footerLines.push(clinicEmail);
-      // Fallback: at least show clinic name
-      if (footerLines.length === 0) footerLines.push(clinicName);
 
       const lineHeight = 3;
       const footerBlockHeight = footerLines.length * lineHeight + 6;

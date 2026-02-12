@@ -446,9 +446,10 @@ export default function AIReports() {
     const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
     const footerY = pageHeight - 12;
 
-    // Helper: check page break
+    // Reserve ~30mm at the bottom for footer block + page number
+    const footerReserve = 35;
     const checkPage = (y: number, needed = 20) => {
-      if (y > pageHeight - needed) {
+      if (y > pageHeight - footerReserve - needed) {
         pdf.addPage();
         return 22;
       }
@@ -456,7 +457,7 @@ export default function AIReports() {
     };
 
     // ==========================================
-    // LETTERHEAD — clinic logo/letterhead if selected
+    // LETTERHEAD — clinic logo only (name/address go in footer)
     // ==========================================
     const clinic = clinics.find(c => c.id === selectedClinic);
     let yPos = margin;
@@ -469,33 +470,14 @@ export default function AIReports() {
         const maxH = 35;
         const finalH = Math.min(imgHeight, maxH);
         pdf.addImage(clinic.letterhead, 'PNG', margin, yPos, imgWidth, finalH);
-        yPos += finalH + 5;
+        yPos += finalH + 3;
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 5;
       } catch (e) {
         console.error('Error loading letterhead:', e);
       }
-    }
-
-    // Clinic name if available
-    if (clinic) {
-      pdf.setTextColor(40, 40, 40);
-      pdf.setFontSize(13);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(clinic.name, pageWidth / 2, yPos + 8, { align: 'center' });
-      yPos += 12;
-      if (clinic.address) {
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(100, 100, 100);
-        pdf.text(clinic.address, pageWidth / 2, yPos + 4, { align: 'center' });
-        yPos += 8;
-      }
-      // divider after clinic info
-      pdf.setDrawColor(200, 200, 200);
-      pdf.setLineWidth(0.3);
-      pdf.line(margin, yPos + 2, pageWidth - margin, yPos + 2);
-      yPos += 8;
-    } else {
-      yPos = 25;
     }
 
     // ==========================================
@@ -665,7 +647,8 @@ export default function AIReports() {
     // SIGNATURE SECTION
     // ==========================================
     yPos += 10;
-    yPos = checkPage(yPos, 40);
+    // Reserve enough space: signature block (~30mm) + footer (~25mm)
+    yPos = checkPage(yPos, 55);
 
     // Divider before signature
     pdf.setDrawColor(200, 200, 200);
@@ -699,7 +682,7 @@ export default function AIReports() {
       pdf.setPage(i);
 
       if (clinic) {
-        const footerLines: string[] = [];
+        const footerLines: string[] = [clinic.name];
         if (clinic.servicesDescription) footerLines.push(clinic.servicesDescription);
         if (clinic.cnpj) footerLines.push(`CNPJ: ${clinic.cnpj}`);
         const addressPhone: string[] = [];
@@ -707,7 +690,6 @@ export default function AIReports() {
         if (clinic.phone) addressPhone.push(`Tel: ${clinic.phone}`);
         if (addressPhone.length > 0) footerLines.push(addressPhone.join(' | '));
         if (clinic.email) footerLines.push(clinic.email);
-        if (footerLines.length === 0) footerLines.push(clinic.name);
 
         const lineHeight = 3;
         const footerBlockHeight = footerLines.length * lineHeight + 6;
