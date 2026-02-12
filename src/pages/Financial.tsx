@@ -1,33 +1,57 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2 } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Financial() {
   const { clinics, patients, evolutions, payments, clinicPackages } = useApp();
   const { getMonthlyAppointments } = usePrivateAppointments();
+  const { user } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingInvoice, setIsExportingInvoice] = useState(false);
+  const [invoiceClinicId, setInvoiceClinicId] = useState<string>('');
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [stamps, setStamps] = useState<any[]>([]);
+  const [selectedStampId, setSelectedStampId] = useState<string>('');
+  const [profile, setProfile] = useState<any>(null);
 
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   const monthName = format(now, "MMMM 'de' yyyy", { locale: ptBR });
 
+  // Load stamps and profile
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([
+      supabase.from('stamps').select('*').eq('user_id', user.id),
+      supabase.from('profiles').select('*').eq('user_id', user.id).single(),
+    ]).then(([stampsRes, profileRes]) => {
+      if (stampsRes.data) setStamps(stampsRes.data);
+      if (profileRes.data) setProfile(profileRes.data);
+    });
+  }, [user]);
+
   // Get all evolutions for the current month
   const monthlyEvolutions = evolutions.filter(e => {
-    const date = new Date(e.date);
+    const date = new Date(e.date + 'T12:00:00');
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   });
 
   // Separate by attendance status
   const presentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente');
   const absentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
+  const paidAbsenceEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
 
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
@@ -37,23 +61,30 @@ export default function Financial() {
       return patient.paymentValue;
     }
 
+    // Count all present sessions - these ALWAYS count as revenue
+    const presentCount = presentEvolutions.filter(e => e.patientId === patientId).length;
+    
+    // Count falta_remunerada - these ALWAYS count as revenue
+    const paidAbsenceCount = paidAbsenceEvolutions.filter(e => e.patientId === patientId).length;
+
+    // For regular absences (falta), check clinic policy
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
-
-    // Only count sessions where attendance was confirmed (confirmedAttendance = true)
-    // or where the clinic policy doesn't require confirmation
-    const patientEvos = presentEvolutions.filter(e => e.patientId === patientId);
     
-    if (absenceType === 'confirmed_only') {
-      // Only count revenue for confirmed sessions
-      const confirmedSessions = patientEvos.filter(e => e.confirmedAttendance);
-      return confirmedSessions.length * patient.paymentValue;
+    let paidRegularAbsences = 0;
+    const regularAbsences = absentEvolutions.filter(e => e.patientId === patientId);
+    
+    if (absenceType === 'always') {
+      paidRegularAbsences = regularAbsences.length;
+    } else if (absenceType === 'confirmed_only') {
+      paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
     }
+    // 'never' = 0
 
-    return patientEvos.length * patient.paymentValue;
+    return (presentCount + paidAbsenceCount + paidRegularAbsences) * patient.paymentValue;
   };
 
-  // Calculate losses from absences (only for clinics that don't pay on absence)
+  // Calculate losses from absences
   const calculatePatientLoss = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !patient.paymentValue || patient.paymentType === 'fixo') return 0;
@@ -70,10 +101,10 @@ export default function Financial() {
       return patientAbsences.length * patient.paymentValue;
     }
     
-    // confirmed_only: loss only when patient confirmed attendance and then didn't show up
+    // confirmed_only: loss for non-confirmed absences
     if (absenceType === 'confirmed_only') {
-      const confirmedAbsences = patientAbsences.filter(e => e.confirmedAttendance);
-      return confirmedAbsences.length * patient.paymentValue;
+      const nonConfirmedAbsences = patientAbsences.filter(e => !e.confirmedAttendance);
+      return nonConfirmedAbsences.length * patient.paymentValue;
     }
     
     return 0;
@@ -81,7 +112,6 @@ export default function Financial() {
 
   // Get private appointments revenue
   const monthlyPrivateAppointments = getMonthlyAppointments(currentMonth, currentYear);
-  // Only count completed private appointments as revenue (not scheduled ones)
   const privateRevenue = monthlyPrivateAppointments
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
@@ -94,6 +124,12 @@ export default function Financial() {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
     const revenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
     const loss = clinicPatients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
+    const sessions = presentEvolutions.filter(e =>
+      clinicPatients.some(p => p.id === e.patientId)
+    ).length;
+    const paidAbsences = paidAbsenceEvolutions.filter(e =>
+      clinicPatients.some(p => p.id === e.patientId)
+    ).length;
     const absences = absentEvolutions.filter(e => 
       clinicPatients.some(p => p.id === e.patientId)
     ).length;
@@ -103,6 +139,8 @@ export default function Financial() {
       patientCount: clinicPatients.length,
       revenue,
       loss,
+      sessions,
+      paidAbsences,
       absences,
     };
   });
@@ -112,6 +150,7 @@ export default function Financial() {
     const revenue = calculatePatientRevenue(patient.id);
     const loss = calculatePatientLoss(patient.id);
     const sessions = presentEvolutions.filter(e => e.patientId === patient.id).length;
+    const paidAbsences = paidAbsenceEvolutions.filter(e => e.patientId === patient.id).length;
     const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
 
     return {
@@ -120,6 +159,7 @@ export default function Financial() {
       revenue,
       loss,
       sessions,
+      paidAbsences,
       absences,
       paymentType: patient.paymentType,
       paymentValue: patient.paymentValue || 0,
@@ -134,7 +174,6 @@ export default function Financial() {
       const margin = 20;
       let y = 20;
 
-      // Header
       doc.setFontSize(20);
       doc.setTextColor(51, 51, 51);
       doc.text('Relatório Financeiro', margin, y);
@@ -145,7 +184,6 @@ export default function Financial() {
       doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), margin, y);
       y += 15;
 
-      // Summary Section
       doc.setFontSize(14);
       doc.setTextColor(51, 51, 51);
       doc.text('Resumo Mensal', margin, y);
@@ -153,9 +191,9 @@ export default function Financial() {
 
       doc.setFontSize(11);
       doc.setTextColor(80, 80, 80);
-      doc.text(`Faturamento Líquido: R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      doc.text(`Faturamento Total: R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       y += 6;
-      doc.text(`Receita Bruta (Clínicas): R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      doc.text(`Receita Clínicas: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       y += 6;
       doc.text(`Receita Particulares: R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       y += 6;
@@ -167,10 +205,11 @@ export default function Financial() {
       y += 6;
       doc.text(`Total de Atendimentos: ${presentEvolutions.length}`, margin, y);
       y += 6;
-      doc.text(`Total de Faltas: ${absentEvolutions.length}`, margin, y);
+      doc.text(`Faltas Remuneradas: ${paidAbsenceEvolutions.length}`, margin, y);
+      y += 6;
+      doc.text(`Faltas: ${absentEvolutions.length}`, margin, y);
       y += 15;
 
-      // Clinic Stats
       if (clinicStats.length > 0) {
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
@@ -178,11 +217,8 @@ export default function Financial() {
         y += 10;
 
         doc.setFontSize(10);
-        clinicStats.forEach(({ clinic, patientCount, revenue, loss, absences }) => {
-          if (y > 270) {
-            doc.addPage();
-            y = 20;
-          }
+        clinicStats.forEach(({ clinic, patientCount, revenue, loss, sessions, paidAbsences, absences }) => {
+          if (y > 270) { doc.addPage(); y = 20; }
           const netClinicRevenue = revenue - loss;
           doc.setTextColor(51, 51, 51);
           doc.text(clinic.name, margin, y);
@@ -190,43 +226,34 @@ export default function Financial() {
           doc.text(`R$ ${netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 40, y);
           y += 5;
           doc.setFontSize(9);
-          doc.text(`${patientCount} pacientes | ${absences} faltas`, margin + 5, y);
+          doc.text(`${patientCount} pacientes | ${sessions} sessões | ${paidAbsences} faltas rem. | ${absences} faltas`, margin + 5, y);
           doc.setFontSize(10);
           y += 8;
         });
         y += 5;
       }
 
-      // Private Appointments
       if (privateRevenue > 0) {
-        if (y > 250) {
-          doc.addPage();
-          y = 20;
-        }
+        if (y > 250) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
         doc.text('Atendimentos Particulares', margin, y);
         y += 8;
         doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
-        doc.text(`${monthlyPrivateAppointments.length} atendimentos`, margin, y);
+        doc.text(`${monthlyPrivateAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos`, margin, y);
         y += 5;
         doc.text(`R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
         y += 15;
       }
 
-      // Patient Table
       if (patientStats.length > 0) {
-        if (y > 200) {
-          doc.addPage();
-          y = 20;
-        }
+        if (y > 200) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
         doc.text('Detalhamento por Paciente', margin, y);
         y += 10;
 
-        // Table header
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
         doc.text('Paciente', margin, y);
@@ -241,10 +268,7 @@ export default function Financial() {
 
         doc.setFontSize(9);
         patientStats.forEach(({ patient, clinic, revenue, loss, sessions, absences, paymentType, paymentValue }) => {
-          if (y > 275) {
-            doc.addPage();
-            y = 20;
-          }
+          if (y > 275) { doc.addPage(); y = 20; }
           const netPatientRevenue = revenue - loss;
           doc.setTextColor(51, 51, 51);
           doc.text(patient.name.substring(0, 20), margin, y);
@@ -257,7 +281,6 @@ export default function Financial() {
         });
       }
 
-      // Footer
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -265,9 +288,7 @@ export default function Financial() {
         doc.setTextColor(150, 150, 150);
         doc.text(
           `Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`,
-          pageWidth / 2,
-          290,
-          { align: 'center' }
+          pageWidth / 2, 290, { align: 'center' }
         );
       }
 
@@ -278,6 +299,281 @@ export default function Financial() {
       toast.error('Erro ao exportar relatório');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportClinicInvoice = async () => {
+    if (!invoiceClinicId) {
+      toast.error('Selecione uma clínica');
+      return;
+    }
+    setIsExportingInvoice(true);
+    try {
+      const clinic = clinics.find(c => c.id === invoiceClinicId);
+      if (!clinic) throw new Error('Clínica não encontrada');
+
+      const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
+      const clinicEvolutions = monthlyEvolutions.filter(e =>
+        clinicPatients.some(p => p.id === e.patientId)
+      ).sort((a, b) => a.date.localeCompare(b.date));
+
+      const stamp = selectedStampId ? stamps.find(s => s.id === selectedStampId) : null;
+      const therapistName = profile?.name || user?.user_metadata?.full_name || 'Terapeuta';
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      const contentW = pageWidth - margin * 2;
+      let y = 20;
+
+      const ensureSpace = (needed: number) => {
+        if (y + needed > 275) { doc.addPage(); y = 20; }
+      };
+
+      // Header
+      doc.setFontSize(16);
+      doc.setTextColor(51, 51, 51);
+      doc.text('EXTRATO DE ATENDIMENTOS', pageWidth / 2, y, { align: 'center' });
+      y += 8;
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), pageWidth / 2, y, { align: 'center' });
+      y += 12;
+
+      // Clinic info
+      doc.setDrawColor(180, 180, 180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+      doc.setFontSize(11);
+      doc.setTextColor(51, 51, 51);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DADOS DA CLÍNICA', margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      doc.text(`Clínica: ${clinic.name.trim()}`, margin, y); y += 5;
+      if (clinic.cnpj) { doc.text(`CNPJ: ${clinic.cnpj}`, margin, y); y += 5; }
+      if (clinic.address) { doc.text(`Endereço: ${clinic.address}`, margin, y); y += 5; }
+      if (clinic.phone) { doc.text(`Telefone: ${clinic.phone}`, margin, y); y += 5; }
+      if (clinic.email) { doc.text(`E-mail: ${clinic.email}`, margin, y); y += 5; }
+      y += 3;
+
+      // Therapist info
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(51, 51, 51);
+      doc.text('PROFISSIONAL', margin, y); y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      doc.text(`Nome: ${therapistName}`, margin, y); y += 5;
+      if (stamp) {
+        doc.text(`Área: ${stamp.clinical_area}`, margin, y); y += 5;
+      }
+      if (profile?.professional_id) {
+        doc.text(`Registro: ${profile.professional_id}`, margin, y); y += 5;
+      }
+      y += 3;
+      doc.setDrawColor(180, 180, 180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      // Session table
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(51, 51, 51);
+      doc.text('DETALHAMENTO DE SESSÕES', margin, y);
+      y += 8;
+
+      // Table header
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      const col1 = margin;
+      const col2 = margin + 25;
+      const col3 = margin + 80;
+      const col4 = margin + 115;
+      const col5 = pageWidth - margin - 25;
+      doc.text('Data', col1, y);
+      doc.text('Paciente', col2, y);
+      doc.text('Status', col3, y);
+      doc.text('Tipo Pgto', col4, y);
+      doc.text('Valor', col5, y);
+      y += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 5;
+
+      let totalSessions = 0;
+      let totalPaidAbsences = 0;
+      let totalAbsences = 0;
+      let totalInvoiceValue = 0;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+
+      clinicEvolutions.forEach(evo => {
+        ensureSpace(8);
+        const patient = clinicPatients.find(p => p.id === evo.patientId);
+        if (!patient) return;
+
+        const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy');
+        const patientName = patient.name.substring(0, 22);
+        
+        let statusLabel = '';
+        let sessionValue = 0;
+
+        if (evo.attendanceStatus === 'presente') {
+          statusLabel = 'Presente';
+          totalSessions++;
+          if (patient.paymentType === 'sessao' && patient.paymentValue) {
+            sessionValue = patient.paymentValue;
+          }
+        } else if (evo.attendanceStatus === 'falta_remunerada') {
+          statusLabel = 'Falta Rem.';
+          totalPaidAbsences++;
+          if (patient.paymentType === 'sessao' && patient.paymentValue) {
+            sessionValue = patient.paymentValue;
+          }
+        } else if (evo.attendanceStatus === 'falta') {
+          statusLabel = 'Falta';
+          totalAbsences++;
+          const absenceType = clinic.absencePaymentType || (clinic.paysOnAbsence === false ? 'never' : 'always');
+          if (patient.paymentType === 'sessao' && patient.paymentValue) {
+            if (absenceType === 'always') {
+              sessionValue = patient.paymentValue;
+            } else if (absenceType === 'confirmed_only' && evo.confirmedAttendance) {
+              sessionValue = patient.paymentValue;
+            }
+          }
+        }
+
+        totalInvoiceValue += sessionValue;
+
+        doc.setTextColor(51, 51, 51);
+        doc.text(dateStr, col1, y);
+        doc.text(patientName, col2, y);
+        
+        if (evo.attendanceStatus === 'presente') {
+          doc.setTextColor(34, 139, 34);
+        } else if (evo.attendanceStatus === 'falta_remunerada') {
+          doc.setTextColor(200, 150, 0);
+        } else {
+          doc.setTextColor(220, 53, 69);
+        }
+        doc.text(statusLabel, col3, y);
+        
+        doc.setTextColor(80, 80, 80);
+        doc.text(patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão', col4, y);
+        doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col5, y);
+        y += 6;
+      });
+
+      // Add fixed-payment patients who don't have per-session value in the table
+      const fixedPatients = clinicPatients.filter(p => p.paymentType === 'fixo' && p.paymentValue);
+      fixedPatients.forEach(patient => {
+        ensureSpace(8);
+        doc.setTextColor(51, 51, 51);
+        doc.text('-', col1, y);
+        doc.text(patient.name.substring(0, 22), col2, y);
+        doc.setTextColor(100, 100, 200);
+        doc.text('Fixo Mensal', col3, y);
+        doc.setTextColor(80, 80, 80);
+        doc.text('Fixo', col4, y);
+        doc.text(`R$ ${patient.paymentValue!.toFixed(2)}`, col5, y);
+        totalInvoiceValue += patient.paymentValue!;
+        y += 6;
+      });
+
+      // Totals
+      y += 2;
+      ensureSpace(25);
+      doc.setDrawColor(180, 180, 180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(51, 51, 51);
+      doc.text('RESUMO', margin, y); y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Sessões realizadas: ${totalSessions}`, margin, y); y += 5;
+      if (totalPaidAbsences > 0) {
+        doc.text(`Faltas remuneradas: ${totalPaidAbsences}`, margin, y); y += 5;
+      }
+      if (totalAbsences > 0) {
+        doc.text(`Faltas: ${totalAbsences}`, margin, y); y += 5;
+      }
+      y += 3;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(`VALOR TOTAL: R$ ${totalInvoiceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      y += 15;
+
+      // Signature area
+      ensureSpace(60);
+      doc.setDrawColor(180, 180, 180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      // Date
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy')}`, margin, y);
+      y += 15;
+
+      // Signature line and stamp side by side
+      const sigX = margin;
+      const stampX = pageWidth / 2 + 10;
+      const lineWidth = (contentW / 2) - 15;
+
+      // Add signature image if stamp has one
+      if (stamp?.signature_image) {
+        try {
+          doc.addImage(stamp.signature_image, 'PNG', sigX + 10, y - 12, 50, 20);
+        } catch (e) { /* ignore image errors */ }
+      }
+
+      doc.setDrawColor(100, 100, 100);
+      doc.line(sigX, y + 10, sigX + lineWidth, y + 10);
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      doc.text(therapistName, sigX + lineWidth / 2, y + 15, { align: 'center' });
+      if (stamp) {
+        doc.text(stamp.clinical_area, sigX + lineWidth / 2, y + 20, { align: 'center' });
+      }
+
+      // Stamp image
+      if (stamp?.stamp_image) {
+        try {
+          doc.addImage(stamp.stamp_image, 'PNG', stampX + 10, y - 15, 45, 25);
+        } catch (e) { /* ignore image errors */ }
+      }
+      doc.line(stampX, y + 10, stampX + lineWidth, y + 10);
+      doc.text('Carimbo', stampX + lineWidth / 2, y + 15, { align: 'center' });
+
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Extrato gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`,
+          pageWidth / 2, 290, { align: 'center' }
+        );
+      }
+
+      doc.save(`extrato-${clinic.name.trim().replace(/\s+/g, '-').toLowerCase()}-${format(now, 'yyyy-MM')}.pdf`);
+      toast.success('Extrato exportado com sucesso!');
+      setInvoiceDialogOpen(false);
+    } catch (error) {
+      console.error('Error exporting invoice:', error);
+      toast.error('Erro ao exportar extrato');
+    } finally {
+      setIsExportingInvoice(false);
     }
   };
 
@@ -308,7 +604,12 @@ export default function Financial() {
                   <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
                   {presentEvolutions.length} atend.
                 </span>
-                {totalLoss > 0 && (
+                {paidAbsenceEvolutions.length > 0 && (
+                  <span className="flex items-center gap-1 sm:gap-2 text-amber-200">
+                    {paidAbsenceEvolutions.length} faltas rem.
+                  </span>
+                )}
+                {absentEvolutions.length > 0 && (
                   <span className="flex items-center gap-1 sm:gap-2 text-amber-200">
                     <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />
                     {absentEvolutions.length} faltas
@@ -368,7 +669,7 @@ export default function Financial() {
         </h2>
 
         <div className="space-y-4 sm:space-y-6">
-          {clinicStats.map(({ clinic, patientCount, revenue, loss, absences }) => {
+          {clinicStats.map(({ clinic, patientCount, revenue, loss, sessions, paidAbsences, absences }) => {
             const netClinicRevenue = revenue - loss;
             const percentage = (totalRevenue + privateRevenue) > 0 ? (revenue / (totalRevenue + privateRevenue)) * 100 : 0;
             const isPropria = clinic.type === 'propria';
@@ -390,7 +691,10 @@ export default function Financial() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">{patientCount} pacientes</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {patientCount} pacientes | {sessions} sessões
+                      {paidAbsences > 0 && ` | ${paidAbsences} faltas rem.`}
+                    </p>
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="font-bold text-base sm:text-xl text-foreground">
@@ -432,7 +736,7 @@ export default function Financial() {
                       Atendimentos Particulares
                     </h3>
                   </div>
-                  <p className="text-sm text-muted-foreground">{monthlyPrivateAppointments.length} atendimentos</p>
+                  <p className="text-sm text-muted-foreground">{monthlyPrivateAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-xl text-foreground">
@@ -467,19 +771,78 @@ export default function Financial() {
           <h2 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
             💳 Controle de Pagamentos
           </h2>
-          <Button 
-            variant="outline" 
-            className="gap-2 w-full sm:w-auto text-xs sm:text-sm"
-            onClick={handleExportPDF}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
-            {isExporting ? 'Exportando...' : 'Exportar PDF'}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2 w-full sm:w-auto text-xs sm:text-sm">
+                  <FileText className="w-4 h-4" />
+                  Extrato por Clínica
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Emitir Extrato de Atendimentos</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Clínica</label>
+                    <Select value={invoiceClinicId} onValueChange={setInvoiceClinicId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a clínica" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clinics.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Carimbo (opcional)</label>
+                    <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sem carimbo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem carimbo</SelectItem>
+                        {stamps.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name} - {s.clinical_area}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    O extrato incluirá todas as sessões do mês atual com detalhamento por paciente, valores e totais.
+                  </p>
+                  <Button 
+                    onClick={handleExportClinicInvoice} 
+                    disabled={isExportingInvoice || !invoiceClinicId}
+                    className="w-full gap-2"
+                  >
+                    {isExportingInvoice ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    {isExportingInvoice ? 'Gerando...' : 'Exportar Extrato PDF'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button 
+              variant="outline" 
+              className="gap-2 w-full sm:w-auto text-xs sm:text-sm"
+              onClick={handleExportPDF}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isExporting ? 'Exportando...' : 'Relatório Geral PDF'}
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -495,7 +858,7 @@ export default function Financial() {
               </tr>
             </thead>
             <tbody>
-              {patientStats.map(({ patient, clinic, revenue, loss, sessions, absences, paymentType, paymentValue }) => {
+              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue }) => {
                 const netPatientRevenue = revenue - loss;
                 
                 return (
@@ -516,7 +879,12 @@ export default function Financial() {
                         {paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}`}
                       </span>
                     </td>
-                    <td className="py-2 sm:py-3 px-2 text-center text-foreground text-xs sm:text-sm">{sessions}</td>
+                    <td className="py-2 sm:py-3 px-2 text-center text-foreground text-xs sm:text-sm">
+                      {sessions}
+                      {paidAbsences > 0 && (
+                        <span className="text-amber-600 text-[10px] block">+{paidAbsences} rem.</span>
+                      )}
+                    </td>
                     <td className="py-2 sm:py-3 px-2 text-center text-xs sm:text-sm">
                       {absences > 0 ? (
                         <span className={cn(
