@@ -527,15 +527,15 @@ export default function Financial() {
 
       if (stamp?.stamp_image) {
         try {
-          doc.addImage(stamp.stamp_image, 'PNG', centerX - 25, y - 15, 50, 25);
-          y += 15;
+          doc.addImage(stamp.stamp_image, 'PNG', centerX - 25, y, 50, 25);
+          y += 25;
         } catch (e) { /* ignore */ }
       }
 
       if (stamp?.signature_image) {
         try {
-          doc.addImage(stamp.signature_image, 'PNG', centerX - 25, y - 5, 50, 20);
-          y += 10;
+          doc.addImage(stamp.signature_image, 'PNG', centerX - 25, y - 2, 50, 20);
+          y += 18;
         } catch (e) { /* ignore */ }
       }
 
