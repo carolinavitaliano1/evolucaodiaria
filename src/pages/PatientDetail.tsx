@@ -61,7 +61,7 @@ const MoodTooltip = ({ active, payload }: any) => {
   );
 };
 
-function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLetterhead }: { patientId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string }) {
+function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription }: { patientId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinicEmail?: string; clinicCnpj?: string; clinicPhone?: string; clinicServicesDescription?: string }) {
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
 
   useEffect(() => {
@@ -77,6 +77,10 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
       clinicName,
       clinicAddress,
       clinicLetterhead,
+      clinicEmail,
+      clinicCnpj,
+      clinicPhone,
+      clinicServicesDescription,
     });
   };
 
@@ -734,7 +738,7 @@ export default function PatientDetail() {
             })()}
             
             {/* AI Reports linked to this patient */}
-            <PatientSavedReports patientId={patient.id} clinicName={clinic?.name} clinicAddress={clinic?.address || undefined} clinicLetterhead={clinic?.letterhead || undefined} />
+            <PatientSavedReports patientId={patient.id} clinicName={clinic?.name} clinicAddress={clinic?.address || undefined} clinicLetterhead={clinic?.letterhead || undefined} clinicEmail={clinic?.email} clinicCnpj={clinic?.cnpj} clinicPhone={clinic?.phone} clinicServicesDescription={clinic?.servicesDescription} />
           </div>
         </TabsContent>
 

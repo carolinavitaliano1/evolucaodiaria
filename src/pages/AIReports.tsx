@@ -692,38 +692,46 @@ export default function AIReports() {
     pdf.text('(Assinatura e Carimbo)', pageWidth / 2, yPos, { align: 'center' });
 
     // ==========================================
-    // FOOTER — all pages: clinic info + page number
+    // FOOTER — all pages: institutional info + page number
     // ==========================================
     const total = pdf.getNumberOfPages();
     for (let i = 1; i <= total; i++) {
       pdf.setPage(i);
 
-      // Clinic info footer (like reference PDF)
       if (clinic) {
-        const footerInfoY = pageHeight - 22;
+        const footerLines: string[] = [];
+        if (clinic.servicesDescription) footerLines.push(clinic.servicesDescription);
+        if (clinic.cnpj) footerLines.push(`CNPJ: ${clinic.cnpj}`);
+        const addressPhone: string[] = [];
+        if (clinic.address) addressPhone.push(clinic.address);
+        if (clinic.phone) addressPhone.push(`Tel: ${clinic.phone}`);
+        if (addressPhone.length > 0) footerLines.push(addressPhone.join(' | '));
+        if (clinic.email) footerLines.push(clinic.email);
+        if (footerLines.length === 0) footerLines.push(clinic.name);
+
+        const lineHeight = 3;
+        const footerBlockHeight = footerLines.length * lineHeight + 6;
+        const footerStartY = pageHeight - 10 - footerBlockHeight;
+
         pdf.setDrawColor(200, 200, 200);
         pdf.setLineWidth(0.2);
-        pdf.line(margin, footerInfoY - 3, pageWidth - margin, footerInfoY - 3);
+        pdf.line(margin, footerStartY, pageWidth - margin, footerStartY);
 
         pdf.setFontSize(6.5);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(140, 140, 140);
 
-        const footerLines: string[] = [];
-        if (clinic.name) footerLines.push(clinic.name);
-        if (clinic.address) footerLines.push(clinic.address);
-
-        let fy = footerInfoY;
+        let fy = footerStartY + 4;
         for (const fl of footerLines) {
           pdf.text(fl, pageWidth / 2, fy, { align: 'center' });
-          fy += 3;
+          fy += lineHeight;
         }
       }
 
       pdf.setTextColor(170, 170, 170);
       pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Página ${i} de ${total}`, pageWidth / 2, footerY, { align: 'center' });
+      pdf.text(`Página ${i} de ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
     }
 
     pdf.save(`${title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.pdf`);

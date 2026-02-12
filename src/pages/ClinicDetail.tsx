@@ -22,6 +22,7 @@ import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateReportPdf } from '@/utils/generateReportPdf';
+import { Clinic } from '@/types';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -53,7 +54,7 @@ function getTodayWeekday() {
   return days[new Date().getDay()];
 }
 
-function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string }) {
+function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, clinic }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinic?: Clinic }) {
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
 
   useEffect(() => {
@@ -69,6 +70,10 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead }
       clinicName,
       clinicAddress,
       clinicLetterhead,
+      clinicEmail: clinic?.email,
+      clinicCnpj: clinic?.cnpj,
+      clinicPhone: clinic?.phone,
+      clinicServicesDescription: clinic?.servicesDescription,
     });
   };
 
@@ -1246,7 +1251,7 @@ export default function ClinicDetail() {
 
         {/* Reports Tab */}
         <TabsContent value="reports">
-          <ClinicReports clinicId={clinic.id} clinicName={clinic.name} clinicAddress={clinic.address || undefined} clinicLetterhead={clinic.letterhead || undefined} />
+          <ClinicReports clinicId={clinic.id} clinicName={clinic.name} clinicAddress={clinic.address || undefined} clinicLetterhead={clinic.letterhead || undefined} clinic={clinic} />
         </TabsContent>
       </Tabs>
 

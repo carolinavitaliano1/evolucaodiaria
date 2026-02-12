@@ -24,6 +24,10 @@ export interface Clinic {
   absencePaymentType?: 'always' | 'never' | 'confirmed_only';
   letterhead?: string;
   stamp?: string;
+  email?: string;
+  cnpj?: string;
+  phone?: string;
+  servicesDescription?: string;
   isArchived?: boolean;
   createdAt: string;
 }

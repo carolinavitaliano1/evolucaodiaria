@@ -8,6 +8,10 @@ interface ReportPdfOptions {
   clinicName?: string;
   clinicAddress?: string;
   clinicLetterhead?: string;
+  clinicEmail?: string;
+  clinicCnpj?: string;
+  clinicPhone?: string;
+  clinicServicesDescription?: string;
 }
 
 function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
@@ -24,7 +28,7 @@ function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
  * Generates a professional institutional PDF from report content (HTML or plain text).
  * Handles markdown tables, headings, bullet lists, and numbered sections.
  */
-export async function generateReportPdf({ title, content, fileName, clinicName, clinicAddress, clinicLetterhead }: ReportPdfOptions) {
+export async function generateReportPdf({ title, content, fileName, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription }: ReportPdfOptions) {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -261,34 +265,49 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
   pdf.setTextColor(130, 130, 130);
   pdf.text('(Assinatura e Carimbo)', pageWidth / 2, yPos, { align: 'center' });
 
-  // ── Footer — all pages: clinic info + page number ──
+  // ── Footer — all pages: institutional info + page number ──
   const total = pdf.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     pdf.setPage(i);
 
     if (clinicName) {
-      const footerInfoY = pageHeight - 22;
+      // Build footer lines
+      const footerLines: string[] = [];
+      if (clinicServicesDescription) footerLines.push(clinicServicesDescription);
+      if (clinicCnpj) footerLines.push(`CNPJ: ${clinicCnpj}`);
+      const addressPhone: string[] = [];
+      if (clinicAddress) addressPhone.push(clinicAddress);
+      if (clinicPhone) addressPhone.push(`Tel: ${clinicPhone}`);
+      if (addressPhone.length > 0) footerLines.push(addressPhone.join(' | '));
+      if (clinicEmail) footerLines.push(clinicEmail);
+      // Fallback: at least show clinic name
+      if (footerLines.length === 0) footerLines.push(clinicName);
+
+      const lineHeight = 3;
+      const footerBlockHeight = footerLines.length * lineHeight + 6;
+      const footerStartY = pageHeight - 10 - footerBlockHeight;
+
+      // Divider line
       pdf.setDrawColor(200, 200, 200);
       pdf.setLineWidth(0.2);
-      pdf.line(margin, footerInfoY - 3, pageWidth - margin, footerInfoY - 3);
+      pdf.line(margin, footerStartY, pageWidth - margin, footerStartY);
 
       pdf.setFontSize(6.5);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(140, 140, 140);
 
-      let fy = footerInfoY;
-      pdf.text(clinicName, pageWidth / 2, fy, { align: 'center' });
-      fy += 3;
-      if (clinicAddress) {
-        pdf.text(clinicAddress, pageWidth / 2, fy, { align: 'center' });
-        fy += 3;
+      let fy = footerStartY + 4;
+      for (const fl of footerLines) {
+        pdf.text(fl, pageWidth / 2, fy, { align: 'center' });
+        fy += lineHeight;
       }
     }
 
+    // Page number
     pdf.setTextColor(170, 170, 170);
     pdf.setFontSize(7.5);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Página ${i} de ${total}`, pageWidth / 2, footerY, { align: 'center' });
+    pdf.text(`Página ${i} de ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
   }
 
   const safeName = (fileName || title).replace(/\s+/g, '_');
