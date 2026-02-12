@@ -50,12 +50,31 @@ const USABLE_BOTTOM = PAGE_H - FOOTER_RESERVE;
 
 // ── Helpers ──
 
-/** Convert HTML to clean text lines */
-function htmlToLines(html: string): string[] {
-  let text = html;
+interface ContentBlock {
+  type: 'heading' | 'paragraph' | 'list-item' | 'ordered-item' | 'blank';
+  text: string;
+  level?: number;
+  bold?: boolean;
+}
 
-  // Convert HTML tables to key-value blocks
-  text = text.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, tableHtml: string) => {
+function decodeEntities(text: string): string {
+  return text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+function stripTags(html: string): string {
+  return decodeEntities(html.replace(/<[^>]+>/g, ''));
+}
+
+function isBoldContent(html: string): boolean {
+  return /<(strong|b)\b/i.test(html);
+}
+
+/** Parse HTML into structured blocks respecting editor structure */
+function parseHtmlToBlocks(html: string): ContentBlock[] {
+  const blocks: ContentBlock[] = [];
+
+  // Tables → key-value paragraphs
+  let processed = html.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, tableHtml: string) => {
     const rows: string[][] = [];
     const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let trMatch;
@@ -64,29 +83,84 @@ function htmlToLines(html: string): string[] {
       let cellMatch;
       const cells: string[] = [];
       while ((cellMatch = cellRegex.exec(trMatch[1])) !== null) {
-        cells.push(cellMatch[1].replace(/<[^>]+>/g, '').trim());
+        cells.push(stripTags(cellMatch[1]).trim());
       }
       if (cells.length >= 2) rows.push(cells);
     }
-    if (rows.length > 0) {
-      if (rows[0].length === 2) {
-        return '\n' + rows.map(r => `${r[0]}: ${r[1]}`).join('\n') + '\n';
-      }
-      return '\n' + rows.map(r => r.join(' — ')).join('\n') + '\n';
-    }
-    return '\n';
+    return rows.length > 0 ? rows.map(r => `<p>${r.join(': ')}</p>`).join('') : '';
   });
 
-  // Block elements → newlines
-  text = text.replace(/<\/?(p|div|br|h[1-6]|li|ul|ol|blockquote|tr|table)[^>]*\/?>/gi, '\n');
-  text = text.replace(/<[^>]+>/g, '');
-  text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
-  text = text.replace(/\n{3,}/g, '\n\n').trim();
+  // Ordered lists → tagged items with numbers
+  let olCounter = 0;
+  processed = processed.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, listHtml: string) => {
+    olCounter = 0;
+    return listHtml.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (__, itemHtml: string) => {
+      olCounter++;
+      return `<ordered-item data-num="${olCounter}">${itemHtml}</ordered-item>`;
+    });
+  });
 
-  return text.split('\n');
+  // Unordered lists
+  processed = processed.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_, listHtml: string) => {
+    return listHtml.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (__, itemHtml: string) => {
+      return `<bullet-item>${itemHtml}</bullet-item>`;
+    });
+  });
+
+  // Match block elements
+  const blockRegex = /<(h[1-6]|p|div|blockquote|ordered-item|bullet-item)([^>]*)>([\s\S]*?)<\/\1>|<br\s*\/?>/gi;
+  let match;
+  let lastIndex = 0;
+
+  while ((match = blockRegex.exec(processed)) !== null) {
+    const between = processed.slice(lastIndex, match.index).trim();
+    if (between) {
+      const t = stripTags(between).trim();
+      if (t) blocks.push({ type: 'paragraph', text: t });
+    }
+    lastIndex = match.index + match[0].length;
+
+    if (match[0].match(/^<br\s*\/?>$/i)) { blocks.push({ type: 'blank', text: '' }); continue; }
+
+    const tag = match[1].toLowerCase();
+    const attrs = match[2] || '';
+    const innerHtml = match[3] || '';
+    const text = stripTags(innerHtml).trim();
+
+    if (!text) { blocks.push({ type: 'blank', text: '' }); continue; }
+
+    if (tag.startsWith('h')) {
+      blocks.push({ type: 'heading', text, level: parseInt(tag[1]), bold: true });
+    } else if (tag === 'ordered-item') {
+      const numMatch = attrs.match(/data-num="(\d+)"/);
+      blocks.push({ type: 'ordered-item', text, level: numMatch ? parseInt(numMatch[1]) : 1 });
+    } else if (tag === 'bullet-item') {
+      blocks.push({ type: 'list-item', text });
+    } else {
+      blocks.push({ type: 'paragraph', text, bold: isBoldContent(innerHtml) });
+    }
+  }
+
+  const remaining = processed.slice(lastIndex).trim();
+  if (remaining) {
+    stripTags(remaining).split('\n').forEach(line => {
+      const t = line.trim();
+      if (t) blocks.push({ type: 'paragraph', text: t });
+      else blocks.push({ type: 'blank', text: '' });
+    });
+  }
+
+  if (blocks.length === 0 && html.trim()) {
+    stripTags(html).split('\n').forEach(line => {
+      const t = line.trim();
+      if (t) blocks.push({ type: 'paragraph', text: t });
+      else blocks.push({ type: 'blank', text: '' });
+    });
+  }
+
+  return blocks;
 }
 
-/** Check if line is a signature block line that should be skipped */
 function isSignatureLine(line: string): boolean {
   return (
     /^respons[áa]vel\s+t[ée]cnico/i.test(line) ||
@@ -95,23 +169,6 @@ function isSignatureLine(line: string): boolean {
     /^\(assinatura e carimbo/i.test(line) ||
     /^\(assinatura\)/i.test(line)
   );
-}
-
-/** Check if line is a section heading vs numbered list item */
-function classifyLine(trimmed: string): 'section' | 'subsection' | 'allcaps' | 'mdheading' | null {
-  if (/^\d+\.\d+/.test(trimmed) && trimmed.length < 120) return 'subsection';
-  // Only treat as section heading if it looks like a title (short, or has UPPERCASE words after the number)
-  if (/^\d+\.?\s/.test(trimmed) && trimmed.length < 120) {
-    const afterNum = trimmed.replace(/^\d+\.?\s*/, '');
-    // If the text after the number is mostly uppercase or very short (< 60 chars), it's a section heading
-    // Otherwise it's a numbered list item (long sentence)
-    const upperRatio = (afterNum.match(/[A-ZÀ-Ú]/g) || []).length / Math.max(afterNum.length, 1);
-    if (upperRatio > 0.5 || afterNum.length < 50) return 'section';
-    return null; // treat as numbered list item
-  }
-  if (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 100 && !/^\d/.test(trimmed)) return 'allcaps';
-  if (/^#{1,3}\s/.test(trimmed)) return 'mdheading';
-  return null;
 }
 
 export async function generateReportPdf(opts: ReportPdfOptions) {
@@ -200,72 +257,33 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   );
   y += 10;
 
-  // ── Parse & Render content ──
-  const rawLines = htmlToLines(content);
+  // ── Parse & Render content (HTML-structure-aware) ──
+  const blocks = parseHtmlToBlocks(content);
 
-  for (let i = 0; i < rawLines.length; i++) {
-    const trimmed = rawLines[i].trim();
-    if (trimmed === '') {
+  for (const block of blocks) {
+    if (block.type === 'blank') {
       y += PARAGRAPH_GAP;
       continue;
     }
 
     // Skip signature lines (the PDF adds its own)
-    if (isSignatureLine(trimmed)) continue;
+    if (isSignatureLine(block.text)) continue;
 
-    // Skip markdown separators & pipe tables
-    if (/^[-*=]{3,}$/.test(trimmed)) continue;
-    if (/^\|[\s-:|]+\|$/.test(trimmed)) continue;
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-      const cells = trimmed.split('|').filter(c => c.trim() !== '');
-      if (cells.length === 2) {
-        // Render as key-value (label semi-bold, value normal)
-        ensureSpace(LINE_HEIGHT * 2);
-        pdf.setFont(FONT, 'bold');
-        pdf.setFontSize(BODY_SIZE);
-        pdf.setTextColor(40, 40, 40);
-        const label = `${cells[0].trim()}: `;
-        const labelW = pdf.getTextWidth(label);
-        pdf.text(label, MARGIN, y);
-        pdf.setFont(FONT, 'normal');
-        const valLines = pdf.splitTextToSize(cells[1].trim(), CONTENT_W - labelW);
-        pdf.text(valLines[0], MARGIN + labelW, y);
-        y += LINE_HEIGHT;
-        for (let vi = 1; vi < valLines.length; vi++) {
-          ensureSpace(LINE_HEIGHT);
-          pdf.text(valLines[vi], MARGIN + labelW, y);
-          y += LINE_HEIGHT;
-        }
-        y += 1;
-        continue;
-      } else if (cells.length > 2) {
-        writeJustified(cells.map(c => c.trim()).join(' — '));
-        y += 1;
-        continue;
-      }
-    }
+    // Skip markdown separators
+    if (/^[-*=]{3,}$/.test(block.text)) continue;
 
-    // ── Classify line ──
-    const lineType = classifyLine(trimmed);
-
-    if (lineType === 'section' || lineType === 'allcaps' || lineType === 'mdheading') {
-      const headingText = trimmed.replace(/^#{1,3}\s/, '');
-      
-      // Orphan prevention: ensure heading + some body fits
+    if (block.type === 'heading') {
       ensureHeadingWithBody(SECTION_SIZE + SECTION_GAP);
-
       y += SECTION_GAP;
 
-      // Small accent bar for main numbered sections
-      if (lineType === 'section') {
-        pdf.setFillColor(60, 60, 60);
-        pdf.rect(MARGIN - 1, y - 4.5, 2, 5.5, 'F');
-      }
+      // Accent bar
+      pdf.setFillColor(60, 60, 60);
+      pdf.rect(MARGIN - 1, y - 4.5, 2, 5.5, 'F');
 
       pdf.setFont(FONT, 'bold');
-      pdf.setFontSize(SECTION_SIZE);
+      pdf.setFontSize(block.level && block.level <= 2 ? SECTION_SIZE : SUBSECTION_SIZE);
       pdf.setTextColor(25, 25, 25);
-      const hLines = pdf.splitTextToSize(headingText, CONTENT_W - 6);
+      const hLines = pdf.splitTextToSize(block.text, CONTENT_W - 6);
       for (const hl of hLines) {
         ensureSpace(8);
         pdf.text(hl, MARGIN + 3, y);
@@ -276,70 +294,28 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       continue;
     }
 
-    if (lineType === 'subsection') {
-      const headingText = trimmed;
-      ensureHeadingWithBody(SUBSECTION_SIZE + SECTION_GAP);
-      y += SECTION_GAP - 2;
-
-      pdf.setFont(FONT, 'normal'); // subsection: no excessive bold
-      pdf.setFontSize(SUBSECTION_SIZE);
-      pdf.setTextColor(30, 30, 30);
-      const hLines = pdf.splitTextToSize(headingText, CONTENT_W - 4);
-      for (const hl of hLines) {
-        ensureSpace(7);
-        pdf.text(hl, MARGIN + 2, y);
-        y += 7;
-      }
-      y += 2;
+    if (block.type === 'ordered-item') {
+      ensureSpace(LINE_HEIGHT + 3);
       setBody();
-      continue;
-    }
-
-    // ── Session sub-header (e.g. "Sessão – 04/02/2026") ──
-    if (/^sess[ãa]o/i.test(trimmed)) {
-      ensureHeadingWithBody(LINE_HEIGHT + SECTION_GAP);
-      y += SECTION_GAP - 2;
-      pdf.setFont(FONT, 'bold');
-      pdf.setFontSize(BODY_SIZE);
-      pdf.setTextColor(35, 35, 35);
-      pdf.text(trimmed, MARGIN + 2, y);
-      y += LINE_HEIGHT + 2;
-      setBody();
-      continue;
-    }
-
-    // ── Key-value line (e.g. "Nome do Paciente: João") ──
-    const kvMatch = trimmed.match(/^([A-ZÀ-Ú][^:]{2,40}):\s*(.+)$/);
-    if (kvMatch && !trimmed.startsWith('http')) {
-      ensureSpace(LINE_HEIGHT * 2);
-      pdf.setFont(FONT, 'bold');
-      pdf.setFontSize(BODY_SIZE);
-      pdf.setTextColor(40, 40, 40);
-      const label = `${kvMatch[1]}: `;
-      const labelW = pdf.getTextWidth(label);
-      pdf.text(label, MARGIN, y);
-      pdf.setFont(FONT, 'normal');
-      const valueLines = pdf.splitTextToSize(kvMatch[2], CONTENT_W - labelW);
-      pdf.text(valueLines[0], MARGIN + labelW, y);
-      y += LINE_HEIGHT;
-      for (let vi = 1; vi < valueLines.length; vi++) {
+      const numPrefix = `${block.level}. `;
+      const numW = pdf.getTextWidth(numPrefix);
+      pdf.text(numPrefix, MARGIN + 2, y);
+      const wrapped = pdf.splitTextToSize(block.text, CONTENT_W - numW - 4);
+      for (const wl of wrapped) {
         ensureSpace(LINE_HEIGHT);
-        pdf.text(valueLines[vi], MARGIN + labelW, y);
+        pdf.text(wl, MARGIN + numW + 2, y);
         y += LINE_HEIGHT;
       }
-      y += 1;
+      y += 3;
       continue;
     }
 
-    // ── Bullet list items ──
-    if (/^[-•]\s/.test(trimmed)) {
-      const itemText = trimmed.slice(2).trim();
-      if (itemText === '') continue;
+    if (block.type === 'list-item') {
       ensureSpace(LINE_HEIGHT);
       setBody();
       const bulletIndent = 6;
       pdf.text('•', MARGIN + 2, y);
-      const wrapped = pdf.splitTextToSize(itemText, CONTENT_W - bulletIndent - 2);
+      const wrapped = pdf.splitTextToSize(block.text, CONTENT_W - bulletIndent - 2);
       for (const wl of wrapped) {
         ensureSpace(LINE_HEIGHT);
         pdf.text(wl, MARGIN + bulletIndent, y);
@@ -349,26 +325,26 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       continue;
     }
 
-    // ── Numbered list items ──
-    const numberedMatch = trimmed.match(/^(\d+[.)\\])\s+(.+)/);
-    if (numberedMatch && lineType !== 'section') {
-      ensureSpace(LINE_HEIGHT + 3);
-      setBody();
-      const numPrefix = numberedMatch[1] + ' ';
-      const numW = pdf.getTextWidth(numPrefix);
-      pdf.text(numPrefix, MARGIN + 2, y);
-      const wrapped = pdf.splitTextToSize(numberedMatch[2], CONTENT_W - numW - 4);
+    // ── Paragraph: check if bold (section-like) ──
+    if (block.bold) {
+      ensureSpace(LINE_HEIGHT + SECTION_GAP);
+      y += SECTION_GAP;
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(BODY_SIZE);
+      pdf.setTextColor(30, 30, 30);
+      const wrapped = pdf.splitTextToSize(block.text, CONTENT_W);
       for (const wl of wrapped) {
         ensureSpace(LINE_HEIGHT);
-        pdf.text(wl, MARGIN + numW + 2, y);
+        pdf.text(wl, MARGIN, y);
         y += LINE_HEIGHT;
       }
-      y += 3; // spacing between numbered items
+      y += PARAGRAPH_GAP;
+      setBody();
       continue;
     }
 
-    // ── Regular paragraph text ──
-    writeJustified(trimmed);
+    // ── Regular paragraph ──
+    writeJustified(block.text);
     y += PARAGRAPH_GAP;
   }
 
