@@ -296,13 +296,18 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     }
 
     // ── Session sub-header (e.g. "Sessão – 04/02/2026") ──
-    if (/^sess[ãa]o/i.test(trimmed)) {
+    if (/^sess[ãa]o\s*[–—-]\s*\d/i.test(trimmed)) {
       ensureHeadingWithBody(LINE_HEIGHT + SECTION_GAP);
       y += SECTION_GAP - 2;
       pdf.setFont(FONT, 'bold');
       pdf.setFontSize(BODY_SIZE);
       pdf.setTextColor(35, 35, 35);
-      pdf.text(trimmed, MARGIN + 2, y);
+      const sessLines = pdf.splitTextToSize(trimmed, CONTENT_W - 4);
+      for (const sl of sessLines) {
+        ensureSpace(LINE_HEIGHT);
+        pdf.text(sl, MARGIN + 2, y);
+        y += LINE_HEIGHT;
+      }
       y += LINE_HEIGHT + 2;
       setBody();
       continue;
