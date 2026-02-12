@@ -372,19 +372,15 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     y += PARAGRAPH_GAP;
   }
 
-  // ── Signature Block (side by side, as close to footer as possible) ──
-  const SIG_BLOCK_H = 12; // signature line + labels height
-  // Place signatures just above footer reserve (PAGE_H - FOOTER_RESERVE)
-  // Push them as far down as possible: ~5mm above the footer divider
-  const sigY = PAGE_H - FOOTER_RESERVE - 3;
-
-  // Thin separator after content
-  const sepY = Math.min(y + 8, sigY - 5);
+  // ── Signature Block ──
+  // Separator line: max 3mm from last content line
+  const sepY = y + 3;
   pdf.setDrawColor(200, 200, 200);
   pdf.setLineWidth(0.3);
   pdf.line(MARGIN, sepY, PAGE_W - MARGIN, sepY);
 
-  // Side-by-side signatures positioned near bottom
+  // Signature lines right after separator (3mm gap)
+  const sigY = sepY + 3;
   const sigLineW = 60;
   const leftCenterX = MARGIN + CONTENT_W * 0.25;
   const rightCenterX = MARGIN + CONTENT_W * 0.75;
@@ -415,7 +411,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   pdf.setTextColor(130, 130, 130);
   pdf.text('(Assinatura e Carimbo)', rightCenterX, sigY + 9, { align: 'center' });
 
-  // ── Footer on all pages ──
+  // ── Footer on all pages (pushed to very bottom) ──
   const totalPages = pdf.getNumberOfPages();
   for (let pg = 1; pg <= totalPages; pg++) {
     pdf.setPage(pg);
@@ -426,8 +422,8 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
 
     if (footerLines.length > 0) {
       const fLineH = 3.2;
-      const fBlockH = footerLines.length * fLineH + 5;
-      const fStartY = PAGE_H - 8 - fBlockH;
+      // Footer starts just above the page number, at the very bottom
+      const fStartY = PAGE_H - 5 - footerLines.length * fLineH - 4;
 
       // Divider
       pdf.setDrawColor(200, 200, 200);
@@ -445,11 +441,11 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       }
     }
 
-    // Page number (clean, separate from footer text)
+    // Page number at very bottom
     pdf.setFont(FONT, 'normal');
     pdf.setFontSize(7.5);
     pdf.setTextColor(170, 170, 170);
-    pdf.text(`Página ${pg} de ${totalPages}`, PAGE_W / 2, PAGE_H - 8, { align: 'center' });
+    pdf.text(`Página ${pg} de ${totalPages}`, PAGE_W / 2, PAGE_H - 5, { align: 'center' });
   }
 
   const safeName = (fileName || title).replace(/\s+/g, '_');
