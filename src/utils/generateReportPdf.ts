@@ -373,14 +373,8 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   }
 
   // ── Signature Block ──
-  // Separator line: max 3mm from last content line
-  const sepY = y + 3;
-  pdf.setDrawColor(200, 200, 200);
-  pdf.setLineWidth(0.3);
-  pdf.line(MARGIN, sepY, PAGE_W - MARGIN, sepY);
-
-  // Signature lines right after separator (3mm gap)
-  const sigY = sepY + 3;
+  // Signature lines: 3mm from last content line, no separator
+  const sigY = y + 3;
   const sigLineW = 60;
   const leftCenterX = MARGIN + CONTENT_W * 0.25;
   const rightCenterX = MARGIN + CONTENT_W * 0.75;
