@@ -92,7 +92,37 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
   yPos += 12;
 
   // ── Parse content ──
-  const plainText = content.replace(/<[^>]+>/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  // Convert HTML tables to markdown pipe tables before stripping HTML
+  let processedContent = content;
+
+  // Convert <table> blocks to markdown-style pipe tables
+  processedContent = processedContent.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, tableHtml: string) => {
+    const rows: string[] = [];
+    const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let trMatch;
+    let isFirstRow = true;
+    while ((trMatch = trRegex.exec(tableHtml)) !== null) {
+      const cellRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
+      let cellMatch;
+      const cells: string[] = [];
+      while ((cellMatch = cellRegex.exec(trMatch[1])) !== null) {
+        cells.push(cellMatch[1].replace(/<[^>]+>/g, '').trim());
+      }
+      if (cells.length > 0) {
+        rows.push('| ' + cells.join(' | ') + ' |');
+        if (isFirstRow) {
+          rows.push('| ' + cells.map(() => '---').join(' | ') + ' |');
+          isFirstRow = false;
+        }
+      }
+    }
+    return '\n' + rows.join('\n') + '\n';
+  });
+
+  // Convert block-level HTML to line breaks
+  processedContent = processedContent.replace(/<\/?(p|div|br|h[1-6]|li|ul|ol|blockquote)[^>]*\/?>/gi, '\n');
+  // Strip remaining HTML tags
+  const plainText = processedContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\n{3,}/g, '\n\n').trim();
   const rawLines = plainText.split('\n');
 
   let inTable = false;
@@ -102,13 +132,29 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
     if (tableRows.length === 0) return;
     const cols = tableRows[0].length;
     const colW = contentWidth / cols;
-    const rowH = 7;
-    const tableHeight = tableRows.length * rowH + 2;
-    yPos = checkPage(yPos, tableHeight + 10);
+    const cellPadding = 2;
+    const cellTextWidth = colW - cellPadding * 2;
+
+    yPos = checkPage(yPos, 20);
 
     for (let r = 0; r < tableRows.length; r++) {
       const row = tableRows[r];
       const isHeader = r === 0;
+
+      // Calculate row height based on wrapped text
+      let maxLines = 1;
+      const cellWrapped: string[][] = [];
+      for (let c = 0; c < row.length; c++) {
+        const cellText = (row[c] || '').trim();
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', isHeader ? 'bold' : 'normal');
+        const lines = pdf.splitTextToSize(cellText, cellTextWidth);
+        cellWrapped.push(lines);
+        maxLines = Math.max(maxLines, lines.length);
+      }
+      const rowH = Math.max(7, maxLines * 4.5 + 3);
+
+      yPos = checkPage(yPos, rowH + 2);
 
       if (isHeader) {
         pdf.setFillColor(240, 240, 240);
@@ -126,18 +172,20 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
         }
       }
 
+      // Draw row border
       pdf.setDrawColor(220, 220, 220);
       pdf.setLineWidth(0.15);
-      pdf.line(margin, yPos + 2.5, pageWidth - margin, yPos + 2.5);
+      pdf.line(margin, yPos - 4.5 + rowH, pageWidth - margin, yPos - 4.5 + rowH);
 
-      for (let c = 0; c < row.length; c++) {
-        const cellX = margin + c * colW + 3;
-        const cellText = (row[c] || '').trim();
-        const truncated = cellText.length > 45 ? cellText.slice(0, 42) + '...' : cellText;
-        pdf.text(truncated, cellX, yPos);
+      for (let c = 0; c < cellWrapped.length; c++) {
+        const cellX = margin + c * colW + cellPadding;
+        let cellY = yPos;
+        for (const line of cellWrapped[c]) {
+          pdf.text(line, cellX, cellY);
+          cellY += 4.5;
+        }
       }
-      yPos += rowH;
-      yPos = checkPage(yPos);
+      yPos += rowH - 2;
     }
     yPos += 5;
     tableRows = [];
@@ -196,7 +244,7 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
     }
 
     const isBullet = /^[-•]\s/.test(trimmed);
-    const isNumberedItem = /^\d+\)\s/.test(trimmed);
+    const isNumberedItem = /^\d+[\.\)]\s/.test(trimmed) && !isSectionHeading;
 
     if (isBullet || isNumberedItem) {
       const itemText = isBullet ? trimmed.slice(2) : trimmed;
