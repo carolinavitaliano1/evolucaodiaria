@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Loader2, BookOpen, Sparkles } from 'lucide-react';
+import { Check, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -56,16 +55,8 @@ const PLANS = [
 
 export default function Pricing() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { subscribed, loading: subLoading } = useSubscription();
-
-  // Redirect authenticated+subscribed users to dashboard
-  useEffect(() => {
-    if (!authLoading && !subLoading && user && subscribed) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [authLoading, subLoading, user, subscribed, navigate]);
+  const { user } = useAuth();
+  const { subscribed } = useSubscription();
 
   async function handleSubscribe(priceId: string) {
     setLoadingPlan(priceId);
@@ -87,98 +78,79 @@ export default function Pricing() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="p-1.5 rounded-lg bg-primary/10">
-              <BookOpen className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-lg font-bold text-foreground">Evolução Diária</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>Já tenho conta</Button>
-            <Button size="sm" onClick={() => navigate('/auth')} className="gradient-primary">
-              Entrar
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-foreground mb-4">Escolha seu plano</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Escolha o plano ideal para gerenciar suas clínicas, pacientes e evoluções.
-            <span className="block mt-1 font-semibold text-primary">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-bold text-foreground mb-3">Escolha seu plano</h1>
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          Escolha o plano ideal para gerenciar suas clínicas, pacientes e evoluções.
+          <span className="block mt-1 font-semibold text-primary">
             <Sparkles className="inline w-4 h-4 mr-1" />
-              15 dias grátis em todos os planos!
-            </span>
-          </p>
-        </div>
+            15 dias grátis em todos os planos!
+          </span>
+        </p>
+        {subscribed && (
+          <Badge variant="outline" className="mt-3 text-primary border-primary">
+            ✓ Você já possui uma assinatura ativa
+          </Badge>
+        )}
+      </div>
 
-        {/* Plans */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {PLANS.map((plan) => (
-            <Card
-              key={plan.priceId}
-              className={`relative flex flex-col ${
-                plan.popular
-                  ? 'border-primary shadow-lg scale-105'
-                  : 'border-border'
-              }`}
-            >
-              {plan.popular && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                  Mais Popular
-                </Badge>
-              )}
-              <CardHeader className="text-center pb-2">
-                <CardTitle className="text-xl">{plan.name}</CardTitle>
-                <CardDescription>{plan.description}</CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <ul className="space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      <span className="text-sm text-foreground">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="w-full"
-                  variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => handleSubscribe(plan.priceId)}
-                  disabled={loadingPlan !== null}
-                >
-                  {loadingPlan === plan.priceId ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    'Começar Teste Grátis'
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-
-        <div className="text-center mt-8">
-          <Button variant="ghost" onClick={() => navigate('/auth')}>
-            ← Voltar para Login
-          </Button>
-        </div>
+      {/* Plans */}
+      <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {PLANS.map((plan) => (
+          <Card
+            key={plan.priceId}
+            className={`relative flex flex-col ${
+              plan.popular
+                ? 'border-primary shadow-lg scale-105'
+                : 'border-border'
+            }`}
+          >
+            {plan.popular && (
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
+                Mais Popular
+              </Badge>
+            )}
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-xl">{plan.name}</CardTitle>
+              <CardDescription>{plan.description}</CardDescription>
+              <div className="mt-4">
+                <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                <span className="text-muted-foreground">{plan.period}</span>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <ul className="space-y-3">
+                {plan.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                    <span className="text-sm text-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button
+                className="w-full"
+                variant={plan.popular ? 'default' : 'outline'}
+                onClick={() => handleSubscribe(plan.priceId)}
+                disabled={loadingPlan !== null}
+              >
+                {loadingPlan === plan.priceId ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : subscribed ? (
+                  'Alterar Plano'
+                ) : (
+                  'Começar Teste Grátis'
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
     </div>
   );

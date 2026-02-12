@@ -38,8 +38,17 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/pricing" element={<Pricing />} />
               <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+              {/* Pricing inside AppLayout but without subscription requirement */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/pricing" element={<Pricing />} />
+              </Route>
               <Route
                 element={
                   <ProtectedRoute requireSubscription>
