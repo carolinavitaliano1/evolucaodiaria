@@ -37,6 +37,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>(
     evolution.attachments?.map(att => ({
       id: att.id, name: att.name, filePath: att.data, fileType: att.type,
+      url: att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`,
     })) || []
   );
 
