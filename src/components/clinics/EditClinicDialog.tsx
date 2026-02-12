@@ -33,6 +33,10 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     type: 'propria' as 'propria' | 'terceirizada',
     address: '',
     notes: '',
+    email: '',
+    cnpj: '',
+    phone: '',
+    servicesDescription: '',
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
     paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
@@ -47,6 +51,10 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         type: clinic.type || 'propria',
         address: clinic.address || '',
         notes: clinic.notes || '',
+        email: clinic.email || '',
+        cnpj: clinic.cnpj || '',
+        phone: clinic.phone || '',
+        servicesDescription: clinic.servicesDescription || '',
         weekdays: clinic.weekdays || [],
         scheduleByDay: (clinic.scheduleByDay || {}) as { [day: string]: { start: string; end: string } },
         paymentType: (clinic.paymentType || '') as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
@@ -69,6 +77,10 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
       type: formData.type,
       address: formData.address || undefined,
       notes: formData.notes || undefined,
+      email: formData.email || undefined,
+      cnpj: formData.cnpj || undefined,
+      phone: formData.phone || undefined,
+      servicesDescription: formData.servicesDescription || undefined,
       weekdays: formData.weekdays,
       scheduleTime: firstDayTime || undefined,
       scheduleByDay: formData.scheduleByDay,
@@ -131,6 +143,45 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
             />
+          </div>
+
+          <div className="border-t pt-4">
+            <Label className="text-sm font-medium">Dados Institucionais</Label>
+            <div className="space-y-3 mt-2">
+              <div>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="contato@clinica.com"
+                />
+              </div>
+              <div>
+                <Label>CNPJ</Label>
+                <Input
+                  value={formData.cnpj}
+                  onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                  placeholder="00.000.000/0000-00"
+                />
+              </div>
+              <div>
+                <Label>Telefone</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="(00) 0000-0000"
+                />
+              </div>
+              <div>
+                <Label>Serviços / Especialidades</Label>
+                <Input
+                  value={formData.servicesDescription}
+                  onChange={(e) => setFormData({ ...formData, servicesDescription: e.target.value })}
+                  placeholder="Psicologia - Psicopedagogia - Fonoaudiologia"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="border-t pt-4">

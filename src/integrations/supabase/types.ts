@@ -149,7 +149,9 @@ export type Database = {
         Row: {
           absence_payment_type: string | null
           address: string | null
+          cnpj: string | null
           created_at: string
+          email: string | null
           id: string
           is_archived: boolean | null
           letterhead: string | null
@@ -158,8 +160,10 @@ export type Database = {
           payment_amount: number | null
           payment_type: string | null
           pays_on_absence: boolean
+          phone: string | null
           schedule_by_day: Json | null
           schedule_time: string | null
+          services_description: string | null
           stamp: string | null
           type: string
           updated_at: string
@@ -169,7 +173,9 @@ export type Database = {
         Insert: {
           absence_payment_type?: string | null
           address?: string | null
+          cnpj?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_archived?: boolean | null
           letterhead?: string | null
@@ -178,8 +184,10 @@ export type Database = {
           payment_amount?: number | null
           payment_type?: string | null
           pays_on_absence?: boolean
+          phone?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
+          services_description?: string | null
           stamp?: string | null
           type?: string
           updated_at?: string
@@ -189,7 +197,9 @@ export type Database = {
         Update: {
           absence_payment_type?: string | null
           address?: string | null
+          cnpj?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_archived?: boolean | null
           letterhead?: string | null
@@ -198,8 +208,10 @@ export type Database = {
           payment_amount?: number | null
           payment_type?: string | null
           pays_on_absence?: boolean
+          phone?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
+          services_description?: string | null
           stamp?: string | null
           type?: string
           updated_at?: string

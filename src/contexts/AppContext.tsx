@@ -102,7 +102,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         paysOnAbsence: c.pays_on_absence, 
         absencePaymentType: (c as any).absence_payment_type as 'always' | 'never' | 'confirmed_only' | undefined,
         letterhead: c.letterhead || undefined,
-        stamp: c.stamp || undefined, isArchived: c.is_archived || false, createdAt: c.created_at,
+        stamp: c.stamp || undefined,
+        email: (c as any).email || undefined,
+        cnpj: (c as any).cnpj || undefined,
+        phone: (c as any).phone || undefined,
+        servicesDescription: (c as any).services_description || undefined,
+        isArchived: c.is_archived || false, createdAt: c.created_at,
       }));
 
       const patients: Patient[] = (patientsRes.data || []).map(p => ({
@@ -181,7 +186,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         schedule_by_day: clinic.scheduleByDay || null, payment_type: clinic.paymentType || null,
         payment_amount: clinic.paymentAmount || null, pays_on_absence: clinic.paysOnAbsence ?? true,
         absence_payment_type: clinic.absencePaymentType || 'always',
-        letterhead: clinic.letterhead || null, stamp: clinic.stamp || null, is_archived: clinic.isArchived || false,
+        letterhead: clinic.letterhead || null, stamp: clinic.stamp || null,
+        email: clinic.email || null, cnpj: clinic.cnpj || null, phone: clinic.phone || null, services_description: clinic.servicesDescription || null,
+        is_archived: clinic.isArchived || false,
       }).select().single();
       if (error) throw error;
       const newClinic: Clinic = {
@@ -194,7 +201,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         paysOnAbsence: data.pays_on_absence, 
         absencePaymentType: (data as any).absence_payment_type as 'always' | 'never' | 'confirmed_only' | undefined,
         letterhead: data.letterhead || undefined,
-        stamp: data.stamp || undefined, isArchived: data.is_archived || false, createdAt: data.created_at,
+        stamp: data.stamp || undefined,
+        email: (data as any).email || undefined,
+        cnpj: (data as any).cnpj || undefined,
+        phone: (data as any).phone || undefined,
+        servicesDescription: (data as any).services_description || undefined,
+        isArchived: data.is_archived || false, createdAt: data.created_at,
       };
       setState(prev => ({ ...prev, clinics: [newClinic, ...prev.clinics] }));
       toast.success('Clínica adicionada!');
@@ -218,6 +230,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.absencePaymentType !== undefined) updateData.absence_payment_type = updates.absencePaymentType;
       if (updates.letterhead !== undefined) updateData.letterhead = updates.letterhead || null;
       if (updates.stamp !== undefined) updateData.stamp = updates.stamp || null;
+      if (updates.email !== undefined) updateData.email = updates.email || null;
+      if (updates.cnpj !== undefined) updateData.cnpj = updates.cnpj || null;
+      if (updates.phone !== undefined) updateData.phone = updates.phone || null;
+      if (updates.servicesDescription !== undefined) updateData.services_description = updates.servicesDescription || null;
       if (updates.isArchived !== undefined) updateData.is_archived = updates.isArchived;
       const { error } = await supabase.from('clinics').update(updateData).eq('id', id);
       if (error) throw error;
