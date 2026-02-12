@@ -372,12 +372,18 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     y += PARAGRAPH_GAP;
   }
 
-  // ── Signature Block ──
-  // Signature lines: 3mm from last content line, no separator
-  const sigY = y + 3;
+  // ── Signature Block (positioned near footer, bottom of last page) ──
   const sigLineW = 60;
   const leftCenterX = MARGIN + CONTENT_W * 0.25;
   const rightCenterX = MARGIN + CONTENT_W * 0.75;
+
+  // Place signatures just above footer area (enough room for stamps between sig and footer)
+  const sigY = PAGE_H - FOOTER_RESERVE - 15;
+
+  // If content already passed the signature position, add a new page
+  if (y > sigY - 5) {
+    pdf.addPage();
+  }
 
   // Left signature: Terapeuta Responsável
   pdf.setDrawColor(100, 100, 100);
