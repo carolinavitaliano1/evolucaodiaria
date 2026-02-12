@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
+// jsPDF now handled by generateReportPdf utility
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import ImageExt from '@tiptap/extension-image';
@@ -126,15 +126,7 @@ async function streamReport({
   onDone();
 }
 
-function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
+// loadImageFromUrl now handled by generateReportPdf utility
 
 function markdownToHtml(md: string): string {
   let html = md
@@ -438,287 +430,22 @@ export default function AIReports() {
     const htmlCheck = editor.getText();
     if (!htmlCheck.trim()) return;
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 22;
-    const contentWidth = pageWidth - margin * 2;
-    const title = reportTitle || 'Relatório Clínico';
-    const dateStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-    const footerY = pageHeight - 12;
-
-    // Reserve ~30mm at the bottom for footer block + page number
-    const footerReserve = 35;
-    const checkPage = (y: number, needed = 20) => {
-      if (y > pageHeight - footerReserve - needed) {
-        pdf.addPage();
-        return 22;
-      }
-      return y;
-    };
-
-    // ==========================================
-    // LETTERHEAD — clinic logo only (name/address go in footer)
-    // ==========================================
+    const { generateReportPdf } = await import('@/utils/generateReportPdf');
     const clinic = clinics.find(c => c.id === selectedClinic);
-    let yPos = margin;
+    const title = reportTitle || 'Relatório Clínico';
 
-    if (clinic?.letterhead) {
-      try {
-        const img = await loadImageFromUrl(clinic.letterhead);
-        const imgWidth = contentWidth;
-        const imgHeight = (img.height / img.width) * imgWidth;
-        const maxH = 35;
-        const finalH = Math.min(imgHeight, maxH);
-        pdf.addImage(clinic.letterhead, 'PNG', margin, yPos, imgWidth, finalH);
-        yPos += finalH + 3;
-        pdf.setDrawColor(200, 200, 200);
-        pdf.setLineWidth(0.3);
-        pdf.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 5;
-      } catch (e) {
-        console.error('Error loading letterhead:', e);
-      }
-    }
-
-    // ==========================================
-    // HEADER — only user title + date
-    // ==========================================
-    yPos += 5;
-    pdf.setTextColor(30, 30, 30);
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'bold');
-    const titleLines = pdf.splitTextToSize(title.toUpperCase(), contentWidth - 20);
-    for (const tl of titleLines) {
-      pdf.text(tl, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 7;
-    }
-    yPos += 4;
-
-    // Subtle divider
-    pdf.setDrawColor(180, 180, 180);
-    pdf.setLineWidth(0.4);
-    pdf.line(margin + 30, yPos, pageWidth - margin - 30, yPos);
-    yPos += 8;
-
-    // Date
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(120, 120, 120);
-    pdf.text(`Data de Emissão: ${dateStr}`, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 12;
-
-    // ==========================================
-    // BODY — parse HTML to extract text + images
-    // ==========================================
-    const htmlContent = editor.getHTML();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, 'text/html');
-    const elements = doc.body.childNodes;
-
-    const processTextBlock = (text: string) => {
-      if (!text.trim()) { yPos += 3; return; }
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-      pdf.setTextColor(45, 45, 45);
-      const wrapped = pdf.splitTextToSize(text.trim(), contentWidth);
-      for (const wl of wrapped) {
-        yPos = checkPage(yPos);
-        pdf.text(wl, margin, yPos);
-        yPos += 5;
-      }
-      yPos += 2;
-    };
-
-    const processElement = async (el: Node) => {
-      if (el.nodeType === Node.TEXT_NODE) {
-        const t = el.textContent?.trim();
-        if (t) processTextBlock(t);
-        return;
-      }
-      if (el.nodeType !== Node.ELEMENT_NODE) return;
-      const elem = el as HTMLElement;
-      const tag = elem.tagName.toLowerCase();
-
-      // Images
-      if (tag === 'img') {
-        const src = elem.getAttribute('src');
-        if (!src) return;
-        try {
-          const img = await loadImageFromUrl(src);
-          const widthAttr = elem.getAttribute('width') || elem.style.width;
-          let imgWidthPx = img.width;
-          if (widthAttr) {
-            const parsed = parseInt(widthAttr);
-            if (!isNaN(parsed)) imgWidthPx = parsed;
-          }
-          // Convert px to mm (roughly 3.78 px per mm)
-          let imgWidthMm = imgWidthPx / 3.78;
-          if (imgWidthMm > contentWidth) imgWidthMm = contentWidth;
-          const imgHeightMm = (img.height / img.width) * imgWidthMm;
-          const maxImgH = pageHeight - 60;
-          const finalH = Math.min(imgHeightMm, maxImgH);
-          const finalW = (finalH < imgHeightMm) ? (img.width / img.height) * finalH : imgWidthMm;
-
-          yPos = checkPage(yPos, finalH + 10);
-
-          const align = elem.getAttribute('data-align') || 'center';
-          let imgX = margin;
-          if (align === 'center') imgX = margin + (contentWidth - finalW) / 2;
-          else if (align === 'right') imgX = margin + contentWidth - finalW;
-
-          pdf.addImage(src, 'PNG', imgX, yPos, finalW, finalH);
-          yPos += finalH + 5;
-        } catch (e) {
-          console.error('Error loading image for PDF:', e);
-        }
-        return;
-      }
-
-      // Headings
-      if (['h1', 'h2', 'h3'].includes(tag)) {
-        yPos += 5;
-        yPos = checkPage(yPos, 15);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(tag === 'h1' ? 14 : tag === 'h2' ? 12 : 11);
-        pdf.setTextColor(25, 25, 25);
-        const headingText = elem.textContent || '';
-        const headingLines = pdf.splitTextToSize(headingText, contentWidth - 5);
-        for (const hl of headingLines) {
-          yPos = checkPage(yPos, 10);
-          pdf.text(hl, margin + 2, yPos);
-          yPos += 6;
-        }
-        yPos += 2;
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(10);
-        pdf.setTextColor(45, 45, 45);
-        return;
-      }
-
-      // Lists
-      if (tag === 'ul' || tag === 'ol') {
-        let idx = 0;
-        for (const li of Array.from(elem.children)) {
-          idx++;
-          const itemText = li.textContent || '';
-          const prefix = tag === 'ul' ? '•  ' : `${idx})  `;
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(10);
-          pdf.setTextColor(45, 45, 45);
-          const wrapped = pdf.splitTextToSize(`${prefix}${itemText}`, contentWidth - 6);
-          for (const wl of wrapped) {
-            yPos = checkPage(yPos);
-            pdf.text(wl, margin + 6, yPos);
-            yPos += 5;
-          }
-          yPos += 1.5;
-        }
-        yPos += 2;
-        return;
-      }
-
-      // Paragraphs and other block elements — recurse children
-      if (tag === 'p' || tag === 'div' || tag === 'blockquote') {
-        // Check if it contains images
-        const imgs = elem.querySelectorAll('img');
-        if (imgs.length > 0) {
-          // Process children individually to handle mixed text+images
-          for (const child of Array.from(elem.childNodes)) {
-            await processElement(child);
-          }
-        } else {
-          const t = elem.textContent || '';
-          if (t.trim()) processTextBlock(t);
-        }
-        return;
-      }
-
-      // Fallback: process children
-      for (const child of Array.from(elem.childNodes)) {
-        await processElement(child);
-      }
-    };
-
-    for (const el of Array.from(elements)) {
-      await processElement(el);
-    }
-
-    // ==========================================
-    // SIGNATURE SECTION
-    // ==========================================
-    yPos += 10;
-    // Reserve enough space: signature block (~30mm) + footer (~25mm)
-    yPos = checkPage(yPos, 55);
-
-    // Divider before signature
-    pdf.setDrawColor(200, 200, 200);
-    pdf.setLineWidth(0.3);
-    pdf.line(margin, yPos, pageWidth - margin, yPos);
-    yPos += 15;
-
-    // Signature line
-    const sigLineW = 65;
-    const sigX = pageWidth / 2 - sigLineW / 2;
-    pdf.setDrawColor(100, 100, 100);
-    pdf.setLineWidth(0.3);
-    pdf.line(sigX, yPos, sigX + sigLineW, yPos);
-    yPos += 5;
-
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(9);
-    pdf.setTextColor(60, 60, 60);
-    pdf.text('Responsável Técnico', pageWidth / 2, yPos, { align: 'center' });
-    yPos += 4;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.5);
-    pdf.setTextColor(130, 130, 130);
-    pdf.text('(Assinatura e Carimbo)', pageWidth / 2, yPos, { align: 'center' });
-
-    // ==========================================
-    // FOOTER — all pages: institutional info + page number
-    // ==========================================
-    const total = pdf.getNumberOfPages();
-    for (let i = 1; i <= total; i++) {
-      pdf.setPage(i);
-
-      if (clinic) {
-        const footerLines: string[] = [clinic.name];
-        if (clinic.servicesDescription) footerLines.push(clinic.servicesDescription);
-        if (clinic.cnpj) footerLines.push(`CNPJ: ${clinic.cnpj}`);
-        const addressPhone: string[] = [];
-        if (clinic.address) addressPhone.push(clinic.address);
-        if (clinic.phone) addressPhone.push(`Tel: ${clinic.phone}`);
-        if (addressPhone.length > 0) footerLines.push(addressPhone.join(' | '));
-        if (clinic.email) footerLines.push(clinic.email);
-
-        const lineHeight = 3;
-        const footerBlockHeight = footerLines.length * lineHeight + 6;
-        const footerStartY = pageHeight - 10 - footerBlockHeight;
-
-        pdf.setDrawColor(200, 200, 200);
-        pdf.setLineWidth(0.2);
-        pdf.line(margin, footerStartY, pageWidth - margin, footerStartY);
-
-        pdf.setFontSize(6.5);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(140, 140, 140);
-
-        let fy = footerStartY + 4;
-        for (const fl of footerLines) {
-          pdf.text(fl, pageWidth / 2, fy, { align: 'center' });
-          fy += lineHeight;
-        }
-      }
-
-      pdf.setTextColor(170, 170, 170);
-      pdf.setFontSize(7.5);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Página ${i} de ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
-    }
-
-    pdf.save(`${title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success('PDF exportado!');
+    await generateReportPdf({
+      title,
+      content: editor.getHTML(),
+      fileName: `${title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}`,
+      clinicName: clinic?.name,
+      clinicAddress: clinic?.address,
+      clinicLetterhead: clinic?.letterhead,
+      clinicEmail: clinic?.email,
+      clinicCnpj: clinic?.cnpj,
+      clinicPhone: clinic?.phone,
+      clinicServicesDescription: clinic?.servicesDescription,
+    });
   };
 
   const handleShareEmail = () => {
