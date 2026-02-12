@@ -24,34 +24,37 @@ function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// ── Constants ──
-const PAGE_W = 210; // A4 mm
+// ── Constants (A4) ──
+const PAGE_W = 210;
 const PAGE_H = 297;
 const MARGIN = 25; // ~2.5 cm
 const CONTENT_W = PAGE_W - MARGIN * 2;
-const FONT = 'helvetica'; // closest built-in to Arial/Inter
+const FONT = 'helvetica';
 
-const TITLE_SIZE = 14;
-const SUBTITLE_SIZE = 12;
-const BODY_SIZE = 10;
-const SMALL_SIZE = 8.5;
-const FOOTER_FONT_SIZE = 6.5;
+// Font sizes (matching user spec)
+const TITLE_SIZE = 16;
+const SECTION_SIZE = 14;
+const SUBSECTION_SIZE = 13;
+const BODY_SIZE = 12;
+const SMALL_SIZE = 9;
+const FOOTER_FONT_SIZE = 7;
 
-const LINE_HEIGHT = 5; // ~1.5 spacing for 10pt
-const SECTION_GAP = 8;
-const PARAGRAPH_GAP = 3;
+// Spacing
+const LINE_HEIGHT = 6; // ~1.5 spacing for 12pt
+const SECTION_GAP = 7; // 18px ≈ 7mm
+const PARAGRAPH_GAP = 3; // 8px ≈ 3mm
 
-// Footer area reserved at the bottom of every page
-const FOOTER_RESERVE = 30;
+// Footer area
+const FOOTER_RESERVE = 28;
 const USABLE_BOTTOM = PAGE_H - FOOTER_RESERVE;
 
 // ── Helpers ──
 
-/** Convert HTML content to clean structured lines */
+/** Convert HTML to clean text lines */
 function htmlToLines(html: string): string[] {
   let text = html;
 
-  // Convert HTML tables to key-value blocks (no pipe tables)
+  // Convert HTML tables to key-value blocks
   text = text.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, tableHtml: string) => {
     const rows: string[][] = [];
     const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
@@ -65,17 +68,10 @@ function htmlToLines(html: string): string[] {
       }
       if (cells.length >= 2) rows.push(cells);
     }
-    // Render as "Label: Value" block
     if (rows.length > 0) {
-      const isHeaderRow = rows[0].every(c => c.length < 30);
-      const dataRows = isHeaderRow ? rows.slice(1) : rows;
-      const headerRow = isHeaderRow ? rows[0] : null;
-
-      // If 2 columns, treat as key-value
       if (rows[0].length === 2) {
-        return '\n' + dataRows.map(r => `${r[0]}: ${r[1]}`).join('\n') + '\n';
+        return '\n' + rows.map(r => `${r[0]}: ${r[1]}`).join('\n') + '\n';
       }
-      // Otherwise keep as text rows
       return '\n' + rows.map(r => r.join(' — ')).join('\n') + '\n';
     }
     return '\n';
@@ -83,29 +79,55 @@ function htmlToLines(html: string): string[] {
 
   // Block elements → newlines
   text = text.replace(/<\/?(p|div|br|h[1-6]|li|ul|ol|blockquote|tr|table)[^>]*\/?>/gi, '\n');
-  // Strip remaining HTML
   text = text.replace(/<[^>]+>/g, '');
-  // Decode entities
   text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
-  // Clean up excessive whitespace
   text = text.replace(/\n{3,}/g, '\n\n').trim();
 
   return text.split('\n');
 }
 
-/**
- * Generates a professional institutional PDF from report content.
- * All text is justified, no markdown tables, clean structured layout.
- */
+/** Check if line is a signature block line that should be skipped */
+function isSignatureLine(line: string): boolean {
+  return (
+    /^respons[áa]vel\s+t[ée]cnico/i.test(line) ||
+    /^terapeuta\s+respons[áa]vel/i.test(line) ||
+    /^\(espa[çc]o para assinatura/i.test(line) ||
+    /^\(assinatura e carimbo/i.test(line) ||
+    /^\(assinatura\)/i.test(line)
+  );
+}
+
+/** Check if line is a section heading */
+function classifyLine(trimmed: string): 'section' | 'subsection' | 'allcaps' | 'mdheading' | null {
+  if (/^\d+\.\d+/.test(trimmed) && trimmed.length < 120) return 'subsection';
+  if (/^\d+\.?\s/.test(trimmed) && trimmed.length < 120) return 'section';
+  if (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 100 && !/^\d/.test(trimmed)) return 'allcaps';
+  if (/^#{1,3}\s/.test(trimmed)) return 'mdheading';
+  return null;
+}
+
 export async function generateReportPdf(opts: ReportPdfOptions) {
-  const { title, content, fileName, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription } = opts;
+  const {
+    title, content, fileName, clinicName, clinicAddress,
+    clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone,
+    clinicServicesDescription
+  } = opts;
 
   const pdf = new jsPDF('p', 'mm', 'a4');
   let y = MARGIN;
 
-  // ── Pagination helper ──
+  // ── Pagination ──
   const ensureSpace = (needed: number) => {
     if (y + needed > USABLE_BOTTOM) {
+      pdf.addPage();
+      y = MARGIN;
+    }
+  };
+
+  // Ensure heading + at least 3 body lines stay together (orphan prevention)
+  const ensureHeadingWithBody = (headingHeight: number) => {
+    const minBodyAfter = LINE_HEIGHT * 3;
+    if (y + headingHeight + minBodyAfter > USABLE_BOTTOM) {
       pdf.addPage();
       y = MARGIN;
     }
@@ -127,7 +149,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     }
   };
 
-  // ── Letterhead (logo image) ──
+  // ── Letterhead ──
   if (clinicLetterhead) {
     try {
       const img = await loadImageFromUrl(clinicLetterhead);
@@ -142,7 +164,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     } catch { /* skip */ }
   }
 
-  // ── Report Title ──
+  // ── Report Title (16pt bold, centered) ──
   y += 4;
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(TITLE_SIZE);
@@ -152,13 +174,13 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     pdf.text(tl, PAGE_W / 2, y, { align: 'center' });
     y += 8;
   }
-  y += 3;
+  y += 2;
 
-  // Divider
+  // Thin divider
   pdf.setDrawColor(180, 180, 180);
-  pdf.setLineWidth(0.4);
+  pdf.setLineWidth(0.3);
   pdf.line(MARGIN + 30, y, PAGE_W - MARGIN - 30, y);
-  y += 6;
+  y += 5;
 
   // Date
   pdf.setFont(FONT, 'normal');
@@ -170,7 +192,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   );
   y += 10;
 
-  // ── Parse content into lines ──
+  // ── Parse & Render content ──
   const rawLines = htmlToLines(content);
 
   for (let i = 0; i < rawLines.length; i++) {
@@ -180,19 +202,32 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       continue;
     }
 
-    // Skip AI-generated signature block (the PDF adds its own)
-    if (/^respons[áa]vel\s+t[ée]cnico/i.test(trimmed)) continue;
-    if (/^\(espa[çc]o para assinatura/i.test(trimmed)) continue;
-    if (/^\(assinatura e carimbo\)/i.test(trimmed)) continue;
+    // Skip signature lines (the PDF adds its own)
+    if (isSignatureLine(trimmed)) continue;
 
-    // Skip markdown table separators and pipe lines
+    // Skip markdown separators & pipe tables
     if (/^[-*=]{3,}$/.test(trimmed)) continue;
     if (/^\|[\s-:|]+\|$/.test(trimmed)) continue;
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-      // Convert leftover pipe tables to key-value
       const cells = trimmed.split('|').filter(c => c.trim() !== '');
       if (cells.length === 2) {
-        writeJustified(`${cells[0].trim()}: ${cells[1].trim()}`);
+        // Render as key-value (label semi-bold, value normal)
+        ensureSpace(LINE_HEIGHT * 2);
+        pdf.setFont(FONT, 'bold');
+        pdf.setFontSize(BODY_SIZE);
+        pdf.setTextColor(40, 40, 40);
+        const label = `${cells[0].trim()}: `;
+        const labelW = pdf.getTextWidth(label);
+        pdf.text(label, MARGIN, y);
+        pdf.setFont(FONT, 'normal');
+        const valLines = pdf.splitTextToSize(cells[1].trim(), CONTENT_W - labelW);
+        pdf.text(valLines[0], MARGIN + labelW, y);
+        y += LINE_HEIGHT;
+        for (let vi = 1; vi < valLines.length; vi++) {
+          ensureSpace(LINE_HEIGHT);
+          pdf.text(valLines[vi], MARGIN + labelW, y);
+          y += LINE_HEIGHT;
+        }
         y += 1;
         continue;
       } else if (cells.length > 2) {
@@ -202,27 +237,25 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       }
     }
 
-    // ── Section headings (numbered like "1. TITLE" or "4.1. Subtitle") ──
-    const isSectionHeading = /^\d+(\.\d+)*\.?\s/.test(trimmed) && trimmed.length < 120;
-    const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 100 && !/^\d/.test(trimmed);
-    const isMdHeading = /^#{1,3}\s/.test(trimmed);
+    // ── Classify line ──
+    const lineType = classifyLine(trimmed);
 
-    if (isSectionHeading || isAllCaps || isMdHeading) {
-      y += SECTION_GAP;
+    if (lineType === 'section' || lineType === 'allcaps' || lineType === 'mdheading') {
       const headingText = trimmed.replace(/^#{1,3}\s/, '');
-      const isSubsection = /^\d+\.\d+/.test(trimmed);
-      const fontSize = isSubsection ? SUBTITLE_SIZE - 1 : SUBTITLE_SIZE;
+      
+      // Orphan prevention: ensure heading + some body fits
+      ensureHeadingWithBody(SECTION_SIZE + SECTION_GAP);
 
-      ensureSpace(fontSize + SECTION_GAP);
+      y += SECTION_GAP;
 
-      // Accent bar for main sections
-      if (isSectionHeading && !isSubsection) {
+      // Small accent bar for main numbered sections
+      if (lineType === 'section') {
         pdf.setFillColor(60, 60, 60);
-        pdf.rect(MARGIN - 1, y - 4.5, 2, 6, 'F');
+        pdf.rect(MARGIN - 1, y - 4.5, 2, 5.5, 'F');
       }
 
       pdf.setFont(FONT, 'bold');
-      pdf.setFontSize(fontSize);
+      pdf.setFontSize(SECTION_SIZE);
       pdf.setTextColor(25, 25, 25);
       const hLines = pdf.splitTextToSize(headingText, CONTENT_W - 6);
       for (const hl of hLines) {
@@ -230,7 +263,39 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
         pdf.text(hl, MARGIN + 3, y);
         y += 7;
       }
-      y += 4;
+      y += 3;
+      setBody();
+      continue;
+    }
+
+    if (lineType === 'subsection') {
+      const headingText = trimmed;
+      ensureHeadingWithBody(SUBSECTION_SIZE + SECTION_GAP);
+      y += SECTION_GAP - 2;
+
+      pdf.setFont(FONT, 'normal'); // subsection: no excessive bold
+      pdf.setFontSize(SUBSECTION_SIZE);
+      pdf.setTextColor(30, 30, 30);
+      const hLines = pdf.splitTextToSize(headingText, CONTENT_W - 4);
+      for (const hl of hLines) {
+        ensureSpace(7);
+        pdf.text(hl, MARGIN + 2, y);
+        y += 7;
+      }
+      y += 2;
+      setBody();
+      continue;
+    }
+
+    // ── Session sub-header (e.g. "Sessão – 04/02/2026") ──
+    if (/^sess[ãa]o/i.test(trimmed)) {
+      ensureHeadingWithBody(LINE_HEIGHT + SECTION_GAP);
+      y += SECTION_GAP - 2;
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(BODY_SIZE);
+      pdf.setTextColor(35, 35, 35);
+      pdf.text(trimmed, MARGIN + 2, y);
+      y += LINE_HEIGHT + 2;
       setBody();
       continue;
     }
@@ -246,7 +311,6 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       const labelW = pdf.getTextWidth(label);
       pdf.text(label, MARGIN, y);
       pdf.setFont(FONT, 'normal');
-      // Wrap value next to label
       const valueLines = pdf.splitTextToSize(kvMatch[2], CONTENT_W - labelW);
       pdf.text(valueLines[0], MARGIN + labelW, y);
       y += LINE_HEIGHT;
@@ -260,14 +324,11 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     }
 
     // ── Bullet list items ──
-    const isBullet = /^[-•]\s/.test(trimmed);
-    if (isBullet) {
+    if (/^[-•]\s/.test(trimmed)) {
       const itemText = trimmed.slice(2).trim();
-      if (itemText === '') continue; // skip empty bullets
+      if (itemText === '') continue;
       ensureSpace(LINE_HEIGHT);
-      pdf.setFont(FONT, 'normal');
-      pdf.setFontSize(BODY_SIZE);
-      pdf.setTextColor(40, 40, 40);
+      setBody();
       const bulletIndent = 6;
       pdf.text('•', MARGIN + 2, y);
       const wrapped = pdf.splitTextToSize(itemText, CONTENT_W - bulletIndent - 2);
@@ -280,13 +341,11 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       continue;
     }
 
-    // ── Numbered list items (1. or 1)) ──
-    const numberedMatch = trimmed.match(/^(\d+[\.\\)])\s+(.+)/);
-    if (numberedMatch && !isSectionHeading) {
-      ensureSpace(LINE_HEIGHT);
-      pdf.setFont(FONT, 'normal');
-      pdf.setFontSize(BODY_SIZE);
-      pdf.setTextColor(40, 40, 40);
+    // ── Numbered list items ──
+    const numberedMatch = trimmed.match(/^(\d+[.)\\])\s+(.+)/);
+    if (numberedMatch && lineType !== 'section') {
+      ensureSpace(LINE_HEIGHT + 3);
+      setBody();
       const numPrefix = numberedMatch[1] + ' ';
       const numW = pdf.getTextWidth(numPrefix);
       pdf.text(numPrefix, MARGIN + 2, y);
@@ -296,46 +355,56 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
         pdf.text(wl, MARGIN + numW + 2, y);
         y += LINE_HEIGHT;
       }
-      y += 2;
+      y += 3; // spacing between numbered items
       continue;
     }
 
-    // ── Session sub-header (e.g. "Sessão – 04/02/2026") ──
-    if (/^sess[ãa]o/i.test(trimmed)) {
-      y += SECTION_GAP - 2;
-      ensureSpace(14);
-      pdf.setFont(FONT, 'bold');
-      pdf.setFontSize(BODY_SIZE);
-      pdf.setTextColor(35, 35, 35);
-      pdf.text(trimmed, MARGIN + 2, y);
-      y += LINE_HEIGHT + 2;
-      setBody();
-      continue;
-    }
-
-    // ── Regular paragraph text (justified) ──
+    // ── Regular paragraph text ──
     writeJustified(trimmed);
     y += PARAGRAPH_GAP;
   }
 
-  // ── Signature Block ──
-  y += 12;
-  ensureSpace(45);
+  // ── Signature Block (two signatures) ──
+  y += 24; // ~60px spacing before signatures
+  ensureSpace(65); // ensure enough room for both signatures
+
+  // Thin separator
   pdf.setDrawColor(200, 200, 200);
   pdf.setLineWidth(0.3);
   pdf.line(MARGIN, y, PAGE_W - MARGIN, y);
-  y += 18;
+  y += 20;
+
   const sigLineW = 65;
   const sigX = PAGE_W / 2 - sigLineW / 2;
+
+  // Signature 1: Terapeuta Responsável
   pdf.setDrawColor(100, 100, 100);
   pdf.setLineWidth(0.4);
   pdf.line(sigX, y, sigX + sigLineW, y);
-  y += 6;
+  y += 5;
+  pdf.setFont(FONT, 'bold');
+  pdf.setFontSize(10);
+  pdf.setTextColor(50, 50, 50);
+  pdf.text('Terapeuta Responsável', PAGE_W / 2, y, { align: 'center' });
+  y += 4;
+  pdf.setFont(FONT, 'normal');
+  pdf.setFontSize(8);
+  pdf.setTextColor(130, 130, 130);
+  pdf.text('(Assinatura e Carimbo)', PAGE_W / 2, y, { align: 'center' });
+
+  y += 16; // ~40px spacing between signatures
+
+  // Signature 2: Responsável Técnico
+  ensureSpace(25);
+  pdf.setDrawColor(100, 100, 100);
+  pdf.setLineWidth(0.4);
+  pdf.line(sigX, y, sigX + sigLineW, y);
+  y += 5;
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(10);
   pdf.setTextColor(50, 50, 50);
   pdf.text('Responsável Técnico', PAGE_W / 2, y, { align: 'center' });
-  y += 5;
+  y += 4;
   pdf.setFont(FONT, 'normal');
   pdf.setFontSize(8);
   pdf.setTextColor(130, 130, 130);
@@ -346,19 +415,14 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   for (let pg = 1; pg <= totalPages; pg++) {
     pdf.setPage(pg);
 
-    if (clinicName) {
-      const footerLines: string[] = [clinicName];
-      if (clinicServicesDescription) footerLines.push(clinicServicesDescription);
-      if (clinicCnpj) footerLines.push(`CNPJ: ${clinicCnpj}`);
-      const addrPhone: string[] = [];
-      if (clinicAddress) addrPhone.push(clinicAddress);
-      if (clinicPhone) addrPhone.push(`Tel: ${clinicPhone}`);
-      if (addrPhone.length > 0) footerLines.push(addrPhone.join(' | '));
-      if (clinicEmail) footerLines.push(clinicEmail);
+    const footerLines: string[] = [];
+    if (clinicName) footerLines.push(clinicName);
+    if (clinicAddress) footerLines.push(clinicAddress);
 
+    if (footerLines.length > 0) {
       const fLineH = 3.2;
       const fBlockH = footerLines.length * fLineH + 5;
-      const fStartY = PAGE_H - 9 - fBlockH;
+      const fStartY = PAGE_H - 8 - fBlockH;
 
       // Divider
       pdf.setDrawColor(200, 200, 200);
@@ -376,7 +440,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       }
     }
 
-    // Page number
+    // Page number (clean, separate from footer text)
     pdf.setFont(FONT, 'normal');
     pdf.setFontSize(7.5);
     pdf.setTextColor(170, 170, 170);
