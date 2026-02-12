@@ -372,30 +372,18 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     y += PARAGRAPH_GAP;
   }
 
-  // ── Signature Block (side by side to stay on same page as content) ──
-  const SIG_BLOCK_H = 35; // total height needed for signature block
-  const spaceLeft = USABLE_BOTTOM - y;
+  // ── Signature Block (side by side, pushed near footer for stamp space) ──
+  const SIG_BLOCK_H = 15; // height of signature lines + labels
+  // Position signatures just above the footer area, leaving max space for stamps
+  const sigY = USABLE_BOTTOM - SIG_BLOCK_H;
 
-  // Add some breathing room before signatures
-  if (spaceLeft > SIG_BLOCK_H + 15) {
-    // Enough space: add spacing then draw
-    y += 12;
-  } else if (spaceLeft > SIG_BLOCK_H) {
-    // Tight but fits
-    y += 4;
-  } else {
-    // Not enough space — but we NEVER put signatures alone on a new page
-    // Instead reduce spacing to squeeze them in
-    y += 2;
-  }
-
-  // Thin separator
+  // Thin separator after content
+  const sepY = Math.min(y + 8, sigY - 5);
   pdf.setDrawColor(200, 200, 200);
   pdf.setLineWidth(0.3);
-  pdf.line(MARGIN, y, PAGE_W - MARGIN, y);
-  y += 15;
+  pdf.line(MARGIN, sepY, PAGE_W - MARGIN, sepY);
 
-  // Side-by-side signatures
+  // Side-by-side signatures positioned near bottom
   const sigLineW = 60;
   const leftCenterX = MARGIN + CONTENT_W * 0.25;
   const rightCenterX = MARGIN + CONTENT_W * 0.75;
@@ -403,28 +391,28 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   // Left signature: Terapeuta Responsável
   pdf.setDrawColor(100, 100, 100);
   pdf.setLineWidth(0.4);
-  pdf.line(leftCenterX - sigLineW / 2, y, leftCenterX + sigLineW / 2, y);
+  pdf.line(leftCenterX - sigLineW / 2, sigY, leftCenterX + sigLineW / 2, sigY);
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(9);
   pdf.setTextColor(50, 50, 50);
-  pdf.text('Terapeuta Responsável', leftCenterX, y + 5, { align: 'center' });
+  pdf.text('Terapeuta Responsável', leftCenterX, sigY + 5, { align: 'center' });
   pdf.setFont(FONT, 'normal');
   pdf.setFontSize(7);
   pdf.setTextColor(130, 130, 130);
-  pdf.text('(Assinatura e Carimbo)', leftCenterX, y + 9, { align: 'center' });
+  pdf.text('(Assinatura e Carimbo)', leftCenterX, sigY + 9, { align: 'center' });
 
   // Right signature: Responsável Técnico
   pdf.setDrawColor(100, 100, 100);
   pdf.setLineWidth(0.4);
-  pdf.line(rightCenterX - sigLineW / 2, y, rightCenterX + sigLineW / 2, y);
+  pdf.line(rightCenterX - sigLineW / 2, sigY, rightCenterX + sigLineW / 2, sigY);
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(9);
   pdf.setTextColor(50, 50, 50);
-  pdf.text('Responsável Técnico', rightCenterX, y + 5, { align: 'center' });
+  pdf.text('Responsável Técnico', rightCenterX, sigY + 5, { align: 'center' });
   pdf.setFont(FONT, 'normal');
   pdf.setFontSize(7);
   pdf.setTextColor(130, 130, 130);
-  pdf.text('(Assinatura e Carimbo)', rightCenterX, y + 9, { align: 'center' });
+  pdf.text('(Assinatura e Carimbo)', rightCenterX, sigY + 9, { align: 'center' });
 
   // ── Footer on all pages ──
   const totalPages = pdf.getNumberOfPages();
