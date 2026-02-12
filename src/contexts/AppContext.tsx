@@ -320,6 +320,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addEvolution = useCallback(async (evolution: Omit<Evolution, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
+      // Check for duplicate: same patient, same date, same clinic
+      const { data: existing } = await supabase.from('evolutions')
+        .select('id')
+        .eq('patient_id', evolution.patientId)
+        .eq('date', evolution.date)
+        .eq('clinic_id', evolution.clinicId)
+        .maybeSingle();
+      
+      if (existing) {
+        toast.error('Já existe uma evolução para este paciente nesta data.');
+        return;
+      }
+
       const { data, error } = await supabase.from('evolutions').insert({
         user_id: user.id, patient_id: evolution.patientId, clinic_id: evolution.clinicId,
         date: evolution.date, text: evolution.text, attendance_status: evolution.attendanceStatus,
