@@ -368,40 +368,71 @@ export default function AIReports() {
     setIsSaving(true);
 
     try {
-      const patientId = saveDestination === 'patient' && selectedPatient ? selectedPatient : null;
-      const clinicId = saveDestination === 'clinic' && saveClinicId ? saveClinicId : null;
+      // Always insert a new record (never update) so multiple saves create multiple entries
+      const inserts: Array<{
+        user_id: string;
+        title: string;
+        content: string;
+        mode: string;
+        patient_id: string | null;
+        clinic_id: string | null;
+      }> = [];
 
-      if (currentReportId) {
-        const { error } = await supabase
-          .from('saved_reports')
-          .update({ title, content: htmlContent, patient_id: patientId, clinic_id: clinicId })
-          .eq('id', currentReportId);
-        if (error) throw error;
-        toast.success('Relatório atualizado!');
-      } else {
-        const { data, error } = await supabase
-          .from('saved_reports')
-          .insert({
+      if (saveDestination === 'patient' && selectedPatient) {
+        // Find the patient's clinic to save in both places
+        const pat = patients.find(p => p.id === selectedPatient);
+        const patClinicId = pat?.clinicId || null;
+
+        // Save with patient_id (appears in patient tab)
+        inserts.push({
+          user_id: user.id,
+          title,
+          content: htmlContent,
+          mode: 'free',
+          patient_id: selectedPatient,
+          clinic_id: null,
+        });
+
+        // Also save with clinic_id (appears in clinic tab)
+        if (patClinicId) {
+          inserts.push({
             user_id: user.id,
             title,
             content: htmlContent,
             mode: 'free',
-            patient_id: patientId,
-            clinic_id: clinicId,
-          })
-          .select()
-          .single();
-        if (error) throw error;
-        setCurrentReportId(data.id);
-        toast.success('Relatório salvo!');
+            patient_id: null,
+            clinic_id: patClinicId,
+          });
+        }
+      } else if (saveDestination === 'clinic' && saveClinicId) {
+        inserts.push({
+          user_id: user.id,
+          title,
+          content: htmlContent,
+          mode: 'free',
+          patient_id: null,
+          clinic_id: saveClinicId,
+        });
       }
+
+      if (inserts.length === 0) {
+        toast.error('Selecione onde salvar');
+        setIsSaving(false);
+        return;
+      }
+
+      const { error } = await supabase.from('saved_reports').insert(inserts);
+      if (error) throw error;
+
+      setCurrentReportId(null);
+      toast.success('Relatório salvo!');
       loadSavedReports();
     } catch (e) {
       toast.error('Erro ao salvar relatório');
     } finally {
       setIsSaving(false);
     }
-  }, [user, editor, reportTitle, currentReportId, selectedPatient, saveDestination, saveClinicId, loadSavedReports]);
+  }, [user, editor, reportTitle, selectedPatient, patients, saveDestination, saveClinicId, loadSavedReports]);
 
   const handleLoadReport = (report: SavedReport) => {
     editor?.commands.setContent(report.content);
