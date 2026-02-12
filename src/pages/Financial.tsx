@@ -1,5 +1,5 @@
 import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, subMonths, addMonths } from 'date-fns';
+import { format, subMonths, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,6 +25,8 @@ export default function Financial() {
   const [stamps, setStamps] = useState<any[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
   const [profile, setProfile] = useState<any>(null);
+  const [invoiceStartDate, setInvoiceStartDate] = useState('');
+  const [invoiceEndDate, setInvoiceEndDate] = useState('');
 
   // Month filter state
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -311,9 +314,20 @@ export default function Financial() {
       if (!clinic) throw new Error('Clínica não encontrada');
 
       const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
-      const clinicEvolutions = monthlyEvolutions.filter(e =>
-        clinicPatients.some(p => p.id === e.patientId)
-      ).sort((a, b) => a.date.localeCompare(b.date));
+      
+      // Use custom date range or fall back to selected month
+      const useCustomRange = invoiceStartDate && invoiceEndDate;
+      const rangeStart = useCustomRange ? invoiceStartDate : format(startOfMonth(selectedDate), 'yyyy-MM-dd');
+      const rangeEnd = useCustomRange ? invoiceEndDate : format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+      
+      const clinicEvolutions = evolutions.filter(e => {
+        if (!clinicPatients.some(p => p.id === e.patientId)) return false;
+        return e.date >= rangeStart && e.date <= rangeEnd;
+      }).sort((a, b) => a.date.localeCompare(b.date));
+      
+      const periodLabel = useCustomRange
+        ? `${format(parseISO(invoiceStartDate), 'dd/MM/yyyy')} a ${format(parseISO(invoiceEndDate), 'dd/MM/yyyy')}`
+        : monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
       const stamp = selectedStampId && selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
       const therapistName = profile?.name || user?.user_metadata?.full_name || 'Terapeuta';
@@ -335,7 +349,7 @@ export default function Financial() {
       y += 8;
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
-      doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), pageWidth / 2, y, { align: 'center' });
+      doc.text(periodLabel, pageWidth / 2, y, { align: 'center' });
       y += 12;
 
       // Clinic info
@@ -559,7 +573,8 @@ export default function Financial() {
         );
       }
 
-      doc.save(`extrato-${clinic.name.trim().replace(/\s+/g, '-').toLowerCase()}-${format(selectedDate, 'yyyy-MM')}.pdf`);
+      const fileSuffix = useCustomRange ? `${invoiceStartDate}_${invoiceEndDate}` : format(selectedDate, 'yyyy-MM');
+      doc.save(`extrato-${clinic.name.trim().replace(/\s+/g, '-').toLowerCase()}-${fileSuffix}.pdf`);
       toast.success('Extrato exportado com sucesso!');
       setInvoiceDialogOpen(false);
     } catch (error) {
@@ -811,6 +826,27 @@ export default function Financial() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-2 block">Data Início</label>
+                      <Input
+                        type="date"
+                        value={invoiceStartDate}
+                        onChange={(e) => setInvoiceStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-2 block">Data Fim</label>
+                      <Input
+                        type="date"
+                        value={invoiceEndDate}
+                        onChange={(e) => setInvoiceEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Deixe as datas em branco para usar o mês selecionado ({monthName}).
+                  </p>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Carimbo (opcional)</label>
                     <Select value={selectedStampId} onValueChange={setSelectedStampId}>
@@ -825,9 +861,6 @@ export default function Financial() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    O extrato incluirá todas as sessões de <strong className="capitalize">{monthName}</strong> com detalhamento por paciente, valores e totais.
-                  </p>
                   <Button 
                     onClick={handleExportClinicInvoice} 
                     disabled={isExportingInvoice || !invoiceClinicId}
