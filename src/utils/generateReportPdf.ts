@@ -24,83 +24,38 @@ function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/**
- * Generates a professional institutional PDF from report content (HTML or plain text).
- * Handles markdown tables, headings, bullet lists, and numbered sections.
- */
-export async function generateReportPdf({ title, content, fileName, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription }: ReportPdfOptions) {
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 22;
-  const contentWidth = pageWidth - margin * 2;
-  const footerY = pageHeight - 12;
+// ── Constants ──
+const PAGE_W = 210; // A4 mm
+const PAGE_H = 297;
+const MARGIN = 25; // ~2.5 cm
+const CONTENT_W = PAGE_W - MARGIN * 2;
+const FONT = 'helvetica'; // closest built-in to Arial/Inter
 
-  // Reserve ~30mm at the bottom for footer block + page number
-  const footerReserve = 35;
-  const checkPage = (y: number, needed = 20) => {
-    if (y > pageHeight - footerReserve - needed) { pdf.addPage(); return 22; }
-    return y;
-  };
+const TITLE_SIZE = 16;
+const SUBTITLE_SIZE = 14;
+const BODY_SIZE = 12;
+const SMALL_SIZE = 9;
+const FOOTER_FONT_SIZE = 7;
 
-  let yPos = margin;
+const LINE_HEIGHT = 6; // ~1.5 spacing for 12pt
+const SECTION_GAP = 10; // gap before a new section title
+const PARAGRAPH_GAP = 4;
 
-  // ── Letterhead (logo) ──
-  if (clinicLetterhead) {
-    try {
-      const img = await loadImageFromUrl(clinicLetterhead);
-      const imgWidth = contentWidth;
-      const imgHeight = (img.height / img.width) * imgWidth;
-      const maxH = 35;
-      const finalH = Math.min(imgHeight, maxH);
-      pdf.addImage(clinicLetterhead, 'PNG', margin, yPos, imgWidth, finalH);
-      yPos += finalH + 3;
-      // Divider after letterhead
-      pdf.setDrawColor(200, 200, 200);
-      pdf.setLineWidth(0.3);
-      pdf.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 5;
-    } catch { /* skip */ }
-  }
+// Footer area reserved at the bottom of every page
+const FOOTER_RESERVE = 30;
+const USABLE_BOTTOM = PAGE_H - FOOTER_RESERVE;
 
-  // ── Title (only what user typed) ──
-  yPos += 5;
-  pdf.setTextColor(30, 30, 30);
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  const titleLines = pdf.splitTextToSize(title.toUpperCase(), contentWidth - 20);
-  for (const tl of titleLines) {
-    pdf.text(tl, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 7;
-  }
-  yPos += 4;
+// ── Helpers ──
 
-  // Divider
-  pdf.setDrawColor(180, 180, 180);
-  pdf.setLineWidth(0.4);
-  pdf.line(margin + 30, yPos, pageWidth - margin - 30, yPos);
-  yPos += 8;
+/** Convert HTML content to clean structured lines */
+function htmlToLines(html: string): string[] {
+  let text = html;
 
-  // Date
-  pdf.setFontSize(9);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(120, 120, 120);
-  pdf.text(
-    `Data de Emissão: ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
-    pageWidth / 2, yPos, { align: 'center' }
-  );
-  yPos += 12;
-
-  // ── Parse content ──
-  // Convert HTML tables to markdown pipe tables before stripping HTML
-  let processedContent = content;
-
-  // Convert <table> blocks to markdown-style pipe tables
-  processedContent = processedContent.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, tableHtml: string) => {
-    const rows: string[] = [];
+  // Convert HTML tables to key-value blocks (no pipe tables)
+  text = text.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, tableHtml: string) => {
+    const rows: string[][] = [];
     const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let trMatch;
-    let isFirstRow = true;
     while ((trMatch = trRegex.exec(tableHtml)) !== null) {
       const cellRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
       let cellMatch;
@@ -108,240 +63,319 @@ export async function generateReportPdf({ title, content, fileName, clinicName, 
       while ((cellMatch = cellRegex.exec(trMatch[1])) !== null) {
         cells.push(cellMatch[1].replace(/<[^>]+>/g, '').trim());
       }
-      if (cells.length > 0) {
-        rows.push('| ' + cells.join(' | ') + ' |');
-        if (isFirstRow) {
-          rows.push('| ' + cells.map(() => '---').join(' | ') + ' |');
-          isFirstRow = false;
-        }
-      }
+      if (cells.length >= 2) rows.push(cells);
     }
-    return '\n' + rows.join('\n') + '\n';
+    // Render as "Label: Value" block
+    if (rows.length > 0) {
+      const isHeaderRow = rows[0].every(c => c.length < 30);
+      const dataRows = isHeaderRow ? rows.slice(1) : rows;
+      const headerRow = isHeaderRow ? rows[0] : null;
+
+      // If 2 columns, treat as key-value
+      if (rows[0].length === 2) {
+        return '\n' + dataRows.map(r => `${r[0]}: ${r[1]}`).join('\n') + '\n';
+      }
+      // Otherwise keep as text rows
+      return '\n' + rows.map(r => r.join(' — ')).join('\n') + '\n';
+    }
+    return '\n';
   });
 
-  // Convert block-level HTML to line breaks
-  processedContent = processedContent.replace(/<\/?(p|div|br|h[1-6]|li|ul|ol|blockquote)[^>]*\/?>/gi, '\n');
-  // Strip remaining HTML tags
-  const plainText = processedContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\n{3,}/g, '\n\n').trim();
-  const rawLines = plainText.split('\n');
+  // Block elements → newlines
+  text = text.replace(/<\/?(p|div|br|h[1-6]|li|ul|ol|blockquote|tr|table)[^>]*\/?>/gi, '\n');
+  // Strip remaining HTML
+  text = text.replace(/<[^>]+>/g, '');
+  // Decode entities
+  text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  // Clean up excessive whitespace
+  text = text.replace(/\n{3,}/g, '\n\n').trim();
 
-  let inTable = false;
-  let tableRows: string[][] = [];
+  return text.split('\n');
+}
 
-  const flushTable = () => {
-    if (tableRows.length === 0) return;
-    const cols = tableRows[0].length;
-    const colW = contentWidth / cols;
-    const cellPadding = 2;
-    const cellTextWidth = colW - cellPadding * 2;
+/**
+ * Generates a professional institutional PDF from report content.
+ * All text is justified, no markdown tables, clean structured layout.
+ */
+export async function generateReportPdf(opts: ReportPdfOptions) {
+  const { title, content, fileName, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription } = opts;
 
-    yPos = checkPage(yPos, 20);
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  let y = MARGIN;
 
-    for (let r = 0; r < tableRows.length; r++) {
-      const row = tableRows[r];
-      const isHeader = r === 0;
-
-      // Calculate row height based on wrapped text
-      let maxLines = 1;
-      const cellWrapped: string[][] = [];
-      for (let c = 0; c < row.length; c++) {
-        const cellText = (row[c] || '').trim();
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', isHeader ? 'bold' : 'normal');
-        const lines = pdf.splitTextToSize(cellText, cellTextWidth);
-        cellWrapped.push(lines);
-        maxLines = Math.max(maxLines, lines.length);
-      }
-      const rowH = Math.max(7, maxLines * 4.5 + 3);
-
-      yPos = checkPage(yPos, rowH + 2);
-
-      if (isHeader) {
-        pdf.setFillColor(240, 240, 240);
-        pdf.rect(margin, yPos - 4.5, contentWidth, rowH, 'F');
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(9);
-        pdf.setTextColor(40, 40, 40);
-      } else {
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(60, 60, 60);
-        if (r % 2 === 0) {
-          pdf.setFillColor(250, 250, 250);
-          pdf.rect(margin, yPos - 4.5, contentWidth, rowH, 'F');
-        }
-      }
-
-      // Draw row border
-      pdf.setDrawColor(220, 220, 220);
-      pdf.setLineWidth(0.15);
-      pdf.line(margin, yPos - 4.5 + rowH, pageWidth - margin, yPos - 4.5 + rowH);
-
-      for (let c = 0; c < cellWrapped.length; c++) {
-        const cellX = margin + c * colW + cellPadding;
-        let cellY = yPos;
-        for (const line of cellWrapped[c]) {
-          pdf.text(line, cellX, cellY);
-          cellY += 4.5;
-        }
-      }
-      yPos += rowH - 2;
+  // ── Pagination helper ──
+  const ensureSpace = (needed: number) => {
+    if (y + needed > USABLE_BOTTOM) {
+      pdf.addPage();
+      y = MARGIN;
     }
-    yPos += 5;
-    tableRows = [];
-    inTable = false;
   };
 
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(10);
-  pdf.setTextColor(45, 45, 45);
+  const setBody = () => {
+    pdf.setFont(FONT, 'normal');
+    pdf.setFontSize(BODY_SIZE);
+    pdf.setTextColor(40, 40, 40);
+  };
 
-  for (const rawLine of rawLines) {
-    const trimmed = rawLine.trim();
+  const writeJustified = (text: string, indent = 0) => {
+    setBody();
+    const lines = pdf.splitTextToSize(text, CONTENT_W - indent);
+    for (const line of lines) {
+      ensureSpace(LINE_HEIGHT);
+      pdf.text(line, MARGIN + indent, y, { align: 'left' });
+      y += LINE_HEIGHT;
+    }
+  };
 
+  // ── Letterhead (logo image) ──
+  if (clinicLetterhead) {
+    try {
+      const img = await loadImageFromUrl(clinicLetterhead);
+      const imgW = CONTENT_W;
+      const imgH = Math.min((img.height / img.width) * imgW, 35);
+      pdf.addImage(clinicLetterhead, 'PNG', MARGIN, y, imgW, imgH);
+      y += imgH + 3;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(MARGIN, y, PAGE_W - MARGIN, y);
+      y += 6;
+    } catch { /* skip */ }
+  }
+
+  // ── Report Title ──
+  y += 4;
+  pdf.setFont(FONT, 'bold');
+  pdf.setFontSize(TITLE_SIZE);
+  pdf.setTextColor(30, 30, 30);
+  const titleLines = pdf.splitTextToSize(title.toUpperCase(), CONTENT_W - 20);
+  for (const tl of titleLines) {
+    pdf.text(tl, PAGE_W / 2, y, { align: 'center' });
+    y += 8;
+  }
+  y += 3;
+
+  // Divider
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.4);
+  pdf.line(MARGIN + 30, y, PAGE_W - MARGIN - 30, y);
+  y += 6;
+
+  // Date
+  pdf.setFont(FONT, 'normal');
+  pdf.setFontSize(SMALL_SIZE);
+  pdf.setTextColor(120, 120, 120);
+  pdf.text(
+    `Data de Emissão: ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+    PAGE_W / 2, y, { align: 'center' }
+  );
+  y += 10;
+
+  // ── Parse content into lines ──
+  const rawLines = htmlToLines(content);
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const trimmed = rawLines[i].trim();
+    if (trimmed === '') {
+      y += PARAGRAPH_GAP;
+      continue;
+    }
+
+    // Skip markdown table separators and pipe lines
     if (/^[-*=]{3,}$/.test(trimmed)) continue;
     if (/^\|[\s-:|]+\|$/.test(trimmed)) continue;
-
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      // Convert leftover pipe tables to key-value
       const cells = trimmed.split('|').filter(c => c.trim() !== '');
-      if (cells.length >= 2) {
-        inTable = true;
-        tableRows.push(cells.map(c => c.trim()));
+      if (cells.length === 2) {
+        writeJustified(`${cells[0].trim()}: ${cells[1].trim()}`);
+        y += 1;
+        continue;
+      } else if (cells.length > 2) {
+        writeJustified(cells.map(c => c.trim()).join(' — '));
+        y += 1;
         continue;
       }
     }
 
-    if (inTable) flushTable();
-
-    if (trimmed === '') { yPos += 3; continue; }
-
-    const isSectionHeading = /^\d+(\.\d+)?\.?\s/.test(trimmed) && trimmed.length < 100;
-    const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 80 && !/^\d/.test(trimmed);
+    // ── Section headings (numbered like "1. TITLE" or "4.1. Subtitle") ──
+    const isSectionHeading = /^\d+(\.\d+)*\.?\s/.test(trimmed) && trimmed.length < 120;
+    const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 100 && !/^\d/.test(trimmed);
     const isMdHeading = /^#{1,3}\s/.test(trimmed);
 
     if (isSectionHeading || isAllCaps || isMdHeading) {
-      yPos += 5;
-      yPos = checkPage(yPos, 15);
+      y += SECTION_GAP;
       const headingText = trimmed.replace(/^#{1,3}\s/, '');
-      if (isSectionHeading) {
-        pdf.setFillColor(80, 80, 80);
-        pdf.rect(margin - 1, yPos - 4, 1.5, 5, 'F');
+      const isSubsection = /^\d+\.\d+/.test(trimmed);
+      const fontSize = isSubsection ? SUBTITLE_SIZE - 1 : SUBTITLE_SIZE;
+
+      ensureSpace(fontSize + SECTION_GAP);
+
+      // Accent bar for main sections
+      if (isSectionHeading && !isSubsection) {
+        pdf.setFillColor(60, 60, 60);
+        pdf.rect(MARGIN - 1, y - 4.5, 2, 6, 'F');
       }
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(isSectionHeading ? 11.5 : 11);
+
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(fontSize);
       pdf.setTextColor(25, 25, 25);
-      const headingLines = pdf.splitTextToSize(headingText, contentWidth - 5);
-      for (const hl of headingLines) {
-        yPos = checkPage(yPos, 10);
-        pdf.text(hl, margin + 2, yPos);
-        yPos += 6;
+      const hLines = pdf.splitTextToSize(headingText, CONTENT_W - 6);
+      for (const hl of hLines) {
+        ensureSpace(8);
+        pdf.text(hl, MARGIN + 3, y);
+        y += 7;
       }
-      yPos += 2;
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-      pdf.setTextColor(45, 45, 45);
+      y += 4;
+      setBody();
       continue;
     }
 
+    // ── Key-value line (e.g. "Nome do Paciente: João") ──
+    const kvMatch = trimmed.match(/^([A-ZÀ-Ú][^:]{2,40}):\s*(.+)$/);
+    if (kvMatch && !trimmed.startsWith('http')) {
+      ensureSpace(LINE_HEIGHT * 2);
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(BODY_SIZE);
+      pdf.setTextColor(40, 40, 40);
+      const label = `${kvMatch[1]}: `;
+      const labelW = pdf.getTextWidth(label);
+      pdf.text(label, MARGIN, y);
+      pdf.setFont(FONT, 'normal');
+      // Wrap value next to label
+      const valueLines = pdf.splitTextToSize(kvMatch[2], CONTENT_W - labelW);
+      pdf.text(valueLines[0], MARGIN + labelW, y);
+      y += LINE_HEIGHT;
+      for (let vi = 1; vi < valueLines.length; vi++) {
+        ensureSpace(LINE_HEIGHT);
+        pdf.text(valueLines[vi], MARGIN + labelW, y);
+        y += LINE_HEIGHT;
+      }
+      y += 1;
+      continue;
+    }
+
+    // ── Bullet list items ──
     const isBullet = /^[-•]\s/.test(trimmed);
-    const isNumberedItem = /^\d+[\.\)]\s/.test(trimmed) && !isSectionHeading;
-
-    if (isBullet || isNumberedItem) {
-      const itemText = isBullet ? trimmed.slice(2) : trimmed;
-      const prefix = isBullet ? '•' : '';
-      const indent = isBullet ? 6 : 0;
-      const displayText = isBullet ? `${prefix}  ${itemText}` : itemText;
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-      pdf.setTextColor(45, 45, 45);
-      const wrapped = pdf.splitTextToSize(displayText, contentWidth - indent);
+    if (isBullet) {
+      const itemText = trimmed.slice(2).trim();
+      if (itemText === '') continue; // skip empty bullets
+      ensureSpace(LINE_HEIGHT);
+      pdf.setFont(FONT, 'normal');
+      pdf.setFontSize(BODY_SIZE);
+      pdf.setTextColor(40, 40, 40);
+      const bulletIndent = 6;
+      pdf.text('•', MARGIN + 2, y);
+      const wrapped = pdf.splitTextToSize(itemText, CONTENT_W - bulletIndent - 2);
       for (const wl of wrapped) {
-        yPos = checkPage(yPos);
-        pdf.text(wl, margin + indent, yPos);
-        yPos += 5;
+        ensureSpace(LINE_HEIGHT);
+        pdf.text(wl, MARGIN + bulletIndent, y);
+        y += LINE_HEIGHT;
       }
-      yPos += 1.5;
+      y += 2;
       continue;
     }
 
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(10);
-    pdf.setTextColor(45, 45, 45);
-    const wrapped = pdf.splitTextToSize(trimmed, contentWidth);
-    for (const wl of wrapped) {
-      yPos = checkPage(yPos);
-      pdf.text(wl, margin, yPos);
-      yPos += 5;
+    // ── Numbered list items (1. or 1)) ──
+    const numberedMatch = trimmed.match(/^(\d+[\.\\)])\s+(.+)/);
+    if (numberedMatch && !isSectionHeading) {
+      ensureSpace(LINE_HEIGHT);
+      pdf.setFont(FONT, 'normal');
+      pdf.setFontSize(BODY_SIZE);
+      pdf.setTextColor(40, 40, 40);
+      const numPrefix = numberedMatch[1] + ' ';
+      const numW = pdf.getTextWidth(numPrefix);
+      pdf.text(numPrefix, MARGIN + 2, y);
+      const wrapped = pdf.splitTextToSize(numberedMatch[2], CONTENT_W - numW - 4);
+      for (const wl of wrapped) {
+        ensureSpace(LINE_HEIGHT);
+        pdf.text(wl, MARGIN + numW + 2, y);
+        y += LINE_HEIGHT;
+      }
+      y += 2;
+      continue;
     }
-    yPos += 2;
+
+    // ── Session sub-header (e.g. "Sessão – 04/02/2026") ──
+    if (/^sess[ãa]o/i.test(trimmed)) {
+      y += SECTION_GAP - 2;
+      ensureSpace(14);
+      pdf.setFont(FONT, 'bold');
+      pdf.setFontSize(BODY_SIZE);
+      pdf.setTextColor(35, 35, 35);
+      pdf.text(trimmed, MARGIN + 2, y);
+      y += LINE_HEIGHT + 2;
+      setBody();
+      continue;
+    }
+
+    // ── Regular paragraph text (justified) ──
+    writeJustified(trimmed);
+    y += PARAGRAPH_GAP;
   }
 
-  if (inTable) flushTable();
-
-  // ── Signature section ──
-  yPos += 10;
-  // Reserve enough space: signature block (~30mm) + footer (~25mm)
-  yPos = checkPage(yPos, 55);
+  // ── Signature Block ──
+  y += 12;
+  ensureSpace(45);
   pdf.setDrawColor(200, 200, 200);
   pdf.setLineWidth(0.3);
-  pdf.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 15;
+  pdf.line(MARGIN, y, PAGE_W - MARGIN, y);
+  y += 18;
   const sigLineW = 65;
-  const sigX = pageWidth / 2 - sigLineW / 2;
+  const sigX = PAGE_W / 2 - sigLineW / 2;
   pdf.setDrawColor(100, 100, 100);
-  pdf.line(sigX, yPos, sigX + sigLineW, yPos);
-  yPos += 5;
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(9);
-  pdf.setTextColor(60, 60, 60);
-  pdf.text('Responsável Técnico', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 4;
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(7.5);
+  pdf.setLineWidth(0.4);
+  pdf.line(sigX, y, sigX + sigLineW, y);
+  y += 6;
+  pdf.setFont(FONT, 'bold');
+  pdf.setFontSize(10);
+  pdf.setTextColor(50, 50, 50);
+  pdf.text('Responsável Técnico', PAGE_W / 2, y, { align: 'center' });
+  y += 5;
+  pdf.setFont(FONT, 'normal');
+  pdf.setFontSize(8);
   pdf.setTextColor(130, 130, 130);
-  pdf.text('(Assinatura e Carimbo)', pageWidth / 2, yPos, { align: 'center' });
+  pdf.text('(Assinatura e Carimbo)', PAGE_W / 2, y, { align: 'center' });
 
-  // ── Footer — all pages: institutional info + page number ──
-  const total = pdf.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    pdf.setPage(i);
+  // ── Footer on all pages ──
+  const totalPages = pdf.getNumberOfPages();
+  for (let pg = 1; pg <= totalPages; pg++) {
+    pdf.setPage(pg);
 
     if (clinicName) {
-      // Build footer lines — always include clinic name first
       const footerLines: string[] = [clinicName];
       if (clinicServicesDescription) footerLines.push(clinicServicesDescription);
       if (clinicCnpj) footerLines.push(`CNPJ: ${clinicCnpj}`);
-      const addressPhone: string[] = [];
-      if (clinicAddress) addressPhone.push(clinicAddress);
-      if (clinicPhone) addressPhone.push(`Tel: ${clinicPhone}`);
-      if (addressPhone.length > 0) footerLines.push(addressPhone.join(' | '));
+      const addrPhone: string[] = [];
+      if (clinicAddress) addrPhone.push(clinicAddress);
+      if (clinicPhone) addrPhone.push(`Tel: ${clinicPhone}`);
+      if (addrPhone.length > 0) footerLines.push(addrPhone.join(' | '));
       if (clinicEmail) footerLines.push(clinicEmail);
 
-      const lineHeight = 3;
-      const footerBlockHeight = footerLines.length * lineHeight + 6;
-      const footerStartY = pageHeight - 10 - footerBlockHeight;
+      const fLineH = 3.2;
+      const fBlockH = footerLines.length * fLineH + 5;
+      const fStartY = PAGE_H - 9 - fBlockH;
 
-      // Divider line
+      // Divider
       pdf.setDrawColor(200, 200, 200);
       pdf.setLineWidth(0.2);
-      pdf.line(margin, footerStartY, pageWidth - margin, footerStartY);
+      pdf.line(MARGIN, fStartY, PAGE_W - MARGIN, fStartY);
 
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont(FONT, 'normal');
+      pdf.setFontSize(FOOTER_FONT_SIZE);
       pdf.setTextColor(140, 140, 140);
 
-      let fy = footerStartY + 4;
+      let fy = fStartY + 4;
       for (const fl of footerLines) {
-        pdf.text(fl, pageWidth / 2, fy, { align: 'center' });
-        fy += lineHeight;
+        pdf.text(fl, PAGE_W / 2, fy, { align: 'center' });
+        fy += fLineH;
       }
     }
 
     // Page number
-    pdf.setTextColor(170, 170, 170);
+    pdf.setFont(FONT, 'normal');
     pdf.setFontSize(7.5);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Página ${i} de ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    pdf.setTextColor(170, 170, 170);
+    pdf.text(`Página ${pg} de ${totalPages}`, PAGE_W / 2, PAGE_H - 8, { align: 'center' });
   }
 
   const safeName = (fileName || title).replace(/\s+/g, '_');
