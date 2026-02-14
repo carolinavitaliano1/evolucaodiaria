@@ -1,53 +1,53 @@
 
 
-## Rodape Institucional Completo no PDF
+## Problema
 
-### Objetivo
-Adicionar campos institucionais na clinica (email, CNPJ, telefone, servicos/especialidades) e exibir todas essas informacoes no rodape do PDF, seguindo o modelo enviado.
+Ao fazer login com Google na Vercel, o Supabase redireciona para `https://clinipro.lovable.app/auth` em vez de voltar para o dominio da Vercel. Isso acontece porque a **Site URL** configurada no backend e `clinipro.lovable.app`, e o parametro `redirectTo` com apenas `window.location.origin` nao esta sendo respeitado.
 
-### O que muda
+## Solucao
 
-**1. Banco de dados -- novos campos na tabela `clinics`**
-- `email` (text, nullable) -- email institucional
-- `cnpj` (text, nullable) -- CNPJ ou inscricao
-- `phone` (text, nullable) -- telefone(s) da clinica
-- `services_description` (text, nullable) -- linha descritiva de servicos/especialidades (ex: "Psicologia - Psicopedagogia - Fonoaudiologia")
+Alterar o `redirectTo` no fluxo OAuth para incluir o caminho completo (`/dashboard`) e garantir que a URL completa seja reconhecida pela allow list.
 
-**2. Tipo `Clinic` em `src/types/index.ts`**
-- Adicionar os 4 campos opcionais: `email`, `cnpj`, `phone`, `servicesDescription`
+## Alteracoes tecnicas
 
-**3. Formulario de edicao da clinica (`EditClinicDialog.tsx`)**
-- Adicionar campos de entrada para Email, CNPJ, Telefone e Descricao de Servicos
+### 1. `src/pages/Auth.tsx`
 
-**4. Mapeamento Supabase nas paginas que carregam clinicas**
-- Garantir que `ClinicDetail.tsx`, `AIReports.tsx`, `PatientDetail.tsx` leiam e passem os novos campos
+Atualizar a funcao `handleGoogleOAuth` para usar o caminho completo no `redirectTo`:
 
-**5. Utilitario PDF (`generateReportPdf.ts`)**
-- Ampliar a interface `ReportPdfOptions` com `clinicEmail`, `clinicCnpj`, `clinicPhone`, `clinicServicesDescription`
-- Redesenhar o rodape em todas as paginas para exibir (quando disponivel):
-  - Linha 1: Descricao dos servicos (ex: "Psicologia - Psicopedagogia - Musicoterapia")
-  - Linha 2: CNPJ e inscricoes
-  - Linha 3: Endereco completo + telefones
-  - Linha 4: Email
-  - Linha divisoria sutil acima e numeracao de pagina abaixo
-
-### Secao Tecnica
-
-**Migracao SQL:**
-```sql
-ALTER TABLE public.clinics
-  ADD COLUMN IF NOT EXISTS email text,
-  ADD COLUMN IF NOT EXISTS cnpj text,
-  ADD COLUMN IF NOT EXISTS phone text,
-  ADD COLUMN IF NOT EXISTS services_description text;
+```typescript
+const handleGoogleOAuth = async () => {
+  if (isLovableDomain()) {
+    const { error } = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (error) toast.error('Erro ao entrar com Google');
+  } else {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+    if (error) toast.error('Erro ao entrar com Google');
+  }
+};
 ```
 
-**Arquivos modificados:**
-- `src/types/index.ts` -- adicionar campos ao tipo Clinic
-- `src/components/clinics/EditClinicDialog.tsx` -- formulario com novos inputs
-- `src/utils/generateReportPdf.ts` -- rodape expandido com todas as informacoes
-- `src/pages/ClinicDetail.tsx` -- passar novos campos ao PDF
-- `src/pages/PatientDetail.tsx` -- passar novos campos ao PDF
-- `src/pages/AIReports.tsx` -- passar novos campos ao PDF
-- Paginas que mapeiam dados da clinica (ex: `Clinics.tsx`, `ClinicDetail.tsx`) -- mapear colunas novas
+### 2. Configuracao obrigatoria na URI Allow List (Lovable Cloud)
+
+Voce precisa garantir que estas URLs estejam na **URI Allow List** (Users -> Authentication Settings):
+
+- `https://evolucaodiaria.vercel.app`
+- `https://evolucaodiaria.vercel.app/**`
+- `https://evolucaodiaria.vercel.app/dashboard`
+
+### 3. Configuracao no Google Cloud Console
+
+Em **Authorized redirect URIs**, confirme que existe:
+
+- `https://uhhpnjyceobdcxqviouy.supabase.co/auth/v1/callback`
+
+---
+
+Essas mudancas garantem que apos o callback do Google, o usuario sera redirecionado para `/dashboard` no dominio da Vercel em vez de voltar para o dominio do Lovable.
 
