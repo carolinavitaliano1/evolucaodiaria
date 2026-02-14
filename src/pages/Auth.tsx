@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Loader2, BookOpen } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+
+const isLovableDomain = () => window.location.hostname.endsWith('.lovable.app');
+
+const handleGoogleOAuth = async () => {
+  if (isLovableDomain()) {
+    const { error } = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (error) toast.error('Erro ao entrar com Google');
+  } else {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) toast.error('Erro ao entrar com Google');
+  }
+};
 
 export default function Auth() {
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
@@ -255,12 +275,7 @@ export default function Auth() {
                     type="button"
                     variant="outline"
                     className="w-full gap-2"
-                    onClick={async () => {
-                      const { error } = await lovable.auth.signInWithOAuth("google", {
-                        redirect_uri: window.location.origin,
-                      });
-                      if (error) toast.error('Erro ao entrar com Google');
-                    }}
+                    onClick={handleGoogleOAuth}
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -353,12 +368,7 @@ export default function Auth() {
                     type="button"
                     variant="outline"
                     className="w-full gap-2"
-                    onClick={async () => {
-                      const { error } = await lovable.auth.signInWithOAuth("google", {
-                        redirect_uri: window.location.origin,
-                      });
-                      if (error) toast.error('Erro ao entrar com Google');
-                    }}
+                    onClick={handleGoogleOAuth}
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
