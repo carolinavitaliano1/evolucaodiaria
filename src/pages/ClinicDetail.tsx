@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -142,6 +142,7 @@ export default function ClinicDetail() {
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
+  const [batchSearch, setBatchSearch] = useState('');
   const { user } = useAuth();
 
   // Load stamps
@@ -643,7 +644,7 @@ export default function ClinicDetail() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {clinicPatients.map((patient) => {
+                  {clinicPatients.filter(p => !batchSearch || p.name.toLowerCase().includes(batchSearch.toLowerCase())).map((patient) => {
                     const hasEvolution = !!getPatientBatchDateEvolution(patient.id);
                     const isSelected = selectedPatients.includes(patient.id);
                     const status = batchAttendanceStatus[patient.id] || 'presente';

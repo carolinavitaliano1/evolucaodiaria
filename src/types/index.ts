@@ -113,6 +113,7 @@ export interface Task {
   id: string;
   title: string;
   completed: boolean;
+  notes?: string;
   patientId?: string;
   createdAt: string;
 }
