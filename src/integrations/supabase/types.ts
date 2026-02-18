@@ -675,6 +675,7 @@ export type Database = {
           completed: boolean
           created_at: string
           id: string
+          notes: string | null
           patient_id: string | null
           title: string
           updated_at: string
@@ -684,6 +685,7 @@ export type Database = {
           completed?: boolean
           created_at?: string
           id?: string
+          notes?: string | null
           patient_id?: string | null
           title: string
           updated_at?: string
@@ -693,6 +695,7 @@ export type Database = {
           completed?: boolean
           created_at?: string
           id?: string
+          notes?: string | null
           patient_id?: string | null
           title?: string
           updated_at?: string

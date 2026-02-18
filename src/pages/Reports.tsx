@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { BarChart3, PieChartIcon, TrendingUp, Users, Check, X, Download, Loader2 } from 'lucide-react';
+import { BarChart3, PieChartIcon, TrendingUp, Users, Check, X, Download, Loader2, Smile, DollarSign, Table2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const CHART_COLORS = ['#6366f1', '#ef4444'];
+const CHART_COLORS = ['#6366f1', '#ef4444', '#eab308'];
 const PDF_COLORS = { primary: '#6366f1', destructive: '#ef4444', green: '#22c55e', yellow: '#eab308' };
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -21,8 +21,16 @@ function hexToRgb(hex: string): [number, number, number] {
     : [0, 0, 0];
 }
 
+const MOOD_LABELS: Record<string, { emoji: string; label: string }> = {
+  otima: { emoji: '😄', label: 'Ótima' },
+  boa: { emoji: '🙂', label: 'Boa' },
+  neutra: { emoji: '😐', label: 'Neutra' },
+  ruim: { emoji: '😟', label: 'Ruim' },
+  muito_ruim: { emoji: '😢', label: 'Muito Ruim' },
+};
+
 export default function Reports() {
-  const { clinics, evolutions } = useApp();
+  const { clinics, patients, evolutions } = useApp();
   const [selectedClinic, setSelectedClinic] = useState<string>('all');
   const [period, setPeriod] = useState<'week' | 'month'>('week');
   const [isExporting, setIsExporting] = useState(false);
@@ -57,10 +65,72 @@ export default function Reports() {
   const attendanceStats = useMemo(() => {
     const present = filteredEvolutions.filter(e => e.attendanceStatus === 'presente').length;
     const absent = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
-    const total = present + absent;
+    const paidAbsent = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+    const total = present + absent + paidAbsent;
     const presenceRate = total > 0 ? Math.round((present / total) * 100) : 0;
-    return { present, absent, total, presenceRate };
+    return { present, absent, paidAbsent, total, presenceRate };
   }, [filteredEvolutions]);
+
+  // Mood stats
+  const moodStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    filteredEvolutions.forEach(e => {
+      if (e.mood) {
+        stats[e.mood] = (stats[e.mood] || 0) + 1;
+      }
+    });
+    return stats;
+  }, [filteredEvolutions]);
+
+  // Per-patient detailed stats
+  const patientDetailedStats = useMemo(() => {
+    const patientIds = [...new Set(filteredEvolutions.map(e => e.patientId))];
+    return patientIds.map(pid => {
+      const patient = patients.find(p => p.id === pid);
+      const clinic = clinics.find(c => c.id === patient?.clinicId);
+      const pEvolutions = filteredEvolutions.filter(e => e.patientId === pid);
+      const present = pEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+      const absent = pEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+      const paidAbsent = pEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+      const total = present + absent + paidAbsent;
+      const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+      
+      // Revenue calculation
+      let revenue = 0;
+      if (patient?.paymentType === 'fixo' && patient.paymentValue) {
+        revenue = patient.paymentValue;
+      } else if (patient?.paymentValue) {
+        const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
+        let paidRegularAbsences = 0;
+        if (absenceType === 'always') {
+          paidRegularAbsences = absent;
+        } else if (absenceType === 'confirmed_only') {
+          paidRegularAbsences = pEvolutions.filter(e => e.attendanceStatus === 'falta' && e.confirmedAttendance).length;
+        }
+        revenue = (present + paidAbsent + paidRegularAbsences) * patient.paymentValue;
+      }
+
+      // Mood counts
+      const moods: Record<string, number> = {};
+      pEvolutions.forEach(e => {
+        if (e.mood) moods[e.mood] = (moods[e.mood] || 0) + 1;
+      });
+      const predominantMood = Object.entries(moods).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+      return {
+        patientName: patient?.name || 'Desconhecido',
+        clinicName: clinic?.name || '-',
+        present,
+        absent,
+        paidAbsent,
+        total,
+        rate,
+        revenue,
+        predominantMood,
+        moods,
+      };
+    }).sort((a, b) => b.total - a.total);
+  }, [filteredEvolutions, patients, clinics]);
 
   const dailyData = useMemo(() => {
     const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
@@ -69,11 +139,13 @@ export default function Reports() {
       const dayEvolutions = filteredEvolutions.filter(e => e.date === dayStr);
       const present = dayEvolutions.filter(e => e.attendanceStatus === 'presente').length;
       const absent = dayEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+      const paidAbsent = dayEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       return {
         date: format(day, period === 'week' ? 'EEE' : 'dd', { locale: ptBR }),
         fullDate: format(day, 'dd/MM', { locale: ptBR }),
         Presenças: present,
         Faltas: absent,
+        'Faltas Rem.': paidAbsent,
       };
     });
   }, [filteredEvolutions, dateRange, period]);
@@ -81,7 +153,8 @@ export default function Reports() {
   const pieData = useMemo(() => [
     { name: 'Presenças', value: attendanceStats.present },
     { name: 'Faltas', value: attendanceStats.absent },
-  ], [attendanceStats]);
+    { name: 'Faltas Rem.', value: attendanceStats.paidAbsent },
+  ].filter(d => d.value > 0), [attendanceStats]);
 
   const clinicComparison = useMemo(() => {
     return clinics.map(clinic => {
@@ -91,17 +164,23 @@ export default function Reports() {
       });
       const present = clinicEvolutions.filter(e => e.attendanceStatus === 'presente').length;
       const absent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta').length;
-      const total = present + absent;
+      const paidAbsent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+      const total = present + absent + paidAbsent;
       const rate = total > 0 ? Math.round((present / total) * 100) : 0;
       return {
         name: clinic.name.length > 15 ? clinic.name.slice(0, 15) + '...' : clinic.name,
         fullName: clinic.name,
         Presenças: present,
         Faltas: absent,
+        'Faltas Rem.': paidAbsent,
         taxa: rate,
       };
     });
   }, [clinics, evolutions, dateRange]);
+
+  const totalRevenue = useMemo(() => {
+    return patientDetailedStats.reduce((sum, p) => sum + p.revenue, 0);
+  }, [patientDetailedStats]);
 
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
@@ -125,7 +204,7 @@ export default function Reports() {
       
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('Relatório de Frequência', margin, 28);
+      pdf.text('Relatório Completo', margin, 28);
       
       pdf.setFontSize(10);
       const selectedClinicName = selectedClinic === 'all' 
@@ -185,88 +264,40 @@ export default function Reports() {
 
       yPos += cardHeight + 15;
 
-      // Capture charts
-      const chartsEl = reportRef.current.querySelector('[data-charts]') as HTMLElement;
-      if (chartsEl) {
-        const canvas = await html2canvas(chartsEl, { scale: 2, backgroundColor: '#ffffff', logging: false });
-        const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pageWidth - margin * 2;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        if (yPos + imgHeight > pageHeight - margin) {
-          pdf.addPage();
-          yPos = margin;
-        }
-        
-        pdf.addImage(imgData, 'PNG', margin, yPos, imgWidth, Math.min(imgHeight, 100));
-        yPos += Math.min(imgHeight, 100) + 10;
-      }
-
-      // Table
-      if (yPos > pageHeight - 80) {
-        pdf.addPage();
-        yPos = margin;
-      }
-
+      // Patient table
       pdf.setTextColor(50, 50, 50);
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Resumo por Clínica', margin, yPos);
-      yPos += 10;
+      pdf.text('Detalhamento por Paciente', margin, yPos);
+      yPos += 8;
 
-      const colWidths = [70, 30, 30, 25, 25];
-      const tableX = margin;
-      
-      pdf.setFillColor(248, 250, 252);
-      pdf.rect(tableX, yPos, pageWidth - margin * 2, 10, 'F');
-      
-      pdf.setTextColor(100, 100, 100);
-      pdf.setFontSize(9);
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Clínica', tableX + 3, yPos + 7);
-      pdf.text('Presenças', tableX + colWidths[0] + 3, yPos + 7);
-      pdf.text('Faltas', tableX + colWidths[0] + colWidths[1] + 3, yPos + 7);
-      pdf.text('Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + 3, yPos + 7);
-      pdf.text('Taxa', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 3, yPos + 7);
-      
-      yPos += 10;
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Paciente', margin, yPos);
+      pdf.text('Pres.', margin + 55, yPos);
+      pdf.text('Faltas', margin + 70, yPos);
+      pdf.text('F.Rem.', margin + 85, yPos);
+      pdf.text('Taxa', margin + 100, yPos);
+      pdf.text('Humor', margin + 115, yPos);
+      pdf.text('Receita', margin + 140, yPos);
+      yPos += 3;
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 4;
 
-      clinicComparison.forEach((clinic, i) => {
-        if (yPos > pageHeight - 20) {
-          pdf.addPage();
-          yPos = margin;
-        }
-
-        if (i % 2 === 0) {
-          pdf.setFillColor(252, 252, 253);
-          pdf.rect(tableX, yPos, pageWidth - margin * 2, 10, 'F');
-        }
-
-        pdf.setFont('helvetica', 'normal');
+      pdf.setFont('helvetica', 'normal');
+      patientDetailedStats.forEach(p => {
+        if (yPos > pageHeight - 20) { pdf.addPage(); yPos = margin; }
         pdf.setTextColor(50, 50, 50);
-        pdf.setFontSize(9);
-        
-        const clinicName = clinic.fullName.length > 35 ? clinic.fullName.slice(0, 35) + '...' : clinic.fullName;
-        pdf.text(clinicName, tableX + 3, yPos + 7);
-        
-        const greenRgb = hexToRgb(PDF_COLORS.green);
-        pdf.setTextColor(greenRgb[0], greenRgb[1], greenRgb[2]);
-        pdf.text(String(clinic.Presenças), tableX + colWidths[0] + 10, yPos + 7);
-        
-        const redRgb = hexToRgb(PDF_COLORS.destructive);
-        pdf.setTextColor(redRgb[0], redRgb[1], redRgb[2]);
-        pdf.text(String(clinic.Faltas), tableX + colWidths[0] + colWidths[1] + 10, yPos + 7);
-        
-        pdf.setTextColor(50, 50, 50);
-        pdf.text(String(clinic.Presenças + clinic.Faltas), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 8, yPos + 7);
-        
-        const rateColor = clinic.taxa >= 80 ? PDF_COLORS.green : clinic.taxa >= 50 ? PDF_COLORS.yellow : PDF_COLORS.destructive;
-        const rateRgb = hexToRgb(rateColor);
-        pdf.setTextColor(rateRgb[0], rateRgb[1], rateRgb[2]);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`${clinic.taxa}%`, tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 5, yPos + 7);
-        
-        yPos += 10;
+        pdf.text(p.patientName.substring(0, 25), margin, yPos);
+        pdf.text(String(p.present), margin + 58, yPos);
+        pdf.text(String(p.absent), margin + 73, yPos);
+        pdf.text(String(p.paidAbsent), margin + 88, yPos);
+        pdf.text(`${p.rate}%`, margin + 102, yPos);
+        const moodLabel = p.predominantMood ? (MOOD_LABELS[p.predominantMood]?.label || '-') : '-';
+        pdf.text(moodLabel, margin + 115, yPos);
+        pdf.text(`R$ ${p.revenue.toFixed(2)}`, margin + 140, yPos);
+        yPos += 5;
       });
 
       // Footer
@@ -280,7 +311,7 @@ export default function Reports() {
         pdf.text('Diário do Terapeuta', margin, pageHeight - 10);
       }
 
-      pdf.save(`relatorio-frequencia-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      pdf.save(`relatorio-completo-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
     } catch (error) {
       console.error('Erro ao exportar PDF:', error);
     } finally {
@@ -293,7 +324,7 @@ export default function Reports() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Relatórios</h1>
-          <p className="text-muted-foreground">Análise de frequência e atendimentos</p>
+          <p className="text-muted-foreground">Análise completa de frequência, humor e faturamento</p>
         </div>
         
         <div className="flex flex-wrap gap-3">
@@ -326,7 +357,8 @@ export default function Reports() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="glass-card">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -335,7 +367,7 @@ export default function Reports() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{attendanceStats.total}</p>
-                <p className="text-xs text-muted-foreground">Total Atendimentos</p>
+                <p className="text-xs text-muted-foreground">Total</p>
               </div>
             </div>
           </CardContent>
@@ -368,6 +400,20 @@ export default function Reports() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="glass-card">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <DollarSign className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-500">{attendanceStats.paidAbsent}</p>
+                <p className="text-xs text-muted-foreground">Faltas Rem.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         
         <Card className="glass-card">
           <CardContent className="p-4">
@@ -377,16 +423,46 @@ export default function Reports() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{attendanceStats.presenceRate}%</p>
-                <p className="text-xs text-muted-foreground">Taxa de Presença</p>
+                <p className="text-xs text-muted-foreground">Taxa Presença</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Mood Summary */}
+      {Object.keys(moodStats).length > 0 && (
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Smile className="w-5 h-5" /> Distribuição de Humor
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4">
+              {Object.entries(MOOD_LABELS).map(([key, { emoji, label }]) => {
+                const count = moodStats[key] || 0;
+                if (count === 0) return null;
+                const percent = attendanceStats.total > 0 ? Math.round((count / attendanceStats.total) * 100) : 0;
+                return (
+                  <div key={key} className="flex items-center gap-2 bg-secondary/50 rounded-xl px-4 py-3">
+                    <span className="text-2xl">{emoji}</span>
+                    <div>
+                      <p className="font-bold text-foreground">{count}</p>
+                      <p className="text-xs text-muted-foreground">{label} ({percent}%)</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Charts */}
       <div data-charts>
         <Tabs defaultValue="daily" className="space-y-4">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className="grid w-full max-w-lg grid-cols-4">
             <TabsTrigger value="daily" className="gap-2">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">Diário</span>
@@ -397,7 +473,11 @@ export default function Reports() {
             </TabsTrigger>
             <TabsTrigger value="clinics" className="gap-2">
               <TrendingUp className="w-4 h-4" />
-              <span className="hidden sm:inline">Por Clínica</span>
+              <span className="hidden sm:inline">Clínicas</span>
+            </TabsTrigger>
+            <TabsTrigger value="detailed" className="gap-2">
+              <Table2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Detalhado</span>
             </TabsTrigger>
           </TabsList>
 
@@ -417,6 +497,7 @@ export default function Reports() {
                       <Legend />
                       <Bar dataKey="Presenças" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
                       <Bar dataKey="Faltas" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Faltas Rem." fill={CHART_COLORS[2]} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -480,6 +561,7 @@ export default function Reports() {
                       <Legend />
                       <Bar dataKey="Presenças" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
                       <Bar dataKey="Faltas" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Faltas Rem." fill={CHART_COLORS[2]} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -490,9 +572,86 @@ export default function Reports() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Detailed Patient Table */}
+          <TabsContent value="detailed">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg">Relatório Detalhado por Paciente - {dateRange.label}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {patientDetailedStats.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-2 font-medium text-muted-foreground">Paciente</th>
+                          <th className="text-left py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Clínica</th>
+                          <th className="text-center py-3 px-2 font-medium text-muted-foreground">Pres.</th>
+                          <th className="text-center py-3 px-2 font-medium text-muted-foreground">Faltas</th>
+                          <th className="text-center py-3 px-2 font-medium text-muted-foreground">F.Rem.</th>
+                          <th className="text-center py-3 px-2 font-medium text-muted-foreground">Taxa</th>
+                          <th className="text-center py-3 px-2 font-medium text-muted-foreground hidden sm:table-cell">Humor</th>
+                          <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {patientDetailedStats.map((p, i) => (
+                          <tr key={i} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                            <td className="py-3 px-2 font-medium text-foreground">{p.patientName}</td>
+                            <td className="py-3 px-2 text-muted-foreground hidden md:table-cell">{p.clinicName}</td>
+                            <td className="py-3 px-2 text-center text-green-500 font-semibold">{p.present}</td>
+                            <td className="py-3 px-2 text-center text-destructive font-semibold">{p.absent}</td>
+                            <td className="py-3 px-2 text-center text-amber-500 font-semibold">{p.paidAbsent}</td>
+                            <td className="py-3 px-2 text-center">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                p.rate >= 80 ? 'bg-green-500/10 text-green-500' :
+                                p.rate >= 50 ? 'bg-yellow-500/10 text-yellow-500' :
+                                'bg-destructive/10 text-destructive'
+                              }`}>
+                                {p.rate}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-center hidden sm:table-cell">
+                              {p.predominantMood ? (
+                                <span title={MOOD_LABELS[p.predominantMood]?.label}>
+                                  {MOOD_LABELS[p.predominantMood]?.emoji || '-'}
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td className="py-3 px-2 text-right font-semibold text-foreground">
+                              R$ {p.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        ))}
+                        {/* Totals row */}
+                        <tr className="border-t-2 border-border font-bold">
+                          <td className="py-3 px-2 text-foreground">Total</td>
+                          <td className="py-3 px-2 hidden md:table-cell"></td>
+                          <td className="py-3 px-2 text-center text-green-500">{attendanceStats.present}</td>
+                          <td className="py-3 px-2 text-center text-destructive">{attendanceStats.absent}</td>
+                          <td className="py-3 px-2 text-center text-amber-500">{attendanceStats.paidAbsent}</td>
+                          <td className="py-3 px-2 text-center">{attendanceStats.presenceRate}%</td>
+                          <td className="py-3 px-2 hidden sm:table-cell"></td>
+                          <td className="py-3 px-2 text-right text-foreground">
+                            R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                    Nenhum dado para o período selecionado
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
+      {/* Clinic Summary Table */}
       <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-lg">Resumo por Clínica</CardTitle>
@@ -505,6 +664,7 @@ export default function Reports() {
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Clínica</th>
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground">Presenças</th>
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground">Faltas</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">F.Rem.</th>
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground">Total</th>
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground">Taxa</th>
                 </tr>
@@ -515,7 +675,8 @@ export default function Reports() {
                     <td className="py-3 px-4 font-medium text-foreground">{clinic.fullName}</td>
                     <td className="py-3 px-4 text-center text-green-500 font-semibold">{clinic.Presenças}</td>
                     <td className="py-3 px-4 text-center text-destructive font-semibold">{clinic.Faltas}</td>
-                    <td className="py-3 px-4 text-center text-foreground">{clinic.Presenças + clinic.Faltas}</td>
+                    <td className="py-3 px-4 text-center text-amber-500 font-semibold">{clinic['Faltas Rem.']}</td>
+                    <td className="py-3 px-4 text-center text-foreground">{clinic.Presenças + clinic.Faltas + clinic['Faltas Rem.']}</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         clinic.taxa >= 80 ? 'bg-green-500/10 text-green-500' :

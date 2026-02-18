@@ -1,15 +1,17 @@
-import { CheckCircle2, Circle, Plus, Trash2, Calendar } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Trash2, ChevronDown, ChevronUp, StickyNote } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Tasks() {
-  const { tasks, addTask, toggleTask, deleteTask } = useApp();
+  const { tasks, addTask, toggleTask, deleteTask, updateTaskNotes } = useApp();
   const [newTask, setNewTask] = useState('');
+  const [expandedTask, setExpandedTask] = useState<string | null>(null);
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +23,10 @@ export default function Tasks() {
 
   const pendingTasks = tasks.filter(t => !t.completed);
   const completedTasks = tasks.filter(t => t.completed);
+
+  const toggleExpand = (id: string) => {
+    setExpandedTask(prev => prev === id ? null : id);
+  };
 
   return (
     <div className="p-4 lg:p-8 max-w-3xl mx-auto">
@@ -93,25 +99,51 @@ export default function Tasks() {
               <div
                 key={task.id}
                 className={cn(
-                  'flex items-center gap-4 p-4 rounded-xl bg-card border border-border',
+                  'rounded-xl bg-card border border-border',
                   'hover:shadow-md transition-all group animate-scale-in opacity-0',
                   `stagger-${(index % 5) + 1}`
                 )}
                 style={{ animationFillMode: 'forwards' }}
               >
-                <button
-                  onClick={() => toggleTask(task.id)}
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <Circle className="w-6 h-6" />
-                </button>
-                <span className="flex-1 text-foreground">{task.title}</span>
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-4 p-4">
+                  <button
+                    onClick={() => toggleTask(task.id)}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Circle className="w-6 h-6" />
+                  </button>
+                  <span className="flex-1 text-foreground">{task.title}</span>
+                  <button
+                    onClick={() => toggleExpand(task.id)}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    title="Notas"
+                  >
+                    {expandedTask === task.id ? (
+                      <ChevronUp className="w-5 h-5" />
+                    ) : (
+                      <div className="relative">
+                        <StickyNote className="w-5 h-5" />
+                        {task.notes && <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />}
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+                {expandedTask === task.id && (
+                  <div className="px-4 pb-4 pt-0">
+                    <Textarea
+                      value={task.notes || ''}
+                      onChange={(e) => updateTaskNotes(task.id, e.target.value)}
+                      placeholder="Adicionar notas..."
+                      className="min-h-[60px] text-sm"
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -132,21 +164,46 @@ export default function Tasks() {
             {completedTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 group"
+                className="rounded-xl bg-muted/50 group"
               >
-                <button
-                  onClick={() => toggleTask(task.id)}
-                  className="text-success"
-                >
-                  <CheckCircle2 className="w-6 h-6" />
-                </button>
-                <span className="flex-1 text-muted-foreground line-through">{task.title}</span>
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-4 p-4">
+                  <button
+                    onClick={() => toggleTask(task.id)}
+                    className="text-success"
+                  >
+                    <CheckCircle2 className="w-6 h-6" />
+                  </button>
+                  <span className="flex-1 text-muted-foreground line-through">{task.title}</span>
+                  <button
+                    onClick={() => toggleExpand(task.id)}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {expandedTask === task.id ? (
+                      <ChevronUp className="w-5 h-5" />
+                    ) : (
+                      <div className="relative">
+                        <StickyNote className="w-5 h-5" />
+                        {task.notes && <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />}
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+                {expandedTask === task.id && (
+                  <div className="px-4 pb-4 pt-0">
+                    <Textarea
+                      value={task.notes || ''}
+                      onChange={(e) => updateTaskNotes(task.id, e.target.value)}
+                      placeholder="Adicionar notas..."
+                      className="min-h-[60px] text-sm"
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>

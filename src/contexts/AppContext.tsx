@@ -38,6 +38,7 @@ interface AppContextType extends AppState {
   addTask: (title: string, patientId?: string) => void;
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  updateTaskNotes: (id: string, notes: string) => void;
   getPatientTasks: (patientId: string) => Task[];
   getPatientAttachments: (patientId: string) => Attachment[];
   addAttachment: (attachment: Omit<Attachment, 'id' | 'createdAt'>) => void;
@@ -138,7 +139,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
 
       const tasks: Task[] = (tasksRes.data || []).map(t => ({
-        id: t.id, title: t.title, completed: t.completed, patientId: (t as any).patient_id || undefined, createdAt: t.created_at,
+        id: t.id, title: t.title, completed: t.completed, notes: (t as any).notes || undefined, patientId: (t as any).patient_id || undefined, createdAt: t.created_at,
       }));
 
       const clinicPackages: ClinicPackage[] = (packagesRes.data || []).map(p => ({
@@ -487,7 +488,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (patientId) insertData.patient_id = patientId;
       const { data, error } = await supabase.from('tasks').insert(insertData).select().single();
       if (error) throw error;
-      const newTask: Task = { id: data.id, title: data.title, completed: data.completed, patientId: (data as any).patient_id || undefined, createdAt: data.created_at };
+      const newTask: Task = { id: data.id, title: data.title, completed: data.completed, notes: (data as any).notes || undefined, patientId: (data as any).patient_id || undefined, createdAt: data.created_at };
       setState(prev => ({ ...prev, tasks: [newTask, ...prev.tasks] }));
     } catch (error) { console.error(error); toast.error('Erro ao adicionar tarefa'); }
   }, [user]);
@@ -510,6 +511,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       setState(prev => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
     } catch (error) { console.error(error); toast.error('Erro ao excluir tarefa'); }
+  }, [user]);
+
+  const updateTaskNotes = useCallback(async (id: string, notes: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from('tasks').update({ notes }).eq('id', id);
+      if (error) throw error;
+      setState(prev => ({ ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, notes } : t) }));
+    } catch (error) { console.error(error); toast.error('Erro ao atualizar notas'); }
   }, [user]);
 
   const addPayment = useCallback((payment: Omit<Payment, 'id' | 'createdAt'>) => {
@@ -593,7 +603,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <AppContext.Provider value={{ ...state, setCurrentClinic, setCurrentPatient, setSelectedDate, addClinic, updateClinic, deleteClinic, addPatient, updatePatient, deletePatient, addEvolution, updateEvolution, deleteEvolution, addAppointment, deleteAppointment, addTask, toggleTask, deleteTask, addPayment, getClinicPatients, getPatientEvolutions, getDateAppointments, addPackage, updatePackage, deletePackage, getClinicPackages, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, refreshData }}>
+    <AppContext.Provider value={{ ...state, setCurrentClinic, setCurrentPatient, setSelectedDate, addClinic, updateClinic, deleteClinic, addPatient, updatePatient, deletePatient, addEvolution, updateEvolution, deleteEvolution, addAppointment, deleteAppointment, addTask, toggleTask, deleteTask, updateTaskNotes, addPayment, getClinicPatients, getPatientEvolutions, getDateAppointments, addPackage, updatePackage, deletePackage, getClinicPackages, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, refreshData }}>
       {children}
     </AppContext.Provider>
   );

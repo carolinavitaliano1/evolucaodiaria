@@ -119,7 +119,7 @@ export default function Financial() {
 
   const totalRevenue = patients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
   const totalLoss = patients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
-  const netRevenue = totalRevenue + privateRevenue - totalLoss;
+  const netRevenue = totalRevenue + privateRevenue;
 
   const clinicStats = clinics.map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
@@ -644,6 +644,11 @@ export default function Financial() {
                     {absentEvolutions.length} faltas
                   </span>
                 )}
+                {totalLoss > 0 && (
+                  <span className="flex items-center gap-1 sm:gap-2 text-red-200">
+                    -R$ {totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em faltas não pagas
+                  </span>
+                )}
               </div>
             </div>
             <DollarSign className="w-10 h-10 sm:w-16 sm:h-16 text-primary-foreground/30 shrink-0" />
@@ -656,7 +661,7 @@ export default function Financial() {
               <div className="p-2 rounded-xl bg-success/10">
                 <TrendingUp className="w-5 h-5 text-success" />
               </div>
-              <span className="text-muted-foreground">Receita Bruta</span>
+              <span className="text-muted-foreground">Receita Clínicas</span>
             </div>
             <p className="text-2xl font-bold text-success">
               R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
