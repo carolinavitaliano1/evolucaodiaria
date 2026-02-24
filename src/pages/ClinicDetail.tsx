@@ -136,7 +136,7 @@ export default function ClinicDetail() {
   const [batchStampMode, setBatchStampMode] = useState<'same' | 'individual'>('same');
   const [batchGlobalStampId, setBatchGlobalStampId] = useState<string>('none');
   const [batchIndividualStamps, setBatchIndividualStamps] = useState<Record<string, string>>({});
-  const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, 'presente' | 'falta' | 'falta_remunerada'>>({});
+  const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, 'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>>({});
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean | null }[]>([]);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
@@ -525,7 +525,7 @@ export default function ClinicDetail() {
                     className={cn(
                       "flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-xl border transition-colors",
                       hasEvolution 
-                        ? evolution?.attendanceStatus === 'presente'
+                        ? evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
                           ? "bg-success/10 border-success/30"
                           : evolution?.attendanceStatus === 'falta_remunerada'
                             ? "bg-warning/10 border-warning/30"
@@ -554,7 +554,7 @@ export default function ClinicDetail() {
                       {hasEvolution ? (
                         <div className={cn(
                           "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
-                          evolution?.attendanceStatus === 'presente'
+                          evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
                             ? "bg-success/20 text-success"
                             : evolution?.attendanceStatus === 'falta_remunerada'
                               ? "bg-warning/20 text-warning"
@@ -564,6 +564,10 @@ export default function ClinicDetail() {
                             <>
                               <Check className="w-4 h-4" />
                               Presente
+                            </>
+                          ) : evolution?.attendanceStatus === 'reposicao' ? (
+                            <>
+                              🔄 Reposição
                             </>
                           ) : evolution?.attendanceStatus === 'falta_remunerada' ? (
                             <>
@@ -631,11 +635,22 @@ export default function ClinicDetail() {
             </p>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <Label className="text-base font-medium">Selecione os pacientes:</Label>
-                <Button variant="outline" size="sm" onClick={selectAllPatients}>
-                  Selecionar todos sem evolução
-                </Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-initial">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar paciente..."
+                      value={batchSearch}
+                      onChange={(e) => setBatchSearch(e.target.value)}
+                      className="pl-9 h-9 w-full sm:w-[220px]"
+                    />
+                  </div>
+                  <Button variant="outline" size="sm" onClick={selectAllPatients}>
+                    Selecionar todos
+                  </Button>
+                </div>
               </div>
 
               {clinicPatients.length === 0 ? (
@@ -704,9 +719,18 @@ export default function ClinicDetail() {
                                 className={cn("h-7 text-xs gap-1", status === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground")}
                                 onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'falta_remunerada' }))}
                               >
-                                <DollarSign className="w-3 h-3" /> Falta Remunerada
+                                <DollarSign className="w-3 h-3" /> Falta Rem.
                               </Button>
                             )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={status === 'reposicao' ? 'default' : 'outline'}
+                              className={cn("h-7 text-xs gap-1", status === 'reposicao' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
+                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'reposicao' }))}
+                            >
+                              🔄 Reposição
+                            </Button>
                           </div>
                         )}
                       </div>
