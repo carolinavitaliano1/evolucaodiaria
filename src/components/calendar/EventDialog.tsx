@@ -42,14 +42,6 @@ const EVENT_TYPES = [
   { value: 'reuniao', label: 'Reunião', icon: Users, color: '#ec4899' },
 ];
 
-const REMINDER_OPTIONS = [
-  { value: '0', label: 'No horário' },
-  { value: '5', label: '5 minutos antes' },
-  { value: '15', label: '15 minutos antes' },
-  { value: '30', label: '30 minutos antes' },
-  { value: '60', label: '1 hora antes' },
-  { value: '1440', label: '1 dia antes' },
-];
 
 interface EventDialogProps {
   open: boolean;
@@ -72,7 +64,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
   const [time, setTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [allDay, setAllDay] = useState(false);
-  const [reminderMinutes, setReminderMinutes] = useState('');
+  
 
   useEffect(() => {
     if (open) {
@@ -109,7 +101,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
     setTime('');
     setEndTime('');
     setAllDay(false);
-    setReminderMinutes('');
+    
     setShowForm(false);
   }
 
@@ -135,7 +127,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
           time: allDay ? null : time || null,
           end_time: allDay ? null : endTime || null,
           all_day: allDay,
-          reminder_minutes: reminderMinutes ? parseInt(reminderMinutes) : null,
+          reminder_minutes: null,
           color: typeConfig?.color || '#6366f1',
           completed: false
         });
@@ -292,21 +284,6 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label>Lembrete</Label>
-                <Select value={reminderMinutes} onValueChange={setReminderMinutes}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sem lembrete" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REMINDER_OPTIONS.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição</Label>
