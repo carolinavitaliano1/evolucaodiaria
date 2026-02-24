@@ -64,11 +64,12 @@ export default function Reports() {
 
   const attendanceStats = useMemo(() => {
     const present = filteredEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+    const reposicao = filteredEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
     const absent = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
     const paidAbsent = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-    const total = present + absent + paidAbsent;
-    const presenceRate = total > 0 ? Math.round((present / total) * 100) : 0;
-    return { present, absent, paidAbsent, total, presenceRate };
+    const total = present + reposicao + absent + paidAbsent;
+    const presenceRate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
+    return { present, reposicao, absent, paidAbsent, total, presenceRate };
   }, [filteredEvolutions]);
 
   // Mood stats
@@ -90,12 +91,13 @@ export default function Reports() {
       const clinic = clinics.find(c => c.id === patient?.clinicId);
       const pEvolutions = filteredEvolutions.filter(e => e.patientId === pid);
       const present = pEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+      const reposicao = pEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
       const absent = pEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsent = pEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const total = present + absent + paidAbsent;
-      const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+      const total = present + reposicao + absent + paidAbsent;
+      const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
       
-      // Revenue calculation
+      // Revenue calculation - reposicao counts as normal session
       let revenue = 0;
       if (patient?.paymentType === 'fixo' && patient.paymentValue) {
         revenue = patient.paymentValue;
@@ -107,7 +109,7 @@ export default function Reports() {
         } else if (absenceType === 'confirmed_only') {
           paidRegularAbsences = pEvolutions.filter(e => e.attendanceStatus === 'falta' && e.confirmedAttendance).length;
         }
-        revenue = (present + paidAbsent + paidRegularAbsences) * patient.paymentValue;
+        revenue = (present + reposicao + paidAbsent + paidRegularAbsences) * patient.paymentValue;
       }
 
       // Mood counts
@@ -121,6 +123,7 @@ export default function Reports() {
         patientName: patient?.name || 'Desconhecido',
         clinicName: clinic?.name || '-',
         present,
+        reposicao,
         absent,
         paidAbsent,
         total,
@@ -138,12 +141,13 @@ export default function Reports() {
       const dayStr = format(day, 'yyyy-MM-dd');
       const dayEvolutions = filteredEvolutions.filter(e => e.date === dayStr);
       const present = dayEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+      const reposicao = dayEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
       const absent = dayEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsent = dayEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       return {
         date: format(day, period === 'week' ? 'EEE' : 'dd', { locale: ptBR }),
         fullDate: format(day, 'dd/MM', { locale: ptBR }),
-        Presenças: present,
+        Presenças: present + reposicao,
         Faltas: absent,
         'Faltas Rem.': paidAbsent,
       };
@@ -163,14 +167,15 @@ export default function Reports() {
         return e.clinicId === clinic.id && isWithinInterval(evolutionDate, { start: dateRange.start, end: dateRange.end });
       });
       const present = clinicEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+      const reposicao = clinicEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
       const absent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const total = present + absent + paidAbsent;
-      const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+      const total = present + reposicao + absent + paidAbsent;
+      const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
       return {
         name: clinic.name.length > 15 ? clinic.name.slice(0, 15) + '...' : clinic.name,
         fullName: clinic.name,
-        Presenças: present,
+        Presenças: present + reposicao,
         Faltas: absent,
         'Faltas Rem.': paidAbsent,
         taxa: rate,
@@ -588,6 +593,7 @@ export default function Reports() {
                           <th className="text-left py-3 px-2 font-medium text-muted-foreground">Paciente</th>
                           <th className="text-left py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Clínica</th>
                           <th className="text-center py-3 px-2 font-medium text-muted-foreground">Pres.</th>
+                          <th className="text-center py-3 px-2 font-medium text-muted-foreground">Repos.</th>
                           <th className="text-center py-3 px-2 font-medium text-muted-foreground">Faltas</th>
                           <th className="text-center py-3 px-2 font-medium text-muted-foreground">F.Rem.</th>
                           <th className="text-center py-3 px-2 font-medium text-muted-foreground">Taxa</th>
@@ -601,6 +607,7 @@ export default function Reports() {
                             <td className="py-3 px-2 font-medium text-foreground">{p.patientName}</td>
                             <td className="py-3 px-2 text-muted-foreground hidden md:table-cell">{p.clinicName}</td>
                             <td className="py-3 px-2 text-center text-green-500 font-semibold">{p.present}</td>
+                            <td className="py-3 px-2 text-center text-primary font-semibold">{p.reposicao}</td>
                             <td className="py-3 px-2 text-center text-destructive font-semibold">{p.absent}</td>
                             <td className="py-3 px-2 text-center text-amber-500 font-semibold">{p.paidAbsent}</td>
                             <td className="py-3 px-2 text-center">
@@ -629,6 +636,7 @@ export default function Reports() {
                           <td className="py-3 px-2 text-foreground">Total</td>
                           <td className="py-3 px-2 hidden md:table-cell"></td>
                           <td className="py-3 px-2 text-center text-green-500">{attendanceStats.present}</td>
+                          <td className="py-3 px-2 text-center text-primary">{attendanceStats.reposicao}</td>
                           <td className="py-3 px-2 text-center text-destructive">{attendanceStats.absent}</td>
                           <td className="py-3 px-2 text-center text-amber-500">{attendanceStats.paidAbsent}</td>
                           <td className="py-3 px-2 text-center">{attendanceStats.presenceRate}%</td>

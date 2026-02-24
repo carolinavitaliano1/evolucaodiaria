@@ -59,9 +59,10 @@ export default function Financial() {
   });
 
   // Separate by attendance status
-  const presentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente');
+  const presentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
   const absentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
+  const reposicaoEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'reposicao');
 
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
@@ -435,8 +436,8 @@ export default function Financial() {
         let statusLabel = '';
         let sessionValue = 0;
 
-        if (evo.attendanceStatus === 'presente') {
-          statusLabel = 'Presente';
+        if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao') {
+          statusLabel = evo.attendanceStatus === 'reposicao' ? 'Reposição' : 'Presente';
           totalSessions++;
           if (patient.paymentType === 'sessao' && patient.paymentValue) {
             sessionValue = patient.paymentValue;
@@ -466,7 +467,7 @@ export default function Financial() {
         doc.text(dateStr, col1, y);
         doc.text(patientName, col2, y);
         
-        if (evo.attendanceStatus === 'presente') {
+        if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao') {
           doc.setTextColor(34, 139, 34);
         } else if (evo.attendanceStatus === 'falta_remunerada') {
           doc.setTextColor(200, 150, 0);
@@ -633,6 +634,11 @@ export default function Financial() {
                   <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
                   {presentEvolutions.length} atend.
                 </span>
+                {reposicaoEvolutions.length > 0 && (
+                  <span className="flex items-center gap-1 sm:gap-2 text-primary-foreground/90">
+                    🔄 {reposicaoEvolutions.length} repos.
+                  </span>
+                )}
                 {paidAbsenceEvolutions.length > 0 && (
                   <span className="flex items-center gap-1 sm:gap-2 text-amber-200">
                     {paidAbsenceEvolutions.length} faltas rem.

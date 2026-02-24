@@ -193,10 +193,12 @@ export default function PatientDetail() {
 
   // Summaries
   const totalPresent = patientEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+  const totalReposicao = patientEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
   const totalAbsent = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+  const totalPaidAbsent = patientEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
   const totalSessions = patientEvolutions.length;
-  const attendanceRate = totalSessions > 0 ? Math.round((totalPresent / totalSessions) * 100) : 0;
-  const totalFinancial = totalPresent * (patient.paymentValue || 0);
+  const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
+  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent) * (patient.paymentValue || 0);
 
   const moodCounts = MOOD_OPTIONS.map(m => ({
     ...m, count: patientEvolutions.filter(e => e.mood === m.value).length,
@@ -336,8 +338,10 @@ export default function PatientDetail() {
             <span className="text-2xl font-bold text-foreground">{attendanceRate}%</span>
             <span className="text-sm text-muted-foreground">presença</span>
           </div>
-          <div className="flex gap-4 text-sm">
+          <div className="flex flex-wrap gap-3 text-sm">
             <span className="text-success">✅ {totalPresent}</span>
+            {totalReposicao > 0 && <span className="text-primary">🔄 {totalReposicao}</span>}
+            {totalPaidAbsent > 0 && <span className="text-warning">💰 {totalPaidAbsent}</span>}
             <span className="text-destructive">❌ {totalAbsent}</span>
             <span className="text-muted-foreground">Total: {totalSessions}</span>
           </div>
@@ -347,7 +351,7 @@ export default function PatientDetail() {
           <p className="text-sm font-medium text-muted-foreground mb-3">💰 Financeiro</p>
           <p className="text-2xl font-bold text-success mb-1">R$ {totalFinancial.toFixed(2)}</p>
           <p className="text-sm text-muted-foreground">
-            {totalPresent} sessões × R$ {(patient.paymentValue || 0).toFixed(2)}
+            {totalPresent + totalReposicao + totalPaidAbsent} sessões pagas × R$ {(patient.paymentValue || 0).toFixed(2)}
           </p>
         </div>
 
