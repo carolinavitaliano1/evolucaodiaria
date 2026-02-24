@@ -1,5 +1,5 @@
 import { CheckCircle2, Circle, Plus, Trash2, ChevronDown, ChevronUp, StickyNote } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +12,20 @@ export default function Tasks() {
   const { tasks, addTask, toggleTask, deleteTask, updateTaskNotes } = useApp();
   const [newTask, setNewTask] = useState('');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const handleNotesChange = useCallback((taskId: string, value: string) => {
+    setLocalNotes(prev => ({ ...prev, [taskId]: value }));
+    if (debounceTimers.current[taskId]) clearTimeout(debounceTimers.current[taskId]);
+    debounceTimers.current[taskId] = setTimeout(() => {
+      updateTaskNotes(taskId, value);
+    }, 600);
+  }, [updateTaskNotes]);
+
+  const getNotesValue = (task: { id: string; notes?: string }) => {
+    return task.id in localNotes ? localNotes[task.id] : (task.notes || '');
+  };
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,8 +151,8 @@ export default function Tasks() {
                 {expandedTask === task.id && (
                   <div className="px-4 pb-4 pt-0">
                     <Textarea
-                      value={task.notes || ''}
-                      onChange={(e) => updateTaskNotes(task.id, e.target.value)}
+                      value={getNotesValue(task)}
+                      onChange={(e) => handleNotesChange(task.id, e.target.value)}
                       placeholder="Adicionar notas..."
                       className="min-h-[60px] text-sm"
                     />
@@ -197,8 +211,8 @@ export default function Tasks() {
                 {expandedTask === task.id && (
                   <div className="px-4 pb-4 pt-0">
                     <Textarea
-                      value={task.notes || ''}
-                      onChange={(e) => updateTaskNotes(task.id, e.target.value)}
+                      value={getNotesValue(task)}
+                      onChange={(e) => handleNotesChange(task.id, e.target.value)}
                       placeholder="Adicionar notas..."
                       className="min-h-[60px] text-sm"
                     />
