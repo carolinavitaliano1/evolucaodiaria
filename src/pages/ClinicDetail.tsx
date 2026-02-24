@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -23,6 +23,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateReportPdf } from '@/utils/generateReportPdf';
 import { Clinic } from '@/types';
+import { ClinicFinancial } from '@/components/clinics/ClinicFinancial';
+import { ClinicAgenda } from '@/components/clinics/ClinicAgenda';
+import { ClinicNotes } from '@/components/clinics/ClinicNotes';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -481,30 +484,55 @@ export default function ClinicDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="today" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="today" className="gap-2">
+        <TabsList className="flex flex-wrap w-full gap-1 h-auto lg:w-auto lg:inline-flex">
+          <TabsTrigger value="today" className="gap-1 text-xs sm:text-sm">
             <ClipboardList className="w-4 h-4" />
             Hoje
           </TabsTrigger>
-          <TabsTrigger value="batch" className="gap-2">
+          <TabsTrigger value="agenda" className="gap-1 text-xs sm:text-sm">
+            <Calendar className="w-4 h-4" />
+            Agenda
+          </TabsTrigger>
+          <TabsTrigger value="batch" className="gap-1 text-xs sm:text-sm">
             <FileText className="w-4 h-4" />
             Lote
           </TabsTrigger>
-          <TabsTrigger value="patients" className="gap-2">
+          <TabsTrigger value="patients" className="gap-1 text-xs sm:text-sm">
             <Users className="w-4 h-4" />
             Pacientes
           </TabsTrigger>
-          <TabsTrigger value="packages" className="gap-2">
+          <TabsTrigger value="financial" className="gap-1 text-xs sm:text-sm">
+            <DollarSign className="w-4 h-4" />
+            Financeiro
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="gap-1 text-xs sm:text-sm">
+            <StickyNote className="w-4 h-4" />
+            Anotações
+          </TabsTrigger>
+          <TabsTrigger value="packages" className="gap-1 text-xs sm:text-sm">
             <Package className="w-4 h-4" />
             Pacotes
           </TabsTrigger>
-          <TabsTrigger value="reports" className="gap-2">
+          <TabsTrigger value="reports" className="gap-1 text-xs sm:text-sm">
             <Sparkles className="w-4 h-4" />
             Documentos
           </TabsTrigger>
         </TabsList>
 
-        {/* Today's Schedule Tab */}
+        {/* Agenda Tab */}
+        <TabsContent value="agenda">
+          <ClinicAgenda clinicId={clinic.id} />
+        </TabsContent>
+
+        {/* Financial Tab */}
+        <TabsContent value="financial">
+          <ClinicFinancial clinicId={clinic.id} />
+        </TabsContent>
+
+        {/* Notes Tab */}
+        <TabsContent value="notes">
+          <ClinicNotes clinicId={clinic.id} />
+        </TabsContent>
         <TabsContent value="today" className="space-y-4">
           <div className="bg-card rounded-2xl p-6 border border-border">
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
