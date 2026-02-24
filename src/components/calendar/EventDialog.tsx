@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { 
   Calendar, 
@@ -19,8 +20,6 @@ import {
   Trash2,
   Plus
 } from 'lucide-react';
-
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 interface Event {
   id: string;
@@ -60,6 +59,7 @@ interface EventDialogProps {
 }
 
 export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: EventDialogProps) {
+  const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -89,7 +89,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
       const { data, error } = await supabase
         .from('events')
         .select('*')
-        .eq('user_id', DEMO_USER_ID)
+        .eq('user_id', user?.id || '')
         .eq('date', dateStr)
         .order('time', { ascending: true, nullsFirst: false });
 
@@ -127,7 +127,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
       const { error } = await supabase
         .from('events')
         .insert({
-          user_id: DEMO_USER_ID,
+          user_id: user?.id || '',
           title,
           type: eventType,
           description: description || null,
