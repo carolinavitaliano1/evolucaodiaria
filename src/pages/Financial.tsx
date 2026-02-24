@@ -221,7 +221,7 @@ export default function Financial() {
         doc.setFontSize(10);
         clinicStats.forEach(({ clinic, patientCount, revenue, loss, sessions, paidAbsences, absences }) => {
           if (y > 270) { doc.addPage(); y = 20; }
-          const netClinicRevenue = revenue - loss;
+          const netClinicRevenue = revenue;
           doc.setTextColor(51, 51, 51);
           doc.text(clinic.name, margin, y);
           doc.setTextColor(80, 80, 80);
@@ -271,7 +271,7 @@ export default function Financial() {
         doc.setFontSize(9);
         patientStats.forEach(({ patient, clinic, revenue, loss, sessions, absences, paymentType, paymentValue }) => {
           if (y > 275) { doc.addPage(); y = 20; }
-          const netPatientRevenue = revenue - loss;
+          const netPatientRevenue = revenue;
           doc.setTextColor(51, 51, 51);
           doc.text(patient.name.substring(0, 20), margin, y);
           doc.setTextColor(80, 80, 80);
@@ -710,7 +710,7 @@ export default function Financial() {
 
         <div className="space-y-4 sm:space-y-6">
           {clinicStats.map(({ clinic, patientCount, revenue, loss, sessions, paidAbsences, absences }) => {
-            const netClinicRevenue = revenue - loss;
+            const netClinicRevenue = revenue;
             const percentage = (totalRevenue + privateRevenue) > 0 ? (revenue / (totalRevenue + privateRevenue)) * 100 : 0;
             const isPropria = clinic.type === 'propria';
 
@@ -917,7 +917,7 @@ export default function Financial() {
             </thead>
             <tbody>
               {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue }) => {
-                const netPatientRevenue = revenue - loss;
+                const netPatientRevenue = revenue;
                 
                 return (
                   <tr key={patient.id} className="border-b border-border hover:bg-secondary/50">
