@@ -101,6 +101,44 @@ export type Database = {
         }
         Relationships: []
       }
+      clinic_notes: {
+        Row: {
+          category: string
+          clinic_id: string
+          created_at: string
+          id: string
+          text: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          clinic_id: string
+          created_at?: string
+          id?: string
+          text?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          text?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_notes_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_packages: {
         Row: {
           clinic_id: string
