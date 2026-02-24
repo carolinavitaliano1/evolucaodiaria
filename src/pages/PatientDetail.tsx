@@ -150,7 +150,7 @@ export default function PatientDetail() {
 
   const [evolutionText, setEvolutionText] = useState('');
   const [evolutionDate, setEvolutionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada'>('presente');
+  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>('presente');
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -460,6 +460,7 @@ export default function PatientDetail() {
                       {clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false) && (
                         <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                       )}
+                      <SelectItem value="reposicao">🔄 Reposição</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

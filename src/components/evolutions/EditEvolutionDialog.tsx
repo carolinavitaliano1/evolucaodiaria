@@ -31,7 +31,7 @@ interface EditEvolutionDialogProps {
 export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, showFaltaRemunerada = true }: EditEvolutionDialogProps) {
   const [text, setText] = useState(evolution.text);
   const [date, setDate] = useState(evolution.date);
-  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada'>(evolution.attendanceStatus);
+  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>(evolution.attendanceStatus);
   const [mood, setMood] = useState<string>(evolution.mood || '');
   const [isImprovingText, setIsImprovingText] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>(
@@ -78,6 +78,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
                   {showFaltaRemunerada && (
                     <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                   )}
+                  <SelectItem value="reposicao">🔄 Reposição</SelectItem>
                 </SelectContent>
               </Select>
             </div>

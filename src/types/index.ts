@@ -71,7 +71,7 @@ export interface Evolution {
   clinicId: string;
   date: string;
   text: string;
-  attendanceStatus: 'presente' | 'falta' | 'falta_remunerada';
+  attendanceStatus: 'presente' | 'falta' | 'falta_remunerada' | 'reposicao';
   confirmedAttendance?: boolean;
   mood?: 'otima' | 'boa' | 'neutra' | 'ruim' | 'muito_ruim';
   signature?: string;
