@@ -51,6 +51,7 @@ export interface Patient {
   scheduleTime?: string;
   scheduleByDay?: ScheduleByDay;
   packageId?: string;
+  isArchived?: boolean;
   createdAt: string;
 }
 

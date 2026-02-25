@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2 } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
@@ -281,6 +281,9 @@ export default function PatientDetail() {
           <div className="flex-1">
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-3 flex items-center gap-3">
               {patient.name}
+              {patient.isArchived && (
+                <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">Arquivado</span>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -288,6 +291,19 @@ export default function PatientDetail() {
                 onClick={() => setEditPatientOpen(true)}
               >
                 <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-warning"
+                title={patient.isArchived ? 'Desarquivar paciente' : 'Arquivar paciente'}
+                onClick={() => {
+                  const newVal = !patient.isArchived;
+                  updatePatient(patient.id, { isArchived: newVal });
+                  toast.success(newVal ? 'Paciente arquivado' : 'Paciente reativado');
+                }}
+              >
+                {patient.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
               </Button>
               <Button
                 variant="ghost"
