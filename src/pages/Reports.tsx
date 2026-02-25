@@ -143,7 +143,7 @@ export default function Reports() {
         predominantMood,
         moods,
       };
-    }).sort((a, b) => b.total - a.total);
+    }).sort((a, b) => a.clinicName.localeCompare(b.clinicName) || b.total - a.total);
   }, [filteredEvolutions, patients, clinics]);
 
   const dailyData = useMemo(() => {
@@ -385,7 +385,7 @@ export default function Reports() {
       pdf.text(`R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 8, y + 9, { align: 'right' });
       y += 22;
 
-      // ===== SECTION 4: TABELA DETALHADA POR PACIENTE =====
+      // ===== SECTION 4: TABELA DETALHADA POR PACIENTE (agrupada por clínica) =====
       if (y > pageHeight - 40) { pdf.addPage(); y = margin; }
       pdf.setTextColor(50, 50, 50);
       pdf.setFontSize(12);
@@ -394,65 +394,121 @@ export default function Reports() {
       y += 8;
 
       // Table header
-      const cols = { name: margin, clinic: margin + 42, pres: margin + 82, falt: margin + 97, frem: margin + 110, taxa: margin + 124, mood: margin + 138, rev: pageWidth - margin };
-      
-      pdf.setFillColor(235, 235, 240);
-      pdf.roundedRect(margin, y - 3, contentWidth, 9, 2, 2, 'F');
-      pdf.setFontSize(7);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(80, 80, 80);
-      pdf.text('Paciente', cols.name + 2, y + 2);
-      pdf.text('Clínica', cols.clinic, y + 2);
-      pdf.text('Pres.', cols.pres, y + 2);
-      pdf.text('Faltas', cols.falt, y + 2);
-      pdf.text('F.Rem.', cols.frem, y + 2);
-      pdf.text('Taxa', cols.taxa, y + 2);
-      pdf.text('Humor', cols.mood, y + 2);
-      pdf.text('Receita', cols.rev, y + 2, { align: 'right' });
-      y += 9;
+      const cols = { name: margin, pres: margin + 62, falt: margin + 77, frem: margin + 90, taxa: margin + 104, mood: margin + 118, rev: pageWidth - margin };
 
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(7);
-      patientDetailedStats.forEach((p, idx) => {
-        if (y > pageHeight - 25) { pdf.addPage(); y = margin; }
-        
-        if (idx % 2 === 0) {
-          pdf.setFillColor(250, 250, 252);
-          pdf.rect(margin, y - 3, contentWidth, 6, 'F');
-        }
-        
-        pdf.setTextColor(50, 50, 50);
-        pdf.text(p.patientName.substring(0, 22), cols.name + 2, y);
-        pdf.text(p.clinicName.substring(0, 18), cols.clinic, y);
-        
-        pdf.setTextColor(34, 197, 94);
-        pdf.text(String(p.present + p.reposicao), cols.pres + 3, y);
-        pdf.setTextColor(239, 68, 68);
-        pdf.text(String(p.absent), cols.falt + 3, y);
-        pdf.setTextColor(234, 179, 8);
-        pdf.text(String(p.paidAbsent), cols.frem + 3, y);
-        
-        pdf.setTextColor(50, 50, 50);
-        pdf.text(`${p.rate}%`, cols.taxa, y);
-        
-        const moodLabel = p.predominantMood ? (MOOD_LABELS[p.predominantMood]?.label || '-') : '-';
-        pdf.text(moodLabel, cols.mood, y);
-        
+      const drawTableHeader = () => {
+        pdf.setFillColor(235, 235, 240);
+        pdf.roundedRect(margin, y - 3, contentWidth, 9, 2, 2, 'F');
+        pdf.setFontSize(7);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(`R$ ${p.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, cols.rev, y, { align: 'right' });
-        pdf.setFont('helvetica', 'normal');
-        y += 6;
+        pdf.setTextColor(80, 80, 80);
+        pdf.text('Paciente', cols.name + 2, y + 2);
+        pdf.text('Pres.', cols.pres, y + 2);
+        pdf.text('Faltas', cols.falt, y + 2);
+        pdf.text('F.Rem.', cols.frem, y + 2);
+        pdf.text('Taxa', cols.taxa, y + 2);
+        pdf.text('Humor', cols.mood, y + 2);
+        pdf.text('Receita', cols.rev, y + 2, { align: 'right' });
+        y += 9;
+      };
+
+      // Group patients by clinic
+      const clinicGroups: Record<string, typeof patientDetailedStats> = {};
+      patientDetailedStats.forEach(p => {
+        if (!clinicGroups[p.clinicName]) clinicGroups[p.clinicName] = [];
+        clinicGroups[p.clinicName].push(p);
       });
 
-      // Totals row
+      const clinicNames = Object.keys(clinicGroups).sort();
+
+      clinicNames.forEach((clinicName, clinicIdx) => {
+        const groupPatients = clinicGroups[clinicName];
+
+        // Clinic group header
+        if (y > pageHeight - 35) { pdf.addPage(); y = margin; }
+        if (clinicIdx > 0) y += 4;
+        pdf.setFillColor(99, 102, 241);
+        pdf.roundedRect(margin, y - 3, contentWidth, 9, 2, 2, 'F');
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text(clinicName, margin + 4, y + 2);
+        y += 10;
+
+        drawTableHeader();
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(7);
+        let rowIdx = 0;
+        groupPatients.forEach((p) => {
+          if (y > pageHeight - 25) { pdf.addPage(); y = margin; drawTableHeader(); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); rowIdx = 0; }
+
+          if (rowIdx % 2 === 0) {
+            pdf.setFillColor(250, 250, 252);
+            pdf.rect(margin, y - 3, contentWidth, 6, 'F');
+          }
+
+          pdf.setTextColor(50, 50, 50);
+          pdf.text(p.patientName.substring(0, 30), cols.name + 2, y);
+
+          pdf.setTextColor(34, 197, 94);
+          pdf.text(String(p.present + p.reposicao), cols.pres + 3, y);
+          pdf.setTextColor(239, 68, 68);
+          pdf.text(String(p.absent), cols.falt + 3, y);
+          pdf.setTextColor(234, 179, 8);
+          pdf.text(String(p.paidAbsent), cols.frem + 3, y);
+
+          pdf.setTextColor(50, 50, 50);
+          pdf.text(`${p.rate}%`, cols.taxa, y);
+
+          const moodLabel = p.predominantMood ? (MOOD_LABELS[p.predominantMood]?.label || '-') : '-';
+          pdf.text(moodLabel, cols.mood, y);
+
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`R$ ${p.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, cols.rev, y, { align: 'right' });
+          pdf.setFont('helvetica', 'normal');
+          y += 6;
+          rowIdx++;
+        });
+
+        // Subtotal per clinic
+        const cPresent = groupPatients.reduce((s, p) => s + p.present + p.reposicao, 0);
+        const cAbsent = groupPatients.reduce((s, p) => s + p.absent, 0);
+        const cPaid = groupPatients.reduce((s, p) => s + p.paidAbsent, 0);
+        const cTotal = cPresent + cAbsent + cPaid;
+        const cRate = cTotal > 0 ? Math.round((cPresent / cTotal) * 100) : 0;
+        const cRevenue = groupPatients.reduce((s, p) => s + p.revenue, 0);
+
+        pdf.setDrawColor(180, 180, 180);
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 4;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(7);
+        pdf.setTextColor(80, 80, 80);
+        pdf.text('Subtotal', cols.name + 2, y);
+        pdf.setTextColor(34, 197, 94);
+        pdf.text(String(cPresent), cols.pres + 3, y);
+        pdf.setTextColor(239, 68, 68);
+        pdf.text(String(cAbsent), cols.falt + 3, y);
+        pdf.setTextColor(234, 179, 8);
+        pdf.text(String(cPaid), cols.frem + 3, y);
+        pdf.setTextColor(80, 80, 80);
+        pdf.text(`${cRate}%`, cols.taxa, y);
+        pdf.text(`R$ ${cRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, cols.rev, y, { align: 'right' });
+        y += 8;
+      });
+
+      // Grand total
       y += 2;
-      pdf.setDrawColor(100, 100, 100);
+      pdf.setDrawColor(60, 60, 60);
+      pdf.setLineWidth(0.5);
       pdf.line(margin, y, pageWidth - margin, y);
+      pdf.setLineWidth(0.2);
       y += 5;
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(8);
       pdf.setTextColor(50, 50, 50);
-      pdf.text('TOTAL', cols.name + 2, y);
+      pdf.text('TOTAL GERAL', cols.name + 2, y);
       pdf.setTextColor(34, 197, 94);
       pdf.text(String(attendanceStats.present + attendanceStats.reposicao), cols.pres + 3, y);
       pdf.setTextColor(239, 68, 68);
