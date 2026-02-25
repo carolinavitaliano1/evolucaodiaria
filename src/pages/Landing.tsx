@@ -4,7 +4,8 @@ import { motion, type Variants } from 'framer-motion';
 import {
   BookOpen, Users, Calendar, FileText, BarChart3, Shield, Sparkles,
   ArrowRight, CheckCircle2, Clock, Brain, AlertTriangle, Heart, Star, Quote,
-  ChevronDown, Monitor,
+  ChevronDown, Monitor, Wand2, Layout, Zap, FileCheck, ClipboardList, TrendingUp,
+  Smartphone, Lock, RefreshCw,
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -43,6 +44,40 @@ const FEATURES = [
   { icon: Sparkles, title: 'Relatórios com IA', desc: 'Crie relatórios clínicos com inteligência artificial — guiados por paciente ou com comando livre. Edite, salve e exporte em PDF.' },
 ];
 
+const AI_FEATURES = [
+  {
+    icon: Wand2,
+    title: 'Evolução Melhorada com IA',
+    desc: 'Escreva suas notas de sessão normalmente e deixe a IA refinar o vocabulário técnico, corrigir a gramática e elevar a qualidade — sem alterar o sentido clínico.',
+    highlight: 'Economize 15 min por evolução',
+  },
+  {
+    icon: Sparkles,
+    title: 'Relatórios Clínicos com IA',
+    desc: 'Gere relatórios completos automaticamente a partir do histórico do paciente. Escolha modo guiado ou livre, edite com editor rico e exporte em PDF profissional.',
+    highlight: 'De horas para minutos',
+  },
+  {
+    icon: ClipboardList,
+    title: 'Modelos de Evolução Personalizados',
+    desc: 'Crie modelos com campos específicos (disposição, atividade, desenvolvimento) por clínica. Preencha formulários estruturados ao invés de texto livre — cada campo tem IA integrada.',
+    highlight: 'Padronize sem perder flexibilidade',
+  },
+  {
+    icon: Zap,
+    title: 'Evolução Rápida em 30 Segundos',
+    desc: 'Registre presença, humor, aplique seu modelo e pronto. Ideal para clínicas com agenda cheia onde cada minuto entre sessões conta.',
+    highlight: 'Agilidade máxima',
+  },
+];
+
+const AUTOMATION_BENEFITS = [
+  { icon: FileCheck, stat: '70%', label: 'menos tempo escrevendo evoluções', desc: 'Modelos + IA eliminam retrabalho' },
+  { icon: TrendingUp, stat: '100%', label: 'controle financeiro automático', desc: 'Presenças, faltas e valores calculados' },
+  { icon: RefreshCw, stat: '0', label: 'planilhas para gerenciar', desc: 'Tudo centralizado e seguro na nuvem' },
+  { icon: Lock, stat: '24/7', label: 'acesso seguro de qualquer lugar', desc: 'Celular, tablet ou computador' },
+];
+
 const TESTIMONIALS = [
   {
     name: 'Dra. Camila Ribeiro',
@@ -62,6 +97,12 @@ const TESTIMONIALS = [
     text: 'O que mais gosto é poder gerar relatórios em PDF com carimbo na hora. Quando o convênio pede documentação, está tudo pronto. Zero estresse.',
     rating: 5,
   },
+  {
+    name: 'Dra. Fernanda Lima',
+    role: 'Fisioterapeuta — Recife, PE',
+    text: 'Os modelos de evolução personalizados mudaram minha rotina. Preencho os campos, a IA melhora o texto e em 30 segundos a evolução está pronta e profissional.',
+    rating: 5,
+  },
 ];
 
 const FAQ_ITEMS = [
@@ -71,6 +112,8 @@ const FAQ_ITEMS = [
   { q: 'Funciona no celular?', a: 'Sim. O sistema é totalmente responsivo e funciona perfeitamente no navegador do seu celular ou tablet, sem precisar instalar nada.' },
   { q: 'Posso cancelar a qualquer momento?', a: 'Sim, sem multas ou burocracia. Basta cancelar na área de assinatura e você mantém acesso até o fim do período pago.' },
   { q: 'Quais profissionais podem usar?', a: 'Psicólogos, fonoaudiólogos, terapeutas ocupacionais, fisioterapeutas, psicopedagogos e qualquer profissional de saúde que atenda em clínicas.' },
+  { q: 'Como funciona a IA nas evoluções?', a: 'Você escreve suas notas normalmente (ou usa um modelo estruturado) e a IA refina o vocabulário técnico e corrige a gramática, preservando 100% do sentido clínico original. É como ter um revisor especialista ao seu lado.' },
+  { q: 'Preciso saber tecnologia para usar?', a: 'De jeito nenhum. A interface é intuitiva e foi pensada para profissionais de saúde, não para engenheiros. Se você usa WhatsApp, consegue usar o Evolução Diária.' },
 ];
 
 export default function Landing() {
@@ -112,10 +155,18 @@ export default function Landing() {
             <span className="text-primary">Deixa a burocracia com a gente.</span>
           </motion.h1>
           <motion.p initial="hidden" animate="visible" custom={2} variants={fadeUp}
-            className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Evoluções, agenda, financeiro e relatórios — tudo organizado para que você foque no que realmente importa: seus pacientes.
+            className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            Evoluções com IA, modelos personalizados, agenda, financeiro e relatórios — tudo organizado para que você foque no que realmente importa: seus pacientes.
           </motion.p>
           <motion.div initial="hidden" animate="visible" custom={3} variants={fadeUp}
+            className="flex flex-wrap items-center justify-center gap-3 mb-10">
+            {['✨ IA integrada', '📋 Modelos de evolução', '📊 Financeiro automático', '📱 Funciona no celular'].map(tag => (
+              <span key={tag} className="inline-flex items-center px-3 py-1.5 rounded-full bg-secondary text-foreground text-xs font-medium">
+                {tag}
+              </span>
+            ))}
+          </motion.div>
+          <motion.div initial="hidden" animate="visible" custom={4} variants={fadeUp}
             className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" onClick={() => navigate('/auth')}
               className="gradient-primary gap-2 text-lg px-8 py-6 shadow-glow">
@@ -166,12 +217,76 @@ export default function Landing() {
         </motion.div>
       </section>
 
+      {/* AI & Automation — NEW STAR SECTION */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+            custom={0} variants={fadeUp} className="text-center mb-6">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+              <Wand2 className="w-4 h-4" /> Inteligência Artificial
+            </span>
+            <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-3">
+              IA que trabalha <span className="text-primary">por você</span>
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Pare de gastar horas com texto, formatação e relatórios. A IA do Evolução Diária faz o trabalho pesado enquanto você cuida do que importa.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6 mt-12">
+            {AI_FEATURES.map((f, i) => (
+              <motion.div key={f.title} initial="hidden" whileInView="visible"
+                viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
+                className="relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute top-4 right-4">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide">
+                    {f.highlight}
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 shadow-glow">
+                  <f.icon className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2 pr-20">{f.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Automation Stats */}
+      <section className="py-16 px-4 gradient-subtle">
+        <div className="max-w-5xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+            custom={0} variants={fadeUp} className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
+              Automação que transforma sua rotina
+            </h2>
+            <p className="text-muted-foreground text-lg">Números que fazem diferença no seu dia a dia</p>
+          </motion.div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {AUTOMATION_BENEFITS.map((b, i) => (
+              <motion.div key={b.label} initial="hidden" whileInView="visible"
+                viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
+                className="text-center">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                  <b.icon className="w-7 h-7 text-primary" />
+                </div>
+                <p className="text-3xl md:text-4xl font-bold text-primary mb-1">{b.stat}</p>
+                <p className="text-sm font-semibold text-foreground mb-1">{b.label}</p>
+                <p className="text-xs text-muted-foreground">{b.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">O que você ganha</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Tudo que você precisa</h2>
             <p className="text-muted-foreground text-lg">Ferramentas práticas que economizam horas por semana</p>
           </motion.div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -190,15 +305,43 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* How it works — Step by step */}
       <section className="py-20 px-4 gradient-subtle">
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+            custom={0} variants={fadeUp} className="text-center mb-14">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Como funciona na prática?</h2>
+            <p className="text-muted-foreground text-lg">Em 3 passos simples você transforma sua rotina</p>
+          </motion.div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: '1', title: 'Cadastre suas clínicas e pacientes', desc: 'Adicione suas informações uma vez. O sistema organiza tudo automaticamente por clínica, paciente e período.' },
+              { step: '2', title: 'Registre evoluções com IA', desc: 'Escolha um modelo ou escreva livremente. A IA refina seu texto em segundos. Anexe arquivos e adicione seu carimbo.' },
+              { step: '3', title: 'Gere relatórios e controle finanças', desc: 'Exporte PDFs profissionais, acompanhe frequência e receita. Tudo calculado automaticamente, sem planilhas.' },
+            ].map((s, i) => (
+              <motion.div key={s.step} initial="hidden" whileInView="visible"
+                viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
+                className="text-center">
+                <div className="w-14 h-14 rounded-full gradient-primary flex items-center justify-center mx-auto mb-4 shadow-glow">
+                  <span className="text-2xl font-bold text-primary-foreground">{s.step}</span>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">{s.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Quem usa, recomenda</h2>
             <p className="text-muted-foreground text-lg">Veja o que profissionais como você dizem</p>
           </motion.div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {TESTIMONIALS.map((t, i) => (
               <motion.div key={t.name} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
@@ -221,7 +364,7 @@ export default function Landing() {
       </section>
 
       {/* Inside the App */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 gradient-subtle">
         <div className="max-w-5xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
@@ -234,11 +377,11 @@ export default function Landing() {
           <div className="grid md:grid-cols-2 gap-6">
             {[
               { icon: '📊', title: 'Dashboard Inteligente', desc: 'Visão geral com agenda do dia, tarefas pendentes, mini-calendário e resumo dos seus atendimentos. Tudo atualizado em tempo real.' },
-              { icon: '📝', title: 'Evoluções Completas', desc: 'Registre cada sessão com editor de texto, humor do paciente, anexos e carimbo profissional digital. Exporte em PDF quando quiser.' },
+              { icon: '📝', title: 'Evoluções com IA e Modelos', desc: 'Registre sessões com modelos estruturados personalizados por clínica. A IA melhora cada campo individualmente — disposição, atividade, desenvolvimento e muito mais.' },
               { icon: '📅', title: 'Agenda Visual Integrada', desc: 'Calendário com eventos, sessões agendadas e lembretes. Visualização por dia, semana ou mês — nunca mais perca um atendimento.' },
-              { icon: '✨', title: 'Relatórios com IA', desc: 'Gere relatórios clínicos com inteligência artificial de forma guiada ou livre. Edite com editor rico, salve e compartilhe em PDF.' },
-              { icon: '💰', title: 'Controle Financeiro', desc: 'Acompanhe ganhos por clínica, sessão ou pacote. Veja presenças, faltas e o impacto financeiro automaticamente.' },
-              { icon: '📋', title: 'Gestão de Pacientes', desc: 'Ficha completa com diagnóstico, histórico de humor, documentos, tarefas e evolução — tudo organizado por paciente.' },
+              { icon: '✨', title: 'Relatórios com IA', desc: 'Gere relatórios clínicos com inteligência artificial de forma guiada ou livre. Edite com editor rico, salve múltiplas versões e compartilhe em PDF profissional.' },
+              { icon: '💰', title: 'Controle Financeiro', desc: 'Acompanhe ganhos por clínica, sessão ou pacote. Veja presenças, faltas remuneradas e o impacto financeiro automaticamente.' },
+              { icon: '📋', title: 'Modelos de Evolução', desc: 'Crie modelos com campos personalizados — texto, seleção, checkbox, numérico. Cada clínica pode ter seus próprios modelos. IA integrada em cada campo.' },
             ].map((item, i) => (
               <motion.div key={item.title} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
@@ -250,6 +393,29 @@ export default function Landing() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* Emotional CTA */}
+      <section className="py-20 px-4">
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+          custom={0} variants={fadeUp} className="max-w-4xl mx-auto">
+          <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 p-8 md:p-12 text-center">
+            <div className="text-5xl mb-6">💭</div>
+            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4 leading-relaxed">
+              "Eu não estudei anos para ficar preenchendo planilha."
+            </h2>
+            <p className="text-muted-foreground text-lg mb-2 max-w-2xl mx-auto leading-relaxed">
+              Se você já pensou isso, saiba que não está sozinho. Milhares de profissionais de saúde gastam <span className="text-foreground font-semibold">até 10 horas por semana</span> com burocracia que poderia ser automatizada.
+            </p>
+            <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
+              Com o Evolução Diária, você recupera esse tempo — e ainda entrega documentação <span className="text-foreground font-semibold">mais profissional</span> do que antes.
+            </p>
+            <Button size="lg" onClick={() => navigate('/auth')}
+              className="gradient-primary gap-2 text-lg px-8 py-6 shadow-glow">
+              Quero Recuperar Meu Tempo <ArrowRight className="w-5 h-5" />
+            </Button>
+          </div>
+        </motion.div>
       </section>
 
       {/* FAQ */}
@@ -309,7 +475,8 @@ export default function Landing() {
                 </div>
                 <p className="text-xs text-primary font-medium mb-4">{plan.sub}</p>
                 <ul className="text-sm text-muted-foreground space-y-2 mb-6 flex-1">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Acesso completo a tudo</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Acesso completo + IA</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Modelos ilimitados</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> 15 dias grátis</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Cancele quando quiser</li>
                 </ul>
