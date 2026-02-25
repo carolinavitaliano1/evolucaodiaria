@@ -345,6 +345,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         signature: evolution.signature || null, stamp_id: evolution.stampId || null,
         confirmed_attendance: evolution.confirmedAttendance || false,
         mood: evolution.mood || null,
+        template_id: evolution.templateId || null,
+        template_data: evolution.templateData || null,
       }).select().single();
       if (error) throw error;
 
