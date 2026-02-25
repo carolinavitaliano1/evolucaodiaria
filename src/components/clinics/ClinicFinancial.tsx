@@ -146,6 +146,42 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         </div>
       </div>
 
+      {/* Discount simulator - right after summary cards */}
+      <div className="bg-card rounded-2xl p-5 border border-border">
+        <div className="flex items-center gap-2 mb-3">
+          <Percent className="w-5 h-5 text-primary" />
+          <h3 className="font-bold text-foreground text-sm">Simulador de Desconto da Clínica</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Defina a porcentagem que a clínica retém. O valor é salvo automaticamente.
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="relative w-28">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={discountPercent}
+              onChange={(e) => handleDiscountChange(e.target.value)}
+              className="pr-8"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+          </div>
+          <div className="flex-1 text-sm text-muted-foreground">
+            {discountPercent > 0 ? (
+              <span>
+                Bruto <strong className="text-foreground">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                {' → '}
+                Líquido <strong className="text-success">R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+              </span>
+            ) : (
+              <span>Sem desconto aplicado</span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Patient breakdown */}
       <div className="bg-card rounded-2xl p-6 border border-border">
         <h3 className="font-bold text-foreground mb-4">Detalhamento por Paciente</h3>
@@ -187,42 +223,6 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             )}
           </div>
         )}
-      </div>
-
-      {/* Discount simulator - below patient breakdown */}
-      <div className="bg-card rounded-2xl p-5 border border-border">
-        <div className="flex items-center gap-2 mb-3">
-          <Percent className="w-5 h-5 text-primary" />
-          <h3 className="font-bold text-foreground text-sm">Simulador de Desconto da Clínica</h3>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Defina a porcentagem que a clínica retém. O valor é salvo automaticamente.
-        </p>
-        <div className="flex items-center gap-3">
-          <div className="relative w-28">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={discountPercent}
-              onChange={(e) => handleDiscountChange(e.target.value)}
-              className="pr-8"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
-          </div>
-          <div className="flex-1 text-sm text-muted-foreground">
-            {discountPercent > 0 ? (
-              <span>
-                Bruto <strong className="text-foreground">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                {' → '}
-                Líquido <strong className="text-success">R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-              </span>
-            ) : (
-              <span>Sem desconto aplicado</span>
-            )}
-          </div>
-        </div>
       </div>
 
     </div>
