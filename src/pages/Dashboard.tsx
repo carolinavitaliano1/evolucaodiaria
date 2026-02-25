@@ -5,11 +5,14 @@ import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
 import { TaskList } from '@/components/dashboard/TaskList';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useApp } from '@/contexts/AppContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Crown, CalendarClock } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 const PLAN_NAMES: Record<string, string> = {
   'prod_Tx2Ctdcx5Gt6DS': 'Mensal',
@@ -28,13 +31,22 @@ function getGreeting(): string {
 export default function Dashboard() {
   const { selectedDate, appointments, tasks, evolutions } = useApp();
   const { theme } = useTheme();
+  const { user } = useAuth();
   const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
 
-  const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const todayEvolutions = evolutions.filter(e => e.date === todayStr && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'));
-  const todayAppointments = appointments.filter(a => a.date === dateStr);
+  const todayEvolutions = evolutions.filter(e => e.date === todayStr);
+  const todayPresentes = todayEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
+  const todayFaltas = todayEvolutions.filter(e => e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_remunerada');
   const pendingTasks = tasks.filter(t => !t.completed);
+
+  // Load today's events
+  const [todayEvents, setTodayEvents] = useState<any[]>([]);
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('events').select('*').eq('user_id', user.id).eq('date', todayStr)
+      .then(({ data }) => { if (data) setTodayEvents(data); });
+  }, [user, todayStr]);
 
   const planName = productId ? (PLAN_NAMES[productId] || 'Ativo') : null;
   const endDateStr = subscriptionEnd
@@ -98,13 +110,23 @@ export default function Dashboard() {
             theme === 'lilas' ? 'calendar-grid border-0' : 'bg-card border-border'
           )}>
             <h3 className="font-medium text-foreground mb-3 text-sm">Resumo do Dia</h3>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Atendimentos</span>
-                <span className="text-foreground font-semibold">{todayEvolutions.length}</span>
+                <span className="text-muted-foreground text-sm">✅ Atendimentos</span>
+                <span className="text-foreground font-semibold">{todayPresentes.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Tarefas Pendentes</span>
+                <span className="text-muted-foreground text-sm">❌ Faltas</span>
+                <span className="text-foreground font-semibold">{todayFaltas.length}</span>
+              </div>
+              {todayEvents.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-sm">📅 Eventos</span>
+                  <span className="text-foreground font-semibold">{todayEvents.length}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">📋 Tarefas Pendentes</span>
                 <span className="text-foreground font-semibold">{pendingTasks.length}</span>
               </div>
             </div>
