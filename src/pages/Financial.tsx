@@ -521,7 +521,20 @@ export default function Financial() {
       y += 3;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
-      doc.text(`VALOR TOTAL: R$ ${totalInvoiceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      doc.text(`VALOR BRUTO: R$ ${totalInvoiceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      
+      const discountPct = clinic.discountPercentage || 0;
+      if (discountPct > 0) {
+        y += 7;
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Desconto da clínica: ${discountPct}%`, margin, y);
+        y += 7;
+        const netValue = totalInvoiceValue * (1 - discountPct / 100);
+        doc.setFontSize(12);
+        doc.setTextColor(34, 139, 34);
+        doc.text(`VALOR LÍQUIDO: R$ ${netValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      }
       y += 15;
 
       // Signature area
