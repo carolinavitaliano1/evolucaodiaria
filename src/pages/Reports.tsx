@@ -1,5 +1,7 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,10 +33,19 @@ const MOOD_LABELS: Record<string, { emoji: string; label: string }> = {
 
 export default function Reports() {
   const { clinics, patients, evolutions } = useApp();
+  const { user } = useAuth();
   const [selectedClinic, setSelectedClinic] = useState<string>('all');
   const [period, setPeriod] = useState<'week' | 'month'>('week');
   const [isExporting, setIsExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+  const [profile, setProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name, professional_id').eq('user_id', user.id).single().then(({ data }) => {
+      if (data) setProfile(data);
+    });
+  }, [user]);
 
   const dateRange = useMemo(() => {
     const today = new Date();
@@ -195,54 +206,100 @@ export default function Reports() {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 15;
-      let yPos = margin;
+      const margin = 20;
+      const contentWidth = pageWidth - margin * 2;
+      let y = margin;
 
-      // Header
-      pdf.setFillColor(99, 102, 241);
-      pdf.rect(0, 0, pageWidth, 40, 'F');
-      
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(22);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Diário do Terapeuta', margin, 18);
-      
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('Relatório Completo', margin, 28);
-      
-      pdf.setFontSize(10);
-      const selectedClinicName = selectedClinic === 'all' 
-        ? 'Todas as clínicas' 
-        : clinics.find(c => c.id === selectedClinic)?.name || '';
-      pdf.text(`${dateRange.label} | ${selectedClinicName}`, margin, 36);
+      const selectedClinicObj = selectedClinic !== 'all' ? clinics.find(c => c.id === selectedClinic) : null;
 
-      yPos = 50;
+      // --- HEADER: Letterhead ---
+      if (selectedClinicObj?.letterhead) {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject();
+            img.src = selectedClinicObj.letterhead!;
+          });
+          const imgW = contentWidth;
+          const imgH = Math.min((img.height / img.width) * imgW, 40);
+          pdf.addImage(selectedClinicObj.letterhead!, 'PNG', margin, y, imgW, imgH);
+          y += imgH + 6;
+        } catch { /* skip */ }
+      }
 
-      // Date info
-      pdf.setTextColor(100, 100, 100);
-      pdf.setFontSize(9);
-      pdf.text(
-        `Período: ${format(dateRange.start, 'dd/MM/yyyy', { locale: ptBR })} a ${format(dateRange.end, 'dd/MM/yyyy', { locale: ptBR })}`,
-        margin, yPos
-      );
-      pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, pageWidth - margin - 60, yPos);
-      
-      yPos += 12;
+      // Clinic or general header
+      if (selectedClinicObj) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(50, 50, 50);
+        pdf.text(selectedClinicObj.name, pageWidth / 2, y, { align: 'center' });
+        y += 6;
+        if (selectedClinicObj.address) {
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(selectedClinicObj.address, pageWidth / 2, y, { align: 'center' });
+          y += 5;
+        }
+        const details: string[] = [];
+        if (selectedClinicObj.phone) details.push(`Tel: ${selectedClinicObj.phone}`);
+        if (selectedClinicObj.email) details.push(`Email: ${selectedClinicObj.email}`);
+        if (selectedClinicObj.cnpj) details.push(`CNPJ: ${selectedClinicObj.cnpj}`);
+        if (details.length > 0) {
+          pdf.setFontSize(8);
+          pdf.text(details.join(' | '), pageWidth / 2, y, { align: 'center' });
+          y += 5;
+        }
+      }
 
-      // Stats section
-      pdf.setTextColor(50, 50, 50);
+      // Divider
+      y += 3;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 10;
+
+      // Title
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Resumo Geral', margin, yPos);
-      yPos += 8;
+      pdf.setTextColor(30, 30, 30);
+      pdf.text('RELATÓRIO COMPLETO', pageWidth / 2, y, { align: 'center' });
+      y += 8;
 
-      const cardWidth = (pageWidth - margin * 2 - 15) / 4;
+      // Period & therapist
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(80, 80, 80);
+      const selectedClinicName = selectedClinic === 'all' ? 'Todas as clínicas' : (selectedClinicObj?.name || '');
+      pdf.text(
+        `Período: ${format(dateRange.start, 'dd/MM/yyyy', { locale: ptBR })} a ${format(dateRange.end, 'dd/MM/yyyy', { locale: ptBR })} | ${selectedClinicName}`,
+        pageWidth / 2, y, { align: 'center' }
+      );
+      y += 6;
+
+      if (profile?.name) {
+        const terapeutaLine = profile.professional_id
+          ? `Terapeuta: ${profile.name} (${profile.professional_id})`
+          : `Terapeuta: ${profile.name}`;
+        pdf.text(terapeutaLine, pageWidth / 2, y, { align: 'center' });
+        y += 6;
+      }
+
+      y += 5;
+
+      // ===== SECTION 1: RESUMO GERAL (Stats Cards) =====
+      pdf.setTextColor(50, 50, 50);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Resumo de Frequência', margin, y);
+      y += 8;
+
+      const cardWidth = (contentWidth - 15) / 4;
       const cardHeight = 25;
-      
       const statsCards = [
         { label: 'Total Atendimentos', value: String(attendanceStats.total), color: PDF_COLORS.primary },
-        { label: 'Presenças', value: String(attendanceStats.present), color: PDF_COLORS.green },
+        { label: 'Presenças', value: String(attendanceStats.present + attendanceStats.reposicao), color: PDF_COLORS.green },
         { label: 'Faltas', value: String(attendanceStats.absent), color: PDF_COLORS.destructive },
         { label: 'Taxa de Presença', value: `${attendanceStats.presenceRate}%`, color: PDF_COLORS.primary },
       ];
@@ -250,70 +307,251 @@ export default function Reports() {
       statsCards.forEach((card, i) => {
         const x = margin + i * (cardWidth + 5);
         pdf.setFillColor(248, 250, 252);
-        pdf.roundedRect(x, yPos, cardWidth, cardHeight, 3, 3, 'F');
-        
+        pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'F');
         const rgb = hexToRgb(card.color);
         pdf.setFillColor(rgb[0], rgb[1], rgb[2]);
-        pdf.roundedRect(x, yPos, 3, cardHeight, 1, 1, 'F');
-        
+        pdf.roundedRect(x, y, 3, cardHeight, 1, 1, 'F');
         pdf.setTextColor(rgb[0], rgb[1], rgb[2]);
         pdf.setFontSize(16);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(card.value, x + 8, yPos + 12);
-        
+        pdf.text(card.value, x + 8, y + 12);
         pdf.setTextColor(100, 100, 100);
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(card.label, x + 8, yPos + 20);
+        pdf.text(card.label, x + 8, y + 20);
       });
 
-      yPos += cardHeight + 15;
+      y += cardHeight + 12;
 
-      // Patient table
+      // Faltas remuneradas info
+      if (attendanceStats.paidAbsent > 0) {
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(180, 140, 30);
+        pdf.text(`Faltas Remuneradas: ${attendanceStats.paidAbsent}`, margin, y);
+        y += 8;
+      }
+
+      // ===== SECTION 2: HUMOR =====
+      const moodEntries = Object.entries(moodStats).filter(([, v]) => v > 0);
+      if (moodEntries.length > 0) {
+        if (y > pageHeight - 50) { pdf.addPage(); y = margin; }
+        pdf.setTextColor(50, 50, 50);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Distribuição de Humor', margin, y);
+        y += 8;
+
+        pdf.setFillColor(245, 245, 245);
+        const moodBoxH = 8 * moodEntries.length + 8;
+        pdf.roundedRect(margin, y - 2, contentWidth, moodBoxH, 3, 3, 'F');
+        
+        pdf.setFontSize(9);
+        moodEntries.forEach(([key, count]) => {
+          const ml = MOOD_LABELS[key];
+          if (!ml) return;
+          const percent = attendanceStats.total > 0 ? Math.round((count / attendanceStats.total) * 100) : 0;
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(50, 50, 50);
+          pdf.text(`${ml.label}:`, margin + 5, y + 4);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`${count} registros (${percent}%)`, margin + 35, y + 4);
+
+          // Mini bar
+          const barMaxW = 80;
+          const barW = (count / attendanceStats.total) * barMaxW;
+          pdf.setFillColor(99, 102, 241);
+          pdf.roundedRect(margin + 85, y + 1, barW, 4, 1, 1, 'F');
+
+          y += 8;
+        });
+        y += 10;
+      }
+
+      // ===== SECTION 3: FATURAMENTO =====
+      if (y > pageHeight - 50) { pdf.addPage(); y = margin; }
       pdf.setTextColor(50, 50, 50);
-      pdf.setFontSize(14);
+      pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Detalhamento por Paciente', margin, yPos);
-      yPos += 8;
+      pdf.text('Resumo Financeiro', margin, y);
+      y += 8;
 
-      pdf.setFontSize(8);
+      pdf.setFillColor(34, 197, 94);
+      pdf.roundedRect(margin, y, contentWidth, 14, 3, 3, 'F');
+      pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(100, 100, 100);
-      pdf.text('Paciente', margin, yPos);
-      pdf.text('Pres.', margin + 55, yPos);
-      pdf.text('Faltas', margin + 70, yPos);
-      pdf.text('F.Rem.', margin + 85, yPos);
-      pdf.text('Taxa', margin + 100, yPos);
-      pdf.text('Humor', margin + 115, yPos);
-      pdf.text('Receita', margin + 140, yPos);
-      yPos += 3;
-      pdf.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 4;
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('RECEITA TOTAL NO PERÍODO', margin + 8, y + 9);
+      pdf.text(`R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 8, y + 9, { align: 'right' });
+      y += 22;
+
+      // ===== SECTION 4: TABELA DETALHADA POR PACIENTE =====
+      if (y > pageHeight - 40) { pdf.addPage(); y = margin; }
+      pdf.setTextColor(50, 50, 50);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Detalhamento por Paciente', margin, y);
+      y += 8;
+
+      // Table header
+      const cols = { name: margin, clinic: margin + 42, pres: margin + 82, falt: margin + 97, frem: margin + 110, taxa: margin + 124, mood: margin + 138, rev: pageWidth - margin };
+      
+      pdf.setFillColor(235, 235, 240);
+      pdf.roundedRect(margin, y - 3, contentWidth, 9, 2, 2, 'F');
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(80, 80, 80);
+      pdf.text('Paciente', cols.name + 2, y + 2);
+      pdf.text('Clínica', cols.clinic, y + 2);
+      pdf.text('Pres.', cols.pres, y + 2);
+      pdf.text('Faltas', cols.falt, y + 2);
+      pdf.text('F.Rem.', cols.frem, y + 2);
+      pdf.text('Taxa', cols.taxa, y + 2);
+      pdf.text('Humor', cols.mood, y + 2);
+      pdf.text('Receita', cols.rev, y + 2, { align: 'right' });
+      y += 9;
 
       pdf.setFont('helvetica', 'normal');
-      patientDetailedStats.forEach(p => {
-        if (yPos > pageHeight - 20) { pdf.addPage(); yPos = margin; }
+      pdf.setFontSize(7);
+      patientDetailedStats.forEach((p, idx) => {
+        if (y > pageHeight - 25) { pdf.addPage(); y = margin; }
+        
+        if (idx % 2 === 0) {
+          pdf.setFillColor(250, 250, 252);
+          pdf.rect(margin, y - 3, contentWidth, 6, 'F');
+        }
+        
         pdf.setTextColor(50, 50, 50);
-        pdf.text(p.patientName.substring(0, 25), margin, yPos);
-        pdf.text(String(p.present), margin + 58, yPos);
-        pdf.text(String(p.absent), margin + 73, yPos);
-        pdf.text(String(p.paidAbsent), margin + 88, yPos);
-        pdf.text(`${p.rate}%`, margin + 102, yPos);
+        pdf.text(p.patientName.substring(0, 22), cols.name + 2, y);
+        pdf.text(p.clinicName.substring(0, 18), cols.clinic, y);
+        
+        pdf.setTextColor(34, 197, 94);
+        pdf.text(String(p.present + p.reposicao), cols.pres + 3, y);
+        pdf.setTextColor(239, 68, 68);
+        pdf.text(String(p.absent), cols.falt + 3, y);
+        pdf.setTextColor(234, 179, 8);
+        pdf.text(String(p.paidAbsent), cols.frem + 3, y);
+        
+        pdf.setTextColor(50, 50, 50);
+        pdf.text(`${p.rate}%`, cols.taxa, y);
+        
         const moodLabel = p.predominantMood ? (MOOD_LABELS[p.predominantMood]?.label || '-') : '-';
-        pdf.text(moodLabel, margin + 115, yPos);
-        pdf.text(`R$ ${p.revenue.toFixed(2)}`, margin + 140, yPos);
-        yPos += 5;
+        pdf.text(moodLabel, cols.mood, y);
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`R$ ${p.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, cols.rev, y, { align: 'right' });
+        pdf.setFont('helvetica', 'normal');
+        y += 6;
       });
 
-      // Footer
+      // Totals row
+      y += 2;
+      pdf.setDrawColor(100, 100, 100);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 5;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text('TOTAL', cols.name + 2, y);
+      pdf.setTextColor(34, 197, 94);
+      pdf.text(String(attendanceStats.present + attendanceStats.reposicao), cols.pres + 3, y);
+      pdf.setTextColor(239, 68, 68);
+      pdf.text(String(attendanceStats.absent), cols.falt + 3, y);
+      pdf.setTextColor(234, 179, 8);
+      pdf.text(String(attendanceStats.paidAbsent), cols.frem + 3, y);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text(`${attendanceStats.presenceRate}%`, cols.taxa, y);
+      pdf.text(`R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, cols.rev, y, { align: 'right' });
+      y += 12;
+
+      // ===== SECTION 5: RESUMO POR CLÍNICA =====
+      if (clinicComparison.length > 1) {
+        if (y > pageHeight - 50) { pdf.addPage(); y = margin; }
+        pdf.setTextColor(50, 50, 50);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Resumo por Clínica', margin, y);
+        y += 8;
+
+        pdf.setFillColor(235, 235, 240);
+        pdf.roundedRect(margin, y - 3, contentWidth, 9, 2, 2, 'F');
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(80, 80, 80);
+        pdf.text('Clínica', margin + 2, y + 2);
+        pdf.text('Presenças', margin + 70, y + 2);
+        pdf.text('Faltas', margin + 95, y + 2);
+        pdf.text('F.Rem.', margin + 115, y + 2);
+        pdf.text('Total', margin + 135, y + 2);
+        pdf.text('Taxa', pageWidth - margin, y + 2, { align: 'right' });
+        y += 9;
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        clinicComparison.forEach((c, idx) => {
+          if (y > pageHeight - 25) { pdf.addPage(); y = margin; }
+          if (idx % 2 === 0) {
+            pdf.setFillColor(250, 250, 252);
+            pdf.rect(margin, y - 3, contentWidth, 7, 'F');
+          }
+          pdf.setTextColor(50, 50, 50);
+          pdf.text(c.fullName.substring(0, 30), margin + 2, y);
+          pdf.setTextColor(34, 197, 94);
+          pdf.text(String(c.Presenças), margin + 75, y);
+          pdf.setTextColor(239, 68, 68);
+          pdf.text(String(c.Faltas), margin + 100, y);
+          pdf.setTextColor(234, 179, 8);
+          pdf.text(String(c['Faltas Rem.']), margin + 120, y);
+          pdf.setTextColor(50, 50, 50);
+          pdf.text(String(c.Presenças + c.Faltas + c['Faltas Rem.']), margin + 138, y);
+          pdf.text(`${c.taxa}%`, pageWidth - margin, y, { align: 'right' });
+          y += 7;
+        });
+      }
+
+      // Stamp if single clinic selected
+      if (selectedClinicObj?.stamp) {
+        try {
+          const stampImg = new Image();
+          stampImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            stampImg.onload = () => resolve();
+            stampImg.onerror = () => reject();
+            stampImg.src = selectedClinicObj.stamp!;
+          });
+          const maxW = 50;
+          const maxH = 30;
+          let sw = maxW;
+          let sh = (stampImg.height / stampImg.width) * sw;
+          if (sh > maxH) { sh = maxH; sw = (stampImg.width / stampImg.height) * sh; }
+          const stampY = pageHeight - 50 - sh;
+          if (y + 15 < stampY) {
+            pdf.addImage(selectedClinicObj.stamp, 'PNG', pageWidth - margin - sw, stampY, sw, sh);
+            pdf.setDrawColor(100, 100, 100);
+            pdf.line(pageWidth - margin - sw, stampY + sh + 3, pageWidth - margin, stampY + sh + 3);
+            pdf.setFontSize(7);
+            pdf.setTextColor(128, 128, 128);
+            pdf.text('Carimbo', pageWidth - margin - sw / 2, stampY + sh + 7, { align: 'center' });
+          }
+        } catch { /* skip */ }
+      }
+
+      // Footer on all pages
       const totalPages = pdf.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
-        pdf.setTextColor(150, 150, 150);
         pdf.setFontSize(8);
+        pdf.setTextColor(128, 128, 128);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(`Página ${i} de ${totalPages}`, pageWidth - margin - 20, pageHeight - 10);
-        pdf.text('Diário do Terapeuta', margin, pageHeight - 10);
+        pdf.text(
+          `Página ${i} de ${totalPages} | Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+          pageWidth / 2, pageHeight - 10, { align: 'center' }
+        );
+        pdf.setFontSize(6);
+        pdf.setTextColor(190, 190, 190);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Plataforma Clínica - Evolução Diária', margin, pageHeight - 5);
+        pdf.setFont('helvetica', 'normal');
       }
 
       pdf.save(`relatorio-completo-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
