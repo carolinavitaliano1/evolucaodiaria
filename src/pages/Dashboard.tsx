@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { toLocalDateString } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
@@ -34,7 +35,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayStr = toLocalDateString(new Date());
   const todayEvolutions = evolutions.filter(e => e.date === todayStr);
   const todayPresentes = todayEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
   const todayFaltas = todayEvolutions.filter(e => e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_remunerada');

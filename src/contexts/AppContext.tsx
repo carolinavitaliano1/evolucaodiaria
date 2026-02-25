@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, Rea
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { toLocalDateString } from '@/lib/utils';
 import { Clinic, Patient, Evolution, Appointment, Task, Payment, Attachment, ClinicNote, ScheduleByDay, ClinicPackage } from '@/types';
 
 interface AppState {
@@ -533,7 +534,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getClinicPatients = useCallback((clinicId: string) => state.patients.filter(p => p.clinicId === clinicId), [state.patients]);
   const getPatientEvolutions = useCallback((patientId: string) => state.evolutions.filter(e => e.patientId === patientId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [state.evolutions]);
-  const getDateAppointments = useCallback((date: Date) => { const d = date.toISOString().split('T')[0]; return state.appointments.filter(a => a.date === d).sort((a, b) => a.time.localeCompare(b.time)); }, [state.appointments]);
+  const getDateAppointments = useCallback((date: Date) => { const d = toLocalDateString(date); return state.appointments.filter(a => a.date === d).sort((a, b) => a.time.localeCompare(b.time)); }, [state.appointments]);
   const getClinicPackages = useCallback((clinicId: string) => state.clinicPackages.filter(p => p.clinicId === clinicId && p.isActive), [state.clinicPackages]);
 
   const addPackage = useCallback(async (pkg: Omit<ClinicPackage, 'id' | 'createdAt'>) => {
