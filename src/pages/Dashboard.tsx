@@ -31,7 +31,8 @@ export default function Dashboard() {
   const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
-  const todayEvolutions = evolutions.filter(e => e.date === dateStr && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'));
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayEvolutions = evolutions.filter(e => e.date === todayStr && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'));
   const todayAppointments = appointments.filter(a => a.date === dateStr);
   const pendingTasks = tasks.filter(t => !t.completed);
 
