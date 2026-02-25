@@ -45,11 +45,15 @@ export default function Patients() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
+  const [profile, setProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
 
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
       if (data) setStamps(data);
+    });
+    supabase.from('profiles').select('name, professional_id').eq('user_id', user.id).single().then(({ data }) => {
+      if (data) setProfile(data);
     });
   }, [user]);
 
@@ -83,7 +87,7 @@ export default function Patients() {
     setExportDialogOpen(true);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!selectedPatientId || !startDate || !endDate) return;
     
     const patient = patients.find(p => p.id === selectedPatientId);
@@ -120,63 +124,216 @@ export default function Patients() {
         toast.error('Nenhuma evolução encontrada no período selecionado.');
         return;
       }
-      const attendanceData = patientEvolutions.map(e => ({
-        date: format(new Date(e.date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
-        status: e.attendanceStatus === 'presente' ? 'Presente' : 'Falta'
-      }));
+      const attendanceData = patientEvolutions.map(e => {
+        const [yr, mo, dy] = e.date.split('-').map(Number);
+        return {
+          date: format(new Date(yr, mo - 1, dy), 'dd/MM/yyyy', { locale: ptBR }),
+          status: e.attendanceStatus === 'presente' ? 'Presente' 
+            : e.attendanceStatus === 'reposicao' ? 'Reposição'
+            : e.attendanceStatus === 'falta_remunerada' ? 'Falta Remunerada' 
+            : 'Falta',
+          statusColor: e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' 
+            ? [34, 197, 94] : e.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68],
+        };
+      });
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 15;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - margin * 2;
+      let y = margin;
 
-      pdf.setFillColor(124, 58, 237);
-      pdf.rect(0, 0, pageWidth, 30, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Lista de Frequência', margin, 14);
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`${patient.name} — ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`, margin, 24);
+      // --- HEADER with letterhead ---
+      if (clinic?.letterhead) {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject();
+            img.src = clinic.letterhead!;
+          });
+          const imgWidth = contentWidth;
+          const imgHeight = Math.min((img.height / img.width) * imgWidth, 40);
+          pdf.addImage(clinic.letterhead!, 'PNG', margin, y, imgWidth, imgHeight);
+          y += imgHeight + 8;
+        } catch { /* skip letterhead */ }
+      }
 
-      pdf.setTextColor(50, 50, 50);
-      let y = 40;
+      // Clinic name
+      if (clinic) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(50, 50, 50);
+        pdf.text(clinic.name, pageWidth / 2, y, { align: 'center' });
+        y += 6;
+        if (clinic.address) {
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(clinic.address, pageWidth / 2, y, { align: 'center' });
+          y += 5;
+        }
+        const clinicDetails: string[] = [];
+        if (clinic.phone) clinicDetails.push(`Tel: ${clinic.phone}`);
+        if (clinic.email) clinicDetails.push(`Email: ${clinic.email}`);
+        if (clinic.cnpj) clinicDetails.push(`CNPJ: ${clinic.cnpj}`);
+        if (clinicDetails.length > 0) {
+          pdf.setFontSize(8);
+          pdf.text(clinicDetails.join(' | '), pageWidth / 2, y, { align: 'center' });
+          y += 5;
+        }
+      }
 
-      // Table header
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Data', margin, y);
-      pdf.text('Status', margin + 60, y);
-      y += 2;
+      // Divider
+      y += 3;
       pdf.setDrawColor(200, 200, 200);
       pdf.line(margin, y, pageWidth - margin, y);
-      y += 6;
+      y += 10;
 
+      // Title
+      pdf.setFontSize(13);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(30, 30, 30);
+      pdf.text('LISTA DE FREQUÊNCIA', pageWidth / 2, y, { align: 'center' });
+      y += 8;
+
+      // Period
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(
+        `Período: ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`,
+        pageWidth / 2, y, { align: 'center' }
+      );
+      y += 10;
+
+      // Patient info box
+      pdf.setFillColor(245, 245, 245);
+      pdf.roundedRect(margin, y, contentWidth, 22, 3, 3, 'F');
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(50, 50, 50);
+      pdf.text('Paciente:', margin + 5, y + 7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(patient.name, margin + 28, y + 7);
+
+      if (profile?.name) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Terapeuta:', margin + 5, y + 14);
+        pdf.setFont('helvetica', 'normal');
+        const terapeutaText = profile.professional_id 
+          ? `${profile.name} (${profile.professional_id})` 
+          : profile.name;
+        pdf.text(terapeutaText, margin + 30, y + 14);
+      }
+
+      if (patient.clinicalArea) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Área:', margin + contentWidth / 2, y + 7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(patient.clinicalArea, margin + contentWidth / 2 + 15, y + 7);
+      }
+
+      y += 30;
+
+      // Table header
+      const colDate = margin + 5;
+      const colStatus = margin + contentWidth / 2;
+      
+      pdf.setFillColor(235, 235, 240);
+      pdf.roundedRect(margin, y - 4, contentWidth, 10, 2, 2, 'F');
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(50, 50, 50);
+      pdf.text('Data', colDate, y + 2);
+      pdf.text('Status', colStatus, y + 2);
+      y += 10;
+
+      // Table rows
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(10);
-      for (const row of attendanceData) {
-        if (y > pdf.internal.pageSize.getHeight() - 20) { pdf.addPage(); y = 15; }
-        pdf.text(row.date, margin, y);
-        pdf.text(row.status, margin + 60, y);
-        y += 6;
+      for (let i = 0; i < attendanceData.length; i++) {
+        const row = attendanceData[i];
+        if (y > pageHeight - 40) { pdf.addPage(); y = margin; }
+        
+        // Alternating row background
+        if (i % 2 === 0) {
+          pdf.setFillColor(250, 250, 252);
+          pdf.rect(margin, y - 4, contentWidth, 7, 'F');
+        }
+        
+        pdf.setTextColor(50, 50, 50);
+        pdf.text(row.date, colDate, y);
+        pdf.setTextColor(row.statusColor[0], row.statusColor[1], row.statusColor[2]);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(row.status, colStatus, y);
+        pdf.setFont('helvetica', 'normal');
+        y += 7;
       }
 
       // Summary
-      y += 4;
+      y += 5;
       pdf.setDrawColor(200, 200, 200);
       pdf.line(margin, y, pageWidth - margin, y);
       y += 8;
-      const presences = attendanceData.filter(r => r.status === 'Presente').length;
+      
+      const presences = attendanceData.filter(r => r.status === 'Presente' || r.status === 'Reposição').length;
       const absences = attendanceData.filter(r => r.status === 'Falta').length;
+      const faltasRem = attendanceData.filter(r => r.status === 'Falta Remunerada').length;
+      
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(`Total: ${attendanceData.length} sessões | Presenças: ${presences} | Faltas: ${absences}`, margin, y);
+      pdf.setTextColor(50, 50, 50);
+      let summaryText = `Total: ${attendanceData.length} sessões  |  Presenças: ${presences}  |  Faltas: ${absences}`;
+      if (faltasRem > 0) summaryText += `  |  Faltas Remuneradas: ${faltasRem}`;
+      pdf.text(summaryText, margin, y);
+
+      // Stamp at bottom if available
+      if (clinic?.stamp) {
+        try {
+          const stampImg = new Image();
+          stampImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            stampImg.onload = () => resolve();
+            stampImg.onerror = () => reject();
+            stampImg.src = clinic.stamp!;
+          });
+          const maxW = 50;
+          const maxH = 30;
+          let sw = maxW;
+          let sh = (stampImg.height / stampImg.width) * sw;
+          if (sh > maxH) { sh = maxH; sw = (stampImg.width / stampImg.height) * sh; }
+          
+          const stampY = pageHeight - 50 - sh;
+          if (y + 20 < stampY) {
+            pdf.addImage(clinic.stamp, 'PNG', pageWidth - margin - sw, stampY, sw, sh);
+            pdf.setDrawColor(100, 100, 100);
+            pdf.line(pageWidth - margin - sw, stampY + sh + 3, pageWidth - margin, stampY + sh + 3);
+            pdf.setFontSize(7);
+            pdf.setTextColor(128, 128, 128);
+            pdf.text('Carimbo', pageWidth - margin - sw / 2, stampY + sh + 7, { align: 'center' });
+          }
+        } catch { /* skip stamp */ }
+      }
 
       // Footer
-      const footerY = pdf.internal.pageSize.getHeight() - 10;
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(150, 150, 150);
-      pdf.text('Plataforma Clínica - Evolução Diária', pageWidth / 2, footerY, { align: 'center' });
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(
+          `Página ${i} de ${totalPages} | Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+          pageWidth / 2, pageHeight - 10, { align: 'center' }
+        );
+        pdf.setFontSize(6);
+        pdf.setTextColor(190, 190, 190);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Plataforma Clínica - Evolução Diária', margin, pageHeight - 5);
+        pdf.setFont('helvetica', 'normal');
+      }
 
       pdf.save(`frequencia_${patient.name.replace(/\s+/g, '_')}_${format(startDate, 'dd-MM-yyyy')}_${format(endDate, 'dd-MM-yyyy')}.pdf`);
       toast.success('PDF de frequência exportado com sucesso!');
