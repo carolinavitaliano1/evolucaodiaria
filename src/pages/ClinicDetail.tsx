@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { toLocalDateString } from '@/lib/utils';
 import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
@@ -132,7 +133,7 @@ export default function ClinicDetail() {
   const [editClinicOpen, setEditClinicOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [patientToEdit, setPatientToEdit] = useState<typeof patients[0] | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(toLocalDateString(new Date()));
   const [batchEvolutionText, setBatchEvolutionText] = useState('');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
   const [batchDate, setBatchDate] = useState<Date>(new Date());
@@ -175,13 +176,13 @@ export default function ClinicDetail() {
 
   // Get appointments for today at this clinic
   const todayAppointments = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateString(new Date());
     return appointments.filter(a => a.clinicId === id && a.date === today);
   }, [appointments, id]);
 
   // Check if evolution already exists for patient today at this clinic
   const getPatientTodayEvolution = (patientId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateString(new Date());
     return evolutions.find(e => e.patientId === patientId && e.clinicId === id && e.date === today);
   };
 
@@ -301,7 +302,7 @@ export default function ClinicDetail() {
   };
 
   const handleQuickAttendance = (patientId: string, status: 'presente' | 'falta') => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateString(new Date());
     
     addEvolution({
       patientId,
@@ -317,7 +318,7 @@ export default function ClinicDetail() {
   const handleQuickEvolutionSubmit = () => {
     if (!quickEvolutionPatient) return;
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateString(new Date());
     
     addEvolution({
       patientId: quickEvolutionPatient,

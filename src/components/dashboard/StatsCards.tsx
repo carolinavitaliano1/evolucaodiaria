@@ -1,12 +1,13 @@
 import { Building2, Users, Calendar, DollarSign } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
+import { toLocalDateString } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export function StatsCards() {
   const { clinics, patients, appointments, evolutions } = useApp();
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateString(new Date());
   const todayAllEvolutions = evolutions.filter(e => e.date === today);
   
   const currentMonth = new Date().getMonth();
