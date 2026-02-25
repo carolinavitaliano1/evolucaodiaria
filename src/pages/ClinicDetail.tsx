@@ -146,6 +146,7 @@ export default function ClinicDetail() {
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [batchSearch, setBatchSearch] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
   const { user } = useAuth();
 
   // Load stamps
@@ -489,40 +490,43 @@ export default function ClinicDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="today" className="space-y-6">
-        <TabsList className="flex flex-wrap w-full gap-1 h-auto lg:w-auto lg:inline-flex">
-          <TabsTrigger value="today" className="gap-1 text-xs sm:text-sm">
-            <ClipboardList className="w-4 h-4" />
-            Hoje
-          </TabsTrigger>
-          <TabsTrigger value="agenda" className="gap-1 text-xs sm:text-sm">
-            <Calendar className="w-4 h-4" />
-            Agenda
-          </TabsTrigger>
-          <TabsTrigger value="batch" className="gap-1 text-xs sm:text-sm">
-            <FileText className="w-4 h-4" />
-            Lote
-          </TabsTrigger>
-          <TabsTrigger value="patients" className="gap-1 text-xs sm:text-sm">
-            <Users className="w-4 h-4" />
-            Pacientes
-          </TabsTrigger>
-          <TabsTrigger value="financial" className="gap-1 text-xs sm:text-sm">
-            <DollarSign className="w-4 h-4" />
-            Financeiro
-          </TabsTrigger>
-          <TabsTrigger value="notes" className="gap-1 text-xs sm:text-sm">
-            <StickyNote className="w-4 h-4" />
-            Anotações
-          </TabsTrigger>
-          <TabsTrigger value="packages" className="gap-1 text-xs sm:text-sm">
-            <Package className="w-4 h-4" />
-            Pacotes
-          </TabsTrigger>
-          <TabsTrigger value="reports" className="gap-1 text-xs sm:text-sm">
-            <Sparkles className="w-4 h-4" />
-            Documentos
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+          <TabsList className="inline-flex w-max lg:w-auto gap-1 h-auto p-1">
+            <TabsTrigger value="today" className="gap-1.5 text-xs px-3 py-2">
+              <ClipboardList className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Hoje</span>
+              <span className="sm:hidden">Hoje</span>
+            </TabsTrigger>
+            <TabsTrigger value="agenda" className="gap-1.5 text-xs px-3 py-2">
+              <Calendar className="w-3.5 h-3.5" />
+              Agenda
+            </TabsTrigger>
+            <TabsTrigger value="batch" className="gap-1.5 text-xs px-3 py-2">
+              <FileText className="w-3.5 h-3.5" />
+              Lote
+            </TabsTrigger>
+            <TabsTrigger value="patients" className="gap-1.5 text-xs px-3 py-2">
+              <Users className="w-3.5 h-3.5" />
+              Pacientes
+            </TabsTrigger>
+            <TabsTrigger value="financial" className="gap-1.5 text-xs px-3 py-2">
+              <DollarSign className="w-3.5 h-3.5" />
+              Financeiro
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="gap-1.5 text-xs px-3 py-2">
+              <StickyNote className="w-3.5 h-3.5" />
+              Notas
+            </TabsTrigger>
+            <TabsTrigger value="packages" className="gap-1.5 text-xs px-3 py-2">
+              <Package className="w-3.5 h-3.5" />
+              Pacotes
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-1.5 text-xs px-3 py-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              Docs
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Agenda Tab */}
         <TabsContent value="agenda">
@@ -1110,6 +1114,19 @@ export default function ClinicDetail() {
               </Dialog>
             </div>
 
+            {/* Search */}
+            {clinicPatients.length > 0 && (
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar paciente..."
+                  value={patientSearch}
+                  onChange={(e) => setPatientSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            )}
+
             {clinicPatients.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">👥</div>
@@ -1117,7 +1134,7 @@ export default function ClinicDetail() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {clinicPatients.map((patient) => (
+                {clinicPatients.filter(p => !patientSearch || p.name.toLowerCase().includes(patientSearch.toLowerCase())).map((patient) => (
                   <div
                     key={patient.id}
                     className="bg-secondary/50 rounded-xl p-4 hover:bg-secondary transition-colors"
