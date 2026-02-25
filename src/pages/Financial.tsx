@@ -25,8 +25,8 @@ export default function Financial() {
   const [stamps, setStamps] = useState<any[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
   const [profile, setProfile] = useState<any>(null);
-  const [invoiceStartDate, setInvoiceStartDate] = useState('');
-  const [invoiceEndDate, setInvoiceEndDate] = useState('');
+  const [invoiceStartDate, setInvoiceStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [invoiceEndDate, setInvoiceEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
 
   // Month filter state
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -34,9 +34,24 @@ export default function Financial() {
   const selectedYear = selectedDate.getFullYear();
   const monthName = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
 
-  const goToPreviousMonth = () => setSelectedDate(prev => subMonths(prev, 1));
-  const goToNextMonth = () => setSelectedDate(prev => addMonths(prev, 1));
-  const goToCurrentMonth = () => setSelectedDate(new Date());
+  const goToPreviousMonth = () => setSelectedDate(prev => {
+    const d = subMonths(prev, 1);
+    setInvoiceStartDate(format(startOfMonth(d), 'yyyy-MM-dd'));
+    setInvoiceEndDate(format(endOfMonth(d), 'yyyy-MM-dd'));
+    return d;
+  });
+  const goToNextMonth = () => setSelectedDate(prev => {
+    const d = addMonths(prev, 1);
+    setInvoiceStartDate(format(startOfMonth(d), 'yyyy-MM-dd'));
+    setInvoiceEndDate(format(endOfMonth(d), 'yyyy-MM-dd'));
+    return d;
+  });
+  const goToCurrentMonth = () => {
+    const d = new Date();
+    setSelectedDate(d);
+    setInvoiceStartDate(format(startOfMonth(d), 'yyyy-MM-dd'));
+    setInvoiceEndDate(format(endOfMonth(d), 'yyyy-MM-dd'));
+  };
 
   const isCurrentMonth = selectedMonth === new Date().getMonth() && selectedYear === new Date().getFullYear();
 
@@ -887,7 +902,7 @@ export default function Financial() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Deixe as datas em branco para usar o mês selecionado ({monthName}).
+                    As datas são pré-preenchidas com o mês selecionado. Ajuste se necessário.
                   </p>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Carimbo (opcional)</label>
