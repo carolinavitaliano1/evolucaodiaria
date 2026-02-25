@@ -67,6 +67,25 @@ export interface ClinicPackage {
   createdAt: string;
 }
 
+export interface TemplateField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'checkbox' | 'number';
+  required?: boolean;
+  options?: string[]; // for select type
+  placeholder?: string;
+}
+
+export interface EvolutionTemplate {
+  id: string;
+  clinicId: string;
+  name: string;
+  description?: string;
+  fields: TemplateField[];
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface Evolution {
   id: string;
   patientId: string;
@@ -78,6 +97,8 @@ export interface Evolution {
   mood?: 'otima' | 'boa' | 'neutra' | 'ruim' | 'muito_ruim';
   signature?: string;
   stampId?: string;
+  templateId?: string;
+  templateData?: Record<string, any>;
   attachments?: Attachment[];
   createdAt: string;
 }

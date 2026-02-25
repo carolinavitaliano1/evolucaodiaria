@@ -333,6 +333,50 @@ export type Database = {
         }
         Relationships: []
       }
+      evolution_templates: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          description: string | null
+          fields: Json
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          description?: string | null
+          fields?: Json
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          description?: string | null
+          fields?: Json
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolution_templates_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evolutions: {
         Row: {
           attendance_status: string
@@ -345,6 +389,8 @@ export type Database = {
           patient_id: string
           signature: string | null
           stamp_id: string | null
+          template_data: Json | null
+          template_id: string | null
           text: string
           updated_at: string
           user_id: string
@@ -360,6 +406,8 @@ export type Database = {
           patient_id: string
           signature?: string | null
           stamp_id?: string | null
+          template_data?: Json | null
+          template_id?: string | null
           text?: string
           updated_at?: string
           user_id: string
@@ -375,6 +423,8 @@ export type Database = {
           patient_id?: string
           signature?: string | null
           stamp_id?: string | null
+          template_data?: Json | null
+          template_id?: string | null
           text?: string
           updated_at?: string
           user_id?: string
@@ -399,6 +449,13 @@ export type Database = {
             columns: ["stamp_id"]
             isOneToOne: false
             referencedRelation: "stamps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolutions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "evolution_templates"
             referencedColumns: ["id"]
           },
         ]

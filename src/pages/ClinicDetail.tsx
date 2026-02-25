@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toLocalDateString } from '@/lib/utils';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -27,6 +27,8 @@ import { Clinic } from '@/types';
 import { ClinicFinancial } from '@/components/clinics/ClinicFinancial';
 import { ClinicAgenda } from '@/components/clinics/ClinicAgenda';
 import { ClinicNotes } from '@/components/clinics/ClinicNotes';
+import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
+import TemplateForm from '@/components/evolutions/TemplateForm';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -162,6 +164,30 @@ export default function ClinicDetail() {
     });
   }, [user]);
 
+  // Load clinic templates
+  useEffect(() => {
+    if (!user || !id) return;
+    supabase
+      .from('evolution_templates')
+      .select('*')
+      .eq('clinic_id', id)
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => {
+        if (data) {
+          setClinicTemplates(data.map((t: any) => ({
+            id: t.id,
+            clinicId: t.clinic_id,
+            name: t.name,
+            description: t.description,
+            fields: t.fields || [],
+            isActive: t.is_active,
+            createdAt: t.created_at,
+          })));
+        }
+      });
+  }, [user, id]);
+
   const clinic = clinics.find(c => c.id === id);
   const allClinicPatients = patients.filter(p => p.clinicId === id);
   const clinicPatients = allClinicPatients.filter(p => !p.isArchived);
@@ -230,6 +256,9 @@ export default function ClinicDetail() {
   const [quickEvolutionStatus, setQuickEvolutionStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>('presente');
   const [quickEvolutionStampId, setQuickEvolutionStampId] = useState<string>('none');
   const [isImprovingQuickText, setIsImprovingQuickText] = useState(false);
+  const [clinicTemplates, setClinicTemplates] = useState<import('@/types').EvolutionTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
+  const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
 
   if (!clinic) {
     return (
@@ -315,25 +344,68 @@ export default function ClinicDetail() {
     toast.success(status === 'presente' ? 'Presença registrada!' : 'Falta registrada!');
   };
 
-  const handleQuickEvolutionSubmit = () => {
+  const handleQuickEvolutionSubmit = async () => {
     if (!quickEvolutionPatient) return;
     
     const today = toLocalDateString(new Date());
+
+    // Build evolution text including template data if present
+    let fullText = quickEvolutionText;
+    const selectedTemplate = selectedTemplateId !== 'none' ? clinicTemplates.find(t => t.id === selectedTemplateId) : null;
+    
+    if (selectedTemplate && Object.keys(templateFormValues).length > 0) {
+      const templateLines = selectedTemplate.fields
+        .map(f => {
+          const val = templateFormValues[f.id];
+          if (val === undefined || val === '' || val === false) return null;
+          if (f.type === 'checkbox') return val ? `✅ ${f.label}` : null;
+          return `${f.label}: ${val}`;
+        })
+        .filter(Boolean);
+      
+      if (templateLines.length > 0) {
+        const templateSection = `📋 ${selectedTemplate.name}\n${templateLines.join('\n')}`;
+        fullText = fullText ? `${templateSection}\n\n---\n\n${fullText}` : templateSection;
+      }
+    }
     
     addEvolution({
       patientId: quickEvolutionPatient,
       clinicId: clinic.id,
       date: today,
-      text: quickEvolutionText,
+      text: fullText,
       attendanceStatus: quickEvolutionStatus,
       stampId: quickEvolutionStampId !== 'none' ? quickEvolutionStampId : undefined,
     });
+
+    // Save template_data to evolution if template was used
+    if (selectedTemplate) {
+      // Update the just-created evolution with template data
+      const { data: latestEvolution } = await supabase
+        .from('evolutions')
+        .select('id')
+        .eq('patient_id', quickEvolutionPatient)
+        .eq('clinic_id', clinic.id)
+        .eq('date', today)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestEvolution) {
+        await supabase
+          .from('evolutions')
+          .update({ template_id: selectedTemplate.id, template_data: templateFormValues as any })
+          .eq('id', latestEvolution.id);
+      }
+    }
     
     // Limpar e fechar o modal
     setQuickEvolutionPatient(null);
     setQuickEvolutionText('');
     setQuickEvolutionStatus('presente');
     setQuickEvolutionStampId('none');
+    setSelectedTemplateId('none');
+    setTemplateFormValues({});
     toast.success('Evolução registrada com sucesso!');
   };
 
@@ -533,6 +605,10 @@ export default function ClinicDetail() {
               <Sparkles className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Docs
             </TabsTrigger>
+            <TabsTrigger value="templates" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <LayoutTemplate className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+              Modelos
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -550,6 +626,12 @@ export default function ClinicDetail() {
         <TabsContent value="notes">
           <ClinicNotes clinicId={clinic.id} />
         </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates">
+          <EvolutionTemplates clinicId={clinic.id} />
+        </TabsContent>
+
         <TabsContent value="today" className="space-y-4">
           <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
             <h2 className="text-lg lg:text-xl font-bold text-foreground mb-3 lg:mb-4 flex items-center gap-2">
@@ -1402,12 +1484,30 @@ export default function ClinicDetail() {
       )}
 
       {/* Quick Evolution Dialog */}
-      <Dialog open={!!quickEvolutionPatient} onOpenChange={(open) => !open && setQuickEvolutionPatient(null)}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={!!quickEvolutionPatient} onOpenChange={(open) => { if (!open) { setQuickEvolutionPatient(null); setSelectedTemplateId('none'); setTemplateFormValues({}); } }}>
+        <DialogContent className={cn("max-h-[90vh] overflow-y-auto", selectedTemplateId !== 'none' ? "max-w-2xl" : "max-w-lg")}>
           <DialogHeader>
             <DialogTitle>Evolução Rápida</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Template Selector */}
+            {clinicTemplates.length > 0 && (
+              <div>
+                <Label>Modelo de Evolução</Label>
+                <Select value={selectedTemplateId} onValueChange={v => { setSelectedTemplateId(v); setTemplateFormValues({}); }}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Sem modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem modelo (texto livre)</SelectItem>
+                    {clinicTemplates.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label>Status de Presença</Label>
               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -1497,6 +1597,14 @@ export default function ClinicDetail() {
                 Melhorar com IA
               </Button>
             </div>
+
+            {/* Template Form */}
+            {selectedTemplateId !== 'none' && (() => {
+              const tpl = clinicTemplates.find(t => t.id === selectedTemplateId);
+              return tpl ? (
+                <TemplateForm template={tpl} values={templateFormValues} onChange={setTemplateFormValues} />
+              ) : null;
+            })()}
 
             {/* Stamp Selector */}
             {stamps.length > 0 && (
