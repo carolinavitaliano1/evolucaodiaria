@@ -5,51 +5,65 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileText, Wand2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
   template: EvolutionTemplate;
   values: Record<string, any>;
   onChange: (values: Record<string, any>) => void;
+  showAiImprove?: boolean;
+  isImprovingText?: boolean;
+  onImproveText?: (text: string) => Promise<string>;
 }
 
-export default function TemplateForm({ template, values, onChange }: Props) {
+export default function TemplateForm({ template, values, onChange, showAiImprove, isImprovingText, onImproveText }: Props) {
   const updateValue = (fieldId: string, value: any) => {
     onChange({ ...values, [fieldId]: value });
   };
 
+  const handleImproveField = async (fieldId: string) => {
+    if (!onImproveText) return;
+    const currentVal = values[fieldId];
+    if (!currentVal || typeof currentVal !== 'string' || !currentVal.trim()) return;
+    const improved = await onImproveText(currentVal);
+    if (improved && improved !== currentVal) {
+      onChange({ ...values, [fieldId]: improved });
+      toast.success('Texto melhorado com IA!');
+    }
+  };
+
   const renderField = (field: TemplateField) => {
     const value = values[field.id];
+    const isTextField = field.type === 'text' || field.type === 'textarea';
 
-    switch (field.type) {
-      case 'text':
-        return (
+    return (
+      <div>
+        {field.type === 'text' && (
           <Input
             value={value || ''}
             onChange={e => updateValue(field.id, e.target.value)}
             placeholder={field.placeholder || `Preencha ${field.label.toLowerCase()}`}
           />
-        );
-      case 'textarea':
-        return (
+        )}
+        {field.type === 'textarea' && (
           <Textarea
             value={value || ''}
             onChange={e => updateValue(field.id, e.target.value)}
             placeholder={field.placeholder || `Descreva ${field.label.toLowerCase()}`}
             rows={3}
           />
-        );
-      case 'number':
-        return (
+        )}
+        {field.type === 'number' && (
           <Input
             type="number"
             value={value || ''}
             onChange={e => updateValue(field.id, e.target.value)}
             placeholder={field.placeholder || '0'}
           />
-        );
-      case 'select':
-        return (
+        )}
+        {field.type === 'select' && (
           <Select value={value || ''} onValueChange={v => updateValue(field.id, v)}>
             <SelectTrigger>
               <SelectValue placeholder={field.placeholder || 'Selecione...'} />
@@ -60,9 +74,8 @@ export default function TemplateForm({ template, values, onChange }: Props) {
               ))}
             </SelectContent>
           </Select>
-        );
-      case 'checkbox':
-        return (
+        )}
+        {field.type === 'checkbox' && (
           <div className="flex items-center gap-2 pt-1">
             <Checkbox
               checked={value || false}
@@ -70,10 +83,22 @@ export default function TemplateForm({ template, values, onChange }: Props) {
             />
             <span className="text-sm text-muted-foreground">{field.placeholder || 'Marcar como realizado'}</span>
           </div>
-        );
-      default:
-        return null;
-    }
+        )}
+        {showAiImprove && isTextField && value && typeof value === 'string' && value.trim() && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-1 gap-1 text-xs h-7"
+            disabled={isImprovingText}
+            onClick={() => handleImproveField(field.id)}
+          >
+            {isImprovingText ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+            Melhorar com IA
+          </Button>
+        )}
+      </div>
+    );
   };
 
   return (

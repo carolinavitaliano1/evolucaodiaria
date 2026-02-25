@@ -402,6 +402,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.signature !== undefined) updateData.signature = updates.signature || null;
       if (updates.stampId !== undefined) updateData.stamp_id = updates.stampId || null;
       if (updates.mood !== undefined) updateData.mood = updates.mood || null;
+      if (updates.templateId !== undefined) updateData.template_id = updates.templateId || null;
+      if (updates.templateData !== undefined) updateData.template_data = updates.templateData || null;
       const { error } = await supabase.from('evolutions').update(updateData).eq('id', id);
       if (error) throw error;
 

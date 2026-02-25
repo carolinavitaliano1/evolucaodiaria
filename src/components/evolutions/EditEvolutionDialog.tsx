@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,11 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
-import { Evolution, Attachment } from '@/types';
+import { Evolution, Attachment, EvolutionTemplate, TemplateField } from '@/types';
 import { Image, PenLine, Save, Wand2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import TemplateForm from './TemplateForm';
 
 const MOOD_OPTIONS = [
   { value: 'otima', emoji: '😄', label: 'Ótima' },
@@ -29,6 +31,7 @@ interface EditEvolutionDialogProps {
 }
 
 export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, showFaltaRemunerada = true }: EditEvolutionDialogProps) {
+  const { user } = useAuth();
   const [text, setText] = useState(evolution.text);
   const [date, setDate] = useState(evolution.date);
   const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>(evolution.attendanceStatus);
@@ -41,10 +44,73 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
     })) || []
   );
 
+  // Template state
+  const [clinicTemplates, setClinicTemplates] = useState<EvolutionTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(evolution.templateId || '');
+  const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>(evolution.templateData || {});
+
+  // Load templates for the clinic
+  useEffect(() => {
+    if (!user || !evolution.clinicId || !open) return;
+    supabase.from('evolution_templates').select('*')
+      .eq('clinic_id', evolution.clinicId)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => {
+        if (data) {
+          setClinicTemplates(data.map(t => ({
+            id: t.id, clinicId: t.clinic_id, name: t.name,
+            description: t.description || undefined,
+            fields: (t.fields as any as TemplateField[]) || [],
+            isActive: t.is_active ?? true,
+            createdAt: t.created_at, updatedAt: t.updated_at,
+          })));
+        }
+      });
+  }, [user, evolution.clinicId, open]);
+
+  const handleImproveText = async (textToImprove: string): Promise<string> => {
+    setIsImprovingText(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('improve-evolution', {
+        body: { text: textToImprove },
+      });
+      if (error) throw error;
+      return data?.improved || textToImprove;
+    } catch (e) {
+      toast.error('Erro ao melhorar texto');
+      return textToImprove;
+    } finally {
+      setIsImprovingText(false);
+    }
+  };
+
   const handleSave = () => {
+    const selectedTemplate = clinicTemplates.find(t => t.id === selectedTemplateId);
+    let finalText = text;
+
+    // If template is selected, rebuild text from template values
+    if (selectedTemplate && Object.keys(templateFormValues).length > 0) {
+      const templateLines = selectedTemplate.fields
+        .map(f => {
+          const val = templateFormValues[f.id];
+          if (val === undefined || val === '' || val === false) return null;
+          if (f.type === 'checkbox' && val === true) return `✅ ${f.label}`;
+          return `${f.label}: ${val}`;
+        })
+        .filter(Boolean);
+      if (templateLines.length > 0) {
+        const templateSection = `📋 ${selectedTemplate.name}\n${templateLines.join('\n')}`;
+        finalText = finalText ? `${templateSection}\n\n---\n\n${finalText}` : templateSection;
+      }
+    }
+
     onSave({
-      text, date, attendanceStatus,
+      text: finalText, date, attendanceStatus,
       mood: (mood || undefined) as Evolution['mood'],
+      templateId: selectedTemplateId || undefined,
+      templateData: Object.keys(templateFormValues).length > 0 ? templateFormValues : undefined,
       attachments: attachedFiles.map(f => ({
         id: f.id, parentId: evolution.id, parentType: 'evolution' as const,
         name: f.name, data: f.filePath, type: f.fileType, createdAt: new Date().toISOString(),
@@ -107,38 +173,64 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
             </div>
           </div>
 
-          <div>
-            <Label>Evolução</Label>
-            <Textarea value={text} onChange={(e) => setText(e.target.value)}
-              placeholder="Digite a evolução do paciente..." className="min-h-32" />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-2 gap-2"
-              disabled={!text.trim() || isImprovingText}
-              onClick={async () => {
-                setIsImprovingText(true);
-                try {
-                  const { data, error } = await supabase.functions.invoke('improve-evolution', {
-                    body: { text },
-                  });
-                  if (error) throw error;
-                  if (data?.improved) {
-                    setText(data.improved);
+          {/* Template selector */}
+          {clinicTemplates.length > 0 && (
+            <div>
+              <Label className="flex items-center gap-2 mb-1">📋 Modelo de Evolução</Label>
+              <Select value={selectedTemplateId || 'none'} onValueChange={(v) => {
+                setSelectedTemplateId(v === 'none' ? '' : v);
+                if (v === 'none' || !v) setTemplateFormValues({});
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um modelo (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem modelo</SelectItem>
+                  {clinicTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Template form */}
+          {selectedTemplateId && clinicTemplates.find(t => t.id === selectedTemplateId) && (
+            <TemplateForm
+              template={clinicTemplates.find(t => t.id === selectedTemplateId)!}
+              values={templateFormValues}
+              onChange={setTemplateFormValues}
+              showAiImprove
+              isImprovingText={isImprovingText}
+              onImproveText={handleImproveText}
+            />
+          )}
+
+          {/* Free text only when no template */}
+          {!selectedTemplateId && (
+            <div>
+              <Label>Evolução</Label>
+              <Textarea value={text} onChange={(e) => setText(e.target.value)}
+                placeholder="Digite a evolução do paciente..." className="min-h-32" />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 gap-2"
+                disabled={!text.trim() || isImprovingText}
+                onClick={async () => {
+                  const improved = await handleImproveText(text);
+                  if (improved !== text) {
+                    setText(improved);
                     toast.success('Texto melhorado com IA!');
                   }
-                } catch (e) {
-                  toast.error('Erro ao melhorar texto');
-                } finally {
-                  setIsImprovingText(false);
-                }
-              }}
-            >
-              {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-              Melhorar com IA
-            </Button>
-          </div>
+                }}
+              >
+                {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                Melhorar com IA
+              </Button>
+            </div>
+          )}
 
           <div>
             <Label className="flex items-center gap-2 mb-2"><Image className="w-4 h-4" /> Anexos</Label>
