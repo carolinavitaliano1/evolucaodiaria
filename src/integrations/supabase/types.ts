@@ -189,6 +189,7 @@ export type Database = {
           address: string | null
           cnpj: string | null
           created_at: string
+          discount_percentage: number | null
           email: string | null
           id: string
           is_archived: boolean | null
@@ -213,6 +214,7 @@ export type Database = {
           address?: string | null
           cnpj?: string | null
           created_at?: string
+          discount_percentage?: number | null
           email?: string | null
           id?: string
           is_archived?: boolean | null
@@ -237,6 +239,7 @@ export type Database = {
           address?: string | null
           cnpj?: string | null
           created_at?: string
+          discount_percentage?: number | null
           email?: string | null
           id?: string
           is_archived?: boolean | null

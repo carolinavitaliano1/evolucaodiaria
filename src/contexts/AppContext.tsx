@@ -108,6 +108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         cnpj: (c as any).cnpj || undefined,
         phone: (c as any).phone || undefined,
         servicesDescription: (c as any).services_description || undefined,
+        discountPercentage: (c as any).discount_percentage ? Number((c as any).discount_percentage) : 0,
         isArchived: c.is_archived || false, createdAt: c.created_at,
       }));
 
@@ -237,6 +238,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.phone !== undefined) updateData.phone = updates.phone || null;
       if (updates.servicesDescription !== undefined) updateData.services_description = updates.servicesDescription || null;
       if (updates.isArchived !== undefined) updateData.is_archived = updates.isArchived;
+      if (updates.discountPercentage !== undefined) updateData.discount_percentage = updates.discountPercentage;
       const { error } = await supabase.from('clinics').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, clinics: prev.clinics.map(c => c.id === id ? { ...c, ...updates } : c) }));

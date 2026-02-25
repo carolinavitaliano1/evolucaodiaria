@@ -28,6 +28,7 @@ export interface Clinic {
   cnpj?: string;
   phone?: string;
   servicesDescription?: string;
+  discountPercentage?: number;
   isArchived?: boolean;
   createdAt: string;
 }

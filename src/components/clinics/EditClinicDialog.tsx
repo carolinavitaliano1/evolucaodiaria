@@ -41,6 +41,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
     paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
     paymentAmount: '',
+    discountPercentage: '',
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
   });
 
@@ -59,6 +60,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         scheduleByDay: (clinic.scheduleByDay || {}) as { [day: string]: { start: string; end: string } },
         paymentType: (clinic.paymentType || '') as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
         paymentAmount: clinic.paymentAmount?.toString() || '',
+        discountPercentage: clinic.discountPercentage?.toString() || '0',
         absencePaymentType: clinic.absencePaymentType || 'always',
       });
     }
@@ -86,6 +88,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
       scheduleByDay: formData.scheduleByDay,
       paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
       paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
+      discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
       paysOnAbsence: formData.absencePaymentType !== 'never',
       absencePaymentType: formData.absencePaymentType,
     });
@@ -295,6 +298,19 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
                   />
                 </div>
               )}
+              <div>
+                <Label>Desconto da Clínica (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={formData.discountPercentage}
+                  onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Porcentagem retida pela clínica</p>
+              </div>
             </div>
           </div>
 

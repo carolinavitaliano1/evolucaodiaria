@@ -711,6 +711,8 @@ export default function Financial() {
         <div className="space-y-4 sm:space-y-6">
           {clinicStats.map(({ clinic, patientCount, revenue, loss, sessions, paidAbsences, absences }) => {
             const netClinicRevenue = revenue;
+            const discountPct = clinic.discountPercentage || 0;
+            const netAfterDiscount = revenue * (1 - discountPct / 100);
             const percentage = (totalRevenue + privateRevenue) > 0 ? (revenue / (totalRevenue + privateRevenue)) * 100 : 0;
             const isPropria = clinic.type === 'propria';
 
@@ -730,6 +732,11 @@ export default function Financial() {
                           Paga só confirmados
                         </span>
                       )}
+                      {discountPct > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary whitespace-nowrap">
+                          {discountPct}% desc.
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs sm:text-sm text-muted-foreground">
                       {patientCount} pacientes | {sessions} sessões
@@ -737,9 +744,20 @@ export default function Financial() {
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
-                    <p className="font-bold text-base sm:text-xl text-foreground">
-                      R$ {netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
+                    {discountPct > 0 ? (
+                      <>
+                        <p className="text-xs text-muted-foreground line-through">
+                          R$ {netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="font-bold text-base sm:text-xl text-success">
+                          R$ {netAfterDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="font-bold text-base sm:text-xl text-foreground">
+                        R$ {netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    )}
                     {loss > 0 && (
                       <p className="text-xs sm:text-sm text-destructive flex items-center sm:justify-end gap-1">
                         <AlertTriangle className="w-3 h-3" />

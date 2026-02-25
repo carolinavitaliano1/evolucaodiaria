@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useApp } from '@/contexts/AppContext';
 import { format, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -11,10 +12,31 @@ interface ClinicFinancialProps {
 }
 
 export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
-  const { clinics, patients, evolutions } = useApp();
+  const { clinics, patients, evolutions, updateClinic } = useApp();
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   const clinic = clinics.find(c => c.id === clinicId);
+  const [discountPercent, setDiscountPercent] = useState(clinic?.discountPercentage || 0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Sync when clinic changes externally
+  useEffect(() => {
+    if (clinic) setDiscountPercent(clinic.discountPercentage || 0);
+  }, [clinic?.discountPercentage]);
+
+  const saveDiscount = useCallback((value: number) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      updateClinic(clinicId, { discountPercentage: value });
+    }, 800);
+  }, [clinicId, updateClinic]);
+
+  const handleDiscountChange = (val: string) => {
+    const num = Math.min(100, Math.max(0, parseFloat(val) || 0));
+    setDiscountPercent(num);
+    saveDiscount(num);
+  };
+
   if (!clinic) return null;
 
   const selectedMonth = selectedDate.getMonth();
@@ -54,6 +76,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   };
 
   const totalRevenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
+  const netRevenue = totalRevenue * (1 - discountPercent / 100);
   const totalSessions = presentEvos.length;
   const totalAbsences = absentEvos.length;
   const totalPaidAbsences = paidAbsenceEvos.length;
@@ -88,12 +111,21 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-2xl p-5 border border-border">
+        {/* Revenue card with discount */}
+        <div className="bg-card rounded-2xl p-5 border border-border col-span-2 lg:col-span-1">
           <DollarSign className="w-6 h-6 text-success mb-2" />
-          <p className="text-muted-foreground text-xs">Faturamento</p>
+          <p className="text-muted-foreground text-xs">Faturamento Bruto</p>
           <p className="text-xl font-bold text-foreground">
             R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
+          {discountPercent > 0 && (
+            <div className="mt-2 pt-2 border-t border-border">
+              <p className="text-muted-foreground text-xs">Valor Líquido ({discountPercent}% desc.)</p>
+              <p className="text-lg font-bold text-success">
+                R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          )}
         </div>
         <div className="bg-card rounded-2xl p-5 border border-border">
           <TrendingUp className="w-6 h-6 text-primary mb-2" />
@@ -112,6 +144,42 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <TrendingDown className="w-6 h-6 text-destructive mb-2" />
           <p className="text-muted-foreground text-xs">Faltas</p>
           <p className="text-xl font-bold text-foreground">{totalAbsences}</p>
+        </div>
+      </div>
+
+      {/* Discount simulator */}
+      <div className="bg-card rounded-2xl p-5 border border-border">
+        <div className="flex items-center gap-2 mb-3">
+          <Percent className="w-5 h-5 text-primary" />
+          <h3 className="font-bold text-foreground text-sm">Simulador de Desconto da Clínica</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Defina a porcentagem que a clínica retém. O valor é salvo automaticamente.
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="relative w-28">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={discountPercent}
+              onChange={(e) => handleDiscountChange(e.target.value)}
+              className="pr-8"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+          </div>
+          <div className="flex-1 text-sm text-muted-foreground">
+            {discountPercent > 0 ? (
+              <span>
+                Bruto <strong className="text-foreground">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                {' → '}
+                Líquido <strong className="text-success">R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+              </span>
+            ) : (
+              <span>Sem desconto aplicado</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -141,11 +209,19 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
               </div>
             ))}
             <div className="flex justify-between items-center pt-3 border-t border-border">
-              <p className="font-bold text-foreground">Total</p>
+              <p className="font-bold text-foreground">Total Bruto</p>
               <p className="font-bold text-foreground text-lg">
                 R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
+            {discountPercent > 0 && (
+              <div className="flex justify-between items-center">
+                <p className="font-bold text-success">Valor Líquido ({discountPercent}%)</p>
+                <p className="font-bold text-success text-lg">
+                  R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
