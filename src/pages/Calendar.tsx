@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Clock, User, MapPin, Briefcase } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, User, MapPin, Briefcase, CheckSquare, Bell, Calendar, Users } from 'lucide-react';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,15 +12,33 @@ import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function CalendarPage() {
   const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment } = useApp();
   const { theme } = useTheme();
+  const { user } = useAuth();
   const { getAppointmentsForDate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState('');
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+
+  const loadCalendarEvents = useCallback(async () => {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from('events')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('time', { ascending: true, nullsFirst: false });
+    setCalendarEvents(data || []);
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadCalendarEvents();
+  }, [loadCalendarEvents]);
 
   const [formData, setFormData] = useState({
     clinicId: '',
@@ -48,17 +66,31 @@ export default function CalendarPage() {
     return getAppointmentsForDate(dateStr);
   };
 
+  const getEventsForDay = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return calendarEvents.filter(e => e.date === dateStr);
+  };
+
   const getAllAppointmentsForDay = (date: Date) => {
     const regular = getAppointmentsForDay(date);
     const privateAppts = getPrivateForDay(date);
-    return { regular, private: privateAppts, total: regular.length + privateAppts.length };
+    const events = getEventsForDay(date);
+    return { regular, private: privateAppts, events, total: regular.length + privateAppts.length + events.length };
   };
 
   const selectedDayData = getAllAppointmentsForDay(selectedDate);
   const selectedDayAppointments = selectedDayData.regular.sort((a, b) => a.time.localeCompare(b.time));
   const selectedDayPrivate = selectedDayData.private.sort((a, b) => a.time.localeCompare(b.time));
+  const selectedDayEvents = selectedDayData.events.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   const clinicPatients = patients.filter(p => p.clinicId === formData.clinicId);
+
+  const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: typeof CheckSquare; color: string }> = {
+    tarefa: { label: 'Tarefa', icon: CheckSquare, color: '#22c55e' },
+    lembrete: { label: 'Lembrete', icon: Bell, color: '#f59e0b' },
+    evento: { label: 'Evento', icon: Calendar, color: '#6366f1' },
+    reuniao: { label: 'Reunião', icon: Users, color: '#ec4899' },
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,6 +300,14 @@ export default function CalendarPage() {
                           )}
                         />
                       )}
+                      {dayData.events.length > 0 && (
+                        <div
+                          className={cn(
+                            'w-1.5 h-1.5 rounded-full',
+                            isSelected ? 'bg-green-200' : 'bg-green-500'
+                          )}
+                        />
+                      )}
                     </div>
                   )}
                 </button>
@@ -285,13 +325,36 @@ export default function CalendarPage() {
             {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
           </h3>
 
-          {selectedDayAppointments.length === 0 && selectedDayPrivate.length === 0 ? (
+          {selectedDayAppointments.length === 0 && selectedDayPrivate.length === 0 && selectedDayEvents.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-5xl mb-3">📅</div>
               <p className="text-muted-foreground text-sm">Nenhum atendimento</p>
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Calendar Events */}
+              {selectedDayEvents.map((evt) => {
+                const config = EVENT_TYPE_CONFIG[evt.type] || EVENT_TYPE_CONFIG.evento;
+                const Icon = config.icon;
+                return (
+                  <div key={evt.id} className="bg-secondary/50 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 font-bold" style={{ color: config.color }}>
+                        <Icon className="w-4 h-4" />
+                        {evt.time ? evt.time.slice(0, 5) : 'Dia inteiro'}
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                        {config.label}
+                      </span>
+                    </div>
+                    <p className="text-foreground font-medium">{evt.title}</p>
+                    {evt.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{evt.description}</p>
+                    )}
+                  </div>
+                );
+              })}
+
               {/* Regular Appointments */}
               {selectedDayAppointments.map((apt) => {
                 const patient = patients.find(p => p.id === apt.patientId);
@@ -346,6 +409,7 @@ export default function CalendarPage() {
         open={eventDialogOpen}
         onOpenChange={setEventDialogOpen}
         selectedDate={selectedDate}
+        onEventSaved={loadCalendarEvents}
       />
     </div>
   );
