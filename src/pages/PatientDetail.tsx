@@ -160,6 +160,7 @@ export default function PatientDetail() {
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
+  const [archivePatientOpen, setArchivePatientOpen] = useState(false);
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
   const [isImprovingText, setIsImprovingText] = useState(false);
@@ -297,11 +298,7 @@ export default function PatientDetail() {
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-warning"
                 title={patient.isArchived ? 'Desarquivar paciente' : 'Arquivar paciente'}
-                onClick={() => {
-                  const newVal = !patient.isArchived;
-                  updatePatient(patient.id, { isArchived: newVal });
-                  toast.success(newVal ? 'Paciente arquivado' : 'Paciente reativado');
-                }}
+                onClick={() => setArchivePatientOpen(true)}
               >
                 {patient.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
               </Button>
@@ -851,6 +848,33 @@ export default function PatientDetail() {
               className="bg-destructive hover:bg-destructive/90"
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive Patient Dialog */}
+      <AlertDialog open={archivePatientOpen} onOpenChange={setArchivePatientOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{patient.isArchived ? 'Reativar paciente?' : 'Arquivar paciente?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {patient.isArchived
+                ? <>O paciente <span className="font-semibold">{patient.name}</span> será reativado e voltará a aparecer na agenda e lista de pacientes.</>
+                : <>O paciente <span className="font-semibold">{patient.name}</span> será removido da agenda e da lista ativa. Você poderá reativá-lo a qualquer momento.</>
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const newVal = !patient.isArchived;
+                updatePatient(patient.id, { isArchived: newVal });
+                toast.success(newVal ? 'Paciente arquivado' : 'Paciente reativado');
+              }}
+            >
+              {patient.isArchived ? 'Reativar' : 'Arquivar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
