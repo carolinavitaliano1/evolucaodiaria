@@ -572,7 +572,16 @@ export default function ClinicDetail() {
                       <div>
                         <h3 
                           className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => handleOpenPatient(patient.id)}
+                          onClick={() => {
+                            if (!hasEvolution) {
+                              setQuickEvolutionPatient(patient.id);
+                              setQuickEvolutionText('');
+                              setQuickEvolutionStatus('presente');
+                              setQuickEvolutionStampId(stamps.find(s => s.is_default)?.id || 'none');
+                            } else {
+                              handleOpenPatient(patient.id);
+                            }
+                          }}
                         >
                           {patient.name}
                         </h3>
@@ -614,39 +623,7 @@ export default function ClinicDetail() {
                           )}
                         </div>
                       ) : (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                            onClick={() => handleQuickAttendance(patient.id, 'falta')}
-                          >
-                            <X className="w-4 h-4" />
-                            Falta
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1 border-success/50 text-success hover:bg-success hover:text-success-foreground"
-                            onClick={() => handleQuickAttendance(patient.id, 'presente')}
-                          >
-                            <Check className="w-4 h-4" />
-                            Presença
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="gap-1 gradient-primary"
-                            onClick={() => {
-                              setQuickEvolutionPatient(patient.id);
-                              setQuickEvolutionText('');
-                              setQuickEvolutionStatus('presente');
-                              setQuickEvolutionStampId(stamps.find(s => s.is_default)?.id || 'none');
-                            }}
-                          >
-                            <FileText className="w-4 h-4" />
-                            Evolução
-                          </Button>
-                        </>
+                        <span className="text-xs text-muted-foreground">⏳ Aguardando</span>
                       )}
                     </div>
                   </div>
