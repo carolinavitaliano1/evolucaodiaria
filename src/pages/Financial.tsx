@@ -571,24 +571,24 @@ export default function Financial() {
       if (stamp?.stamp_image) {
         try {
           doc.addImage(stamp.stamp_image, 'PNG', centerX - 25, y, 50, 25);
-          y += 27;
+          y += 26;
         } catch (e) { /* ignore */ }
       }
 
       if (stamp?.signature_image) {
         try {
-          doc.addImage(stamp.signature_image, 'PNG', centerX - 25, y - 2, 50, 20);
-          y += 20;
+          doc.addImage(stamp.signature_image, 'PNG', centerX - 25, y - 3, 50, 20);
+          y += 17;
         } catch (e) { /* ignore */ }
       }
 
       doc.setDrawColor(100, 100, 100);
-      doc.line(lineStartX, y + 2, lineStartX + lineWidth, y + 2);
+      doc.line(lineStartX, y, lineStartX + lineWidth, y);
       doc.setFontSize(9);
       doc.setTextColor(60, 60, 60);
-      doc.text(therapistName, centerX, y + 7, { align: 'center' });
+      doc.text(therapistName, centerX, y + 5, { align: 'center' });
       if (stamp) {
-        doc.text(stamp.clinical_area, centerX, y + 12, { align: 'center' });
+        doc.text(stamp.clinical_area, centerX, y + 10, { align: 'center' });
       }
 
       const pageCount = doc.getNumberOfPages();
