@@ -316,22 +316,34 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
 
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Cobrança em Faltas</Label>
+            <p className="text-xs text-muted-foreground mt-1 mb-2">
+              Define se você recebe pagamento quando o paciente falta à sessão nesta clínica.
+            </p>
             <RadioGroup
               value={formData.absencePaymentType}
               onValueChange={(v) => setFormData({ ...formData, absencePaymentType: v as any })}
-              className="mt-2 space-y-2"
+              className="mt-2 space-y-3"
             >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="always" id="edit-always" />
-                <Label htmlFor="edit-always" className="text-sm cursor-pointer">Sempre cobra</Label>
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="always" id="edit-always" className="mt-0.5" />
+                <div>
+                  <Label htmlFor="edit-always" className="text-sm cursor-pointer">Sempre cobra</Label>
+                  <p className="text-xs text-muted-foreground">Você recebe por todas as faltas, independentemente de aviso prévio.</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="never" id="edit-never" />
-                <Label htmlFor="edit-never" className="text-sm cursor-pointer">Nunca cobra</Label>
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="never" id="edit-never" className="mt-0.5" />
+                <div>
+                  <Label htmlFor="edit-never" className="text-sm cursor-pointer">Nunca cobra</Label>
+                  <p className="text-xs text-muted-foreground">Faltas não são cobradas. Você só recebe pelas sessões realizadas.</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="confirmed_only" id="edit-confirmed" />
-                <Label htmlFor="edit-confirmed" className="text-sm cursor-pointer">Somente confirmados</Label>
+              <div className="flex items-start gap-2">
+                <RadioGroupItem value="confirmed_only" id="edit-confirmed" className="mt-0.5" />
+                <div>
+                  <Label htmlFor="edit-confirmed" className="text-sm cursor-pointer">Somente confirmados</Label>
+                  <p className="text-xs text-muted-foreground">Cobra apenas faltas em que o paciente confirmou presença e não compareceu.</p>
+                </div>
               </div>
             </RadioGroup>
           </div>
