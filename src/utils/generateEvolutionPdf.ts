@@ -152,8 +152,10 @@ export async function generateMultipleEvolutionsPdf({
     
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'bold');
+    const [year, month, day] = evo.date.split('-').map(Number);
+    const evoLocalDate = new Date(year, month - 1, day);
     pdf.text(
-      format(new Date(evo.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+      format(evoLocalDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
       margin + 5,
       yPosition + 7
     );
@@ -312,7 +314,7 @@ export async function generateMultipleEvolutionsPdf({
   // Save the PDF
   const dateRange = evolutions.length > 1 && startDate && endDate
     ? `${format(startDate, 'dd-MM-yyyy')}_a_${format(endDate, 'dd-MM-yyyy')}`
-    : format(new Date(evolutions[0].date), 'dd-MM-yyyy');
+    : (() => { const [y,m,d] = evolutions[0].date.split('-').map(Number); return format(new Date(y, m-1, d), 'dd-MM-yyyy'); })();
   
   const fileName = `evolucoes_${patient.name.replace(/\s+/g, '_')}_${dateRange}.pdf`;
   pdf.save(fileName);
