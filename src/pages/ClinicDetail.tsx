@@ -457,73 +457,80 @@ export default function ClinicDetail() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-card rounded-2xl p-5 border border-border">
-          <Users className="w-8 h-8 text-primary mb-2" />
-          <p className="text-muted-foreground text-sm">Pacientes</p>
-          <p className="text-2xl font-bold text-foreground">{clinicPatients.length}</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6 lg:mb-8">
+        <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
+          <Users className="w-6 h-6 lg:w-8 lg:h-8 text-primary lg:mb-2 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-muted-foreground text-xs">Pacientes</p>
+            <p className="text-xl lg:text-2xl font-bold text-foreground">{clinicPatients.length}</p>
+          </div>
         </div>
         
-        <div className="bg-card rounded-2xl p-5 border border-border">
-          <Calendar className="w-8 h-8 text-accent mb-2" />
-          <p className="text-muted-foreground text-sm">Hoje ({todayWeekday})</p>
-          <p className="text-2xl font-bold text-foreground">{todaySchedule.length}</p>
+        <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
+          <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-accent lg:mb-2 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-muted-foreground text-xs">Hoje ({todayWeekday})</p>
+            <p className="text-xl lg:text-2xl font-bold text-foreground">{todaySchedule.length}</p>
+          </div>
         </div>
 
         {clinic.weekdays?.length && (
-          <div className="bg-card rounded-2xl p-5 border border-border">
-            <Clock className="w-8 h-8 text-warning mb-2" />
-            <p className="text-muted-foreground text-sm">Dias</p>
-            <p className="text-sm font-bold text-foreground">{clinic.weekdays.join(', ')}</p>
+          <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
+            <Clock className="w-6 h-6 lg:w-8 lg:h-8 text-warning lg:mb-2 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-muted-foreground text-xs">Dias</p>
+              <p className="text-xs lg:text-sm font-bold text-foreground truncate">{clinic.weekdays.join(', ')}</p>
+            </div>
           </div>
         )}
 
         {clinic.paymentAmount && (
-          <div className="bg-card rounded-2xl p-5 border border-border">
-            <DollarSign className="w-8 h-8 text-success mb-2" />
-            <p className="text-muted-foreground text-sm">Remuneração</p>
-            <p className="text-lg font-bold text-foreground">
-              R$ {clinic.paymentAmount.toFixed(2)}
-            </p>
+          <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
+            <DollarSign className="w-6 h-6 lg:w-8 lg:h-8 text-success lg:mb-2 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-muted-foreground text-xs">Remuneração</p>
+              <p className="text-base lg:text-lg font-bold text-foreground">
+                R$ {clinic.paymentAmount.toFixed(2)}
+              </p>
+            </div>
           </div>
         )}
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="today" className="space-y-6">
-        <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
-          <TabsList className="inline-flex w-max lg:w-auto gap-1 h-auto p-1">
-            <TabsTrigger value="today" className="gap-1.5 text-xs px-3 py-2">
-              <ClipboardList className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Hoje</span>
-              <span className="sm:hidden">Hoje</span>
+      <Tabs defaultValue="today" className="space-y-4 lg:space-y-6">
+        <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 pb-1">
+          <TabsList className="inline-flex w-max lg:w-auto gap-0.5 h-auto p-0.5 lg:p-1">
+            <TabsTrigger value="today" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <ClipboardList className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+              Hoje
             </TabsTrigger>
-            <TabsTrigger value="agenda" className="gap-1.5 text-xs px-3 py-2">
-              <Calendar className="w-3.5 h-3.5" />
+            <TabsTrigger value="agenda" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <Calendar className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Agenda
             </TabsTrigger>
-            <TabsTrigger value="batch" className="gap-1.5 text-xs px-3 py-2">
-              <FileText className="w-3.5 h-3.5" />
+            <TabsTrigger value="batch" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <FileText className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Lote
             </TabsTrigger>
-            <TabsTrigger value="patients" className="gap-1.5 text-xs px-3 py-2">
-              <Users className="w-3.5 h-3.5" />
+            <TabsTrigger value="patients" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Pacientes
             </TabsTrigger>
-            <TabsTrigger value="financial" className="gap-1.5 text-xs px-3 py-2">
-              <DollarSign className="w-3.5 h-3.5" />
+            <TabsTrigger value="financial" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <DollarSign className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Financeiro
             </TabsTrigger>
-            <TabsTrigger value="notes" className="gap-1.5 text-xs px-3 py-2">
-              <StickyNote className="w-3.5 h-3.5" />
+            <TabsTrigger value="notes" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <StickyNote className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Notas
             </TabsTrigger>
-            <TabsTrigger value="packages" className="gap-1.5 text-xs px-3 py-2">
-              <Package className="w-3.5 h-3.5" />
+            <TabsTrigger value="packages" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <Package className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Pacotes
             </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-1.5 text-xs px-3 py-2">
-              <Sparkles className="w-3.5 h-3.5" />
+            <TabsTrigger value="reports" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <Sparkles className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Docs
             </TabsTrigger>
           </TabsList>
@@ -544,24 +551,24 @@ export default function ClinicDetail() {
           <ClinicNotes clinicId={clinic.id} />
         </TabsContent>
         <TabsContent value="today" className="space-y-4">
-          <div className="bg-card rounded-2xl p-6 border border-border">
-            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
+            <h2 className="text-lg lg:text-xl font-bold text-foreground mb-3 lg:mb-4 flex items-center gap-2">
+              <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
               Atendimentos de Hoje - {todayWeekday}
             </h2>
 
             {todaySchedule.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📅</div>
-                <p className="text-muted-foreground">Nenhum atendimento agendado para hoje</p>
+              <div className="text-center py-8 lg:py-12">
+                <div className="text-5xl lg:text-6xl mb-3 lg:mb-4">📅</div>
+                <p className="text-muted-foreground text-sm lg:text-base">Nenhum atendimento agendado para hoje</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2 lg:space-y-3">
                 {todaySchedule.map(({ patient, time, hasEvolution, evolution }) => (
                   <div
                     key={patient.id}
                     className={cn(
-                      "flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-xl border transition-colors",
+                      "flex flex-col lg:flex-row lg:items-center justify-between p-3 lg:p-4 rounded-xl border transition-colors",
                       hasEvolution 
                         ? evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
                           ? "bg-success/10 border-success/30"
@@ -571,8 +578,8 @@ export default function ClinicDetail() {
                         : "bg-secondary/50 border-border"
                     )}
                   >
-                    <div className="flex items-center gap-4 mb-3 lg:mb-0">
-                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary font-bold">
+                    <div className="flex items-center gap-3 lg:gap-4 mb-2 lg:mb-0">
+                      <div className="flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-primary/10 text-primary font-bold text-sm lg:text-base">
                         {time}
                       </div>
                       <div>
