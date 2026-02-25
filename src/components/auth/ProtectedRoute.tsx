@@ -12,7 +12,7 @@ export function ProtectedRoute({ children, requireSubscription = false }: Protec
   const { user, loading } = useAuth();
   const { subscribed, loading: subLoading } = useSubscription();
 
-  if (loading) {
+  if (loading || (requireSubscription && subLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -24,7 +24,7 @@ export function ProtectedRoute({ children, requireSubscription = false }: Protec
     return <Navigate to="/auth" replace />;
   }
 
-  if (requireSubscription && !subLoading && !subscribed) {
+  if (requireSubscription && !subscribed) {
     return <Navigate to="/pricing" replace />;
   }
 
