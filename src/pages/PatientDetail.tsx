@@ -21,6 +21,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar, Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
+import TemplateForm from '@/components/evolutions/TemplateForm';
+import { EvolutionTemplate, TemplateField } from '@/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -164,8 +166,10 @@ export default function PatientDetail() {
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
   const [isImprovingText, setIsImprovingText] = useState(false);
-
-  // Load stamps
+  const [clinicTemplates, setClinicTemplates] = useState<EvolutionTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
+  // Load stamps and templates
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).order('created_at').then(({ data }) => {
@@ -176,6 +180,26 @@ export default function PatientDetail() {
       }
     });
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !patient?.clinicId) return;
+    supabase.from('evolution_templates').select('*')
+      .eq('clinic_id', patient.clinicId)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => {
+        if (data) {
+          setClinicTemplates(data.map(t => ({
+            id: t.id, clinicId: t.clinic_id, name: t.name,
+            description: t.description || undefined,
+            fields: (t.fields as any as TemplateField[]) || [],
+            isActive: t.is_active ?? true,
+            createdAt: t.created_at, updatedAt: t.updated_at,
+          })));
+        }
+      });
+  }, [user, patient?.clinicId]);
 
   // Convert attachments to UploadedFile format for FileUpload component
   const patientDocsAsUploadedFiles: UploadedFile[] = useMemo(() => patientAttachments.map(a => ({
@@ -236,18 +260,40 @@ export default function PatientDetail() {
 
   const handleSubmitEvolution = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!evolutionText.trim() && attachedFiles.length === 0) return;
+    if (!evolutionText.trim() && attachedFiles.length === 0 && Object.keys(templateFormValues).length === 0) return;
+
+    const selectedTemplate = clinicTemplates.find(t => t.id === selectedTemplateId);
+    let fullText = evolutionText;
+
+    if (selectedTemplate && Object.keys(templateFormValues).length > 0) {
+      const templateLines = selectedTemplate.fields
+        .map(f => {
+          const val = templateFormValues[f.id];
+          if (val === undefined || val === '' || val === false) return null;
+          if (f.type === 'checkbox' && val === true) return `✅ ${f.label}`;
+          return `${f.label}: ${val}`;
+        })
+        .filter(Boolean);
+      if (templateLines.length > 0) {
+        const templateSection = `📋 ${selectedTemplate.name}\n${templateLines.join('\n')}`;
+        fullText = fullText ? `${templateSection}\n\n---\n\n${fullText}` : templateSection;
+      }
+    }
+
     addEvolution({
       patientId: patient.id, clinicId: patient.clinicId, date: evolutionDate,
-      text: evolutionText, attendanceStatus,
+      text: fullText, attendanceStatus,
       mood: (selectedMood || undefined) as Evolution['mood'],
       stampId: selectedStampId && selectedStampId !== 'none' ? selectedStampId : undefined,
+      templateId: selectedTemplateId || undefined,
+      templateData: Object.keys(templateFormValues).length > 0 ? templateFormValues : undefined,
       attachments: attachedFiles.map(f => ({
         id: f.id, parentId: '', parentType: 'evolution' as const,
         name: f.name, data: f.filePath, type: f.fileType, createdAt: new Date().toISOString(),
       })),
     });
     setEvolutionText(''); setAttachedFiles([]); setSelectedMood('');
+    setSelectedTemplateId(''); setTemplateFormValues({});
   };
 
   const handleBack = () => {
@@ -498,6 +544,37 @@ export default function PatientDetail() {
                   </div>
                 </div>
               </div>
+
+              {/* Template selector */}
+              {clinicTemplates.length > 0 && (
+                <div>
+                  <Label className="flex items-center gap-2 mb-1">📋 Modelo de Evolução</Label>
+                  <Select value={selectedTemplateId} onValueChange={(v) => {
+                    setSelectedTemplateId(v === 'none' ? '' : v);
+                    if (v === 'none' || !v) setTemplateFormValues({});
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um modelo (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem modelo</SelectItem>
+                      {clinicTemplates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Template form */}
+              {selectedTemplateId && clinicTemplates.find(t => t.id === selectedTemplateId) && (
+                <TemplateForm
+                  template={clinicTemplates.find(t => t.id === selectedTemplateId)!}
+                  values={templateFormValues}
+                  onChange={setTemplateFormValues}
+                />
+              )}
+
               <div>
                 <Label>Evolução</Label>
                 <Textarea value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)}
