@@ -224,7 +224,8 @@ export default function ClinicDetail() {
   // Quick evolution state
   const [quickEvolutionPatient, setQuickEvolutionPatient] = useState<string | null>(null);
   const [quickEvolutionText, setQuickEvolutionText] = useState('');
-  const [quickEvolutionStatus, setQuickEvolutionStatus] = useState<'presente' | 'falta'>('presente');
+  const [quickEvolutionStatus, setQuickEvolutionStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>('presente');
+  const [isImprovingQuickText, setIsImprovingQuickText] = useState(false);
 
   if (!clinic) {
     return (
@@ -1358,12 +1359,12 @@ export default function ClinicDetail() {
           <div className="space-y-4">
             <div>
               <Label>Status de Presença</Label>
-              <div className="flex gap-2 mt-2">
+              <div className="grid grid-cols-2 gap-2 mt-2">
                 <Button
                   type="button"
                   variant={quickEvolutionStatus === 'presente' ? 'default' : 'outline'}
                   className={cn(
-                    "flex-1 gap-2",
+                    "gap-2",
                     quickEvolutionStatus === 'presente' && "bg-success hover:bg-success/90"
                   )}
                   onClick={() => setQuickEvolutionStatus('presente')}
@@ -1375,13 +1376,36 @@ export default function ClinicDetail() {
                   type="button"
                   variant={quickEvolutionStatus === 'falta' ? 'default' : 'outline'}
                   className={cn(
-                    "flex-1 gap-2",
+                    "gap-2",
                     quickEvolutionStatus === 'falta' && "bg-destructive hover:bg-destructive/90"
                   )}
                   onClick={() => setQuickEvolutionStatus('falta')}
                 >
                   <X className="w-4 h-4" />
                   Falta
+                </Button>
+                <Button
+                  type="button"
+                  variant={quickEvolutionStatus === 'reposicao' ? 'default' : 'outline'}
+                  className={cn(
+                    "gap-2",
+                    quickEvolutionStatus === 'reposicao' && "bg-primary hover:bg-primary/90"
+                  )}
+                  onClick={() => setQuickEvolutionStatus('reposicao')}
+                >
+                  🔄 Reposição
+                </Button>
+                <Button
+                  type="button"
+                  variant={quickEvolutionStatus === 'falta_remunerada' ? 'default' : 'outline'}
+                  className={cn(
+                    "gap-2",
+                    quickEvolutionStatus === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground"
+                  )}
+                  onClick={() => setQuickEvolutionStatus('falta_remunerada')}
+                >
+                  <DollarSign className="w-4 h-4" />
+                  Falta Rem.
                 </Button>
               </div>
             </div>
@@ -1394,6 +1418,33 @@ export default function ClinicDetail() {
                 placeholder="Descreva a evolução do atendimento..."
                 className="min-h-[120px] mt-2"
               />
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 gap-2"
+                disabled={!quickEvolutionText.trim() || isImprovingQuickText}
+                onClick={async () => {
+                  setIsImprovingQuickText(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                      body: { text: quickEvolutionText },
+                    });
+                    if (error) throw error;
+                    if (data?.improved) {
+                      setQuickEvolutionText(data.improved);
+                      toast.success('Texto melhorado com IA!');
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    toast.error('Erro ao melhorar texto');
+                  } finally {
+                    setIsImprovingQuickText(false);
+                  }
+                }}
+              >
+                {isImprovingQuickText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                Melhorar com IA
+              </Button>
             </div>
 
             <div className="flex gap-2 pt-4">
