@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +17,9 @@ import {
   Users, 
   Clock, 
   Trash2,
-  Plus
+  Plus,
+  Pencil,
+  Save
 } from 'lucide-react';
 
 interface Event {
@@ -42,7 +43,6 @@ const EVENT_TYPES = [
   { value: 'reuniao', label: 'Reunião', icon: Users, color: '#ec4899' },
 ];
 
-
 interface EventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,6 +56,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -64,7 +65,6 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
   const [time, setTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [allDay, setAllDay] = useState(false);
-  
 
   useEffect(() => {
     if (open) {
@@ -77,14 +77,12 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
     try {
       setLoading(true);
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      
       const { data, error } = await supabase
         .from('events')
         .select('*')
         .eq('user_id', user?.id || '')
         .eq('date', dateStr)
         .order('time', { ascending: true, nullsFirst: false });
-
       if (error) throw error;
       setEvents(data || []);
     } catch (error) {
@@ -101,40 +99,61 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
     setTime('');
     setEndTime('');
     setAllDay(false);
-    
     setShowForm(false);
+    setEditingEvent(null);
+  }
+
+  function startEditing(event: Event) {
+    setEditingEvent(event);
+    setTitle(event.title);
+    setEventType(event.type);
+    setDescription(event.description || '');
+    setTime(event.time?.slice(0, 5) || '');
+    setEndTime(event.end_time?.slice(0, 5) || '');
+    setAllDay(event.all_day);
+    setShowForm(true);
   }
 
   async function saveEvent() {
     try {
       setSaving(true);
-
       if (!title) {
         toast.error('Preencha o título');
         return;
       }
 
       const typeConfig = EVENT_TYPES.find(t => t.value === eventType);
+      const payload = {
+        title,
+        type: eventType,
+        description: description || null,
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        time: allDay ? null : time || null,
+        end_time: allDay ? null : endTime || null,
+        all_day: allDay,
+        color: typeConfig?.color || '#6366f1',
+      };
 
-      const { error } = await supabase
-        .from('events')
-        .insert({
-          user_id: user?.id || '',
-          title,
-          type: eventType,
-          description: description || null,
-          date: format(selectedDate, 'yyyy-MM-dd'),
-          time: allDay ? null : time || null,
-          end_time: allDay ? null : endTime || null,
-          all_day: allDay,
-          reminder_minutes: null,
-          color: typeConfig?.color || '#6366f1',
-          completed: false
-        });
+      if (editingEvent) {
+        const { error } = await supabase
+          .from('events')
+          .update(payload)
+          .eq('id', editingEvent.id);
+        if (error) throw error;
+        toast.success('Evento atualizado!');
+      } else {
+        const { error } = await supabase
+          .from('events')
+          .insert({
+            ...payload,
+            user_id: user?.id || '',
+            reminder_minutes: null,
+            completed: false,
+          });
+        if (error) throw error;
+        toast.success('Adicionado com sucesso!');
+      }
 
-      if (error) throw error;
-
-      toast.success('Adicionado com sucesso!');
       resetForm();
       loadEvents();
       onEventSaved?.();
@@ -152,9 +171,9 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
         .from('events')
         .update({ completed: !event.completed })
         .eq('id', event.id);
-
       if (error) throw error;
       loadEvents();
+      onEventSaved?.();
     } catch (error) {
       console.error('Error updating event:', error);
     }
@@ -166,7 +185,6 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
         .from('events')
         .delete()
         .eq('id', eventId);
-
       if (error) throw error;
       toast.success('Removido');
       loadEvents();
@@ -201,6 +219,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
                     variant="outline"
                     className="justify-start gap-2 h-auto py-3"
                     onClick={() => {
+                      setEditingEvent(null);
                       setEventType(type.value);
                       setShowForm(true);
                     }}
@@ -218,7 +237,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
             </div>
           )}
 
-          {/* Add Form */}
+          {/* Add/Edit Form */}
           {showForm && (
             <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
               <div className="flex items-center justify-between">
@@ -229,7 +248,7 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
                     return (
                       <>
                         <Icon className="w-4 h-4" style={{ color: config.color }} />
-                        Nova {config.label}
+                        {editingEvent ? `Editar ${config.label}` : `Nova ${config.label}`}
                       </>
                     );
                   })()}
@@ -238,6 +257,27 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
                   Cancelar
                 </Button>
               </div>
+
+              {/* Type selector when editing */}
+              {editingEvent && (
+                <div className="flex gap-1">
+                  {EVENT_TYPES.map(type => {
+                    const Icon = type.icon;
+                    return (
+                      <Button
+                        key={type.value}
+                        variant={eventType === type.value ? 'default' : 'outline'}
+                        size="sm"
+                        className="gap-1 flex-1 text-xs"
+                        onClick={() => setEventType(type.value)}
+                      >
+                        <Icon className="w-3 h-3" />
+                        {type.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="title">Título *</Label>
@@ -284,7 +324,6 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
                 </div>
               )}
 
-
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição</Label>
                 <Textarea
@@ -297,8 +336,17 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
               </div>
 
               <Button onClick={saveEvent} disabled={saving} className="w-full">
-                <Plus className="w-4 h-4 mr-2" />
-                {saving ? 'Salvando...' : 'Adicionar'}
+                {editingEvent ? (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {saving ? 'Salvando...' : 'Salvar alterações'}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {saving ? 'Salvando...' : 'Adicionar'}
+                  </>
+                )}
               </Button>
             </div>
           )}
@@ -313,11 +361,13 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
                 {events.map(event => {
                   const config = getTypeConfig(event.type);
                   const Icon = config.icon;
+                  const isBeingEdited = editingEvent?.id === event.id;
                   
                   return (
                     <div
                       key={event.id}
                       className={`flex items-start gap-3 p-3 border rounded-lg transition-colors ${
+                        isBeingEdited ? 'ring-2 ring-primary bg-primary/5' :
                         event.completed ? 'bg-muted/50 opacity-60' : 'hover:bg-muted/30'
                       }`}
                     >
@@ -364,14 +414,24 @@ export function EventDialog({ open, onOpenChange, selectedDate, onEventSaved }: 
                         )}
                       </div>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteEvent(event.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEditing(event)}
+                          className="text-muted-foreground hover:text-primary h-8 w-8 p-0"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteEvent(event.id)}
+                          className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}

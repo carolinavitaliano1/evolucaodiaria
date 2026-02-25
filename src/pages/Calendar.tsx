@@ -337,7 +337,11 @@ export default function CalendarPage() {
                 const config = EVENT_TYPE_CONFIG[evt.type] || EVENT_TYPE_CONFIG.evento;
                 const Icon = config.icon;
                 return (
-                  <div key={evt.id} className="bg-secondary/50 rounded-xl p-4">
+                  <div
+                    key={evt.id}
+                    className="bg-secondary/50 rounded-xl p-4 cursor-pointer hover:bg-secondary transition-colors"
+                    onClick={() => setEventDialogOpen(true)}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 font-bold" style={{ color: config.color }}>
                         <Icon className="w-4 h-4" />
