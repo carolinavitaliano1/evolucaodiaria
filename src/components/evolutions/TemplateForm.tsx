@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { EvolutionTemplate, TemplateField } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export default function TemplateForm({ template, values, onChange, showAiImprove, isImprovingText, onImproveText }: Props) {
+  const [improvingFieldId, setImprovingFieldId] = useState<string | null>(null);
+
   const updateValue = (fieldId: string, value: any) => {
     onChange({ ...values, [fieldId]: value });
   };
@@ -27,10 +30,15 @@ export default function TemplateForm({ template, values, onChange, showAiImprove
     if (!onImproveText) return;
     const currentVal = values[fieldId];
     if (!currentVal || typeof currentVal !== 'string' || !currentVal.trim()) return;
-    const improved = await onImproveText(currentVal);
-    if (improved && improved !== currentVal) {
-      onChange({ ...values, [fieldId]: improved });
-      toast.success('Texto melhorado com IA!');
+    setImprovingFieldId(fieldId);
+    try {
+      const improved = await onImproveText(currentVal);
+      if (improved && improved !== currentVal) {
+        onChange({ ...values, [fieldId]: improved });
+        toast.success('Texto melhorado com IA!');
+      }
+    } finally {
+      setImprovingFieldId(null);
     }
   };
 
@@ -90,10 +98,10 @@ export default function TemplateForm({ template, values, onChange, showAiImprove
             variant="ghost"
             size="sm"
             className="mt-1 gap-1 text-xs h-7"
-            disabled={isImprovingText}
+            disabled={improvingFieldId !== null}
             onClick={() => handleImproveField(field.id)}
           >
-            {isImprovingText ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+            {improvingFieldId === field.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
             Melhorar com IA
           </Button>
         )}
