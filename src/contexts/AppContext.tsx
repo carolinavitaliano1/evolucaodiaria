@@ -122,6 +122,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         contractStartDate: p.contract_start_date || undefined, weekdays: p.weekdays || undefined,
         scheduleTime: p.schedule_time || undefined, scheduleByDay: p.schedule_by_day as ScheduleByDay | undefined,
         packageId: (p as any).package_id || undefined,
+        isArchived: (p as any).is_archived || false,
         createdAt: p.created_at,
       }));
 
@@ -303,6 +304,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.weekdays !== undefined) updateData.weekdays = updates.weekdays || null;
       if (updates.scheduleTime !== undefined) updateData.schedule_time = updates.scheduleTime || null;
       if (updates.scheduleByDay !== undefined) updateData.schedule_by_day = updates.scheduleByDay || null;
+      if (updates.isArchived !== undefined) updateData.is_archived = updates.isArchived;
       const { error } = await supabase.from('patients').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, patients: prev.patients.map(p => p.id === id ? { ...p, ...updates } : p) }));

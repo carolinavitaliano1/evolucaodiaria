@@ -409,6 +409,7 @@ export type Database = {
           created_at: string
           diagnosis: string | null
           id: string
+          is_archived: boolean | null
           name: string
           observations: string | null
           package_id: string | null
@@ -432,6 +433,7 @@ export type Database = {
           created_at?: string
           diagnosis?: string | null
           id?: string
+          is_archived?: boolean | null
           name: string
           observations?: string | null
           package_id?: string | null
@@ -455,6 +457,7 @@ export type Database = {
           created_at?: string
           diagnosis?: string | null
           id?: string
+          is_archived?: boolean | null
           name?: string
           observations?: string | null
           package_id?: string | null

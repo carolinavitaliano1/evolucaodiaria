@@ -16,7 +16,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const navigate = useNavigate();
   const [viewDate, setViewDate] = useState(new Date());
 
-  const clinicPatients = patients.filter(p => p.clinicId === clinicId);
+  const clinicPatients = patients.filter(p => p.clinicId === clinicId && !p.isArchived);
 
   const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const weekday = dayNames[viewDate.getDay()];

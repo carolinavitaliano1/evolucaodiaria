@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -161,7 +161,8 @@ export default function ClinicDetail() {
   }, [user]);
 
   const clinic = clinics.find(c => c.id === id);
-  const clinicPatients = patients.filter(p => p.clinicId === id);
+  const allClinicPatients = patients.filter(p => p.clinicId === id);
+  const clinicPatients = allClinicPatients.filter(p => !p.isArchived);
 
   // Get today's weekday for filtering patients
   const todayWeekday = getTodayWeekday();
@@ -1170,6 +1171,50 @@ export default function ClinicDetail() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Archived Patients */}
+            {allClinicPatients.filter(p => p.isArchived).length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-muted-foreground mb-4 flex items-center gap-2">
+                  <Archive className="w-5 h-5" />
+                  Pacientes Arquivados ({allClinicPatients.filter(p => p.isArchived).length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {allClinicPatients.filter(p => p.isArchived).map((patient) => (
+                    <div
+                      key={patient.id}
+                      className="bg-secondary/30 rounded-xl p-4 opacity-70 hover:opacity-100 transition-opacity"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 
+                          className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => handleOpenPatient(patient.id)}
+                        >
+                          {patient.name}
+                        </h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs text-muted-foreground hover:text-primary"
+                          onClick={() => {
+                            updatePatient(patient.id, { isArchived: false });
+                            toast.success('Paciente reativado!');
+                          }}
+                        >
+                          <ArchiveRestore className="w-3.5 h-3.5" />
+                          Reativar
+                        </Button>
+                      </div>
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        {patient.clinicalArea && (
+                          <p className="text-primary/70 font-medium">{patient.clinicalArea}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

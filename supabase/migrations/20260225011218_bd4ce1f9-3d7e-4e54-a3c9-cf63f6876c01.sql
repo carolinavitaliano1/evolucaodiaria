@@ -1,0 +1,1 @@
+ALTER TABLE public.patients ADD COLUMN is_archived boolean DEFAULT false;
