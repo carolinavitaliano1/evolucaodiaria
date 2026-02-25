@@ -342,63 +342,212 @@ export default function Patients() {
         toast.error('Nenhuma evolução encontrada no período selecionado.');
         return;
       }
-      const presences = patientEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+      const presences = patientEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
+      const faltasRem = patientEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       const absences = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const valuePerSession = patient.paymentValue || clinic?.paymentAmount || 0;
-      const totalValue = presences * valuePerSession;
+      const totalValue = (presences + faltasRem) * valuePerSession;
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 15;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - margin * 2;
+      let y = margin;
 
-      pdf.setFillColor(124, 58, 237);
-      pdf.rect(0, 0, pageWidth, 30, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(16);
+      // --- HEADER with letterhead ---
+      if (clinic?.letterhead) {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject();
+            img.src = clinic.letterhead!;
+          });
+          const imgWidth = contentWidth;
+          const imgHeight = Math.min((img.height / img.width) * imgWidth, 40);
+          pdf.addImage(clinic.letterhead!, 'PNG', margin, y, imgWidth, imgHeight);
+          y += imgHeight + 8;
+        } catch { /* skip letterhead */ }
+      }
+
+      // Clinic name & details
+      if (clinic) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(50, 50, 50);
+        pdf.text(clinic.name, pageWidth / 2, y, { align: 'center' });
+        y += 6;
+        if (clinic.address) {
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(clinic.address, pageWidth / 2, y, { align: 'center' });
+          y += 5;
+        }
+        const clinicDetails: string[] = [];
+        if (clinic.phone) clinicDetails.push(`Tel: ${clinic.phone}`);
+        if (clinic.email) clinicDetails.push(`Email: ${clinic.email}`);
+        if (clinic.cnpj) clinicDetails.push(`CNPJ: ${clinic.cnpj}`);
+        if (clinicDetails.length > 0) {
+          pdf.setFontSize(8);
+          pdf.text(clinicDetails.join(' | '), pageWidth / 2, y, { align: 'center' });
+          y += 5;
+        }
+      }
+
+      // Divider
+      y += 3;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 10;
+
+      // Title
+      pdf.setFontSize(13);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Relatório Financeiro', margin, 14);
+      pdf.setTextColor(30, 30, 30);
+      pdf.text('RELATÓRIO FINANCEIRO', pageWidth / 2, y, { align: 'center' });
+      y += 8;
+
+      // Period
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`${patient.name} — ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`, margin, 24);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(
+        `Período: ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`,
+        pageWidth / 2, y, { align: 'center' }
+      );
+      y += 10;
 
+      // Patient & Therapist info box
+      pdf.setFillColor(245, 245, 245);
+      pdf.roundedRect(margin, y, contentWidth, 22, 3, 3, 'F');
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(50, 50, 50);
-      let y = 42;
-      pdf.setFontSize(11);
+      pdf.text('Paciente:', margin + 5, y + 7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(patient.name, margin + 28, y + 7);
 
-      const clinicName = clinic?.name || 'N/A';
-      const lines = [
-        { label: 'Paciente:', value: patient.name },
-        { label: 'Clínica:', value: clinicName },
-        { label: 'Período:', value: `${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}` },
-        { label: '', value: '' },
-        { label: 'Sessões Realizadas:', value: String(presences) },
-        { label: 'Faltas:', value: String(absences) },
-        { label: 'Valor por Sessão:', value: `R$ ${valuePerSession.toFixed(2)}` },
+      if (profile?.name) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Terapeuta:', margin + 5, y + 14);
+        pdf.setFont('helvetica', 'normal');
+        const terapeutaText = profile.professional_id
+          ? `${profile.name} (${profile.professional_id})`
+          : profile.name;
+        pdf.text(terapeutaText, margin + 30, y + 14);
+      }
+
+      if (patient.clinicalArea) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Área:', margin + contentWidth / 2, y + 7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(patient.clinicalArea, margin + contentWidth / 2 + 15, y + 7);
+      }
+
+      y += 30;
+
+      // Financial details table
+      const colLabel = margin + 5;
+      const colValue = pageWidth - margin - 5;
+
+      pdf.setFillColor(235, 235, 240);
+      pdf.roundedRect(margin, y - 4, contentWidth, 10, 2, 2, 'F');
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(50, 50, 50);
+      pdf.text('Descrição', colLabel, y + 2);
+      pdf.text('Valor', colValue, y + 2, { align: 'right' });
+      y += 12;
+
+      const financialRows = [
+        { label: 'Sessões Realizadas (Presenças + Reposições)', value: String(presences) },
+        { label: 'Faltas Remuneradas', value: String(faltasRem) },
+        { label: 'Faltas (sem cobrança)', value: String(absences) },
+        { label: 'Total de Sessões no Período', value: String(patientEvolutions.length) },
+        { label: 'Valor por Sessão', value: `R$ ${valuePerSession.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
       ];
 
-      for (const line of lines) {
-        if (!line.label && !line.value) { y += 4; continue; }
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(line.label, margin, y);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(line.value, margin + 50, y);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      for (let i = 0; i < financialRows.length; i++) {
+        const row = financialRows[i];
+        if (i % 2 === 0) {
+          pdf.setFillColor(250, 250, 252);
+          pdf.rect(margin, y - 4, contentWidth, 7, 'F');
+        }
+        pdf.setTextColor(50, 50, 50);
+        pdf.text(row.label, colLabel, y);
+        pdf.text(row.value, colValue, y, { align: 'right' });
         y += 7;
       }
 
-      y += 4;
-      pdf.setDrawColor(200, 200, 200);
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 8;
-      pdf.setFontSize(14);
+      // Total highlight
+      y += 5;
+      pdf.setFillColor(34, 197, 94);
+      pdf.roundedRect(margin, y - 2, contentWidth, 14, 3, 3, 'F');
+      pdf.setFontSize(13);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(`Total: R$ ${totalValue.toFixed(2)}`, margin, y);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('TOTAL A RECEBER', margin + 8, y + 7);
+      pdf.text(`R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, colValue - 5, y + 7, { align: 'right' });
+
+      // Perdas info (faltas não remuneradas)
+      if (absences > 0) {
+        y += 20;
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(180, 80, 80);
+        const perda = absences * valuePerSession;
+        pdf.text(`Perda por faltas não remuneradas: R$ ${perda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 5, y);
+      }
+
+      // Stamp at bottom if available
+      if (clinic?.stamp) {
+        try {
+          const stampImg = new Image();
+          stampImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            stampImg.onload = () => resolve();
+            stampImg.onerror = () => reject();
+            stampImg.src = clinic.stamp!;
+          });
+          const maxW = 50;
+          const maxH = 30;
+          let sw = maxW;
+          let sh = (stampImg.height / stampImg.width) * sw;
+          if (sh > maxH) { sh = maxH; sw = (stampImg.width / stampImg.height) * sh; }
+
+          const stampY = pageHeight - 50 - sh;
+          if (y + 20 < stampY) {
+            pdf.addImage(clinic.stamp, 'PNG', pageWidth - margin - sw, stampY, sw, sh);
+            pdf.setDrawColor(100, 100, 100);
+            pdf.line(pageWidth - margin - sw, stampY + sh + 3, pageWidth - margin, stampY + sh + 3);
+            pdf.setFontSize(7);
+            pdf.setTextColor(128, 128, 128);
+            pdf.text('Carimbo', pageWidth - margin - sw / 2, stampY + sh + 7, { align: 'center' });
+          }
+        } catch { /* skip stamp */ }
+      }
 
       // Footer
-      const footerY = pdf.internal.pageSize.getHeight() - 10;
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(150, 150, 150);
-      pdf.text('Plataforma Clínica - Evolução Diária', pageWidth / 2, footerY, { align: 'center' });
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(
+          `Página ${i} de ${totalPages} | Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+          pageWidth / 2, pageHeight - 10, { align: 'center' }
+        );
+        pdf.setFontSize(6);
+        pdf.setTextColor(190, 190, 190);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Plataforma Clínica - Evolução Diária', margin, pageHeight - 5);
+        pdf.setFont('helvetica', 'normal');
+      }
 
       pdf.save(`financeiro_${patient.name.replace(/\s+/g, '_')}_${format(startDate, 'dd-MM-yyyy')}_${format(endDate, 'dd-MM-yyyy')}.pdf`);
       toast.success('Relatório financeiro exportado com sucesso!');
