@@ -572,41 +572,61 @@ export default function PatientDetail() {
                   template={clinicTemplates.find(t => t.id === selectedTemplateId)!}
                   values={templateFormValues}
                   onChange={setTemplateFormValues}
-                />
-              )}
-
-              <div>
-                <Label>Evolução</Label>
-                <Textarea value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)}
-                  placeholder="Digite a evolução do paciente..." className="min-h-32" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 gap-2"
-                  disabled={!evolutionText.trim() || isImprovingText}
-                  onClick={async () => {
+                  showAiImprove
+                  isImprovingText={isImprovingText}
+                  onImproveText={async (textToImprove) => {
                     setIsImprovingText(true);
                     try {
                       const { data, error } = await supabase.functions.invoke('improve-evolution', {
-                        body: { text: evolutionText },
+                        body: { text: textToImprove },
                       });
                       if (error) throw error;
-                      if (data?.improved) {
-                        setEvolutionText(data.improved);
-                        toast.success('Texto melhorado com IA!');
-                      }
+                      return data?.improved || textToImprove;
                     } catch (e) {
                       toast.error('Erro ao melhorar texto');
+                      return textToImprove;
                     } finally {
                       setIsImprovingText(false);
                     }
                   }}
-                >
-                  {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                  Melhorar com IA
-                </Button>
-              </div>
+                />
+              )}
+
+              {/* Free text only when no template selected */}
+              {!selectedTemplateId && (
+                <div>
+                  <Label>Evolução</Label>
+                  <Textarea value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)}
+                    placeholder="Digite a evolução do paciente..." className="min-h-32" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 gap-2"
+                    disabled={!evolutionText.trim() || isImprovingText}
+                    onClick={async () => {
+                      setIsImprovingText(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                          body: { text: evolutionText },
+                        });
+                        if (error) throw error;
+                        if (data?.improved) {
+                          setEvolutionText(data.improved);
+                          toast.success('Texto melhorado com IA!');
+                        }
+                      } catch (e) {
+                        toast.error('Erro ao melhorar texto');
+                      } finally {
+                        setIsImprovingText(false);
+                      }
+                    }}
+                  >
+                    {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                    Melhorar com IA
+                  </Button>
+                </div>
+              )}
               <div>
                 <Label className="flex items-center gap-2 mb-2"><Image className="w-4 h-4" /> Anexos (opcional)</Label>
                 <FileUpload parentType="evolution" parentId={patient.id} existingFiles={attachedFiles}
