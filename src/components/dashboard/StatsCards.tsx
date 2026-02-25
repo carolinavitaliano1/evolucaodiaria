@@ -7,7 +7,7 @@ export function StatsCards() {
   const { clinics, patients, appointments, evolutions } = useApp();
 
   const today = new Date().toISOString().split('T')[0];
-  const todayAppointments = appointments.filter(a => a.date === today);
+  const todayEvolutions = evolutions.filter(e => e.date === today && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'));
   
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -47,7 +47,7 @@ export function StatsCards() {
     },
     {
       label: 'Hoje',
-      value: todayAppointments.length,
+      value: todayEvolutions.length,
       icon: Calendar,
       color: 'text-primary',
       bgColor: 'bg-primary/10',

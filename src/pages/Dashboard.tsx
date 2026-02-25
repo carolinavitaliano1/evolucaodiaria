@@ -26,11 +26,12 @@ function getGreeting(): string {
 }
 
 export default function Dashboard() {
-  const { selectedDate, appointments, tasks } = useApp();
+  const { selectedDate, appointments, tasks, evolutions } = useApp();
   const { theme } = useTheme();
   const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  const todayEvolutions = evolutions.filter(e => e.date === dateStr && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'));
   const todayAppointments = appointments.filter(a => a.date === dateStr);
   const pendingTasks = tasks.filter(t => !t.completed);
 
@@ -99,7 +100,7 @@ export default function Dashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground text-sm">Atendimentos</span>
-                <span className="text-foreground font-semibold">{todayAppointments.length}</span>
+                <span className="text-foreground font-semibold">{todayEvolutions.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground text-sm">Tarefas Pendentes</span>
