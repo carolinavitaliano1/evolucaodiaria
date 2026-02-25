@@ -562,7 +562,7 @@ export default function Financial() {
       doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
       doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy')}`, margin, y);
-      y += 15;
+      y += 8;
 
       const centerX = pageWidth / 2;
       const lineWidth = contentW * 0.5;
@@ -571,24 +571,24 @@ export default function Financial() {
       if (stamp?.stamp_image) {
         try {
           doc.addImage(stamp.stamp_image, 'PNG', centerX - 25, y, 50, 25);
-          y += 25;
+          y += 27;
         } catch (e) { /* ignore */ }
       }
 
       if (stamp?.signature_image) {
         try {
           doc.addImage(stamp.signature_image, 'PNG', centerX - 25, y - 2, 50, 20);
-          y += 18;
+          y += 20;
         } catch (e) { /* ignore */ }
       }
 
       doc.setDrawColor(100, 100, 100);
-      doc.line(lineStartX, y + 10, lineStartX + lineWidth, y + 10);
+      doc.line(lineStartX, y + 2, lineStartX + lineWidth, y + 2);
       doc.setFontSize(9);
       doc.setTextColor(60, 60, 60);
-      doc.text(therapistName, centerX, y + 15, { align: 'center' });
+      doc.text(therapistName, centerX, y + 7, { align: 'center' });
       if (stamp) {
-        doc.text(stamp.clinical_area, centerX, y + 20, { align: 'center' });
+        doc.text(stamp.clinical_area, centerX, y + 12, { align: 'center' });
       }
 
       const pageCount = doc.getNumberOfPages();
