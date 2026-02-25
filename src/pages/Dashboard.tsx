@@ -2,7 +2,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
-import { Timeline } from '@/components/dashboard/Timeline';
 import { TaskList } from '@/components/dashboard/TaskList';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useApp } from '@/contexts/AppContext';
@@ -88,7 +87,7 @@ export default function Dashboard() {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column - Calendar */}
-        <div className="lg:col-span-3 space-y-5">
+        <div className="lg:col-span-4 space-y-5">
           <MiniCalendar />
           
           {/* Day Summary */}
@@ -110,15 +109,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Center Column - Timeline */}
-        <div className="lg:col-span-6">
-          <Timeline />
-        </div>
-
         {/* Right Column - Tasks & Notifications */}
-        <div className="lg:col-span-3 space-y-6">
-          <NotificationSettings />
+        <div className="lg:col-span-8 space-y-5">
           <TaskList />
+          <NotificationSettings />
         </div>
       </div>
     </div>

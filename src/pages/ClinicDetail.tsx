@@ -225,6 +225,7 @@ export default function ClinicDetail() {
   const [quickEvolutionPatient, setQuickEvolutionPatient] = useState<string | null>(null);
   const [quickEvolutionText, setQuickEvolutionText] = useState('');
   const [quickEvolutionStatus, setQuickEvolutionStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>('presente');
+  const [quickEvolutionStampId, setQuickEvolutionStampId] = useState<string>('none');
   const [isImprovingQuickText, setIsImprovingQuickText] = useState(false);
 
   if (!clinic) {
@@ -322,12 +323,14 @@ export default function ClinicDetail() {
       date: today,
       text: quickEvolutionText,
       attendanceStatus: quickEvolutionStatus,
+      stampId: quickEvolutionStampId !== 'none' ? quickEvolutionStampId : undefined,
     });
     
     // Limpar e fechar o modal
     setQuickEvolutionPatient(null);
     setQuickEvolutionText('');
     setQuickEvolutionStatus('presente');
+    setQuickEvolutionStampId('none');
     toast.success('Evolução registrada com sucesso!');
   };
 
@@ -637,6 +640,7 @@ export default function ClinicDetail() {
                               setQuickEvolutionPatient(patient.id);
                               setQuickEvolutionText('');
                               setQuickEvolutionStatus('presente');
+                              setQuickEvolutionStampId(stamps.find(s => s.is_default)?.id || 'none');
                             }}
                           >
                             <FileText className="w-4 h-4" />
@@ -1446,6 +1450,26 @@ export default function ClinicDetail() {
                 Melhorar com IA
               </Button>
             </div>
+
+            {/* Stamp Selector */}
+            {stamps.length > 0 && (
+              <div>
+                <Label>Carimbo</Label>
+                <Select value={quickEvolutionStampId} onValueChange={setQuickEvolutionStampId}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Selecione o carimbo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem carimbo</SelectItem>
+                    {stamps.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} — {s.clinical_area}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="flex gap-2 pt-4">
               <Button
