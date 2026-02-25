@@ -6,10 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { BarChart3, PieChartIcon, TrendingUp, Users, Check, X, Download, Loader2, Smile, DollarSign, Table2 } from 'lucide-react';
+import { BarChart3, PieChartIcon, TrendingUp, Users, Check, X, Download, Loader2, Smile, DollarSign, Table2, CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -35,7 +38,9 @@ export default function Reports() {
   const { clinics, patients, evolutions } = useApp();
   const { user } = useAuth();
   const [selectedClinic, setSelectedClinic] = useState<string>('all');
-  const [period, setPeriod] = useState<'week' | 'month'>('week');
+  const [period, setPeriod] = useState<'week' | 'month' | 'custom'>('week');
+  const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
+  const [customEnd, setCustomEnd] = useState<Date | undefined>(undefined);
   const [isExporting, setIsExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const [profile, setProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
@@ -49,20 +54,26 @@ export default function Reports() {
 
   const dateRange = useMemo(() => {
     const today = new Date();
-    if (period === 'week') {
+    if (period === 'custom' && customStart && customEnd) {
       return {
-        start: startOfWeek(today, { weekStartsOn: 1 }),
-        end: endOfWeek(today, { weekStartsOn: 1 }),
-        label: 'Esta Semana'
+        start: customStart,
+        end: customEnd,
+        label: `${format(customStart, 'dd/MM/yyyy')} a ${format(customEnd, 'dd/MM/yyyy')}`
       };
-    } else {
+    } else if (period === 'month') {
       return {
         start: startOfMonth(today),
         end: endOfMonth(today),
         label: 'Este Mês'
       };
+    } else {
+      return {
+        start: startOfWeek(today, { weekStartsOn: 1 }),
+        end: endOfWeek(today, { weekStartsOn: 1 }),
+        label: 'Esta Semana'
+      };
     }
-  }, [period]);
+  }, [period, customStart, customEnd]);
 
   const filteredEvolutions = useMemo(() => {
     return evolutions.filter(e => {
@@ -627,16 +638,44 @@ export default function Reports() {
         </div>
         
         <div className="flex flex-wrap gap-3">
-          <Select value={period} onValueChange={(v: 'week' | 'month') => setPeriod(v)}>
-            <SelectTrigger className="w-[140px]">
+          <Select value={period} onValueChange={(v: 'week' | 'month' | 'custom') => setPeriod(v)}>
+            <SelectTrigger className="w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="week">Semanal</SelectItem>
               <SelectItem value="month">Mensal</SelectItem>
+              <SelectItem value="custom">Personalizado</SelectItem>
             </SelectContent>
           </Select>
-          
+
+          {period === 'custom' && (
+            <>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !customStart && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customStart ? format(customStart, 'dd/MM/yyyy') : 'Início'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customStart} onSelect={setCustomStart} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !customEnd && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customEnd ? format(customEnd, 'dd/MM/yyyy') : 'Fim'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customEnd} onSelect={setCustomEnd} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
+
           <Select value={selectedClinic} onValueChange={setSelectedClinic}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Todas as clínicas" />
