@@ -1,0 +1,1 @@
+ALTER TABLE public.clinics ADD COLUMN discount_percentage numeric DEFAULT 0;
