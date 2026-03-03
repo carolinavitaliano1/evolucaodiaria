@@ -27,6 +27,150 @@ interface GenerateMultiplePdfOptions {
   stamps?: StampData[];
 }
 
+export interface GenerateAllPatientsPdfOptions {
+  items: { evolution: Evolution; patient: Patient }[];
+  clinic?: Clinic;
+  date: Date;
+  stamps?: StampData[];
+}
+
+export async function generateAllPatientsPdf({ items, clinic, date, stamps }: GenerateAllPatientsPdfOptions): Promise<void> {
+  if (items.length === 0) return;
+
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  let yPosition = margin;
+
+  const addHeader = async () => {
+    yPosition = margin;
+    if (clinic?.letterhead) {
+      try {
+        const img = await loadImage(clinic.letterhead);
+        const finalHeight = Math.min((img.height / img.width) * contentWidth, 40);
+        pdf.addImage(clinic.letterhead, 'PNG', margin, yPosition, contentWidth, finalHeight);
+        yPosition += finalHeight + 10;
+      } catch {}
+    }
+    if (clinic) {
+      pdf.setFontSize(16); pdf.setFont('helvetica', 'bold');
+      pdf.text(clinic.name, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 8;
+      if (clinic.address) {
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+        pdf.text(clinic.address, pageWidth / 2, yPosition, { align: 'center' });
+        yPosition += 6;
+      }
+    }
+    yPosition += 5;
+    pdf.setDrawColor(200, 200, 200);
+    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 10;
+  };
+
+  await addHeader();
+
+  pdf.setFontSize(14); pdf.setFont('helvetica', 'bold');
+  pdf.text('EVOLUÇÕES DO DIA', pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 6;
+  pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+  pdf.text(format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }), pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 12;
+
+  for (let pi = 0; pi < items.length; pi++) {
+    const { evolution: evo, patient } = items[pi];
+
+    if (yPosition > pageHeight - 100) { pdf.addPage(); await addHeader(); }
+
+    // Patient header
+    pdf.setFillColor(240, 240, 255);
+    pdf.roundedRect(margin, yPosition, contentWidth, 12, 2, 2, 'F');
+    pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(0, 0, 0);
+    pdf.text(patient.name, margin + 5, yPosition + 8);
+    if (patient.clinicalArea) {
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(120, 120, 120);
+      pdf.text(patient.clinicalArea, pageWidth - margin - 5, yPosition + 8, { align: 'right' });
+      pdf.setTextColor(0, 0, 0);
+    }
+    yPosition += 16;
+
+    // Status
+    const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
+      : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'
+      : evo.attendanceStatus === 'reposicao' ? 'REPOSIÇÃO'
+      : evo.attendanceStatus === 'feriado_remunerado' ? 'FERIADO REMUNERADO'
+      : evo.attendanceStatus === 'feriado_nao_remunerado' ? 'FERIADO'
+      : 'FALTA';
+    const statusColor: [number, number, number] =
+      ['presente','reposicao','feriado_remunerado'].includes(evo.attendanceStatus) ? [34, 197, 94]
+      : evo.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68];
+    pdf.setFontSize(9); pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...statusColor);
+    pdf.text(statusText, margin + 5, yPosition);
+    pdf.setTextColor(0, 0, 0); pdf.setFont('helvetica', 'normal');
+    yPosition += 7;
+
+    // Text
+    const text = evo.text || 'Sem descrição.';
+    pdf.setFontSize(10);
+    const textLines = pdf.splitTextToSize(text, contentWidth - 10);
+    const textHeight = textLines.length * 5;
+    if (yPosition + textHeight > pageHeight - 50) { pdf.addPage(); await addHeader(); }
+    pdf.text(textLines, margin + 5, yPosition);
+    yPosition += textHeight + 5;
+
+    // Signature
+    if (evo.signature) {
+      try {
+        if (yPosition + 25 > pageHeight - 40) { pdf.addPage(); await addHeader(); }
+        pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, yPosition, 45, 20);
+        pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
+        pdf.text('Assinatura digital', pageWidth - margin - 27.5, yPosition + 23, { align: 'center' });
+        pdf.setTextColor(0, 0, 0);
+        yPosition += 28;
+      } catch {}
+    }
+
+    // Stamp
+    if (evo.stampId && stamps) {
+      const stamp = stamps.find(s => s.id === evo.stampId);
+      if (stamp?.stamp_image) {
+        try {
+          const si = await loadImage(stamp.stamp_image);
+          const sw = 45; const sh = (si.height / si.width) * sw;
+          if (yPosition + sh > pageHeight - 40) { pdf.addPage(); await addHeader(); }
+          pdf.addImage(stamp.stamp_image, 'PNG', pageWidth - margin - sw, yPosition, sw, sh);
+          yPosition += sh + 3;
+        } catch {}
+      }
+    }
+
+    if (pi < items.length - 1) {
+      yPosition += 5;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 10;
+    }
+  }
+
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
+    pdf.text(
+      `Página ${i} de ${totalPages} | Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+      pageWidth / 2, pageHeight - 10, { align: 'center' }
+    );
+    pdf.setFontSize(6); pdf.setTextColor(190, 190, 190); pdf.setFont('helvetica', 'bold');
+    pdf.text('Plataforma Clínica - Evolução Diária', margin, pageHeight - 5);
+    pdf.setFont('helvetica', 'normal');
+  }
+
+  pdf.save(`evolucoes_${format(date, 'dd-MM-yyyy')}.pdf`);
+}
+
 export async function generateEvolutionPdf({ evolution, patient, clinic, stamps }: GenerateSinglePdfOptions): Promise<void> {
   return generateMultipleEvolutionsPdf({ evolutions: [evolution], patient, clinic, stamps });
 }
