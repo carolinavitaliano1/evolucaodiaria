@@ -112,14 +112,49 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
     pdf.setTextColor(0, 0, 0); pdf.setFont('helvetica', 'normal');
     yPosition += 7;
 
-    // Text
-    const text = evo.text || 'Sem descrição.';
-    pdf.setFontSize(10);
-    const textLines = pdf.splitTextToSize(text, contentWidth - 10);
-    const textHeight = textLines.length * 5;
-    if (yPosition + textHeight > pageHeight - 50) { pdf.addPage(); await addHeader(); }
-    pdf.text(textLines, margin + 5, yPosition);
-    yPosition += textHeight + 5;
+    // Text — render with bold template titles
+    const rawText = evo.text || 'Sem descrição.';
+    for (const line of rawText.split('\n')) {
+      const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\x00-\x7E]/g, '');
+      if (cleanLine.startsWith('[MODELO] ')) {
+        const title = cleanLine.replace('[MODELO] ', '').toUpperCase();
+        if (yPosition + 7 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
+        pdf.text(title, margin + 5, yPosition);
+        yPosition += 6;
+        pdf.setFont('helvetica', 'normal');
+      } else if (cleanLine === '---') {
+        pdf.setDrawColor(220, 220, 220);
+        pdf.line(margin + 5, yPosition - 1, pageWidth - margin - 5, yPosition - 1);
+        yPosition += 4;
+      } else {
+        const parts = cleanLine.split(': ');
+        if (parts.length >= 2 && !cleanLine.startsWith(' ') && cleanLine.trim().length > 0) {
+          const label = parts[0] + ': ';
+          const value = parts.slice(1).join(': ');
+          if (yPosition + 5 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
+          const lw = pdf.getTextWidth(label);
+          pdf.text(label, margin + 5, yPosition);
+          pdf.setFont('helvetica', 'normal');
+          const vLines = pdf.splitTextToSize(value, contentWidth - 10 - lw);
+          pdf.text(vLines[0] || '', margin + 5 + lw, yPosition);
+          yPosition += 5;
+          for (let vl = 1; vl < vLines.length; vl++) {
+            if (yPosition + 5 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
+            pdf.text(vLines[vl], margin + 5, yPosition);
+            yPosition += 5;
+          }
+        } else if (cleanLine.trim().length > 0) {
+          const wrapped = pdf.splitTextToSize(cleanLine, contentWidth - 10);
+          if (yPosition + wrapped.length * 5 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+          pdf.text(wrapped, margin + 5, yPosition);
+          yPosition += wrapped.length * 5;
+        }
+      }
+    }
+    yPosition += 5;
 
     // Signature
     if (evo.signature) {
@@ -313,21 +348,50 @@ export async function generateMultipleEvolutionsPdf({
 
     yPosition += 15;
 
-    // Evolution text
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    const text = evo.text || 'Sem descrição.';
-    const textLines = pdf.splitTextToSize(text, contentWidth - 10);
-    
-    // Check if text fits on current page
-    const textHeight = textLines.length * 5;
-    if (yPosition + textHeight > pageHeight - 60) {
-      pdf.addPage();
-      await addHeader();
+    // Evolution text — render with bold template titles
+    const rawText = evo.text || 'Sem descrição.';
+    const rawLines = rawText.split('\n');
+    for (const line of rawLines) {
+      const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\x00-\x7E]/g, '');
+      if (cleanLine.startsWith('[MODELO] ')) {
+        const title = cleanLine.replace('[MODELO] ', '').toUpperCase();
+        if (yPosition + 7 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
+        pdf.text(title, margin + 5, yPosition);
+        yPosition += 6;
+        pdf.setFont('helvetica', 'normal');
+      } else if (cleanLine === '---') {
+        pdf.setDrawColor(220, 220, 220);
+        pdf.line(margin + 5, yPosition - 1, pageWidth - margin - 5, yPosition - 1);
+        yPosition += 4;
+      } else {
+        const parts = cleanLine.split(': ');
+        const wrapped = pdf.splitTextToSize(cleanLine, contentWidth - 10);
+        if (yPosition + wrapped.length * 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
+        if (parts.length >= 2 && !cleanLine.startsWith(' ')) {
+          // Render label bold, value normal
+          const label = parts[0] + ': ';
+          const value = parts.slice(1).join(': ');
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
+          const labelWidth = pdf.getTextWidth(label);
+          pdf.text(label, margin + 5, yPosition);
+          pdf.setFont('helvetica', 'normal');
+          const valueLines = pdf.splitTextToSize(value, contentWidth - 10 - labelWidth);
+          pdf.text(valueLines[0] || '', margin + 5 + labelWidth, yPosition);
+          yPosition += 5;
+          for (let vl = 1; vl < valueLines.length; vl++) {
+            if (yPosition + 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
+            pdf.text(valueLines[vl], margin + 5, yPosition);
+            yPosition += 5;
+          }
+        } else {
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+          pdf.text(wrapped, margin + 5, yPosition);
+          yPosition += wrapped.length * 5;
+        }
+      }
     }
-
-    pdf.text(textLines, margin + 5, yPosition);
-    yPosition += textHeight + 5;
+    yPosition += 5;
 
     // Add signature if available
     if (evo.signature) {
