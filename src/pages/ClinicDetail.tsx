@@ -1563,50 +1563,74 @@ export default function ClinicDetail() {
               </div>
             </div>
 
-            <div>
-              <Label>Evolução</Label>
-              <Textarea
-                value={quickEvolutionText}
-                onChange={(e) => setQuickEvolutionText(e.target.value)}
-                placeholder="Descreva a evolução do atendimento..."
-                className="min-h-[120px] mt-2"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2 gap-2"
-                disabled={!quickEvolutionText.trim() || isImprovingQuickText}
-                onClick={async () => {
-                  setIsImprovingQuickText(true);
-                  try {
-                    const { data, error } = await supabase.functions.invoke('improve-evolution', {
-                      body: { text: quickEvolutionText },
-                    });
-                    if (error) throw error;
-                    if (data?.improved) {
-                      setQuickEvolutionText(data.improved);
-                      toast.success('Texto melhorado com IA!');
-                    }
-                  } catch (err) {
-                    console.error(err);
-                    toast.error('Erro ao melhorar texto');
-                  } finally {
-                    setIsImprovingQuickText(false);
-                  }
-                }}
-              >
-                {isImprovingQuickText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                Melhorar com IA
-              </Button>
-            </div>
-
-            {/* Template Form */}
+            {/* Template Form (when template selected) */}
             {selectedTemplateId !== 'none' && (() => {
               const tpl = clinicTemplates.find(t => t.id === selectedTemplateId);
               return tpl ? (
-                <TemplateForm template={tpl} values={templateFormValues} onChange={setTemplateFormValues} />
+                <TemplateForm
+                  template={tpl}
+                  values={templateFormValues}
+                  onChange={setTemplateFormValues}
+                  showAiImprove
+                  isImprovingText={isImprovingQuickText}
+                  onImproveText={async (textToImprove) => {
+                    setIsImprovingQuickText(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                        body: { text: textToImprove },
+                      });
+                      if (error) throw error;
+                      return data?.improved || textToImprove;
+                    } catch (e) {
+                      toast.error('Erro ao melhorar texto');
+                      return textToImprove;
+                    } finally {
+                      setIsImprovingQuickText(false);
+                    }
+                  }}
+                />
               ) : null;
             })()}
+
+            {/* Free text only when no template selected */}
+            {selectedTemplateId === 'none' && (
+              <div>
+                <Label>Evolução</Label>
+                <Textarea
+                  value={quickEvolutionText}
+                  onChange={(e) => setQuickEvolutionText(e.target.value)}
+                  placeholder="Descreva a evolução do atendimento..."
+                  className="min-h-[120px] mt-2"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 gap-2"
+                  disabled={!quickEvolutionText.trim() || isImprovingQuickText}
+                  onClick={async () => {
+                    setIsImprovingQuickText(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                        body: { text: quickEvolutionText },
+                      });
+                      if (error) throw error;
+                      if (data?.improved) {
+                        setQuickEvolutionText(data.improved);
+                        toast.success('Texto melhorado com IA!');
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      toast.error('Erro ao melhorar texto');
+                    } finally {
+                      setIsImprovingQuickText(false);
+                    }
+                  }}
+                >
+                  {isImprovingQuickText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                  Melhorar com IA
+                </Button>
+              </div>
+            )}
 
             {/* Stamp Selector */}
             {stamps.length > 0 && (
