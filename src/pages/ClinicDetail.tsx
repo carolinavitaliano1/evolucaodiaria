@@ -28,6 +28,7 @@ import { ClinicFinancial } from '@/components/clinics/ClinicFinancial';
 import { ClinicAgenda } from '@/components/clinics/ClinicAgenda';
 import { ClinicNotes } from '@/components/clinics/ClinicNotes';
 import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
+import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 
@@ -602,6 +603,10 @@ export default function ClinicDetail() {
             <TabsTrigger value="packages" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
               <Package className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Pacotes
+            </TabsTrigger>
+            <TabsTrigger value="evolutions-day" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <FileText className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+              Evoluções
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
               <Sparkles className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
@@ -1454,6 +1459,11 @@ export default function ClinicDetail() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* Evolutions Day Tab */}
+        <TabsContent value="evolutions-day">
+          <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />
         </TabsContent>
 
         {/* Reports Tab */}
