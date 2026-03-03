@@ -78,6 +78,8 @@ export default function Financial() {
   const absentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
   const reposicaoEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'reposicao');
+  const feriadoRemEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado');
+  const feriadoNaoRemEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado');
 
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
@@ -89,6 +91,7 @@ export default function Financial() {
 
     const presentCount = presentEvolutions.filter(e => e.patientId === patientId).length;
     const paidAbsenceCount = paidAbsenceEvolutions.filter(e => e.patientId === patientId).length;
+    const feriadoRemCount = feriadoRemEvolutions.filter(e => e.patientId === patientId).length;
 
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
@@ -102,7 +105,7 @@ export default function Financial() {
       paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
     }
 
-    return (presentCount + paidAbsenceCount + paidRegularAbsences) * patient.paymentValue;
+    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
   };
 
   const calculatePatientLoss = (patientId: string) => {
@@ -463,6 +466,13 @@ export default function Financial() {
           if (patient.paymentType === 'sessao' && patient.paymentValue) {
             sessionValue = patient.paymentValue;
           }
+        } else if (evo.attendanceStatus === 'feriado_remunerado') {
+          statusLabel = 'Feriado Rem.';
+          if (patient.paymentType === 'sessao' && patient.paymentValue) {
+            sessionValue = patient.paymentValue;
+          }
+        } else if (evo.attendanceStatus === 'feriado_nao_remunerado') {
+          statusLabel = 'Feriado';
         } else if (evo.attendanceStatus === 'falta') {
           statusLabel = 'Falta';
           totalAbsences++;
@@ -482,10 +492,12 @@ export default function Financial() {
         doc.text(dateStr, col1, y);
         doc.text(patientName, col2, y);
         
-        if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao') {
+        if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao' || evo.attendanceStatus === 'feriado_remunerado') {
           doc.setTextColor(34, 139, 34);
         } else if (evo.attendanceStatus === 'falta_remunerada') {
           doc.setTextColor(200, 150, 0);
+        } else if (evo.attendanceStatus === 'feriado_nao_remunerado') {
+          doc.setTextColor(100, 100, 100);
         } else {
           doc.setTextColor(220, 53, 69);
         }

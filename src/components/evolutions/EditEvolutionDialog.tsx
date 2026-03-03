@@ -34,7 +34,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
   const { user } = useAuth();
   const [text, setText] = useState(evolution.text);
   const [date, setDate] = useState(evolution.date);
-  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>(evolution.attendanceStatus);
+  const [attendanceStatus, setAttendanceStatus] = useState(evolution.attendanceStatus);
   const [mood, setMood] = useState<string>(evolution.mood || '');
   const [isImprovingText, setIsImprovingText] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>(
@@ -145,6 +145,8 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
                     <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                   )}
                   <SelectItem value="reposicao">🔄 Reposição</SelectItem>
+                  <SelectItem value="feriado_remunerado">🎉 Feriado Remunerado</SelectItem>
+                  <SelectItem value="feriado_nao_remunerado">📅 Feriado Não Remunerado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
