@@ -29,6 +29,7 @@ import { ClinicAgenda } from '@/components/clinics/ClinicAgenda';
 import { ClinicNotes } from '@/components/clinics/ClinicNotes';
 import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
 import TemplateForm from '@/components/evolutions/TemplateForm';
+import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -130,7 +131,7 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
 export default function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage } = useApp();
+  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editClinicOpen, setEditClinicOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
@@ -259,6 +260,7 @@ export default function ClinicDetail() {
   const [clinicTemplates, setClinicTemplates] = useState<import('@/types').EvolutionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
   const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
+  const [editingEvolution, setEditingEvolution] = useState<typeof evolutions[0] | null>(null);
 
   if (!clinic) {
     return (
@@ -688,35 +690,35 @@ export default function ClinicDetail() {
 
                     <div className="flex items-center gap-2">
                       {hasEvolution ? (
-                        <div className={cn(
-                          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
-                          evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
-                            ? "bg-success/20 text-success"
-                            : evolution?.attendanceStatus === 'falta_remunerada'
-                              ? "bg-warning/20 text-warning"
-                              : "bg-destructive/20 text-destructive"
-                        )}>
-                          {evolution?.attendanceStatus === 'presente' ? (
-                            <>
-                              <Check className="w-4 h-4" />
-                              Presente
-                            </>
-                          ) : evolution?.attendanceStatus === 'reposicao' ? (
-                            <>
-                              🔄 Reposição
-                            </>
-                          ) : evolution?.attendanceStatus === 'falta_remunerada' ? (
-                            <>
-                              <DollarSign className="w-4 h-4" />
-                              Falta Remunerada
-                            </>
-                          ) : (
-                            <>
-                              <X className="w-4 h-4" />
-                              Faltou
-                            </>
-                          )}
-                        </div>
+                        <>
+                          <div className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium",
+                            evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
+                              ? "bg-success/20 text-success"
+                              : evolution?.attendanceStatus === 'falta_remunerada'
+                                ? "bg-warning/20 text-warning"
+                                : "bg-destructive/20 text-destructive"
+                          )}>
+                            {evolution?.attendanceStatus === 'presente' ? (
+                              <><Check className="w-4 h-4" />Presente</>
+                            ) : evolution?.attendanceStatus === 'reposicao' ? (
+                              <>🔄 Reposição</>
+                            ) : evolution?.attendanceStatus === 'falta_remunerada' ? (
+                              <><DollarSign className="w-4 h-4" />Falta Remunerada</>
+                            ) : (
+                              <><X className="w-4 h-4" />Faltou</>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            onClick={() => evolution && setEditingEvolution(evolution)}
+                            title="Editar evolução"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
                       ) : (
                         <span className="text-xs text-muted-foreground">⏳ Aguardando</span>
                       )}
@@ -1665,6 +1667,17 @@ export default function ClinicDetail() {
           }}
           onSave={updatePatient}
           clinicPackages={clinicPackages}
+        />
+      )}
+
+      {/* Edit Evolution Dialog (from Today's schedule) */}
+      {editingEvolution && (
+        <EditEvolutionDialog
+          evolution={editingEvolution}
+          open={!!editingEvolution}
+          onOpenChange={(open) => { if (!open) setEditingEvolution(null); }}
+          onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
+          showFaltaRemunerada={clinic?.paysOnAbsence}
         />
       )}
     </div>
