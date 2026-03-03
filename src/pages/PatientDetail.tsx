@@ -152,7 +152,7 @@ export default function PatientDetail() {
 
   const [evolutionText, setEvolutionText] = useState('');
   const [evolutionDate, setEvolutionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [attendanceStatus, setAttendanceStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>('presente');
+  const [attendanceStatus, setAttendanceStatus] = useState<Evolution['attendanceStatus']>('presente');
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -221,9 +221,11 @@ export default function PatientDetail() {
   const totalReposicao = patientEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
   const totalAbsent = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const totalPaidAbsent = patientEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+  const totalFeriadoRem = patientEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
+  const totalFeriadoNaoRem = patientEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const totalSessions = patientEvolutions.length;
   const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
-  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent) * (patient.paymentValue || 0);
+  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient.paymentValue || 0);
 
   const moodCounts = MOOD_OPTIONS.map(m => ({
     ...m, count: patientEvolutions.filter(e => e.mood === m.value).length,
@@ -401,6 +403,8 @@ export default function PatientDetail() {
             <span className="text-success">✅ {totalPresent}</span>
             {totalReposicao > 0 && <span className="text-primary">🔄 {totalReposicao}</span>}
             {totalPaidAbsent > 0 && <span className="text-warning">💰 {totalPaidAbsent}</span>}
+            {totalFeriadoRem > 0 && <span className="text-primary">🎉 {totalFeriadoRem}</span>}
+            {totalFeriadoNaoRem > 0 && <span className="text-muted-foreground">📅 {totalFeriadoNaoRem}</span>}
             <span className="text-destructive">❌ {totalAbsent}</span>
             <span className="text-muted-foreground">Total: {totalSessions}</span>
           </div>
@@ -410,7 +414,7 @@ export default function PatientDetail() {
           <p className="text-sm font-medium text-muted-foreground mb-3">💰 Financeiro</p>
           <p className="text-2xl font-bold text-success mb-1">R$ {totalFinancial.toFixed(2)}</p>
           <p className="text-sm text-muted-foreground">
-            {totalPresent + totalReposicao + totalPaidAbsent} sessões pagas × R$ {(patient.paymentValue || 0).toFixed(2)}
+            {totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões pagas × R$ {(patient.paymentValue || 0).toFixed(2)}
           </p>
         </div>
 
@@ -524,6 +528,8 @@ export default function PatientDetail() {
                         <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                       )}
                       <SelectItem value="reposicao">🔄 Reposição</SelectItem>
+                      <SelectItem value="feriado_remunerado">🎉 Feriado Remunerado</SelectItem>
+                      <SelectItem value="feriado_nao_remunerado">📅 Feriado Não Remunerado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -732,9 +738,19 @@ export default function PatientDetail() {
                             {format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                           </span>
                           <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
-                            evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' : evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'
+                            evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
+                            evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
+                            evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' :
+                            evo.attendanceStatus === 'feriado_remunerado' ? 'bg-primary/10 text-primary' :
+                            evo.attendanceStatus === 'feriado_nao_remunerado' ? 'bg-muted text-muted-foreground' :
+                            'bg-destructive/10 text-destructive'
                           )}>
-                            {evo.attendanceStatus === 'presente' ? '✅ Presente' : evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Remunerada' : '❌ Falta'}
+                            {evo.attendanceStatus === 'presente' ? '✅ Presente' :
+                             evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Remunerada' :
+                             evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' :
+                             evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
+                             evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' :
+                             '❌ Falta'}
                           </span>
                           {moodInfo && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">

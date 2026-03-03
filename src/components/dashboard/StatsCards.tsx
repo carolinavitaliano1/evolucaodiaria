@@ -24,7 +24,7 @@ export function StatsCards() {
     }
     if (p.paymentType === 'sessao' && p.paymentValue) {
       const patientEvolutions = monthlyEvolutions.filter(
-        e => e.patientId === p.id && e.attendanceStatus === 'presente'
+        e => e.patientId === p.id && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'falta_remunerada' || e.attendanceStatus === 'feriado_remunerado')
       );
       return sum + (patientEvolutions.length * p.paymentValue);
     }

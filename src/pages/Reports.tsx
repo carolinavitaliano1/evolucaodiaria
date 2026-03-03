@@ -89,9 +89,11 @@ export default function Reports() {
     const reposicao = filteredEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
     const absent = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
     const paidAbsent = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-    const total = present + reposicao + absent + paidAbsent;
+    const feriadoRem = filteredEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
+    const feriadoNaoRem = filteredEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
+    const total = present + reposicao + absent + paidAbsent + feriadoRem + feriadoNaoRem;
     const presenceRate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
-    return { present, reposicao, absent, paidAbsent, total, presenceRate };
+    return { present, reposicao, absent, paidAbsent, feriadoRem, feriadoNaoRem, total, presenceRate };
   }, [filteredEvolutions]);
 
   // Mood stats
@@ -116,10 +118,10 @@ export default function Reports() {
       const reposicao = pEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
       const absent = pEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsent = pEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const total = present + reposicao + absent + paidAbsent;
+      const feriadoRem = pEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
+      const total = present + reposicao + absent + paidAbsent + feriadoRem;
       const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
       
-      // Revenue calculation - reposicao counts as normal session
       let revenue = 0;
       if (patient?.paymentType === 'fixo' && patient.paymentValue) {
         revenue = patient.paymentValue;
@@ -131,7 +133,7 @@ export default function Reports() {
         } else if (absenceType === 'confirmed_only') {
           paidRegularAbsences = pEvolutions.filter(e => e.attendanceStatus === 'falta' && e.confirmedAttendance).length;
         }
-        revenue = (present + reposicao + paidAbsent + paidRegularAbsences) * patient.paymentValue;
+        revenue = (present + reposicao + paidAbsent + paidRegularAbsences + feriadoRem) * patient.paymentValue;
       }
 
       // Mood counts

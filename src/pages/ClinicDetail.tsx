@@ -143,7 +143,7 @@ export default function ClinicDetail() {
   const [batchStampMode, setBatchStampMode] = useState<'same' | 'individual'>('same');
   const [batchGlobalStampId, setBatchGlobalStampId] = useState<string>('none');
   const [batchIndividualStamps, setBatchIndividualStamps] = useState<Record<string, string>>({});
-  const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, 'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>>({});
+  const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, import('@/types').Evolution['attendanceStatus']>>({});
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean | null }[]>([]);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
@@ -254,7 +254,7 @@ export default function ClinicDetail() {
   // Quick evolution state
   const [quickEvolutionPatient, setQuickEvolutionPatient] = useState<string | null>(null);
   const [quickEvolutionText, setQuickEvolutionText] = useState('');
-  const [quickEvolutionStatus, setQuickEvolutionStatus] = useState<'presente' | 'falta' | 'falta_remunerada' | 'reposicao'>('presente');
+  const [quickEvolutionStatus, setQuickEvolutionStatus] = useState<import('@/types').Evolution['attendanceStatus']>('presente');
   const [quickEvolutionStampId, setQuickEvolutionStampId] = useState<string>('none');
   const [isImprovingQuickText, setIsImprovingQuickText] = useState(false);
   const [clinicTemplates, setClinicTemplates] = useState<import('@/types').EvolutionTemplate[]>([]);
@@ -836,7 +836,25 @@ export default function ClinicDetail() {
                               className={cn("h-7 text-xs gap-1", status === 'reposicao' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
                               onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'reposicao' }))}
                             >
-                              🔄 Reposição
+                              🔄 Repos.
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={status === 'feriado_remunerado' ? 'default' : 'outline'}
+                              className={cn("h-7 text-xs gap-1", status === 'feriado_remunerado' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
+                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'feriado_remunerado' }))}
+                            >
+                              🎉 Fer. Rem.
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={status === 'feriado_nao_remunerado' ? 'default' : 'outline'}
+                              className={cn("h-7 text-xs gap-1", status === 'feriado_nao_remunerado' && "bg-muted hover:bg-muted/80 text-muted-foreground")}
+                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'feriado_nao_remunerado' }))}
+                            >
+                              📅 Feriado
                             </Button>
                           </div>
                         )}
@@ -1516,34 +1534,23 @@ export default function ClinicDetail() {
                 <Button
                   type="button"
                   variant={quickEvolutionStatus === 'presente' ? 'default' : 'outline'}
-                  className={cn(
-                    "gap-2",
-                    quickEvolutionStatus === 'presente' && "bg-success hover:bg-success/90"
-                  )}
+                  className={cn("gap-2", quickEvolutionStatus === 'presente' && "bg-success hover:bg-success/90")}
                   onClick={() => setQuickEvolutionStatus('presente')}
                 >
-                  <Check className="w-4 h-4" />
-                  Presente
+                  <Check className="w-4 h-4" /> Presente
                 </Button>
                 <Button
                   type="button"
                   variant={quickEvolutionStatus === 'falta' ? 'default' : 'outline'}
-                  className={cn(
-                    "gap-2",
-                    quickEvolutionStatus === 'falta' && "bg-destructive hover:bg-destructive/90"
-                  )}
+                  className={cn("gap-2", quickEvolutionStatus === 'falta' && "bg-destructive hover:bg-destructive/90")}
                   onClick={() => setQuickEvolutionStatus('falta')}
                 >
-                  <X className="w-4 h-4" />
-                  Falta
+                  <X className="w-4 h-4" /> Falta
                 </Button>
                 <Button
                   type="button"
                   variant={quickEvolutionStatus === 'reposicao' ? 'default' : 'outline'}
-                  className={cn(
-                    "gap-2",
-                    quickEvolutionStatus === 'reposicao' && "bg-primary hover:bg-primary/90"
-                  )}
+                  className={cn("gap-2", quickEvolutionStatus === 'reposicao' && "bg-primary hover:bg-primary/90")}
                   onClick={() => setQuickEvolutionStatus('reposicao')}
                 >
                   🔄 Reposição
@@ -1551,14 +1558,26 @@ export default function ClinicDetail() {
                 <Button
                   type="button"
                   variant={quickEvolutionStatus === 'falta_remunerada' ? 'default' : 'outline'}
-                  className={cn(
-                    "gap-2",
-                    quickEvolutionStatus === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground"
-                  )}
+                  className={cn("gap-2", quickEvolutionStatus === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground")}
                   onClick={() => setQuickEvolutionStatus('falta_remunerada')}
                 >
-                  <DollarSign className="w-4 h-4" />
-                  Falta Rem.
+                  <DollarSign className="w-4 h-4" /> Falta Rem.
+                </Button>
+                <Button
+                  type="button"
+                  variant={quickEvolutionStatus === 'feriado_remunerado' ? 'default' : 'outline'}
+                  className={cn("gap-2", quickEvolutionStatus === 'feriado_remunerado' && "bg-primary hover:bg-primary/90")}
+                  onClick={() => setQuickEvolutionStatus('feriado_remunerado')}
+                >
+                  🎉 Feriado Rem.
+                </Button>
+                <Button
+                  type="button"
+                  variant={quickEvolutionStatus === 'feriado_nao_remunerado' ? 'default' : 'outline'}
+                  className={cn("gap-2", quickEvolutionStatus === 'feriado_nao_remunerado' && "bg-muted hover:bg-muted/80 text-muted-foreground")}
+                  onClick={() => setQuickEvolutionStatus('feriado_nao_remunerado')}
+                >
+                  📅 Feriado
                 </Button>
               </div>
             </div>

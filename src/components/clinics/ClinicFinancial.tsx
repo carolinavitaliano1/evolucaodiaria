@@ -55,6 +55,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const absentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
   const reposicaoEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'reposicao');
+  const feriadoRemEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado');
 
   const absenceType = clinic.absencePaymentType || (clinic.paysOnAbsence === false ? 'never' : 'always');
 
@@ -66,13 +67,14 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
     const presentCount = presentEvos.filter(e => e.patientId === patientId).length;
     const paidAbsenceCount = paidAbsenceEvos.filter(e => e.patientId === patientId).length;
+    const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patientId).length;
 
     let paidRegularAbsences = 0;
     const regularAbsences = absentEvos.filter(e => e.patientId === patientId);
     if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
     else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
 
-    return (presentCount + paidAbsenceCount + paidRegularAbsences) * patient.paymentValue;
+    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
   };
 
   const totalRevenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
