@@ -53,9 +53,10 @@ const TYPE_LABELS: Record<string, string> = {
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_H = 56; // px per hour
+const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 export default function CalendarPage() {
-  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment } = useApp();
+  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, evolutions } = useApp();
   const { user } = useAuth();
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
@@ -98,6 +99,9 @@ export default function CalendarPage() {
   // --- Data helpers ---
   const getAllForDay = useCallback((date: Date): CalItem[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
+    const dayOfWeek = WEEKDAY_NAMES[date.getDay()];
+
+    // Clinic appointments from appointments table
     const appts: CalItem[] = appointments
       .filter(a => a.date === dateStr)
       .map(a => {
@@ -112,6 +116,27 @@ export default function CalendarPage() {
         };
       });
 
+    // Scheduled patients based on weekdays config (recurring schedule)
+    const scheduledPatientIds = new Set(appointments.filter(a => a.date === dateStr).map(a => a.patientId));
+    const scheduledPatients: CalItem[] = patients
+      .filter(p => !p.isArchived && p.weekdays?.includes(dayOfWeek) && !scheduledPatientIds.has(p.id))
+      .map(p => {
+        const clinic = clinics.find(c => c.id === p.clinicId);
+        const scheduleByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
+        const time = scheduleByDay?.[dayOfWeek]?.start || p.scheduleTime || '';
+        // Check if evolution exists for this patient on this date
+        const hasEvolution = evolutions.some(e => e.patientId === p.id && e.date === dateStr);
+        return {
+          id: `sched-${p.id}-${dateStr}`, time, title: p.name,
+          sub: clinic?.name + (hasEvolution ? ' ✓' : ''),
+          type: 'atendimento',
+          color: hasEvolution ? 'bg-emerald-500' : EVENT_COLORS.atendimento.bg,
+          bgColor: hasEvolution ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : EVENT_COLORS.atendimento.pill,
+          isDraggable: false,
+        };
+      });
+
+    // Private appointments
     const privAppts: CalItem[] = getAppointmentsForDate(dateStr).map(a => ({
       id: a.id, time: a.time, title: a.client_name,
       sub: `R$ ${a.price.toFixed(2)}`, type: 'particular',
@@ -120,6 +145,7 @@ export default function CalendarPage() {
       isDraggable: false,
     }));
 
+    // Calendar events (tasks, reminders, etc.)
     const evts: CalItem[] = calendarEvents
       .filter(e => e.date === dateStr)
       .map(e => ({
@@ -130,8 +156,8 @@ export default function CalendarPage() {
         isDraggable: true,
       }));
 
-    return [...appts, ...privAppts, ...evts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-  }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate]);
+    return [...appts, ...scheduledPatients, ...privAppts, ...evts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate, evolutions]);
 
   // --- Appointment form ---
   const clinicPatients = patients.filter(p => p.clinicId === formData.clinicId);
