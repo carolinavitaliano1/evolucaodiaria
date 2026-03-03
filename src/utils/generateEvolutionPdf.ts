@@ -116,14 +116,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
     const rawText = evo.text || 'Sem descrição.';
     for (const line of rawText.split('\n')) {
       const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\x00-\x7E]/g, '');
-      if (cleanLine.startsWith('[MODELO] ')) {
-        const title = cleanLine.replace('[MODELO] ', '').toUpperCase();
-        if (yPosition + 7 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
-        pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
-        pdf.text(title, margin + 5, yPosition);
-        yPosition += 6;
-        pdf.setFont('helvetica', 'normal');
-      } else if (cleanLine === '---') {
+      if (cleanLine === '---') {
         pdf.setDrawColor(220, 220, 220);
         pdf.line(margin + 5, yPosition - 1, pageWidth - margin - 5, yPosition - 1);
         yPosition += 4;

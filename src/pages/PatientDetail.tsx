@@ -277,7 +277,7 @@ export default function PatientDetail() {
         })
         .filter(Boolean);
       if (templateLines.length > 0) {
-        const templateSection = `[MODELO] ${selectedTemplate.name}\n${templateLines.join('\n')}`;
+        const templateSection = templateLines.join('\n');
         fullText = fullText ? `${templateSection}\n\n---\n\n${fullText}` : templateSection;
       }
     }
