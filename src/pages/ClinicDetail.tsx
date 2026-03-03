@@ -367,7 +367,7 @@ export default function ClinicDetail() {
         .filter(Boolean);
       
       if (templateLines.length > 0) {
-        const templateSection = `📋 ${selectedTemplate.name}\n${templateLines.join('\n')}`;
+        const templateSection = `[MODELO] ${selectedTemplate.name}\n${templateLines.join('\n')}`;
         fullText = fullText ? `${templateSection}\n\n---\n\n${fullText}` : templateSection;
       }
     }

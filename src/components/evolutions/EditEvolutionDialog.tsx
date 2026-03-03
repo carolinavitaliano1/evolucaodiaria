@@ -101,7 +101,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
         })
         .filter(Boolean);
       if (templateLines.length > 0) {
-        const templateSection = `📋 ${selectedTemplate.name}\n${templateLines.join('\n')}`;
+        const templateSection = `[MODELO] ${selectedTemplate.name}\n${templateLines.join('\n')}`;
         finalText = finalText ? `${templateSection}\n\n---\n\n${finalText}` : templateSection;
       }
     }
