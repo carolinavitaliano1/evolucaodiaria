@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
+import { generateMultipleEvolutionsPdf, generateAllPatientsPdf } from '@/utils/generateEvolutionPdf';
 import { Clinic, Evolution, Patient } from '@/types';
 
 interface Props {
@@ -108,25 +108,15 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
       toast.error('Nenhuma evolução neste dia para exportar');
       return;
     }
-    // Group by patient and export all evolutions of each patient together
     setIsExporting(true);
     try {
-      const patientMap = new Map<string, { patient: Patient; evos: Evolution[] }>();
-      for (const { evo, patient } of evolutionsByPatient) {
-        if (!patient) continue;
-        if (!patientMap.has(patient.id)) patientMap.set(patient.id, { patient, evos: [] });
-        patientMap.get(patient.id)!.evos.push(evo);
-      }
-
-      for (const [, { patient, evos }] of patientMap) {
-        await generateMultipleEvolutionsPdf({
-          evolutions: evos,
-          patient,
-          clinic,
-          stamps,
-        });
-      }
-      toast.success('PDFs exportados com sucesso!');
+      await generateAllPatientsPdf({
+        items: evolutionsByPatient.filter(({ patient }) => !!patient).map(({ evo, patient }) => ({ evolution: evo, patient: patient! })),
+        clinic,
+        date: selectedDate,
+        stamps,
+      });
+      toast.success('PDF exportado com sucesso!');
     } catch (e) {
       console.error(e);
       toast.error('Erro ao exportar');
