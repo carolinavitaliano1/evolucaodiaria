@@ -466,6 +466,7 @@ export type Database = {
           content: string | null
           created_at: string
           id: string
+          image_url: string | null
           link_label: string | null
           link_url: string | null
           pinned: boolean | null
@@ -480,6 +481,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           link_label?: string | null
           link_url?: string | null
           pinned?: boolean | null
@@ -494,6 +496,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           link_label?: string | null
           link_url?: string | null
           pinned?: boolean | null

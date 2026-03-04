@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Pin, Pencil, Trash2, Video, BookOpen, Bell, Link, X, Loader2, Youtube, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Pin, Pencil, Trash2, Video, BookOpen, Bell, Link, Loader2, Youtube, ExternalLink, ImageIcon, X, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +26,7 @@ interface Notice {
   link_label: string | null;
   pinned: boolean;
   color: string;
+  image_url: string | null;
   created_at: string;
 }
 
@@ -59,13 +60,10 @@ function getCardBg(color: string) {
 
 function getVideoEmbedUrl(url: string): string | null {
   if (!url) return null;
-  // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-  // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  // Google Drive
   const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
   return null;
@@ -80,6 +78,7 @@ const emptyForm = {
   link_label: '',
   pinned: false,
   color: 'default',
+  image_url: '',
 };
 
 export default function Mural() {
@@ -92,6 +91,10 @@ export default function Mural() {
   const [saving, setSaving] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [form, setForm] = useState({ ...emptyForm });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadNotices = async () => {
     if (!user) return;
@@ -110,6 +113,7 @@ export default function Mural() {
   const openCreate = () => {
     setEditingNotice(null);
     setForm({ ...emptyForm });
+    setImagePreview('');
     setDialogOpen(true);
   };
 
@@ -124,8 +128,35 @@ export default function Mural() {
       link_label: n.link_label || '',
       pinned: n.pinned,
       color: n.color,
+      image_url: n.image_url || '',
     });
+    setImagePreview(n.image_url || '');
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!user) return;
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `notices/${user.id}/${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from('attachments').upload(path, file, { upsert: false });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(data.path);
+      setForm(prev => ({ ...prev, image_url: urlData.publicUrl }));
+      setImagePreview(urlData.publicUrl);
+      toast.success('Imagem enviada!');
+    } catch (e) {
+      toast.error('Erro ao enviar imagem');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setForm(prev => ({ ...prev, image_url: '' }));
+    setImagePreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSave = async () => {
@@ -141,6 +172,7 @@ export default function Mural() {
       link_label: form.link_label.trim() || null,
       pinned: form.pinned,
       color: form.color,
+      image_url: form.image_url.trim() || null,
     };
     if (editingNotice) {
       const { error } = await supabase.from('notices').update(payload).eq('id', editingNotice.id);
@@ -210,6 +242,20 @@ export default function Mural() {
 
         {/* Title */}
         <h3 className="font-semibold text-foreground text-base leading-snug">{n.title}</h3>
+
+        {/* Image */}
+        {n.image_url && (
+          <div
+            className="rounded-xl overflow-hidden cursor-pointer"
+            onClick={() => setExpandedImage(n.image_url!)}
+          >
+            <img
+              src={n.image_url}
+              alt={n.title}
+              className="w-full max-h-56 object-cover hover:opacity-90 transition-opacity"
+            />
+          </div>
+        )}
 
         {/* Content */}
         {n.content && (
@@ -303,7 +349,6 @@ export default function Mural() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Pinned */}
           {pinned.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -316,8 +361,6 @@ export default function Mural() {
               </div>
             </div>
           )}
-
-          {/* Regular */}
           {unpinned.length > 0 && (
             <div>
               {pinned.length > 0 && (
@@ -334,8 +377,29 @@ export default function Mural() {
         </div>
       )}
 
+      {/* Image Lightbox */}
+      {expandedImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setExpandedImage(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            onClick={() => setExpandedImage(null)}
+          >
+            <X className="w-8 h-8" />
+          </button>
+          <img
+            src={expandedImage}
+            alt="Imagem ampliada"
+            className="max-w-full max-h-full rounded-xl object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
+
       {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) setDialogOpen(false); }}>
+      <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) { setDialogOpen(false); setImagePreview(''); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingNotice ? 'Editar Aviso' : 'Novo Aviso'}</DialogTitle>
@@ -374,6 +438,52 @@ export default function Mural() {
                 onChange={e => setForm({ ...form, content: e.target.value })}
                 placeholder="Descreva o aviso, tutorial ou observações..."
               />
+            </div>
+
+            {/* Image upload */}
+            <div>
+              <Label className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4" /> Imagem
+              </Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(file);
+                }}
+              />
+              {imagePreview ? (
+                <div className="mt-2 relative">
+                  <img src={imagePreview} alt="Preview" className="w-full max-h-40 object-cover rounded-xl border border-border" />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="mt-2 w-full border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/50 transition-colors"
+                >
+                  {uploadingImage ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Upload className="w-6 h-6" />
+                      <span className="text-sm">Clique para enviar imagem</span>
+                      <span className="text-xs">JPG, PNG, WebP</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {(form.type === 'video' || form.type === 'tutorial') && (
@@ -440,10 +550,10 @@ export default function Mural() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button className="flex-1 gradient-primary" onClick={handleSave} disabled={saving || !form.title.trim()}>
+              <Button className="flex-1 gradient-primary" onClick={handleSave} disabled={saving || !form.title.trim() || uploadingImage}>
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : editingNotice ? 'Salvar' : 'Criar'}
               </Button>
-              <Button variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}>
+              <Button variant="outline" className="flex-1" onClick={() => { setDialogOpen(false); setImagePreview(''); }}>
                 Cancelar
               </Button>
             </div>

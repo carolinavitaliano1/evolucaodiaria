@@ -7,6 +7,7 @@ import { TaskList } from '@/components/dashboard/TaskList';
 import { BirthdayCard } from '@/components/dashboard/BirthdayCard';
 import { TodayAppointments } from '@/components/dashboard/TodayAppointments';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
+import { DashboardMural } from '@/components/dashboard/DashboardMural';
 import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -142,6 +143,7 @@ export default function Dashboard() {
         <div className="lg:col-span-8 space-y-5">
           <TodayAppointments />
           <TaskList />
+          <DashboardMural />
           <NotificationSettings />
         </div>
       </div>
