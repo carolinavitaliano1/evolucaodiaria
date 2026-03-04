@@ -484,21 +484,35 @@ async function renderEvolutionText(
         pdf.text(value, textX + labelW, y);
         y += LINE_HEIGHT;
       } else {
-        // Multi-line: bold label, then value wraps starting inline
+        // Multi-line: bold label inline on first line, then value continues at full textWidth
         pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+
+        // Split only the first segment to remainWidth (space after label on same line)
         const remainWidth = textWidth - labelW;
-        const valLines = pdf.splitTextToSize(value, remainWidth);
-        for (let vl = 0; vl < valLines.length; vl++) {
-          if (vl > 0 && y + LINE_HEIGHT > pageHeight - bottomSafe) {
-            y = await breakPage();
+        const firstLineParts = pdf.splitTextToSize(value, remainWidth);
+        const firstLineText = firstLineParts[0] as string;
+
+        // Reconstruct the "rest" of the value after the first line
+        const firstLineWords = firstLineText.trim().split(/\s+/);
+        const allWords = value.trim().split(/\s+/);
+        const restWords = allWords.slice(firstLineWords.length);
+        const restText = restWords.join(' ');
+
+        // Render first line inline after label (always last-line style = left-align if short)
+        drawJustifiedLine(pdf, firstLineText, textX + labelW, y, remainWidth, restText === '');
+        y += LINE_HEIGHT;
+
+        // Render remaining lines at full textWidth with proper justification
+        if (restText) {
+          const restLines = pdf.splitTextToSize(restText, textWidth);
+          for (let rl = 0; rl < restLines.length; rl++) {
+            if (y + LINE_HEIGHT > pageHeight - bottomSafe) { y = await breakPage(); }
+            pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+            drawJustifiedLine(pdf, restLines[rl], textX, y, textWidth, rl === restLines.length - 1);
+            y += LINE_HEIGHT;
           }
-          const xOff = vl === 0 ? textX + labelW : textX;
-          const lw = vl === 0 ? remainWidth : textWidth;
-          pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-          drawJustifiedLine(pdf, valLines[vl], xOff, y, lw, vl === valLines.length - 1);
-          y += LINE_HEIGHT;
         }
       }
       continue;
