@@ -22,19 +22,7 @@ interface Service {
   is_active: boolean;
 }
 
-interface PrivateAppointment {
-  id: string;
-  service_id: string | null;
-  client_name: string;
-  client_phone: string | null;
-  client_email: string | null;
-  date: string;
-  time: string;
-  price: number;
-  status: string;
-  notes: string | null;
-  paid: boolean;
-}
+import { PrivateAppointment } from '@/hooks/usePrivateAppointments';
 
 const SERVICE_TYPES = [
   { value: 'atendimento', label: 'Atendimento Particular' },
@@ -51,9 +39,11 @@ const INITIAL_CUSTOM_TYPES: string[] = [];
 interface ServiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editAppointment?: PrivateAppointment | null;
+  onAppointmentSaved?: () => void;
 }
 
-export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
+export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointmentSaved }: ServiceDialogProps) {
   const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,6 +62,7 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
   const [servicePrice, setServicePrice] = useState('');
 
   // Appointment form states
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string>('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -80,13 +71,33 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
   const [appointmentTime, setAppointmentTime] = useState('');
   const [appointmentPrice, setAppointmentPrice] = useState('');
   const [appointmentNotes, setAppointmentNotes] = useState('');
+  const [appointmentStatus, setAppointmentStatus] = useState('agendado');
+  const [appointmentPaid, setAppointmentPaid] = useState(false);
 
   useEffect(() => {
     if (open) {
       loadServices();
       loadCustomTypes();
+      // Pre-fill form if editing an appointment
+      if (editAppointment) {
+        setActiveTab('agendar');
+        setEditingAppointmentId(editAppointment.id);
+        setSelectedService(editAppointment.service_id || '');
+        setClientName(editAppointment.client_name);
+        setClientPhone(editAppointment.client_phone || '');
+        setClientEmail(editAppointment.client_email || '');
+        setAppointmentDate(editAppointment.date);
+        setAppointmentTime(editAppointment.time);
+        setAppointmentPrice(editAppointment.price.toString());
+        setAppointmentNotes(editAppointment.notes || '');
+        setAppointmentStatus(editAppointment.status);
+        setAppointmentPaid(editAppointment.paid || false);
+      } else {
+        setEditingAppointmentId(null);
+        setActiveTab('servicos');
+      }
     }
-  }, [open]);
+  }, [open, editAppointment]);
 
   async function loadCustomTypes() {
     try {
@@ -232,30 +243,40 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
         return;
       }
 
-      const { error } = await supabase
-        .from('private_appointments')
-        .insert({
-          user_id: user?.id!,
-          service_id: selectedService || null,
-          client_name: clientName,
-          client_phone: clientPhone || null,
-          client_email: clientEmail || null,
-          date: appointmentDate,
-          time: appointmentTime,
-          price: parseFloat(appointmentPrice) || 0,
-          notes: appointmentNotes || null,
-          status: 'agendado',
-          paid: false
-        });
+      const appointmentData = {
+        service_id: selectedService || null,
+        client_name: clientName,
+        client_phone: clientPhone || null,
+        client_email: clientEmail || null,
+        date: appointmentDate,
+        time: appointmentTime,
+        price: parseFloat(appointmentPrice) || 0,
+        notes: appointmentNotes || null,
+        status: appointmentStatus,
+        paid: appointmentPaid,
+      };
 
-      if (error) throw error;
+      if (editingAppointmentId) {
+        const { error } = await supabase
+          .from('private_appointments')
+          .update(appointmentData)
+          .eq('id', editingAppointmentId);
+        if (error) throw error;
+        toast.success('Atendimento atualizado!');
+      } else {
+        const { error } = await supabase
+          .from('private_appointments')
+          .insert({ ...appointmentData, user_id: user?.id! });
+        if (error) throw error;
+        toast.success('Atendimento agendado!');
+      }
 
-      toast.success('Atendimento agendado!');
       resetAppointmentForm();
+      onAppointmentSaved?.();
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving appointment:', error);
-      toast.error('Erro ao agendar atendimento');
+      toast.error('Erro ao salvar atendimento');
     } finally {
       setSaving(false);
     }
@@ -381,12 +402,42 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
               />
             </div>
 
+            {editingAppointmentId && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={appointmentStatus} onValueChange={setAppointmentStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="agendado">Agendado</SelectItem>
+                      <SelectItem value="realizado">Realizado</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Pagamento</Label>
+                  <Select value={appointmentPaid ? 'pago' : 'pendente'} onValueChange={v => setAppointmentPaid(v === 'pago')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="pago">Pago</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
               <Button onClick={saveAppointment} disabled={saving}>
-                {saving ? 'Salvando...' : 'Agendar'}
+                {saving ? 'Salvando...' : editingAppointmentId ? 'Salvar Alterações' : 'Agendar'}
               </Button>
             </div>
           </TabsContent>
