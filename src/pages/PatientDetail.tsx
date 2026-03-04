@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
+import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -133,6 +134,7 @@ export default function PatientDetail() {
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
+  const { isOrg, members } = useClinicOrg(patient?.clinicId || '');
   const patientEvolutions = useMemo(() => {
     const evos = evolutions
       .filter(e => e.patientId === id)
@@ -746,6 +748,9 @@ export default function PatientDetail() {
               <div className="space-y-4">
                 {patientEvolutions.map((evo) => {
                   const moodInfo = getMoodInfo(evo.mood);
+                  const evoAuthorId = (evo as any).user_id;
+                  const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
+                  const authorLabel = evoAuthor ? (evoAuthor.name || evoAuthor.email) : null;
                   return (
                     <div key={evo.id} className="bg-secondary/50 rounded-xl p-3 sm:p-4">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
@@ -771,6 +776,11 @@ export default function PatientDetail() {
                           {moodInfo && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
                               {moodInfo.emoji} {moodInfo.label}
+                            </span>
+                          )}
+                          {authorLabel && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium flex items-center gap-1">
+                              👤 {authorLabel}{evoAuthorId === user?.id ? ' (você)' : ''}
                             </span>
                           )}
                         </div>
