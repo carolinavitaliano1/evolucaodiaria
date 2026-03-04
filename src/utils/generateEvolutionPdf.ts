@@ -9,11 +9,17 @@ const PARA_SPACING = 4;  // mm — extra space between paragraphs
 // Sanitize text: keep full Latin + extended Latin (accents, cedilla, etc.)
 // Only remove actual emoji/symbols that jsPDF can't render
 function sanitizeLine(text: string): string {
-  // Remove emoji ranges but keep all Latin Extended (0000-024F) and common punctuation
   return text
     .replace(/✅/g, '[x]')
     .replace(/[\u2600-\u27BF\u{1F000}-\u{1FFFF}]/gu, '')
     .replace(/[^\u0000-\u024F\u2010-\u2027\u2030-\u205E\u2060-\u2FFF\u3000-\u303F ]/g, '');
+}
+
+// Reset font to body style — must be called after every addHeader() since it sets 16pt bold
+function resetBodyFont(pdf: jsPDF) {
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(0, 0, 0);
 }
 
 // Renders a justified line by distributing space evenly between words.
@@ -40,7 +46,6 @@ function drawJustifiedLine(
   const normalSpace = pdf.getTextWidth(' ');
   const gaps = words.length - 1;
   const spaceWidth = (maxWidth - wordsWidth) / gaps;
-  // If space would be >2.5x normal, fallback to left-align (avoids ugly rivers)
   if (spaceWidth > normalSpace * 2.5) {
     pdf.text(trimmed, x, y);
     return;
@@ -95,36 +100,38 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
   const contentWidth = pageWidth - margin * 2;
   const textX = margin + 5;
   const textWidth = contentWidth - 10;
-  const bottomSafe = 50; // reserve for stamp/signature area
-  let y = margin;
+  const bottomSafe = 55;
 
-  const addHeader = async () => {
-    y = margin;
+  // addHeader RETURNS the new y position — does NOT use closure mutation
+  const addHeader = async (): Promise<number> => {
+    let hy = margin;
     if (clinic?.letterhead) {
       try {
         const img = await loadImage(clinic.letterhead);
         const finalHeight = Math.min((img.height / img.width) * contentWidth, 40);
-        pdf.addImage(clinic.letterhead, 'PNG', margin, y, contentWidth, finalHeight);
-        y += finalHeight + 10;
+        pdf.addImage(clinic.letterhead, 'PNG', margin, hy, contentWidth, finalHeight);
+        hy += finalHeight + 10;
       } catch {}
     }
     if (clinic) {
       pdf.setFontSize(16); pdf.setFont('helvetica', 'bold');
-      pdf.text(clinic.name, pageWidth / 2, y, { align: 'center' });
-      y += 8;
+      pdf.text(clinic.name, pageWidth / 2, hy, { align: 'center' });
+      hy += 8;
       if (clinic.address) {
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-        pdf.text(clinic.address, pageWidth / 2, y, { align: 'center' });
-        y += 6;
+        pdf.text(clinic.address, pageWidth / 2, hy, { align: 'center' });
+        hy += 6;
       }
     }
-    y += 5;
+    hy += 5;
     pdf.setDrawColor(200, 200, 200);
-    pdf.line(margin, y, pageWidth - margin, y);
-    y += 10;
+    pdf.line(margin, hy, pageWidth - margin, hy);
+    hy += 10;
+    resetBodyFont(pdf); // always reset after header rendering
+    return hy;
   };
 
-  await addHeader();
+  let y = await addHeader();
 
   pdf.setFontSize(14); pdf.setFont('helvetica', 'bold');
   pdf.text('EVOLUÇÕES DO DIA', pageWidth / 2, y, { align: 'center' });
@@ -136,7 +143,10 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
   for (let pi = 0; pi < items.length; pi++) {
     const { evolution: evo, patient } = items[pi];
 
-    if (y > pageHeight - 120) { pdf.addPage(); await addHeader(); resetBodyFont(pdf); }
+    if (y > pageHeight - 120) {
+      pdf.addPage();
+      y = await addHeader();
+    }
 
     // Patient header bar
     pdf.setFillColor(240, 240, 255);
@@ -176,7 +186,10 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
     // Signature
     if (evo.signature) {
       try {
-        if (y + 30 > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+        if (y + 30 > pageHeight - bottomSafe) {
+          pdf.addPage();
+          y = await addHeader();
+        }
         pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, y, 45, 20);
         pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
         pdf.text('Assinatura digital', pageWidth - margin - 27.5, y + 23, { align: 'center' });
@@ -224,35 +237,37 @@ export async function generateMultipleEvolutionsPdf({
   const textX = margin + 5;
   const textWidth = contentWidth - 10;
   const bottomSafe = 55;
-  let y = margin;
 
-  const addHeader = async () => {
-    y = margin;
+  // addHeader RETURNS the new y position — does NOT use closure mutation
+  const addHeader = async (): Promise<number> => {
+    let hy = margin;
     if (clinic?.letterhead) {
       try {
         const img = await loadImage(clinic.letterhead);
         const finalHeight = Math.min((img.height / img.width) * contentWidth, 40);
-        pdf.addImage(clinic.letterhead, 'PNG', margin, y, contentWidth, finalHeight);
-        y += finalHeight + 10;
+        pdf.addImage(clinic.letterhead, 'PNG', margin, hy, contentWidth, finalHeight);
+        hy += finalHeight + 10;
       } catch {}
     }
     if (clinic) {
       pdf.setFontSize(16); pdf.setFont('helvetica', 'bold');
-      pdf.text(clinic.name, pageWidth / 2, y, { align: 'center' });
-      y += 8;
+      pdf.text(clinic.name, pageWidth / 2, hy, { align: 'center' });
+      hy += 8;
       if (clinic.address) {
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-        pdf.text(clinic.address, pageWidth / 2, y, { align: 'center' });
-        y += 6;
+        pdf.text(clinic.address, pageWidth / 2, hy, { align: 'center' });
+        hy += 6;
       }
     }
-    y += 5;
+    hy += 5;
     pdf.setDrawColor(200, 200, 200);
-    pdf.line(margin, y, pageWidth - margin, y);
-    y += 10;
+    pdf.line(margin, hy, pageWidth - margin, hy);
+    hy += 10;
+    resetBodyFont(pdf);
+    return hy;
   };
 
-  await addHeader();
+  let y = await addHeader();
 
   // Title
   pdf.setFontSize(14); pdf.setFont('helvetica', 'bold');
@@ -294,7 +309,10 @@ export async function generateMultipleEvolutionsPdf({
   for (let i = 0; i < evolutions.length; i++) {
     const evo = evolutions[i];
 
-    if (y > pageHeight - 120) { pdf.addPage(); await addHeader(); resetBodyFont(pdf); }
+    if (y > pageHeight - 120) {
+      pdf.addPage();
+      y = await addHeader();
+    }
 
     // Date header bar
     pdf.setFillColor(250, 250, 250);
@@ -325,7 +343,10 @@ export async function generateMultipleEvolutionsPdf({
     // Signature (digital pad)
     if (evo.signature) {
       try {
-        if (y + 30 > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+        if (y + 30 > pageHeight - bottomSafe) {
+          pdf.addPage();
+          y = await addHeader();
+        }
         pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, y, 45, 20);
         pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
         pdf.text('Assinatura digital', pageWidth - margin - 27.5, y + 23, { align: 'center' });
@@ -356,7 +377,10 @@ export async function generateMultipleEvolutionsPdf({
       let sw = maxW;
       let sh = (stampImg.height / stampImg.width) * sw;
       if (sh > maxH) { sh = maxH; sw = (stampImg.width / stampImg.height) * sh; }
-      if (y + sh + 20 > pageHeight - 20) { pdf.addPage(); await addHeader(); }
+      if (y + sh + 20 > pageHeight - 20) {
+        pdf.addPage();
+        y = await addHeader();
+      }
       y += 15;
       const sx = pageWidth - margin - sw;
       pdf.addImage(clinic.stamp, 'PNG', sx, y, sw, sh);
@@ -382,16 +406,9 @@ export async function generateMultipleEvolutionsPdf({
 // ─── SHARED HELPERS ───────────────────────────────────────────────────────────
 
 /**
- * Renders evolution text lines with proper justification and line-height.
- * Returns updated yPosition.
+ * Renders evolution text with proper justification and line-height.
+ * addHeader now returns the new y — this function uses the returned value after page breaks.
  */
-// Helper: reset font to body style after any addHeader() call that changes font state
-function resetBodyFont(pdf: jsPDF) {
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(0, 0, 0);
-}
-
 async function renderEvolutionText(
   pdf: jsPDF,
   rawText: string,
@@ -400,16 +417,16 @@ async function renderEvolutionText(
   textWidth: number,
   pageHeight: number,
   bottomSafe: number,
-  addHeader: () => Promise<void>
+  addHeader: () => Promise<number>
 ): Promise<number> {
   let y = startY;
   const lines = (rawText || 'Sem descrição.').split('\n');
 
-  // Helper: break page and ALWAYS reset font back to body style
-  const breakPage = async () => {
+  // Page break helper: adds new page, draws header, resets font, returns correct y
+  const breakPage = async (): Promise<number> => {
     pdf.addPage();
-    await addHeader();
-    resetBodyFont(pdf); // critical: addHeader sets font to 16pt bold — must reset
+    const newY = await addHeader();
+    return newY;
   };
 
   for (let li = 0; li < lines.length; li++) {
@@ -442,12 +459,11 @@ async function renderEvolutionText(
       const label = cleanLine.slice(0, colonIdx + 2);
       const value = cleanLine.slice(colonIdx + 2);
 
-      // Measure with correct font
       pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
       const labelW = pdf.getTextWidth(label);
 
       if (value.trim() === '') {
-        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { await breakPage(); }
+        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { y = await breakPage(); }
         pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
         pdf.setFont('helvetica', 'normal');
@@ -458,17 +474,17 @@ async function renderEvolutionText(
       pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
       const valueW = pdf.getTextWidth(value);
 
-      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { await breakPage(); }
+      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { y = await breakPage(); }
 
       if (labelW + valueW <= textWidth) {
-        // Single line: bold label + normal value
+        // Single line: bold label + normal value inline
         pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
         pdf.text(value, textX + labelW, y);
         y += LINE_HEIGHT;
       } else {
-        // Multi-line: bold label inline, value wraps below
+        // Multi-line: bold label, then value wraps starting inline
         pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
@@ -476,7 +492,7 @@ async function renderEvolutionText(
         const valLines = pdf.splitTextToSize(value, remainWidth);
         for (let vl = 0; vl < valLines.length; vl++) {
           if (vl > 0 && y + LINE_HEIGHT > pageHeight - bottomSafe) {
-            await breakPage();
+            y = await breakPage();
           }
           const xOff = vl === 0 ? textX + labelW : textX;
           const lw = vl === 0 ? remainWidth : textWidth;
@@ -493,7 +509,7 @@ async function renderEvolutionText(
     const wrapped = pdf.splitTextToSize(cleanLine, textWidth);
     for (let wl = 0; wl < wrapped.length; wl++) {
       if (y + LINE_HEIGHT > pageHeight - bottomSafe) {
-        await breakPage();
+        y = await breakPage();
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
       }
       drawJustifiedLine(pdf, wrapped[wl], textX, y, textWidth, wl === wrapped.length - 1);
@@ -505,7 +521,7 @@ async function renderEvolutionText(
 }
 
 /**
- * Renders stamp image + stamp name below for a given evolution stamp.
+ * Renders stamp image + name below for a given evolution stamp.
  * Returns updated yPosition.
  */
 async function renderStamp(
@@ -517,7 +533,7 @@ async function renderStamp(
   margin: number,
   startY: number,
   bottomSafe: number,
-  addHeader: () => Promise<void>
+  addHeader: () => Promise<number>
 ): Promise<number> {
   const stamp = stamps.find(s => s.id === stampId);
   if (!stamp) return startY;
@@ -526,6 +542,13 @@ async function renderStamp(
   const maxW = 50;
   const maxH = 28;
 
+  // Estimate total stamp block height
+  const estimatedH = maxH + 18 + 14; // stamp + sig + name lines
+  if (y + estimatedH > pageHeight - bottomSafe) {
+    pdf.addPage();
+    y = await addHeader(); // get correct y from returned value
+  }
+
   // Stamp image
   if (stamp.stamp_image) {
     try {
@@ -533,7 +556,6 @@ async function renderStamp(
       let sw = maxW;
       let sh = (si.height / si.width) * sw;
       if (sh > maxH) { sh = maxH; sw = (si.width / si.height) * sh; }
-      if (y + sh + 20 > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
       pdf.addImage(stamp.stamp_image, 'PNG', pageWidth - margin - sw, y, sw, sh);
       y += sh + 2;
     } catch {}
@@ -546,7 +568,6 @@ async function renderStamp(
       let sw = 42;
       let sh = (si.height / si.width) * sw;
       if (sh > 18) { sh = 18; sw = (si.width / si.height) * sh; }
-      if (y + sh + 14 > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
       pdf.addImage(stamp.signature_image, 'PNG', pageWidth - margin - sw, y, sw, sh);
       y += sh + 2;
     } catch {}
