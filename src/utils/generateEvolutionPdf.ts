@@ -177,8 +177,10 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
     pdf.setTextColor(0, 0, 0); pdf.setFont('helvetica', 'normal');
     y += LINE_HEIGHT + 1;
 
-    // Evolution text
-    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
+    // Evolution text — reserve extra space at bottom if this evolution has a stamp
+    const hasStamp = !!(evo.stampId && stamps);
+    const textBottomSafe = hasStamp ? bottomSafe + 70 : bottomSafe;
+    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, textBottomSafe, addHeader);
 
     // Mandatory gap before signature/stamp area
     y += 10;
@@ -186,10 +188,6 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
     // Signature
     if (evo.signature) {
       try {
-        if (y + 30 > pageHeight - bottomSafe) {
-          pdf.addPage();
-          y = await addHeader();
-        }
         pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, y, 45, 20);
         pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
         pdf.text('Assinatura digital', pageWidth - margin - 27.5, y + 23, { align: 'center' });
@@ -198,9 +196,9 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
       } catch {}
     }
 
-    // Per-evolution stamp
+    // Per-evolution stamp — always on same page as text (space was reserved above)
     if (evo.stampId && stamps) {
-      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, bottomSafe, addHeader);
+      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, addHeader);
     }
 
     if (pi < items.length - 1) {
@@ -334,8 +332,10 @@ export async function generateMultipleEvolutionsPdf({
     pdf.setTextColor(0, 0, 0);
     y += 15;
 
-    // Evolution text
-    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
+    // Evolution text — reserve extra space at bottom if this evolution has a stamp
+    const hasStamp = !!(evo.stampId && stamps);
+    const textBottomSafe = hasStamp ? bottomSafe + 70 : bottomSafe;
+    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, textBottomSafe, addHeader);
 
     // Mandatory gap before signature/stamp area
     y += 12;
@@ -343,10 +343,6 @@ export async function generateMultipleEvolutionsPdf({
     // Signature (digital pad)
     if (evo.signature) {
       try {
-        if (y + 30 > pageHeight - bottomSafe) {
-          pdf.addPage();
-          y = await addHeader();
-        }
         pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, y, 45, 20);
         pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
         pdf.text('Assinatura digital', pageWidth - margin - 27.5, y + 23, { align: 'center' });
@@ -355,9 +351,9 @@ export async function generateMultipleEvolutionsPdf({
       } catch {}
     }
 
-    // Per-evolution stamp
+    // Per-evolution stamp — always on same page as text (space was reserved above)
     if (evo.stampId && stamps) {
-      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, bottomSafe, addHeader);
+      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, addHeader);
     }
 
     // Separator
@@ -546,7 +542,6 @@ async function renderStamp(
   pageHeight: number,
   margin: number,
   startY: number,
-  bottomSafe: number,
   addHeader: () => Promise<number>
 ): Promise<number> {
   const stamp = stamps.find(s => s.id === stampId);
@@ -556,12 +551,8 @@ async function renderStamp(
   const maxW = 50;
   const maxH = 28;
 
-  // Estimate total stamp block height
-  const estimatedH = maxH + 18 + 14; // stamp + sig + name lines
-  if (y + estimatedH > pageHeight - bottomSafe) {
-    pdf.addPage();
-    y = await addHeader(); // get correct y from returned value
-  }
+  // Space was already reserved by the caller (textBottomSafe includes stamp height).
+  // No page break here — stamp must stay on same page as its evolution.
 
   // Stamp image
   if (stamp.stamp_image) {
