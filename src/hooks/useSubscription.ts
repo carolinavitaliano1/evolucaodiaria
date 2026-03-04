@@ -17,7 +17,7 @@ function getCachedSubscription(userId: string): Omit<SubscriptionState, 'loading
     if (!raw) return null;
     const cached = JSON.parse(raw);
     // Only use cache if it belongs to the same user and is less than 5 minutes old
-    if (cached.userId === userId && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+    if (cached.userId === userId && Date.now() - cached.timestamp < 15 * 60 * 1000) {
       return { subscribed: cached.subscribed, productId: cached.productId, subscriptionEnd: cached.subscriptionEnd };
     }
   } catch {}
@@ -42,6 +42,7 @@ export function useSubscription() {
       const cached = getCachedSubscription(user.id);
       if (cached) return { ...cached, loading: false };
     }
+    // Always start as loading=true to avoid premature redirects
     return { subscribed: false, productId: null, subscriptionEnd: null, loading: true };
   });
 
@@ -74,14 +75,20 @@ export function useSubscription() {
     if (user) {
       const cached = getCachedSubscription(user.id);
       if (cached) {
+        // Cache hit: show immediately, no redirect
         setState({ ...cached, loading: false });
+        // Still refresh in background but don't block
+        checkSubscription();
       } else {
+        // No cache: keep loading=true until API responds
         setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: true });
+        checkSubscription();
       }
+    } else {
+      setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: true });
     }
-    checkSubscription();
 
-    const interval = setInterval(checkSubscription, 60000);
+    const interval = setInterval(() => checkSubscription(), 60000);
     return () => clearInterval(interval);
   }, [checkSubscription]);
 
