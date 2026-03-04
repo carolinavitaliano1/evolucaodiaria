@@ -15,6 +15,8 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Truncate input to save tokens — evolutions rarely need more than 2000 chars of context
+    const trimmedText = text.slice(0, 2000);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -44,7 +46,7 @@ REGRAS ABSOLUTAS:
           },
           {
             role: "user",
-            content: `Melhore o seguinte texto de evolução clínica:\n\n${text}`
+            content: `Melhore o seguinte texto de evolução clínica:\n\n${trimmedText}`
           }
         ],
       }),

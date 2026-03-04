@@ -72,8 +72,10 @@ serve(async (req) => {
 
       const { data: evolutions } = await query;
 
-      const totalSessions = evolutions?.length || 0;
-      const present = evolutions?.filter((e: any) => e.attendance_status === "presente").length || 0;
+      // Limit to 60 most recent evolutions to control token usage
+      const limitedEvolutions = evolutions?.slice(-60) || [];
+      const totalSessions = limitedEvolutions.length;
+      const present = limitedEvolutions.filter((e: any) => e.attendance_status === "presente").length;
       const absent = totalSessions - present;
 
       contextData = `
@@ -84,7 +86,7 @@ DADOS DO PACIENTE:
 - Área clínica: ${patient?.clinical_area || "N/A"}
 - Diagnóstico: ${patient?.diagnosis || "N/A"}
 - Profissionais: ${patient?.professionals || "N/A"}
-- Observações: ${patient?.observations || "N/A"}
+- Observações: ${patient?.observations?.slice(0, 300) || "N/A"}
 
 RESUMO DE FREQUÊNCIA (${period === "month" ? "Último mês" : period === "quarter" ? "Último trimestre" : period === "semester" ? "Último semestre" : "Todo o período"}):
 - Total de sessões: ${totalSessions}
@@ -93,7 +95,7 @@ RESUMO DE FREQUÊNCIA (${period === "month" ? "Último mês" : period === "quart
 - Taxa de presença: ${totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0}%
 
 EVOLUÇÕES REGISTRADAS:
-${evolutions?.map((e: any) => `- ${e.date}: [${e.attendance_status}] ${e.text}`).join("\n") || "Nenhuma evolução registrada."}
+${limitedEvolutions.map((e: any) => `- ${e.date}: [${e.attendance_status}] ${e.text?.slice(0, 400) || ""}`).join("\n") || "Nenhuma evolução registrada."}
 `;
     } else {
       const [{ data: clinics }, { data: patients }, { data: evolutions }] = await Promise.all([
@@ -112,9 +114,9 @@ PACIENTES (${patients?.length || 0}):
 ${patients?.map((p: any) => `- ${p.name} | Clínica: ${clinics?.find((c: any) => c.id === p.clinic_id)?.name || "N/A"} | Área: ${p.clinical_area || "N/A"} | Diagnóstico: ${p.diagnosis || "N/A"}`).join("\n") || "Nenhum"}
 
 ÚLTIMAS EVOLUÇÕES (${evolutions?.length || 0}):
-${evolutions?.slice(0, 50).map((e: any) => {
+${evolutions?.slice(0, 30).map((e: any) => {
   const pat = patients?.find((p: any) => p.id === e.patient_id);
-  return `- ${e.date} | ${pat?.name || "?"} | [${e.attendance_status}] ${e.text.slice(0, 100)}`;
+  return `- ${e.date} | ${pat?.name || "?"} | [${e.attendance_status}] ${e.text.slice(0, 150)}`;
 }).join("\n") || "Nenhuma"}
 `;
     }
