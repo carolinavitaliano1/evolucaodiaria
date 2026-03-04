@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClinicOrg, OrgMemberProfile } from '@/hooks/useClinicOrg';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
@@ -31,11 +33,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const { patients, evolutions } = useApp();
   const { user } = useAuth();
+  const { isOrg, members } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [stamps, setStamps] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [exportingPatientId, setExportingPatientId] = useState<string | null>(null);
+  const [filterUserId, setFilterUserId] = useState<string>('all');
 
   useEffect(() => {
     if (!user) return;
@@ -49,10 +53,13 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const clinicPatients = useMemo(() => patients.filter(p => p.clinicId === clinicId && !p.isArchived), [patients, clinicId]);
 
   const dayEvolutions = useMemo(() => {
-    return evolutions.filter(e => e.clinicId === clinicId && e.date === dateStr);
-  }, [evolutions, clinicId, dateStr]);
+    return evolutions.filter(e =>
+      e.clinicId === clinicId &&
+      e.date === dateStr &&
+      (filterUserId === 'all' || (e as any).user_id === filterUserId || (e as any).userId === filterUserId)
+    );
+  }, [evolutions, clinicId, dateStr, filterUserId]);
 
-  // Group evolutions by patient
   const evolutionsByPatient = useMemo(() => {
     return dayEvolutions.map(evo => {
       const patient = clinicPatients.find(p => p.id === evo.patientId);
@@ -60,26 +67,21 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
     }).filter(({ patient }) => !!patient);
   }, [dayEvolutions, clinicPatients]);
 
+  const memberLabel = (userId: string) => {
+    const m = members.find(m => m.userId === userId);
+    return m?.name || m?.email || 'Profissional';
+  };
+
   const handleExportAll = async () => {
-    if (evolutionsByPatient.length === 0) {
-      toast.error('Nenhuma evolução neste dia para exportar');
-      return;
-    }
+    if (evolutionsByPatient.length === 0) { toast.error('Nenhuma evolução neste dia para exportar'); return; }
     setIsExporting(true);
     try {
-      // Export each patient's evolution as separate PDF
       for (const { evo, patient } of evolutionsByPatient) {
         if (!patient) continue;
-        await generateMultipleEvolutionsPdf({
-          evolutions: [evo],
-          patient,
-          clinic,
-          stamps,
-        });
+        await generateMultipleEvolutionsPdf({ evolutions: [evo], patient, clinic, stamps });
       }
       toast.success(`${evolutionsByPatient.length} PDF(s) exportados com sucesso!`);
     } catch (e) {
-      console.error(e);
       toast.error('Erro ao exportar PDFs');
     } finally {
       setIsExporting(false);
@@ -89,12 +91,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const handleExportSingle = async (evo: Evolution, patient: Patient) => {
     setExportingPatientId(patient.id);
     try {
-      await generateMultipleEvolutionsPdf({
-        evolutions: [evo],
-        patient,
-        clinic,
-        stamps,
-      });
+      await generateMultipleEvolutionsPdf({ evolutions: [evo], patient, clinic, stamps });
       toast.success('PDF exportado!');
     } catch (e) {
       toast.error('Erro ao exportar PDF');
@@ -104,10 +101,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   };
 
   const handleExportAllInOne = async () => {
-    if (evolutionsByPatient.length === 0) {
-      toast.error('Nenhuma evolução neste dia para exportar');
-      return;
-    }
+    if (evolutionsByPatient.length === 0) { toast.error('Nenhuma evolução neste dia para exportar'); return; }
     setIsExporting(true);
     try {
       await generateAllPatientsPdf({
@@ -118,7 +112,6 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
       });
       toast.success('PDF exportado com sucesso!');
     } catch (e) {
-      console.error(e);
       toast.error('Erro ao exportar');
     } finally {
       setIsExporting(false);
@@ -142,11 +135,28 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
             </p>
           </div>
 
-          {/* Date Picker */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Professional filter */}
+            {isOrg && members.length > 1 && (
+              <Select value={filterUserId} onValueChange={setFilterUserId}>
+                <SelectTrigger className="h-8 text-sm w-auto min-w-[150px]">
+                  <SelectValue placeholder="Profissional" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {members.map(m => (
+                    <SelectItem key={m.userId} value={m.userId}>
+                      {m.name || m.email}{m.userId === user?.id ? ' (você)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Date Picker */}
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn('gap-2 justify-start', !selectedDate && 'text-muted-foreground')}>
+                <Button variant="outline" className={cn('gap-2 justify-start h-8 text-sm', !selectedDate && 'text-muted-foreground')}>
                   <CalendarIcon className="w-4 h-4" />
                   {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </Button>
@@ -162,12 +172,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
             </Popover>
 
             {evolutionsByPatient.length > 0 && (
-              <Button
-                onClick={handleExportAllInOne}
-                disabled={isExporting}
-                className="gap-2 gradient-primary"
-                size="sm"
-              >
+              <Button onClick={handleExportAllInOne} disabled={isExporting} className="gap-2 gradient-primary" size="sm">
                 <Download className="w-4 h-4" />
                 {isExporting ? 'Exportando...' : 'Exportar Todos'}
               </Button>
@@ -191,6 +196,8 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
             if (!patient) return null;
             const statusCfg = STATUS_CONFIG[evo.attendanceStatus] || STATUS_CONFIG.presente;
             const isExportingThis = exportingPatientId === patient.id;
+            const evoAuthorId = (evo as any).user_id;
+            const showAuthor = isOrg && evoAuthorId && filterUserId === 'all';
 
             return (
               <div key={evo.id} className="bg-card rounded-2xl p-4 lg:p-5 border border-border">
@@ -206,6 +213,12 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
                           {typeof statusCfg.icon === 'string' ? statusCfg.icon : statusCfg.icon}
                           {statusCfg.label}
                         </Badge>
+                        {showAuthor && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <User className="w-2.5 h-2.5" />
+                            {memberLabel(evoAuthorId)}
+                          </span>
+                        )}
                       </div>
                       {patient.clinicalArea && (
                         <p className="text-xs text-muted-foreground mt-0.5">{patient.clinicalArea}</p>

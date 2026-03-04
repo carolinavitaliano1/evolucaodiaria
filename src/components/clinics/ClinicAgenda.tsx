@@ -1,7 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { format, addDays, subDays, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -13,8 +16,11 @@ interface ClinicAgendaProps {
 
 export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const { patients, appointments, evolutions, setCurrentPatient } = useApp();
+  const { user } = useAuth();
+  const { isOrg, members } = useClinicOrg(clinicId);
   const navigate = useNavigate();
   const [viewDate, setViewDate] = useState(new Date());
+  const [filterUserId, setFilterUserId] = useState<string>('all');
 
   const clinicPatients = patients.filter(p => p.clinicId === clinicId && !p.isArchived);
 
@@ -22,16 +28,20 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const weekday = dayNames[viewDate.getDay()];
   const dateStr = format(viewDate, 'yyyy-MM-dd');
 
-  // Patients scheduled by weekday
   const scheduledPatients = useMemo(() => {
     return clinicPatients
       .filter(p => p.weekdays?.includes(weekday))
       .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
   }, [clinicPatients, weekday]);
 
-  // Get evolution for a patient on view date
+  // Get evolution for a patient on view date, optionally filtering by author
   const getEvolution = (patientId: string) => {
-    return evolutions.find(e => e.patientId === patientId && e.clinicId === clinicId && e.date === dateStr);
+    return evolutions.find(e =>
+      e.patientId === patientId &&
+      e.clinicId === clinicId &&
+      e.date === dateStr &&
+      (filterUserId === 'all' || (e as any).userId === filterUserId || (e as any).user_id === filterUserId)
+    );
   };
 
   const handleOpenPatient = (patientId: string) => {
@@ -50,6 +60,11 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
       case 'falta_remunerada': return { label: '⚠️ Falta Rem.', cls: 'text-warning' };
       default: return { label: status, cls: 'text-muted-foreground' };
     }
+  };
+
+  const memberLabel = (userId: string) => {
+    const m = members.find(m => m.userId === userId);
+    return m?.name || m?.email || userId;
   };
 
   return (
@@ -75,6 +90,27 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
         </Button>
       </div>
 
+      {/* Professional filter (only in org mode) */}
+      {isOrg && members.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground shrink-0">Profissional:</span>
+          <Select value={filterUserId} onValueChange={setFilterUserId}>
+            <SelectTrigger className="h-8 text-sm w-auto min-w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.userId} value={m.userId}>
+                  {m.name || m.email}
+                  {m.userId === user?.id ? ' (você)' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Schedule */}
       <div className="bg-card rounded-2xl p-6 border border-border">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
@@ -95,6 +131,10 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
               const timeDisplay = timeRange
                 ? `${timeRange.start} - ${timeRange.end}`
                 : patient.scheduleTime || '--:--';
+
+              // Author of evolution (in org mode)
+              const evoAuthorId = (evo as any)?.user_id;
+              const showAuthor = isOrg && evoAuthorId && filterUserId === 'all';
 
               return (
                 <div
@@ -126,6 +166,12 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                         {timeDisplay}
                         {patient.clinicalArea && ` • ${patient.clinicalArea}`}
                       </p>
+                      {showAuthor && (
+                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <User className="w-2.5 h-2.5" />
+                          {memberLabel(evoAuthorId)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div>
