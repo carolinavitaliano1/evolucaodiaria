@@ -3,19 +3,31 @@ import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { toLocalDateString } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
 
 export function StatsCards() {
   const { clinics, patients, appointments, evolutions } = useApp();
+  const { user } = useAuth();
 
   const today = toLocalDateString(new Date());
   const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
-  // Count patients scheduled today by weekday (recurring) + one-off appointments
   const patientsScheduledToday = patients.filter(p => !p.isArchived && p.weekdays?.includes(todayWeekday));
   const oneOffAppointments = appointments.filter(a => a.date === today);
-  // Merge unique patient IDs
   const oneOffPatientIds = new Set(oneOffAppointments.map(a => a.patientId));
   const weekdayPatientIds = new Set(patientsScheduledToday.map(p => p.id));
-  const totalTodayCount = new Set([...oneOffPatientIds, ...weekdayPatientIds]).size;
+  const clinicTodayCount = new Set([...oneOffPatientIds, ...weekdayPatientIds]).size;
+
+  const [privateToday, setPrivateToday] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('private_appointments').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id).eq('date', today)
+      .then(({ count }) => setPrivateToday(count ?? 0));
+  }, [user, today]);
+
+  const totalTodayCount = clinicTodayCount + privateToday;
   
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
