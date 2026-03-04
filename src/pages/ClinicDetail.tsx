@@ -31,6 +31,15 @@ import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
 import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
+import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
+
+const MOOD_OPTIONS = [
+  { value: 'otima', emoji: '😄', label: 'Ótima' },
+  { value: 'boa', emoji: '😊', label: 'Boa' },
+  { value: 'neutra', emoji: '😐', label: 'Neutra' },
+  { value: 'ruim', emoji: '😟', label: 'Ruim' },
+  { value: 'muito_ruim', emoji: '😢', label: 'Muito ruim' },
+] as const;
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
@@ -257,11 +266,16 @@ export default function ClinicDetail() {
   const [quickEvolutionText, setQuickEvolutionText] = useState('');
   const [quickEvolutionStatus, setQuickEvolutionStatus] = useState<import('@/types').Evolution['attendanceStatus']>('presente');
   const [quickEvolutionStampId, setQuickEvolutionStampId] = useState<string>('none');
+  const [quickEvolutionMood, setQuickEvolutionMood] = useState<string>('');
+  const [quickEvolutionDate, setQuickEvolutionDate] = useState<Date>(new Date());
+  const [quickEvolutionDateOpen, setQuickEvolutionDateOpen] = useState(false);
+  const [quickEvolutionFiles, setQuickEvolutionFiles] = useState<UploadedFile[]>([]);
   const [isImprovingQuickText, setIsImprovingQuickText] = useState(false);
   const [clinicTemplates, setClinicTemplates] = useState<import('@/types').EvolutionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
   const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
   const [editingEvolution, setEditingEvolution] = useState<typeof evolutions[0] | null>(null);
+
 
   if (!clinic) {
     return (
@@ -350,7 +364,7 @@ export default function ClinicDetail() {
   const handleQuickEvolutionSubmit = async () => {
     if (!quickEvolutionPatient) return;
     
-    const today = toLocalDateString(new Date());
+    const dateStr = format(quickEvolutionDate, 'yyyy-MM-dd');
 
     // Build evolution text including template data if present
     let fullText = quickEvolutionText;
@@ -375,42 +389,60 @@ export default function ClinicDetail() {
     addEvolution({
       patientId: quickEvolutionPatient,
       clinicId: clinic.id,
-      date: today,
+      date: dateStr,
       text: fullText,
       attendanceStatus: quickEvolutionStatus,
       stampId: quickEvolutionStampId !== 'none' ? quickEvolutionStampId : undefined,
+      mood: quickEvolutionMood as 'otima' | 'boa' | 'neutra' | 'ruim' | 'muito_ruim' | undefined || undefined,
     });
 
-    // Save template_data to evolution if template was used
-    if (selectedTemplate) {
-      // Update the just-created evolution with template data
-      const { data: latestEvolution } = await supabase
-        .from('evolutions')
-        .select('id')
-        .eq('patient_id', quickEvolutionPatient)
-        .eq('clinic_id', clinic.id)
-        .eq('date', today)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+    // Save template_data, mood and attachments to evolution
+    const { data: latestEvolution } = await supabase
+      .from('evolutions')
+      .select('id')
+      .eq('patient_id', quickEvolutionPatient)
+      .eq('clinic_id', clinic.id)
+      .eq('date', dateStr)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-      if (latestEvolution) {
-        await supabase
-          .from('evolutions')
-          .update({ template_id: selectedTemplate.id, template_data: templateFormValues as any })
-          .eq('id', latestEvolution.id);
+    if (latestEvolution) {
+      const updates: Record<string, any> = {};
+      if (selectedTemplate) {
+        updates.template_id = selectedTemplate.id;
+        updates.template_data = templateFormValues;
+      }
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('evolutions').update(updates).eq('id', latestEvolution.id);
+      }
+      // Save attachments
+      if (quickEvolutionFiles.length > 0 && user) {
+        const attachmentInserts = quickEvolutionFiles.map(f => ({
+          parent_id: latestEvolution.id,
+          parent_type: 'evolution',
+          name: f.name,
+          file_path: f.filePath,
+          file_type: f.fileType,
+          user_id: user.id,
+        }));
+        await supabase.from('attachments').insert(attachmentInserts);
       }
     }
     
-    // Limpar e fechar o modal
+    // Reset state
     setQuickEvolutionPatient(null);
     setQuickEvolutionText('');
     setQuickEvolutionStatus('presente');
     setQuickEvolutionStampId('none');
+    setQuickEvolutionMood('');
+    setQuickEvolutionDate(new Date());
+    setQuickEvolutionFiles([]);
     setSelectedTemplateId('none');
     setTemplateFormValues({});
     toast.success('Evolução registrada com sucesso!');
   };
+
 
   const handleBatchEvolution = () => {
     if (!clinic) return;
@@ -1514,7 +1546,7 @@ export default function ClinicDetail() {
       )}
 
       {/* Quick Evolution Dialog */}
-      <Dialog open={!!quickEvolutionPatient} onOpenChange={(open) => { if (!open) { setQuickEvolutionPatient(null); setSelectedTemplateId('none'); setTemplateFormValues({}); } }}>
+      <Dialog open={!!quickEvolutionPatient} onOpenChange={(open) => { if (!open) { setQuickEvolutionPatient(null); setSelectedTemplateId('none'); setTemplateFormValues({}); setQuickEvolutionMood(''); setQuickEvolutionDate(new Date()); setQuickEvolutionFiles([]); } }}>
         <DialogContent className={cn("max-h-[90vh] overflow-y-auto", selectedTemplateId !== 'none' ? "max-w-2xl" : "max-w-lg")}>
           <DialogHeader>
             <DialogTitle>Evolução Rápida</DialogTitle>
@@ -1680,6 +1712,65 @@ export default function ClinicDetail() {
                 </Select>
               </div>
             )}
+
+            {/* Date Picker */}
+            <div>
+              <Label className="flex items-center gap-2 mb-2">
+                <CalendarIcon className="w-4 h-4" /> Data da Evolução
+              </Label>
+              <Popover open={quickEvolutionDateOpen} onOpenChange={setQuickEvolutionDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal gap-2">
+                    <CalendarIcon className="w-4 h-4" />
+                    {format(quickEvolutionDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={quickEvolutionDate}
+                    onSelect={(d) => { if (d) { setQuickEvolutionDate(d); setQuickEvolutionDateOpen(false); } }}
+                    locale={ptBR}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Mood */}
+            <div>
+              <Label className="mb-2 block">Humor do Paciente</Label>
+              <div className="flex gap-2 flex-wrap">
+                {MOOD_OPTIONS.map(m => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setQuickEvolutionMood(quickEvolutionMood === m.value ? '' : m.value)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-2 rounded-xl border transition-all text-xs",
+                      quickEvolutionMood === m.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-secondary/50 text-muted-foreground hover:border-primary/50"
+                    )}
+                  >
+                    <span className="text-xl">{m.emoji}</span>
+                    <span>{m.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Attachments */}
+            <div>
+              <Label className="mb-2 block">Anexos</Label>
+              <FileUpload
+                onUpload={setQuickEvolutionFiles}
+                existingFiles={quickEvolutionFiles}
+                onRemove={(id) => setQuickEvolutionFiles(prev => prev.filter(f => f.id !== id))}
+                parentType="evolution"
+                maxFiles={5}
+              />
+            </div>
 
             <div className="flex gap-2 pt-4">
               <Button
