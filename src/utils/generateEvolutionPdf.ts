@@ -505,9 +505,9 @@ async function renderEvolutionText(
         pdf.text(label, textX, y);
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
 
-        // Wrap entire value at full textWidth (starts on NEXT line so it's fully justified)
+        // Wrap entire value at full textWidth (starts immediately after label, no extra gap)
         const valueLines = pdf.splitTextToSize(value, textWidth) as string[];
-        y += LINE_HEIGHT;
+        y += LINE_HEIGHT * 0.25;
 
         for (let rl = 0; rl < valueLines.length; rl++) {
           if (y + LINE_HEIGHT > pageHeight - bottomSafe) { y = await breakPage(); }
