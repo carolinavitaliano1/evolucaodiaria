@@ -24,6 +24,7 @@ import Pricing from "./pages/Pricing";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import AIReports from "./pages/AIReports";
 import InstallApp from "./pages/InstallApp";
+import Mural from "./pages/Mural";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/install" element={<InstallApp />} />
+                <Route path="/mural" element={<Mural />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
