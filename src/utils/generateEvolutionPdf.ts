@@ -177,13 +177,19 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
     pdf.setTextColor(0, 0, 0); pdf.setFont('helvetica', 'normal');
     y += LINE_HEIGHT + 1;
 
-    // Evolution text — reserve extra space at bottom if this evolution has a stamp
-    const hasStamp = !!(evo.stampId && stamps);
-    const textBottomSafe = hasStamp ? bottomSafe + 70 : bottomSafe;
-    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, textBottomSafe, addHeader);
+    // Evolution text — flow normally, no pre-reservation
+    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
 
     // Mandatory gap before signature/stamp area
     y += 10;
+
+    // Check if stamp block fits on current page; if not, break AFTER text
+    const hasStamp = !!(evo.stampId && stamps);
+    const stampBlockH = 55; // stamp img + sig + name lines
+    if (hasStamp && y + stampBlockH > pageHeight - bottomSafe) {
+      pdf.addPage();
+      y = await addHeader();
+    }
 
     // Signature
     if (evo.signature) {
@@ -196,7 +202,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
       } catch {}
     }
 
-    // Per-evolution stamp — always on same page as text (space was reserved above)
+    // Per-evolution stamp
     if (evo.stampId && stamps) {
       y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, addHeader);
     }
@@ -332,13 +338,19 @@ export async function generateMultipleEvolutionsPdf({
     pdf.setTextColor(0, 0, 0);
     y += 15;
 
-    // Evolution text — reserve extra space at bottom if this evolution has a stamp
-    const hasStamp = !!(evo.stampId && stamps);
-    const textBottomSafe = hasStamp ? bottomSafe + 70 : bottomSafe;
-    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, textBottomSafe, addHeader);
+    // Evolution text — flow naturally
+    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
 
     // Mandatory gap before signature/stamp area
     y += 12;
+
+    // Check if stamp block fits; only break page if it truly doesn't fit
+    const hasStamp = !!(evo.stampId && stamps);
+    const stampBlockH = 55;
+    if (hasStamp && y + stampBlockH > pageHeight - bottomSafe) {
+      pdf.addPage();
+      y = await addHeader();
+    }
 
     // Signature (digital pad)
     if (evo.signature) {
@@ -351,7 +363,7 @@ export async function generateMultipleEvolutionsPdf({
       } catch {}
     }
 
-    // Per-evolution stamp — always on same page as text (space was reserved above)
+    // Per-evolution stamp
     if (evo.stampId && stamps) {
       y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, addHeader);
     }
