@@ -8,7 +8,14 @@ export function StatsCards() {
   const { clinics, patients, appointments, evolutions } = useApp();
 
   const today = toLocalDateString(new Date());
-  const todayAllAppointments = appointments.filter(a => a.date === today);
+  const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
+  // Count patients scheduled today by weekday (recurring) + one-off appointments
+  const patientsScheduledToday = patients.filter(p => !p.isArchived && p.weekdays?.includes(todayWeekday));
+  const oneOffAppointments = appointments.filter(a => a.date === today);
+  // Merge unique patient IDs
+  const oneOffPatientIds = new Set(oneOffAppointments.map(a => a.patientId));
+  const weekdayPatientIds = new Set(patientsScheduledToday.map(p => p.id));
+  const totalTodayCount = new Set([...oneOffPatientIds, ...weekdayPatientIds]).size;
   
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -48,7 +55,7 @@ export function StatsCards() {
     },
     {
       label: 'Hoje',
-      value: todayAllAppointments.length,
+      value: totalTodayCount,
       icon: Calendar,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
