@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users } from 'lucide-react';
+import { UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users, Copy, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 
 interface OrganizationMember {
@@ -62,6 +63,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const [inviting, setInviting] = useState(false);
   const [removeMemberId, setRemoveMemberId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const isOwner = organization?.owner_id === user?.id;
   const myMember = members.find(m => m.user_id === user?.id);
@@ -200,6 +202,28 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     setRemoveMemberId(null);
   }
 
+  function copyInviteLink(memberId: string) {
+    const url = `${window.location.origin}/auth?invite=${memberId}&org=${organization?.id}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Link de convite copiado!');
+  }
+
+  async function handleResendInvite(member: OrganizationMember) {
+    if (!organization) return;
+    setResendingId(member.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-member', {
+        body: { organization_id: organization.id, email: member.email, role: member.role },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      toast.success(`Convite reenviado para ${member.email}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao reenviar convite');
+    } finally {
+      setResendingId(null);
+    }
+  }
+
   async function handleChangeRole(memberId: string, newRole: 'admin' | 'professional') {
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId);
     if (error) toast.error('Erro ao alterar papel');
@@ -289,70 +313,115 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
         )}
       </div>
 
-      <div className="space-y-2">
-        {members.map(member => (
-          <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border bg-card gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                {ROLE_ICONS[member.role]}
+      <TooltipProvider>
+        <div className="space-y-2">
+          {members.map(member => (
+            <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border bg-card gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${member.status === 'active' ? 'bg-primary/10' : 'bg-muted'}`}>
+                  {member.status === 'active' ? ROLE_ICONS[member.role] : <Mail className="w-3 h-3 text-muted-foreground" />}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-medium text-sm text-foreground truncate">
+                      {member.profile?.name || member.email}
+                    </p>
+                    {member.status === 'active' && member.joined_at && (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    )}
+                  </div>
+                  {member.profile?.name && (
+                    <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                  )}
+                  {member.status === 'pending' && (
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">Aguardando aceite</p>
+                  )}
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="font-medium text-sm text-foreground truncate">
-                  {member.profile?.name || member.email}
-                </p>
-                {member.profile?.name && (
-                  <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge
+                  variant={member.status === 'active' ? 'default' : 'secondary'}
+                  className="text-xs hidden sm:flex"
+                >
+                  {STATUS_LABELS[member.status]}
+                </Badge>
+
+                {canManage && member.status === 'pending' && (
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => copyInviteLink(member.id)}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Copiar link de convite</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleResendInvite(member)}
+                          disabled={resendingId === member.id}
+                        >
+                          {resendingId === member.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <RefreshCw className="w-3.5 h-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Reenviar convite</TooltipContent>
+                    </Tooltip>
+                  </>
+                )}
+
+                {canManage && member.role !== 'owner' && member.user_id !== user?.id && member.status === 'active' && (
+                  <Select
+                    value={member.role}
+                    onValueChange={(v: any) => handleChangeRole(member.id, v)}
+                  >
+                    <SelectTrigger className="h-7 text-xs w-auto gap-1 border-dashed">
+                      <span className="flex items-center gap-1">
+                        {ROLE_ICONS[member.role]}
+                        {ROLE_LABELS[member.role]}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="professional">Profissional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {member.role === 'owner' && (
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Crown className="w-2.5 h-2.5" />
+                    Dono
+                  </Badge>
+                )}
+
+                {canManage && member.role !== 'owner' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                    onClick={() => setRemoveMemberId(member.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
                 )}
               </div>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge
-                variant={member.status === 'active' ? 'default' : 'secondary'}
-                className="text-xs hidden sm:flex"
-              >
-                {STATUS_LABELS[member.status]}
-              </Badge>
-
-              {canManage && member.role !== 'owner' && member.user_id !== user?.id && (
-                <Select
-                  value={member.role}
-                  onValueChange={(v: any) => handleChangeRole(member.id, v)}
-                >
-                  <SelectTrigger className="h-7 text-xs w-auto gap-1 border-dashed">
-                    <span className="flex items-center gap-1">
-                      {ROLE_ICONS[member.role]}
-                      {ROLE_LABELS[member.role]}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="professional">Profissional</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-
-              {member.role === 'owner' && (
-                <Badge variant="outline" className="text-xs gap-1">
-                  <Crown className="w-2.5 h-2.5" />
-                  Dono
-                </Badge>
-              )}
-
-              {canManage && member.role !== 'owner' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                  onClick={() => setRemoveMemberId(member.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </TooltipProvider>
 
       <AlertDialog open={!!removeMemberId} onOpenChange={open => !open && setRemoveMemberId(null)}>
         <AlertDialogContent>
