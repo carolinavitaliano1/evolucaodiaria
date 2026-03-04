@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              from: 'CliniPro <noreply@clinipro.lovable.app>',
+              from: 'CliniPro <onboarding@resend.dev>',
               to: [email],
               subject: `Convite para equipe ${org.name} no CliniPro`,
               html: emailBody,
