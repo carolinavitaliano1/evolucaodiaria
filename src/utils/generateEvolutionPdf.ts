@@ -185,7 +185,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
 
     // Check if stamp block fits on current page; if not, break AFTER text
     const hasStamp = !!(evo.stampId && stamps);
-    const stampBlockH = 55; // stamp img + sig + name lines
+    const stampBlockH = 70; // stamp img + sig + name lines
     if (hasStamp && y + stampBlockH > pageHeight - bottomSafe) {
       pdf.addPage();
       y = await addHeader();
@@ -346,7 +346,7 @@ export async function generateMultipleEvolutionsPdf({
 
     // Check if stamp block fits; only break page if it truly doesn't fit
     const hasStamp = !!(evo.stampId && stamps);
-    const stampBlockH = 55;
+    const stampBlockH = 70;
     if (hasStamp && y + stampBlockH > pageHeight - bottomSafe) {
       pdf.addPage();
       y = await addHeader();
@@ -448,8 +448,16 @@ async function renderEvolutionText(
     }
 
     // Skip template model title line entirely (don't show template name)
+    // Handles both "[MODELO] Name" prefix and legacy saves where name was stored as plain first line
     if (cleanLine.startsWith('[MODELO] ')) {
       continue;
+    }
+    // Skip a standalone short line with no ": " that appears before any field content
+    // This catches legacy template names stored without the [MODELO] prefix
+    if (!cleanLine.includes(': ') && cleanLine.trim().length < 60 && !cleanLine.includes(' ') === false && /^[A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇÑ][a-záàâãéêíóôõúüçñA-Z0-9 ]+$/.test(cleanLine.trim())) {
+      // Only skip if it's the very first non-empty line (template name position)
+      const firstNonEmpty = lines.findIndex(l => l.trim() !== '');
+      if (li === firstNonEmpty) continue;
     }
 
     // Horizontal rule
