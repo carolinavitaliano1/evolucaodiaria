@@ -199,6 +199,7 @@ export type Database = {
           letterhead: string | null
           name: string
           notes: string | null
+          organization_id: string | null
           payment_amount: number | null
           payment_type: string | null
           pays_on_absence: boolean
@@ -224,6 +225,7 @@ export type Database = {
           letterhead?: string | null
           name: string
           notes?: string | null
+          organization_id?: string | null
           payment_amount?: number | null
           payment_type?: string | null
           pays_on_absence?: boolean
@@ -249,6 +251,7 @@ export type Database = {
           letterhead?: string | null
           name?: string
           notes?: string | null
+          organization_id?: string | null
           payment_amount?: number | null
           payment_type?: string | null
           pays_on_absence?: boolean
@@ -262,7 +265,15 @@ export type Database = {
           user_id?: string
           weekdays?: string[] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clinics_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       custom_service_types: {
         Row: {
@@ -508,6 +519,77 @@ export type Database = {
           updated_at?: string
           user_id?: string
           video_url?: string | null
+        }
+        Relationships: []
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          invited_by: string
+          joined_at: string | null
+          organization_id: string
+          role: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          invited_by: string
+          joined_at?: string | null
+          organization_id: string
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          invited_by?: string
+          joined_at?: string | null
+          organization_id?: string
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -871,7 +953,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_org_role: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: string
+      }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_owner: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

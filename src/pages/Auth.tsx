@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
@@ -35,6 +35,15 @@ export default function Auth() {
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [pendingInvite, setPendingInvite] = useState<{ memberId: string; orgId: string } | null>(null);
+
+  // Verificar se há convite pendente na URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get('invite');
+    const org = params.get('org');
+    if (invite && org) setPendingInvite({ memberId: invite, orgId: org });
+  }, []);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -58,6 +67,15 @@ export default function Auth() {
   }
 
   if (user) {
+    // Aceitar convite pendente automaticamente após login/cadastro
+    if (pendingInvite) {
+      supabase.functions.invoke('accept-invite', { body: { member_id: pendingInvite.memberId } })
+        .then(({ data, error }) => {
+          if (!error && data?.success) {
+            toast.success(`Você entrou para a equipe ${data.organization?.name}!`);
+          }
+        });
+    }
     return <Navigate to="/dashboard" replace />;
   }
 

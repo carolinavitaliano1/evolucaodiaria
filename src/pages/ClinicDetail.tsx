@@ -29,6 +29,7 @@ import { ClinicAgenda } from '@/components/clinics/ClinicAgenda';
 import { ClinicNotes } from '@/components/clinics/ClinicNotes';
 import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
 import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
+import { ClinicTeam } from '@/components/clinics/ClinicTeam';
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
@@ -691,6 +692,10 @@ export default function ClinicDetail() {
               <LayoutTemplate className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
               Modelos
             </TabsTrigger>
+            <TabsTrigger value="team" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
+              <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+              Equipe
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -712,6 +717,11 @@ export default function ClinicDetail() {
         {/* Templates Tab */}
         <TabsContent value="templates">
           <EvolutionTemplates clinicId={clinic.id} />
+        </TabsContent>
+
+        {/* Team Tab */}
+        <TabsContent value="team">
+          <ClinicTeam clinicId={clinic.id} clinicName={clinic.name} />
         </TabsContent>
 
         <TabsContent value="today" className="space-y-4">
