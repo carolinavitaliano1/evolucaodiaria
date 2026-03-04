@@ -45,10 +45,14 @@ export default function Dashboard() {
   const pendingTasks = tasks.filter(t => !t.completed);
 
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
+  const [todayPrivate, setTodayPrivate] = useState<number>(0);
   useEffect(() => {
     if (!user) return;
     supabase.from('events').select('*').eq('user_id', user.id).eq('date', todayStr)
       .then(({ data }) => { if (data) setTodayEvents(data); });
+    supabase.from('private_appointments').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id).eq('date', todayStr)
+      .then(({ count }) => { setTodayPrivate(count ?? 0); });
   }, [user, todayStr]);
 
   const planName = productId ? (PLAN_NAMES[productId] || 'Ativo') : null;
@@ -118,6 +122,12 @@ export default function Dashboard() {
                 <span className="text-muted-foreground text-sm">✅ Atendimentos</span>
                 <span className="text-foreground font-semibold">{todayPresentes.length}</span>
               </div>
+              {todayPrivate > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-sm">💼 Serviços Particulares</span>
+                  <span className="text-foreground font-semibold">{todayPrivate}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground text-sm">❌ Faltas</span>
                 <span className="text-foreground font-semibold">{todayFaltas.length}</span>
@@ -132,6 +142,12 @@ export default function Dashboard() {
                 <span className="text-muted-foreground text-sm">📋 Tarefas Pendentes</span>
                 <span className="text-foreground font-semibold">{pendingTasks.length}</span>
               </div>
+              {(todayPresentes.length + todayPrivate) > 0 && (
+                <div className="flex items-center justify-between pt-1 border-t border-border">
+                  <span className="text-muted-foreground text-sm font-medium">Total do Dia</span>
+                  <span className="text-foreground font-bold">{todayPresentes.length + todayPrivate}</span>
+                </div>
+              )}
             </div>
           </div>
 
