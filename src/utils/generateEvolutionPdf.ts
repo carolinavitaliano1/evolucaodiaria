@@ -136,7 +136,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
   for (let pi = 0; pi < items.length; pi++) {
     const { evolution: evo, patient } = items[pi];
 
-    if (y > pageHeight - 100) { pdf.addPage(); await addHeader(); }
+    if (y > pageHeight - 120) { pdf.addPage(); await addHeader(); resetBodyFont(pdf); }
 
     // Patient header bar
     pdf.setFillColor(240, 240, 255);
@@ -294,7 +294,7 @@ export async function generateMultipleEvolutionsPdf({
   for (let i = 0; i < evolutions.length; i++) {
     const evo = evolutions[i];
 
-    if (y > pageHeight - 90) { pdf.addPage(); await addHeader(); }
+    if (y > pageHeight - 120) { pdf.addPage(); await addHeader(); resetBodyFont(pdf); }
 
     // Date header bar
     pdf.setFillColor(250, 250, 250);
@@ -385,6 +385,13 @@ export async function generateMultipleEvolutionsPdf({
  * Renders evolution text lines with proper justification and line-height.
  * Returns updated yPosition.
  */
+// Helper: reset font to body style after any addHeader() call that changes font state
+function resetBodyFont(pdf: jsPDF) {
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(0, 0, 0);
+}
+
 async function renderEvolutionText(
   pdf: jsPDF,
   rawText: string,
@@ -397,6 +404,13 @@ async function renderEvolutionText(
 ): Promise<number> {
   let y = startY;
   const lines = (rawText || 'Sem descrição.').split('\n');
+
+  // Helper: break page and ALWAYS reset font back to body style
+  const breakPage = async () => {
+    pdf.addPage();
+    await addHeader();
+    resetBodyFont(pdf); // critical: addHeader sets font to 16pt bold — must reset
+  };
 
   for (let li = 0; li < lines.length; li++) {
     const raw = lines[li];
@@ -427,42 +441,46 @@ async function renderEvolutionText(
     if (hasLabel) {
       const label = cleanLine.slice(0, colonIdx + 2);
       const value = cleanLine.slice(colonIdx + 2);
+
+      // Measure with correct font
       pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
       const labelW = pdf.getTextWidth(label);
 
       if (value.trim() === '') {
-        // Label only line — render label and move on
-        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { await breakPage(); }
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
         pdf.setFont('helvetica', 'normal');
         y += LINE_HEIGHT;
         continue;
       }
 
-      // Check if label + value fit on one line
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
       const valueW = pdf.getTextWidth(value);
+
+      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { await breakPage(); }
+
       if (labelW + valueW <= textWidth) {
         // Single line: bold label + normal value
-        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
-        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
         pdf.text(value, textX + labelW, y);
         y += LINE_HEIGHT;
       } else {
-        // Multi-line: bold label on first line, then value wraps
-        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
-        pdf.setFont('helvetica', 'bold');
+        // Multi-line: bold label inline, value wraps below
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
-        pdf.setFont('helvetica', 'normal');
-        // Value starts inline after label
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
         const remainWidth = textWidth - labelW;
         const valLines = pdf.splitTextToSize(value, remainWidth);
         for (let vl = 0; vl < valLines.length; vl++) {
-          if (vl > 0 && y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+          if (vl > 0 && y + LINE_HEIGHT > pageHeight - bottomSafe) {
+            await breakPage();
+          }
           const xOff = vl === 0 ? textX + labelW : textX;
           const lw = vl === 0 ? remainWidth : textWidth;
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
           drawJustifiedLine(pdf, valLines[vl], xOff, y, lw, vl === valLines.length - 1);
           y += LINE_HEIGHT;
         }
@@ -474,7 +492,10 @@ async function renderEvolutionText(
     pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
     const wrapped = pdf.splitTextToSize(cleanLine, textWidth);
     for (let wl = 0; wl < wrapped.length; wl++) {
-      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+      if (y + LINE_HEIGHT > pageHeight - bottomSafe) {
+        await breakPage();
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+      }
       drawJustifiedLine(pdf, wrapped[wl], textX, y, textWidth, wl === wrapped.length - 1);
       y += LINE_HEIGHT;
     }
