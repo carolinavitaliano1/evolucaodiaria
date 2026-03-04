@@ -4,6 +4,8 @@ import { ptBR } from 'date-fns/locale';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
 import { TaskList } from '@/components/dashboard/TaskList';
+import { BirthdayCard } from '@/components/dashboard/BirthdayCard';
+import { TodayAppointments } from '@/components/dashboard/TodayAppointments';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,7 +43,6 @@ export default function Dashboard() {
   const todayFaltas = todayEvolutions.filter(e => e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_remunerada');
   const pendingTasks = tasks.filter(t => !t.completed);
 
-  // Load today's events
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
   useEffect(() => {
     if (!user) return;
@@ -101,10 +102,10 @@ export default function Dashboard() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Column - Calendar */}
+        {/* Left Column - Calendar + Summary */}
         <div className="lg:col-span-4 space-y-5">
           <MiniCalendar />
-          
+
           {/* Day Summary */}
           <div className={cn(
             "rounded-xl p-4 border",
@@ -132,10 +133,14 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Birthdays */}
+          <BirthdayCard />
         </div>
 
-        {/* Right Column - Tasks & Notifications */}
+        {/* Right Column - Appointments + Tasks + Notifications */}
         <div className="lg:col-span-8 space-y-5">
+          <TodayAppointments />
           <TaskList />
           <NotificationSettings />
         </div>
