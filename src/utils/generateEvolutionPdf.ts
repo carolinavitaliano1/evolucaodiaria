@@ -11,8 +11,9 @@ function drawJustifiedLine(pdf: jsPDF, text: string, x: number, y: number, maxWi
     pdf.text(text, x, y);
     return;
   }
-  const totalTextWidth = pdf.getTextWidth(words.join(' '));
-  const spaceWidth = (maxWidth - totalTextWidth + pdf.getTextWidth(' ') * (words.length - 1)) / (words.length - 1);
+  // Calculate width of all words without spaces
+  const wordsWidth = words.reduce((acc, w) => acc + pdf.getTextWidth(w), 0);
+  const spaceWidth = (maxWidth - wordsWidth) / (words.length - 1);
   let curX = x;
   for (let i = 0; i < words.length; i++) {
     pdf.text(words[i], curX, y);
