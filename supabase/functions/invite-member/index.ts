@@ -52,8 +52,9 @@ Deno.serve(async (req) => {
       if (existing.status === 'active') {
         return new Response(JSON.stringify({ error: 'Este profissional já é membro da equipe' }), { status: 409, headers: corsHeaders });
       }
+      // Se pendente, remove o antigo para recriar e reenviar
       if (existing.status === 'pending') {
-        return new Response(JSON.stringify({ error: 'Convite já enviado para este e-mail' }), { status: 409, headers: corsHeaders });
+        await supabase.from('organization_members').delete().eq('id', existing.id);
       }
     }
 
