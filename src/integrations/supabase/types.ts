@@ -957,6 +957,14 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: string
       }
+      is_clinic_org_member: {
+        Args: { _clinic_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_clinic_org_owner: {
+        Args: { _clinic_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
