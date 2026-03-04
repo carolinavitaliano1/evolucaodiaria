@@ -8,7 +8,7 @@ export function StatsCards() {
   const { clinics, patients, appointments, evolutions } = useApp();
 
   const today = toLocalDateString(new Date());
-  const todayAllEvolutions = evolutions.filter(e => e.date === today);
+  const todayAllAppointments = appointments.filter(a => a.date === today);
   
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -48,7 +48,7 @@ export function StatsCards() {
     },
     {
       label: 'Hoje',
-      value: todayAllEvolutions.length,
+      value: todayAllAppointments.length,
       icon: Calendar,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
