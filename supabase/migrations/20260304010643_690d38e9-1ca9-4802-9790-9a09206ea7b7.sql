@@ -1,0 +1,1 @@
+ALTER TABLE public.clinic_notes ADD COLUMN IF NOT EXISTS title text;
