@@ -53,6 +53,7 @@ export interface Patient {
   scheduleByDay?: ScheduleByDay;
   packageId?: string;
   isArchived?: boolean;
+  avatarUrl?: string;
   createdAt: string;
 }
 

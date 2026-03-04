@@ -327,35 +327,51 @@ export default function PatientDetail() {
           <ArrowLeft className="w-4 h-4" /> Voltar
         </Button>
         <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+          {/* Avatar */}
+          <div className="flex-shrink-0">
+            <label className="relative cursor-pointer group">
+              <div className="w-20 h-20 rounded-2xl bg-primary/10 border-2 border-border overflow-hidden flex items-center justify-center">
+                {patient.avatarUrl ? (
+                  <img src={patient.avatarUrl} alt={patient.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-3xl">👤</span>
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                  <Image className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !user) return;
+                  const ext = file.name.split('.').pop();
+                  const path = `patient-avatars/${patient.id}.${ext}`;
+                  const { error } = await supabase.storage.from('attachments').upload(path, file, { upsert: true });
+                  if (error) { toast.error('Erro ao enviar foto'); return; }
+                  const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
+                  updatePatient(patient.id, { avatarUrl: urlData.publicUrl });
+                  toast.success('Foto atualizada!');
+                }}
+              />
+            </label>
+          </div>
+
           <div className="flex-1">
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-3 flex items-center gap-3">
               {patient.name}
               {patient.isArchived && (
                 <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">Arquivado</span>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                onClick={() => setEditPatientOpen(true)}
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)}>
                 <Pencil className="w-4 h-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-warning"
-                title={patient.isArchived ? 'Desarquivar paciente' : 'Arquivar paciente'}
-                onClick={() => setArchivePatientOpen(true)}
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-warning" title={patient.isArchived ? 'Desarquivar paciente' : 'Arquivar paciente'} onClick={() => setArchivePatientOpen(true)}>
                 {patient.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => setDeletePatientOpen(true)}
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeletePatientOpen(true)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
             </h1>

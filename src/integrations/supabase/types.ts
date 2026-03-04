@@ -462,6 +462,7 @@ export type Database = {
       }
       patients: {
         Row: {
+          avatar_url: string | null
           birthdate: string
           clinic_id: string
           clinical_area: string | null
@@ -486,6 +487,7 @@ export type Database = {
           weekdays: string[] | null
         }
         Insert: {
+          avatar_url?: string | null
           birthdate: string
           clinic_id: string
           clinical_area?: string | null
@@ -510,6 +512,7 @@ export type Database = {
           weekdays?: string[] | null
         }
         Update: {
+          avatar_url?: string | null
           birthdate?: string
           clinic_id?: string
           clinical_area?: string | null
