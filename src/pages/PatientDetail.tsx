@@ -30,11 +30,21 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { generateReportPdf } from '@/utils/generateReportPdf';
 
 const MOOD_OPTIONS = [
-  { value: 'otima', emoji: '😄', label: 'Ótima', score: 5 },
-  { value: 'boa', emoji: '😊', label: 'Boa', score: 4 },
-  { value: 'neutra', emoji: '😐', label: 'Neutra', score: 3 },
+  { value: 'otima', emoji: '🤩', label: 'Ótima', score: 10 },
+  { value: 'muito_boa', emoji: '😄', label: 'Muito boa', score: 9 },
+  { value: 'boa', emoji: '😊', label: 'Boa', score: 8 },
+  { value: 'animada', emoji: '😁', label: 'Animada', score: 7 },
+  { value: 'tranquila', emoji: '😌', label: 'Tranquila', score: 6 },
+  { value: 'neutra', emoji: '😐', label: 'Neutra', score: 5 },
+  { value: 'cansada', emoji: '😴', label: 'Cansada', score: 4 },
+  { value: 'ansiosa', emoji: '😰', label: 'Ansiosa', score: 3 },
   { value: 'ruim', emoji: '😟', label: 'Ruim', score: 2 },
   { value: 'muito_ruim', emoji: '😢', label: 'Muito ruim', score: 1 },
+  { value: 'agitada', emoji: '😤', label: 'Agitada', score: 3 },
+  { value: 'triste', emoji: '😔', label: 'Triste', score: 2 },
+  { value: 'irritada', emoji: '😠', label: 'Irritada', score: 2 },
+  { value: 'assustada', emoji: '😨', label: 'Assustada', score: 2 },
+  { value: 'confusa', emoji: '😵', label: 'Confusa', score: 3 },
 ] as const;
 
 function getMoodInfo(mood?: string) {
@@ -553,16 +563,16 @@ export default function PatientDetail() {
                 </div>
                 <div>
                   <Label>Humor da Sessão</Label>
-                  <div className="flex gap-1 mt-1">
+                  <div className="flex flex-wrap gap-1 mt-1">
                     {MOOD_OPTIONS.map(m => (
                       <button key={m.value} type="button"
                         onClick={() => setSelectedMood(selectedMood === m.value ? '' : m.value)}
                         className={cn(
-                          "flex-1 flex flex-col items-center gap-0.5 p-2 rounded-lg border-2 transition-all text-center",
+                          "flex flex-col items-center gap-0.5 p-1.5 rounded-lg border-2 transition-all text-center w-[58px]",
                           selectedMood === m.value ? "border-primary bg-primary/10" : "border-transparent bg-secondary hover:bg-secondary/80"
                         )} title={m.label}>
-                        <span className="text-lg">{m.emoji}</span>
-                        <span className="text-[10px] text-muted-foreground leading-tight">{m.label}</span>
+                        <span className="text-xl">{m.emoji}</span>
+                        <span className="text-[9px] text-muted-foreground leading-tight">{m.label}</span>
                       </button>
                     ))}
                   </div>

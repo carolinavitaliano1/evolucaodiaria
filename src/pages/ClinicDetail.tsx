@@ -35,12 +35,23 @@ import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 
 const MOOD_OPTIONS = [
-  { value: 'otima', emoji: '😄', label: 'Ótima' },
+  { value: 'otima', emoji: '🤩', label: 'Ótima' },
+  { value: 'muito_boa', emoji: '😄', label: 'Muito boa' },
   { value: 'boa', emoji: '😊', label: 'Boa' },
+  { value: 'animada', emoji: '😁', label: 'Animada' },
+  { value: 'tranquila', emoji: '😌', label: 'Tranquila' },
   { value: 'neutra', emoji: '😐', label: 'Neutra' },
+  { value: 'cansada', emoji: '😴', label: 'Cansada' },
+  { value: 'ansiosa', emoji: '😰', label: 'Ansiosa' },
   { value: 'ruim', emoji: '😟', label: 'Ruim' },
   { value: 'muito_ruim', emoji: '😢', label: 'Muito ruim' },
+  { value: 'agitada', emoji: '😤', label: 'Agitada' },
+  { value: 'triste', emoji: '😔', label: 'Triste' },
+  { value: 'irritada', emoji: '😠', label: 'Irritada' },
+  { value: 'assustada', emoji: '😨', label: 'Assustada' },
+  { value: 'confusa', emoji: '😵', label: 'Confusa' },
 ] as const;
+
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Segunda-feira' },
