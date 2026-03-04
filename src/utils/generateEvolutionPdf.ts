@@ -168,7 +168,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
     y += LINE_HEIGHT + 1;
 
     // Evolution text
-    y = renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
+    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
 
     // Mandatory gap before signature/stamp area
     y += 10;
@@ -317,7 +317,7 @@ export async function generateMultipleEvolutionsPdf({
     y += 15;
 
     // Evolution text
-    y = renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
+    y = await renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
 
     // Mandatory gap before signature/stamp area
     y += 12;
@@ -385,7 +385,7 @@ export async function generateMultipleEvolutionsPdf({
  * Renders evolution text lines with proper justification and line-height.
  * Returns updated yPosition.
  */
-function renderEvolutionText(
+async function renderEvolutionText(
   pdf: jsPDF,
   rawText: string,
   textX: number,
@@ -394,7 +394,7 @@ function renderEvolutionText(
   pageHeight: number,
   bottomSafe: number,
   addHeader: () => Promise<void>
-): number {
+): Promise<number> {
   let y = startY;
   const lines = (rawText || 'Sem descrição.').split('\n');
 
@@ -408,49 +408,64 @@ function renderEvolutionText(
       continue;
     }
 
-    // Template model title: [MODELO] ...
+    // Skip template model title line entirely (don't show template name)
     if (cleanLine.startsWith('[MODELO] ')) {
-      const titleText = cleanLine.replace('[MODELO] ', '').toUpperCase();
-      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); addHeader(); }
-      pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
-      pdf.text(titleText, textX, y);
-      y += LINE_HEIGHT + 1;
-      pdf.setFont('helvetica', 'normal');
       continue;
     }
 
     // Horizontal rule
-    if (cleanLine === '---') {
+    if (cleanLine.trim() === '---') {
       pdf.setDrawColor(220, 220, 220);
       pdf.line(textX, y - 1, textX + textWidth, y - 1);
       y += 4;
       continue;
     }
 
-    // Label: Value pattern (bold label)
+    // Label: Value pattern (bold label, e.g. "Aspecto emocional: Bom")
     const colonIdx = cleanLine.indexOf(': ');
-    const hasLabel = colonIdx > 0 && colonIdx < 40 && !cleanLine.startsWith(' ');
+    const hasLabel = colonIdx > 0 && colonIdx < 50 && !cleanLine.startsWith(' ');
     if (hasLabel) {
       const label = cleanLine.slice(0, colonIdx + 2);
       const value = cleanLine.slice(colonIdx + 2);
       pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
       const labelW = pdf.getTextWidth(label);
-      pdf.text(label, textX, y);
-      pdf.setFont('helvetica', 'normal');
 
       if (value.trim() === '') {
+        // Label only line — render label and move on
+        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+        pdf.text(label, textX, y);
+        pdf.setFont('helvetica', 'normal');
         y += LINE_HEIGHT;
         continue;
       }
 
-      const valWidth = textWidth - labelW;
-      const valLines = pdf.splitTextToSize(value, valWidth);
-      for (let vl = 0; vl < valLines.length; vl++) {
-        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); addHeader(); }
-        const xOff = vl === 0 ? textX + labelW : textX;
-        const lw = vl === 0 ? valWidth : textWidth;
-        drawJustifiedLine(pdf, valLines[vl], xOff, y, lw, vl === valLines.length - 1);
+      // Check if label + value fit on one line
+      pdf.setFont('helvetica', 'normal');
+      const valueW = pdf.getTextWidth(value);
+      if (labelW + valueW <= textWidth) {
+        // Single line: bold label + normal value
+        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(label, textX, y);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(value, textX + labelW, y);
         y += LINE_HEIGHT;
+      } else {
+        // Multi-line: bold label on first line, then value wraps
+        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(label, textX, y);
+        pdf.setFont('helvetica', 'normal');
+        // Value starts inline after label
+        const remainWidth = textWidth - labelW;
+        const valLines = pdf.splitTextToSize(value, remainWidth);
+        for (let vl = 0; vl < valLines.length; vl++) {
+          if (vl > 0 && y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+          const xOff = vl === 0 ? textX + labelW : textX;
+          const lw = vl === 0 ? remainWidth : textWidth;
+          drawJustifiedLine(pdf, valLines[vl], xOff, y, lw, vl === valLines.length - 1);
+          y += LINE_HEIGHT;
+        }
       }
       continue;
     }
@@ -459,7 +474,7 @@ function renderEvolutionText(
     pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
     const wrapped = pdf.splitTextToSize(cleanLine, textWidth);
     for (let wl = 0; wl < wrapped.length; wl++) {
-      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); addHeader(); }
+      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
       drawJustifiedLine(pdf, wrapped[wl], textX, y, textWidth, wl === wrapped.length - 1);
       y += LINE_HEIGHT;
     }
