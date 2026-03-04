@@ -2,16 +2,14 @@ import { useApp } from '@/contexts/AppContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { toLocalDateString } from '@/lib/utils';
-import { CalendarCheck, Clock, User, Briefcase, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { CalendarCheck, Clock, User, Briefcase, MoreVertical, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
-import { ServiceDialog } from '@/components/services/ServiceDialog';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PrivateAppointment } from '@/hooks/usePrivateAppointments';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 type ScheduleItem = {
@@ -31,18 +29,7 @@ export function TodayAppointments() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedPrivateAppt, setSelectedPrivateAppt] = useState<PrivateAppointment | null>(null);
-  const [deleteAppt, setDeleteAppt] = useState<PrivateAppointment | null>(null);
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
-
-  const handleDelete = async () => {
-    if (!deleteAppt) return;
-    const { error } = await supabase.from('private_appointments').delete().eq('id', deleteAppt.id);
-    if (error) { toast.error('Erro ao apagar agendamento'); }
-    else { toast.success('Agendamento apagado'); refetch(); }
-    setDeleteAppt(null);
-  };
 
   const todayStr = toLocalDateString(new Date());
   const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
@@ -130,10 +117,7 @@ export function TodayAppointments() {
                   <button
                     className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer"
                     onClick={() => {
-                      if (item.privateAppointment) {
-                        setSelectedPrivateAppt(item.privateAppointment);
-                        setEditDialogOpen(true);
-                      } else if (item.patientId) {
+                      if (item.patientId) {
                         navigate(`/patients/${item.patientId}`);
                       }
                     }}
@@ -171,11 +155,19 @@ export function TodayAppointments() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setSelectedPrivateAppt(item.privateAppointment!); setEditDialogOpen(true); }}>
-                            <Pencil className="w-4 h-4 mr-2" /> Editar
+                          <DropdownMenuItem onClick={async () => {
+                            await supabase.from('private_appointments').update({ status: 'concluído' }).eq('id', item.privateAppointment!.id);
+                            toast.success('Atendimento confirmado!');
+                            refetch();
+                          }}>
+                            <Check className="w-4 h-4 mr-2 text-success" /> Confirmar
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteAppt(item.privateAppointment!)}>
-                            <Trash2 className="w-4 h-4 mr-2" /> Apagar
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={async () => {
+                            await supabase.from('private_appointments').update({ status: 'cancelado' }).eq('id', item.privateAppointment!.id);
+                            toast.success('Atendimento cancelado!');
+                            refetch();
+                          }}>
+                            <X className="w-4 h-4 mr-2" /> Cancelar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -187,28 +179,6 @@ export function TodayAppointments() {
           </div>
         )}
       </div>
-
-      <ServiceDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        editAppointment={selectedPrivateAppt}
-        onAppointmentSaved={refetch}
-      />
-
-      <AlertDialog open={!!deleteAppt} onOpenChange={open => !open && setDeleteAppt(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Apagar agendamento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja apagar o agendamento de <strong>{deleteAppt?.client_name}</strong>? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Apagar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
