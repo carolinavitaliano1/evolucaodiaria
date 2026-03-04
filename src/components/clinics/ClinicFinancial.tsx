@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApp } from '@/contexts/AppContext';
+import { useClinicOrg } from '@/hooks/useClinicOrg';
+import { TeamFinancialReport } from './TeamFinancialReport';
 import { format, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -13,13 +16,13 @@ interface ClinicFinancialProps {
 
 export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { clinics, patients, evolutions, updateClinic } = useApp();
+  const { isOrg } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   const clinic = clinics.find(c => c.id === clinicId);
   const [discountPercent, setDiscountPercent] = useState(clinic?.discountPercentage || 0);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Sync when clinic changes externally
   useEffect(() => {
     if (clinic) setDiscountPercent(clinic.discountPercentage || 0);
   }, [clinic?.discountPercentage]);
@@ -96,7 +99,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     .filter(p => p.revenue > 0 || p.sessions > 0 || p.absences > 0)
     .sort((a, b) => b.revenue - a.revenue);
 
-  return (
+  const SoloView = (
     <div className="space-y-6">
       {/* Month navigation */}
       <div className="flex items-center justify-between bg-card rounded-2xl p-4 border border-border">
@@ -132,9 +135,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <TrendingUp className="w-6 h-6 text-primary mb-2" />
           <p className="text-muted-foreground text-xs">Sessões</p>
           <p className="text-xl font-bold text-foreground">{totalSessions}</p>
-          {totalReposicoes > 0 && (
-            <p className="text-xs text-muted-foreground">🔄 {totalReposicoes} repos.</p>
-          )}
+          {totalReposicoes > 0 && <p className="text-xs text-muted-foreground">🔄 {totalReposicoes} repos.</p>}
         </div>
         <div className="bg-card rounded-2xl p-5 border border-border">
           <AlertTriangle className="w-6 h-6 text-warning mb-2" />
@@ -148,7 +149,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         </div>
       </div>
 
-      {/* Discount simulator - right after summary cards */}
+      {/* Discount simulator */}
       <div className="bg-card rounded-2xl p-5 border border-border">
         <div className="flex items-center gap-2 mb-3">
           <Percent className="w-5 h-5 text-primary" />
@@ -160,10 +161,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         <div className="flex items-center gap-3">
           <div className="relative w-28">
             <Input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
+              type="number" min={0} max={100} step={1}
               value={discountPercent}
               onChange={(e) => handleDiscountChange(e.target.value)}
               className="pr-8"
@@ -200,8 +198,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                     {reposicoes > 0 && ` (🔄${reposicoes})`}
                     {paidAbsences > 0 && ` • ${paidAbsences} faltas rem.`}
                     {absences > 0 && ` • ${absences} faltas`}
-                    {' • '}
-                    {patient.paymentType === 'fixo' ? 'Fixo' : 'Por sessão'}
+                    {' • '}{patient.paymentType === 'fixo' ? 'Fixo' : 'Por sessão'}
                   </p>
                 </div>
                 <p className="font-bold text-foreground text-sm">
@@ -226,7 +223,30 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           </div>
         )}
       </div>
-
     </div>
   );
+
+  // Org mode: show tabs with individual and team views
+  if (isOrg) {
+    return (
+      <Tabs defaultValue="meu" className="space-y-4">
+        <TabsList className="h-auto p-0.5 gap-0.5">
+          <TabsTrigger value="meu" className="text-xs px-3 py-1.5 gap-1">
+            <DollarSign className="w-3 h-3" />
+            Meu Financeiro
+          </TabsTrigger>
+          <TabsTrigger value="equipe" className="text-xs px-3 py-1.5 gap-1">
+            <Users className="w-3 h-3" />
+            Equipe
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="meu">{SoloView}</TabsContent>
+        <TabsContent value="equipe">
+          <TeamFinancialReport clinicId={clinicId} />
+        </TabsContent>
+      </Tabs>
+    );
+  }
+
+  return SoloView;
 }

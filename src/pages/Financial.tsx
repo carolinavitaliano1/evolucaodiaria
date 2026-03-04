@@ -1,4 +1,6 @@
 import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TeamFinancialReport } from '@/components/clinics/TeamFinancialReport';
+import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -862,6 +864,21 @@ export default function Financial() {
           )}
         </div>
       </div>
+
+      {/* Team Financial Reports — one per org clinic */}
+      {clinics
+        .filter(c => !c.isArchived && (c as any).organization_id)
+        .map(orgClinic => (
+          <div key={orgClinic.id} className="mb-6 sm:mb-8">
+            <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border">
+              <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-sm sm:text-base">
+                <Users className="w-4 h-4 text-primary" />
+                Equipe — {orgClinic.name}
+              </h2>
+              <TeamFinancialReport clinicId={orgClinic.id} />
+            </div>
+          </div>
+        ))}
 
       {/* Payments Table */}
       <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border">
