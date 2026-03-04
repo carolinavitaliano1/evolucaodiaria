@@ -113,9 +113,9 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
     yPosition += 7;
 
     // Text — render with bold template titles
-    const rawText = evo.text || 'Sem descrição.';
+    const rawText = evo.text || 'Sem descricao.';
     for (const line of rawText.split('\n')) {
-      const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\x00-\x7E]/g, '');
+      const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\u0000-\u00FF]/g, '');
       if (cleanLine === '---') {
         pdf.setDrawColor(220, 220, 220);
         pdf.line(margin + 5, yPosition - 1, pageWidth - margin - 5, yPosition - 1);
@@ -342,10 +342,10 @@ export async function generateMultipleEvolutionsPdf({
     yPosition += 15;
 
     // Evolution text — render with bold template titles
-    const rawText = evo.text || 'Sem descrição.';
+    const rawText = evo.text || 'Sem descricao.';
     const rawLines = rawText.split('\n');
     for (const line of rawLines) {
-      const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\x00-\x7E]/g, '');
+      const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\u0000-\u00FF]/g, '');
       if (cleanLine.startsWith('[MODELO] ')) {
         const title = cleanLine.replace('[MODELO] ', '').toUpperCase();
         if (yPosition + 7 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
