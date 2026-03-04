@@ -12,7 +12,8 @@ import {
   Users,
   CreditCard,
   Sparkles,
-  Smartphone
+  Smartphone,
+  Megaphone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -30,6 +31,7 @@ const moreNavItems = [
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
+  { to: '/mural', icon: Megaphone, label: 'Mural' },
   { to: '/pricing', icon: CreditCard, label: 'Planos' },
   { to: '/install', icon: Smartphone, label: 'Instalar App' },
   { to: '/profile', icon: User, label: 'Perfil' },

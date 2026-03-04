@@ -460,6 +460,51 @@ export type Database = {
           },
         ]
       }
+      notices: {
+        Row: {
+          color: string | null
+          content: string | null
+          created_at: string
+          id: string
+          link_label: string | null
+          link_url: string | null
+          pinned: boolean | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          color?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          link_label?: string | null
+          link_url?: string | null
+          pinned?: boolean | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          color?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          link_label?: string | null
+          link_url?: string | null
+          pinned?: boolean | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           avatar_url: string | null

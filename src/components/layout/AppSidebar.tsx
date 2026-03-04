@@ -12,7 +12,8 @@ import {
   LogOut,
   CreditCard,
   Sparkles,
-  Smartphone
+  Smartphone,
+  Megaphone
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -29,6 +30,7 @@ const navItems = [
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
+  { to: '/mural', icon: Megaphone, label: 'Mural' },
   { to: '/pricing', icon: CreditCard, label: 'Planos' },
   { to: '/install', icon: Smartphone, label: 'Instalar App' },
 ];
