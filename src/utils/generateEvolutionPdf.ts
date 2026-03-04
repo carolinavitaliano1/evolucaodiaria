@@ -13,7 +13,13 @@ function drawJustifiedLine(pdf: jsPDF, text: string, x: number, y: number, maxWi
   }
   // Calculate width of all words without spaces
   const wordsWidth = words.reduce((acc, w) => acc + pdf.getTextWidth(w), 0);
+  const normalSpace = pdf.getTextWidth(' ');
   const spaceWidth = (maxWidth - wordsWidth) / (words.length - 1);
+  // If calculated space is more than 2.5x normal space, don't justify (avoid ugly gaps)
+  if (spaceWidth > normalSpace * 2.5) {
+    pdf.text(text, x, y);
+    return;
+  }
   let curX = x;
   for (let i = 0; i < words.length; i++) {
     pdf.text(words[i], curX, y);
