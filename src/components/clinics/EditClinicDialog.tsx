@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Clinic } from '@/types';
 import { toast } from 'sonner';
+import { Stamp, Trash2, Upload } from 'lucide-react';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -28,6 +29,11 @@ interface EditClinicDialogProps {
 }
 
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
+  const stampInputRef = useRef<HTMLInputElement>(null);
+  const [stampPreview, setStampPreview] = useState<string | null>(null);
+  const [stampFile, setStampFile] = useState<File | null>(null);
+  const [removeStamp, setRemoveStamp] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     type: 'propria' as 'propria' | 'terceirizada',
@@ -47,6 +53,9 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
 
   useEffect(() => {
     if (open && clinic) {
+      setStampPreview(clinic.stamp || null);
+      setStampFile(null);
+      setRemoveStamp(false);
       setFormData({
         name: clinic.name || '',
         type: clinic.type || 'propria',
@@ -66,6 +75,16 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     }
   }, [open, clinic]);
 
+  const handleStampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStampFile(file);
+    setRemoveStamp(false);
+    const reader = new FileReader();
+    reader.onload = (ev) => setStampPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
@@ -73,6 +92,8 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     const firstDayTime = formData.weekdays.length > 0
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
+
+    const stampValue = removeStamp ? null : (stampFile ? stampPreview : (clinic.stamp || undefined));
 
     onSave(clinic.id, {
       name: formData.name,
@@ -91,6 +112,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
       discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
       paysOnAbsence: formData.absencePaymentType !== 'never',
       absencePaymentType: formData.absencePaymentType,
+      stamp: stampValue as string | undefined,
     });
 
     toast.success('Clínica atualizada!');
@@ -346,6 +368,64 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
                 </div>
               </div>
             </RadioGroup>
+          </div>
+
+          {/* Carimbo da Clínica */}
+          <div className="border-t pt-4">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Stamp className="w-4 h-4 text-primary" />
+              Carimbo da Clínica
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1 mb-3">
+              Aparece no rodapé dos PDFs de extrato/fatura desta clínica.
+            </p>
+            <input
+              ref={stampInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleStampChange}
+            />
+            {stampPreview && !removeStamp ? (
+              <div className="flex items-start gap-3">
+                <div className="border border-border rounded-lg p-2 bg-muted/30 flex items-center justify-center w-32 h-20">
+                  <img src={stampPreview} alt="Carimbo" className="max-w-full max-h-full object-contain" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => stampInputRef.current?.click()}
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Trocar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs text-destructive hover:text-destructive"
+                    onClick={() => { setRemoveStamp(true); setStampPreview(null); setStampFile(null); }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Remover
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => stampInputRef.current?.click()}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {removeStamp ? 'Adicionar novo carimbo' : 'Adicionar carimbo'}
+              </Button>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
