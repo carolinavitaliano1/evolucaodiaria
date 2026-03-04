@@ -46,6 +46,7 @@ interface PrivateAppointment {
   status: string;
   notes?: string;
   paid?: boolean;
+  created_at: string;
 }
 
 export default function Clinics() {
@@ -62,6 +63,19 @@ export default function Clinics() {
   const [clinicToDelete, setClinicToDelete] = useState<Clinic | null>(null);
   const [editClinicOpen, setEditClinicOpen] = useState(false);
   const [clinicToEdit, setClinicToEdit] = useState<Clinic | null>(null);
+  const [editAppointmentOpen, setEditAppointmentOpen] = useState(false);
+  const [appointmentToEdit, setAppointmentToEdit] = useState<PrivateAppointment | null>(null);
+  const [deleteAppointmentOpen, setDeleteAppointmentOpen] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<PrivateAppointment | null>(null);
+
+  const handleDeleteAppointment = async () => {
+    if (!appointmentToDelete) return;
+    const { error } = await supabase.from('private_appointments').delete().eq('id', appointmentToDelete.id);
+    if (error) { toast.error('Erro ao apagar agendamento'); }
+    else { toast.success('Agendamento apagado!'); loadPrivateAppointments(); }
+    setDeleteAppointmentOpen(false);
+    setAppointmentToDelete(null);
+  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -791,41 +805,62 @@ export default function Clinics() {
                       )}
                     </div>
 
-                    {apt.status === 'agendado' && (
-                      <div className="flex gap-1 shrink-0">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-success hover:text-success hover:bg-success/10"
-                          onClick={() => updateAppointmentStatus(apt.id, 'concluído')}
-                          title="Marcar como concluído"
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => updateAppointmentStatus(apt.id, 'cancelado')}
-                          title="Cancelar"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {apt.status === 'agendado' && (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-success hover:text-success hover:bg-success/10"
+                            onClick={() => updateAppointmentStatus(apt.id, 'concluído')}
+                            title="Marcar como concluído"
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => updateAppointmentStatus(apt.id, 'cancelado')}
+                            title="Cancelar"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
 
-                    {apt.status === 'concluído' && !apt.paid && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-success border-success/50 hover:bg-success/10 text-xs w-full sm:w-auto mt-2 sm:mt-0"
-                        onClick={() => togglePaid(apt.id, apt.paid || false)}
-                      >
-                        <DollarSign className="w-4 h-4 mr-1" />
-                        <span className="sm:hidden">Pago</span>
-                        <span className="hidden sm:inline">Confirmar Pagamento</span>
-                      </Button>
-                    )}
+                      {apt.status === 'concluído' && !apt.paid && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-success border-success/50 hover:bg-success/10 text-xs"
+                          onClick={() => togglePaid(apt.id, apt.paid || false)}
+                        >
+                          <DollarSign className="w-4 h-4 mr-1" />
+                          <span className="hidden sm:inline">Confirmar Pagamento</span>
+                          <span className="sm:hidden">Pago</span>
+                        </Button>
+                      )}
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setAppointmentToEdit(apt); setEditAppointmentOpen(true); }}>
+                            <Edit className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => { setAppointmentToDelete(apt); setDeleteAppointmentOpen(true); }}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" /> Apagar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -834,7 +869,7 @@ export default function Clinics() {
         </TabsContent>
       </Tabs>
 
-      {/* Service Dialog */}
+      {/* Service Dialog (new + edit) */}
       <ServiceDialog 
         open={serviceDialogOpen} 
         onOpenChange={(open) => {
@@ -842,8 +877,33 @@ export default function Clinics() {
           if (!open) loadPrivateAppointments();
         }} 
       />
+      <ServiceDialog
+        open={editAppointmentOpen}
+        onOpenChange={(open) => {
+          setEditAppointmentOpen(open);
+          if (!open) { setAppointmentToEdit(null); loadPrivateAppointments(); }
+        }}
+        editAppointment={appointmentToEdit}
+        onAppointmentSaved={loadPrivateAppointments}
+      />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Appointment Dialog */}
+      <AlertDialog open={deleteAppointmentOpen} onOpenChange={setDeleteAppointmentOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja apagar o agendamento de <strong>{appointmentToDelete?.client_name}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAppointment} className="bg-destructive hover:bg-destructive/90">Apagar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Clinic Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
