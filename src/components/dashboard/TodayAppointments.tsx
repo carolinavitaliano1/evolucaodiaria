@@ -16,8 +16,6 @@ export function TodayAppointments() {
     .filter(a => a.date === todayStr)
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
-  if (todayAppts.length === 0) return null;
-
   return (
     <div className={cn(
       'rounded-xl p-4 border',
@@ -30,6 +28,9 @@ export function TodayAppointments() {
           {todayAppts.length}
         </span>
       </h3>
+      {todayAppts.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-3">Nenhum atendimento agendado para hoje</p>
+      ) : (
       <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
         {todayAppts.map(appt => {
           const patient = patients.find(p => p.id === appt.patientId);
@@ -68,6 +69,7 @@ export function TodayAppointments() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
