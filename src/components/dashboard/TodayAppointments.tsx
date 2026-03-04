@@ -2,19 +2,23 @@ import { useApp } from '@/contexts/AppContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { toLocalDateString } from '@/lib/utils';
-import { CalendarCheck, Clock, User } from 'lucide-react';
+import { CalendarCheck, Clock, User, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
 
 type ScheduleItem = {
   id: string;
   name: string;
-  avatarUrl: string | null | undefined;
-  clinicalArea: string | null | undefined;
+  avatarUrl?: string | null;
+  subtitle?: string | null;
   time: string;
+  isPrivate?: boolean;
+  patientId?: string;
 };
 
 export function TodayAppointments() {
   const { appointments, patients, evolutions } = useApp();
+  const { privateAppointments } = usePrivateAppointments();
   const { theme } = useTheme();
   const navigate = useNavigate();
 
@@ -26,9 +30,10 @@ export function TodayAppointments() {
     .filter(p => !p.isArchived && p.weekdays?.includes(todayWeekday))
     .map(p => ({
       id: p.id,
+      patientId: p.id,
       name: p.name,
       avatarUrl: p.avatarUrl,
-      clinicalArea: p.clinicalArea,
+      subtitle: p.clinicalArea,
       time: p.scheduleTime || '00:00',
     }));
 
@@ -41,15 +46,27 @@ export function TodayAppointments() {
       if (!patient) return null;
       return {
         id: patient.id,
+        patientId: patient.id,
         name: patient.name,
         avatarUrl: patient.avatarUrl,
-        clinicalArea: patient.clinicalArea,
+        subtitle: patient.clinicalArea,
         time: a.time || '00:00',
       };
     })
-    .filter((x): x is ScheduleItem => x !== null);
+    .filter((x): x is NonNullable<typeof x> => x !== null);
 
-  const allItems = [...weekdayPatients, ...oneOffItems]
+  // Private appointments for today
+  const privateItems: ScheduleItem[] = privateAppointments
+    .filter(a => a.date === todayStr && a.status !== 'cancelado')
+    .map(a => ({
+      id: `private-${a.id}`,
+      name: a.client_name,
+      subtitle: 'Particular',
+      time: a.time || '00:00',
+      isPrivate: true,
+    }));
+
+  const allItems = [...weekdayPatients, ...oneOffItems, ...privateItems]
     .sort((a, b) => a.time.localeCompare(b.time));
 
   return (
@@ -69,24 +86,34 @@ export function TodayAppointments() {
       ) : (
         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
           {allItems.map((item, idx) => {
-            const hasEvolution = evolutions.some(e => e.patientId === item.id && e.date === todayStr);
+            const hasEvolution = item.patientId
+              ? evolutions.some(e => e.patientId === item.patientId && e.date === todayStr)
+              : false;
             return (
               <button
                 key={`${item.id}-${idx}`}
-                onClick={() => navigate(`/patients/${item.id}`)}
-                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-primary/5 transition-colors text-left"
+                onClick={() => item.patientId && navigate(`/patients/${item.patientId}`)}
+                className={cn(
+                  "w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left",
+                  item.patientId ? "hover:bg-primary/5 cursor-pointer" : "cursor-default"
+                )}
               >
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden border border-border">
                   {item.avatarUrl ? (
                     <img src={item.avatarUrl} alt={item.name} className="w-full h-full object-cover" />
+                  ) : item.isPrivate ? (
+                    <Briefcase className="w-4 h-4 text-primary" />
                   ) : (
                     <User className="w-4 h-4 text-primary" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-foreground text-sm truncate">{item.name}</p>
-                  {item.clinicalArea && (
-                    <p className="text-xs text-muted-foreground truncate">{item.clinicalArea}</p>
+                  {item.subtitle && (
+                    <p className={cn(
+                      "text-xs truncate",
+                      item.isPrivate ? "text-primary/60" : "text-muted-foreground"
+                    )}>{item.subtitle}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
