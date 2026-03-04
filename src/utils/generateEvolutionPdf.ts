@@ -1,4 +1,24 @@
 import jsPDF from 'jspdf';
+
+// Renders a line of text justified within maxWidth starting at (x, y)
+function drawJustifiedLine(pdf: jsPDF, text: string, x: number, y: number, maxWidth: number, isLastLine: boolean) {
+  if (isLastLine || text.trim() === '') {
+    pdf.text(text, x, y);
+    return;
+  }
+  const words = text.split(' ');
+  if (words.length <= 1) {
+    pdf.text(text, x, y);
+    return;
+  }
+  const totalTextWidth = pdf.getTextWidth(words.join(' '));
+  const spaceWidth = (maxWidth - totalTextWidth + pdf.getTextWidth(' ') * (words.length - 1)) / (words.length - 1);
+  let curX = x;
+  for (let i = 0; i < words.length; i++) {
+    pdf.text(words[i], curX, y);
+    if (i < words.length - 1) curX += pdf.getTextWidth(words[i]) + spaceWidth;
+  }
+}
 import { Evolution, Patient, Clinic } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -130,20 +150,23 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
           const lw = pdf.getTextWidth(label);
           pdf.text(label, margin + 5, yPosition);
           pdf.setFont('helvetica', 'normal');
-          const vLines = pdf.splitTextToSize(value, contentWidth - 10 - lw);
-          pdf.text(vLines[0] || '', margin + 5 + lw, yPosition);
-          yPosition += 5;
-          for (let vl = 1; vl < vLines.length; vl++) {
+          const valWidth = contentWidth - 10 - lw;
+          const vLines = pdf.splitTextToSize(value, valWidth);
+          for (let vl = 0; vl < vLines.length; vl++) {
             if (yPosition + 5 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
-            pdf.text(vLines[vl], margin + 5, yPosition);
+            const xOffset = vl === 0 ? margin + 5 + lw : margin + 5;
+            const lineWidth = vl === 0 ? valWidth : contentWidth - 10;
+            drawJustifiedLine(pdf, vLines[vl], xOffset, yPosition, lineWidth, vl === vLines.length - 1);
             yPosition += 5;
           }
         } else if (cleanLine.trim().length > 0) {
           const wrapped = pdf.splitTextToSize(cleanLine, contentWidth - 10);
           if (yPosition + wrapped.length * 5 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
           pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-          pdf.text(wrapped, margin + 5, yPosition);
-          yPosition += wrapped.length * 5;
+          for (let wl = 0; wl < wrapped.length; wl++) {
+            drawJustifiedLine(pdf, wrapped[wl], margin + 5, yPosition, contentWidth - 10, wl === wrapped.length - 1);
+            yPosition += 5;
+          }
         }
       }
     }
@@ -359,28 +382,31 @@ export async function generateMultipleEvolutionsPdf({
         yPosition += 4;
       } else {
         const parts = cleanLine.split(': ');
-        const wrapped = pdf.splitTextToSize(cleanLine, contentWidth - 10);
-        if (yPosition + wrapped.length * 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
-        if (parts.length >= 2 && !cleanLine.startsWith(' ')) {
-          // Render label bold, value normal
+        if (parts.length >= 2 && !cleanLine.startsWith(' ') && cleanLine.trim().length > 0) {
           const label = parts[0] + ': ';
           const value = parts.slice(1).join(': ');
           pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
           const labelWidth = pdf.getTextWidth(label);
           pdf.text(label, margin + 5, yPosition);
           pdf.setFont('helvetica', 'normal');
-          const valueLines = pdf.splitTextToSize(value, contentWidth - 10 - labelWidth);
-          pdf.text(valueLines[0] || '', margin + 5 + labelWidth, yPosition);
-          yPosition += 5;
-          for (let vl = 1; vl < valueLines.length; vl++) {
+          const valWidth = contentWidth - 10 - labelWidth;
+          const valueLines = pdf.splitTextToSize(value, valWidth);
+          if (yPosition + valueLines.length * 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
+          for (let vl = 0; vl < valueLines.length; vl++) {
             if (yPosition + 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
-            pdf.text(valueLines[vl], margin + 5, yPosition);
+            const xOffset = vl === 0 ? margin + 5 + labelWidth : margin + 5;
+            const lineWidth = vl === 0 ? valWidth : contentWidth - 10;
+            drawJustifiedLine(pdf, valueLines[vl], xOffset, yPosition, lineWidth, vl === valueLines.length - 1);
             yPosition += 5;
           }
-        } else {
+        } else if (cleanLine.trim().length > 0) {
+          const wrapped = pdf.splitTextToSize(cleanLine, contentWidth - 10);
+          if (yPosition + wrapped.length * 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
           pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-          pdf.text(wrapped, margin + 5, yPosition);
-          yPosition += wrapped.length * 5;
+          for (let wl = 0; wl < wrapped.length; wl++) {
+            drawJustifiedLine(pdf, wrapped[wl], margin + 5, yPosition, contentWidth - 10, wl === wrapped.length - 1);
+            yPosition += 5;
+          }
         }
       }
     }
