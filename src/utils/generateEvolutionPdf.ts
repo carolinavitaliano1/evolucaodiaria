@@ -100,7 +100,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
   const contentWidth = pageWidth - margin * 2;
   const textX = margin + 5;
   const textWidth = contentWidth - 10;
-  const bottomSafe = 55;
+  const bottomSafe = 22; // only real footer space
 
   // addHeader RETURNS the new y position — does NOT use closure mutation
   const addHeader = async (): Promise<number> => {
@@ -185,7 +185,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
 
     // Check if stamp block fits on current page; if not, break AFTER text
     const hasStamp = !!(evo.stampId && stamps);
-    const stampBlockH = 70; // stamp img + sig + name lines
+    const stampBlockH = 52; // stamp img + sig + name lines (real estimate)
     if (hasStamp && y + stampBlockH > pageHeight - bottomSafe) {
       pdf.addPage();
       y = await addHeader();
@@ -240,7 +240,7 @@ export async function generateMultipleEvolutionsPdf({
   const contentWidth = pageWidth - margin * 2;
   const textX = margin + 5;
   const textWidth = contentWidth - 10;
-  const bottomSafe = 55;
+  const bottomSafe = 22; // only real footer space
 
   // addHeader RETURNS the new y position — does NOT use closure mutation
   const addHeader = async (): Promise<number> => {
@@ -346,7 +346,7 @@ export async function generateMultipleEvolutionsPdf({
 
     // Check if stamp block fits; only break page if it truly doesn't fit
     const hasStamp = !!(evo.stampId && stamps);
-    const stampBlockH = 70;
+    const stampBlockH = 52; // real estimate: stamp + sig + name
     if (hasStamp && y + stampBlockH > pageHeight - bottomSafe) {
       pdf.addPage();
       y = await addHeader();
@@ -493,42 +493,27 @@ async function renderEvolutionText(
       if (y + LINE_HEIGHT > pageHeight - bottomSafe) { y = await breakPage(); }
 
       if (labelW + valueW <= textWidth) {
-        // Single line: bold label + normal value inline
+        // Single line: bold label + normal value inline — no justification needed (fits)
         pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
         pdf.text(value, textX + labelW, y);
         y += LINE_HEIGHT;
       } else {
-        // Multi-line: bold label inline on first line, then value continues at full textWidth
+        // Multi-line: bold label on first line, value wraps at full textWidth with justification
         pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
         pdf.text(label, textX, y);
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
 
-        // Split only the first segment to remainWidth (space after label on same line)
-        const remainWidth = textWidth - labelW;
-        const firstLineParts = pdf.splitTextToSize(value, remainWidth);
-        const firstLineText = firstLineParts[0] as string;
-
-        // Reconstruct the "rest" of the value after the first line
-        const firstLineWords = firstLineText.trim().split(/\s+/);
-        const allWords = value.trim().split(/\s+/);
-        const restWords = allWords.slice(firstLineWords.length);
-        const restText = restWords.join(' ');
-
-        // Render first line inline after label (always last-line style = left-align if short)
-        drawJustifiedLine(pdf, firstLineText, textX + labelW, y, remainWidth, restText === '');
+        // Wrap entire value at full textWidth (starts on NEXT line so it's fully justified)
+        const valueLines = pdf.splitTextToSize(value, textWidth) as string[];
         y += LINE_HEIGHT;
 
-        // Render remaining lines at full textWidth with proper justification
-        if (restText) {
-          const restLines = pdf.splitTextToSize(restText, textWidth);
-          for (let rl = 0; rl < restLines.length; rl++) {
-            if (y + LINE_HEIGHT > pageHeight - bottomSafe) { y = await breakPage(); }
-            pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-            drawJustifiedLine(pdf, restLines[rl], textX, y, textWidth, rl === restLines.length - 1);
-            y += LINE_HEIGHT;
-          }
+        for (let rl = 0; rl < valueLines.length; rl++) {
+          if (y + LINE_HEIGHT > pageHeight - bottomSafe) { y = await breakPage(); }
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+          drawJustifiedLine(pdf, valueLines[rl], textX, y, textWidth, rl === valueLines.length - 1);
+          y += LINE_HEIGHT;
         }
       }
       continue;
