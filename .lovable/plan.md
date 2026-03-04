@@ -1,62 +1,73 @@
 
+## Como funcionaria um modelo multidisciplinar no app
 
-# Simulador de Desconto por Clinica
+A estrutura atual já é quase toda compatível — clínicas, pacientes, evoluções, templates e carimbos são por usuário. O que falta é suporte para **múltiplos profissionais dentro de uma mesma clínica**, cada um com seu próprio acesso, carimbos e evoluções, mas compartilhando a base de pacientes.
 
-## O que sera feito
+---
 
-Adicionar um campo de **porcentagem de desconto** que a clinica aplica sobre o valor do terapeuta. Ao definir a porcentagem, o sistema mostra automaticamente o valor bruto e o valor liquido (apos desconto). Essa porcentagem sera salva no cadastro da clinica para nao precisar digitar toda vez.
+### O que precisaria ser adicionado (sem remover nada)
 
-## Como vai funcionar
-
-1. Na aba **Financeiro** dentro da clinica (`ClinicFinancial`), aparece um campo para digitar a % de desconto
-2. Ao alterar, o valor liquido e calculado em tempo real e exibido ao lado do faturamento bruto
-3. A porcentagem e salva automaticamente na clinica para uso futuro
-4. Na pagina **Financeiro geral** (`Financial.tsx`), o desconto salvo de cada clinica tambem e aplicado nos calculos
-
-## Detalhes tecnicos
-
-### 1. Banco de dados - Nova coluna na tabela `clinics`
-
-```sql
-ALTER TABLE public.clinics ADD COLUMN discount_percentage numeric DEFAULT 0;
+```
+ESTRUTURA ATUAL                    ESTRUTURA MULTIDISCIPLINAR
+─────────────────────────          ─────────────────────────────────
+usuário único → clínica            organização → clínica → membros
+usuário único → pacientes          pacientes compartilhados por clínica
+usuário único → evoluções          evoluções com "autor" (profissional)
 ```
 
-Armazena a porcentagem de desconto da clinica (ex: 30 para 30%).
+**1. Organizações / Equipes**
+- Nova tabela `organizations` — uma clínica multidisciplinar seria uma organização
+- Nova tabela `organization_members` — com papéis: `owner`, `admin`, `professional`
+- O dono convida outros usuários via e-mail
 
-### 2. Tipos - `src/types/index.ts`
+**2. Pacientes compartilhados**
+- Pacientes passariam a ser da organização, não só do usuário
+- Cada profissional vê os pacientes da clínica, não só os seus
+- Permissões por papel: quem pode criar/editar/arquivar
 
-Adicionar `discountPercentage?: number` na interface `Clinic`.
+**3. Evoluções por profissional**
+- Cada evolução já tem `user_id` — continuaria funcionando como "autor"
+- Na visualização, apareceria o nome do profissional que registrou
+- Carimbo automático do profissional logado
 
-### 3. Contexto - `src/contexts/AppContext.tsx`
+**4. Templates por organização**
+- Templates criados pelo dono ficam disponíveis para toda a equipe
+- Cada profissional ainda pode ter seus próprios templates pessoais
 
-Mapear `discount_percentage` para `discountPercentage` no carregamento e no update.
+**5. Financeiro separado por profissional**
+- Cada membro vê seus próprios recebimentos
+- O dono/admin vê o consolidado de todos
 
-### 4. `src/components/clinics/ClinicFinancial.tsx`
+---
 
-- Adicionar estado local para a porcentagem, inicializado com `clinic.discountPercentage || 0`
-- Renderizar um campo de input com icone de % ao lado do card de Faturamento
-- Calcular `valorLiquido = totalRevenue * (1 - porcentagem / 100)`
-- Exibir dois valores no card: "Bruto" e "Liquido (apos desconto)"
-- Ao alterar a porcentagem, salvar automaticamente na clinica via `updateClinic`
-- Usar debounce para nao salvar a cada tecla
+### Impacto no que já existe
 
-### 5. `src/components/clinics/EditClinicDialog.tsx`
+| Funcionalidade atual | Impacto |
+|---|---|
+| Clínica própria (terapeuta solo) | Zero — continua igual |
+| Templates de evolução | Zero — apenas compartilhamento opcional |
+| Carimbos pessoais | Zero — cada membro tem os seus |
+| Exportação PDF | Pequena — adicionar nome do profissional no rodapé |
+| Dashboard | Pequena — filtro por membro |
 
-Adicionar campo de "Desconto da clinica (%)" na secao de pagamento para que o usuario possa configurar tambem pelo dialog de edicao.
+O terapeuta solo continua usando o app exatamente como hoje. O modo multidisciplinar seria **opt-in** — ao criar uma clínica, escolheria entre "uso individual" ou "equipe multidisciplinar".
 
-### 6. `src/pages/Financial.tsx`
+---
 
-Na secao de faturamento por clinica, aplicar o `discountPercentage` de cada clinica para mostrar o valor liquido ao lado do bruto no resumo geral.
+### Implementação em fases
 
-## Resultado visual
+**Fase 1** — Convite e membros
+- Tabelas `organizations` e `organization_members`
+- Fluxo de convite por e-mail
+- Papéis: dono, admin, profissional
 
-No card de Faturamento da clinica, algo como:
+**Fase 2** — Dados compartilhados
+- Pacientes e evoluções vinculados à organização
+- Filtros por profissional na agenda e evoluções
 
-```text
-Faturamento Bruto     R$ 5.000,00
-Desconto clinica      30%
-Valor Liquido         R$ 3.500,00
-```
+**Fase 3** — Financeiro consolidado
+- Relatórios por membro e consolidado para o admin
 
-Com um slider ou input simples para ajustar a porcentagem.
+---
 
+Quer que eu implemente isso? Posso começar pela Fase 1 (estrutura de equipe e convites) mantendo tudo que existe intacto para usuários solo.
