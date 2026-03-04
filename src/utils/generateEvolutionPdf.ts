@@ -1,23 +1,48 @@
 import jsPDF from 'jspdf';
+import { Evolution, Patient, Clinic } from '@/types';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-// Renders a line of text justified within maxWidth starting at (x, y)
-function drawJustifiedLine(pdf: jsPDF, text: string, x: number, y: number, maxWidth: number, isLastLine: boolean) {
-  if (isLastLine || text.trim() === '') {
-    pdf.text(text, x, y);
+const LINE_HEIGHT = 6.5; // mm — comfortable reading line height (~1.5x at 10pt)
+const PARA_SPACING = 4;  // mm — extra space between paragraphs
+
+// Sanitize text: keep full Latin + extended Latin (accents, cedilla, etc.)
+// Only remove actual emoji/symbols that jsPDF can't render
+function sanitizeLine(text: string): string {
+  // Remove emoji ranges but keep all Latin Extended (0000-024F) and common punctuation
+  return text
+    .replace(/✅/g, '[x]')
+    .replace(/[\u2600-\u27BF\u{1F000}-\u{1FFFF}]/gu, '')
+    .replace(/[^\u0000-\u024F\u2010-\u2027\u2030-\u205E\u2060-\u2FFF\u3000-\u303F ]/g, '');
+}
+
+// Renders a justified line by distributing space evenly between words.
+// Falls back to left-align for last lines or when gaps would be too large.
+function drawJustifiedLine(
+  pdf: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  isLastLine: boolean
+) {
+  const trimmed = text.trimEnd();
+  if (isLastLine || trimmed === '') {
+    pdf.text(trimmed, x, y);
     return;
   }
-  const words = text.split(' ');
+  const words = trimmed.split(' ').filter(w => w.length > 0);
   if (words.length <= 1) {
-    pdf.text(text, x, y);
+    pdf.text(trimmed, x, y);
     return;
   }
-  // Calculate width of all words without spaces
   const wordsWidth = words.reduce((acc, w) => acc + pdf.getTextWidth(w), 0);
   const normalSpace = pdf.getTextWidth(' ');
-  const spaceWidth = (maxWidth - wordsWidth) / (words.length - 1);
-  // If calculated space is more than 2.5x normal space, don't justify (avoid ugly gaps)
+  const gaps = words.length - 1;
+  const spaceWidth = (maxWidth - wordsWidth) / gaps;
+  // If space would be >2.5x normal, fallback to left-align (avoids ugly rivers)
   if (spaceWidth > normalSpace * 2.5) {
-    pdf.text(text, x, y);
+    pdf.text(trimmed, x, y);
     return;
   }
   let curX = x;
@@ -26,9 +51,6 @@ function drawJustifiedLine(pdf: jsPDF, text: string, x: number, y: number, maxWi
     if (i < words.length - 1) curX += pdf.getTextWidth(words[i]) + spaceWidth;
   }
 }
-import { Evolution, Patient, Clinic } from '@/types';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 interface StampData {
   id: string;
@@ -61,6 +83,8 @@ export interface GenerateAllPatientsPdfOptions {
   stamps?: StampData[];
 }
 
+// ─── ALL PATIENTS DAILY PDF ──────────────────────────────────────────────────
+
 export async function generateAllPatientsPdf({ items, clinic, date, stamps }: GenerateAllPatientsPdfOptions): Promise<void> {
   if (items.length === 0) return;
 
@@ -69,61 +93,64 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
-  let yPosition = margin;
+  const textX = margin + 5;
+  const textWidth = contentWidth - 10;
+  const bottomSafe = 50; // reserve for stamp/signature area
+  let y = margin;
 
   const addHeader = async () => {
-    yPosition = margin;
+    y = margin;
     if (clinic?.letterhead) {
       try {
         const img = await loadImage(clinic.letterhead);
         const finalHeight = Math.min((img.height / img.width) * contentWidth, 40);
-        pdf.addImage(clinic.letterhead, 'PNG', margin, yPosition, contentWidth, finalHeight);
-        yPosition += finalHeight + 10;
+        pdf.addImage(clinic.letterhead, 'PNG', margin, y, contentWidth, finalHeight);
+        y += finalHeight + 10;
       } catch {}
     }
     if (clinic) {
       pdf.setFontSize(16); pdf.setFont('helvetica', 'bold');
-      pdf.text(clinic.name, pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 8;
+      pdf.text(clinic.name, pageWidth / 2, y, { align: 'center' });
+      y += 8;
       if (clinic.address) {
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-        pdf.text(clinic.address, pageWidth / 2, yPosition, { align: 'center' });
-        yPosition += 6;
+        pdf.text(clinic.address, pageWidth / 2, y, { align: 'center' });
+        y += 6;
       }
     }
-    yPosition += 5;
+    y += 5;
     pdf.setDrawColor(200, 200, 200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 10;
   };
 
   await addHeader();
 
   pdf.setFontSize(14); pdf.setFont('helvetica', 'bold');
-  pdf.text('EVOLUÇÕES DO DIA', pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 6;
+  pdf.text('EVOLUÇÕES DO DIA', pageWidth / 2, y, { align: 'center' });
+  y += 6;
   pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-  pdf.text(format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }), pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 12;
+  pdf.text(format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }), pageWidth / 2, y, { align: 'center' });
+  y += 12;
 
   for (let pi = 0; pi < items.length; pi++) {
     const { evolution: evo, patient } = items[pi];
 
-    if (yPosition > pageHeight - 100) { pdf.addPage(); await addHeader(); }
+    if (y > pageHeight - 100) { pdf.addPage(); await addHeader(); }
 
-    // Patient header
+    // Patient header bar
     pdf.setFillColor(240, 240, 255);
-    pdf.roundedRect(margin, yPosition, contentWidth, 12, 2, 2, 'F');
+    pdf.roundedRect(margin, y, contentWidth, 12, 2, 2, 'F');
     pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(0, 0, 0);
-    pdf.text(patient.name, margin + 5, yPosition + 8);
+    pdf.text(patient.name, textX, y + 8);
     if (patient.clinicalArea) {
       pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(120, 120, 120);
-      pdf.text(patient.clinicalArea, pageWidth - margin - 5, yPosition + 8, { align: 'right' });
+      pdf.text(patient.clinicalArea, pageWidth - margin - 5, y + 8, { align: 'right' });
       pdf.setTextColor(0, 0, 0);
     }
-    yPosition += 16;
+    y += 16;
 
-    // Status
+    // Attendance status
     const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
       : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'
       : evo.attendanceStatus === 'reposicao' ? 'REPOSIÇÃO'
@@ -131,427 +158,389 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps }: Ge
       : evo.attendanceStatus === 'feriado_nao_remunerado' ? 'FERIADO'
       : 'FALTA';
     const statusColor: [number, number, number] =
-      ['presente','reposicao','feriado_remunerado'].includes(evo.attendanceStatus) ? [34, 197, 94]
-      : evo.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68];
+      ['presente', 'reposicao', 'feriado_remunerado'].includes(evo.attendanceStatus)
+        ? [34, 197, 94]
+        : evo.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68];
     pdf.setFontSize(9); pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(...statusColor);
-    pdf.text(statusText, margin + 5, yPosition);
+    pdf.text(statusText, textX, y);
     pdf.setTextColor(0, 0, 0); pdf.setFont('helvetica', 'normal');
-    yPosition += 7;
+    y += LINE_HEIGHT + 1;
 
-    // Text — render with bold template titles
-    const rawText = evo.text || 'Sem descricao.';
-    for (const line of rawText.split('\n')) {
-      const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\u0000-\u00FF]/g, '');
-      if (cleanLine === '---') {
-        pdf.setDrawColor(220, 220, 220);
-        pdf.line(margin + 5, yPosition - 1, pageWidth - margin - 5, yPosition - 1);
-        yPosition += 4;
-      } else {
-        const parts = cleanLine.split(': ');
-        if (parts.length >= 2 && !cleanLine.startsWith(' ') && cleanLine.trim().length > 0) {
-          const label = parts[0] + ': ';
-          const value = parts.slice(1).join(': ');
-          if (yPosition + 5 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
-          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
-          const lw = pdf.getTextWidth(label);
-          pdf.text(label, margin + 5, yPosition);
-          pdf.setFont('helvetica', 'normal');
-          const valWidth = contentWidth - 10 - lw;
-          const vLines = pdf.splitTextToSize(value, valWidth);
-          for (let vl = 0; vl < vLines.length; vl++) {
-            if (yPosition + 5 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
-            const xOffset = vl === 0 ? margin + 5 + lw : margin + 5;
-            const lineWidth = vl === 0 ? valWidth : contentWidth - 10;
-            drawJustifiedLine(pdf, vLines[vl], xOffset, yPosition, lineWidth, vl === vLines.length - 1);
-            yPosition += 5;
-          }
-        } else if (cleanLine.trim().length > 0) {
-          const wrapped = pdf.splitTextToSize(cleanLine, contentWidth - 10);
-          if (yPosition + wrapped.length * 5 > pageHeight - 50) { pdf.addPage(); await addHeader(); }
-          pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-          for (let wl = 0; wl < wrapped.length; wl++) {
-            drawJustifiedLine(pdf, wrapped[wl], margin + 5, yPosition, contentWidth - 10, wl === wrapped.length - 1);
-            yPosition += 5;
-          }
-        }
-      }
-    }
-    yPosition += 5;
+    // Evolution text
+    y = renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
+
+    // Mandatory gap before signature/stamp area
+    y += 10;
 
     // Signature
     if (evo.signature) {
       try {
-        if (yPosition + 25 > pageHeight - 40) { pdf.addPage(); await addHeader(); }
-        pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, yPosition, 45, 20);
+        if (y + 30 > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+        pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, y, 45, 20);
         pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
-        pdf.text('Assinatura digital', pageWidth - margin - 27.5, yPosition + 23, { align: 'center' });
+        pdf.text('Assinatura digital', pageWidth - margin - 27.5, y + 23, { align: 'center' });
         pdf.setTextColor(0, 0, 0);
-        yPosition += 28;
+        y += 28;
       } catch {}
     }
 
-    // Stamp
+    // Per-evolution stamp
     if (evo.stampId && stamps) {
-      const stamp = stamps.find(s => s.id === evo.stampId);
-      if (stamp?.stamp_image) {
-        try {
-          const si = await loadImage(stamp.stamp_image);
-          const sw = 45; const sh = (si.height / si.width) * sw;
-          if (yPosition + sh > pageHeight - 40) { pdf.addPage(); await addHeader(); }
-          pdf.addImage(stamp.stamp_image, 'PNG', pageWidth - margin - sw, yPosition, sw, sh);
-          yPosition += sh + 3;
-        } catch {}
-      }
+      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, bottomSafe, addHeader);
     }
 
     if (pi < items.length - 1) {
-      yPosition += 5;
+      y += 5;
       pdf.setDrawColor(200, 200, 200);
-      pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 10;
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 10;
     }
   }
 
-  const totalPages = pdf.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    pdf.setPage(i);
-    pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
+  addFooters(pdf, pageWidth, pageHeight, margin);
+  pdf.save(`evolucoes_${format(date, 'dd-MM-yyyy')}.pdf`);
+}
+
+// ─── SINGLE / MULTIPLE EVOLUTIONS PDF ────────────────────────────────────────
+
+export async function generateEvolutionPdf({ evolution, patient, clinic, stamps }: GenerateSinglePdfOptions): Promise<void> {
+  return generateMultipleEvolutionsPdf({ evolutions: [evolution], patient, clinic, stamps });
+}
+
+export async function generateMultipleEvolutionsPdf({
+  evolutions,
+  patient,
+  clinic,
+  startDate,
+  endDate,
+  stamps,
+}: GenerateMultiplePdfOptions): Promise<void> {
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  const textX = margin + 5;
+  const textWidth = contentWidth - 10;
+  const bottomSafe = 55;
+  let y = margin;
+
+  const addHeader = async () => {
+    y = margin;
+    if (clinic?.letterhead) {
+      try {
+        const img = await loadImage(clinic.letterhead);
+        const finalHeight = Math.min((img.height / img.width) * contentWidth, 40);
+        pdf.addImage(clinic.letterhead, 'PNG', margin, y, contentWidth, finalHeight);
+        y += finalHeight + 10;
+      } catch {}
+    }
+    if (clinic) {
+      pdf.setFontSize(16); pdf.setFont('helvetica', 'bold');
+      pdf.text(clinic.name, pageWidth / 2, y, { align: 'center' });
+      y += 8;
+      if (clinic.address) {
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+        pdf.text(clinic.address, pageWidth / 2, y, { align: 'center' });
+        y += 6;
+      }
+    }
+    y += 5;
+    pdf.setDrawColor(200, 200, 200);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 10;
+  };
+
+  await addHeader();
+
+  // Title
+  pdf.setFontSize(14); pdf.setFont('helvetica', 'bold');
+  pdf.text(
+    evolutions.length > 1 ? 'RELATÓRIO DE EVOLUÇÕES' : 'EVOLUÇÃO DO PACIENTE',
+    pageWidth / 2, y, { align: 'center' }
+  );
+  y += 10;
+
+  if (evolutions.length > 1 && startDate && endDate) {
+    pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
     pdf.text(
-      `Página ${i} de ${totalPages} | Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+      `Período: ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`,
+      pageWidth / 2, y, { align: 'center' }
+    );
+    y += 8;
+  }
+  y += 5;
+
+  // Patient info box
+  pdf.setFillColor(245, 245, 245);
+  pdf.roundedRect(margin, y, contentWidth, 18, 3, 3, 'F');
+  pdf.setFontSize(11); pdf.setFont('helvetica', 'bold');
+  pdf.text('Paciente:', textX, y + 8);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(patient.name, margin + 30, y + 8);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Total de sessões:', textX, y + 14);
+  pdf.setFont('helvetica', 'normal');
+  const presentes = evolutions.filter(e => e.attendanceStatus === 'presente').length;
+  const faltas = evolutions.filter(e => e.attendanceStatus === 'falta').length;
+  const faltasRem = evolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+  const summaryParts = [`${presentes} presenças`, `${faltas} faltas`];
+  if (faltasRem > 0) summaryParts.push(`${faltasRem} faltas remuneradas`);
+  pdf.text(summaryParts.join(', '), margin + 48, y + 14);
+  y += 28;
+
+  // Each evolution
+  for (let i = 0; i < evolutions.length; i++) {
+    const evo = evolutions[i];
+
+    if (y > pageHeight - 90) { pdf.addPage(); await addHeader(); }
+
+    // Date header bar
+    pdf.setFillColor(250, 250, 250);
+    pdf.roundedRect(margin, y, contentWidth, 10, 2, 2, 'F');
+    pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
+    const [yr, mo, da] = evo.date.split('-').map(Number);
+    pdf.text(format(new Date(yr, mo - 1, da), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }), textX, y + 7);
+
+    const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
+      : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'
+      : evo.attendanceStatus === 'reposicao' ? 'REPOSIÇÃO'
+      : evo.attendanceStatus === 'feriado_remunerado' ? 'FERIADO REMUNERADO'
+      : evo.attendanceStatus === 'feriado_nao_remunerado' ? 'FERIADO'
+      : 'FALTA';
+    const sc = evo.attendanceStatus === 'presente' ? [34, 197, 94]
+      : evo.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68];
+    pdf.setTextColor(sc[0], sc[1], sc[2]);
+    pdf.text(statusText, pageWidth - margin - 5, y + 7, { align: 'right' });
+    pdf.setTextColor(0, 0, 0);
+    y += 15;
+
+    // Evolution text
+    y = renderEvolutionText(pdf, evo.text, textX, y, textWidth, pageHeight, bottomSafe, addHeader);
+
+    // Mandatory gap before signature/stamp area
+    y += 12;
+
+    // Signature (digital pad)
+    if (evo.signature) {
+      try {
+        if (y + 30 > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+        pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, y, 45, 20);
+        pdf.setFontSize(8); pdf.setTextColor(128, 128, 128);
+        pdf.text('Assinatura digital', pageWidth - margin - 27.5, y + 23, { align: 'center' });
+        pdf.setTextColor(0, 0, 0);
+        y += 30;
+      } catch {}
+    }
+
+    // Per-evolution stamp
+    if (evo.stampId && stamps) {
+      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, bottomSafe, addHeader);
+    }
+
+    // Separator
+    if (i < evolutions.length - 1) {
+      y += 5;
+      pdf.setDrawColor(220, 220, 220);
+      pdf.line(margin + 20, y, pageWidth - margin - 20, y);
+      y += 10;
+    }
+  }
+
+  // Final clinic stamp (if stored on clinic object)
+  if (clinic?.stamp) {
+    try {
+      const stampImg = await loadImage(clinic.stamp);
+      const maxW = 60; const maxH = 40;
+      let sw = maxW;
+      let sh = (stampImg.height / stampImg.width) * sw;
+      if (sh > maxH) { sh = maxH; sw = (stampImg.width / stampImg.height) * sh; }
+      if (y + sh + 20 > pageHeight - 20) { pdf.addPage(); await addHeader(); }
+      y += 15;
+      const sx = pageWidth - margin - sw;
+      pdf.addImage(clinic.stamp, 'PNG', sx, y, sw, sh);
+      pdf.setDrawColor(100, 100, 100);
+      pdf.line(sx, y + sh + 5, sx + sw, y + sh + 5);
+      pdf.setFontSize(8); pdf.setTextColor(80, 80, 80);
+      pdf.text('Carimbo da Clínica', sx + sw / 2, y + sh + 10, { align: 'center' });
+      pdf.setTextColor(0, 0, 0);
+    } catch {}
+  }
+
+  addFooters(pdf, pageWidth, pageHeight, margin);
+
+  const dateRange = evolutions.length > 1 && startDate && endDate
+    ? `${format(startDate, 'dd-MM-yyyy')}_a_${format(endDate, 'dd-MM-yyyy')}`
+    : (() => {
+        const [y2, m2, d2] = evolutions[0].date.split('-').map(Number);
+        return format(new Date(y2, m2 - 1, d2), 'dd-MM-yyyy');
+      })();
+  pdf.save(`evolucoes_${patient.name.replace(/\s+/g, '_')}_${dateRange}.pdf`);
+}
+
+// ─── SHARED HELPERS ───────────────────────────────────────────────────────────
+
+/**
+ * Renders evolution text lines with proper justification and line-height.
+ * Returns updated yPosition.
+ */
+function renderEvolutionText(
+  pdf: jsPDF,
+  rawText: string,
+  textX: number,
+  startY: number,
+  textWidth: number,
+  pageHeight: number,
+  bottomSafe: number,
+  addHeader: () => Promise<void>
+): number {
+  let y = startY;
+  const lines = (rawText || 'Sem descrição.').split('\n');
+
+  for (let li = 0; li < lines.length; li++) {
+    const raw = lines[li];
+    const cleanLine = sanitizeLine(raw);
+
+    // Empty line = paragraph break
+    if (cleanLine.trim() === '') {
+      y += PARA_SPACING;
+      continue;
+    }
+
+    // Template model title: [MODELO] ...
+    if (cleanLine.startsWith('[MODELO] ')) {
+      const titleText = cleanLine.replace('[MODELO] ', '').toUpperCase();
+      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); addHeader(); }
+      pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
+      pdf.text(titleText, textX, y);
+      y += LINE_HEIGHT + 1;
+      pdf.setFont('helvetica', 'normal');
+      continue;
+    }
+
+    // Horizontal rule
+    if (cleanLine === '---') {
+      pdf.setDrawColor(220, 220, 220);
+      pdf.line(textX, y - 1, textX + textWidth, y - 1);
+      y += 4;
+      continue;
+    }
+
+    // Label: Value pattern (bold label)
+    const colonIdx = cleanLine.indexOf(': ');
+    const hasLabel = colonIdx > 0 && colonIdx < 40 && !cleanLine.startsWith(' ');
+    if (hasLabel) {
+      const label = cleanLine.slice(0, colonIdx + 2);
+      const value = cleanLine.slice(colonIdx + 2);
+      pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
+      const labelW = pdf.getTextWidth(label);
+      pdf.text(label, textX, y);
+      pdf.setFont('helvetica', 'normal');
+
+      if (value.trim() === '') {
+        y += LINE_HEIGHT;
+        continue;
+      }
+
+      const valWidth = textWidth - labelW;
+      const valLines = pdf.splitTextToSize(value, valWidth);
+      for (let vl = 0; vl < valLines.length; vl++) {
+        if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); addHeader(); }
+        const xOff = vl === 0 ? textX + labelW : textX;
+        const lw = vl === 0 ? valWidth : textWidth;
+        drawJustifiedLine(pdf, valLines[vl], xOff, y, lw, vl === valLines.length - 1);
+        y += LINE_HEIGHT;
+      }
+      continue;
+    }
+
+    // Plain paragraph text — wrap and justify
+    pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+    const wrapped = pdf.splitTextToSize(cleanLine, textWidth);
+    for (let wl = 0; wl < wrapped.length; wl++) {
+      if (y + LINE_HEIGHT > pageHeight - bottomSafe) { pdf.addPage(); addHeader(); }
+      drawJustifiedLine(pdf, wrapped[wl], textX, y, textWidth, wl === wrapped.length - 1);
+      y += LINE_HEIGHT;
+    }
+  }
+
+  return y;
+}
+
+/**
+ * Renders stamp image + stamp name below for a given evolution stamp.
+ * Returns updated yPosition.
+ */
+async function renderStamp(
+  pdf: jsPDF,
+  stampId: string,
+  stamps: StampData[],
+  pageWidth: number,
+  pageHeight: number,
+  margin: number,
+  startY: number,
+  bottomSafe: number,
+  addHeader: () => Promise<void>
+): Promise<number> {
+  const stamp = stamps.find(s => s.id === stampId);
+  if (!stamp) return startY;
+
+  let y = startY;
+  const maxW = 50;
+  const maxH = 28;
+
+  // Stamp image
+  if (stamp.stamp_image) {
+    try {
+      const si = await loadImage(stamp.stamp_image);
+      let sw = maxW;
+      let sh = (si.height / si.width) * sw;
+      if (sh > maxH) { sh = maxH; sw = (si.width / si.height) * sh; }
+      if (y + sh + 20 > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+      pdf.addImage(stamp.stamp_image, 'PNG', pageWidth - margin - sw, y, sw, sh);
+      y += sh + 2;
+    } catch {}
+  }
+
+  // Signature image from stamp
+  if (stamp.signature_image) {
+    try {
+      const si = await loadImage(stamp.signature_image);
+      let sw = 42;
+      let sh = (si.height / si.width) * sw;
+      if (sh > 18) { sh = 18; sw = (si.width / si.height) * sh; }
+      if (y + sh + 14 > pageHeight - bottomSafe) { pdf.addPage(); await addHeader(); }
+      pdf.addImage(stamp.signature_image, 'PNG', pageWidth - margin - sw, y, sw, sh);
+      y += sh + 2;
+    } catch {}
+  }
+
+  // Name below stamp — always shown
+  pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(60, 60, 60);
+  pdf.text(stamp.name, pageWidth - margin - 5, y, { align: 'right' });
+  y += 4;
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(120, 120, 120);
+  pdf.text(stamp.clinical_area, pageWidth - margin - 5, y, { align: 'right' });
+  pdf.setTextColor(0, 0, 0);
+  y += 6;
+
+  return y;
+}
+
+function addFooters(pdf: jsPDF, pageWidth: number, pageHeight: number, margin: number) {
+  const total = pdf.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    pdf.setPage(i);
+    pdf.setFontSize(8); pdf.setTextColor(128, 128, 128); pdf.setFont('helvetica', 'normal');
+    pdf.text(
+      `Página ${i} de ${total} | Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
       pageWidth / 2, pageHeight - 10, { align: 'center' }
     );
     pdf.setFontSize(6); pdf.setTextColor(190, 190, 190); pdf.setFont('helvetica', 'bold');
     pdf.text('Plataforma Clínica - Evolução Diária', margin, pageHeight - 5);
     pdf.setFont('helvetica', 'normal');
   }
-
-  pdf.save(`evolucoes_${format(date, 'dd-MM-yyyy')}.pdf`);
-}
-
-export async function generateEvolutionPdf({ evolution, patient, clinic, stamps }: GenerateSinglePdfOptions): Promise<void> {
-  return generateMultipleEvolutionsPdf({ evolutions: [evolution], patient, clinic, stamps });
-}
-
-export async function generateMultipleEvolutionsPdf({ 
-  evolutions, 
-  patient, 
-  clinic,
-  startDate,
-  endDate,
-  stamps 
-}: GenerateMultiplePdfOptions): Promise<void> {
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
-
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 20;
-  const contentWidth = pageWidth - margin * 2;
-  let yPosition = margin;
-
-  const addHeader = async () => {
-    yPosition = margin;
-    
-    // Add letterhead if available
-    if (clinic?.letterhead) {
-      try {
-        const img = await loadImage(clinic.letterhead);
-        const imgWidth = contentWidth;
-        const imgHeight = (img.height / img.width) * imgWidth;
-        const maxHeaderHeight = 40;
-        const finalHeight = Math.min(imgHeight, maxHeaderHeight);
-        pdf.addImage(clinic.letterhead, 'PNG', margin, yPosition, imgWidth, finalHeight);
-        yPosition += finalHeight + 10;
-      } catch (error) {
-        console.error('Error loading letterhead:', error);
-      }
-    }
-
-    // Clinic name header
-    if (clinic) {
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(clinic.name, pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 8;
-
-      if (clinic.address) {
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(clinic.address, pageWidth / 2, yPosition, { align: 'center' });
-        yPosition += 6;
-      }
-    }
-
-    // Divider line
-    yPosition += 5;
-    pdf.setDrawColor(200, 200, 200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-  };
-
-  await addHeader();
-
-  // Title
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  const title = evolutions.length > 1 ? 'RELATÓRIO DE EVOLUÇÕES' : 'EVOLUÇÃO DO PACIENTE';
-  pdf.text(title, pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 10;
-
-  // Period info if multiple evolutions
-  if (evolutions.length > 1 && startDate && endDate) {
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(
-      `Período: ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`,
-      pageWidth / 2,
-      yPosition,
-      { align: 'center' }
-    );
-    yPosition += 8;
-  }
-  yPosition += 5;
-
-  // Patient info box
-  pdf.setFillColor(245, 245, 245);
-  pdf.roundedRect(margin, yPosition, contentWidth, 18, 3, 3, 'F');
-  
-  pdf.setFontSize(11);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('Paciente:', margin + 5, yPosition + 8);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(patient.name, margin + 30, yPosition + 8);
-
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('Total de sessões:', margin + 5, yPosition + 14);
-  pdf.setFont('helvetica', 'normal');
-  const presentes = evolutions.filter(e => e.attendanceStatus === 'presente').length;
-  const faltas = evolutions.filter(e => e.attendanceStatus === 'falta').length;
-  const faltasRemuneradas = evolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-  const summaryParts = [`${presentes} presenças`, `${faltas} faltas`];
-  if (faltasRemuneradas > 0) summaryParts.push(`${faltasRemuneradas} faltas remuneradas`);
-  pdf.text(summaryParts.join(', '), margin + 48, yPosition + 14);
-
-  yPosition += 28;
-
-  // Evolutions
-  for (let i = 0; i < evolutions.length; i++) {
-    const evo = evolutions[i];
-    
-    // Check if we need a new page
-    if (yPosition > pageHeight - 80) {
-      pdf.addPage();
-      await addHeader();
-    }
-
-    // Evolution header
-    pdf.setFillColor(250, 250, 250);
-    pdf.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, 'F');
-    
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'bold');
-    const [year, month, day] = evo.date.split('-').map(Number);
-    const evoLocalDate = new Date(year, month - 1, day);
-    pdf.text(
-      format(evoLocalDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
-      margin + 5,
-      yPosition + 7
-    );
-
-    // Attendance status
-    const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE' : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA' : 'FALTA';
-    const statusColor = evo.attendanceStatus === 'presente' ? [34, 197, 94] : evo.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68];
-    pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-    pdf.text(statusText, pageWidth - margin - 5, yPosition + 7, { align: 'right' });
-    pdf.setTextColor(0, 0, 0);
-
-    yPosition += 15;
-
-    // Evolution text — render with bold template titles
-    const rawText = evo.text || 'Sem descricao.';
-    const rawLines = rawText.split('\n');
-    for (const line of rawLines) {
-      const cleanLine = line.replace(/✅/g, '[x]').replace(/[^\u0000-\u00FF]/g, '');
-      if (cleanLine.startsWith('[MODELO] ')) {
-        const title = cleanLine.replace('[MODELO] ', '').toUpperCase();
-        if (yPosition + 7 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
-        pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
-        pdf.text(title, margin + 5, yPosition);
-        yPosition += 6;
-        pdf.setFont('helvetica', 'normal');
-      } else if (cleanLine === '---') {
-        pdf.setDrawColor(220, 220, 220);
-        pdf.line(margin + 5, yPosition - 1, pageWidth - margin - 5, yPosition - 1);
-        yPosition += 4;
-      } else {
-        const parts = cleanLine.split(': ');
-        if (parts.length >= 2 && !cleanLine.startsWith(' ') && cleanLine.trim().length > 0) {
-          const label = parts[0] + ': ';
-          const value = parts.slice(1).join(': ');
-          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
-          const labelWidth = pdf.getTextWidth(label);
-          pdf.text(label, margin + 5, yPosition);
-          pdf.setFont('helvetica', 'normal');
-          const valWidth = contentWidth - 10 - labelWidth;
-          const valueLines = pdf.splitTextToSize(value, valWidth);
-          if (yPosition + valueLines.length * 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
-          for (let vl = 0; vl < valueLines.length; vl++) {
-            if (yPosition + 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
-            const xOffset = vl === 0 ? margin + 5 + labelWidth : margin + 5;
-            const lineWidth = vl === 0 ? valWidth : contentWidth - 10;
-            drawJustifiedLine(pdf, valueLines[vl], xOffset, yPosition, lineWidth, vl === valueLines.length - 1);
-            yPosition += 5;
-          }
-        } else if (cleanLine.trim().length > 0) {
-          const wrapped = pdf.splitTextToSize(cleanLine, contentWidth - 10);
-          if (yPosition + wrapped.length * 5 > pageHeight - 60) { pdf.addPage(); await addHeader(); }
-          pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-          for (let wl = 0; wl < wrapped.length; wl++) {
-            drawJustifiedLine(pdf, wrapped[wl], margin + 5, yPosition, contentWidth - 10, wl === wrapped.length - 1);
-            yPosition += 5;
-          }
-        }
-      }
-    }
-    yPosition += 5;
-
-    // Add signature if available
-    if (evo.signature) {
-      try {
-        const signatureHeight = 20;
-        if (yPosition + signatureHeight > pageHeight - 40) {
-          pdf.addPage();
-          await addHeader();
-        }
-        
-        pdf.addImage(evo.signature, 'PNG', pageWidth - margin - 50, yPosition, 45, signatureHeight);
-        pdf.setFontSize(8);
-        pdf.setTextColor(128, 128, 128);
-        pdf.text('Assinatura digital', pageWidth - margin - 27.5, yPosition + signatureHeight + 3, { align: 'center' });
-        pdf.setTextColor(0, 0, 0);
-        yPosition += signatureHeight + 8;
-      } catch (error) {
-        console.error('Error loading signature:', error);
-      }
-    }
-
-    // Add stamp per evolution if stampId matches
-    if (evo.stampId && stamps) {
-      const stamp = stamps.find(s => s.id === evo.stampId);
-      if (stamp) {
-        // Render stamp image
-        if (stamp.stamp_image) {
-          try {
-            const stampImg = await loadImage(stamp.stamp_image);
-            const maxW = 45;
-            const maxH = 25;
-            let sw = maxW;
-            let sh = (stampImg.height / stampImg.width) * sw;
-            if (sh > maxH) { sh = maxH; sw = (stampImg.width / stampImg.height) * sh; }
-            if (yPosition + sh + 10 > pageHeight - 40) { pdf.addPage(); await addHeader(); }
-            pdf.addImage(stamp.stamp_image, 'PNG', pageWidth - margin - sw, yPosition, sw, sh);
-            yPosition += sh + 3;
-          } catch (e) { console.error('Error loading stamp image:', e); }
-        }
-        // Render signature image from stamp
-        if (stamp.signature_image) {
-          try {
-            const sigImg = await loadImage(stamp.signature_image);
-            const maxW = 40;
-            const maxH = 18;
-            let sw = maxW;
-            let sh = (sigImg.height / sigImg.width) * sw;
-            if (sh > maxH) { sh = maxH; sw = (sigImg.width / sigImg.height) * sh; }
-            if (yPosition + sh + 10 > pageHeight - 40) { pdf.addPage(); await addHeader(); }
-            pdf.addImage(stamp.signature_image, 'PNG', pageWidth - margin - sw, yPosition, sw, sh);
-            yPosition += sh + 3;
-          } catch (e) { console.error('Error loading stamp signature:', e); }
-        }
-        // Stamp text label
-        pdf.setFontSize(7);
-        pdf.setTextColor(128, 128, 128);
-        pdf.text(`${stamp.name} — ${stamp.clinical_area}`, pageWidth - margin - 5, yPosition, { align: 'right' });
-        pdf.setTextColor(0, 0, 0);
-        yPosition += 5;
-      }
-    }
-    // Separator between evolutions
-    if (i < evolutions.length - 1) {
-      yPosition += 3;
-      pdf.setDrawColor(230, 230, 230);
-      pdf.line(margin + 20, yPosition, pageWidth - margin - 20, yPosition);
-      yPosition += 8;
-    }
-  }
-
-  // Add stamp at the end if available
-  if (clinic?.stamp) {
-    try {
-      const stampImg = await loadImage(clinic.stamp);
-      const maxStampWidth = 60;
-      const maxStampHeight = 40;
-      let stampWidth = maxStampWidth;
-      let stampHeight = (stampImg.height / stampImg.width) * stampWidth;
-      
-      if (stampHeight > maxStampHeight) {
-        stampHeight = maxStampHeight;
-        stampWidth = (stampImg.width / stampImg.height) * stampHeight;
-      }
-
-      // Check if stamp fits on current page
-      if (yPosition + stampHeight + 20 > pageHeight - 20) {
-        pdf.addPage();
-        await addHeader();
-      }
-
-      yPosition += 15;
-      
-      // Position stamp at bottom right
-      const stampX = pageWidth - margin - stampWidth;
-      
-      pdf.addImage(clinic.stamp, 'PNG', stampX, yPosition, stampWidth, stampHeight);
-      
-      // Add signature line below stamp
-      pdf.setDrawColor(100, 100, 100);
-      pdf.line(stampX, yPosition + stampHeight + 5, stampX + stampWidth, yPosition + stampHeight + 5);
-      pdf.setFontSize(8);
-      pdf.text('Carimbo da Clínica', stampX + stampWidth / 2, yPosition + stampHeight + 10, { align: 'center' });
-    } catch (error) {
-      console.error('Error loading stamp:', error);
-    }
-  }
-
-  // Footer with date and app branding
-  const totalPages = pdf.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    pdf.setPage(i);
-    pdf.setFontSize(8);
-    pdf.setTextColor(128, 128, 128);
-    pdf.text(
-      `Página ${i} de ${totalPages} | Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
-    // Discrete app branding
-    pdf.setFontSize(6);
-    pdf.setTextColor(190, 190, 190);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Plataforma Clínica - Evolução Diária', margin, pageHeight - 5);
-    pdf.setFont('helvetica', 'normal');
-  }
-
-  // Save the PDF
-  const dateRange = evolutions.length > 1 && startDate && endDate
-    ? `${format(startDate, 'dd-MM-yyyy')}_a_${format(endDate, 'dd-MM-yyyy')}`
-    : (() => { const [y,m,d] = evolutions[0].date.split('-').map(Number); return format(new Date(y, m-1, d), 'dd-MM-yyyy'); })();
-  
-  const fileName = `evolucoes_${patient.name.replace(/\s+/g, '_')}_${dateRange}.pdf`;
-  pdf.save(fileName);
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
