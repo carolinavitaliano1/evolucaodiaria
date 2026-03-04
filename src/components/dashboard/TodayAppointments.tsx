@@ -42,7 +42,7 @@ export function TodayAppointments() {
               onClick={() => navigate(`/patients/${appt.patientId}`)}
               className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-primary/5 transition-colors text-left"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden border border-border">
                 {patient.avatarUrl ? (
                   <img src={patient.avatarUrl} alt={patient.name} className="w-full h-full object-cover" />
                 ) : (
@@ -50,14 +50,14 @@ export function TodayAppointments() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm truncate">{patient.name}</p>
+                <p className="font-semibold text-foreground text-sm truncate">{patient.name}</p>
                 {patient.clinicalArea && (
                   <p className="text-xs text-muted-foreground truncate">{patient.clinicalArea}</p>
                 )}
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {appt.time && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-0.5 bg-secondary px-2 py-1 rounded-full">
                     <Clock className="w-3 h-3" />{appt.time.slice(0, 5)}
                   </span>
                 )}
