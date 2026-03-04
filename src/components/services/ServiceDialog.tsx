@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Briefcase, Calendar, Plus, Trash2, Pencil } from 'lucide-react';
 
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Service {
   id: string;
@@ -54,6 +54,7 @@ interface ServiceDialogProps {
 }
 
 export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
+  const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,7 +110,7 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
       const { data, error } = await supabase
         .from('services')
         .select('*')
-        .eq('user_id', DEMO_USER_ID)
+        .eq('user_id', user?.id)
         .eq('is_active', true)
         .order('name', { ascending: true });
 
@@ -170,7 +171,7 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
       }
 
       const serviceData = {
-        user_id: DEMO_USER_ID,
+        user_id: user?.id!,
         name: serviceName,
         type: serviceType,
         description: serviceDescription || null,
@@ -234,7 +235,7 @@ export function ServiceDialog({ open, onOpenChange }: ServiceDialogProps) {
       const { error } = await supabase
         .from('private_appointments')
         .insert({
-          user_id: DEMO_USER_ID,
+          user_id: user?.id!,
           service_id: selectedService || null,
           client_name: clientName,
           client_phone: clientPhone || null,
