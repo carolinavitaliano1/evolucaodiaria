@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -31,7 +32,7 @@ const moreNavItems = [
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
-  { to: '/mural', icon: Megaphone, label: 'Mural' },
+  { to: '/mural', icon: Megaphone, label: 'Mural', badge: true },
   { to: '/pricing', icon: CreditCard, label: 'Planos' },
   { to: '/install', icon: Smartphone, label: 'Instalar App' },
   { to: '/profile', icon: User, label: 'Perfil' },
@@ -40,6 +41,7 @@ const moreNavItems = [
 export function MobileNav() {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const { unreadCount } = useUnreadNotices();
 
   const isMoreActive = moreNavItems.some(item => 
     location.pathname === item.to || 
@@ -90,19 +92,15 @@ export function MobileNav() {
                 isMoreActive ? 'text-primary' : 'text-muted-foreground'
               )}
             >
-              <div className={cn(
-                'p-1.5 rounded-lg transition-colors',
-                isMoreActive && 'bg-primary'
-              )}>
-                <MoreHorizontal className={cn(
-                  'w-5 h-5',
-                  isMoreActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                )} />
+              <div className={cn('relative p-1.5 rounded-lg transition-colors', isMoreActive && 'bg-primary')}>
+                <MoreHorizontal className={cn('w-5 h-5', isMoreActive ? 'text-primary-foreground' : 'text-muted-foreground')} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </div>
-              <span className={cn(
-                'text-[10px] font-medium',
-                isMoreActive ? 'text-primary' : 'text-muted-foreground'
-              )}>
+              <span className={cn('text-[10px] font-medium', isMoreActive ? 'text-primary' : 'text-muted-foreground')}>
                 Mais
               </span>
             </button>
@@ -113,9 +111,10 @@ export function MobileNav() {
               <ThemeToggle />
             </div>
             <div className="py-2 space-y-2">
-              {moreNavItems.map(({ to, icon: Icon, label }) => {
+              {moreNavItems.map(({ to, icon: Icon, label, badge }) => {
                 const isActive = location.pathname === to || 
                   (to !== '/' && location.pathname.startsWith(to));
+                const showBadge = badge && unreadCount > 0;
                 
                 return (
                   <NavLink
@@ -127,16 +126,15 @@ export function MobileNav() {
                       isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'
                     )}
                   >
-                    <Icon className={cn(
-                      'w-5 h-5',
-                      isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                    )} />
-                    <span className={cn(
-                      'font-medium',
-                      isActive ? 'text-primary-foreground' : 'text-foreground'
-                    )}>
+                    <Icon className={cn('w-5 h-5', isActive ? 'text-primary-foreground' : 'text-muted-foreground')} />
+                    <span className={cn('font-medium flex-1', isActive ? 'text-primary-foreground' : 'text-foreground')}>
                       {label}
                     </span>
+                    {showBadge && (
+                      <span className="bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </NavLink>
                 );
               })}

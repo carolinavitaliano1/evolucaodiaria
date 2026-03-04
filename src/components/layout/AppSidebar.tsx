@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -30,7 +31,7 @@ const navItems = [
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
   { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
-  { to: '/mural', icon: Megaphone, label: 'Mural' },
+  { to: '/mural', icon: Megaphone, label: 'Mural', badge: true },
   { to: '/pricing', icon: CreditCard, label: 'Planos' },
   { to: '/install', icon: Smartphone, label: 'Instalar App' },
 ];
@@ -39,6 +40,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
   const { theme } = useTheme();
+  const { unreadCount } = useUnreadNotices();
 
   const handleLogout = async () => {
     await signOut();
@@ -65,9 +67,10 @@ export function AppSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-0.5">
-        {navItems.map(({ to, icon: Icon, label }) => {
+        {navItems.map(({ to, icon: Icon, label, badge }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
+          const showBadge = badge && unreadCount > 0;
           
           return (
             <NavLink
@@ -79,16 +82,28 @@ export function AppSidebar() {
                 isActive && 'bg-primary text-primary-foreground'
               )}
             >
-              <Icon className={cn(
-                'w-[18px] h-[18px]',
-                isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
-              )} />
+              <div className="relative shrink-0">
+                <Icon className={cn(
+                  'w-[18px] h-[18px]',
+                  isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
+                )} />
+                {showBadge && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </div>
               <span className={cn(
-                'text-sm font-medium',
+                'text-sm font-medium flex-1',
                 isActive ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
               )}>
                 {label}
               </span>
+              {showBadge && (
+                <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </NavLink>
           );
         })}

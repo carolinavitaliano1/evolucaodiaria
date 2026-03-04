@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Pin, Pencil, Trash2, Video, BookOpen, Bell, Link, Loader2, Youtube, ExternalLink, ImageIcon, X, Upload } from 'lucide-react';
+import { Plus, Pin, Pencil, Trash2, Video, BookOpen, Bell, Link, Loader2, Youtube, ExternalLink, ImageIcon, X, Upload, Share2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 
 interface Notice {
   id: string;
@@ -84,6 +85,7 @@ const emptyForm = {
 export default function Mural() {
   const { user } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
@@ -94,7 +96,9 @@ export default function Mural() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { refetch: refetchUnread } = useUnreadNotices();
 
   const loadNotices = async () => {
     if (!user) return;
@@ -108,7 +112,33 @@ export default function Mural() {
     setLoading(false);
   };
 
-  useEffect(() => { loadNotices(); }, [user]);
+  const loadReadIds = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('notice_reads')
+      .select('notice_id')
+      .eq('user_id', user.id);
+    if (data) setReadIds(new Set(data.map(r => r.notice_id)));
+  };
+
+  useEffect(() => {
+    loadNotices();
+    loadReadIds();
+  }, [user]);
+
+  // Mark all visible notices as read when the page loads
+  useEffect(() => {
+    if (!user || notices.length === 0) return;
+    const unread = notices.filter(n => !readIds.has(n.id));
+    if (unread.length === 0) return;
+    const rows = unread.map(n => ({ user_id: user.id, notice_id: n.id }));
+    supabase.from('notice_reads')
+      .upsert(rows, { onConflict: 'user_id,notice_id' })
+      .then(() => {
+        setReadIds(prev => new Set([...prev, ...unread.map(n => n.id)]));
+        refetchUnread();
+      });
+  }, [notices, user]);
 
   const openCreate = () => {
     setEditingNotice(null);
@@ -179,9 +209,13 @@ export default function Mural() {
       if (error) { toast.error('Erro ao atualizar aviso'); }
       else { toast.success('Aviso atualizado!'); }
     } else {
-      const { error } = await supabase.from('notices').insert(payload);
+      const { data, error } = await supabase.from('notices').insert(payload).select().single();
       if (error) { toast.error('Erro ao criar aviso'); }
-      else { toast.success('Aviso criado!'); }
+      else {
+        toast.success('Aviso criado!');
+        // Mark the new notice as unread so badge appears
+        refetchUnread();
+      }
     }
     setSaving(false);
     setDialogOpen(false);
@@ -194,11 +228,21 @@ export default function Mural() {
     toast.success('Aviso excluído');
     setDeleteId(null);
     loadNotices();
+    refetchUnread();
   };
 
   const togglePin = async (n: Notice) => {
     await supabase.from('notices').update({ pinned: !n.pinned }).eq('id', n.id);
     loadNotices();
+  };
+
+  const handleShare = (n: Notice) => {
+    const url = `${window.location.origin}/mural?notice=${n.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(n.id);
+      toast.success('Link copiado! Só quem tem conta no sistema consegue ver.');
+      setTimeout(() => setCopiedId(null), 2000);
+    });
   };
 
   const filtered = filterType === 'all' ? notices : notices.filter(n => n.type === filterType);
@@ -208,6 +252,7 @@ export default function Mural() {
   const renderNoticeCard = (n: Notice) => {
     const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.aviso;
     const embedUrl = n.video_url ? getVideoEmbedUrl(n.video_url) : null;
+    const isUnread = !readIds.has(n.id);
 
     return (
       <div
@@ -215,19 +260,31 @@ export default function Mural() {
         className={cn(
           'group rounded-2xl border p-4 lg:p-5 flex flex-col gap-3 transition-all',
           getCardBg(n.color),
-          n.pinned && 'ring-2 ring-primary/30'
+          n.pinned && 'ring-2 ring-primary/30',
+          isUnread && 'ring-2 ring-primary/50 shadow-sm'
         )}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
             {n.pinned && <Pin className="w-3.5 h-3.5 text-primary shrink-0" />}
             <div className={cn('flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border', cfg.colorClass)}>
               {cfg.icon}
               {cfg.label}
             </div>
+            {isUnread && (
+              <span className="px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                Novo
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleShare(n)} title="Copiar link">
+              {copiedId === n.id
+                ? <Check className="w-3.5 h-3.5 text-success" />
+                : <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
+              }
+            </Button>
             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => togglePin(n)} title={n.pinned ? 'Desafixar' : 'Fixar'}>
               <Pin className={cn('w-3.5 h-3.5', n.pinned ? 'text-primary fill-primary' : 'text-muted-foreground')} />
             </Button>
@@ -291,10 +348,21 @@ export default function Mural() {
           </a>
         )}
 
-        {/* Date */}
-        <p className="text-xs text-muted-foreground/60 mt-auto pt-1">
-          {format(new Date(n.created_at), "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
-        </p>
+        {/* Footer: date + share */}
+        <div className="flex items-center justify-between mt-auto pt-1">
+          <p className="text-xs text-muted-foreground/60">
+            {format(new Date(n.created_at), "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
+          </p>
+          <button
+            onClick={() => handleShare(n)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            {copiedId === n.id
+              ? <><Check className="w-3 h-3 text-success" /> <span className="text-success">Copiado!</span></>
+              : <><Share2 className="w-3 h-3" /> Compartilhar</>
+            }
+          </button>
+        </div>
       </div>
     );
   };
