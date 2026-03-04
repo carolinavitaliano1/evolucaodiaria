@@ -161,6 +161,8 @@ export default function ClinicDetail() {
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [batchSearch, setBatchSearch] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
+  const [batchSelectedTemplateId, setBatchSelectedTemplateId] = useState<string>('none');
+  const [batchTemplateFormValues, setBatchTemplateFormValues] = useState<Record<string, any>>({});
   const { user } = useAuth();
 
   // Load stamps
@@ -444,41 +446,82 @@ export default function ClinicDetail() {
   };
 
 
-  const handleBatchEvolution = () => {
+  const handleBatchEvolution = async () => {
     if (!clinic) return;
     if (selectedPatients.length === 0) {
       toast.error('Selecione pelo menos um paciente');
       return;
     }
-    if (!batchEvolutionText.trim()) {
+
+    const batchTemplate = batchSelectedTemplateId !== 'none' ? clinicTemplates.find(t => t.id === batchSelectedTemplateId) : null;
+
+    if (!batchTemplate && !batchEvolutionText.trim()) {
       toast.error('Digite o texto da evolução');
       return;
     }
 
     const dateStr = format(batchDate, 'yyyy-MM-dd');
+
+    // Build full text
+    let fullText = batchEvolutionText;
+    if (batchTemplate && Object.keys(batchTemplateFormValues).length > 0) {
+      const templateLines = batchTemplate.fields
+        .map(f => {
+          const val = batchTemplateFormValues[f.id];
+          if (val === undefined || val === '' || val === false) return null;
+          if (f.type === 'checkbox') return val ? `✅ ${f.label}` : null;
+          return `${f.label}: ${val}`;
+        })
+        .filter(Boolean);
+      if (templateLines.length > 0) {
+        const templateSection = templateLines.join('\n');
+        fullText = fullText ? `${templateSection}\n\n---\n\n${fullText}` : templateSection;
+      }
+    }
     
-    selectedPatients.forEach(patientId => {
+    for (const patientId of selectedPatients) {
       const stampId = batchStampMode === 'same' 
         ? (batchGlobalStampId !== 'none' ? batchGlobalStampId : undefined)
         : (batchIndividualStamps[patientId] && batchIndividualStamps[patientId] !== 'none' ? batchIndividualStamps[patientId] : undefined);
       
       const status = batchAttendanceStatus[patientId] || 'presente';
       
-      addEvolution({
+      await addEvolution({
         patientId,
         clinicId: clinic.id,
         date: dateStr,
-        text: batchEvolutionText,
+        text: fullText,
         attendanceStatus: status,
         stampId,
       });
-    });
+
+      // Save template data if template selected
+      if (batchTemplate) {
+        const { data: ev } = await supabase
+          .from('evolutions')
+          .select('id')
+          .eq('patient_id', patientId)
+          .eq('clinic_id', clinic.id)
+          .eq('date', dateStr)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (ev) {
+          await supabase.from('evolutions').update({
+            template_id: batchTemplate.id,
+            template_data: batchTemplateFormValues,
+          }).eq('id', ev.id);
+        }
+      }
+    }
 
     toast.success(`Evolução registrada para ${selectedPatients.length} paciente(s)!`);
     setSelectedPatients([]);
     setBatchEvolutionText('');
     setBatchIndividualStamps({});
     setBatchAttendanceStatus({});
+    setBatchSelectedTemplateId('none');
+    setBatchTemplateFormValues({});
   };
 
   const togglePatientSelection = (patientId: string) => {
@@ -984,43 +1027,92 @@ export default function ClinicDetail() {
                   )}
                 </div>
 
-                {/* Evolution Text */}
-                <div>
-                  <Label className="mb-2 block">Texto da Evolução</Label>
-                  <Textarea
-                    value={batchEvolutionText}
-                    onChange={(e) => setBatchEvolutionText(e.target.value)}
-                    placeholder="Digite a evolução que será aplicada a todos os pacientes selecionados..."
-                    className="min-h-[120px]"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 gap-2"
-                    disabled={!batchEvolutionText.trim() || isImprovingBatchText}
-                    onClick={async () => {
-                      setIsImprovingBatchText(true);
-                      try {
-                        const { data, error } = await supabase.functions.invoke('improve-evolution', {
-                          body: { text: batchEvolutionText },
-                        });
-                        if (error) throw error;
-                        if (data?.improved) {
-                          setBatchEvolutionText(data.improved);
-                          toast.success('Texto melhorado com IA!');
+                {/* Template Selector */}
+                {clinicTemplates.length > 0 && (
+                  <div>
+                    <Label>Modelo de Evolução</Label>
+                    <Select value={batchSelectedTemplateId} onValueChange={v => { setBatchSelectedTemplateId(v); setBatchTemplateFormValues({}); }}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Sem modelo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem modelo (texto livre)</SelectItem>
+                        {clinicTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Template Form */}
+                {batchSelectedTemplateId !== 'none' && (() => {
+                  const tpl = clinicTemplates.find(t => t.id === batchSelectedTemplateId);
+                  return tpl ? (
+                    <TemplateForm
+                      template={tpl}
+                      values={batchTemplateFormValues}
+                      onChange={setBatchTemplateFormValues}
+                      showAiImprove
+                      isImprovingText={isImprovingBatchText}
+                      onImproveText={async (textToImprove) => {
+                        setIsImprovingBatchText(true);
+                        try {
+                          const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                            body: { text: textToImprove },
+                          });
+                          if (error) throw error;
+                          return data?.improved || textToImprove;
+                        } catch (e) {
+                          toast.error('Erro ao melhorar texto');
+                          return textToImprove;
+                        } finally {
+                          setIsImprovingBatchText(false);
                         }
-                      } catch (e) {
-                        toast.error('Erro ao melhorar texto');
-                      } finally {
-                        setIsImprovingBatchText(false);
-                      }
-                    }}
-                  >
-                    {isImprovingBatchText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                    Melhorar com IA
-                  </Button>
-                </div>
+                      }}
+                    />
+                  ) : null;
+                })()}
+
+                {/* Evolution Text (only when no template) */}
+                {batchSelectedTemplateId === 'none' && (
+                  <div>
+                    <Label className="mb-2 block">Texto da Evolução</Label>
+                    <Textarea
+                      value={batchEvolutionText}
+                      onChange={(e) => setBatchEvolutionText(e.target.value)}
+                      placeholder="Digite a evolução que será aplicada a todos os pacientes selecionados..."
+                      className="min-h-[120px]"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 gap-2"
+                      disabled={!batchEvolutionText.trim() || isImprovingBatchText}
+                      onClick={async () => {
+                        setIsImprovingBatchText(true);
+                        try {
+                          const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                            body: { text: batchEvolutionText },
+                          });
+                          if (error) throw error;
+                          if (data?.improved) {
+                            setBatchEvolutionText(data.improved);
+                            toast.success('Texto melhorado com IA!');
+                          }
+                        } catch (e) {
+                          toast.error('Erro ao melhorar texto');
+                        } finally {
+                          setIsImprovingBatchText(false);
+                        }
+                      }}
+                    >
+                      {isImprovingBatchText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                      Melhorar com IA
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-4">
@@ -1030,7 +1122,7 @@ export default function ClinicDetail() {
                 <Button 
                   className="gradient-primary gap-2"
                   onClick={handleBatchEvolution}
-                  disabled={selectedPatients.length === 0 || !batchEvolutionText.trim()}
+                  disabled={selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim())}
                 >
                   <FileText className="w-4 h-4" />
                   Aplicar Evolução
