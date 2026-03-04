@@ -650,53 +650,35 @@ export default function ClinicDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="today" className="space-y-4 lg:space-y-6">
-        <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 pb-1">
-          <TabsList className="inline-flex w-max lg:w-auto gap-0.5 h-auto p-0.5 lg:p-1">
-            <TabsTrigger value="today" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <ClipboardList className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Hoje
-            </TabsTrigger>
-            <TabsTrigger value="agenda" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <Calendar className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Agenda
-            </TabsTrigger>
-            <TabsTrigger value="batch" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <FileText className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Lote
-            </TabsTrigger>
-            <TabsTrigger value="patients" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Pacientes
-            </TabsTrigger>
-            <TabsTrigger value="financial" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <DollarSign className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Financeiro
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <StickyNote className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Notas
-            </TabsTrigger>
-            <TabsTrigger value="packages" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <Package className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Pacotes
-            </TabsTrigger>
-            <TabsTrigger value="evolutions-day" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <FileText className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Evoluções
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <Sparkles className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Docs
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <LayoutTemplate className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Modelos
-            </TabsTrigger>
-            <TabsTrigger value="team" className="gap-1 text-[11px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2">
-              <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              Equipe
-            </TabsTrigger>
-          </TabsList>
+        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+          {[
+            { value: 'today', icon: <ClipboardList className="w-5 h-5" />, label: 'Hoje', color: 'text-primary' },
+            { value: 'agenda', icon: <Calendar className="w-5 h-5" />, label: 'Agenda', color: 'text-blue-500' },
+            { value: 'patients', icon: <Users className="w-5 h-5" />, label: 'Pacientes', color: 'text-violet-500' },
+            { value: 'financial', icon: <DollarSign className="w-5 h-5" />, label: 'Financeiro', color: 'text-success' },
+            { value: 'notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notas', color: 'text-yellow-500' },
+            { value: 'batch', icon: <FileText className="w-5 h-5" />, label: 'Lote', color: 'text-orange-500' },
+            { value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' },
+            { value: 'evolutions-day', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
+            { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
+            { value: 'templates', icon: <LayoutTemplate className="w-5 h-5" />, label: 'Modelos', color: 'text-indigo-500' },
+            { value: 'team', icon: <Users className="w-5 h-5" />, label: 'Equipe', color: 'text-rose-500' },
+          ].map(tab => (
+            <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
+              <TabsTrigger
+                value={tab.value}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 w-full h-auto py-3 px-2 rounded-xl border border-border bg-card',
+                  'hover:bg-accent transition-all duration-150',
+                  'data-[state=active]:bg-primary/10 data-[state=active]:border-primary/40 data-[state=active]:shadow-sm',
+                  '[&[data-state=active]_svg]:scale-110 [&_svg]:transition-transform'
+                )}
+              >
+                <span className={tab.color}>{tab.icon}</span>
+                <span className="text-[10px] font-medium text-foreground leading-none">{tab.label}</span>
+              </TabsTrigger>
+            </TabsList>
+          ))}
         </div>
 
         {/* Agenda Tab */}
