@@ -17,9 +17,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Financial() {
-  const { clinics, patients, evolutions, payments, clinicPackages } = useApp();
+  const { clinics, patients, evolutions, payments, clinicPackages, loadAllEvolutions } = useApp();
   const { getMonthlyAppointments } = usePrivateAppointments();
   const { user } = useAuth();
+
+  // Load all evolutions for financial calculations
+  useEffect(() => {
+    if (user) loadAllEvolutions();
+  }, [user]);
+
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingInvoice, setIsExportingInvoice] = useState(false);
   const [invoiceClinicId, setInvoiceClinicId] = useState<string>('');

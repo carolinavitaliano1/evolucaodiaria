@@ -138,7 +138,7 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
 export default function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage } = useApp();
+  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editClinicOpen, setEditClinicOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
@@ -161,6 +161,14 @@ export default function ClinicDetail() {
   const [batchSelectedTemplateId, setBatchSelectedTemplateId] = useState<string>('none');
   const [batchTemplateFormValues, setBatchTemplateFormValues] = useState<Record<string, any>>({});
   const { user } = useAuth();
+
+  // Lazy-load evolutions and appointments for this clinic
+  useEffect(() => {
+    if (!id) return;
+    loadEvolutionsForClinic(id);
+    loadAppointmentsForClinic(id);
+  }, [id]);
+
 
   // Load stamps
   useEffect(() => {
