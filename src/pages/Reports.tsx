@@ -35,8 +35,15 @@ const MOOD_LABELS: Record<string, { emoji: string; label: string }> = {
 };
 
 export default function Reports() {
-  const { clinics, patients, evolutions } = useApp();
+  const { clinics, patients, evolutions, loadAllEvolutions } = useApp();
   const { user } = useAuth();
+
+  // Load all evolutions for report generation
+  useEffect(() => {
+    if (user) loadAllEvolutions();
+  }, [user]);
+
+
   const [selectedClinic, setSelectedClinic] = useState<string>('all');
   const [period, setPeriod] = useState<'week' | 'month' | 'custom'>('week');
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);

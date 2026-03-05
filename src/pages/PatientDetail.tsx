@@ -134,13 +134,26 @@ export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { patients, clinics, evolutions, attachments, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
-    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages } = useApp();
+    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages, loadEvolutionsForClinic, loadAttachmentsForPatient } = useApp();
   const { user } = useAuth();
   const { customMoods } = useCustomMoods();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
   const { isOrg, members } = useClinicOrg(patient?.clinicId || '');
+
+  // Lazy-load evolutions and attachments for this patient's clinic/patient
+  useEffect(() => {
+    if (!patient?.clinicId) return;
+    loadEvolutionsForClinic(patient.clinicId);
+  }, [patient?.clinicId]);
+
+  useEffect(() => {
+    if (!id) return;
+    loadAttachmentsForPatient(id);
+  }, [id]);
+
+
   const patientEvolutions = useMemo(() => {
     const evos = evolutions
       .filter(e => e.patientId === id)

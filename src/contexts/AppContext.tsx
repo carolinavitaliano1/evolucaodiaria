@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -19,6 +19,10 @@ interface AppState {
   currentPatient: Patient | null;
   selectedDate: Date;
   isLoading: boolean;
+  // Lazy-load tracking
+  loadedEvolutionsForClinics: Set<string>;
+  loadedAppointmentsForClinics: Set<string>;
+  loadedAttachmentsForPatients: Set<string>;
 }
 
 interface AppContextType extends AppState {
@@ -52,123 +56,349 @@ interface AppContextType extends AppState {
   updatePackage: (id: string, updates: Partial<ClinicPackage>) => void;
   deletePackage: (id: string) => void;
   getClinicPackages: (clinicId: string) => ClinicPackage[];
+  loadEvolutionsForClinic: (clinicId: string) => Promise<void>;
+  loadAppointmentsForClinic: (clinicId: string) => Promise<void>;
+  loadAttachmentsForPatient: (patientId: string) => Promise<void>;
+  loadAllEvolutions: () => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// --- Mapper helpers ---
+function mapClinic(c: Record<string, unknown>): Clinic {
+  return {
+    id: c.id as string, name: c.name as string, type: c.type as 'propria' | 'terceirizada',
+    address: (c.address as string) || undefined, notes: (c.notes as string) || undefined,
+    weekdays: (c.weekdays as string[]) || undefined, scheduleTime: (c.schedule_time as string) || undefined,
+    scheduleByDay: c.schedule_by_day as ScheduleByDay | undefined,
+    paymentType: c.payment_type as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
+    paymentAmount: c.payment_amount ? Number(c.payment_amount) : undefined,
+    paysOnAbsence: c.pays_on_absence as boolean,
+    absencePaymentType: c.absence_payment_type as 'always' | 'never' | 'confirmed_only' | undefined,
+    letterhead: (c.letterhead as string) || undefined, stamp: (c.stamp as string) || undefined,
+    email: (c.email as string) || undefined, cnpj: (c.cnpj as string) || undefined,
+    phone: (c.phone as string) || undefined, servicesDescription: (c.services_description as string) || undefined,
+    discountPercentage: c.discount_percentage ? Number(c.discount_percentage) : 0,
+    isArchived: (c.is_archived as boolean) || false, createdAt: c.created_at as string,
+  };
+}
+
+function mapPatient(p: Record<string, unknown>): Patient {
+  return {
+    id: p.id as string, clinicId: p.clinic_id as string, name: p.name as string, birthdate: p.birthdate as string,
+    phone: (p.phone as string) || undefined, clinicalArea: (p.clinical_area as string) || undefined,
+    diagnosis: (p.diagnosis as string) || undefined, professionals: (p.professionals as string) || undefined,
+    observations: (p.observations as string) || undefined, responsibleName: (p.responsible_name as string) || undefined,
+    responsibleEmail: (p.responsible_email as string) || undefined,
+    paymentType: p.payment_type as 'sessao' | 'fixo' | undefined,
+    paymentValue: p.payment_value ? Number(p.payment_value) : undefined,
+    contractStartDate: (p.contract_start_date as string) || undefined,
+    weekdays: (p.weekdays as string[]) || undefined, scheduleTime: (p.schedule_time as string) || undefined,
+    scheduleByDay: p.schedule_by_day as ScheduleByDay | undefined,
+    packageId: (p.package_id as string) || undefined, isArchived: (p.is_archived as boolean) || false,
+    avatarUrl: (p.avatar_url as string) || undefined, createdAt: p.created_at as string,
+  };
+}
+
+function mapEvolution(e: Record<string, unknown>): Evolution {
+  return {
+    id: e.id as string, patientId: e.patient_id as string, clinicId: e.clinic_id as string,
+    date: e.date as string, text: e.text as string,
+    attendanceStatus: e.attendance_status as Evolution['attendanceStatus'],
+    confirmedAttendance: (e.confirmed_attendance as boolean) || false,
+    mood: (e.mood as Evolution['mood']) || undefined, signature: (e.signature as string) || undefined,
+    stampId: (e.stamp_id as string) || undefined, createdAt: e.created_at as string,
+  };
+}
+
+function mapAppointment(a: Record<string, unknown>): Appointment {
+  return {
+    id: a.id as string, patientId: a.patient_id as string, clinicId: a.clinic_id as string,
+    date: a.date as string, time: a.time as string, notes: (a.notes as string) || undefined,
+    createdAt: a.created_at as string,
+  };
+}
+
+function mapTask(t: Record<string, unknown>): Task {
+  return {
+    id: t.id as string, title: t.title as string, completed: t.completed as boolean,
+    notes: (t.notes as string) || undefined, patientId: (t.patient_id as string) || undefined,
+    createdAt: t.created_at as string,
+  };
+}
+
+function mapPackage(p: Record<string, unknown>): ClinicPackage {
+  return {
+    id: p.id as string, userId: p.user_id as string, clinicId: p.clinic_id as string,
+    name: p.name as string, description: (p.description as string) || undefined,
+    price: Number(p.price), isActive: (p.is_active as boolean) ?? true,
+    createdAt: p.created_at as string,
+  };
+}
+
+function mapAttachment(a: Record<string, unknown>): Attachment {
+  return {
+    id: a.id as string, parentId: a.parent_id as string,
+    parentType: a.parent_type as Attachment['parentType'],
+    name: a.name as string, data: a.file_path as string,
+    type: a.file_type as string, createdAt: a.created_at as string,
+  };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [state, setState] = useState<AppState>({
-    clinics: [],
-    patients: [],
-    evolutions: [],
-    appointments: [],
-    tasks: [],
-    payments: [],
-    attachments: [],
-    clinicNotes: [],
-    clinicPackages: [],
-    currentClinic: null,
-    currentPatient: null,
-    selectedDate: new Date(),
-    isLoading: true,
+    clinics: [], patients: [], evolutions: [], appointments: [],
+    tasks: [], payments: [], attachments: [], clinicNotes: [], clinicPackages: [],
+    currentClinic: null, currentPatient: null, selectedDate: new Date(), isLoading: true,
+    loadedEvolutionsForClinics: new Set(),
+    loadedAppointmentsForClinics: new Set(),
+    loadedAttachmentsForPatients: new Set(),
   });
 
-  // Load data from Supabase
-  const loadData = useCallback(async () => {
+  // In-flight guards to prevent duplicate fetches
+  const loadingEvolutionsRef = useRef<Set<string>>(new Set());
+  const loadingAppointmentsRef = useRef<Set<string>>(new Set());
+  const loadingAttachmentsRef = useRef<Set<string>>(new Set());
+  const loadingAllEvolutionsRef = useRef(false);
+
+  // === PHASE 1: Fast initial load — only clinics, patients, tasks, packages ===
+  const loadInitialData = useCallback(async () => {
     if (!user) {
-      setState(prev => ({ ...prev, clinics: [], patients: [], evolutions: [], appointments: [], tasks: [], clinicPackages: [], isLoading: false }));
+      setState(prev => ({
+        ...prev, clinics: [], patients: [], evolutions: [], appointments: [],
+        tasks: [], clinicPackages: [], isLoading: false,
+        loadedEvolutionsForClinics: new Set(),
+        loadedAppointmentsForClinics: new Set(),
+        loadedAttachmentsForPatients: new Set(),
+      }));
       return;
     }
 
     setState(prev => ({ ...prev, isLoading: true }));
     try {
-      const [clinicsRes, patientsRes, evolutionsRes, appointmentsRes, tasksRes, packagesRes, attachmentsRes] = await Promise.all([
+      const [clinicsRes, patientsRes, tasksRes, packagesRes] = await Promise.all([
         supabase.from('clinics').select('*').order('created_at', { ascending: false }),
         supabase.from('patients').select('*').order('created_at', { ascending: false }),
-        supabase.from('evolutions').select('*').order('date', { ascending: false }),
-        supabase.from('appointments').select('*').order('date', { ascending: false }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('clinic_packages').select('*').order('created_at', { ascending: false }),
-        supabase.from('attachments').select('*').order('created_at', { ascending: false }),
       ]);
 
-      const clinics: Clinic[] = (clinicsRes.data || []).map(c => ({
-        id: c.id, name: c.name, type: c.type as 'propria' | 'terceirizada',
-        address: c.address || undefined, notes: c.notes || undefined,
-        weekdays: c.weekdays || undefined, scheduleTime: c.schedule_time || undefined,
-        scheduleByDay: c.schedule_by_day as ScheduleByDay | undefined,
-        paymentType: c.payment_type as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
-        paymentAmount: c.payment_amount ? Number(c.payment_amount) : undefined,
-        paysOnAbsence: c.pays_on_absence, 
-        absencePaymentType: (c as any).absence_payment_type as 'always' | 'never' | 'confirmed_only' | undefined,
-        letterhead: c.letterhead || undefined,
-        stamp: c.stamp || undefined,
-        email: (c as any).email || undefined,
-        cnpj: (c as any).cnpj || undefined,
-        phone: (c as any).phone || undefined,
-        servicesDescription: (c as any).services_description || undefined,
-        discountPercentage: (c as any).discount_percentage ? Number((c as any).discount_percentage) : 0,
-        isArchived: c.is_archived || false, createdAt: c.created_at,
-      }));
+      const clinics = (clinicsRes.data || []).map(c => mapClinic(c as Record<string, unknown>));
+      const patients = (patientsRes.data || []).map(p => mapPatient(p as Record<string, unknown>));
+      const tasks = (tasksRes.data || []).map(t => mapTask(t as Record<string, unknown>));
+      const clinicPackages = (packagesRes.data || []).map(p => mapPackage(p as Record<string, unknown>));
 
-      const patients: Patient[] = (patientsRes.data || []).map(p => ({
-        id: p.id, clinicId: p.clinic_id, name: p.name, birthdate: p.birthdate,
-        phone: p.phone || undefined, clinicalArea: p.clinical_area || undefined,
-        diagnosis: p.diagnosis || undefined, professionals: p.professionals || undefined,
-        observations: p.observations || undefined, responsibleName: p.responsible_name || undefined,
-        responsibleEmail: p.responsible_email || undefined,
-        paymentType: p.payment_type as 'sessao' | 'fixo' | undefined,
-        paymentValue: p.payment_value ? Number(p.payment_value) : undefined,
-        contractStartDate: p.contract_start_date || undefined, weekdays: p.weekdays || undefined,
-        scheduleTime: p.schedule_time || undefined, scheduleByDay: p.schedule_by_day as ScheduleByDay | undefined,
-        packageId: (p as any).package_id || undefined,
-        isArchived: (p as any).is_archived || false,
-        avatarUrl: (p as any).avatar_url || undefined,
-        createdAt: p.created_at,
+      setState(prev => ({
+        ...prev, clinics, patients, tasks, clinicPackages, isLoading: false,
+        loadedEvolutionsForClinics: new Set(),
+        loadedAppointmentsForClinics: new Set(),
+        loadedAttachmentsForPatients: new Set(),
       }));
-
-      const evolutions: Evolution[] = (evolutionsRes.data || []).map(e => ({
-        id: e.id, patientId: e.patient_id, clinicId: e.clinic_id, date: e.date, text: e.text,
-        attendanceStatus: e.attendance_status as 'presente' | 'falta' | 'falta_remunerada',
-        confirmedAttendance: (e as any).confirmed_attendance || false,
-        mood: (e as any).mood || undefined,
-        signature: e.signature || undefined, stampId: e.stamp_id || undefined, createdAt: e.created_at,
-      }));
-
-      const appointments: Appointment[] = (appointmentsRes.data || []).map(a => ({
-        id: a.id, patientId: a.patient_id, clinicId: a.clinic_id, date: a.date, time: a.time,
-        notes: a.notes || undefined, createdAt: a.created_at,
-      }));
-
-      const tasks: Task[] = (tasksRes.data || []).map(t => ({
-        id: t.id, title: t.title, completed: t.completed, notes: (t as any).notes || undefined, patientId: (t as any).patient_id || undefined, createdAt: t.created_at,
-      }));
-
-      const clinicPackages: ClinicPackage[] = (packagesRes.data || []).map(p => ({
-        id: p.id, userId: p.user_id, clinicId: p.clinic_id, name: p.name,
-        description: p.description || undefined, price: Number(p.price),
-        isActive: p.is_active ?? true, createdAt: p.created_at,
-      }));
-
-      const loadedAttachments: Attachment[] = (attachmentsRes.data || []).map(a => ({
-        id: a.id, parentId: a.parent_id, parentType: a.parent_type as Attachment['parentType'],
-        name: a.name, data: a.file_path, type: a.file_type, createdAt: a.created_at,
-      }));
-
-      setState(prev => ({ ...prev, clinics, patients, evolutions, appointments, tasks, clinicPackages, attachments: loadedAttachments, isLoading: false }));
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading initial data:', error);
       toast.error('Erro ao carregar dados');
       setState(prev => ({ ...prev, isLoading: false }));
     }
   }, [user]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadInitialData();
+    // Reset in-flight refs on user change
+    loadingEvolutionsRef.current = new Set();
+    loadingAppointmentsRef.current = new Set();
+    loadingAttachmentsRef.current = new Set();
+    loadingAllEvolutionsRef.current = false;
+  }, [loadInitialData]);
 
-  const refreshData = useCallback(async () => { await loadData(); }, [loadData]);
+  // === PHASE 2: Lazy loaders ===
 
+  const loadEvolutionsForClinic = useCallback(async (clinicId: string) => {
+    if (!user || !clinicId) return;
+    if (loadingEvolutionsRef.current.has(clinicId)) return;
+
+    setState(prev => {
+      if (prev.loadedEvolutionsForClinics.has(clinicId)) return prev; // already loaded
+      return prev;
+    });
+
+    // Check if already loaded (outside setState to avoid stale closure issues)
+    const alreadyLoaded = await new Promise<boolean>(resolve => {
+      setState(prev => {
+        resolve(prev.loadedEvolutionsForClinics.has(clinicId));
+        return prev;
+      });
+    });
+    if (alreadyLoaded) return;
+
+    loadingEvolutionsRef.current.add(clinicId);
+    try {
+      const { data, error } = await supabase
+        .from('evolutions').select('*')
+        .eq('clinic_id', clinicId)
+        .order('date', { ascending: false });
+      if (error) throw error;
+
+      const newEvolutions = (data || []).map(e => mapEvolution(e as Record<string, unknown>));
+      setState(prev => {
+        const existingIds = new Set(prev.evolutions.map(e => e.id));
+        const toAdd = newEvolutions.filter(e => !existingIds.has(e.id));
+        const updated = new Set(prev.loadedEvolutionsForClinics);
+        updated.add(clinicId);
+        return {
+          ...prev,
+          evolutions: [...prev.evolutions, ...toAdd],
+          loadedEvolutionsForClinics: updated,
+        };
+      });
+    } catch (error) {
+      console.error('Error loading evolutions for clinic:', error);
+    } finally {
+      loadingEvolutionsRef.current.delete(clinicId);
+    }
+  }, [user]);
+
+  const loadAppointmentsForClinic = useCallback(async (clinicId: string) => {
+    if (!user || !clinicId) return;
+    if (loadingAppointmentsRef.current.has(clinicId)) return;
+
+    const alreadyLoaded = await new Promise<boolean>(resolve => {
+      setState(prev => {
+        resolve(prev.loadedAppointmentsForClinics.has(clinicId));
+        return prev;
+      });
+    });
+    if (alreadyLoaded) return;
+
+    loadingAppointmentsRef.current.add(clinicId);
+    try {
+      const { data, error } = await supabase
+        .from('appointments').select('*')
+        .eq('clinic_id', clinicId)
+        .order('date', { ascending: false });
+      if (error) throw error;
+
+      const newAppointments = (data || []).map(a => mapAppointment(a as Record<string, unknown>));
+      setState(prev => {
+        const existingIds = new Set(prev.appointments.map(a => a.id));
+        const toAdd = newAppointments.filter(a => !existingIds.has(a.id));
+        const updated = new Set(prev.loadedAppointmentsForClinics);
+        updated.add(clinicId);
+        return {
+          ...prev,
+          appointments: [...prev.appointments, ...toAdd],
+          loadedAppointmentsForClinics: updated,
+        };
+      });
+    } catch (error) {
+      console.error('Error loading appointments for clinic:', error);
+    } finally {
+      loadingAppointmentsRef.current.delete(clinicId);
+    }
+  }, [user]);
+
+  const loadAttachmentsForPatient = useCallback(async (patientId: string) => {
+    if (!user || !patientId) return;
+    if (loadingAttachmentsRef.current.has(patientId)) return;
+
+    const alreadyLoaded = await new Promise<boolean>(resolve => {
+      setState(prev => {
+        resolve(prev.loadedAttachmentsForPatients.has(patientId));
+        return prev;
+      });
+    });
+    if (alreadyLoaded) return;
+
+    loadingAttachmentsRef.current.add(patientId);
+    try {
+      // Load attachments for the patient itself and all their evolutions
+      const { data, error } = await supabase
+        .from('attachments').select('*')
+        .or(`parent_id.eq.${patientId},and(parent_type.eq.evolution,parent_id.in.(select id from evolutions where patient_id='${patientId}'))`);
+
+      // Simpler: load patient attachments + separately load evolution attachments
+      const { data: patientAtts } = await supabase
+        .from('attachments').select('*')
+        .eq('parent_id', patientId).eq('parent_type', 'patient');
+
+      // Get evolution IDs for this patient
+      const patientEvolutionIds = state.evolutions
+        .filter(e => e.patientId === patientId)
+        .map(e => e.id);
+
+      let evolutionAtts: Attachment[] = [];
+      if (patientEvolutionIds.length > 0) {
+        const { data: evoAtts } = await supabase
+          .from('attachments').select('*')
+          .in('parent_id', patientEvolutionIds)
+          .eq('parent_type', 'evolution');
+        evolutionAtts = (evoAtts || []).map(a => mapAttachment(a as Record<string, unknown>));
+      }
+
+      const allAtts = [
+        ...(patientAtts || []).map(a => mapAttachment(a as Record<string, unknown>)),
+        ...evolutionAtts,
+      ];
+
+      setState(prev => {
+        const existingIds = new Set(prev.attachments.map(a => a.id));
+        const toAdd = allAtts.filter(a => !existingIds.has(a.id));
+        const updated = new Set(prev.loadedAttachmentsForPatients);
+        updated.add(patientId);
+        return {
+          ...prev,
+          attachments: [...prev.attachments, ...toAdd],
+          loadedAttachmentsForPatients: updated,
+        };
+      });
+    } catch (error) {
+      console.error('Error loading attachments for patient:', error);
+    } finally {
+      loadingAttachmentsRef.current.delete(patientId);
+    }
+  }, [user, state.evolutions]);
+
+  /** Load ALL evolutions at once — used in pages like Dashboard stats, Reports, Financial */
+  const loadAllEvolutions = useCallback(async () => {
+    if (!user || loadingAllEvolutionsRef.current) return;
+    loadingAllEvolutionsRef.current = true;
+    try {
+      const { data, error } = await supabase
+        .from('evolutions').select('*')
+        .order('date', { ascending: false });
+      if (error) throw error;
+
+      const allEvolutions = (data || []).map(e => mapEvolution(e as Record<string, unknown>));
+      setState(prev => {
+        // Mark all clinics as loaded
+        const allClinicIds = new Set(prev.clinics.map(c => c.id));
+        return { ...prev, evolutions: allEvolutions, loadedEvolutionsForClinics: allClinicIds };
+      });
+    } catch (error) {
+      console.error('Error loading all evolutions:', error);
+    } finally {
+      loadingAllEvolutionsRef.current = false;
+    }
+  }, [user]);
+
+  const refreshData = useCallback(async () => {
+    // Reset lazy-load tracking so everything reloads
+    loadingEvolutionsRef.current = new Set();
+    loadingAppointmentsRef.current = new Set();
+    loadingAttachmentsRef.current = new Set();
+    loadingAllEvolutionsRef.current = false;
+    setState(prev => ({
+      ...prev,
+      evolutions: [], appointments: [], attachments: [],
+      loadedEvolutionsForClinics: new Set(),
+      loadedAppointmentsForClinics: new Set(),
+      loadedAttachmentsForPatients: new Set(),
+    }));
+    await loadInitialData();
+  }, [loadInitialData]);
+
+  // === Setters ===
   const setCurrentClinic = useCallback((clinic: Clinic | null) => {
     setState(prev => ({ ...prev, currentClinic: clinic, currentPatient: null }));
   }, []);
@@ -181,6 +411,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, selectedDate: date }));
   }, []);
 
+  // === Clinic CRUD ===
   const addClinic = useCallback(async (clinic: Omit<Clinic, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
@@ -192,27 +423,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         payment_amount: clinic.paymentAmount || null, pays_on_absence: clinic.paysOnAbsence ?? true,
         absence_payment_type: clinic.absencePaymentType || 'always',
         letterhead: clinic.letterhead || null, stamp: clinic.stamp || null,
-        email: clinic.email || null, cnpj: clinic.cnpj || null, phone: clinic.phone || null, services_description: clinic.servicesDescription || null,
-        is_archived: clinic.isArchived || false,
+        email: clinic.email || null, cnpj: clinic.cnpj || null, phone: clinic.phone || null,
+        services_description: clinic.servicesDescription || null, is_archived: clinic.isArchived || false,
       }).select().single();
       if (error) throw error;
-      const newClinic: Clinic = {
-        id: data.id, name: data.name, type: data.type as 'propria' | 'terceirizada',
-        address: data.address || undefined, notes: data.notes || undefined,
-        weekdays: data.weekdays || undefined, scheduleTime: data.schedule_time || undefined,
-        scheduleByDay: data.schedule_by_day as ScheduleByDay | undefined,
-        paymentType: data.payment_type as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
-        paymentAmount: data.payment_amount ? Number(data.payment_amount) : undefined,
-        paysOnAbsence: data.pays_on_absence, 
-        absencePaymentType: (data as any).absence_payment_type as 'always' | 'never' | 'confirmed_only' | undefined,
-        letterhead: data.letterhead || undefined,
-        stamp: data.stamp || undefined,
-        email: (data as any).email || undefined,
-        cnpj: (data as any).cnpj || undefined,
-        phone: (data as any).phone || undefined,
-        servicesDescription: (data as any).services_description || undefined,
-        isArchived: data.is_archived || false, createdAt: data.created_at,
-      };
+      const newClinic = mapClinic(data as Record<string, unknown>);
       setState(prev => ({ ...prev, clinics: [newClinic, ...prev.clinics] }));
       toast.success('Clínica adicionada!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar clínica'); }
@@ -252,37 +467,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase.from('clinics').delete().eq('id', id);
       if (error) throw error;
-      setState(prev => ({ ...prev, clinics: prev.clinics.filter(c => c.id !== id), patients: prev.patients.filter(p => p.clinicId !== id) }));
+      setState(prev => ({
+        ...prev,
+        clinics: prev.clinics.filter(c => c.id !== id),
+        patients: prev.patients.filter(p => p.clinicId !== id),
+      }));
     } catch (error) { console.error(error); toast.error('Erro ao excluir clínica'); }
   }, [user]);
 
+  // === Patient CRUD ===
   const addPatient = useCallback(async (patient: Omit<Patient, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
       const { data, error } = await supabase.from('patients').insert({
         user_id: user.id, clinic_id: patient.clinicId, name: patient.name, birthdate: patient.birthdate,
-        phone: patient.phone || null, clinical_area: patient.clinicalArea || null, diagnosis: patient.diagnosis || null,
-        professionals: patient.professionals || null, observations: patient.observations || null,
-        responsible_name: patient.responsibleName || null, responsible_email: patient.responsibleEmail || null,
-        payment_type: patient.paymentType || null, payment_value: patient.paymentValue || null,
-        contract_start_date: patient.contractStartDate || null, weekdays: patient.weekdays || null,
-        schedule_time: patient.scheduleTime || null, schedule_by_day: patient.scheduleByDay || null,
-        package_id: patient.packageId || null,
+        phone: patient.phone || null, clinical_area: patient.clinicalArea || null,
+        diagnosis: patient.diagnosis || null, professionals: patient.professionals || null,
+        observations: patient.observations || null, responsible_name: patient.responsibleName || null,
+        responsible_email: patient.responsibleEmail || null, payment_type: patient.paymentType || null,
+        payment_value: patient.paymentValue || null, contract_start_date: patient.contractStartDate || null,
+        weekdays: patient.weekdays || null, schedule_time: patient.scheduleTime || null,
+        schedule_by_day: patient.scheduleByDay || null, package_id: patient.packageId || null,
       }).select().single();
       if (error) throw error;
-      const newPatient: Patient = {
-        id: data.id, clinicId: data.clinic_id, name: data.name, birthdate: data.birthdate,
-        phone: data.phone || undefined, clinicalArea: data.clinical_area || undefined,
-        diagnosis: data.diagnosis || undefined, professionals: data.professionals || undefined,
-        observations: data.observations || undefined, responsibleName: data.responsible_name || undefined,
-        responsibleEmail: data.responsible_email || undefined,
-        paymentType: data.payment_type as 'sessao' | 'fixo' | undefined,
-        paymentValue: data.payment_value ? Number(data.payment_value) : undefined,
-        contractStartDate: data.contract_start_date || undefined, weekdays: data.weekdays || undefined,
-        scheduleTime: data.schedule_time || undefined, scheduleByDay: data.schedule_by_day as ScheduleByDay | undefined,
-        packageId: (data as any).package_id || undefined,
-        createdAt: data.created_at,
-      };
+      const newPatient = mapPatient(data as Record<string, unknown>);
       setState(prev => ({ ...prev, patients: [newPatient, ...prev.patients] }));
       toast.success('Paciente adicionado!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar paciente'); }
@@ -310,6 +518,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.scheduleByDay !== undefined) updateData.schedule_by_day = updates.scheduleByDay || null;
       if (updates.isArchived !== undefined) updateData.is_archived = updates.isArchived;
       if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl || null;
+      if (updates.packageId !== undefined) updateData.package_id = updates.packageId || null;
       const { error } = await supabase.from('patients').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, patients: prev.patients.map(p => p.id === id ? { ...p, ...updates } : p) }));
@@ -325,34 +534,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao excluir paciente'); }
   }, [user]);
 
+  // === Evolution CRUD ===
   const addEvolution = useCallback(async (evolution: Omit<Evolution, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
-      // Check for duplicate: same patient, same date, same clinic
       const { data: existing } = await supabase.from('evolutions')
-        .select('id')
-        .eq('patient_id', evolution.patientId)
-        .eq('date', evolution.date)
-        .eq('clinic_id', evolution.clinicId)
-        .maybeSingle();
-      
-      if (existing) {
-        toast.error('Já existe uma evolução para este paciente nesta data.');
-        return;
-      }
+        .select('id').eq('patient_id', evolution.patientId)
+        .eq('date', evolution.date).eq('clinic_id', evolution.clinicId).maybeSingle();
+      if (existing) { toast.error('Já existe uma evolução para este paciente nesta data.'); return; }
 
       const { data, error } = await supabase.from('evolutions').insert({
         user_id: user.id, patient_id: evolution.patientId, clinic_id: evolution.clinicId,
         date: evolution.date, text: evolution.text, attendance_status: evolution.attendanceStatus,
         signature: evolution.signature || null, stamp_id: evolution.stampId || null,
-        confirmed_attendance: evolution.confirmedAttendance || false,
-        mood: evolution.mood || null,
-        template_id: evolution.templateId || null,
-        template_data: evolution.templateData || null,
+        confirmed_attendance: evolution.confirmedAttendance || false, mood: evolution.mood || null,
+        template_id: evolution.templateId || null, template_data: evolution.templateData || null,
       }).select().single();
       if (error) throw error;
 
-      // Save attachment records to DB
       const savedAttachments: Attachment[] = [];
       if (evolution.attachments && evolution.attachments.length > 0) {
         for (const att of evolution.attachments) {
@@ -361,28 +560,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
               user_id: user.id, parent_id: data.id, parent_type: 'evolution',
               name: att.name, file_path: att.data, file_type: att.type,
             }).select().single();
-            if (attError) {
-              console.error('Error saving attachment record:', attError);
-              continue;
-            }
-            if (attData) {
-              savedAttachments.push({
-                id: attData.id, parentId: attData.parent_id, parentType: attData.parent_type as Attachment['parentType'],
-                name: attData.name, data: attData.file_path, type: attData.file_type, createdAt: attData.created_at,
-              });
-            }
-          } catch (attErr) {
-            console.error('Error inserting attachment:', attErr);
-          }
+            if (attError) { console.error('Error saving attachment:', attError); continue; }
+            if (attData) savedAttachments.push(mapAttachment(attData as Record<string, unknown>));
+          } catch (attErr) { console.error('Error inserting attachment:', attErr); }
         }
       }
 
       const newEvolution: Evolution = {
-        id: data.id, patientId: data.patient_id, clinicId: data.clinic_id, date: data.date, text: data.text,
-        attendanceStatus: data.attendance_status as 'presente' | 'falta' | 'falta_remunerada',
-        confirmedAttendance: (data as any).confirmed_attendance || false,
-        mood: (data as any).mood || undefined,
-        signature: data.signature || undefined, stampId: data.stamp_id || undefined, createdAt: data.created_at,
+        ...mapEvolution(data as Record<string, unknown>),
         attachments: savedAttachments.length > 0 ? savedAttachments : undefined,
       };
       setState(prev => ({
@@ -409,24 +594,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.from('evolutions').update(updateData).eq('id', id);
       if (error) throw error;
 
-      // Handle attachment sync
       if (updates.attachments !== undefined) {
-        // Get existing DB attachments for this evolution
         const { data: existingAtts } = await supabase.from('attachments')
-          .select('id')
-          .eq('parent_id', id)
-          .eq('parent_type', 'evolution');
-        
+          .select('id').eq('parent_id', id).eq('parent_type', 'evolution');
         const existingIds = new Set((existingAtts || []).map(a => a.id));
         const newAttIds = new Set((updates.attachments || []).map(a => a.id));
-        
-        // Delete removed attachments
         const toDelete = [...existingIds].filter(aid => !newAttIds.has(aid));
-        for (const aid of toDelete) {
-          await supabase.from('attachments').delete().eq('id', aid);
-        }
-        
-        // Insert new attachments (those with temp_ ids)
+        for (const aid of toDelete) await supabase.from('attachments').delete().eq('id', aid);
         const toInsert = (updates.attachments || []).filter(a => a.id.startsWith('temp_'));
         const savedAttachments: Attachment[] = [];
         for (const att of toInsert) {
@@ -434,15 +608,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             user_id: user.id, parent_id: id, parent_type: 'evolution',
             name: att.name, file_path: att.data, file_type: att.type,
           }).select().single();
-          if (!attError && attData) {
-            savedAttachments.push({
-              id: attData.id, parentId: attData.parent_id, parentType: attData.parent_type as Attachment['parentType'],
-              name: attData.name, data: attData.file_path, type: attData.file_type, createdAt: attData.created_at,
-            });
-          }
+          if (!attError && attData) savedAttachments.push(mapAttachment(attData as Record<string, unknown>));
         }
-
-        // Update attachments in global state
         setState(prev => ({
           ...prev,
           attachments: [
@@ -452,7 +619,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
       }
 
-      // Update evolution in state WITHOUT attachments (let the join handle it)
       const { attachments: _removed, ...evolutionUpdates } = updates;
       setState(prev => ({ ...prev, evolutions: prev.evolutions.map(e => e.id === id ? { ...e, ...evolutionUpdates } : e) }));
     } catch (error) { console.error(error); toast.error('Erro ao atualizar evolução'); }
@@ -467,6 +633,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao excluir evolução'); }
   }, [user]);
 
+  // === Appointment CRUD ===
   const addAppointment = useCallback(async (appointment: Omit<Appointment, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
@@ -475,11 +642,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         date: appointment.date, time: appointment.time, notes: appointment.notes || null,
       }).select().single();
       if (error) throw error;
-      const newAppointment: Appointment = {
-        id: data.id, patientId: data.patient_id, clinicId: data.clinic_id, date: data.date, time: data.time,
-        notes: data.notes || undefined, createdAt: data.created_at,
-      };
-      setState(prev => ({ ...prev, appointments: [newAppointment, ...prev.appointments] }));
+      setState(prev => ({ ...prev, appointments: [mapAppointment(data as Record<string, unknown>), ...prev.appointments] }));
     } catch (error) { console.error(error); toast.error('Erro ao adicionar agendamento'); }
   }, [user]);
 
@@ -492,6 +655,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao excluir agendamento'); }
   }, [user]);
 
+  // === Task CRUD ===
   const addTask = useCallback(async (title: string, patientId?: string) => {
     if (!user) return;
     try {
@@ -499,8 +663,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (patientId) insertData.patient_id = patientId;
       const { data, error } = await supabase.from('tasks').insert(insertData).select().single();
       if (error) throw error;
-      const newTask: Task = { id: data.id, title: data.title, completed: data.completed, notes: (data as any).notes || undefined, patientId: (data as any).patient_id || undefined, createdAt: data.created_at };
-      setState(prev => ({ ...prev, tasks: [newTask, ...prev.tasks] }));
+      setState(prev => ({ ...prev, tasks: [mapTask(data as Record<string, unknown>), ...prev.tasks] }));
     } catch (error) { console.error(error); toast.error('Erro ao adicionar tarefa'); }
   }, [user]);
 
@@ -533,16 +696,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao atualizar notas'); }
   }, [user]);
 
-  const addPayment = useCallback((payment: Omit<Payment, 'id' | 'createdAt'>) => {
-    const newPayment: Payment = { ...payment, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
-    setState(prev => ({ ...prev, payments: [newPayment, ...prev.payments] }));
-  }, []);
-
-  const getClinicPatients = useCallback((clinicId: string) => state.patients.filter(p => p.clinicId === clinicId), [state.patients]);
-  const getPatientEvolutions = useCallback((patientId: string) => state.evolutions.filter(e => e.patientId === patientId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [state.evolutions]);
-  const getDateAppointments = useCallback((date: Date) => { const d = toLocalDateString(date); return state.appointments.filter(a => a.date === d).sort((a, b) => a.time.localeCompare(b.time)); }, [state.appointments]);
-  const getClinicPackages = useCallback((clinicId: string) => state.clinicPackages.filter(p => p.clinicId === clinicId && p.isActive), [state.clinicPackages]);
-
+  // === Packages CRUD ===
   const addPackage = useCallback(async (pkg: Omit<ClinicPackage, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
@@ -551,12 +705,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         description: pkg.description || null, price: pkg.price, is_active: pkg.isActive,
       }).select().single();
       if (error) throw error;
-      const newPkg: ClinicPackage = {
-        id: data.id, userId: data.user_id, clinicId: data.clinic_id, name: data.name,
-        description: data.description || undefined, price: Number(data.price),
-        isActive: data.is_active ?? true, createdAt: data.created_at,
-      };
-      setState(prev => ({ ...prev, clinicPackages: [newPkg, ...prev.clinicPackages] }));
+      setState(prev => ({ ...prev, clinicPackages: [mapPackage(data as Record<string, unknown>), ...prev.clinicPackages] }));
       toast.success('Pacote adicionado!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar pacote'); }
   }, [user]);
@@ -585,9 +734,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao excluir pacote'); }
   }, [user]);
 
-  const getPatientTasks = useCallback((patientId: string) => state.tasks.filter(t => t.patientId === patientId), [state.tasks]);
-  const getPatientAttachments = useCallback((patientId: string) => state.attachments.filter(a => a.parentType === 'patient' && a.parentId === patientId), [state.attachments]);
-
+  // === Attachments CRUD ===
   const addAttachment = useCallback(async (attachment: Omit<Attachment, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
@@ -596,11 +743,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name: attachment.name, file_path: attachment.data, file_type: attachment.type,
       }).select().single();
       if (error) throw error;
-      const newAtt: Attachment = {
-        id: data.id, parentId: data.parent_id, parentType: data.parent_type as Attachment['parentType'],
-        name: data.name, data: data.file_path, type: data.file_type, createdAt: data.created_at,
-      };
-      setState(prev => ({ ...prev, attachments: [newAtt, ...prev.attachments] }));
+      setState(prev => ({ ...prev, attachments: [mapAttachment(data as Record<string, unknown>), ...prev.attachments] }));
     } catch (error) { console.error(error); toast.error('Erro ao salvar anexo'); }
   }, [user]);
 
@@ -613,8 +756,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao excluir anexo'); }
   }, [user]);
 
+  const addPayment = useCallback((payment: Omit<Payment, 'id' | 'createdAt'>) => {
+    const newPayment: Payment = { ...payment, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    setState(prev => ({ ...prev, payments: [newPayment, ...prev.payments] }));
+  }, []);
+
+  // === Selectors ===
+  const getClinicPatients = useCallback((clinicId: string) => state.patients.filter(p => p.clinicId === clinicId), [state.patients]);
+  const getPatientEvolutions = useCallback((patientId: string) => state.evolutions.filter(e => e.patientId === patientId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [state.evolutions]);
+  const getDateAppointments = useCallback((date: Date) => { const d = toLocalDateString(date); return state.appointments.filter(a => a.date === d).sort((a, b) => a.time.localeCompare(b.time)); }, [state.appointments]);
+  const getClinicPackages = useCallback((clinicId: string) => state.clinicPackages.filter(p => p.clinicId === clinicId && p.isActive), [state.clinicPackages]);
+  const getPatientTasks = useCallback((patientId: string) => state.tasks.filter(t => t.patientId === patientId), [state.tasks]);
+  const getPatientAttachments = useCallback((patientId: string) => state.attachments.filter(a => a.parentType === 'patient' && a.parentId === patientId), [state.attachments]);
+
   return (
-    <AppContext.Provider value={{ ...state, setCurrentClinic, setCurrentPatient, setSelectedDate, addClinic, updateClinic, deleteClinic, addPatient, updatePatient, deletePatient, addEvolution, updateEvolution, deleteEvolution, addAppointment, deleteAppointment, addTask, toggleTask, deleteTask, updateTaskNotes, addPayment, getClinicPatients, getPatientEvolutions, getDateAppointments, addPackage, updatePackage, deletePackage, getClinicPackages, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, refreshData }}>
+    <AppContext.Provider value={{
+      ...state,
+      setCurrentClinic, setCurrentPatient, setSelectedDate,
+      addClinic, updateClinic, deleteClinic,
+      addPatient, updatePatient, deletePatient,
+      addEvolution, updateEvolution, deleteEvolution,
+      addAppointment, deleteAppointment,
+      addTask, toggleTask, deleteTask, updateTaskNotes,
+      addPayment,
+      getClinicPatients, getPatientEvolutions, getDateAppointments,
+      addPackage, updatePackage, deletePackage, getClinicPackages,
+      getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment,
+      loadEvolutionsForClinic, loadAppointmentsForClinic, loadAttachmentsForPatient,
+      loadAllEvolutions, refreshData,
+    }}>
       {children}
     </AppContext.Provider>
   );

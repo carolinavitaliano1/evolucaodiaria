@@ -33,7 +33,7 @@ function getGreeting(): string {
 }
 
 export default function Dashboard() {
-  const { selectedDate, appointments, tasks, evolutions } = useApp();
+  const { selectedDate, appointments, tasks, evolutions, clinics, loadAllEvolutions, loadAppointmentsForClinic } = useApp();
   const { theme } = useTheme();
   const { user } = useAuth();
   const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
@@ -46,6 +46,14 @@ export default function Dashboard() {
 
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
   const [todayPrivate, setTodayPrivate] = useState<number>(0);
+
+  // Trigger lazy loading of evolutions & appointments for all clinics on dashboard
+  useEffect(() => {
+    if (!user) return;
+    loadAllEvolutions();
+    clinics.forEach(c => loadAppointmentsForClinic(c.id));
+  }, [user, clinics.length]);
+
   useEffect(() => {
     if (!user) return;
     supabase.from('events').select('*').eq('user_id', user.id).eq('date', todayStr)
@@ -54,6 +62,7 @@ export default function Dashboard() {
       .eq('user_id', user.id).eq('date', todayStr)
       .then(({ count }) => { setTodayPrivate(count ?? 0); });
   }, [user, todayStr]);
+
 
   const planName = productId ? (PLAN_NAMES[productId] || 'Ativo') : null;
   const endDateStr = subscriptionEnd
