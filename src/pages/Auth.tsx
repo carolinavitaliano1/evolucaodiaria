@@ -31,15 +31,8 @@ export default function Auth() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [resetEmail, setResetEmail] = useState('');
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (user) {
+  // Only redirect if session is confirmed (don't block the login form while loading)
+  if (!loading && user) {
     if (pendingInvite) {
       supabase.functions.invoke('accept-invite', { body: { member_id: pendingInvite.memberId } })
         .then(({ data, error }) => {
