@@ -147,7 +147,7 @@ function mapAttachment(a: Record<string, unknown>): Attachment {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, sessionReady } = useAuth();
   const [state, setState] = useState<AppState>({
     clinics: [], patients: [], evolutions: [], appointments: [],
     tasks: [], payments: [], attachments: [], clinicNotes: [], clinicPackages: [],
@@ -204,13 +204,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
+    if (!sessionReady) return; // Wait for session to be fully restored before loading data
     loadInitialData();
     // Reset in-flight refs on user change
     loadingEvolutionsRef.current = new Set();
     loadingAppointmentsRef.current = new Set();
     loadingAttachmentsRef.current = new Set();
     loadingAllEvolutionsRef.current = false;
-  }, [loadInitialData]);
+  }, [loadInitialData, sessionReady]);
 
   // === PHASE 2: Lazy loaders ===
 

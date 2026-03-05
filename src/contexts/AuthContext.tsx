@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  sessionReady: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -18,23 +19,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // sessionReady: true only after getSession() resolves — prevents double-load on OAuth
+  const [sessionReady, setSessionReady] = useState(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    // Set up auth state listener BEFORE checking for existing session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // Check for existing session
+    // 1. Restore session from storage FIRST (synchronous-ish) — single source of truth
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      setSessionReady(true);
+      initializedRef.current = true;
     });
+
+    // 2. Listen for subsequent changes (sign-in, sign-out, token refresh)
+    //    Skip the INITIAL_SESSION event to avoid double-triggering loadInitialData
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        // INITIAL_SESSION fires before getSession resolves — skip it
+        if (event === 'INITIAL_SESSION') return;
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        if (!initializedRef.current) {
+          setSessionReady(true);
+          initializedRef.current = true;
+        }
+      }
+    );
 
     return () => subscription.unsubscribe();
   }, []);
@@ -83,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ user, session, loading, sessionReady, signIn, signUp, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
