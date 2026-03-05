@@ -89,10 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    // Always redirect to the published domain to avoid landing on preview URLs
-    const productionOrigin = 'https://clinipro.lovable.app';
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${productionOrigin}/auth?reset=true`,
+      redirectTo: 'https://evolucaodiaria.app.br/auth?reset=true',
     });
     return { error: error as Error | null };
   };
