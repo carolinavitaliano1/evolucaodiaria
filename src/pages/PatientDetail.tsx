@@ -23,33 +23,28 @@ import { Calendar, Calendar as CalendarComponent } from '@/components/ui/calenda
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 import TemplateForm from '@/components/evolutions/TemplateForm';
+import { MoodSelector, DEFAULT_MOOD_OPTIONS } from '@/components/evolutions/MoodSelector';
+import { useCustomMoods } from '@/hooks/useCustomMoods';
 import { EvolutionTemplate, TemplateField } from '@/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { generateReportPdf } from '@/utils/generateReportPdf';
 
-const MOOD_OPTIONS = [
-  { value: 'otima', emoji: '🤩', label: 'Ótima', score: 10 },
-  { value: 'muito_boa', emoji: '😄', label: 'Muito boa', score: 9 },
-  { value: 'boa', emoji: '😊', label: 'Boa', score: 8 },
-  { value: 'animada', emoji: '😁', label: 'Animada', score: 7 },
-  { value: 'tranquila', emoji: '😌', label: 'Tranquila', score: 6 },
-  { value: 'neutra', emoji: '😐', label: 'Neutra', score: 5 },
-  { value: 'cansada', emoji: '😴', label: 'Cansada', score: 4 },
-  { value: 'ansiosa', emoji: '😰', label: 'Ansiosa', score: 3 },
-  { value: 'ruim', emoji: '😟', label: 'Ruim', score: 2 },
-  { value: 'muito_ruim', emoji: '😢', label: 'Muito ruim', score: 1 },
-  { value: 'agitada', emoji: '😤', label: 'Agitada', score: 3 },
-  { value: 'triste', emoji: '😔', label: 'Triste', score: 2 },
-  { value: 'irritada', emoji: '😠', label: 'Irritada', score: 2 },
-  { value: 'assustada', emoji: '😨', label: 'Assustada', score: 2 },
-  { value: 'confusa', emoji: '😵', label: 'Confusa', score: 3 },
-] as const;
 
-function getMoodInfo(mood?: string) {
-  return MOOD_OPTIONS.find(m => m.value === mood);
+const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
+  ...m,
+  score: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 3, 2, 2, 2, 3][i] ?? 5,
+}));
+
+function getMoodInfo(mood?: string, customMoods?: { id: string; emoji: string; label: string; score: number }[]) {
+  const found = MOOD_OPTIONS.find(m => m.value === mood);
+  if (found) return found;
+  const custom = customMoods?.find(m => m.id === mood);
+  if (custom) return { value: custom.id, emoji: custom.emoji, label: custom.label, score: custom.score };
+  return undefined;
 }
+
 
 function calculateAge(birthdate: string | null | undefined): number | null {
   if (!birthdate) return null;
@@ -62,10 +57,10 @@ function calculateAge(birthdate: string | null | undefined): number | null {
   return age;
 }
 
-const MoodTooltip = ({ active, payload }: any) => {
+const MoodTooltip = ({ active, payload, customMoods }: any) => {
   if (!active || !payload?.length) return null;
   const data = payload[0].payload;
-  const moodInfo = MOOD_OPTIONS.find(m => m.score === data.score);
+  const moodInfo = getMoodInfo(data.moodValue, customMoods) || MOOD_OPTIONS.find(o => o.score === data.score);
   return (
     <div className="bg-card border border-border rounded-lg p-2 shadow-lg text-xs">
       <p className="font-medium">{data.dateLabel}</p>
@@ -141,6 +136,7 @@ export default function PatientDetail() {
   const { patients, clinics, evolutions, attachments, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
     addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages } = useApp();
   const { user } = useAuth();
+  const { customMoods } = useCustomMoods();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
@@ -239,7 +235,11 @@ export default function PatientDetail() {
   const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
   const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient.paymentValue || 0);
 
-  const moodCounts = MOOD_OPTIONS.map(m => ({
+  const allMoodOptions = [
+    ...MOOD_OPTIONS,
+    ...customMoods.map(m => ({ value: m.id, emoji: m.emoji, label: m.label, score: m.score })),
+  ];
+  const moodCounts = allMoodOptions.map(m => ({
     ...m, count: patientEvolutions.filter(e => e.mood === m.value).length,
   }));
   const totalMoods = moodCounts.reduce((sum, m) => sum + m.count, 0);
@@ -249,9 +249,10 @@ export default function PatientDetail() {
     .filter(e => e.mood)
     .sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime())
     .map(e => {
-      const moodInfo = getMoodInfo(e.mood);
+      const moodInfo = getMoodInfo(e.mood, customMoods);
       return {
         date: e.date,
+        moodValue: e.mood,
         dateLabel: format(new Date(e.date + 'T12:00:00'), 'dd/MM', { locale: ptBR }),
         score: moodInfo?.score || 3,
         emoji: moodInfo?.emoji || '😐',
@@ -472,13 +473,13 @@ export default function PatientDetail() {
               <LineChart data={moodChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="dateLabel" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))"
+                <YAxis domain={[1, 10]} ticks={[1,2,3,4,5,6,7,8,9,10]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))"
                   tickFormatter={(v) => {
-                    const m = MOOD_OPTIONS.find(o => o.score === v);
+                    const m = allMoodOptions.find(o => o.score === v);
                     return m?.emoji || '';
                   }}
                 />
-                <Tooltip content={<MoodTooltip />} />
+                <Tooltip content={<MoodTooltip customMoods={customMoods} />} />
                 <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2.5}
                   dot={{ fill: 'hsl(var(--primary))', r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
@@ -562,20 +563,7 @@ export default function PatientDetail() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Humor da Sessão</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {MOOD_OPTIONS.map(m => (
-                      <button key={m.value} type="button"
-                        onClick={() => setSelectedMood(selectedMood === m.value ? '' : m.value)}
-                        className={cn(
-                          "flex flex-col items-center gap-0.5 p-1.5 rounded-lg border-2 transition-all text-center w-[58px]",
-                          selectedMood === m.value ? "border-primary bg-primary/10" : "border-transparent bg-secondary hover:bg-secondary/80"
-                        )} title={m.label}>
-                        <span className="text-xl">{m.emoji}</span>
-                        <span className="text-[9px] text-muted-foreground leading-tight">{m.label}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <MoodSelector value={selectedMood} onChange={setSelectedMood} />
                 </div>
               </div>
 
@@ -757,7 +745,7 @@ export default function PatientDetail() {
             ) : (
               <div className="space-y-4">
                 {patientEvolutions.map((evo) => {
-                  const moodInfo = getMoodInfo(evo.mood);
+                  const moodInfo = getMoodInfo(evo.mood, customMoods);
                   const evoAuthorId = (evo as any).user_id;
                   const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
                   const authorLabel = evoAuthor ? (evoAuthor.name || evoAuthor.email) : null;

@@ -8,29 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { Evolution, Attachment, EvolutionTemplate, TemplateField } from '@/types';
 import { Image, PenLine, Save, Wand2, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import TemplateForm from './TemplateForm';
+import { MoodSelector } from './MoodSelector';
+import { cn } from '@/lib/utils';
 
-const MOOD_OPTIONS = [
-  { value: 'otima', emoji: '🤩', label: 'Ótima' },
-  { value: 'muito_boa', emoji: '😄', label: 'Muito boa' },
-  { value: 'boa', emoji: '😊', label: 'Boa' },
-  { value: 'animada', emoji: '😁', label: 'Animada' },
-  { value: 'tranquila', emoji: '😌', label: 'Tranquila' },
-  { value: 'neutra', emoji: '😐', label: 'Neutra' },
-  { value: 'cansada', emoji: '😴', label: 'Cansada' },
-  { value: 'ansiosa', emoji: '😰', label: 'Ansiosa' },
-  { value: 'ruim', emoji: '😟', label: 'Ruim' },
-  { value: 'muito_ruim', emoji: '😢', label: 'Muito ruim' },
-  { value: 'agitada', emoji: '😤', label: 'Agitada' },
-  { value: 'triste', emoji: '😔', label: 'Triste' },
-  { value: 'irritada', emoji: '😠', label: 'Irritada' },
-  { value: 'assustada', emoji: '😨', label: 'Assustada' },
-  { value: 'confusa', emoji: '😵', label: 'Confusa' },
-] as const;
 
 interface EditEvolutionDialogProps {
   evolution: Evolution;
@@ -162,28 +146,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
             </div>
           </div>
 
-          <div>
-            <Label>Humor da Sessão</Label>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {MOOD_OPTIONS.map(m => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setMood(mood === m.value ? '' : m.value)}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 p-1.5 rounded-lg border-2 transition-all text-center w-[58px]",
-                    mood === m.value
-                      ? "border-primary bg-primary/10"
-                      : "border-transparent bg-secondary hover:bg-secondary/80"
-                  )}
-                  title={m.label}
-                >
-                  <span className="text-xl">{m.emoji}</span>
-                  <span className="text-[9px] text-muted-foreground leading-tight">{m.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <MoodSelector value={mood} onChange={setMood} />
 
           {/* Template selector */}
           {clinicTemplates.length > 0 && (

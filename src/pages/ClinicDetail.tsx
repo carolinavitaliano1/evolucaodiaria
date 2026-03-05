@@ -33,24 +33,9 @@ import { ClinicTeam } from '@/components/clinics/ClinicTeam';
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
+import { MoodSelector } from '@/components/evolutions/MoodSelector';
 
-const MOOD_OPTIONS = [
-  { value: 'otima', emoji: '🤩', label: 'Ótima' },
-  { value: 'muito_boa', emoji: '😄', label: 'Muito boa' },
-  { value: 'boa', emoji: '😊', label: 'Boa' },
-  { value: 'animada', emoji: '😁', label: 'Animada' },
-  { value: 'tranquila', emoji: '😌', label: 'Tranquila' },
-  { value: 'neutra', emoji: '😐', label: 'Neutra' },
-  { value: 'cansada', emoji: '😴', label: 'Cansada' },
-  { value: 'ansiosa', emoji: '😰', label: 'Ansiosa' },
-  { value: 'ruim', emoji: '😟', label: 'Ruim' },
-  { value: 'muito_ruim', emoji: '😢', label: 'Muito ruim' },
-  { value: 'agitada', emoji: '😤', label: 'Agitada' },
-  { value: 'triste', emoji: '😔', label: 'Triste' },
-  { value: 'irritada', emoji: '😠', label: 'Irritada' },
-  { value: 'assustada', emoji: '😨', label: 'Assustada' },
-  { value: 'confusa', emoji: '😵', label: 'Confusa' },
-] as const;
+
 
 
 const WEEKDAYS = [
@@ -1834,25 +1819,7 @@ export default function ClinicDetail() {
 
             {/* Mood */}
             <div>
-              <Label className="mb-2 block">Humor do Paciente</Label>
-              <div className="flex gap-2 flex-wrap">
-                {MOOD_OPTIONS.map(m => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => setQuickEvolutionMood(quickEvolutionMood === m.value ? '' : m.value)}
-                    className={cn(
-                      "flex flex-col items-center gap-1 p-2 rounded-xl border transition-all text-xs",
-                      quickEvolutionMood === m.value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-secondary/50 text-muted-foreground hover:border-primary/50"
-                    )}
-                  >
-                    <span className="text-xl">{m.emoji}</span>
-                    <span>{m.label}</span>
-                  </button>
-                ))}
-              </div>
+              <MoodSelector value={quickEvolutionMood} onChange={setQuickEvolutionMood} />
             </div>
 
             {/* Attachments */}

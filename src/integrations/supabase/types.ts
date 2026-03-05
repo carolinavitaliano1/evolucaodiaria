@@ -275,6 +275,33 @@ export type Database = {
           },
         ]
       }
+      custom_moods: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          label: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          label: string
+          score?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          label?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_service_types: {
         Row: {
           created_at: string
