@@ -33,7 +33,7 @@ function getGreeting(): string {
 }
 
 export default function Dashboard() {
-  const { selectedDate, appointments, tasks, evolutions, clinics, loadAllEvolutions, loadAppointmentsForClinic } = useApp();
+  const { selectedDate, appointments, tasks, evolutions, clinics, loadAllEvolutions } = useApp();
   const { theme } = useTheme();
   const { user } = useAuth();
   const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
@@ -47,11 +47,10 @@ export default function Dashboard() {
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
   const [todayPrivate, setTodayPrivate] = useState<number>(0);
 
-  // Trigger lazy loading of evolutions & appointments for all clinics on dashboard
+  // Load evolutions once when clinics are ready — appointments loaded on demand per clinic page
   useEffect(() => {
-    if (!user) return;
+    if (!user || clinics.length === 0) return;
     loadAllEvolutions();
-    clinics.forEach(c => loadAppointmentsForClinic(c.id));
   }, [user, clinics.length]);
 
   useEffect(() => {
