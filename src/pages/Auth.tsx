@@ -14,13 +14,27 @@ export default function Auth() {
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [pendingInvite, setPendingInvite] = useState<{ memberId: string; orgId: string } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const invite = params.get('invite');
     const org = params.get('org');
+    const reset = params.get('reset');
     if (invite && org) setPendingInvite({ memberId: invite, orgId: org });
+    // When arriving from the recovery email link, show the new-password form
+    if (reset === 'true') setShowNewPassword(true);
+  }, []);
+
+  // Listen for PASSWORD_RECOVERY event (Supabase sets the session automatically)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setShowNewPassword(true);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const [loginEmail, setLoginEmail] = useState('');
@@ -32,7 +46,7 @@ export default function Auth() {
   const [resetEmail, setResetEmail] = useState('');
 
   // Only redirect if session is confirmed (don't block the login form while loading)
-  if (!loading && user) {
+  if (!loading && user && !showNewPassword) {
     if (pendingInvite) {
       supabase.functions.invoke('accept-invite', { body: { member_id: pendingInvite.memberId } })
         .then(({ data, error }) => {
@@ -94,16 +108,80 @@ export default function Auth() {
     setIsSubmitting(false);
   };
 
+  const handleNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== newPasswordConfirm) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    setIsSubmitting(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      toast.error('Erro ao atualizar senha', { description: error.message });
+    } else {
+      toast.success('Senha atualizada com sucesso!', { description: 'Você já pode entrar com a nova senha.' });
+      setShowNewPassword(false);
+      setNewPassword('');
+      setNewPasswordConfirm('');
+      // Sign out so user logs in fresh with the new password
+      await supabase.auth.signOut();
+    }
+    setIsSubmitting(false);
+  };
+
+  const Logo = () => (
+    <div className="flex items-center justify-center gap-2 mb-8">
+      <div className="p-2 rounded-lg bg-primary/10">
+        <BookOpen className="h-8 w-8 text-primary" />
+      </div>
+      <h1 className="text-2xl font-bold text-foreground">Evolução Diária</h1>
+    </div>
+  );
+
+  // ── New password form (arrived via recovery link) ──────────────────────────
+  if (showNewPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <div className="w-full max-w-md">
+          <Logo />
+          <Card>
+            <form onSubmit={handleNewPassword}>
+              <CardHeader>
+                <CardTitle>Criar Nova Senha</CardTitle>
+                <CardDescription>Digite e confirme sua nova senha de acesso</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Nova Senha</Label>
+                  <Input id="new-password" type="password" placeholder="Mínimo 6 caracteres" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password-confirm">Confirmar Nova Senha</Label>
+                  <Input id="new-password-confirm" type="password" placeholder="Repita a nova senha" value={newPasswordConfirm} onChange={(e) => setNewPasswordConfirm(e.target.value)} required />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando...</> : 'Salvar Nova Senha'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Forgot password form ───────────────────────────────────────────────────
   if (showForgotPassword) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
         <div className="w-full max-w-md">
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <BookOpen className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">Evolução Diária</h1>
-          </div>
+          <Logo />
           <Card>
             <form onSubmit={handleResetPassword}>
               <CardHeader>
@@ -131,15 +209,11 @@ export default function Auth() {
     );
   }
 
+  // ── Login / Signup tabs ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <BookOpen className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Evolução Diária</h1>
-        </div>
+        <Logo />
 
         <Card>
           <Tabs defaultValue="login" className="w-full">
