@@ -9,10 +9,12 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireSubscription = false }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, sessionReady } = useAuth();
   const { subscribed, loading: subLoading } = useSubscription();
 
-  if (loading || (requireSubscription && subLoading)) {
+  // Wait until the session is fully restored from storage before redirecting.
+  // This prevents Google OAuth users from being bounced to /auth on page load.
+  if (!sessionReady || loading || (requireSubscription && subLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

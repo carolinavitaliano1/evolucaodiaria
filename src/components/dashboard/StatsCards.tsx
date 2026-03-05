@@ -8,15 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 
 export function StatsCards() {
-  const { clinics, patients, appointments, evolutions, loadAllEvolutions, loadAppointmentsForClinic } = useApp();
+  const { clinics, patients, appointments, evolutions } = useApp();
   const { user } = useAuth();
-
-  // Load all evolutions and appointments for accurate stats
-  useEffect(() => {
-    if (!user) return;
-    loadAllEvolutions();
-    clinics.forEach(c => loadAppointmentsForClinic(c.id));
-  }, [user, clinics.length]);
+  // Data is loaded by Dashboard — StatsCards just reads from context
 
 
 
