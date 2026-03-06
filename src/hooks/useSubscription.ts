@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-const CACHE_KEY = 'clinipro_subscription_cache';
+const CACHE_KEY = 'evolucao_subscription_cache';
 
 interface SubscriptionState {
   subscribed: boolean;
@@ -35,14 +35,13 @@ function setCachedSubscription(userId: string, data: Omit<SubscriptionState, 'lo
 }
 
 export function useSubscription() {
-  const { user } = useAuth();
+  const { user, sessionReady } = useAuth();
 
   const [state, setState] = useState<SubscriptionState>(() => {
     if (user) {
       const cached = getCachedSubscription(user.id);
       if (cached) return { ...cached, loading: false };
     }
-    // Always start as loading=true to avoid premature redirects
     return { subscribed: false, productId: null, subscriptionEnd: null, loading: true };
   });
 
@@ -50,6 +49,8 @@ export function useSubscription() {
     if (!user) {
       setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: false });
       localStorage.removeItem(CACHE_KEY);
+      // Migrate old cache key if exists
+      localStorage.removeItem('clinipro_subscription_cache');
       return;
     }
 
@@ -70,27 +71,29 @@ export function useSubscription() {
     }
   }, [user]);
 
-  // Re-initialize from cache when user changes
   useEffect(() => {
+    // Don't do anything until session is confirmed
+    if (!sessionReady) return;
+
     if (user) {
       const cached = getCachedSubscription(user.id);
       if (cached) {
-        // Cache hit: show immediately, no redirect
         setState({ ...cached, loading: false });
-        // Still refresh in background but don't block
+        // Refresh in background without blocking
         checkSubscription();
       } else {
-        // No cache: keep loading=true until API responds
         setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: true });
         checkSubscription();
       }
     } else {
-      setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: true });
+      setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: false });
+      return; // No interval when not logged in
     }
 
-    const interval = setInterval(() => checkSubscription(), 60000);
+    // Poll every 5 minutes instead of every 60 seconds
+    const interval = setInterval(() => checkSubscription(), 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [checkSubscription]);
+  }, [user, sessionReady, checkSubscription]);
 
   return { ...state, refresh: checkSubscription };
 }
