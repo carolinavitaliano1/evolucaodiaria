@@ -1,73 +1,58 @@
 
-## Como funcionaria um modelo multidisciplinar no app
+## Diagnóstico completo dos problemas da equipe
 
-A estrutura atual já é quase toda compatível — clínicas, pacientes, evoluções, templates e carimbos são por usuário. O que falta é suporte para **múltiplos profissionais dentro de uma mesma clínica**, cada um com seu próprio acesso, carimbos e evoluções, mas compartilhando a base de pacientes.
+### Problema 1 — E-mails não chegam (causa raiz confirmada nos logs)
+O Resend retorna erro 403: a chave configurada pertence à conta `carolinavitaliano1@gmail.com` mas o domínio de envio não está verificado no Resend. No plano gratuito do Resend, sem domínio verificado, só é possível enviar para o próprio e-mail da conta.
 
----
+**Solução**: Para usuário existente (que já tem conta), usar `inviteUserByEmail` do Supabase Auth (que funciona via auth-email-hook com o domínio `notify.evolucaodiaria.app.br` já configurado), em vez de tentar o Resend. Para usuário novo, já está usando `inviteUserByEmail` corretamente.
 
-### O que precisaria ser adicionado (sem remover nada)
+### Problema 2 — `listUsers()` não escala e pode falhar
+A função `invite-member` chama `supabase.auth.admin.listUsers()` que retorna **todos** os usuários do sistema de uma vez para encontrar se o e-mail já tem conta. Isso não escala e pode retornar paginação incompleta.
 
-```
-ESTRUTURA ATUAL                    ESTRUTURA MULTIDISCIPLINAR
-─────────────────────────          ─────────────────────────────────
-usuário único → clínica            organização → clínica → membros
-usuário único → pacientes          pacientes compartilhados por clínica
-usuário único → evoluções          evoluções com "autor" (profissional)
-```
+**Solução**: Usar `getUserByEmail` ou buscar direto na tabela `profiles` por e-mail.
 
-**1. Organizações / Equipes**
-- Nova tabela `organizations` — uma clínica multidisciplinar seria uma organização
-- Nova tabela `organization_members` — com papéis: `owner`, `admin`, `professional`
-- O dono convida outros usuários via e-mail
+### Problema 3 — URL do convite usa `onboarding@resend.dev` com nome "CliniPro"
+O e-mail enviado via Resend ainda referencia "CliniPro" no corpo e no remetente, mas o app agora se chama "Evolução Diária".
 
-**2. Pacientes compartilhados**
-- Pacientes passariam a ser da organização, não só do usuário
-- Cada profissional vê os pacientes da clínica, não só os seus
-- Permissões por papel: quem pode criar/editar/arquivar
+### Problema 4 — `invite-member` não está em `config.toml` com `verify_jwt = false`
+A função `invite-member` não está listada no `config.toml`, o que pode causar falhas de autenticação dependendo da configuração padrão.
 
-**3. Evoluções por profissional**
-- Cada evolução já tem `user_id` — continuaria funcionando como "autor"
-- Na visualização, apareceria o nome do profissional que registrou
-- Carimbo automático do profissional logado
-
-**4. Templates por organização**
-- Templates criados pelo dono ficam disponíveis para toda a equipe
-- Cada profissional ainda pode ter seus próprios templates pessoais
-
-**5. Financeiro separado por profissional**
-- Cada membro vê seus próprios recebimentos
-- O dono/admin vê o consolidado de todos
+### Problema 5 — Fluxo de aceite do convite no Auth.tsx
+Quando o usuário clica no link de convite e já está logado, o `accept-invite` é chamado antes do redirect. Mas se o usuário ainda não tem conta, o fluxo de criação de conta deve ativar o membro automaticamente após signup.
 
 ---
 
-### Impacto no que já existe
+## Plano de correção
 
-| Funcionalidade atual | Impacto |
+### 1. Reescrever `supabase/functions/invite-member/index.ts`
+
+**Nova lógica unificada**:
+- Buscar usuário existente via `profiles` (por e-mail) em vez de `listUsers()`
+- Para qualquer caso (usuário novo ou existente): usar **sempre** `supabase.auth.admin.inviteUserByEmail()` — isso usa o auth-email-hook com domínio próprio verificado (`notify.evolucaodiaria.app.br`), que já está funcionando
+- Remover completamente a dependência do Resend para convites de equipe (o Resend fica só para outros fins)
+- Corrigir o `appUrl` para sempre usar `https://evolucaodiaria.app.br` em vez de depender do `origin` header
+
+### 2. Adicionar `invite-member` ao `supabase/config.toml`
+```toml
+[functions.invite-member]
+  verify_jwt = false
+[functions.accept-invite]
+  verify_jwt = false
+```
+
+### 3. Corrigir `src/pages/Auth.tsx` — fluxo de aceite
+Quando usuário novo se cadastra com link de convite (`?invite=...&org=...`), após o signup ele deve ser redirecionado para aceitar o convite automaticamente, sem precisar clicar novamente.
+
+### 4. Deploy da função atualizada
+
+---
+
+## Arquivos a modificar
+
+| Arquivo | Mudança |
 |---|---|
-| Clínica própria (terapeuta solo) | Zero — continua igual |
-| Templates de evolução | Zero — apenas compartilhamento opcional |
-| Carimbos pessoais | Zero — cada membro tem os seus |
-| Exportação PDF | Pequena — adicionar nome do profissional no rodapé |
-| Dashboard | Pequena — filtro por membro |
+| `supabase/functions/invite-member/index.ts` | Reescrever para usar auth-email-hook em vez do Resend |
+| `supabase/config.toml` | Adicionar `invite-member` e `accept-invite` com `verify_jwt = false` |
+| `src/pages/Auth.tsx` | Melhorar fluxo de aceite de convite pós-signup |
 
-O terapeuta solo continua usando o app exatamente como hoje. O modo multidisciplinar seria **opt-in** — ao criar uma clínica, escolheria entre "uso individual" ou "equipe multidisciplinar".
-
----
-
-### Implementação em fases
-
-**Fase 1** — Convite e membros
-- Tabelas `organizations` e `organization_members`
-- Fluxo de convite por e-mail
-- Papéis: dono, admin, profissional
-
-**Fase 2** — Dados compartilhados
-- Pacientes e evoluções vinculados à organização
-- Filtros por profissional na agenda e evoluções
-
-**Fase 3** — Financeiro consolidado
-- Relatórios por membro e consolidado para o admin
-
----
-
-Quer que eu implemente isso? Posso começar pela Fase 1 (estrutura de equipe e convites) mantendo tudo que existe intacto para usuários solo.
+O resultado: convites chegarão pelo e-mail do domínio `notify.evolucaodiaria.app.br` (já verificado e funcionando), o link levará para a página de login/cadastro com o convite pré-carregado, e ao entrar/criar conta o membro será ativado automaticamente na equipe.
