@@ -154,9 +154,20 @@ Deno.serve(async (req) => {
     const roleLabels: Record<string, string> = { admin: 'Administrador', professional: 'Profissional' };
     const roleLabel = roleLabels[role] || role;
 
-    // Detectar se usuário já existe no Auth via getUserByEmail (API admin)
-    const { data: existingAuthUser } = await supabase.auth.admin.getUserByEmail(email);
-    const userAlreadyExists = !!existingAuthUser?.user;
+    // Detectar se usuário já existe no Auth via listUsers com filtro de email
+    const { data: usersData } = await supabase.auth.admin.listUsers({ perPage: 1, page: 1 });
+    // listUsers não filtra por email — usar endpoint REST diretamente
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const searchRes = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}&per_page=1`,
+      { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
+    );
+    let userAlreadyExists = false;
+    if (searchRes.ok) {
+      const searchData = await searchRes.json();
+      userAlreadyExists = Array.isArray(searchData?.users) && searchData.users.length > 0;
+    }
 
     console.log(`Convite para ${email} — usuário existente no Auth: ${userAlreadyExists}`);
 
