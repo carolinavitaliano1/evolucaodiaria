@@ -26,6 +26,48 @@ export interface UploadedFile {
   url?: string;
 }
 
+// Compress image before upload using canvas
+async function compressImage(file: File, maxWidth = 1200, quality = 0.82): Promise<File> {
+  // Only compress images
+  if (!file.type.startsWith('image/')) return file;
+  // Skip small images (< 500KB)
+  if (file.size < 500 * 1024) return file;
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob || blob.size >= file.size) {
+              resolve(file); // fallback to original if compression doesn't help
+              return;
+            }
+            resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export function FileUpload({
   onUpload,
   existingFiles = [],
@@ -66,8 +108,12 @@ export function FileUpload({
 
     try {
       for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i];
-        const fileExt = file.name.split('.').pop();
+        const original = filesToUpload[i];
+
+        // Compress image before upload
+        const file = await compressImage(original);
+
+        const fileExt = file.name.split('.').pop() || 'jpg';
         const fileName = `${parentType}/${parentId || 'temp'}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
 
         const { data, error } = await supabase.storage
@@ -88,9 +134,9 @@ export function FileUpload({
 
         uploadedFiles.push({
           id: `temp_${Date.now()}_${i}`,
-          name: file.name,
+          name: original.name,
           filePath: data.path,
-          fileType: file.type,
+          fileType: original.type,
           fileSize: file.size,
           url: urlData.publicUrl,
         });
@@ -122,6 +168,8 @@ export function FileUpload({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       uploadFiles(e.target.files);
+      // Reset input so same file can be re-selected
+      e.target.value = '';
     }
   };
 
@@ -175,11 +223,14 @@ export function FileUpload({
               className="gap-1"
             >
               {isUploading ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span className="text-xs">{Math.round(uploadProgress)}%</span>
+                </>
               ) : (
                 <Upload className="w-3 h-3" />
               )}
-              Anexar
+              {isUploading ? 'Enviando...' : 'Anexar'}
             </Button>
           )}
         </div>
@@ -220,6 +271,12 @@ export function FileUpload({
                 <p className="text-sm text-muted-foreground">
                   Enviando... {Math.round(uploadProgress)}%
                 </p>
+                <div className="w-full max-w-32 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
               </>
             ) : (
               <>
@@ -249,6 +306,7 @@ export function FileUpload({
                     src={file.url}
                     alt={file.name}
                     className="w-full h-24 object-cover cursor-pointer"
+                    loading="lazy"
                   />
                 </a>
               ) : file.fileType.startsWith('video/') && file.url ? (

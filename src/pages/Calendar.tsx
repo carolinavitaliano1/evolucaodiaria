@@ -271,11 +271,11 @@ export default function CalendarPage() {
 
   // ---- Hourly grid (week + day) ----
   const HourlyGrid = ({ days }: { days: Date[] }) => (
-    <div className="flex-1 overflow-y-auto">
-      <div className="grid relative" style={{ gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
+    <div className="flex-1 overflow-auto">
+      <div className="grid relative" style={{ gridTemplateColumns: `48px repeat(${days.length}, minmax(80px, 1fr))`, minWidth: days.length > 1 ? `${48 + days.length * 80}px` : undefined }}>
         {HOURS.map(hour => (
-          <>
-            <div key={`lbl-${hour}`} className="border-r border-b border-border h-14 flex items-start justify-end pr-2 pt-0.5 sticky left-0 bg-background z-10">
+          <div key={`row-${hour}`} className="contents">
+            <div className="border-r border-b border-border h-14 flex items-start justify-end pr-2 pt-0.5 sticky left-0 bg-background z-10">
               <span className="text-[10px] text-muted-foreground leading-none">{hour === 0 ? '' : `${String(hour).padStart(2, '0')}:00`}</span>
             </div>
             {days.map(day => {
@@ -300,7 +300,7 @@ export default function CalendarPage() {
                 </div>
               );
             })}
-          </>
+          </div>
         ))}
       </div>
     </div>
@@ -442,41 +442,44 @@ export default function CalendarPage() {
       {/* ══════════ WEEK VIEW ══════════ */}
       {viewMode === 'week' && (
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}>
-            <div className="border-r border-border" />
-            {weekDays.map(day => (
-              <div
-                key={day.toISOString()}
-                className={cn("text-center py-1.5 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors", isSameDay(day, selectedDate) && "bg-primary/5")}
-                onClick={() => { setSelectedDate(day); setViewDate(day); setViewMode('day'); }}
-              >
-                <div className="text-[9px] uppercase text-muted-foreground font-semibold tracking-wide">{format(day, 'EEE', { locale: ptBR })}</div>
-                <div className={cn("mx-auto mt-0.5 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold", isToday(day) ? "bg-primary text-primary-foreground" : "text-foreground")}>
-                  {format(day, 'd')}
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* All-day row */}
-          <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}>
-            <div className="border-r border-border flex items-center justify-center px-0.5">
-              <span className="text-[8px] text-muted-foreground text-center leading-tight">dia<br/>todo</span>
-            </div>
-            {weekDays.map(day => {
-              const allDay = getAllForDay(day).filter(i => !i.time);
-              const dateStr = format(day, 'yyyy-MM-dd');
-              return (
-                <div key={day.toISOString()} className="border-r border-border min-h-[24px] p-0.5 space-y-0.5"
-                  onDragOver={e => { e.preventDefault(); setDragOverDate(dateStr); }}
-                  onDragLeave={() => setDragOverDate(null)}
-                  onDrop={e => handleDrop(e, dateStr)}
+          <div className="overflow-x-auto flex-1 flex flex-col">
+            {/* Week header */}
+            <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '48px repeat(7, minmax(80px, 1fr))', minWidth: '608px' }}>
+              <div className="border-r border-border" />
+              {weekDays.map(day => (
+                <div
+                  key={day.toISOString()}
+                  className={cn("text-center py-1.5 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors", isSameDay(day, selectedDate) && "bg-primary/5")}
+                  onClick={() => { setSelectedDate(day); setViewDate(day); setViewMode('day'); }}
                 >
-                  {allDay.map(item => <EventPill key={item.id} item={item} />)}
+                  <div className="text-[9px] uppercase text-muted-foreground font-semibold tracking-wide">{format(day, 'EEE', { locale: ptBR })}</div>
+                  <div className={cn("mx-auto mt-0.5 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold", isToday(day) ? "bg-primary text-primary-foreground" : "text-foreground")}>
+                    {format(day, 'd')}
+                  </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            {/* All-day row */}
+            <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '48px repeat(7, minmax(80px, 1fr))', minWidth: '608px' }}>
+              <div className="border-r border-border flex items-center justify-center px-0.5">
+                <span className="text-[8px] text-muted-foreground text-center leading-tight">dia<br/>todo</span>
+              </div>
+              {weekDays.map(day => {
+                const allDay = getAllForDay(day).filter(i => !i.time);
+                const dateStr = format(day, 'yyyy-MM-dd');
+                return (
+                  <div key={day.toISOString()} className="border-r border-border min-h-[24px] p-0.5 space-y-0.5"
+                    onDragOver={e => { e.preventDefault(); setDragOverDate(dateStr); }}
+                    onDragLeave={() => setDragOverDate(null)}
+                    onDrop={e => handleDrop(e, dateStr)}
+                  >
+                    {allDay.map(item => <EventPill key={item.id} item={item} />)}
+                  </div>
+                );
+              })}
+            </div>
+            <HourlyGrid days={weekDays} />
           </div>
-          <HourlyGrid days={weekDays} />
         </div>
       )}
 
