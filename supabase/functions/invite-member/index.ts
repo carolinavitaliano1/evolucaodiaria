@@ -56,7 +56,7 @@ async function sendInviteEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `Evolução Diária <noreply@evolucaodiaria.app.br>`,
+      from: `Evolução Diária <noreply@notify.evolucaodiaria.app.br>`,
       to: [to],
       subject: `Convite para a equipe ${orgName} - Evolução Diária`,
       html,
@@ -155,20 +155,21 @@ Deno.serve(async (req) => {
     const roleLabels: Record<string, string> = { admin: 'Administrador', professional: 'Profissional' };
     const roleLabel = roleLabels[role] || role;
 
-    // Verificar se o usuário já tem conta (buscar na tabela profiles)
+    // PASSO CRÍTICO: verificar se o usuário já tem conta na tabela profiles
     const { data: existingProfile } = await supabase.from('profiles').select('user_id').eq('email', email).maybeSingle();
     const userAlreadyExists = !!existingProfile;
+
+    console.log(`Convite para ${email} — usuário existente: ${userAlreadyExists}`);
 
     let emailSent = false;
 
     if (userAlreadyExists) {
-      // Usuário já tem conta → enviar e-mail via Resend com link direto
-      // inviteUserByEmail falha com 422 para usuários existentes
-      console.log(`Usuário ${email} já tem conta. Enviando convite via Resend...`);
+      // Usuário já tem conta → enviar via Resend com domínio verificado notify.evolucaodiaria.app.br
+      console.log(`Enviando convite via Resend (notify.evolucaodiaria.app.br) para usuário existente: ${email}`);
       emailSent = await sendInviteEmailViaResend(email, inviteUrl, org.name, inviterName, roleLabel);
     } else {
       // Usuário novo → usar inviteUserByEmail (auth-email-hook com domínio verificado)
-      console.log(`Usuário ${email} é novo. Enviando convite via auth-email-hook...`);
+      console.log(`Usuário ${email} é novo. Enviando via inviteUserByEmail...`);
       const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
         redirectTo: inviteUrl,
         data: {
@@ -180,12 +181,13 @@ Deno.serve(async (req) => {
       });
 
       if (inviteError) {
-        console.error('Erro no inviteUserByEmail, tentando Resend como fallback:', inviteError.message);
-        // Fallback: tentar via Resend mesmo assim
+        console.error('Erro no inviteUserByEmail:', inviteError.message);
+        // Fallback Resend para qualquer erro (incluindo 422 email_exists não detectado)
+        console.log('Tentando fallback via Resend...');
         emailSent = await sendInviteEmailViaResend(email, inviteUrl, org.name, inviterName, roleLabel);
       } else {
         emailSent = true;
-        console.log(`Convite enviado via auth-email-hook para ${email}`);
+        console.log(`Convite enviado via inviteUserByEmail para ${email}`);
       }
     }
 
