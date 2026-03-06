@@ -13,3 +13,7 @@ project_id = "uhhpnjyceobdcxqviouy"
     verify_jwt = false
   [functions.improve-evolution]
     verify_jwt = false
+  [functions.invite-member]
+    verify_jwt = false
+  [functions.accept-invite]
+    verify_jwt = false

@@ -61,12 +61,18 @@ export default function Auth() {
 
   if (!loading && user && !isRecoveryFlow) {
     if (pendingInvite) {
-      supabase.functions.invoke('accept-invite', { body: { member_id: pendingInvite.memberId } })
-        .then(({ data, error }) => {
-          if (!error && data?.success) {
-            toast.success(`Você entrou para a equipe ${data.organization?.name}!`);
-          }
-        });
+      // Aceitar convite e depois redirecionar
+      supabase.functions.invoke('accept-invite', {
+        body: { member_id: pendingInvite.memberId },
+      }).then(({ data, error }) => {
+        if (!error && data?.success) {
+          toast.success(`🎉 Bem-vindo à equipe ${data.organization?.name}!`, {
+            description: `Você entrou como ${data.role === 'admin' ? 'Administrador' : 'Profissional'}.`,
+          });
+        } else if (error) {
+          console.error('Erro ao aceitar convite:', error);
+        }
+      });
     }
     return <Navigate to="/dashboard" replace />;
   }
