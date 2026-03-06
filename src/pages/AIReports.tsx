@@ -622,11 +622,13 @@ export default function AIReports() {
                 <Select value={selectedPatient} onValueChange={setSelectedPatient}>
                   <SelectTrigger><SelectValue placeholder="Selecione um paciente" /></SelectTrigger>
                   <SelectContent>
-                    {patients.map(p => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name} — {clinics.find(c => c.id === p.clinicId)?.name || ''}
-                      </SelectItem>
-                    ))}
+                    {patients
+                      .filter(p => !selectedClinic || selectedClinic === 'none' || p.clinicId === selectedClinic)
+                      .map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}{(!selectedClinic || selectedClinic === 'none') ? ` — ${clinics.find(c => c.id === p.clinicId)?.name || ''}` : ''}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
