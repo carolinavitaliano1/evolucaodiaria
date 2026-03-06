@@ -23,6 +23,10 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData } = await anonClient.auth.getClaims(token);
+    if (!claimsData?.claims) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    // Need full user object to get email for validation
     const { data: { user }, error: authError } = await anonClient.auth.getUser();
     if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
 
