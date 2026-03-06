@@ -25,14 +25,23 @@ export default function Auth() {
     const org = params.get('org');
     const reset = params.get('reset');
     if (invite && org) setPendingInvite({ memberId: invite, orgId: org });
-    // When arriving from the recovery email link, show the new-password form
+    // Detect recovery via query param (our redirectTo includes ?reset=true)
     if (reset === 'true') setShowNewPassword(true);
+
+    // Detect recovery via URL hash (Supabase embeds tokens in the hash fragment)
+    // e.g. /auth#access_token=...&type=recovery
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      setShowNewPassword(true);
+    }
   }, []);
 
-  // Listen for PASSWORD_RECOVERY event (Supabase sets the session automatically)
+  // Listen for PASSWORD_RECOVERY event as a secondary safety net
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setShowNewPassword(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowNewPassword(true);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -45,8 +54,12 @@ export default function Auth() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [resetEmail, setResetEmail] = useState('');
 
-  // Only redirect if session is confirmed (don't block the login form while loading)
-  if (!loading && user && !showNewPassword) {
+  // Only redirect if session is confirmed AND this is not a recovery flow
+  const isRecoveryFlow = showNewPassword ||
+    window.location.hash.includes('type=recovery') ||
+    new URLSearchParams(window.location.search).get('reset') === 'true';
+
+  if (!loading && user && !isRecoveryFlow) {
     if (pendingInvite) {
       supabase.functions.invoke('accept-invite', { body: { member_id: pendingInvite.memberId } })
         .then(({ data, error }) => {
