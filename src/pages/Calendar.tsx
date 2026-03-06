@@ -675,7 +675,6 @@ export default function CalendarPage() {
           if (!open) loadCalendarEvents();
         }}
         selectedDate={selectedDate}
-        editEvent={popupItem?.rawEvent}
       />
     </div>
   );
