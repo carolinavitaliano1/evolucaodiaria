@@ -271,11 +271,11 @@ export default function CalendarPage() {
 
   // ---- Hourly grid (week + day) ----
   const HourlyGrid = ({ days }: { days: Date[] }) => (
-    <div className="flex-1 overflow-y-auto">
-      <div className="grid relative" style={{ gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
+    <div className="flex-1 overflow-auto">
+      <div className="grid relative" style={{ gridTemplateColumns: `48px repeat(${days.length}, minmax(80px, 1fr))`, minWidth: days.length > 1 ? `${48 + days.length * 80}px` : undefined }}>
         {HOURS.map(hour => (
-          <>
-            <div key={`lbl-${hour}`} className="border-r border-b border-border h-14 flex items-start justify-end pr-2 pt-0.5 sticky left-0 bg-background z-10">
+          <div key={`row-${hour}`} className="contents">
+            <div className="border-r border-b border-border h-14 flex items-start justify-end pr-2 pt-0.5 sticky left-0 bg-background z-10">
               <span className="text-[10px] text-muted-foreground leading-none">{hour === 0 ? '' : `${String(hour).padStart(2, '0')}:00`}</span>
             </div>
             {days.map(day => {
@@ -300,7 +300,7 @@ export default function CalendarPage() {
                 </div>
               );
             })}
-          </>
+          </div>
         ))}
       </div>
     </div>
