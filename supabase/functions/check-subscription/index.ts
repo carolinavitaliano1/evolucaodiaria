@@ -44,6 +44,24 @@ serve(async (req) => {
       });
     }
 
+    // Trial access bypass - check profiles.trial_until
+    const { data: profileData } = await supabaseClient
+      .from("profiles")
+      .select("trial_until")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profileData?.trial_until && new Date(profileData.trial_until) > new Date()) {
+      return new Response(JSON.stringify({
+        subscribed: true,
+        product_id: "trial",
+        subscription_end: profileData.trial_until,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
