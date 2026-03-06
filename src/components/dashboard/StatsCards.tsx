@@ -16,7 +16,12 @@ export function StatsCards() {
 
   const today = toLocalDateString(new Date());
   const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
-  const patientsScheduledToday = patients.filter(p => !p.isArchived && p.weekdays?.includes(todayWeekday));
+  const patientsScheduledToday = patients.filter(p => {
+    if (p.isArchived) return false;
+    const schedByDay = p.scheduleByDay as Record<string, { start?: string }> | null;
+    const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
+    return scheduledDays.includes(todayWeekday);
+  });
   const oneOffAppointments = appointments.filter(a => a.date === today);
   const oneOffPatientIds = new Set(oneOffAppointments.map(a => a.patientId));
   const weekdayPatientIds = new Set(patientsScheduledToday.map(p => p.id));
