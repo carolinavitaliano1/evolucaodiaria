@@ -137,10 +137,11 @@ export default function Auth() {
       toast.error('Erro ao atualizar senha', { description: error.message });
     } else {
       toast.success('Senha atualizada com sucesso!', { description: 'Você já pode entrar com a nova senha.' });
+      // Clear recovery tokens from URL so isRecoveryFlow becomes false and redirect works
+      window.history.replaceState(null, '', window.location.pathname);
       setShowNewPassword(false);
       setNewPassword('');
       setNewPasswordConfirm('');
-      // Sign out so user logs in fresh with the new password
       await supabase.auth.signOut();
     }
     setIsSubmitting(false);
