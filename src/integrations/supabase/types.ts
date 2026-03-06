@@ -810,6 +810,7 @@ export type Database = {
           name: string | null
           phone: string | null
           professional_id: string | null
+          trial_until: string | null
           updated_at: string
           user_id: string
         }
@@ -821,6 +822,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           professional_id?: string | null
+          trial_until?: string | null
           updated_at?: string
           user_id: string
         }
@@ -832,6 +834,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           professional_id?: string | null
+          trial_until?: string | null
           updated_at?: string
           user_id?: string
         }

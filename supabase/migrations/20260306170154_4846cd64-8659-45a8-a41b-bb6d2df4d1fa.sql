@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS trial_until timestamp with time zone DEFAULT NULL;
