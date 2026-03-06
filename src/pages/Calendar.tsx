@@ -384,13 +384,12 @@ export default function CalendarPage() {
               <div key={d} className="text-center text-[10px] sm:text-[11px] font-semibold text-muted-foreground py-1.5 uppercase tracking-wide">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 flex-1 overflow-y-auto" style={{ gridTemplateRows: `repeat(${calDays.length / 7}, minmax(80px, 1fr))` }}>
+          <div className="grid grid-cols-7 flex-1 overflow-y-auto" style={{ gridTemplateRows: `repeat(${calDays.length / 7}, minmax(90px, 1fr))` }}>
             {calDays.map(day => {
               const isSelected = isSameDay(day, selectedDate);
               const isCurrentMonth = isSameMonth(day, viewDate);
               const dayItems = getAllForDay(day);
-              // On mobile show 1, on desktop show 3
-              const maxVisible = 3;
+              const maxVisible = 2;
               const visible = dayItems.slice(0, maxVisible);
               const overflow = dayItems.length - maxVisible;
               const dateStr = format(day, 'yyyy-MM-dd');
@@ -403,7 +402,7 @@ export default function CalendarPage() {
                   onDragLeave={() => setDragOverDate(null)}
                   onDrop={e => handleDrop(e, dateStr)}
                   className={cn(
-                    "border-r border-b border-border p-0.5 sm:p-1 cursor-pointer transition-colors relative",
+                    "border-r border-b border-border p-0.5 sm:p-1 cursor-pointer transition-colors relative overflow-hidden",
                     isCurrentMonth ? "bg-background hover:bg-secondary/30" : "bg-muted/20",
                     isSelected && "ring-1 ring-inset ring-primary bg-primary/5",
                     dragOverDate === dateStr && "bg-primary/10"
@@ -412,7 +411,7 @@ export default function CalendarPage() {
                   <div className="flex items-center justify-between mb-0.5">
                     <span
                       className={cn(
-                        "text-[11px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full",
+                        "text-[11px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full shrink-0",
                         isToday(day)
                           ? "bg-primary text-primary-foreground"
                           : isCurrentMonth ? "text-foreground" : "text-muted-foreground/40"
@@ -425,7 +424,11 @@ export default function CalendarPage() {
                     {visible.map(item => <EventPill key={item.id} item={item} />)}
                     {overflow > 0 && (
                       <button
-                        className="text-[10px] text-primary font-semibold pl-1 hover:underline w-full text-left"
+                        className={cn(
+                          "flex items-center gap-0.5 w-full rounded px-1 py-0.5 transition-colors",
+                          "text-[10px] sm:text-[11px] font-semibold text-primary",
+                          "bg-primary/10 hover:bg-primary/20 active:bg-primary/30"
+                        )}
                         onClick={e => openDayDetail(day, e)}
                       >
                         +{overflow} mais
@@ -524,12 +527,11 @@ export default function CalendarPage() {
                   return parseInt(item.time.slice(0, 2), 10) === hour;
                 });
                 return (
-                  <>
-                    <div key={`lbl-${hour}`} className="border-r border-b border-border h-16 flex items-start justify-end pr-2 pt-1">
+                  <div key={`hour-${hour}`} className="contents">
+                    <div className="border-r border-b border-border h-16 flex items-start justify-end pr-2 pt-1 sticky left-0 bg-background z-10">
                       <span className="text-[10px] text-muted-foreground">{hour === 0 ? '' : `${String(hour).padStart(2, '0')}:00`}</span>
                     </div>
                     <div
-                      key={`col-${hour}`}
                       className="border-b border-border h-16 p-1 space-y-1 hover:bg-secondary/20 transition-colors cursor-pointer"
                       onClick={() => setEventDialogOpen(true)}
                     >
@@ -549,7 +551,7 @@ export default function CalendarPage() {
                         </div>
                       ))}
                     </div>
-                  </>
+                  </div>
                 );
               })}
             </div>
