@@ -34,7 +34,7 @@ async function sendInviteEmailViaResend(
       <strong>${inviterName}</strong> convidou você para fazer parte da equipe <strong>${orgName}</strong> no Evolução Diária como <strong>${roleLabel}</strong>.
     </p>
     <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 28px;">
-      Clique no botão abaixo para aceitar o convite e acessar o sistema.
+      Clique no botão abaixo para aceitar o convite. Se você já possui uma conta, basta fazer login normalmente — o convite será aplicado automaticamente.
     </p>
     <a href="${inviteUrl}" style="background-color:hsl(252,56%,57%);color:#ffffff;font-size:15px;font-weight:bold;border-radius:8px;padding:14px 24px;text-decoration:none;display:inline-block;">
       Aceitar convite
@@ -56,7 +56,7 @@ async function sendInviteEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `Evolução Diária <noreply@notify.evolucaodiaria.app.br>`,
+      from: `Evolução Diária <onboarding@resend.dev>`,
       to: [to],
       subject: `Convite para a equipe ${orgName} - Evolução Diária`,
       html,
@@ -126,7 +126,6 @@ Deno.serve(async (req) => {
       if (existing.status === 'active') {
         return new Response(JSON.stringify({ error: 'Este profissional já é membro da equipe' }), { status: 409, headers: corsHeaders });
       }
-      // Se pendente, remove o antigo para recriar e reenviar
       if (existing.status === 'pending') {
         await supabase.from('organization_members').delete().eq('id', existing.id);
       }
@@ -155,17 +154,18 @@ Deno.serve(async (req) => {
     const roleLabels: Record<string, string> = { admin: 'Administrador', professional: 'Profissional' };
     const roleLabel = roleLabels[role] || role;
 
-    // PASSO CRÍTICO: verificar se o usuário já tem conta na tabela profiles
-    const { data: existingProfile } = await supabase.from('profiles').select('user_id').eq('email', email).maybeSingle();
-    const userAlreadyExists = !!existingProfile;
+    // Detectar se usuário já existe no Auth via getUserByEmail (API admin)
+    const { data: existingAuthUser } = await supabase.auth.admin.getUserByEmail(email);
+    const userAlreadyExists = !!existingAuthUser?.user;
 
-    console.log(`Convite para ${email} — usuário existente: ${userAlreadyExists}`);
+    console.log(`Convite para ${email} — usuário existente no Auth: ${userAlreadyExists}`);
 
     let emailSent = false;
 
     if (userAlreadyExists) {
-      // Usuário já tem conta → enviar via Resend com domínio verificado notify.evolucaodiaria.app.br
-      console.log(`Enviando convite via Resend (notify.evolucaodiaria.app.br) para usuário existente: ${email}`);
+      // Usuário já tem conta → enviar e-mail via Resend com link direto para aceitar convite
+      // inviteUserByEmail retorna 422 para usuários existentes
+      console.log(`Enviando convite via Resend para usuário existente: ${email}`);
       emailSent = await sendInviteEmailViaResend(email, inviteUrl, org.name, inviterName, roleLabel);
     } else {
       // Usuário novo → usar inviteUserByEmail (auth-email-hook com domínio verificado)
@@ -182,8 +182,7 @@ Deno.serve(async (req) => {
 
       if (inviteError) {
         console.error('Erro no inviteUserByEmail:', inviteError.message);
-        // Fallback Resend para qualquer erro (incluindo 422 email_exists não detectado)
-        console.log('Tentando fallback via Resend...');
+        // Fallback: tentar Resend
         emailSent = await sendInviteEmailViaResend(email, inviteUrl, org.name, inviterName, roleLabel);
       } else {
         emailSent = true;
