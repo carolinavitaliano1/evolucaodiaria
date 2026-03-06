@@ -7,7 +7,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Clock, User, Briefcase,
-  CheckSquare, Bell, Calendar, Users, LayoutGrid, Columns, CalendarDays,
+  Calendar, LayoutGrid, Columns, CalendarDays,
   Pencil, Trash2, X, MapPin,
 } from 'lucide-react';
 import { EventDialog } from '@/components/calendar/EventDialog';
@@ -52,8 +52,8 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const HOUR_H = 56; // px per hour
 const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function CalendarPage() {
   const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, evolutions } = useApp();
@@ -68,7 +68,10 @@ export default function CalendarPage() {
   const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  // Day detail popup (for "+N mais" in month view)
+  const [dayDetailDate, setDayDetailDate] = useState<Date | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const dayDetailRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     clinicId: '', patientId: '',
@@ -85,12 +88,11 @@ export default function CalendarPage() {
 
   useEffect(() => { loadCalendarEvents(); }, [loadCalendarEvents]);
 
-  // Close popup on outside click
+  // Close popups on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        setPopupItem(null);
-      }
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) setPopupItem(null);
+      if (dayDetailRef.current && !dayDetailRef.current.contains(e.target as Node)) setDayDetailDate(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -101,7 +103,6 @@ export default function CalendarPage() {
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayOfWeek = WEEKDAY_NAMES[date.getDay()];
 
-    // Clinic appointments from appointments table
     const appts: CalItem[] = appointments
       .filter(a => a.date === dateStr)
       .map(a => {
@@ -116,13 +117,11 @@ export default function CalendarPage() {
         };
       });
 
-    // Scheduled patients based on weekdays config (recurring schedule)
     const scheduledPatientIds = new Set(appointments.filter(a => a.date === dateStr).map(a => a.patientId));
     const scheduledPatients: CalItem[] = patients
       .filter(p => {
         if (p.isArchived || scheduledPatientIds.has(p.id)) return false;
         const scheduleByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
-        // Check scheduleByDay keys OR weekdays array
         const scheduledDays = scheduleByDay ? Object.keys(scheduleByDay) : (p.weekdays || []);
         return scheduledDays.includes(dayOfWeek);
       })
@@ -130,7 +129,6 @@ export default function CalendarPage() {
         const clinic = clinics.find(c => c.id === p.clinicId);
         const scheduleByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
         const time = scheduleByDay?.[dayOfWeek]?.start || p.scheduleTime || '';
-        // Check if evolution exists for this patient on this date
         const hasEvolution = evolutions.some(e => e.patientId === p.id && e.date === dateStr);
         return {
           id: `sched-${p.id}-${dateStr}`, time, title: p.name,
@@ -142,7 +140,6 @@ export default function CalendarPage() {
         };
       });
 
-    // Private appointments
     const privAppts: CalItem[] = getAppointmentsForDate(dateStr).map(a => ({
       id: a.id, time: a.time, title: a.client_name,
       sub: `R$ ${a.price.toFixed(2)}`, type: 'particular',
@@ -151,7 +148,6 @@ export default function CalendarPage() {
       isDraggable: false,
     }));
 
-    // Calendar events (tasks, reminders, etc.)
     const evts: CalItem[] = calendarEvents
       .filter(e => e.date === dateStr)
       .map(e => ({
@@ -190,18 +186,16 @@ export default function CalendarPage() {
 
   const weekStart = startOfWeek(viewDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const weekDayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   const monthStart = startOfMonth(viewDate);
   const monthEnd = endOfMonth(viewDate);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
   const calEnd = startOfWeek(monthEnd, { weekStartsOn: 0 });
-  // ensure we include the last partial week
   const calDays = eachDayOfInterval({ start: calStart, end: addDays(calEnd, 6) });
 
   const headerLabel =
     viewMode === 'month' ? format(viewDate, 'MMMM yyyy', { locale: ptBR }) :
-    viewMode === 'week' ? `${format(weekStart, "d 'de' MMMM", { locale: ptBR })} – ${format(addDays(weekStart, 6), "d 'de' MMMM yyyy", { locale: ptBR })}` :
+    viewMode === 'week' ? `${format(weekStart, "d 'de' MMM", { locale: ptBR })} – ${format(addDays(weekStart, 6), "d 'de' MMM yyyy", { locale: ptBR })}` :
     format(viewDate, "EEEE, d 'de' MMMM yyyy", { locale: ptBR });
 
   // --- Event popup ---
@@ -209,7 +203,10 @@ export default function CalendarPage() {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setPopupItem(item);
-    setPopupAnchor({ x: rect.left, y: rect.bottom + 8 });
+    const x = Math.min(rect.left, window.innerWidth - 290);
+    const y = Math.min(rect.bottom + 8, window.innerHeight - 220);
+    setPopupAnchor({ x, y });
+    setDayDetailDate(null);
   };
 
   const handleDeleteEvent = async (id: string) => {
@@ -226,7 +223,14 @@ export default function CalendarPage() {
     setPopupItem(null);
   };
 
-  // --- Drag & Drop (week/day view, calendar events only) ---
+  // Open day detail (for "+N mais")
+  const openDayDetail = (day: Date, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDayDetailDate(day);
+    setPopupItem(null);
+  };
+
+  // --- Drag & Drop ---
   const handleDragStart = (e: React.DragEvent, item: CalItem) => {
     if (!item.isDraggable) { e.preventDefault(); return; }
     setDraggingId(item.id);
@@ -245,30 +249,30 @@ export default function CalendarPage() {
     setDraggingId(null);
   };
 
-  // ---- Shared: event pill component ----
-  const EventPill = ({ item, day, compact = true }: { item: CalItem; day: Date; compact?: boolean }) => (
+  // ---- Event pill ----
+  const EventPill = ({ item, compact = true }: { item: CalItem; compact?: boolean }) => (
     <div
       draggable={item.isDraggable}
       onDragStart={e => handleDragStart(e, item)}
       onClick={e => openPopup(item, e)}
       className={cn(
-        "flex items-center gap-1 px-1.5 rounded text-[11px] font-medium text-white truncate cursor-pointer transition-opacity select-none",
+        "flex items-center gap-1 px-1.5 rounded text-[11px] font-medium text-white truncate cursor-pointer transition-opacity select-none w-full",
         compact ? "py-0.5" : "py-1",
         item.color,
         draggingId === item.id && "opacity-40",
         item.isDraggable && "cursor-grab active:cursor-grabbing"
       )}
-      title={item.title}
+      title={`${item.time ? item.time.slice(0, 5) + ' ' : ''}${item.title}`}
     >
       {item.time && <span className="opacity-80 shrink-0 text-[10px]">{item.time.slice(0, 5)}</span>}
       <span className="truncate">{item.title}</span>
     </div>
   );
 
-  // ---- Shared hourly grid (week + day) ----
+  // ---- Hourly grid (week + day) ----
   const HourlyGrid = ({ days }: { days: Date[] }) => (
     <div className="flex-1 overflow-y-auto">
-      <div className="grid relative" style={{ gridTemplateColumns: `56px repeat(${days.length}, 1fr)` }}>
+      <div className="grid relative" style={{ gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
         {HOURS.map(hour => (
           <>
             <div key={`lbl-${hour}`} className="border-r border-b border-border h-14 flex items-start justify-end pr-2 pt-0.5 sticky left-0 bg-background z-10">
@@ -285,14 +289,14 @@ export default function CalendarPage() {
                   key={`${dateStr}-${hour}`}
                   className={cn(
                     "border-r border-b border-border h-14 p-0.5 space-y-0.5 transition-colors",
-                    dragOverDate === dateStr ? "bg-primary/10" : isSameDay(day, selectedDate) ? "bg-primary/3" : "hover:bg-secondary/20"
+                    dragOverDate === dateStr ? "bg-primary/10" : isSameDay(day, selectedDate) ? "bg-primary/5" : "hover:bg-secondary/20"
                   )}
-                  onClick={() => setSelectedDate(day)}
+                  onClick={() => { setSelectedDate(day); setEventDialogOpen(true); }}
                   onDragOver={e => { e.preventDefault(); setDragOverDate(dateStr); }}
                   onDragLeave={() => setDragOverDate(null)}
                   onDrop={e => handleDrop(e, dateStr)}
                 >
-                  {hourItems.map(item => <EventPill key={item.id} item={item} day={day} />)}
+                  {hourItems.map(item => <EventPill key={item.id} item={item} />)}
                 </div>
               );
             })}
@@ -305,12 +309,12 @@ export default function CalendarPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-background relative">
       {/* ── TOP BAR ── */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card shrink-0 gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-card shrink-0 gap-2 flex-wrap">
+        <div className="flex items-center gap-1">
           <Button variant="outline" size="sm" onClick={goToday} className="text-xs font-medium h-7 px-2.5">Hoje</Button>
           <Button variant="ghost" size="icon" className="w-7 h-7" onClick={goPrev}><ChevronLeft className="w-4 h-4" /></Button>
           <Button variant="ghost" size="icon" className="w-7 h-7" onClick={goNext}><ChevronRight className="w-4 h-4" /></Button>
-          <span className="font-semibold text-foreground text-sm capitalize ml-1 hidden sm:inline">{headerLabel}</span>
+          <span className="font-semibold text-foreground text-sm capitalize ml-1 hidden sm:inline truncate max-w-[200px]">{headerLabel}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {/* View toggles */}
@@ -333,12 +337,12 @@ export default function CalendarPage() {
             ))}
           </div>
           <Button size="sm" className="gradient-primary gap-1 text-xs h-7 px-2.5" onClick={() => setEventDialogOpen(true)}>
-            <Plus className="w-3.5 h-3.5" /> Evento
+            <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evento</span>
           </Button>
           <Dialog open={isApptDialogOpen} onOpenChange={setIsApptDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5">
-                <Plus className="w-3.5 h-3.5" /> Atendimento
+                <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Atendimento</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -376,17 +380,19 @@ export default function CalendarPage() {
       {viewMode === 'month' && (
         <div className="flex flex-col flex-1 overflow-hidden">
           <div className="grid grid-cols-7 border-b border-border bg-card shrink-0">
-            {weekDayNames.map(d => (
-              <div key={d} className="text-center text-[11px] font-semibold text-muted-foreground py-2 uppercase tracking-wide">{d}</div>
+            {WEEK_SHORT.map(d => (
+              <div key={d} className="text-center text-[10px] sm:text-[11px] font-semibold text-muted-foreground py-1.5 uppercase tracking-wide">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 flex-1 overflow-y-auto" style={{ gridTemplateRows: `repeat(${calDays.length / 7}, minmax(0,1fr))` }}>
+          <div className="grid grid-cols-7 flex-1 overflow-y-auto" style={{ gridTemplateRows: `repeat(${calDays.length / 7}, minmax(80px, 1fr))` }}>
             {calDays.map(day => {
               const isSelected = isSameDay(day, selectedDate);
               const isCurrentMonth = isSameMonth(day, viewDate);
               const dayItems = getAllForDay(day);
-              const visible = dayItems.slice(0, 3);
-              const overflow = dayItems.length - 3;
+              // On mobile show 1, on desktop show 3
+              const maxVisible = 3;
+              const visible = dayItems.slice(0, maxVisible);
+              const overflow = dayItems.length - maxVisible;
               const dateStr = format(day, 'yyyy-MM-dd');
 
               return (
@@ -397,27 +403,33 @@ export default function CalendarPage() {
                   onDragLeave={() => setDragOverDate(null)}
                   onDrop={e => handleDrop(e, dateStr)}
                   className={cn(
-                    "border-r border-b border-border p-1 cursor-pointer transition-colors min-h-[80px]",
+                    "border-r border-b border-border p-0.5 sm:p-1 cursor-pointer transition-colors relative",
                     isCurrentMonth ? "bg-background hover:bg-secondary/30" : "bg-muted/20",
-                    isSelected && "bg-primary/5",
+                    isSelected && "ring-1 ring-inset ring-primary bg-primary/5",
                     dragOverDate === dateStr && "bg-primary/10"
                   )}
                 >
-                  <span className={cn(
-                    "text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full mb-0.5",
-                    isToday(day) ? "bg-primary text-primary-foreground" : isCurrentMonth ? "text-foreground" : "text-muted-foreground/50"
-                  )}>
-                    {format(day, 'd')}
-                  </span>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span
+                      className={cn(
+                        "text-[11px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full",
+                        isToday(day)
+                          ? "bg-primary text-primary-foreground"
+                          : isCurrentMonth ? "text-foreground" : "text-muted-foreground/40"
+                      )}
+                    >
+                      {format(day, 'd')}
+                    </span>
+                  </div>
                   <div className="space-y-0.5">
-                    {visible.map(item => <EventPill key={item.id} item={item} day={day} />)}
+                    {visible.map(item => <EventPill key={item.id} item={item} />)}
                     {overflow > 0 && (
-                      <div
-                        className="text-[10px] text-primary font-medium pl-1 hover:underline"
-                        onClick={e => { e.stopPropagation(); setSelectedDate(day); setViewMode('day'); setViewDate(day); }}
+                      <button
+                        className="text-[10px] text-primary font-semibold pl-1 hover:underline w-full text-left"
+                        onClick={e => openDayDetail(day, e)}
                       >
                         +{overflow} mais
-                      </div>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -430,37 +442,36 @@ export default function CalendarPage() {
       {/* ══════════ WEEK VIEW ══════════ */}
       {viewMode === 'week' && (
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Day headers */}
-          <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+          <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}>
             <div className="border-r border-border" />
             {weekDays.map(day => (
               <div
                 key={day.toISOString()}
-                className={cn("text-center py-2 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors", isSameDay(day, selectedDate) && "bg-primary/5")}
+                className={cn("text-center py-1.5 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors", isSameDay(day, selectedDate) && "bg-primary/5")}
                 onClick={() => { setSelectedDate(day); setViewDate(day); setViewMode('day'); }}
               >
-                <div className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wide">{format(day, 'EEE', { locale: ptBR })}</div>
-                <div className={cn("mx-auto mt-0.5 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold", isToday(day) ? "bg-primary text-primary-foreground" : "text-foreground")}>
+                <div className="text-[9px] uppercase text-muted-foreground font-semibold tracking-wide">{format(day, 'EEE', { locale: ptBR })}</div>
+                <div className={cn("mx-auto mt-0.5 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold", isToday(day) ? "bg-primary text-primary-foreground" : "text-foreground")}>
                   {format(day, 'd')}
                 </div>
               </div>
             ))}
           </div>
           {/* All-day row */}
-          <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
-            <div className="border-r border-border flex items-center justify-center px-1">
-              <span className="text-[9px] text-muted-foreground text-center leading-tight">dia<br/>todo</span>
+          <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}>
+            <div className="border-r border-border flex items-center justify-center px-0.5">
+              <span className="text-[8px] text-muted-foreground text-center leading-tight">dia<br/>todo</span>
             </div>
             {weekDays.map(day => {
               const allDay = getAllForDay(day).filter(i => !i.time);
               const dateStr = format(day, 'yyyy-MM-dd');
               return (
-                <div key={day.toISOString()} className="border-r border-border min-h-[28px] p-0.5 space-y-0.5"
+                <div key={day.toISOString()} className="border-r border-border min-h-[24px] p-0.5 space-y-0.5"
                   onDragOver={e => { e.preventDefault(); setDragOverDate(dateStr); }}
                   onDragLeave={() => setDragOverDate(null)}
                   onDrop={e => handleDrop(e, dateStr)}
                 >
-                  {allDay.map(item => <EventPill key={item.id} item={item} day={day} />)}
+                  {allDay.map(item => <EventPill key={item.id} item={item} />)}
                 </div>
               );
             })}
@@ -472,10 +483,9 @@ export default function CalendarPage() {
       {/* ══════════ DAY VIEW ══════════ */}
       {viewMode === 'day' && (
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Day header */}
-          <div className="flex border-b border-border bg-card shrink-0 items-center px-4 py-2.5 gap-4">
+          <div className="flex border-b border-border bg-card shrink-0 items-center px-3 py-2 gap-3">
             <div className="flex items-center gap-2">
-              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold", isToday(viewDate) ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground")}>
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-base font-bold", isToday(viewDate) ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground")}>
                 {format(viewDate, 'd')}
               </div>
               <div>
@@ -483,24 +493,28 @@ export default function CalendarPage() {
                 <div className="text-xs text-muted-foreground capitalize">{format(viewDate, "MMMM yyyy", { locale: ptBR })}</div>
               </div>
             </div>
-            <div className="ml-auto flex items-center gap-1 text-sm text-muted-foreground">
-              <span>{getAllForDay(viewDate).length} evento(s)</span>
+            <div className="ml-auto text-xs text-muted-foreground font-medium">
+              {getAllForDay(viewDate).length} evento(s)
             </div>
           </div>
-          {/* All-day */}
           {getAllForDay(viewDate).filter(i => !i.time).length > 0 && (
-            <div className="flex border-b border-border bg-card shrink-0 items-start gap-3 px-4 py-2">
-              <span className="text-[10px] text-muted-foreground w-12 text-right shrink-0 mt-0.5">dia todo</span>
+            <div className="flex border-b border-border bg-card shrink-0 items-start gap-3 px-3 py-2">
+              <span className="text-[10px] text-muted-foreground w-10 text-right shrink-0 mt-0.5">dia todo</span>
               <div className="flex flex-wrap gap-1 flex-1">
                 {getAllForDay(viewDate).filter(i => !i.time).map(item => (
-                  <EventPill key={item.id} item={item} day={viewDate} compact={false} />
+                  <div
+                    key={item.id}
+                    onClick={e => openPopup(item, e)}
+                    className={cn("flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-white cursor-pointer", item.color)}
+                  >
+                    <span>{item.title}</span>
+                  </div>
                 ))}
               </div>
             </div>
           )}
-          {/* Hourly */}
           <div className="flex-1 overflow-y-auto">
-            <div className="grid" style={{ gridTemplateColumns: '56px 1fr' }}>
+            <div className="grid" style={{ gridTemplateColumns: '48px 1fr' }}>
               {HOURS.map(hour => {
                 const hourItems = getAllForDay(viewDate).filter(item => {
                   if (!item.time) return false;
@@ -508,12 +522,12 @@ export default function CalendarPage() {
                 });
                 return (
                   <>
-                    <div key={`lbl-${hour}`} className="border-r border-b border-border h-16 flex items-start justify-end pr-3 pt-1">
-                      <span className="text-[11px] text-muted-foreground">{hour === 0 ? '' : `${String(hour).padStart(2, '0')}:00`}</span>
+                    <div key={`lbl-${hour}`} className="border-r border-b border-border h-16 flex items-start justify-end pr-2 pt-1">
+                      <span className="text-[10px] text-muted-foreground">{hour === 0 ? '' : `${String(hour).padStart(2, '0')}:00`}</span>
                     </div>
                     <div
                       key={`col-${hour}`}
-                      className="border-b border-border h-16 p-1 space-y-1 hover:bg-secondary/20 transition-colors"
+                      className="border-b border-border h-16 p-1 space-y-1 hover:bg-secondary/20 transition-colors cursor-pointer"
                       onClick={() => setEventDialogOpen(true)}
                     >
                       {hourItems.map(item => (
@@ -526,9 +540,9 @@ export default function CalendarPage() {
                           )}
                         >
                           <Clock className="w-3 h-3 opacity-70 shrink-0" />
-                          <span className="opacity-80 shrink-0">{item.time.slice(0, 5)}</span>
-                          <span className="font-semibold">{item.title}</span>
-                          {item.sub && <span className="opacity-70 ml-auto truncate">{item.sub}</span>}
+                          <span className="opacity-90 shrink-0">{item.time.slice(0, 5)}</span>
+                          <span className="font-semibold truncate">{item.title}</span>
+                          {item.sub && <span className="opacity-70 ml-auto truncate hidden sm:block">{item.sub}</span>}
                         </div>
                       ))}
                     </div>
@@ -540,14 +554,73 @@ export default function CalendarPage() {
         </div>
       )}
 
+      {/* ══════════ DAY DETAIL POPUP ("+N mais") ══════════ */}
+      {dayDetailDate && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" onClick={() => setDayDetailDate(null)}>
+          <div
+            ref={dayDetailRef}
+            className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm max-h-[80vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div>
+                <div className="text-sm font-bold text-foreground capitalize">
+                  {format(dayDetailDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {getAllForDay(dayDetailDate).length} evento(s)
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs h-7 gap-1"
+                  onClick={() => { setViewDate(dayDetailDate); setViewMode('day'); setDayDetailDate(null); }}
+                >
+                  <CalendarDays className="w-3 h-3" /> Ver dia
+                </Button>
+                <button onClick={() => setDayDetailDate(null)} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            {/* Event list */}
+            <div className="overflow-y-auto flex-1 p-3 space-y-2">
+              {getAllForDay(dayDetailDate).map(item => (
+                <div
+                  key={item.id}
+                  onClick={e => openPopup(item, e)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:opacity-90 transition-opacity",
+                    item.color
+                  )}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white text-sm font-semibold truncate">{item.title}</div>
+                    {item.sub && <div className="text-white/70 text-xs truncate">{item.sub}</div>}
+                  </div>
+                  {item.time && (
+                    <span className="text-white/90 text-xs font-medium shrink-0 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />{item.time.slice(0, 5)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══════════ EVENT POPUP ══════════ */}
       {popupItem && popupAnchor && (
         <div
           ref={popupRef}
           className="fixed z-50 bg-card border border-border rounded-xl shadow-xl p-4 w-72"
           style={{
-            top: Math.min(popupAnchor.y, window.innerHeight - 280),
-            left: Math.min(popupAnchor.x, window.innerWidth - 300),
+            top: popupAnchor.y,
+            left: Math.max(8, Math.min(popupAnchor.x, window.innerWidth - 292)),
           }}
         >
           <div className="flex items-start justify-between gap-2 mb-2">
@@ -597,9 +670,11 @@ export default function CalendarPage() {
 
       <EventDialog
         open={eventDialogOpen}
-        onOpenChange={setEventDialogOpen}
+        onOpenChange={open => {
+          setEventDialogOpen(open);
+          if (!open) loadCalendarEvents();
+        }}
         selectedDate={selectedDate}
-        onEventSaved={loadCalendarEvents}
       />
     </div>
   );
