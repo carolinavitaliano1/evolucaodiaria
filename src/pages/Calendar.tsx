@@ -527,12 +527,11 @@ export default function CalendarPage() {
                   return parseInt(item.time.slice(0, 2), 10) === hour;
                 });
                 return (
-                  <>
-                    <div key={`lbl-${hour}`} className="border-r border-b border-border h-16 flex items-start justify-end pr-2 pt-1">
+                  <div key={`hour-${hour}`} className="contents">
+                    <div className="border-r border-b border-border h-16 flex items-start justify-end pr-2 pt-1 sticky left-0 bg-background z-10">
                       <span className="text-[10px] text-muted-foreground">{hour === 0 ? '' : `${String(hour).padStart(2, '0')}:00`}</span>
                     </div>
                     <div
-                      key={`col-${hour}`}
                       className="border-b border-border h-16 p-1 space-y-1 hover:bg-secondary/20 transition-colors cursor-pointer"
                       onClick={() => setEventDialogOpen(true)}
                     >
@@ -552,7 +551,7 @@ export default function CalendarPage() {
                         </div>
                       ))}
                     </div>
-                  </>
+                  </div>
                 );
               })}
             </div>
