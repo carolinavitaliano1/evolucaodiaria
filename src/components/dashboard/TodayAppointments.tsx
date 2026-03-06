@@ -42,15 +42,24 @@ export function TodayAppointments() {
 
   // Patients with recurring weekly schedule for today
   const weekdayPatients: ScheduleItem[] = patients
-    .filter(p => !p.isArchived && p.weekdays?.includes(todayWeekday))
-    .map(p => ({
-      id: p.id,
-      patientId: p.id,
-      name: p.name,
-      avatarUrl: p.avatarUrl,
-      subtitle: p.clinicalArea,
-      time: p.scheduleTime || '00:00',
-    }));
+    .filter(p => {
+      if (p.isArchived) return false;
+      const schedByDay = p.scheduleByDay as Record<string, { start?: string }> | null;
+      const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
+      return scheduledDays.includes(todayWeekday);
+    })
+    .map(p => {
+      const schedByDay = p.scheduleByDay as Record<string, { start?: string }> | null;
+      const time = schedByDay?.[todayWeekday]?.start || p.scheduleTime || '00:00';
+      return {
+        id: p.id,
+        patientId: p.id,
+        name: p.name,
+        avatarUrl: p.avatarUrl,
+        subtitle: p.clinicalArea,
+        time,
+      };
+    });
 
   // One-off appointments (not already covered by weekday schedule)
   const weekdayPatientIds = new Set(weekdayPatients.map(p => p.id));
