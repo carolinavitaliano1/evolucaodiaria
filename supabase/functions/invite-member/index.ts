@@ -7,6 +7,74 @@ const corsHeaders = {
 
 const APP_URL = 'https://evolucaodiaria.app.br';
 
+async function sendInviteEmailViaResend(
+  to: string,
+  inviteUrl: string,
+  orgName: string,
+  inviterName: string,
+  roleLabel: string
+): Promise<boolean> {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
+  if (!resendApiKey) {
+    console.error('RESEND_API_KEY não configurada');
+    return false;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="background:#ffffff;font-family:'Inter',Arial,sans-serif;margin:0;padding:0;">
+  <div style="max-width:480px;margin:0 auto;padding:32px 28px;">
+    <div style="margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid #ede9f7;">
+      <p style="font-size:20px;font-weight:bold;color:hsl(252,56%,57%);margin:0;">📖 Evolução Diária</p>
+    </div>
+    <h1 style="font-size:22px;font-weight:bold;color:hsl(240,10%,15%);margin:0 0 16px;">Você foi convidado(a)!</h1>
+    <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 8px;">
+      <strong>${inviterName}</strong> convidou você para fazer parte da equipe <strong>${orgName}</strong> no Evolução Diária como <strong>${roleLabel}</strong>.
+    </p>
+    <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 28px;">
+      Clique no botão abaixo para aceitar o convite e acessar o sistema.
+    </p>
+    <a href="${inviteUrl}" style="background-color:hsl(252,56%,57%);color:#ffffff;font-size:15px;font-weight:bold;border-radius:8px;padding:14px 24px;text-decoration:none;display:inline-block;">
+      Aceitar convite
+    </a>
+    <p style="font-size:12px;color:#999999;margin:32px 0 0;line-height:1.5;">
+      Se você não esperava este convite, pode ignorar este email com segurança.<br>
+      Ou acesse diretamente: <a href="${inviteUrl}" style="color:hsl(252,56%,57%);">${inviteUrl}</a>
+    </p>
+  </div>
+</body>
+</html>`;
+
+  const text = `Você foi convidado(a) para a equipe ${orgName} no Evolução Diária!\n\n${inviterName} convidou você como ${roleLabel}.\n\nAcesse o link para aceitar: ${inviteUrl}\n\nSe não esperava este convite, ignore este e-mail.`;
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `Evolução Diária <noreply@evolucaodiaria.app.br>`,
+      to: [to],
+      subject: `Convite para a equipe ${orgName} - Evolução Diária`,
+      html,
+      text,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`Resend error ${res.status}:`, err);
+    return false;
+  }
+
+  const data = await res.json();
+  console.log('E-mail enviado via Resend, id:', data.id);
+  return true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -68,7 +136,7 @@ Deno.serve(async (req) => {
     const { data: inviterProfile } = await supabase.from('profiles').select('name').eq('user_id', userId).single();
     const inviterName = inviterProfile?.name || 'Um membro da equipe';
 
-    // Criar registro de membro pendente (sem user_id ainda — será preenchido ao aceitar)
+    // Criar registro de membro pendente
     const { data: member, error: memberError } = await supabase.from('organization_members').insert({
       organization_id,
       user_id: null,
@@ -87,32 +155,45 @@ Deno.serve(async (req) => {
     const roleLabels: Record<string, string> = { admin: 'Administrador', professional: 'Profissional' };
     const roleLabel = roleLabels[role] || role;
 
-    // Usar sempre inviteUserByEmail — funciona via auth-email-hook (domínio notify.evolucaodiaria.app.br)
-    // tanto para usuários novos quanto existentes
-    const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: inviteUrl,
-      data: {
-        invited_to_org: org.name,
-        invited_by: inviterName,
-        role: roleLabel,
-        member_id: member.id,
-      },
-    });
+    // Verificar se o usuário já tem conta (buscar na tabela profiles)
+    const { data: existingProfile } = await supabase.from('profiles').select('user_id').eq('email', email).maybeSingle();
+    const userAlreadyExists = !!existingProfile;
 
-    let emailSent = !inviteError;
+    let emailSent = false;
 
-    if (inviteError) {
-      console.error('Erro ao enviar convite por e-mail:', inviteError);
-      // Convite criado mas e-mail falhou — não bloquear, retornar link
+    if (userAlreadyExists) {
+      // Usuário já tem conta → enviar e-mail via Resend com link direto
+      // inviteUserByEmail falha com 422 para usuários existentes
+      console.log(`Usuário ${email} já tem conta. Enviando convite via Resend...`);
+      emailSent = await sendInviteEmailViaResend(email, inviteUrl, org.name, inviterName, roleLabel);
     } else {
-      console.log(`Convite enviado via auth-email-hook para ${email} — Org: ${org.name}`);
+      // Usuário novo → usar inviteUserByEmail (auth-email-hook com domínio verificado)
+      console.log(`Usuário ${email} é novo. Enviando convite via auth-email-hook...`);
+      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: inviteUrl,
+        data: {
+          invited_to_org: org.name,
+          invited_by: inviterName,
+          role: roleLabel,
+          member_id: member.id,
+        },
+      });
+
+      if (inviteError) {
+        console.error('Erro no inviteUserByEmail, tentando Resend como fallback:', inviteError.message);
+        // Fallback: tentar via Resend mesmo assim
+        emailSent = await sendInviteEmailViaResend(email, inviteUrl, org.name, inviterName, roleLabel);
+      } else {
+        emailSent = true;
+        console.log(`Convite enviado via auth-email-hook para ${email}`);
+      }
     }
 
     return new Response(JSON.stringify({
       success: true,
       message: emailSent
         ? `Convite enviado para ${email}`
-        : `Convite criado (e-mail pode ter falhado)`,
+        : `Convite criado. Compartilhe o link manualmente.`,
       member_id: member.id,
       email_sent: emailSent,
       invite_url: inviteUrl,
