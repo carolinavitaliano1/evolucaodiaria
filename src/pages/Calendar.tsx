@@ -119,7 +119,13 @@ export default function CalendarPage() {
     // Scheduled patients based on weekdays config (recurring schedule)
     const scheduledPatientIds = new Set(appointments.filter(a => a.date === dateStr).map(a => a.patientId));
     const scheduledPatients: CalItem[] = patients
-      .filter(p => !p.isArchived && p.weekdays?.includes(dayOfWeek) && !scheduledPatientIds.has(p.id))
+      .filter(p => {
+        if (p.isArchived || scheduledPatientIds.has(p.id)) return false;
+        const scheduleByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
+        // Check scheduleByDay keys OR weekdays array
+        const scheduledDays = scheduleByDay ? Object.keys(scheduleByDay) : (p.weekdays || []);
+        return scheduledDays.includes(dayOfWeek);
+      })
       .map(p => {
         const clinic = clinics.find(c => c.id === p.clinicId);
         const scheduleByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
