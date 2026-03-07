@@ -14,7 +14,7 @@ import {
   Sparkles,
   Smartphone,
   Megaphone,
-  ShieldCheck
+  UsersRound
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -25,17 +25,17 @@ import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 
 const allNavItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const },
-  { to: '/clinics',   icon: Building2,       label: 'Clínicas',     perm: 'clinics.view'   as const },
-  { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const },
-  { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const },
-  { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const },
-  { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const },
-  { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const },
-  { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const },
-  { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: true },
-  { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null },
-  { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const, orgOnly: false },
+  { to: '/clinics',   icon: Building2,       label: 'Clínicas',     perm: 'clinics.view'   as const, orgOnly: false },
+  { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const, orgOnly: false },
+  { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const, orgOnly: false },
+  { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const, orgOnly: false },
+  { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const, orgOnly: false },
+  { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const, orgOnly: false },
+  { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const, orgOnly: false },
+  { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: true, orgOnly: false },
+  { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null,                      orgOnly: false },
+  { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null,                      orgOnly: false },
 ];
 
 export function AppSidebar() {
@@ -57,6 +57,9 @@ export function AppSidebar() {
     if (item.perm === null) return false;   // hide pricing/install for org members
     return permissions.includes(item.perm as any);
   });
+
+  // Show /team link only for org owners or org members with team.view permission
+  const showTeam = isOwner || (isOrgMember && permissions.includes('team.view' as any));
 
   return (
     <aside className={cn(
@@ -118,6 +121,34 @@ export function AppSidebar() {
             </NavLink>
           );
         })}
+
+        {/* Equipe — exclusive section for org owners/members */}
+        {showTeam && (
+          <>
+            <div className="pt-2 pb-1 px-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Equipe</p>
+            </div>
+            <NavLink
+              to="/team"
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                'hover:bg-accent group',
+                location.pathname.startsWith('/team') && 'bg-primary text-primary-foreground'
+              )}
+            >
+              <UsersRound className={cn(
+                'w-[18px] h-[18px]',
+                location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
+              )} />
+              <span className={cn(
+                'text-sm font-medium flex-1',
+                location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
+              )}>
+                Gestão de Equipe
+              </span>
+            </NavLink>
+          </>
+        )}
       </nav>
 
       {/* Footer */}

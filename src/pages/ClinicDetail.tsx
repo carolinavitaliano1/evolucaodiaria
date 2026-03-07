@@ -29,7 +29,7 @@ import { ClinicAgenda } from '@/components/clinics/ClinicAgenda';
 import { ClinicNotes } from '@/components/clinics/ClinicNotes';
 import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
 import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
-import { ClinicTeam } from '@/components/clinics/ClinicTeam';
+
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
@@ -666,7 +666,6 @@ export default function ClinicDetail() {
             { value: 'evolutions-day', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'templates', icon: <LayoutTemplate className="w-5 h-5" />, label: 'Modelos', color: 'text-indigo-500' },
-            { value: 'team', icon: <Users className="w-5 h-5" />, label: 'Equipe', color: 'text-rose-500' },
           ].map(tab => (
             <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
               <TabsTrigger
@@ -684,31 +683,6 @@ export default function ClinicDetail() {
             </TabsList>
           ))}
         </div>
-
-        {/* Agenda Tab */}
-        <TabsContent value="agenda">
-          <ClinicAgenda clinicId={clinic.id} />
-        </TabsContent>
-
-        {/* Financial Tab */}
-        <TabsContent value="financial">
-          <ClinicFinancial clinicId={clinic.id} />
-        </TabsContent>
-
-        {/* Notes Tab */}
-        <TabsContent value="notes">
-          <ClinicNotes clinicId={clinic.id} />
-        </TabsContent>
-
-        {/* Templates Tab */}
-        <TabsContent value="templates">
-          <EvolutionTemplates clinicId={clinic.id} />
-        </TabsContent>
-
-        {/* Team Tab */}
-        <TabsContent value="team">
-          <ClinicTeam clinicId={clinic.id} clinicName={clinic.name} />
-        </TabsContent>
 
         <TabsContent value="today" className="space-y-4">
           <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">

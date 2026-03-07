@@ -15,7 +15,8 @@ import {
   CreditCard,
   Sparkles,
   Smartphone,
-  Megaphone
+  Megaphone,
+  UsersRound
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -43,18 +44,8 @@ export function MobileNav() {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const { unreadCount } = useUnreadNotices();
-  const { isOrgMember, permissions } = useOrgPermissions();
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
 
-  const filterItem = (item: { perm: string | null }) => {
-    if (!isOrgMember) return true;
-    if (item.perm === null) return item.perm === null && false ? false : (
-      // Always show profile; hide pricing/install for org members
-      false
-    );
-    return permissions.includes(item.perm as any);
-  };
-
-  // Simpler filter
   const allowedMain = mainNavItems.filter(i => {
     if (!isOrgMember) return true;
     return permissions.includes(i.perm as any);
@@ -62,13 +53,18 @@ export function MobileNav() {
 
   const allowedMore = moreNavItems.filter(i => {
     if (!isOrgMember) return true;
-    if (i.to === '/profile') return true; // always show profile
-    if (i.perm === null) return false;    // hide pricing/install for org members
+    if (i.to === '/profile') return true;
+    if (i.perm === null) return false;
     return permissions.includes(i.perm as any);
   });
 
-  const isMoreActive = allowedMore.some(item => 
-    location.pathname === item.to || 
+  // Add Team option for org owners or members with team.view
+  const showTeam = isOwner || (isOrgMember && permissions.includes('team.view' as any));
+  const teamItem = showTeam ? [{ to: '/team', icon: UsersRound, label: 'Equipe', perm: 'team.view' as const }] : [];
+  const finalMore = [...allowedMore.filter(i => i.to !== '/profile'), ...teamItem, { to: '/profile', icon: User, label: 'Perfil', perm: null as any }];
+
+  const isMoreActive = finalMore.some(item =>
+    location.pathname === item.to ||
     (item.to !== '/' && location.pathname.startsWith(item.to))
   );
 
@@ -135,7 +131,11 @@ export function MobileNav() {
               <ThemeToggle />
             </div>
             <div className="py-2 space-y-2">
-              {allowedMore.map(({ to, icon: Icon, label, badge }) => {
+              {finalMore.map((item) => {
+                const to = item.to;
+                const Icon = item.icon;
+                const label = item.label;
+                const badge = 'badge' in item ? item.badge : false;
                 const isActive = location.pathname === to || 
                   (to !== '/' && location.pathname.startsWith(to));
                 const showBadge = badge && unreadCount > 0;
