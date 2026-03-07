@@ -14,7 +14,8 @@ import {
   Sparkles,
   Smartphone,
   Megaphone,
-  UsersRound
+  UsersRound,
+  HeadphonesIcon
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
