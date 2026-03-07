@@ -29,10 +29,6 @@ interface EditClinicDialogProps {
 }
 
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
-  const stampInputRef = useRef<HTMLInputElement>(null);
-  const [stampPreview, setStampPreview] = useState<string | null>(null);
-  const [stampFile, setStampFile] = useState<File | null>(null);
-  const [removeStamp, setRemoveStamp] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
