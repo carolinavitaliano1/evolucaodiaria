@@ -7,7 +7,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Send, HeadphonesIcon, ChevronLeft, CheckCheck, Search, PhoneOff } from 'lucide-react';
+import { Send, HeadphonesIcon, ChevronLeft, CheckCheck, Search, PhoneOff, Info, User, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -26,6 +26,7 @@ interface Conversation {
   user_id: string;
   user_name: string | null;
   user_email: string | null;
+  user_phone: string | null;
   last_message: string;
   last_at: string;
   unread: number;
