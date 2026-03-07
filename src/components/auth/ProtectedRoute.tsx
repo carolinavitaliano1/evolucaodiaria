@@ -14,8 +14,8 @@ export function ProtectedRoute({ children, requireSubscription = false }: Protec
   const { subscribed, loading: subLoading } = useSubscription();
   const { isOrgMember, loading: orgLoading } = useOrgMembership();
 
-  // Wait until the session is fully restored from storage before redirecting.
-  if (!sessionReady || loading || (requireSubscription && subLoading) || (requireSubscription && orgLoading)) {
+  // Wait until auth session is restored
+  if (!sessionReady || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -27,10 +27,22 @@ export function ProtectedRoute({ children, requireSubscription = false }: Protec
     return <Navigate to="/auth" replace />;
   }
 
-  // Org members (invited professionals) bypass the subscription wall —
-  // they are guests of the paying account owner.
-  if (requireSubscription && !subscribed && !isOrgMember) {
-    return <Navigate to="/pricing" replace />;
+  if (requireSubscription) {
+    // CRITICAL: Must wait for BOTH checks before deciding to redirect.
+    // If we act while orgLoading=true we'd incorrectly send therapists to /pricing.
+    if (subLoading || orgLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    // Org members (invited professionals) bypass the subscription wall —
+    // they are guests of the paying account owner.
+    if (!subscribed && !isOrgMember) {
+      return <Navigate to="/pricing" replace />;
+    }
   }
 
   return <>{children}</>;
