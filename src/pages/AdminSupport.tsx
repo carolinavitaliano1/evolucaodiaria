@@ -128,7 +128,12 @@ export default function AdminSupport() {
     setConversations(convs);
   };
 
-  useEffect(() => { if (isAdmin) loadConversations(); }, [isAdmin]);
+  useEffect(() => {
+    if (isAdmin) {
+      loadConversations();
+      markAdminSeen(); // zero badge as soon as admin opens the support page
+    }
+  }, [isAdmin]);
 
   // Filter by search
   useEffect(() => {
@@ -144,6 +149,7 @@ export default function AdminSupport() {
   // Load messages for selected conversation
   useEffect(() => {
     if (!selected) { setMessages([]); return; }
+    markAdminSeen(); // zero badge when opening any conversation
     supabase
       .from('support_messages')
       .select('*')
