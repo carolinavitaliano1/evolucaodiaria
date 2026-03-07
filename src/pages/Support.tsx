@@ -588,6 +588,7 @@ function UserSupportView() {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       toast.success('Atendimento encerrado.');
+      markSupportSeen(); // clear badge immediately
       setMessages([]);
       setHasMessages(false);
     } catch {
