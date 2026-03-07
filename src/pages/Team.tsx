@@ -166,6 +166,20 @@ export default function Team() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 lg:px-6 py-6 space-y-6">
+
+        {/* Notice: Contratante clinics not supported */}
+        {contratanteClinics.length > 0 && (
+          <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl bg-warning/10 border border-warning/30">
+            <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-semibold text-warning">Gestão de equipe disponível apenas para clínicas próprias</p>
+              <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                As clínicas <strong className="text-foreground">{contratanteClinics.map(c => c.name).join(', ')}</strong> são do tipo <strong className="text-foreground">Contratante</strong> — locais onde você trabalha mas não é o responsável. Elas não aparecem aqui pois a equipe é gerenciada pela própria clínica contratante.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Clinic selector */}
         {teamClinics.length > 1 && (
           <div>
@@ -200,7 +214,11 @@ export default function Team() {
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
               <Users className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-muted-foreground">Nenhuma clínica encontrada.</p>
+            <p className="text-muted-foreground">
+              {contratanteClinics.length > 0 && teamClinics.length === 0
+                ? 'Você não possui clínicas próprias cadastradas.'
+                : 'Nenhuma clínica encontrada.'}
+            </p>
             <Button variant="outline" onClick={() => navigate('/clinics')}>
               Ir para Clínicas
             </Button>
