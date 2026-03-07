@@ -49,7 +49,7 @@ function getVideoEmbedUrl(url: string): string | null {
 export function MuralNoticesBell() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { unreadCount, markAllAsRead, refetch } = useUnreadNotices();
+  const { unreadCount, markAllAsRead } = useUnreadNotices();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [open, setOpen] = useState(false);
 
