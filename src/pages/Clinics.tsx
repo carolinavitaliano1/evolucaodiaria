@@ -403,7 +403,7 @@ export default function Clinics() {
                       </div>
                       <div className="flex items-center gap-2">
                         <RadioGroupItem value="terceirizada" id="terceirizada" />
-                        <Label htmlFor="terceirizada" className="cursor-pointer text-sm">Terceirizada</Label>
+                        <Label htmlFor="terceirizada" className="cursor-pointer text-sm">Contratante</Label>
                       </div>
                     </RadioGroup>
                   </div>
@@ -622,10 +622,10 @@ export default function Clinics() {
           {/* Filter Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {([
-              { key: 'all',          label: 'Ativas',     count: activeClinics.length,                                         icon: Building2,        color: 'text-primary',     bg: 'bg-primary/10' },
-              { key: 'propria',      label: 'Próprias',   count: activeClinics.filter(c => c.type === 'propria').length,        icon: Building2,        color: 'text-violet-500',  bg: 'bg-violet-500/10' },
-              { key: 'terceirizada', label: 'Outras',     count: activeClinics.filter(c => c.type === 'terceirizada').length,   icon: Briefcase,        color: 'text-blue-500',    bg: 'bg-blue-500/10' },
-              { key: 'archived',     label: 'Arquivadas', count: archivedClinics.length,                                        icon: Archive,          color: 'text-muted-foreground', bg: 'bg-secondary' },
+              { key: 'all',          label: 'Ativas',       count: activeClinics.length,                                         icon: Building2,        color: 'text-primary',     bg: 'bg-primary/10' },
+              { key: 'propria',      label: 'Próprias',     count: activeClinics.filter(c => c.type === 'propria').length,        icon: Building2,        color: 'text-violet-500',  bg: 'bg-violet-500/10' },
+              { key: 'terceirizada', label: 'Contratantes', count: activeClinics.filter(c => c.type === 'terceirizada').length,   icon: Briefcase,        color: 'text-blue-500',    bg: 'bg-blue-500/10' },
+              { key: 'archived',     label: 'Arquivadas',   count: archivedClinics.length,                                        icon: Archive,          color: 'text-muted-foreground', bg: 'bg-secondary' },
             ] as const).map(({ key, label, count, icon: Icon, color, bg }) => (
               <button
                 key={key}
@@ -689,8 +689,8 @@ export default function Clinics() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <h3 className="font-semibold text-foreground truncate">{clinic.name}</h3>
-                          <Badge variant="outline" className={cn("text-xs shrink-0", isPropria ? "border-primary/50 text-primary" : "border-secondary text-muted-foreground")}>
-                            {isPropria ? 'Própria' : 'Outra'}
+                          <Badge variant="outline" className={cn("text-xs shrink-0", isPropria ? "border-primary/50 text-primary" : "border-muted-foreground/40 text-muted-foreground")}>
+                            {isPropria ? 'Própria' : 'Contratante'}
                           </Badge>
                           {clinic.isArchived && <Badge variant="secondary" className="text-xs shrink-0">Arquivada</Badge>}
                         </div>

@@ -577,7 +577,7 @@ export default function ClinicDetail() {
             "inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3",
             isPropria ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"
           )}>
-            {isPropria ? 'Clínica Própria' : 'Terceirizada / Convênio'}
+            {isPropria ? 'Clínica Própria' : 'Clínica Contratante'}
           </span>
           <div className="flex items-start justify-between">
             <div>
