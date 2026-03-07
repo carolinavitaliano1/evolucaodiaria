@@ -14,21 +14,32 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
-  Settings, UserCheck, UserX
+  Settings, UserCheck, UserX, Lock, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  PermissionKey,
+  PERMISSION_GROUPS,
+  PERMISSION_LABELS,
+  DEFAULT_THERAPIST_PERMISSIONS,
+  DEFAULT_ADMIN_PERMISSIONS,
+  ALL_PERMISSIONS,
+} from '@/hooks/useOrgPermissions';
 
 interface OrganizationMember {
   id: string;
   user_id: string | null;
   email: string;
   role: 'owner' | 'admin' | 'professional';
+  role_label: string | null;
   status: 'pending' | 'active' | 'inactive';
+  permissions: PermissionKey[];
   joined_at: string | null;
   created_at: string;
   profile?: { name: string | null; avatar_url: string | null };
@@ -84,11 +95,19 @@ const STATUS_LABELS: Record<string, string> = {
   inactive: 'Inativo',
 };
 
+function parsePermissions(raw: any): PermissionKey[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw as PermissionKey[];
+  if (typeof raw === 'object') {
+    return Object.keys(raw).filter(k => (raw as any)[k]) as PermissionKey[];
+  }
+  return [];
+}
+
 export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const { user } = useAuth();
   const { patients } = useApp();
 
-  // Core state
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,12 +118,16 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'professional'>('professional');
+  const [inviteRoleLabel, setInviteRoleLabel] = useState('');
   const [selectedPatients, setSelectedPatients] = useState<Record<string, string>>({});
+  const [invitePermissions, setInvitePermissions] = useState<PermissionKey[]>([...DEFAULT_THERAPIST_PERMISSIONS]);
   const [inviting, setInviting] = useState(false);
 
   // Member management modal
   const [manageMember, setManageMember] = useState<OrganizationMember | null>(null);
   const [editPatients, setEditPatients] = useState<Record<string, string>>({});
+  const [editPermissions, setEditPermissions] = useState<PermissionKey[]>([]);
+  const [editRoleLabel, setEditRoleLabel] = useState('');
   const [savingAssign, setSavingAssign] = useState(false);
 
   // Remove confirm
@@ -123,6 +146,11 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   useEffect(() => {
     if (organization && canManage) loadLateEvolutions();
   }, [organization, canManage]);
+
+  // Sync invite permissions when role changes
+  useEffect(() => {
+    setInvitePermissions(inviteRole === 'admin' ? [...DEFAULT_ADMIN_PERMISSIONS] : [...DEFAULT_THERAPIST_PERMISSIONS]);
+  }, [inviteRole]);
 
   async function loadTeam() {
     setLoading(true);
@@ -173,6 +201,8 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
           ...m,
           role: m.role as OrganizationMember['role'],
           status: m.status as OrganizationMember['status'],
+          role_label: (m as any).role_label ?? null,
+          permissions: parsePermissions((m as any).permissions),
           profile: m.user_id ? profilesMap[m.user_id] : undefined,
           assignments: assignmentsByMember[m.id] || [],
         })));
@@ -247,6 +277,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       await supabase.from('organization_members').insert({
         organization_id: org.id, user_id: user.id, email: user.email!,
         role: 'owner', status: 'active', invited_by: user.id, joined_at: new Date().toISOString(),
+        permissions: Object.fromEntries(ALL_PERMISSIONS.map(p => [p, true])),
       });
       toast.success('Equipe criada!');
       loadTeam();
@@ -258,11 +289,16 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     if (!inviteEmail || !organization) return;
     setInviting(true);
     try {
+      const permissionsMap = Object.fromEntries(
+        ALL_PERMISSIONS.map(p => [p, invitePermissions.includes(p)])
+      );
       const { data, error } = await supabase.functions.invoke('invite-member', {
         body: {
           organization_id: organization.id,
           email: inviteEmail,
           role: inviteRole,
+          role_label: inviteRoleLabel || null,
+          permissions: permissionsMap,
           patient_assignments: Object.entries(selectedPatients).map(([patient_id, schedule_time]) => ({
             patient_id, schedule_time,
           })),
@@ -271,7 +307,9 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       if (error || data?.error) throw new Error(data?.error || error?.message);
       toast.success(`Convite enviado para ${inviteEmail}`);
       setInviteEmail('');
+      setInviteRoleLabel('');
       setSelectedPatients({});
+      setInvitePermissions([...DEFAULT_THERAPIST_PERMISSIONS]);
       setInviteOpen(false);
       loadTeam();
     } catch (err: any) {
@@ -296,6 +334,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
 
   async function handleRemoveMember() {
     if (!removeMemberId) return;
+    await supabase.from('therapist_patient_assignments').delete().eq('member_id', removeMemberId);
     const { error } = await supabase.from('organization_members').delete().eq('id', removeMemberId);
     if (error) toast.error('Erro ao remover membro');
     else { toast.success('Membro removido'); loadTeam(); }
@@ -311,16 +350,17 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     else {
       toast.success(newStatus === 'active' ? 'Acesso reativado' : 'Acesso suspenso');
       loadTeam();
-      // Update the modal state too
       setManageMember(prev => prev ? { ...prev, status: newStatus as OrganizationMember['status'] } : null);
     }
   }
 
   async function handleChangeRole(memberId: string, newRole: 'admin' | 'professional') {
+    const defaultPerms = newRole === 'admin' ? DEFAULT_ADMIN_PERMISSIONS : DEFAULT_THERAPIST_PERMISSIONS;
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId);
     if (error) toast.error('Erro ao alterar função');
     else {
       toast.success('Função atualizada');
+      setEditPermissions([...defaultPerms]);
       loadTeam();
       setManageMember(prev => prev ? { ...prev, role: newRole } : null);
     }
@@ -330,6 +370,16 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     if (!manageMember || !organization) return;
     setSavingAssign(true);
     try {
+      const permissionsMap = Object.fromEntries(
+        ALL_PERMISSIONS.map(p => [p, editPermissions.includes(p)])
+      );
+      // Save permissions + role_label
+      await supabase.from('organization_members').update({
+        permissions: permissionsMap,
+        role_label: editRoleLabel || null,
+      }).eq('id', manageMember.id);
+
+      // Save patient assignments
       await supabase.from('therapist_patient_assignments').delete().eq('member_id', manageMember.id);
       const toInsert = Object.entries(editPatients).map(([patient_id, schedule_time]) => ({
         organization_id: organization.id,
@@ -341,7 +391,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
         const { error } = await supabase.from('therapist_patient_assignments').insert(toInsert);
         if (error) throw error;
       }
-      toast.success('Pacientes atualizados');
+      toast.success('Permissões e pacientes atualizados');
       loadTeam();
       setManageMember(null);
     } catch { toast.error('Erro ao salvar'); }
@@ -353,6 +403,14 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     const current: Record<string, string> = {};
     member.assignments?.forEach(a => { current[a.patient_id] = a.schedule_time || ''; });
     setEditPatients(current);
+    setEditPermissions(
+      member.permissions.length > 0
+        ? [...member.permissions]
+        : member.role === 'admin'
+        ? [...DEFAULT_ADMIN_PERMISSIONS]
+        : [...DEFAULT_THERAPIST_PERMISSIONS]
+    );
+    setEditRoleLabel(member.role_label || '');
     setManageMember(member);
   }
 
@@ -368,6 +426,10 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       if (prev[patientId] !== undefined) { const n = { ...prev }; delete n[patientId]; return n; }
       return { ...prev, [patientId]: '' };
     });
+  }
+
+  function togglePerm(perm: PermissionKey, state: PermissionKey[], setState: (p: PermissionKey[]) => void) {
+    setState(state.includes(perm) ? state.filter(p => p !== perm) : [...state, perm]);
   }
 
   if (loading) {
@@ -431,54 +493,80 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
           <p className="text-sm text-muted-foreground">{members.filter(m => m.status === 'active').length} membro(s) ativo(s)</p>
         </div>
         {canManage && (
-          <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setSelectedPatients({}); } }}>
+          <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); } }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
                 <UserPlus className="w-4 h-4" />
                 Convidar
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>Convidar profissional</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 pt-2">
-                <div className="space-y-1.5">
-                  <Label>E-mail do profissional</Label>
-                  <Input type="email" placeholder="profissional@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Função na equipe</Label>
-                  <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="professional">
-                        <div>
-                          <div className="font-medium">Terapeuta / Profissional</div>
-                          <div className="text-xs text-muted-foreground">Acessa apenas seus pacientes vinculados</div>
+              <ScrollArea className="flex-1 overflow-y-auto pr-1">
+                <div className="space-y-4 pt-2 pb-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>E-mail do profissional</Label>
+                      <Input type="email" placeholder="profissional@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Função base</Label>
+                      <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="professional">Profissional / Terapeuta</SelectItem>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Cargo personalizado <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
+                    <Input placeholder="Ex: Fonoaudióloga, Secretária, Financeiro..." value={inviteRoleLabel} onChange={e => setInviteRoleLabel(e.target.value)} />
+                  </div>
+
+                  <Separator />
+
+                  {/* Permissions */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-primary" />
+                      <Label className="text-sm font-semibold">Permissões de acesso</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      Defina exatamente o que este profissional poderá acessar no sistema.
+                    </p>
+                    <div className="space-y-4">
+                      {PERMISSION_GROUPS.map(group => (
+                        <div key={group.label} className="space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {group.keys.map(perm => (
+                              <div key={perm} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer" onClick={() => togglePerm(perm, invitePermissions, setInvitePermissions)}>
+                                <Checkbox checked={invitePermissions.includes(perm)} onCheckedChange={() => togglePerm(perm, invitePermissions, setInvitePermissions)} />
+                                <span className="text-xs">{PERMISSION_LABELS[perm]}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </SelectItem>
-                      <SelectItem value="admin">
-                        <div>
-                          <div className="font-medium">Supervisor / Administrador</div>
-                          <div className="text-xs text-muted-foreground">Pode convidar membros e ver todos os dados</div>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1.5">
-                    <CalendarDays className="w-3.5 h-3.5" />
-                    Pacientes vinculados
-                    <span className="text-xs font-normal text-muted-foreground ml-1">(opcional)</span>
-                  </Label>
-                  {clinicPatients.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">Nenhum paciente nesta clínica.</p>
-                  ) : (
-                    <ScrollArea className="h-48 border rounded-md p-2">
-                      <div className="space-y-1">
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Patient assignments */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      <Label className="text-sm font-semibold">Pacientes vinculados <span className="text-xs font-normal text-muted-foreground">(opcional)</span></Label>
+                    </div>
+                    {clinicPatients.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">Nenhum paciente nesta clínica.</p>
+                    ) : (
+                      <div className="border rounded-md p-2 max-h-44 overflow-y-auto space-y-1">
                         {clinicPatients.map(patient => (
                           <div key={patient.id} className="space-y-1.5">
                             <div className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer" onClick={() => toggleInvitePatient(patient.id)}>
@@ -495,19 +583,19 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                           </div>
                         ))}
                       </div>
-                    </ScrollArea>
-                  )}
-                  {Object.keys(selectedPatients).length > 0 && (
-                    <p className="text-xs text-muted-foreground">{Object.keys(selectedPatients).length} paciente(s) selecionado(s)</p>
-                  )}
+                    )}
+                    {Object.keys(selectedPatients).length > 0 && (
+                      <p className="text-xs text-muted-foreground">{Object.keys(selectedPatients).length} paciente(s) selecionado(s)</p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-end gap-2 pt-1">
-                  <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
-                  <Button onClick={handleInvite} disabled={inviting || !inviteEmail} className="gap-2">
-                    {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                    Enviar convite
-                  </Button>
-                </div>
+              </ScrollArea>
+              <div className="flex justify-end gap-2 pt-3 border-t mt-3">
+                <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
+                <Button onClick={handleInvite} disabled={inviting || !inviteEmail} className="gap-2">
+                  {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                  Enviar convite
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -518,6 +606,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       <div className="space-y-2">
         {members.map(member => {
           const isClickable = canManage && member.role !== 'owner';
+          const displayRole = member.role_label || ROLE_LABELS[member.role] || member.role;
           return (
             <div
               key={member.id}
@@ -526,7 +615,6 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
             >
               <div className="flex items-center justify-between p-3 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  {/* Avatar */}
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold
                     ${member.status === 'active' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     {member.status === 'active'
@@ -567,7 +655,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   ) : (
                     <Badge variant="outline" className="text-xs gap-1 hidden sm:flex">
                       {ROLE_ICONS[member.role]}
-                      {ROLE_LABELS[member.role]}
+                      {displayRole}
                     </Badge>
                   )}
 
@@ -598,16 +686,33 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   )}
                 </div>
               </div>
+
+              {/* Patient list preview */}
+              {member.status === 'active' && member.assignments && member.assignments.length > 0 && (
+                <div className="px-3 pb-3 pt-0">
+                  <div className="flex flex-wrap gap-1.5">
+                    {member.assignments.map(a => (
+                      <div key={a.id} className="flex items-center gap-1 bg-muted/60 rounded-md px-2 py-0.5 text-xs text-muted-foreground">
+                        <User className="w-2.5 h-2.5" />
+                        <span>{a.patient_name || a.patient_id.slice(0, 6)}</span>
+                        {a.schedule_time && (
+                          <span className="text-primary font-medium">· {a.schedule_time}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
       {/* ──────────────────────────────────────────────────────────────
-          Member Management Modal — opens when clicking a member card
+          Member Management Modal
       ────────────────────────────────────────────────────────────── */}
       <Dialog open={!!manageMember} onOpenChange={open => !open && setManageMember(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
           {manageMember && (
             <>
               <DialogHeader>
@@ -624,121 +729,157 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-5 pt-1">
-                {/* Status & Role */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Função</Label>
-                    <Select value={manageMember.role} onValueChange={(v: any) => handleChangeRole(manageMember.id, v)}>
-                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="professional">Terapeuta</SelectItem>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
-                    <div className={`flex items-center gap-2 h-8 px-3 rounded-md border text-sm ${STATUS_COLORS[manageMember.status]}`}>
-                      {manageMember.status === 'active' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                      {manageMember.status === 'pending' && <Mail className="w-3.5 h-3.5" />}
-                      {manageMember.status === 'inactive' && <UserX className="w-3.5 h-3.5" />}
-                      {STATUS_LABELS[manageMember.status]}
+              <ScrollArea className="flex-1 overflow-y-auto pr-1">
+                <div className="space-y-5 pt-1 pb-2">
+                  {/* Role + Label + Status */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Função base</Label>
+                      <Select value={manageMember.role} onValueChange={(v: any) => handleChangeRole(manageMember.id, v)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="professional">Profissional</SelectItem>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5 col-span-2">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Cargo personalizado</Label>
+                      <Input
+                        placeholder="Ex: Fonoaudióloga, Secretária..."
+                        value={editRoleLabel}
+                        onChange={e => setEditRoleLabel(e.target.value)}
+                        className="h-8 text-sm"
+                      />
                     </div>
                   </div>
-                </div>
 
-                {/* Access toggle */}
-                {manageMember.status !== 'pending' && (
-                  <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium">Acesso ao sistema</p>
+                  {/* Access toggle */}
+                  {manageMember.status !== 'pending' && (
+                    <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium">Acesso ao sistema</p>
+                        <p className="text-xs text-muted-foreground">
+                          {manageMember.status === 'active'
+                            ? 'Pode acessar normalmente'
+                            : 'Acesso suspenso — não consegue entrar'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={manageMember.status === 'active'}
+                        onCheckedChange={() => handleToggleMemberStatus(manageMember)}
+                      />
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <Tabs defaultValue="permissions">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="permissions" className="flex-1 gap-1.5">
+                        <Lock className="w-3.5 h-3.5" />
+                        Permissões
+                      </TabsTrigger>
+                      <TabsTrigger value="patients" className="flex-1 gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        Pacientes
+                      </TabsTrigger>
+                    </TabsList>
+
+                    {/* Permissions tab */}
+                    <TabsContent value="permissions" className="mt-4 space-y-4">
                       <p className="text-xs text-muted-foreground">
-                        {manageMember.status === 'active'
-                          ? 'Terapeuta pode acessar normalmente'
-                          : 'Acesso suspenso — terapeuta não consegue entrar'}
+                        Controle exatamente quais módulos este profissional pode acessar.
                       </p>
-                    </div>
-                    <Switch
-                      checked={manageMember.status === 'active'}
-                      onCheckedChange={() => handleToggleMemberStatus(manageMember)}
-                    />
-                  </div>
-                )}
+                      {PERMISSION_GROUPS.map(group => (
+                        <div key={group.label} className="space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {group.keys.map(perm => (
+                              <div
+                                key={perm}
+                                className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                                onClick={() => togglePerm(perm, editPermissions, setEditPermissions)}
+                              >
+                                <Checkbox
+                                  checked={editPermissions.includes(perm)}
+                                  onCheckedChange={() => togglePerm(perm, editPermissions, setEditPermissions)}
+                                />
+                                <span className="text-xs">{PERMISSION_LABELS[perm]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </TabsContent>
 
-                <Separator />
-
-                {/* Patient assignments */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1.5">
-                    <CalendarDays className="w-3.5 h-3.5" />
-                    Pacientes vinculados
-                  </Label>
-                  <p className="text-xs text-muted-foreground -mt-1">
-                    Selecione quais pacientes este profissional pode visualizar e atender.
-                  </p>
-                  {clinicPatients.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">Nenhum paciente nesta clínica.</p>
-                  ) : (
-                    <ScrollArea className="h-52 border rounded-md p-2">
-                      <div className="space-y-1">
-                        {clinicPatients.map(patient => (
-                          <div key={patient.id} className="space-y-1.5">
-                            <div
-                              className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
-                              onClick={() => toggleEditPatient(patient.id)}
-                            >
-                              <Checkbox
-                                checked={editPatients[patient.id] !== undefined}
-                                onCheckedChange={() => toggleEditPatient(patient.id)}
-                              />
-                              <span className="text-sm">{patient.name}</span>
-                              {editPatients[patient.id] !== undefined && editPatients[patient.id] && (
-                                <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {editPatients[patient.id]}
-                                </span>
+                    {/* Patients tab */}
+                    <TabsContent value="patients" className="mt-4 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Selecione quais pacientes este profissional pode visualizar e atender.
+                      </p>
+                      {clinicPatients.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic">Nenhum paciente nesta clínica.</p>
+                      ) : (
+                        <div className="border rounded-md p-2 max-h-52 overflow-y-auto space-y-1">
+                          {clinicPatients.map(patient => (
+                            <div key={patient.id} className="space-y-1.5">
+                              <div
+                                className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                                onClick={() => toggleEditPatient(patient.id)}
+                              >
+                                <Checkbox
+                                  checked={editPatients[patient.id] !== undefined}
+                                  onCheckedChange={() => toggleEditPatient(patient.id)}
+                                />
+                                <span className="text-sm">{patient.name}</span>
+                                {editPatients[patient.id] !== undefined && editPatients[patient.id] && (
+                                  <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {editPatients[patient.id]}
+                                  </span>
+                                )}
+                              </div>
+                              {editPatients[patient.id] !== undefined && (
+                                <div className="pl-8 pb-1">
+                                  <Input
+                                    placeholder="Horário (ex: 14:00)"
+                                    value={editPatients[patient.id]}
+                                    onChange={e => setEditPatients(prev => ({ ...prev, [patient.id]: e.target.value }))}
+                                    className="h-7 text-xs"
+                                    onClick={e => e.stopPropagation()}
+                                  />
+                                </div>
                               )}
                             </div>
-                            {editPatients[patient.id] !== undefined && (
-                              <div className="pl-8 pb-1">
-                                <Input
-                                  placeholder="Horário (ex: 14:00)"
-                                  value={editPatients[patient.id]}
-                                  onChange={e => setEditPatients(prev => ({ ...prev, [patient.id]: e.target.value }))}
-                                  className="h-7 text-xs"
-                                  onClick={e => e.stopPropagation()}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {Object.keys(editPatients).length} paciente(s) selecionado(s)
-                  </p>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {Object.keys(editPatients).length} paciente(s) selecionado(s)
+                      </p>
+                    </TabsContent>
+                  </Tabs>
                 </div>
+              </ScrollArea>
 
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-1 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive gap-1.5"
-                    onClick={() => setRemoveMemberId(manageMember.id)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Remover da equipe
+              {/* Actions */}
+              <div className="flex items-center justify-between pt-3 border-t mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive gap-1.5"
+                  onClick={() => setRemoveMemberId(manageMember.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Remover da equipe
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setManageMember(null)}>Cancelar</Button>
+                  <Button onClick={saveAssignments} disabled={savingAssign} className="gap-2">
+                    {savingAssign && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    Salvar
                   </Button>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setManageMember(null)}>Cancelar</Button>
-                    <Button onClick={saveAssignments} disabled={savingAssign} className="gap-2">
-                      {savingAssign && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                      Salvar
-                    </Button>
-                  </div>
                 </div>
               </div>
             </>

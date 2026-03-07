@@ -586,7 +586,9 @@ export type Database = {
           invited_by: string
           joined_at: string | null
           organization_id: string
+          permissions: Json | null
           role: string
+          role_label: string | null
           status: string
           updated_at: string
           user_id: string | null
@@ -598,7 +600,9 @@ export type Database = {
           invited_by: string
           joined_at?: string | null
           organization_id: string
+          permissions?: Json | null
           role?: string
+          role_label?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -610,7 +614,9 @@ export type Database = {
           invited_by?: string
           joined_at?: string | null
           organization_id?: string
+          permissions?: Json | null
           role?: string
+          role_label?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null

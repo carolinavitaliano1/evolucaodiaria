@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -21,29 +22,52 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ThemeToggle } from './ThemeToggle';
 
 const mainNavItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-  { to: '/clinics', icon: Building2, label: 'Clínicas' },
-  { to: '/patients', icon: Users, label: 'Pacientes' },
-  { to: '/calendar', icon: Calendar, label: 'Agenda' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Home',      perm: 'dashboard.view' as const },
+  { to: '/clinics',   icon: Building2,       label: 'Clínicas',  perm: 'clinics.view'   as const },
+  { to: '/patients',  icon: Users,           label: 'Pacientes', perm: 'patients.view'  as const },
+  { to: '/calendar',  icon: Calendar,        label: 'Agenda',    perm: 'calendar.view'  as const },
 ];
 
 const moreNavItems = [
-  { to: '/financial', icon: DollarSign, label: 'Finanças' },
-  { to: '/reports', icon: BarChart3, label: 'Relatórios' },
-  { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
-  { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
-  { to: '/mural', icon: Megaphone, label: 'Mural', badge: true },
-  { to: '/pricing', icon: CreditCard, label: 'Planos' },
-  { to: '/install', icon: Smartphone, label: 'Instalar App' },
-  { to: '/profile', icon: User, label: 'Perfil' },
+  { to: '/financial',  icon: DollarSign,   label: 'Finanças',      perm: 'financial.view'  as const },
+  { to: '/reports',    icon: BarChart3,    label: 'Relatórios',    perm: 'reports.view'    as const },
+  { to: '/ai-reports', icon: Sparkles,     label: 'Relatórios IA', perm: 'ai_reports.view' as const },
+  { to: '/tasks',      icon: ClipboardList,label: 'Tarefas',       perm: 'tasks.view'      as const },
+  { to: '/mural',      icon: Megaphone,    label: 'Mural',         perm: 'mural.view'      as const, badge: true },
+  { to: '/pricing',    icon: CreditCard,   label: 'Planos',        perm: null },
+  { to: '/install',    icon: Smartphone,   label: 'Instalar App',  perm: null },
+  { to: '/profile',    icon: User,         label: 'Perfil',        perm: null },
 ];
 
 export function MobileNav() {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const { unreadCount } = useUnreadNotices();
+  const { isOrgMember, permissions } = useOrgPermissions();
 
-  const isMoreActive = moreNavItems.some(item => 
+  const filterItem = (item: { perm: string | null }) => {
+    if (!isOrgMember) return true;
+    if (item.perm === null) return item.perm === null && false ? false : (
+      // Always show profile; hide pricing/install for org members
+      false
+    );
+    return permissions.includes(item.perm as any);
+  };
+
+  // Simpler filter
+  const allowedMain = mainNavItems.filter(i => {
+    if (!isOrgMember) return true;
+    return permissions.includes(i.perm as any);
+  });
+
+  const allowedMore = moreNavItems.filter(i => {
+    if (!isOrgMember) return true;
+    if (i.to === '/profile') return true; // always show profile
+    if (i.perm === null) return false;    // hide pricing/install for org members
+    return permissions.includes(i.perm as any);
+  });
+
+  const isMoreActive = allowedMore.some(item => 
     location.pathname === item.to || 
     (item.to !== '/' && location.pathname.startsWith(item.to))
   );
@@ -51,7 +75,7 @@ export function MobileNav() {
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/98 backdrop-blur-sm border-t border-border">
       <div className="flex justify-around items-center py-1.5 px-2">
-        {mainNavItems.map(({ to, icon: Icon, label }) => {
+        {allowedMain.map(({ to, icon: Icon, label }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
           
@@ -111,7 +135,7 @@ export function MobileNav() {
               <ThemeToggle />
             </div>
             <div className="py-2 space-y-2">
-              {moreNavItems.map(({ to, icon: Icon, label, badge }) => {
+              {allowedMore.map(({ to, icon: Icon, label, badge }) => {
                 const isActive = location.pathname === to || 
                   (to !== '/' && location.pathname.startsWith(to));
                 const showBadge = badge && unreadCount > 0;
