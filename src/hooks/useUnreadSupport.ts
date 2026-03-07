@@ -21,7 +21,6 @@ export function useUnreadSupportCount() {
     if (!user) return;
 
     if (isAdmin) {
-      // Admin: count user messages that arrived AFTER the last time admin replied/seen
       const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
       const lastSeen = localStorage.getItem(adminLastSeenKey) ?? '1970-01-01';
       const { count } = await supabase
@@ -31,7 +30,6 @@ export function useUnreadSupportCount() {
         .gt('created_at', lastSeen);
       setUnreadCount(count ?? 0);
     } else {
-      // Regular user: count admin replies they haven't seen yet
       const lastSeenKey = `support_last_seen_${user.id}`;
       const lastSeen = localStorage.getItem(lastSeenKey) ?? '1970-01-01';
       const { count } = await supabase
@@ -65,27 +63,33 @@ export function useUnreadSupportCount() {
     return () => { supabase.removeChannel(channel); };
   }, [user, isAdmin, fetchCount]);
 
-  // Realtime: clear user badge when chat is closed (session inserted)
+  // Realtime: clear badge for BOTH user and admin when chat session is closed
   useEffect(() => {
-    if (!user || isAdmin) return;
+    if (!user) return;
+    const filter = isAdmin ? undefined : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`support-session-close-${user.id}`)
+      .channel(`support-session-close-${user.id}-${isAdmin ? 'admin' : 'user'}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'support_chat_sessions',
-        filter: `user_id=eq.${user.id}`,
+        ...(filter ? { filter } : {}),
       }, () => {
-        // Chat was closed — mark everything as seen and clear badge
-        const lastSeenKey = `support_last_seen_${user.id}`;
-        localStorage.setItem(lastSeenKey, new Date().toISOString());
+        // Chat was closed — stamp lastSeen as NOW and zero the badge
+        if (isAdmin) {
+          const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
+          localStorage.setItem(adminLastSeenKey, new Date().toISOString());
+        } else {
+          const lastSeenKey = `support_last_seen_${user.id}`;
+          localStorage.setItem(lastSeenKey, new Date().toISOString());
+        }
         setUnreadCount(0);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, isAdmin]);
 
-  /** Call this when the user opens the /suporte page to clear their badge */
+  /** Call this when the user opens /suporte or closes the chat */
   const markSupportSeen = useCallback(() => {
     if (!user || isAdmin) return;
     const lastSeenKey = `support_last_seen_${user.id}`;
@@ -93,7 +97,7 @@ export function useUnreadSupportCount() {
     setUnreadCount(0);
   }, [user, isAdmin]);
 
-  /** Call this when the admin replies or finalizes a chat to clear their badge */
+  /** Call this when the admin opens a conversation, replies or closes the chat */
   const markAdminSeen = useCallback(() => {
     if (!user || !isAdmin) return;
     const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
