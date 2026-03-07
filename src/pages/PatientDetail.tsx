@@ -403,12 +403,6 @@ export default function PatientDetail() {
       }
 
       // ── REGISTRO DAS SESSÕES ─────────────────────────────────────
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...accentDark);
-      doc.text(`${moodsWithData.length > 0 ? '3' : '2'}. REGISTRO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y);
-      y += 8;
-
       const statusLabelMap: Record<string, string> = {
         presente: 'Presente', falta: 'Falta', reposicao: 'Reposicao',
       };
@@ -418,6 +412,9 @@ export default function PatientDetail() {
         ['presente', 'falta', 'reposicao'].includes(e.attendanceStatus)
       );
 
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...accentDark);
       doc.text(`${moodsWithData.length > 0 ? '3' : '2'}. REGISTRO DAS SESSÕES (${visibleEvolutions.length})`, margin, y);
       y += 8;
 
