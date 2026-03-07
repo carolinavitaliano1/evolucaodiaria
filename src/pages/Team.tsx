@@ -23,7 +23,9 @@ export default function Team() {
   const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
   const hasAccess = isOwnerEmail || isOwner;
 
-  const teamClinics = clinics.filter(c => !c.isArchived);
+  // Only "própria" clinics support team management
+  const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'propria');
+  const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
 
   useEffect(() => {
     if (!selectedClinicId && teamClinics.length > 0) {
