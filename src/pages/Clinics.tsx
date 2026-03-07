@@ -329,7 +329,7 @@ export default function Clinics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground leading-none">{pendingAppointments.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">Particulares</p>
+                <p className="text-xs text-muted-foreground mt-1">Serviços</p>
               </div>
             </div>
           </div>
