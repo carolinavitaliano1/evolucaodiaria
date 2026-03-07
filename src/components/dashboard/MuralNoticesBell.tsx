@@ -58,7 +58,6 @@ export function MuralNoticesBell() {
     supabase
       .from('notices')
       .select('*')
-      .eq('user_id', user.id)
       .order('pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(5)

@@ -8,13 +8,12 @@ export function useUnreadNotices() {
 
   const fetchUnread = useCallback(async () => {
     if (!user) return;
-    // Total notices for the user
+    // Total notices (all authenticated users can see all notices)
     const { count: total } = await supabase
       .from('notices')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .select('*', { count: 'exact', head: true });
 
-    // Read notices
+    // Notices already read by this user
     const { count: read } = await supabase
       .from('notice_reads')
       .select('*', { count: 'exact', head: true })
