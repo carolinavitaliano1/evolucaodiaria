@@ -965,6 +965,44 @@ export default function Clinics() {
           onSave={updateClinic}
         />
       )}
+
+      {/* Clinic Limit Dialog */}
+      <Dialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-warning" />
+              Limite de clínicas atingido
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Você atingiu o limite de <strong className="text-foreground">{CLINIC_LIMIT} clínicas ativas</strong>. Para criar uma nova clínica, primeiro arquive alguma que não esteja mais em uso.
+            </p>
+            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">Como liberar espaço:</p>
+              <p>• Vá até a clínica desejada e clique em <strong>Arquivar</strong> no menu de opções</p>
+              <p>• Clínicas arquivadas ficam disponíveis para consulta, mas não permitem edições</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Precisa de mais clínicas ativas? Entre em contato com o suporte para negociar um plano personalizado.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              className="w-full gap-2"
+              onClick={handleSendSupportMessage}
+              disabled={sendingSupportMsg}
+            >
+              <MessageCircle className="w-4 h-4" />
+              {sendingSupportMsg ? 'Enviando...' : 'Falar com suporte sobre meu plano'}
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setLimitDialogOpen(false)}>
+              Entendido, vou arquivar uma clínica
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
