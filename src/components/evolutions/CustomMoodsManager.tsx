@@ -5,12 +5,18 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Trash2, Plus, Smile } from 'lucide-react';
-import { useCustomMoods } from '@/hooks/useCustomMoods';
+import { CustomMood } from '@/hooks/useCustomMoods';
 
 const COMMON_EMOJIS = ['😎','🥳','🤗','😇','🙃','🤔','😶','🥱','😮','🤯','😱','🥺','😭','🤬','🥴','🫠','🤧','😷','🤒','🥵','🥶','😑','🫤','😬','🙄'];
 
-export function CustomMoodsManager() {
-  const { customMoods, loading, addMood, deleteMood } = useCustomMoods();
+interface CustomMoodsManagerProps {
+  customMoods: CustomMood[];
+  loading: boolean;
+  onAdd: (emoji: string, label: string, score: number) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}
+
+export function CustomMoodsManager({ customMoods, loading, onAdd, onDelete }: CustomMoodsManagerProps) {
   const [open, setOpen] = useState(false);
   const [emoji, setEmoji] = useState('😎');
   const [label, setLabel] = useState('');
@@ -18,7 +24,7 @@ export function CustomMoodsManager() {
 
   const handleAdd = async () => {
     if (!emoji || !label.trim()) return;
-    await addMood(emoji, label.trim(), score);
+    await onAdd(emoji, label.trim(), score);
     setLabel('');
     setEmoji('😎');
     setScore(5);
@@ -112,7 +118,7 @@ export function CustomMoodsManager() {
                     <Button
                       variant="ghost" size="icon"
                       className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => deleteMood(m.id)}
+                      onClick={() => onDelete(m.id)}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
