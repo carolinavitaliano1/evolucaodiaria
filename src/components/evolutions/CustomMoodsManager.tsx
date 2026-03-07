@@ -5,12 +5,18 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Trash2, Plus, Smile } from 'lucide-react';
-import { useCustomMoods } from '@/hooks/useCustomMoods';
+import { CustomMood } from '@/hooks/useCustomMoods';
 
 const COMMON_EMOJIS = ['😎','🥳','🤗','😇','🙃','🤔','😶','🥱','😮','🤯','😱','🥺','😭','🤬','🥴','🫠','🤧','😷','🤒','🥵','🥶','😑','🫤','😬','🙄'];
 
-export function CustomMoodsManager() {
-  const { customMoods, loading, addMood, deleteMood } = useCustomMoods();
+interface CustomMoodsManagerProps {
+  customMoods: CustomMood[];
+  loading: boolean;
+  onAdd: (emoji: string, label: string, score: number) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}
+
+export function CustomMoodsManager({ customMoods, loading, onAdd, onDelete }: CustomMoodsManagerProps) {
   const [open, setOpen] = useState(false);
   const [emoji, setEmoji] = useState('😎');
   const [label, setLabel] = useState('');
