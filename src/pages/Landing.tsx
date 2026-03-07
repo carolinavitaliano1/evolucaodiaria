@@ -116,32 +116,6 @@ const FAQ_ITEMS = [
   { q: 'Preciso saber tecnologia para usar?', a: 'De jeito nenhum. A interface é intuitiva e foi pensada para profissionais de saúde, não para engenheiros. Se você usa WhatsApp, consegue usar o Evolução Diária.' },
 ];
 
-const APP_SCREENSHOTS = [
-  {
-    img: demoDashboard,
-    label: 'Dashboard',
-    title: 'Visão geral inteligente',
-    desc: 'Sua agenda do dia, tarefas, mini-calendário e resumo de atendimentos. Tudo na tela inicial ao abrir o app.',
-  },
-  {
-    img: demoEvolutions,
-    label: 'Evoluções',
-    title: 'Evoluções com IA em segundos',
-    desc: 'Registre presença, humor e notas clínicas com modelos personalizados. A IA aprimora o texto com um clique.',
-  },
-  {
-    img: demoCalendar,
-    label: 'Agenda',
-    title: 'Agenda integrada e visual',
-    desc: 'Visualize todos os seus atendimentos, lembretes e eventos em um calendário claro e fácil de navegar.',
-  },
-  {
-    img: demoReports,
-    label: 'Relatórios',
-    title: 'Relatórios clínicos profissionais',
-    desc: 'Gere relatórios completos com IA, edite com formatação rica e exporte em PDF com seu carimbo.',
-  },
-];
 
 export default function Landing() {
   const navigate = useNavigate();
