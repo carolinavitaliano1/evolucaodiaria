@@ -194,30 +194,6 @@ export default function Landing() {
           </motion.div>
         </div>
 
-        {/* Hero screenshot mockup */}
-        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.7 }}
-          className="relative max-w-4xl mx-auto px-4 pb-0">
-          <div className="relative rounded-2xl overflow-hidden border border-border/60 shadow-2xl bg-card">
-            {/* browser bar */}
-            <div className="flex items-center gap-1.5 px-4 py-2.5 bg-muted/60 border-b border-border/40">
-              <div className="w-3 h-3 rounded-full bg-destructive/60" />
-              <div className="w-3 h-3 rounded-full bg-warning/60" />
-              <div className="w-3 h-3 rounded-full bg-success/60" />
-              <div className="flex-1 mx-3 h-5 bg-background/60 rounded-md flex items-center justify-center">
-                <span className="text-[10px] text-muted-foreground">evolucaodiaria.app.br/dashboard</span>
-              </div>
-            </div>
-            <img
-              src={demoDashboard}
-              alt="Dashboard do Evolução Diária"
-              className="w-full object-cover object-top"
-              style={{ maxHeight: '460px' }}
-            />
-          </div>
-          {/* glow under mockup */}
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-16 bg-primary/20 blur-2xl rounded-full pointer-events-none" />
-        </motion.div>
       </header>
 
       {/* Pain Points */}
