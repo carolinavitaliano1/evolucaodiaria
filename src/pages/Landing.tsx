@@ -181,7 +181,7 @@ export default function Landing() {
 
           {/* Social proof bar */}
           <motion.div initial="hidden" animate="visible" custom={4} variants={fadeUp}
-            className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <div className="flex -space-x-1">
                 {['🧑‍⚕️','👩‍⚕️','🧑‍⚕️'].map((e,i) => <span key={i} className="text-base">{e}</span>)}
@@ -193,7 +193,7 @@ export default function Landing() {
               4,9 de satisfação
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-success" /> Dados 100% seguros na nuvem
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" /> Dados 100% seguros na nuvem
             </span>
           </motion.div>
         </div>
