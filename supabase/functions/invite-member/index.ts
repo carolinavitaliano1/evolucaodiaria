@@ -7,18 +7,51 @@ const corsHeaders = {
 
 const APP_URL = 'https://evolucaodiaria.app.br';
 
-async function sendInviteEmailViaResend(
+function generateTempPassword(): string {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let password = '';
+  for (let i = 0; i < 10; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
+async function sendInviteEmailWithCredentials(
   to: string,
   inviteUrl: string,
   orgName: string,
   inviterName: string,
-  roleLabel: string
+  roleLabel: string,
+  tempPassword: string | null
 ): Promise<boolean> {
   const resendApiKey = Deno.env.get('RESEND_API_KEY');
   if (!resendApiKey) {
     console.error('RESEND_API_KEY não configurada');
     return false;
   }
+
+  const credentialsBlock = tempPassword ? `
+    <div style="background:#f5f3ff;border:1px solid #ede9f7;border-radius:8px;padding:20px;margin:24px 0;">
+      <p style="font-size:13px;font-weight:bold;color:hsl(252,56%,57%);margin:0 0 12px;text-transform:uppercase;letter-spacing:0.05em;">Seus dados de acesso</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="font-size:13px;color:hsl(240,5%,45%);padding:4px 0;width:80px;">E-mail:</td>
+          <td style="font-size:14px;color:hsl(240,10%,15%);font-weight:600;padding:4px 0;">${to}</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:hsl(240,5%,45%);padding:4px 0;">Senha:</td>
+          <td style="font-size:14px;color:hsl(240,10%,15%);font-weight:600;padding:4px 0;font-family:monospace;">${tempPassword}</td>
+        </tr>
+      </table>
+      <p style="font-size:12px;color:hsl(240,5%,55%);margin:12px 0 0;">Você pode alterar sua senha a qualquer momento nas configurações do perfil.</p>
+    </div>
+  ` : `
+    <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 24px;">
+      Como você já possui uma conta, basta fazer login normalmente. O convite será aplicado automaticamente ao acessar o sistema.
+    </p>
+  `;
+
+  const actionLabel = tempPassword ? 'Acessar o sistema' : 'Aceitar convite';
 
   const html = `
 <!DOCTYPE html>
@@ -33,11 +66,10 @@ async function sendInviteEmailViaResend(
     <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 8px;">
       <strong>${inviterName}</strong> convidou você para fazer parte da equipe <strong>${orgName}</strong> no Evolução Diária como <strong>${roleLabel}</strong>.
     </p>
-    <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 28px;">
-      Clique no botão abaixo para aceitar o convite. Se você já possui uma conta, basta fazer login normalmente — o convite será aplicado automaticamente.
-    </p>
+    ${tempPassword ? `<p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 4px;">Sua conta foi criada! Utilize os dados abaixo para acessar o sistema:</p>` : ''}
+    ${credentialsBlock}
     <a href="${inviteUrl}" style="background-color:hsl(252,56%,57%);color:#ffffff;font-size:15px;font-weight:bold;border-radius:8px;padding:14px 24px;text-decoration:none;display:inline-block;">
-      Aceitar convite
+      ${actionLabel}
     </a>
     <p style="font-size:12px;color:#999999;margin:32px 0 0;line-height:1.5;">
       Se você não esperava este convite, pode ignorar este email com segurança.<br>
@@ -47,7 +79,29 @@ async function sendInviteEmailViaResend(
 </body>
 </html>`;
 
-  const text = `Você foi convidado(a) para a equipe ${orgName} no Evolução Diária!\n\n${inviterName} convidou você como ${roleLabel}.\n\nAcesse o link para aceitar: ${inviteUrl}\n\nSe não esperava este convite, ignore este e-mail.`;
+  const textLines = [
+    `Você foi convidado(a) para a equipe ${orgName} no Evolução Diária!`,
+    ``,
+    `${inviterName} convidou você como ${roleLabel}.`,
+    ``,
+  ];
+
+  if (tempPassword) {
+    textLines.push(`Sua conta foi criada com as seguintes credenciais:`);
+    textLines.push(`E-mail: ${to}`);
+    textLines.push(`Senha: ${tempPassword}`);
+    textLines.push(``);
+    textLines.push(`Você pode alterar sua senha a qualquer momento nas configurações do perfil.`);
+  } else {
+    textLines.push(`Como você já possui uma conta, basta fazer login normalmente.`);
+  }
+
+  textLines.push(``);
+  textLines.push(`Acesse o sistema: ${inviteUrl}`);
+  textLines.push(``);
+  textLines.push(`Se não esperava este convite, ignore este e-mail.`);
+
+  const subjectSuffix = tempPassword ? ' - Sua conta foi criada' : '';
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -58,9 +112,9 @@ async function sendInviteEmailViaResend(
     body: JSON.stringify({
       from: `Evolução Diária <noreply@evolucaodiaria.app.br>`,
       to: [to],
-      subject: `Convite para a equipe ${orgName} - Evolução Diária`,
+      subject: `Convite para a equipe ${orgName}${subjectSuffix} - Evolução Diária`,
       html,
-      text,
+      text: textLines.join('\n'),
     }),
   });
 
@@ -135,6 +189,23 @@ Deno.serve(async (req) => {
     const { data: inviterProfile } = await supabase.from('profiles').select('name').eq('user_id', userId).single();
     const inviterName = inviterProfile?.name || 'Um membro da equipe';
 
+    // Detectar se usuário já existe no Auth via endpoint REST admin
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const searchRes = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}&per_page=1`,
+      { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
+    );
+    let userAlreadyExists = false;
+    if (searchRes.ok) {
+      const searchData = await searchRes.json();
+      userAlreadyExists = Array.isArray(searchData?.users) && searchData.users.length > 0;
+    } else {
+      console.error('Erro ao buscar usuário no Auth:', await searchRes.text());
+    }
+
+    console.log(`Convite para ${email} — usuário existente no Auth: ${userAlreadyExists}`);
+
     // Criar registro de membro pendente
     const { data: member, error: memberError } = await supabase.from('organization_members').insert({
       organization_id,
@@ -154,36 +225,23 @@ Deno.serve(async (req) => {
     const roleLabels: Record<string, string> = { admin: 'Administrador', professional: 'Profissional' };
     const roleLabel = roleLabels[role] || role;
 
-    // Detectar se usuário já existe no Auth via endpoint REST admin
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const searchRes = await fetch(
-      `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}&per_page=1`,
-      { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
-    );
-    let userAlreadyExists = false;
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      userAlreadyExists = Array.isArray(searchData?.users) && searchData.users.length > 0;
-    } else {
-      console.error('Erro ao buscar usuário no Auth:', await searchRes.text());
-    }
-
-    console.log(`Convite para ${email} — usuário existente no Auth: ${userAlreadyExists}`);
-
     let emailSent = false;
+    let tempPassword: string | null = null;
 
     if (userAlreadyExists) {
-      // Usuário já tem conta → enviar e-mail via Resend com link direto para aceitar convite
-      // inviteUserByEmail retorna 422 para usuários existentes
+      // Usuário já tem conta → enviar e-mail simples sem credenciais
       console.log(`Enviando convite via Resend para usuário existente: ${email}`);
-      emailSent = await sendInviteEmailViaResend(email, inviteUrl, org.name, inviterName, roleLabel);
+      emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null);
     } else {
-      // Usuário novo → usar inviteUserByEmail (auth-email-hook com domínio verificado)
-      console.log(`Usuário ${email} é novo. Enviando via inviteUserByEmail...`);
-      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-        redirectTo: inviteUrl,
-        data: {
+      // Usuário novo → criar conta com senha temporária e enviar credenciais por e-mail
+      tempPassword = generateTempPassword();
+      console.log(`Criando conta para novo usuário: ${email}`);
+
+      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
           invited_to_org: org.name,
           invited_by: inviterName,
           role: roleLabel,
@@ -191,13 +249,23 @@ Deno.serve(async (req) => {
         },
       });
 
-      if (inviteError) {
-        console.error('Erro no inviteUserByEmail:', inviteError.message);
-        // Fallback: tentar Resend
-        emailSent = await sendInviteEmailViaResend(email, inviteUrl, org.name, inviterName, roleLabel);
+      if (createError) {
+        console.error('Erro ao criar usuário:', createError.message);
+        // Fallback: tentar inviteUserByEmail
+        const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+          redirectTo: inviteUrl,
+        });
+        if (!inviteError) {
+          emailSent = true;
+          tempPassword = null;
+          console.log(`Fallback: convite enviado via inviteUserByEmail para ${email}`);
+        } else {
+          emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null);
+        }
       } else {
-        emailSent = true;
-        console.log(`Convite enviado via inviteUserByEmail para ${email}`);
+        console.log(`Conta criada para ${email}, id: ${newUser.user?.id}`);
+        // Enviar e-mail com credenciais via Resend
+        emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, tempPassword);
       }
     }
 
