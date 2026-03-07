@@ -149,6 +149,7 @@ export default function AdminSupport() {
   // Load messages for selected conversation
   useEffect(() => {
     if (!selected) { setMessages([]); return; }
+    markAdminSeen(); // zero badge when opening any conversation
     supabase
       .from('support_messages')
       .select('*')
