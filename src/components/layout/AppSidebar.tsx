@@ -48,6 +48,7 @@ export function AppSidebar() {
   const { signOut } = useAuth();
   const { theme } = useTheme();
   const { unreadCount } = useUnreadNotices();
+  const { unreadCount: supportUnread } = useUnreadSupportCount();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
 
