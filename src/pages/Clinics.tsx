@@ -338,9 +338,9 @@ export default function Clinics() {
               <div className="w-9 h-9 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
                 <DollarSign className="w-4 h-4 text-success" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-foreground leading-none">
-                  R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-foreground leading-none truncate text-base sm:text-xl">
+                  R${'\u00A0'}{totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Faturado</p>
               </div>
