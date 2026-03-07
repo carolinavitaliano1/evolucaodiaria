@@ -465,8 +465,8 @@ export default function AdminSupport() {
               variant="outline"
               size="icon"
               onClick={() => setShowCloseDialog(true)}
-              disabled={closingChat || messages.length === 0}
-              title="Finalizar Chat"
+              disabled={closingChat || !selected}
+              title="Encerrar Atendimento"
               className="shrink-0 h-10 w-10 rounded-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
             >
               <PhoneOff className="w-4 h-4" />
