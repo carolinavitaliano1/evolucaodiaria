@@ -501,9 +501,9 @@ export default function AdminSupport() {
       <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogTitle>Encerrar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
-              O histórico completo desta conversa será enviado por e-mail para você e para o usuário. Esta ação não pode ser desfeita.
+              Tem certeza que deseja encerrar este atendimento?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -512,7 +512,7 @@ export default function AdminSupport() {
               onClick={handleCloseChat}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {closingChat ? 'Encerrando...' : 'Finalizar e enviar e-mail'}
+              {closingChat ? 'Encerrando...' : 'Sim, encerrar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
