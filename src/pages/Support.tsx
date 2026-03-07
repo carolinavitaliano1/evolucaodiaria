@@ -204,6 +204,7 @@ function AdminSupportView() {
       toast.error('Erro ao enviar resposta');
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
     } else {
+      markAdminSeen();
       loadConversations();
     }
     setSending(false);
