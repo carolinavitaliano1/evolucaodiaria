@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Clinic } from '@/types';
 import { toast } from 'sonner';
-import { Trash2, Upload } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
