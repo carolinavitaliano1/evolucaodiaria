@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -60,6 +61,7 @@ function initials(name: string | null, email: string | null) {
 
 export default function AdminSupport() {
   const { user } = useAuth();
+  const { markAdminSeen } = useUnreadSupportCount();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filtered, setFiltered] = useState<Conversation[]>([]);
@@ -193,6 +195,7 @@ export default function AdminSupport() {
       toast.error('Erro ao enviar resposta');
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
     } else {
+      markAdminSeen();
       loadConversations();
       // Fire push notification to user (fire-and-forget)
       try {
@@ -220,6 +223,7 @@ export default function AdminSupport() {
         body: { userId: selected, closedBy: 'admin' },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
+      markAdminSeen();
       toast.success('Chat encerrado. Histórico enviado por e-mail.');
       setSelected(null);
       setMessages([]);
