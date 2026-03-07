@@ -1269,37 +1269,39 @@ export default function PatientDetail() {
         <TabsContent value="reports" className="space-y-4">
           <div className="bg-card rounded-xl shadow-sm border border-border">
             {/* Month navigator */}
-            <div className="flex items-center justify-between p-5 border-b border-border">
-              <div className="flex items-center gap-3">
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setReportMonth(m => subMonths(m, 1))}>
+            <div className="flex flex-col gap-3 p-4 border-b border-border">
+              {/* Month navigator */}
+              <div className="flex items-center justify-center gap-3">
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => setReportMonth(m => subMonths(m, 1))}>
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <h2 className="font-semibold text-foreground capitalize min-w-[140px] text-center">
+                <h2 className="font-semibold text-foreground capitalize text-center text-sm min-w-0 flex-1 truncate">
                   {format(reportMonth, 'MMMM yyyy', { locale: ptBR })}
                 </h2>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setReportMonth(m => addMonths(m, 1))}>
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => setReportMonth(m => addMonths(m, 1))}>
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="flex gap-2">
+              {/* Export buttons */}
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   onClick={handleExportMonthlyPDF}
                   disabled={isExportingMonthly || monthlyEvolutions.length === 0}
                   variant="outline"
-                  className="gap-2"
+                  className="gap-1.5 text-xs h-9 w-full"
                   size="sm"
                 >
-                  {isExportingMonthly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Relatório Atendimento
+                  {isExportingMonthly ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
+                  <span className="truncate">Atendimento</span>
                 </Button>
                 <Button
                   onClick={handleExportFinancialPDF}
                   disabled={isExportingFinancial || monthlyEvolutions.length === 0}
-                  className="gap-2"
+                  className="gap-1.5 text-xs h-9 w-full"
                   size="sm"
                 >
-                  {isExportingFinancial ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
-                  Relatório Financeiro
+                  {isExportingFinancial ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />}
+                  <span className="truncate">Financeiro</span>
                 </Button>
               </div>
             </div>
