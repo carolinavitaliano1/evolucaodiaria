@@ -332,7 +332,7 @@ export default function AdminSupport() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
                     <p className={cn('text-sm font-semibold text-foreground truncate', conv.unread > 0 && 'font-bold')}>
-                      {conv.user_name || conv.user_email || 'Usuário'}
+                      {conv.user_name || conv.user_email?.split('@')[0] || 'Sem nome'}
                     </p>
                     <span className="text-[10px] text-muted-foreground shrink-0">
                       {formatMsgTime(conv.last_at)}
