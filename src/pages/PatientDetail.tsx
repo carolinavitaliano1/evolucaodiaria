@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { Button } from '@/components/ui/button';
@@ -12,14 +12,14 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar, Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 import TemplateForm from '@/components/evolutions/TemplateForm';
@@ -30,7 +30,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { generateReportPdf } from '@/utils/generateReportPdf';
-
+import jsPDF from 'jspdf';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
@@ -44,7 +44,6 @@ function getMoodInfo(mood?: string, customMoods?: { id: string; emoji: string; l
   if (custom) return { value: custom.id, emoji: custom.emoji, label: custom.label, score: custom.score };
   return undefined;
 }
-
 
 function calculateAge(birthdate: string | null | undefined): number | null {
   if (!birthdate) return null;
@@ -79,17 +78,7 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
   }, [patientId]);
 
   const handleDownloadPdf = (report: { title: string; content: string }) => {
-    generateReportPdf({
-      title: report.title,
-      content: report.content,
-      clinicName,
-      clinicAddress,
-      clinicLetterhead,
-      clinicEmail,
-      clinicCnpj,
-      clinicPhone,
-      clinicServicesDescription,
-    });
+    generateReportPdf({ title: report.title, content: report.content, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription });
   };
 
   const handleDelete = async (id: string) => {
@@ -133,7 +122,7 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
 export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { patients, clinics, evolutions, attachments, addEvolution, updateEvolution, deleteEvolution, currentClinic, 
+  const { patients, clinics, evolutions, attachments, addEvolution, updateEvolution, deleteEvolution, currentClinic,
     addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages, loadEvolutionsForClinic, loadAttachmentsForPatient } = useApp();
   const { user } = useAuth();
   const { customMoods } = useCustomMoods();
@@ -142,7 +131,6 @@ export default function PatientDetail() {
   const clinic = clinics.find(c => c.id === patient?.clinicId);
   const { isOrg, members } = useClinicOrg(patient?.clinicId || '');
 
-  // Lazy-load evolutions and attachments for this patient's clinic/patient
   useEffect(() => {
     if (!patient?.clinicId) return;
     loadEvolutionsForClinic(patient.clinicId);
@@ -153,12 +141,10 @@ export default function PatientDetail() {
     loadAttachmentsForPatient(id);
   }, [id]);
 
-
   const patientEvolutions = useMemo(() => {
     const evos = evolutions
       .filter(e => e.patientId === id)
       .sort((a, b) => new Date(b.date + 'T12:00:00').getTime() - new Date(a.date + 'T12:00:00').getTime());
-    // Join attachments from state to evolutions
     return evos.map(evo => ({
       ...evo,
       attachments: evo.attachments && evo.attachments.length > 0
@@ -190,7 +176,11 @@ export default function PatientDetail() {
   const [clinicTemplates, setClinicTemplates] = useState<EvolutionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
-  // Load stamps and templates
+
+  // Monthly report state
+  const [reportMonth, setReportMonth] = useState(new Date());
+  const [isExportingMonthly, setIsExportingMonthly] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).order('created_at').then(({ data }) => {
@@ -222,22 +212,12 @@ export default function PatientDetail() {
       });
   }, [user, patient?.clinicId]);
 
-  // Convert attachments to UploadedFile format for FileUpload component
   const patientDocsAsUploadedFiles: UploadedFile[] = useMemo(() => patientAttachments.map(a => ({
     id: a.id, name: a.name, filePath: a.data, fileType: a.type,
     url: a.data.startsWith('http') ? a.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${a.data}`,
   })), [patientAttachments]);
 
-  if (!patient) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-muted-foreground">Paciente não encontrado</p>
-        <Button onClick={() => navigate('/clinics')} className="mt-4">Voltar</Button>
-      </div>
-    );
-  }
-
-  // Summaries
+  // All-time summaries (computed before early return so hooks order is stable)
   const totalPresent = patientEvolutions.filter(e => e.attendanceStatus === 'presente').length;
   const totalReposicao = patientEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
   const totalAbsent = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
@@ -246,7 +226,7 @@ export default function PatientDetail() {
   const totalFeriadoNaoRem = patientEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const totalSessions = patientEvolutions.length;
   const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
-  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient.paymentValue || 0);
+  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
@@ -257,7 +237,6 @@ export default function PatientDetail() {
   }));
   const totalMoods = moodCounts.reduce((sum, m) => sum + m.count, 0);
 
-  // Mood chart data (chronological)
   const moodChartData = patientEvolutions
     .filter(e => e.mood)
     .sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime())
@@ -271,6 +250,234 @@ export default function PatientDetail() {
         emoji: moodInfo?.emoji || '😐',
       };
     });
+
+  // Monthly report data
+  const monthlyEvolutions = useMemo(() => {
+    const start = startOfMonth(reportMonth);
+    const end = endOfMonth(reportMonth);
+    return patientEvolutions.filter(e => {
+      const d = new Date(e.date + 'T12:00:00');
+      return d >= start && d <= end;
+    }).sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime());
+  }, [patientEvolutions, reportMonth]);
+
+  const monthlyPresent = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+  const monthlyReposicao = monthlyEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+  const monthlyAbsent = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+  const monthlyPaidAbsent = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+  const monthlyFeriadoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
+  const monthlyFeriadoNaoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
+  const monthlyTotal = monthlyEvolutions.length;
+  const monthlyRevenue = (monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem) * ((patient?.paymentValue) || 0);
+  const monthlyAttendanceRate = monthlyTotal > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyTotal) * 100) : 0;
+  const monthlyMoodCounts = allMoodOptions.map(m => ({
+    ...m, count: monthlyEvolutions.filter(e => e.mood === m.value).length,
+  }));
+
+  if (!patient) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Paciente não encontrado</p>
+        <Button onClick={() => navigate('/clinics')} className="mt-4">Voltar</Button>
+      </div>
+    );
+  }
+
+  const handleExportMonthlyPDF = async () => {
+    if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
+    setIsExportingMonthly(true);
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const W = 210, margin = 18;
+      const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
+      const primaryColor: [number, number, number] = [99, 102, 241];
+      const successColor: [number, number, number] = [34, 197, 94];
+      const warningColor: [number, number, number] = [234, 179, 8];
+      const destructiveColor: [number, number, number] = [239, 68, 68];
+      const mutedColor: [number, number, number] = [148, 163, 184];
+
+      let y = margin;
+
+      // Header bar
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, W, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Relatório Mensal do Paciente', margin, 12);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${patient.name}  •  ${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}`, margin, 22);
+      y = 38;
+
+      // Clinic & patient info
+      doc.setTextColor(30, 30, 40);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const infoParts = [];
+      if (clinic?.name) infoParts.push(`Clínica: ${clinic.name}`);
+      if (patient.clinicalArea) infoParts.push(`Área: ${patient.clinicalArea}`);
+      if (patient.paymentValue) infoParts.push(`Valor/sessão: R$ ${patient.paymentValue.toFixed(2)}`);
+      if (infoParts.length > 0) {
+        doc.setTextColor(...mutedColor);
+        doc.text(infoParts.join('   |   '), margin, y);
+        y += 8;
+      }
+
+      // Divider
+      doc.setDrawColor(220, 220, 230);
+      doc.line(margin, y, W - margin, y);
+      y += 8;
+
+      // Summary cards (horizontal row)
+      const cardW = (W - margin * 2 - 9) / 4;
+      const cards = [
+        { label: 'Sessões', value: String(monthlyTotal), color: primaryColor, sub: `${monthlyPresent} presentes` },
+        { label: 'Frequência', value: `${monthlyAttendanceRate}%`, color: successColor, sub: `${monthlyPresent + monthlyReposicao} realizadas` },
+        { label: 'Faltas', value: String(monthlyAbsent + monthlyPaidAbsent), color: destructiveColor, sub: `${monthlyPaidAbsent} remuneradas` },
+        { label: 'Receita', value: `R$ ${monthlyRevenue.toFixed(2)}`, color: warningColor, sub: `${monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem} pagas` },
+      ];
+      cards.forEach((card, i) => {
+        const x = margin + i * (cardW + 3);
+        doc.setFillColor(card.color[0], card.color[1], card.color[2]);
+        doc.roundedRect(x, y, cardW, 22, 3, 3, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.text(card.label.toUpperCase(), x + 4, y + 6);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text(card.value, x + 4, y + 14);
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(card.sub, x + 4, y + 20);
+      });
+      y += 30;
+
+      // Status breakdown
+      doc.setTextColor(30, 30, 40);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Detalhamento de Status', margin, y);
+      y += 7;
+
+      const statusRows = [
+        { label: '✅ Presente', value: monthlyPresent, color: successColor },
+        { label: '🔄 Reposição', value: monthlyReposicao, color: primaryColor },
+        { label: '💰 Falta Remunerada', value: monthlyPaidAbsent, color: warningColor },
+        { label: '🎉 Feriado Remunerado', value: monthlyFeriadoRem, color: primaryColor },
+        { label: '📅 Feriado Não Remunerado', value: monthlyFeriadoNaoRem, color: mutedColor },
+        { label: '❌ Falta', value: monthlyAbsent, color: destructiveColor },
+      ].filter(r => r.value > 0);
+
+      statusRows.forEach((row, i) => {
+        const x = margin + (i % 2) * ((W - margin * 2) / 2 + 2);
+        if (i % 2 === 0 && i > 0) y += 8;
+        doc.setFillColor(row.color[0], row.color[1], row.color[2]);
+        doc.circle(x + 2, y - 1, 1.5, 'F');
+        doc.setTextColor(50, 50, 60);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${row.label}: ${row.value}`, x + 6, y + 1);
+      });
+      if (statusRows.length > 0) y += 12;
+
+      // Mood summary
+      const moodsWithData = monthlyMoodCounts.filter(m => m.count > 0);
+      if (moodsWithData.length > 0) {
+        doc.setDrawColor(220, 220, 230);
+        doc.line(margin, y, W - margin, y);
+        y += 8;
+        doc.setTextColor(30, 30, 40);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Humor do Mês', margin, y);
+        y += 7;
+        const moodLine = moodsWithData.map(m => `${m.emoji} ${m.label}: ${m.count}`).join('    ');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(70, 70, 80);
+        doc.text(moodLine, margin, y, { maxWidth: W - margin * 2 });
+        y += 10;
+      }
+
+      // Evolutions list
+      doc.setDrawColor(220, 220, 230);
+      doc.line(margin, y, W - margin, y);
+      y += 8;
+      doc.setTextColor(30, 30, 40);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Evoluções do Mês (${monthlyEvolutions.length})`, margin, y);
+      y += 8;
+
+      const statusLabel: Record<string, string> = {
+        presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
+        reposicao: 'Reposição', feriado_remunerado: 'Feriado Rem.', feriado_nao_remunerado: 'Feriado',
+      };
+
+      for (const evo of monthlyEvolutions) {
+        if (y > 260) { doc.addPage(); y = margin; }
+        const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        const status = statusLabel[evo.attendanceStatus] || evo.attendanceStatus;
+        const moodInfo = getMoodInfo(evo.mood, customMoods);
+
+        // Row background
+        doc.setFillColor(248, 248, 252);
+        const textLines = evo.text ? doc.splitTextToSize(evo.text, W - margin * 2 - 8) : [];
+        const rowH = 12 + (textLines.length > 0 ? Math.min(textLines.length, 5) * 5 : 0);
+        doc.roundedRect(margin, y - 4, W - margin * 2, rowH, 2, 2, 'F');
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 40, 50);
+        doc.text(dateStr, margin + 3, y + 2);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...primaryColor);
+        doc.text(status, margin + 28, y + 2);
+
+        if (moodInfo) {
+          doc.setTextColor(...mutedColor);
+          doc.text(`${moodInfo.emoji} ${moodInfo.label}`, margin + 75, y + 2);
+        }
+
+        if (evo.text) {
+          doc.setTextColor(60, 60, 70);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          const lines = textLines.slice(0, 5);
+          lines.forEach((line: string, li: number) => {
+            doc.text(line, margin + 3, y + 9 + li * 5);
+          });
+          y += 9 + lines.length * 5 + 3;
+        } else {
+          y += rowH + 2;
+        }
+      }
+
+      // Footer
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFontSize(8);
+        doc.setTextColor(...mutedColor);
+        doc.text(
+          `${patient.name} — Relatório ${format(reportMonth, 'MM/yyyy')} — Página ${p}/${pageCount}`,
+          W / 2, 290, { align: 'center' }
+        );
+      }
+
+      doc.save(`relatorio-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(reportMonth, 'yyyy-MM')}.pdf`);
+      toast.success('PDF gerado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao gerar PDF');
+    } finally {
+      setIsExportingMonthly(false);
+    }
+  };
 
   const handleGeneratePeriodPdf = () => {
     if (!startDate || !endDate) return;
@@ -345,18 +552,26 @@ export default function PatientDetail() {
     deleteAttachment(fileId);
   };
 
+  const age = calculateAge(patient.birthdate);
+
   return (
-    <div className="p-4 lg:p-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <Button variant="ghost" onClick={handleBack} className="mb-4 gap-2">
-          <ArrowLeft className="w-4 h-4" /> Voltar
-        </Button>
-        <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-          {/* Avatar */}
-          <div className="flex-shrink-0">
-            <label className="relative cursor-pointer group">
-              <div className="w-20 h-20 rounded-2xl bg-primary/10 border-2 border-border overflow-hidden flex items-center justify-center">
+    <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-6">
+
+      {/* Back button */}
+      <Button variant="ghost" onClick={handleBack} className="gap-2 -ml-2">
+        <ArrowLeft className="w-4 h-4" /> Voltar
+      </Button>
+
+      {/* Hero Card */}
+      <div className="relative bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+        {/* Colored accent strip */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/30 rounded-t-2xl" />
+
+        <div className="p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+            {/* Avatar */}
+            <label className="relative cursor-pointer group flex-shrink-0">
+              <div className="w-20 h-20 rounded-2xl bg-primary/10 border-2 border-border overflow-hidden flex items-center justify-center shadow-sm">
                 {patient.avatarUrl ? (
                   <img src={patient.avatarUrl} alt={patient.name} className="w-full h-full object-cover" />
                 ) : (
@@ -366,10 +581,7 @@ export default function PatientDetail() {
                   <Image className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
+              <input type="file" accept="image/*" className="hidden"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file || !user) return;
@@ -380,118 +592,133 @@ export default function PatientDetail() {
                   const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
                   updatePatient(patient.id, { avatarUrl: urlData.publicUrl });
                   toast.success('Foto atualizada!');
-                }}
-              />
+                }} />
             </label>
-          </div>
 
-          <div className="flex-1">
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-3 flex items-center gap-3">
-              {patient.name}
-              {patient.isArchived && (
-                <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">Arquivado</span>
-              )}
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)}>
+            {/* Name + tags */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h1 className="text-2xl font-bold text-foreground">{patient.name}</h1>
+                {patient.isArchived && (
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">Arquivado</span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                {age !== null && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    <Cake className="w-3 h-3" /> {age} anos
+                  </span>
+                )}
+                {patient.phone && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/10 text-success text-xs font-medium">
+                    <Phone className="w-3 h-3" /> {patient.phone}
+                  </span>
+                )}
+                {patient.clinicalArea && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/10 text-accent text-xs font-medium">
+                    {patient.clinicalArea}
+                  </span>
+                )}
+                {patientPackage && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-foreground text-xs font-medium">
+                    <Package className="w-3 h-3" /> {patientPackage.name}
+                  </span>
+                )}
+                {clinic && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
+                    🏥 {clinic.name}
+                  </span>
+                )}
+              </div>
+
+              {/* Quick info row */}
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                {patient.paymentValue && (
+                  <span className="flex items-center gap-1">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    R$ {patient.paymentValue.toFixed(2)}{patient.paymentType === 'sessao' ? '/sessão' : '/mês'}
+                  </span>
+                )}
+                {patient.diagnosis && (
+                  <span className="truncate max-w-xs">📋 {patient.diagnosis}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-warning" title={patient.isArchived ? 'Desarquivar paciente' : 'Arquivar paciente'} onClick={() => setArchivePatientOpen(true)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-warning" onClick={() => setArchivePatientOpen(true)} title={patient.isArchived ? 'Desarquivar' : 'Arquivar'}>
                 {patient.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeletePatientOpen(true)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeletePatientOpen(true)} title="Excluir">
                 <Trash2 className="w-4 h-4" />
               </Button>
-            </h1>
-            <div className="flex flex-wrap gap-3">
-              {patient.birthdate && calculateAge(patient.birthdate) !== null && (
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm">
-                  <Cake className="w-4 h-4" /> {calculateAge(patient.birthdate)} anos
-                </span>
-              )}
-              {patient.phone && (
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm">
-                  <Phone className="w-4 h-4" /> {patient.phone}
-                </span>
-              )}
-              {patient.clinicalArea && (
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-sm">
-                  {patient.clinicalArea}
-                </span>
-              )}
-              {patientPackage && (
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-foreground text-sm">
-                  <Package className="w-4 h-4" /> {patientPackage.name}
-                </span>
-              )}
             </div>
           </div>
-          {clinic && (
-            <div className="bg-secondary rounded-xl p-4">
-              <p className="text-xs text-muted-foreground mb-1">Atendimento em</p>
-              <p className="font-semibold text-foreground">{clinic.name}</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground mb-3">📊 Frequência</p>
-          <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-2xl font-bold text-foreground">{attendanceRate}%</span>
-            <span className="text-sm text-muted-foreground">presença</span>
-          </div>
-          <div className="flex flex-wrap gap-3 text-sm">
-            <span className="text-success">✅ {totalPresent}</span>
-            {totalReposicao > 0 && <span className="text-primary">🔄 {totalReposicao}</span>}
-            {totalPaidAbsent > 0 && <span className="text-warning">💰 {totalPaidAbsent}</span>}
-            {totalFeriadoRem > 0 && <span className="text-primary">🎉 {totalFeriadoRem}</span>}
-            {totalFeriadoNaoRem > 0 && <span className="text-muted-foreground">📅 {totalFeriadoNaoRem}</span>}
-            <span className="text-destructive">❌ {totalAbsent}</span>
-            <span className="text-muted-foreground">Total: {totalSessions}</span>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground mb-3">💰 Financeiro</p>
-          <p className="text-2xl font-bold text-success mb-1">R$ {totalFinancial.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">
-            {totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões pagas × R$ {(patient.paymentValue || 0).toFixed(2)}
-          </p>
-        </div>
-
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground mb-3">🎭 Humor</p>
-          {totalMoods === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum registro ainda</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {moodCounts.filter(m => m.count > 0).map(m => (
-                <div key={m.value} className="flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-sm">
-                  <span>{m.emoji}</span>
-                  <span className="font-medium">{m.count}</span>
-                </div>
-              ))}
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Users className="w-4 h-4 text-primary" />
             </div>
-          )}
+            <p className="text-xs font-medium text-muted-foreground">Total</p>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{totalSessions}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">sessões</p>
+        </div>
+        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-success" />
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Frequência</p>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{attendanceRate}%</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{totalPresent} presentes</p>
+        </div>
+        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-success" />
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Receita Total</p>
+          </div>
+          <p className="text-2xl font-bold text-success">R$ {totalFinancial.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} pagas</p>
+        </div>
+        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+              <Calendar className="w-4 h-4 text-destructive" />
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Faltas</p>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{totalAbsent}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{totalPaidAbsent} remuneradas</p>
         </div>
       </div>
 
       {/* Mood Chart */}
       {moodChartData.length >= 2 && (
-        <div className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-8">
-          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">📈 Evolução do Humor</h2>
-          <div className="h-48">
+        <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
+          <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+            <BarChart3 className="w-4 h-4 text-primary" /> Evolução do Humor
+          </h2>
+          <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={moodChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="dateLabel" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis domain={[1, 10]} ticks={[1,2,3,4,5,6,7,8,9,10]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))"
-                  tickFormatter={(v) => {
-                    const m = allMoodOptions.find(o => o.score === v);
-                    return m?.emoji || '';
-                  }}
-                />
+                <XAxis dataKey="dateLabel" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis domain={[1, 10]} ticks={[1, 3, 5, 7, 9]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
+                  tickFormatter={(v) => { const m = allMoodOptions.find(o => o.score === v); return m?.emoji || ''; }} />
                 <Tooltip content={<MoodTooltip customMoods={customMoods} />} />
                 <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2.5}
                   dot={{ fill: 'hsl(var(--primary))', r: 4 }} activeDot={{ r: 6 }} />
@@ -501,68 +728,40 @@ export default function PatientDetail() {
         </div>
       )}
 
-      {/* Clinical Info */}
-      {(patient.diagnosis || patient.observations || patient.paymentValue) && (
-        <div className="bg-card rounded-2xl p-6 border-l-4 border-primary shadow-lg mb-8">
-          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">📋 Informações Clínicas</h2>
-          <div className="space-y-4">
-            {patient.diagnosis && (
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Diagnóstico</p>
-                <p className="text-foreground">{patient.diagnosis}</p>
-              </div>
-            )}
-            {patient.observations && (
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Observações</p>
-                <p className="text-foreground whitespace-pre-wrap">{patient.observations}</p>
-              </div>
-            )}
-            {patient.paymentValue && (
-              <div className="pt-3 border-t">
-                <p className="text-sm font-medium text-muted-foreground mb-1">💰 Financeiro</p>
-                <p className="text-success font-bold">
-                  R$ {patient.paymentValue.toFixed(2)}
-                  {patient.paymentType === 'sessao' ? '/sessão' : '/mês'}
-                  {patientPackage && <span className="text-muted-foreground font-normal text-sm ml-2">({patientPackage.name})</span>}
-                </p>
-              </div>
-            )}
-            {(patient.weekdays?.length || patient.scheduleTime) && (
-              <div className="pt-3 border-t">
-                <p className="text-sm font-medium text-muted-foreground mb-1">📅 Horários</p>
-                {patient.weekdays?.length && <p className="text-foreground">{patient.weekdays.join(', ')}</p>}
-                {patient.scheduleTime && <p className="text-foreground">🕐 {patient.scheduleTime}</p>}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Tabs */}
-      <Tabs defaultValue="evolutions" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="evolutions" className="gap-2"><FileText className="w-4 h-4" /> Evoluções</TabsTrigger>
-          <TabsTrigger value="documents" className="gap-2"><Paperclip className="w-4 h-4" /> Documentos</TabsTrigger>
-          <TabsTrigger value="tasks" className="gap-2"><ListTodo className="w-4 h-4" /> Tarefas</TabsTrigger>
+      <Tabs defaultValue="evolutions" className="space-y-4">
+        <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:inline-grid gap-0">
+          <TabsTrigger value="evolutions" className="gap-1.5 text-xs sm:text-sm">
+            <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evoluções</span><span className="sm:hidden">Evol.</span>
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm">
+            <BarChart3 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Relatório Mensal</span><span className="sm:hidden">Relat.</span>
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm">
+            <Paperclip className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Documentos</span><span className="sm:hidden">Docs</span>
+          </TabsTrigger>
+          <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm">
+            <ListTodo className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tasks</span>
+          </TabsTrigger>
         </TabsList>
 
         {/* Evolutions Tab */}
-        <TabsContent value="evolutions" className="space-y-6">
-          <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
-            <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" /> Nova Evolução
+        <TabsContent value="evolutions" className="space-y-4">
+          {/* New Evolution Form */}
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <FileText className="w-4 h-4 text-primary" /> Nova Evolução
             </h2>
             <form onSubmit={handleSubmitEvolution} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label>Data</Label>
-                  <Input type="date" value={evolutionDate} onChange={(e) => setEvolutionDate(e.target.value)} />
+                  <Label className="text-xs">Data</Label>
+                  <Input type="date" value={evolutionDate} onChange={(e) => setEvolutionDate(e.target.value)} className="mt-1" />
                 </div>
                 <div>
-                  <Label>Presença</Label>
+                  <Label className="text-xs">Presença</Label>
                   <Select value={attendanceStatus} onValueChange={(v) => setAttendanceStatus(v as any)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="presente">✅ Presente</SelectItem>
                       <SelectItem value="falta">❌ Falta</SelectItem>
@@ -580,127 +779,92 @@ export default function PatientDetail() {
                 </div>
               </div>
 
-              {/* Template selector */}
               {clinicTemplates.length > 0 && (
                 <div>
-                  <Label className="flex items-center gap-2 mb-1">📋 Modelo de Evolução</Label>
+                  <Label className="text-xs flex items-center gap-2 mb-1">📋 Modelo de Evolução</Label>
                   <Select value={selectedTemplateId} onValueChange={(v) => {
                     setSelectedTemplateId(v === 'none' ? '' : v);
                     if (v === 'none' || !v) setTemplateFormValues({});
                   }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um modelo (opcional)" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecione um modelo (opcional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Sem modelo</SelectItem>
-                      {clinicTemplates.map(t => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                      ))}
+                      {clinicTemplates.map(t => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
 
-              {/* Template form */}
               {selectedTemplateId && clinicTemplates.find(t => t.id === selectedTemplateId) && (
-                <TemplateForm
-                  template={clinicTemplates.find(t => t.id === selectedTemplateId)!}
-                  values={templateFormValues}
-                  onChange={setTemplateFormValues}
-                  showAiImprove
-                  isImprovingText={isImprovingText}
+                <TemplateForm template={clinicTemplates.find(t => t.id === selectedTemplateId)!} values={templateFormValues} onChange={setTemplateFormValues} showAiImprove isImprovingText={isImprovingText}
                   onImproveText={async (textToImprove) => {
                     setIsImprovingText(true);
                     try {
-                      const { data, error } = await supabase.functions.invoke('improve-evolution', {
-                        body: { text: textToImprove },
-                      });
+                      const { data, error } = await supabase.functions.invoke('improve-evolution', { body: { text: textToImprove } });
                       if (error) throw error;
                       return data?.improved || textToImprove;
-                    } catch (e) {
-                      toast.error('Erro ao melhorar texto');
-                      return textToImprove;
-                    } finally {
-                      setIsImprovingText(false);
-                    }
-                  }}
-                />
+                    } catch { toast.error('Erro ao melhorar texto'); return textToImprove; }
+                    finally { setIsImprovingText(false); }
+                  }} />
               )}
 
-              {/* Free text only when no template selected */}
               {!selectedTemplateId && (
                 <div>
-                  <Label>Evolução</Label>
+                  <Label className="text-xs">Evolução</Label>
                   <Textarea value={evolutionText} onChange={(e) => setEvolutionText(e.target.value)}
-                    placeholder="Digite a evolução do paciente..." className="min-h-32" />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 gap-2"
+                    placeholder="Digite a evolução do paciente..." className="min-h-28 mt-1" />
+                  <Button type="button" variant="outline" size="sm" className="mt-2 gap-2"
                     disabled={!evolutionText.trim() || isImprovingText}
                     onClick={async () => {
                       setIsImprovingText(true);
                       try {
-                        const { data, error } = await supabase.functions.invoke('improve-evolution', {
-                          body: { text: evolutionText },
-                        });
+                        const { data, error } = await supabase.functions.invoke('improve-evolution', { body: { text: evolutionText } });
                         if (error) throw error;
-                        if (data?.improved) {
-                          setEvolutionText(data.improved);
-                          toast.success('Texto melhorado com IA!');
-                        }
-                      } catch (e) {
-                        toast.error('Erro ao melhorar texto');
-                      } finally {
-                        setIsImprovingText(false);
-                      }
-                    }}
-                  >
+                        if (data?.improved) { setEvolutionText(data.improved); toast.success('Texto melhorado com IA!'); }
+                      } catch { toast.error('Erro ao melhorar texto'); }
+                      finally { setIsImprovingText(false); }
+                    }}>
                     {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                     Melhorar com IA
                   </Button>
                 </div>
               )}
+
               <div>
-                <Label className="flex items-center gap-2 mb-2"><Image className="w-4 h-4" /> Anexos (opcional)</Label>
+                <Label className="text-xs flex items-center gap-2 mb-2"><Image className="w-3.5 h-3.5" /> Anexos (opcional)</Label>
                 <FileUpload parentType="evolution" parentId={patient.id} existingFiles={attachedFiles}
                   onUpload={(files) => setAttachedFiles(prev => [...prev, ...files])}
                   onRemove={(fileId) => setAttachedFiles(prev => prev.filter(f => f.id !== fileId))} maxFiles={5} />
               </div>
+
               {stamps.length > 0 && (
                 <div>
-                  <Label className="flex items-center gap-2 mb-2"><StampIcon className="w-4 h-4" /> Carimbo</Label>
+                  <Label className="text-xs flex items-center gap-2 mb-1.5"><StampIcon className="w-3.5 h-3.5" /> Carimbo</Label>
                   <Select value={selectedStampId} onValueChange={setSelectedStampId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um carimbo (opcional)" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecione um carimbo (opcional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Sem carimbo</SelectItem>
-                      {stamps.map(s => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name} — {s.clinical_area} {s.is_default ? '⭐' : ''}
-                        </SelectItem>
-                      ))}
+                      {stamps.map(s => (<SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area} {s.is_default ? '⭐' : ''}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
-              <Button type="submit" className="gradient-primary gap-2"><Plus className="w-4 h-4" /> Salvar Evolução</Button>
+
+              <Button type="submit" className="gap-2"><Plus className="w-4 h-4" /> Salvar Evolução</Button>
             </form>
           </div>
 
           {/* History */}
-          <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-              <h2 className="font-bold text-foreground flex flex-wrap items-center gap-2 text-sm sm:text-base">
-                📜 Histórico ({patientEvolutions.length})
+          <div className="bg-card rounded-xl shadow-sm border border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 border-b border-border">
+              <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+                📜 Histórico <span className="text-muted-foreground font-normal">({patientEvolutions.length})</span>
               </h2>
               {patientEvolutions.length > 0 && (
                 <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm w-full sm:w-auto">
-                      <CalendarRange className="w-4 h-4" /> PDF por Período
+                    <Button variant="outline" size="sm" className="gap-2 text-xs">
+                      <CalendarRange className="w-3.5 h-3.5" /> PDF por Período
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
@@ -711,7 +875,7 @@ export default function PatientDetail() {
                           <Label>Data Início</Label>
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !startDate && "text-muted-foreground")}>
                                 <CalendarRange className="mr-2 h-4 w-4" />
                                 {startDate ? format(startDate, "dd/MM/yyyy") : "Selecione"}
                               </Button>
@@ -725,7 +889,7 @@ export default function PatientDetail() {
                           <Label>Data Fim</Label>
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !endDate && "text-muted-foreground")}>
                                 <CalendarRange className="mr-2 h-4 w-4" />
                                 {endDate ? format(endDate, "dd/MM/yyyy") : "Selecione"}
                               </Button>
@@ -738,7 +902,7 @@ export default function PatientDetail() {
                       </div>
                       {startDate && endDate && (
                         <p className="text-sm text-muted-foreground">
-                          {patientEvolutions.filter(evo => { const d = new Date(evo.date + 'T12:00:00'); return d >= startDate && d <= endDate; }).length} evoluções
+                          {patientEvolutions.filter(evo => { const d = new Date(evo.date + 'T12:00:00'); return d >= startDate && d <= endDate; }).length} evoluções no período
                         </p>
                       )}
                       <Button className="w-full gap-2" onClick={handleGeneratePeriodPdf} disabled={!startDate || !endDate}>
@@ -750,139 +914,289 @@ export default function PatientDetail() {
               )}
             </div>
 
-            {patientEvolutions.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-5xl mb-3">📝</div>
-                <p className="text-muted-foreground">Nenhuma evolução registrada ainda.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {patientEvolutions.map((evo) => {
-                  const moodInfo = getMoodInfo(evo.mood, customMoods);
-                  const evoAuthorId = (evo as any).user_id;
-                  const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
-                  const authorLabel = evoAuthor ? (evoAuthor.name || evoAuthor.email) : null;
-                  return (
-                    <div key={evo.id} className="bg-secondary/50 rounded-xl p-3 sm:p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-foreground text-sm sm:text-base">
-                            {format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                          </span>
-                          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
-                            evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
-                            evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
-                            evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' :
-                            evo.attendanceStatus === 'feriado_remunerado' ? 'bg-primary/10 text-primary' :
-                            evo.attendanceStatus === 'feriado_nao_remunerado' ? 'bg-muted text-muted-foreground' :
-                            'bg-destructive/10 text-destructive'
-                          )}>
-                            {evo.attendanceStatus === 'presente' ? '✅ Presente' :
-                             evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Remunerada' :
-                             evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' :
-                             evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
-                             evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' :
-                             '❌ Falta'}
-                          </span>
-                          {moodInfo && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
-                              {moodInfo.emoji} {moodInfo.label}
+            <div className="p-5">
+              {patientEvolutions.length === 0 ? (
+                <div className="text-center py-10">
+                  <div className="text-5xl mb-3">📝</div>
+                  <p className="text-muted-foreground text-sm">Nenhuma evolução registrada ainda.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {patientEvolutions.map((evo) => {
+                    const moodInfo = getMoodInfo(evo.mood, customMoods);
+                    const evoAuthorId = (evo as any).user_id;
+                    const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
+                    const authorLabel = evoAuthor ? (evoAuthor.name || evoAuthor.email) : null;
+                    return (
+                      <div key={evo.id} className="bg-secondary/40 rounded-xl p-4 border border-border/50 hover:border-border transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-foreground text-sm">
+                              {format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                             </span>
-                          )}
-                          {authorLabel && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium flex items-center gap-1">
-                              👤 {authorLabel}{evoAuthorId === user?.id ? ' (você)' : ''}
+                            <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
+                              evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
+                              evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
+                              evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' :
+                              evo.attendanceStatus === 'feriado_remunerado' ? 'bg-primary/10 text-primary' :
+                              evo.attendanceStatus === 'feriado_nao_remunerado' ? 'bg-muted text-muted-foreground' :
+                              'bg-destructive/10 text-destructive')}>
+                              {evo.attendanceStatus === 'presente' ? '✅ Presente' :
+                               evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Remunerada' :
+                               evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' :
+                               evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
+                               evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' :
+                               '❌ Falta'}
                             </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <Button variant="ghost" size="sm" className="gap-1 h-8 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
-                            <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
-                          </Button>
-                          <Button variant="outline" size="sm" className="gap-1 h-8 px-2 text-xs"
-                            onClick={() => generateEvolutionPdf({ evolution: evo, patient, clinic, stamps })}>
-                            <Download className="w-3 h-3" /> PDF
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive h-8 px-2 text-xs" onClick={() => deleteEvolution(evo.id)}>
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="text-foreground whitespace-pre-wrap">{evo.text}</p>
-                      {evo.attachments && evo.attachments.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                            <Paperclip className="w-3 h-3" /> {evo.attachments.length} anexo(s)
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {evo.attachments.map((att) => {
-                              const fileUrl = att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`;
-                              const isImage = att.type.startsWith('image/');
-                              return (
-                                <div key={att.id} className="flex flex-col gap-1">
-                                  {isImage && (
-                                    <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                                      <img src={fileUrl} alt={att.name} className="w-20 h-20 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
-                                    </a>
-                                  )}
-                                  <a
-                                    href={fileUrl}
-                                    target="_blank" rel="noopener noreferrer"
-                                    download={att.name}
-                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs hover:bg-primary/20">
-                                    {isImage ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                                    <span className="max-w-[120px] truncate">{att.name}</span>
-                                    <Download className="w-3 h-3" />
-                                  </a>
-                                </div>
-                              );
-                            })}
+                            {moodInfo && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
+                                {moodInfo.emoji} {moodInfo.label}
+                              </span>
+                            )}
+                            {authorLabel && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                👤 {authorLabel}{evoAuthorId === user?.id ? ' (você)' : ''}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
+                              <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
+                            </Button>
+                            <Button variant="outline" size="sm" className="gap-1 h-7 px-2 text-xs"
+                              onClick={() => generateEvolutionPdf({ evolution: evo, patient, clinic, stamps })}>
+                              <Download className="w-3 h-3" /> PDF
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => deleteEvolution(evo.id)}>
+                              <X className="w-3 h-3" />
+                            </Button>
                           </div>
                         </div>
-                      )}
-                      {evo.signature && (
-                        <div className="mt-3 flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1"><PenLine className="w-3 h-3" /> Assinatura:</span>
-                          <img src={evo.signature} alt="Assinatura" className="h-8 object-contain" />
-                        </div>
-                      )}
-                      {evo.stampId && (() => {
-                        const stamp = stamps.find(s => s.id === evo.stampId);
-                        return stamp?.stamp_image ? (
-                          <div className="mt-4 pt-3 border-t border-border/50">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                        {evo.text && <p className="text-foreground text-sm whitespace-pre-wrap">{evo.text}</p>}
+                        {evo.attachments && evo.attachments.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                              <Paperclip className="w-3 h-3" /> {evo.attachments.length} anexo(s)
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {evo.attachments.map((att) => {
+                                const fileUrl = att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`;
+                                const isImage = att.type.startsWith('image/');
+                                return (
+                                  <div key={att.id} className="flex flex-col gap-1">
+                                    {isImage && (
+                                      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                                        <img src={fileUrl} alt={att.name} className="w-20 h-20 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                                      </a>
+                                    )}
+                                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" download={att.name}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs hover:bg-primary/20">
+                                      {isImage ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                                      <span className="max-w-[100px] truncate">{att.name}</span>
+                                      <Download className="w-3 h-3" />
+                                    </a>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        {evo.signature && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1"><PenLine className="w-3 h-3" /> Assinatura:</span>
+                            <img src={evo.signature} alt="Assinatura" className="h-8 object-contain" />
+                          </div>
+                        )}
+                        {evo.stampId && (() => {
+                          const stamp = stamps.find(s => s.id === evo.stampId);
+                          return stamp?.stamp_image ? (
+                            <div className="mt-3 pt-2 border-t border-border/40">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                                <StampIcon className="w-3 h-3" /> {stamp.name} — {stamp.clinical_area}
+                              </div>
+                              <img src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain opacity-70" />
+                            </div>
+                          ) : stamp ? (
+                            <div className="mt-3 pt-2 border-t border-border/40 text-xs text-muted-foreground flex items-center gap-1">
                               <StampIcon className="w-3 h-3" /> {stamp.name} — {stamp.clinical_area}
                             </div>
-                            <img src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain opacity-70" />
-                          </div>
-                        ) : stamp ? (
-                          <div className="mt-4 pt-3 border-t border-border/50 text-xs text-muted-foreground flex items-center gap-1">
-                            <StampIcon className="w-3 h-3" /> {stamp.name} — {stamp.clinical_area}
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                          ) : null;
+                        })()}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </TabsContent>
 
-        {/* Documents Tab - persisted */}
+        {/* Monthly Report Tab */}
+        <TabsContent value="reports" className="space-y-4">
+          <div className="bg-card rounded-xl shadow-sm border border-border">
+            {/* Month navigator */}
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setReportMonth(m => subMonths(m, 1))}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <h2 className="font-semibold text-foreground capitalize min-w-[140px] text-center">
+                  {format(reportMonth, 'MMMM yyyy', { locale: ptBR })}
+                </h2>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setReportMonth(m => addMonths(m, 1))}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              <Button
+                onClick={handleExportMonthlyPDF}
+                disabled={isExportingMonthly || monthlyEvolutions.length === 0}
+                className="gap-2"
+                size="sm"
+              >
+                {isExportingMonthly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Baixar PDF
+              </Button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {monthlyEvolutions.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-5xl mb-3">📅</div>
+                  <p className="text-muted-foreground text-sm">Nenhuma evolução em {format(reportMonth, 'MMMM yyyy', { locale: ptBR })}.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Navegue pelos meses usando as setas acima.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Monthly stat cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
+                      <p className="text-xs font-medium text-primary mb-1">Sessões</p>
+                      <p className="text-2xl font-bold text-foreground">{monthlyTotal}</p>
+                      <p className="text-xs text-muted-foreground">{monthlyPresent} presentes</p>
+                    </div>
+                    <div className="bg-success/5 rounded-xl p-4 border border-success/20">
+                      <p className="text-xs font-medium text-success mb-1">Frequência</p>
+                      <p className="text-2xl font-bold text-foreground">{monthlyAttendanceRate}%</p>
+                      <p className="text-xs text-muted-foreground">{monthlyPresent + monthlyReposicao} realizadas</p>
+                    </div>
+                    <div className="bg-success/5 rounded-xl p-4 border border-success/20">
+                      <p className="text-xs font-medium text-success mb-1">Receita</p>
+                      <p className="text-2xl font-bold text-success">R$ {monthlyRevenue.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">{monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem} pagas</p>
+                    </div>
+                    <div className="bg-destructive/5 rounded-xl p-4 border border-destructive/20">
+                      <p className="text-xs font-medium text-destructive mb-1">Faltas</p>
+                      <p className="text-2xl font-bold text-foreground">{monthlyAbsent + monthlyPaidAbsent}</p>
+                      <p className="text-xs text-muted-foreground">{monthlyPaidAbsent} remuneradas</p>
+                    </div>
+                  </div>
+
+                  {/* Status breakdown */}
+                  <div className="bg-secondary/40 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Detalhamento</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { label: 'Presente', value: monthlyPresent, emoji: '✅', cls: 'text-success' },
+                        { label: 'Reposição', value: monthlyReposicao, emoji: '🔄', cls: 'text-primary' },
+                        { label: 'Falta Remunerada', value: monthlyPaidAbsent, emoji: '💰', cls: 'text-warning' },
+                        { label: 'Feriado Rem.', value: monthlyFeriadoRem, emoji: '🎉', cls: 'text-primary' },
+                        { label: 'Feriado', value: monthlyFeriadoNaoRem, emoji: '📅', cls: 'text-muted-foreground' },
+                        { label: 'Falta', value: monthlyAbsent, emoji: '❌', cls: 'text-destructive' },
+                      ].map(item => (
+                        <div key={item.label} className="flex items-center gap-2">
+                          <span className="text-sm">{item.emoji}</span>
+                          <div>
+                            <p className="text-xs text-muted-foreground">{item.label}</p>
+                            <p className={cn('text-sm font-bold', item.cls)}>{item.value}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mood summary for month */}
+                  {monthlyMoodCounts.some(m => m.count > 0) && (
+                    <div className="bg-secondary/40 rounded-xl p-4">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Humor do Mês</p>
+                      <div className="flex flex-wrap gap-2">
+                        {monthlyMoodCounts.filter(m => m.count > 0).map(m => (
+                          <div key={m.value} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-sm">
+                            <span>{m.emoji}</span>
+                            <span className="text-muted-foreground text-xs">{m.label}</span>
+                            <span className="font-semibold text-foreground">{m.count}×</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Evolution list for month */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                      Sessões do Mês ({monthlyEvolutions.length})
+                    </p>
+                    <div className="space-y-2">
+                      {monthlyEvolutions.map(evo => {
+                        const moodInfo = getMoodInfo(evo.mood, customMoods);
+                        return (
+                          <div key={evo.id} className="flex items-start gap-3 p-3 rounded-lg bg-card border border-border/60">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span className="text-sm font-semibold text-foreground">
+                                  {format(new Date(evo.date + 'T12:00:00'), 'dd/MM', { locale: ptBR })}
+                                </span>
+                                <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
+                                  evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
+                                  evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
+                                  evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' :
+                                  evo.attendanceStatus === 'feriado_remunerado' ? 'bg-primary/10 text-primary' :
+                                  evo.attendanceStatus === 'feriado_nao_remunerado' ? 'bg-muted text-muted-foreground' :
+                                  'bg-destructive/10 text-destructive')}>
+                                  {evo.attendanceStatus === 'presente' ? '✅ Presente' :
+                                   evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Rem.' :
+                                   evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' :
+                                   evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
+                                   evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' : '❌ Falta'}
+                                </span>
+                                {moodInfo && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">
+                                    {moodInfo.emoji} {moodInfo.label}
+                                  </span>
+                                )}
+                                {patient.paymentValue && ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(evo.attendanceStatus) && (
+                                  <span className="text-xs text-success font-medium ml-auto">
+                                    + R$ {patient.paymentValue.toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                              {evo.text && (
+                                <p className="text-xs text-muted-foreground line-clamp-2">{evo.text}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Documents Tab */}
         <TabsContent value="documents">
-          <div className="bg-card rounded-2xl p-6 shadow-lg border border-border space-y-6">
-            <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
-              <Paperclip className="w-5 h-5 text-primary" /> Documentos do Paciente
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border space-y-6">
+            <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+              <Paperclip className="w-4 h-4 text-primary" /> Documentos do Paciente
             </h2>
             <FileUpload parentType="patient" parentId={patient.id}
               existingFiles={patientDocsAsUploadedFiles}
               onUpload={handleDocUpload} onRemove={handleDocRemove}
               maxFiles={20} label="Anexe laudos, receitas, documentos e outros arquivos do paciente" />
-            
-            {/* Evolution attachments */}
+
             {(() => {
-              const evoAttachments = patientEvolutions.flatMap(evo => 
+              const evoAttachments = patientEvolutions.flatMap(evo =>
                 (evo.attachments || []).map(att => ({ ...att, evoDate: evo.date }))
               );
               if (evoAttachments.length === 0) return null;
@@ -916,41 +1230,40 @@ export default function PatientDetail() {
                 </div>
               );
             })()}
-            
-            {/* AI Reports linked to this patient */}
+
             <PatientSavedReports patientId={patient.id} clinicName={clinic?.name} clinicAddress={clinic?.address || undefined} clinicLetterhead={clinic?.letterhead || undefined} clinicEmail={clinic?.email} clinicCnpj={clinic?.cnpj} clinicPhone={clinic?.phone} clinicServicesDescription={clinic?.servicesDescription} />
           </div>
         </TabsContent>
 
-        {/* Tasks Tab - persisted */}
+        {/* Tasks Tab */}
         <TabsContent value="tasks">
-          <div className="bg-card rounded-2xl p-6 shadow-lg border border-border">
-            <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
-              <ListTodo className="w-5 h-5 text-primary" /> Tarefas do Paciente
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <ListTodo className="w-4 h-4 text-primary" /> Tarefas do Paciente
             </h2>
-            <div className="flex gap-2 mb-6">
+            <div className="flex gap-2 mb-5">
               <Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)}
                 placeholder="Nova tarefa..." onKeyDown={(e) => e.key === 'Enter' && handleAddPatientTask()} />
-              <Button onClick={handleAddPatientTask} disabled={!newTaskTitle.trim()} className="gap-2">
+              <Button onClick={handleAddPatientTask} disabled={!newTaskTitle.trim()} className="gap-2 shrink-0">
                 <Plus className="w-4 h-4" /> Adicionar
               </Button>
             </div>
             {patientTasksList.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="text-center py-10">
                 <div className="text-5xl mb-3">📋</div>
-                <p className="text-muted-foreground">Nenhuma tarefa cadastrada.</p>
+                <p className="text-muted-foreground text-sm">Nenhuma tarefa cadastrada.</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {patientTasksList.map(task => (
-                  <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
+                  <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border/50">
                     <button onClick={() => toggleTask(task.id)}
-                      className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
-                        task.completed ? "bg-success border-success text-success-foreground" : "border-muted-foreground")}>
+                      className={cn("w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors",
+                        task.completed ? "bg-success border-success text-success-foreground" : "border-muted-foreground hover:border-primary")}>
                       {task.completed && <CheckCircle2 className="w-3 h-3" />}
                     </button>
-                    <span className={cn("flex-1 text-foreground", task.completed && "line-through text-muted-foreground")}>{task.title}</span>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteTask(task.id)}>
+                    <span className={cn("flex-1 text-sm text-foreground", task.completed && "line-through text-muted-foreground")}>{task.title}</span>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => deleteTask(task.id)}>
                       <X className="w-3.5 h-3.5" />
                     </Button>
                   </div>
@@ -968,16 +1281,9 @@ export default function PatientDetail() {
           showFaltaRemunerada={!!(clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false))} />
       )}
 
-      {/* Edit Patient Dialog */}
-      <EditPatientDialog
-        patient={patient}
-        open={editPatientOpen}
-        onOpenChange={setEditPatientOpen}
-        onSave={updatePatient}
-        clinicPackages={clinic ? getClinicPackages(clinic.id) : []}
-      />
+      <EditPatientDialog patient={patient} open={editPatientOpen} onOpenChange={setEditPatientOpen}
+        onSave={updatePatient} clinicPackages={clinic ? getClinicPackages(clinic.id) : []} />
 
-      {/* Delete Patient Dialog */}
       <AlertDialog open={deletePatientOpen} onOpenChange={setDeletePatientOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -989,21 +1295,12 @@ export default function PatientDetail() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                deletePatient(patient.id);
-                toast.success('Paciente excluído!');
-                handleBack();
-              }}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              Excluir
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => { deletePatient(patient.id); toast.success('Paciente excluído!'); handleBack(); }}
+              className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Archive Patient Dialog */}
       <AlertDialog open={archivePatientOpen} onOpenChange={setArchivePatientOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1017,13 +1314,7 @@ export default function PatientDetail() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const newVal = !patient.isArchived;
-                updatePatient(patient.id, { isArchived: newVal });
-                toast.success(newVal ? 'Paciente arquivado' : 'Paciente reativado');
-              }}
-            >
+            <AlertDialogAction onClick={() => { const newVal = !patient.isArchived; updatePatient(patient.id, { isArchived: newVal }); toast.success(newVal ? 'Paciente arquivado' : 'Paciente reativado'); }}>
               {patient.isArchived ? 'Reativar' : 'Arquivar'}
             </AlertDialogAction>
           </AlertDialogFooter>
