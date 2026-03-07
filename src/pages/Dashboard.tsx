@@ -7,7 +7,7 @@ import { TaskList } from '@/components/dashboard/TaskList';
 import { BirthdayCard } from '@/components/dashboard/BirthdayCard';
 import { TodayAppointments } from '@/components/dashboard/TodayAppointments';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
-import { DashboardMural } from '@/components/dashboard/DashboardMural';
+import { MuralNoticesBell } from '@/components/dashboard/MuralNoticesBell';
 import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
