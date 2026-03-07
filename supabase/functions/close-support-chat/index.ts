@@ -81,16 +81,21 @@ serve(async (req) => {
     logStep("Messages fetched", { count: allMessages.length });
 
     // Fetch user profile
-    const { data: userProfile, error: profileErr } = await supabase
+    const { data: userProfile } = await supabase
       .from("profiles")
       .select("name, email")
       .eq("user_id", userId)
       .single();
 
-    if (profileErr) logStep("Error fetching user profile", { error: profileErr.message });
+    // Fallback: get email from auth if not in profile
+    let userEmail = (userProfile as any)?.email || null;
+    if (!userEmail) {
+      const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+      userEmail = authUser?.user?.email || null;
+      logStep("Using auth email as fallback", { found: !!userEmail });
+    }
 
-    const userName = (userProfile as any)?.name || (userProfile as any)?.email || "Usuário";
-    const userEmail = (userProfile as any)?.email || null;
+    const userName = (userProfile as any)?.name || userEmail || "Usuário";
     logStep("User profile", { userName, userEmail: userEmail ? "found" : "not found" });
 
     // Build conversation HTML rows
