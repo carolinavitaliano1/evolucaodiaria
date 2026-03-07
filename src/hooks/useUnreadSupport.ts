@@ -87,26 +87,18 @@ export function useUnreadSupportCount() {
     return () => { supabase.removeChannel(channel); };
   }, [user, isAdmin, fetchCount]);
 
-  // Realtime: clear badge for BOTH user and admin when chat session is closed
+  // Realtime: zero badge when chat session is closed
   useEffect(() => {
-    if (!user) return;
-    const filter = isAdmin ? undefined : `user_id=eq.${user.id}`;
+    if (!user || isAdmin) return;
     const channel = supabase
-      .channel(`support-session-close-${user.id}-${isAdmin ? 'admin' : 'user'}`)
+      .channel(`support-session-close-${user.id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'support_chat_sessions',
-        ...(filter ? { filter } : {}),
+        filter: `user_id=eq.${user.id}`,
       }, () => {
-        // Chat was closed — stamp lastSeen as NOW and zero the badge
-        if (isAdmin) {
-          const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
-          localStorage.setItem(adminLastSeenKey, new Date().toISOString());
-        } else {
-          const lastSeenKey = `support_last_seen_${user.id}`;
-          localStorage.setItem(lastSeenKey, new Date().toISOString());
-        }
+        // Chat was closed — zero the badge (no new admin messages expected)
         setUnreadCount(0);
       })
       .subscribe();
