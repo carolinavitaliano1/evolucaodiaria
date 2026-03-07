@@ -652,7 +652,7 @@ export default function PatientDetail() {
 
   const handleGeneratePeriodPdf = () => {
 
-
+  const handleGeneratePeriodPdf = () => {
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const base = buildPdfBase(doc);
