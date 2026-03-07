@@ -111,16 +111,7 @@ export default function TemplateForm({ template, values, onChange, showAiImprove
 
   return (
     <Card className="border-primary/20 bg-primary/5">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <FileText className="w-4 h-4 text-primary" />
-          {template.name}
-        </CardTitle>
-        {template.description && (
-          <p className="text-xs text-muted-foreground">{template.description}</p>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 pt-4">
         {template.fields.map(field => (
           <div key={field.id}>
             <Label className="text-sm">
