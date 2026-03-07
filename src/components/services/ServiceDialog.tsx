@@ -25,7 +25,7 @@ interface Service {
 import { PrivateAppointment } from '@/hooks/usePrivateAppointments';
 
 const SERVICE_TYPES = [
-  { value: 'atendimento', label: 'Atendimento Particular' },
+  { value: 'atendimento', label: 'Atendimento' },
   { value: 'supervisao', label: 'Supervisão Clínica' },
   { value: 'avaliacao', label: 'Avaliação Psicológica/Fonoaudiológica' },
   { value: 'grupo', label: 'Atendimento em Grupo' },
