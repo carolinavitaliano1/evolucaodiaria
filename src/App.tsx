@@ -72,6 +72,7 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/install" element={<InstallApp />} />
                 <Route path="/mural" element={<Mural />} />
+                <Route path="/team" element={<Team />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
