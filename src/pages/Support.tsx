@@ -371,6 +371,7 @@ function AdminSupportView() {
 // ─────────────────────────────────────────────
 function UserSupportView() {
   const { user } = useAuth();
+  const { markSupportSeen } = useUnreadSupportCount();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -391,6 +392,8 @@ function UserSupportView() {
     setLoading(false);
   };
 
+  // Mark support messages as seen when user opens this view
+  useEffect(() => { markSupportSeen(); }, []);
   useEffect(() => { loadMessages(); }, [user]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
