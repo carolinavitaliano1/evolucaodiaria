@@ -29,6 +29,7 @@ interface Conversation {
   user_name: string | null;
   user_email: string | null;
   user_avatar: string | null;
+  user_phone: string | null;
   last_message: string;
   last_at: string;
   unread: number;
