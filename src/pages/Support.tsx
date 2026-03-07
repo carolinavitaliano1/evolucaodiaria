@@ -512,11 +512,11 @@ function UserSupportView() {
         event: 'INSERT', schema: 'public', table: 'support_messages',
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
-        setMessages(prev => {
-          const exists = prev.some(m => m.id === (payload.new as SupportMessage).id);
-          return exists ? prev : [...prev, payload.new as SupportMessage];
-        });
+        const newMsg = payload.new as SupportMessage;
+        setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
         setHasMessages(true);
+        // If this is an admin reply and user is already on the page, mark as seen immediately
+        if (newMsg.is_admin_reply) markSupportSeen();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
