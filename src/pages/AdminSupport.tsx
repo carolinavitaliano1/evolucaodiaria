@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface SupportMessage {
   id: string;
@@ -28,6 +28,7 @@ interface Conversation {
   user_name: string | null;
   user_email: string | null;
   user_phone: string | null;
+  user_avatar: string | null;
   last_message: string;
   last_at: string;
   unread: number;
@@ -103,7 +104,7 @@ export default function AdminSupport() {
     const userIds = Array.from(map.keys());
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, name, email, phone')
+      .select('user_id, name, email, phone, avatar_url')
       .in('user_id', userIds);
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
@@ -117,6 +118,7 @@ export default function AdminSupport() {
         user_name: profile?.name || null,
         user_email: profile?.email || null,
         user_phone: profile?.phone || null,
+        user_avatar: profile?.avatar_url || null,
         last_message: latest.message,
         last_at: latest.created_at,
         unread: userMsgs.filter(m => !m.is_admin_reply).length,
@@ -311,6 +313,7 @@ export default function AdminSupport() {
               >
                 <div className="relative shrink-0">
                   <Avatar className="w-11 h-11">
+                    <AvatarImage src={conv.user_avatar ?? undefined} alt={conv.user_name || 'Usuário'} />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold">
                       {initials(conv.user_name, conv.user_email)}
                     </AvatarFallback>
@@ -353,6 +356,7 @@ export default function AdminSupport() {
               className="relative flex items-center gap-3 flex-1 min-w-0 text-left"
             >
               <Avatar className="w-9 h-9 shrink-0">
+                <AvatarImage src={selectedConv?.user_avatar ?? undefined} alt={selectedConv?.user_name || 'Usuário'} />
                 <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
                   {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
                 </AvatarFallback>

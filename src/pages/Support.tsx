@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -27,6 +27,7 @@ interface Conversation {
   user_id: string;
   user_name: string | null;
   user_email: string | null;
+  user_avatar: string | null;
   last_message: string;
   last_at: string;
   unread: number;
@@ -90,7 +91,7 @@ function AdminSupportView() {
     const userIds = Array.from(map.keys());
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, name, email')
+      .select('user_id, name, email, avatar_url')
       .in('user_id', userIds);
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
@@ -103,6 +104,7 @@ function AdminSupportView() {
         user_id: uid,
         user_name: profile?.name || null,
         user_email: profile?.email || null,
+        user_avatar: profile?.avatar_url || null,
         last_message: latest.message,
         last_at: latest.created_at,
         unread: userMsgs.filter(m => !m.is_admin_reply).length,
@@ -244,6 +246,7 @@ function AdminSupportView() {
               >
                 <div className="relative shrink-0">
                   <Avatar className="w-11 h-11">
+                    <AvatarImage src={conv.user_avatar ?? undefined} alt={conv.user_name || 'Usuário'} />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-base">
                       {initials(conv.user_name, conv.user_email)}
                     </AvatarFallback>
@@ -286,6 +289,7 @@ function AdminSupportView() {
               <ChevronLeft className="w-4 h-4" />
             </button>
             <Avatar className="w-9 h-9">
+              <AvatarImage src={selectedConv?.user_avatar ?? undefined} alt={selectedConv?.user_name || 'Usuário'} />
               <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
                 {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
               </AvatarFallback>
