@@ -657,11 +657,10 @@ function UserSupportView() {
     setLoading(false);
   }, [user]);
 
-  // Load on mount — mark as seen only when user leaves or scrolls to bottom
+  // Mark as seen immediately when user opens the support page
   useEffect(() => {
+    markSupportSeen();
     loadMessages();
-    // Mark seen when user leaves the support page
-    return () => { markSupportSeen(); };
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
