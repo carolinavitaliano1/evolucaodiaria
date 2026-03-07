@@ -507,6 +507,20 @@ export default function PatientDetail() {
     finally { setIsExportingMonthly(false); }
   };
 
+  const handleGeneratePeriodPdf = () => {
+    if (!startDate || !endDate) return;
+    const filtered = patientEvolutions.filter(evo => {
+      const d = new Date(evo.date + 'T12:00:00');
+      return d >= startDate && d <= endDate;
+    });
+    if (filtered.length === 0) { toast.error('Nenhuma evolução no período.'); return; }
+    generateMultipleEvolutionsPdf({
+      evolutions: filtered.sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime()),
+      patient, clinic, startDate, endDate, stamps,
+    });
+    setPeriodDialogOpen(false);
+  };
+
   // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
   const handleExportFinancialPDF = async () => {
     if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
