@@ -169,10 +169,12 @@ export default function Landing() {
           </motion.p>
 
           <motion.div initial="hidden" animate="visible" custom={3} variants={fadeUp}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+            className="flex flex-col items-center gap-3 mb-10">
             <Button size="lg" onClick={() => navigate('/auth')}
-              className="gradient-primary gap-2 text-base md:text-lg px-8 py-6 shadow-glow w-full sm:w-auto">
-              Criar Conta Grátis — 15 dias sem cobrar <ArrowRight className="w-5 h-5" />
+              className="gradient-primary gap-2 text-base px-6 py-5 shadow-glow w-full max-w-sm sm:max-w-none sm:w-auto sm:text-lg sm:px-8 sm:py-6">
+              <span className="sm:hidden">Criar Conta Grátis — 15 dias</span>
+              <span className="hidden sm:inline">Criar Conta Grátis — 15 dias sem cobrar</span>
+              <ArrowRight className="w-5 h-5 shrink-0" />
             </Button>
             <p className="text-sm text-muted-foreground">Sem cartão. Cancele quando quiser.</p>
           </motion.div>
