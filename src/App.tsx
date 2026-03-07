@@ -29,8 +29,22 @@ import Mural from "./pages/Mural";
 import Team from "./pages/Team";
 import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
+
+// Smart root: logged-in → /dashboard, visitor → Landing page
+function RootRedirect() {
+  const { user, loading, sessionReady } = useAuth();
+  if (!sessionReady || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  return user ? <Navigate to="/dashboard" replace /> : <Landing />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
