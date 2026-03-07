@@ -5,9 +5,13 @@ import {
   BookOpen, Users, Calendar, FileText, BarChart3, Shield, Sparkles,
   ArrowRight, CheckCircle2, Clock, Brain, AlertTriangle, Heart, Star, Quote,
   ChevronDown, Monitor, Wand2, Layout, Zap, FileCheck, ClipboardList, TrendingUp,
-  Smartphone, Lock, RefreshCw,
+  Smartphone, Lock, RefreshCw, Play,
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import demoDashboard from '@/assets/demo-dashboard.jpg';
+import demoEvolutions from '@/assets/demo-evolutions.jpg';
+import demoCalendar from '@/assets/demo-calendar.jpg';
+import demoReports from '@/assets/demo-reports.jpg';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -116,13 +120,40 @@ const FAQ_ITEMS = [
   { q: 'Preciso saber tecnologia para usar?', a: 'De jeito nenhum. A interface é intuitiva e foi pensada para profissionais de saúde, não para engenheiros. Se você usa WhatsApp, consegue usar o Evolução Diária.' },
 ];
 
+const APP_SCREENSHOTS = [
+  {
+    img: demoDashboard,
+    label: 'Dashboard',
+    title: 'Visão geral inteligente',
+    desc: 'Sua agenda do dia, tarefas, mini-calendário e resumo de atendimentos. Tudo na tela inicial ao abrir o app.',
+  },
+  {
+    img: demoEvolutions,
+    label: 'Evoluções',
+    title: 'Evoluções com IA em segundos',
+    desc: 'Registre presença, humor e notas clínicas com modelos personalizados. A IA aprimora o texto com um clique.',
+  },
+  {
+    img: demoCalendar,
+    label: 'Agenda',
+    title: 'Agenda integrada e visual',
+    desc: 'Visualize todos os seus atendimentos, lembretes e eventos em um calendário claro e fácil de navegar.',
+  },
+  {
+    img: demoReports,
+    label: 'Relatórios',
+    title: 'Relatórios clínicos profissionais',
+    desc: 'Gere relatórios completos com IA, edite com formatação rica e exporte em PDF com seu carimbo.',
+  },
+];
+
 export default function Landing() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
+      <nav className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg gradient-primary shadow-glow">
@@ -133,57 +164,99 @@ export default function Landing() {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>Entrar</Button>
             <Button size="sm" onClick={() => navigate('/auth')} className="gradient-primary gap-1.5">
-              Começar Grátis <ArrowRight className="w-3.5 h-3.5" />
+              Testar 15 Dias Grátis <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
       </nav>
 
-      {/* Hero — Empathy-first */}
-      <header className="relative">
-        <div className="absolute inset-0 gradient-subtle opacity-50" />
-        <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-20 text-center">
+      {/* Hero */}
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 gradient-subtle opacity-60" />
+        {/* decorative blobs */}
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-primary/8 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-5xl mx-auto px-4 pt-16 pb-12 text-center">
           <motion.div initial="hidden" animate="visible" custom={0} variants={fadeUp}>
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8">
-              <Heart className="w-4 h-4" /> Feito por quem entende sua rotina
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8 border border-primary/20">
+              <Heart className="w-4 h-4" /> Feito por quem entende sua rotina clínica
             </span>
           </motion.div>
+
           <motion.h1 initial="hidden" animate="visible" custom={1} variants={fadeUp}
             className="text-3xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
             Você escolheu cuidar de pessoas.
             <br />
-            <span className="text-primary">Deixa a burocracia com a gente.</span>
+            <span className="text-primary">A burocracia fica com a gente.</span>
           </motion.h1>
+
           <motion.p initial="hidden" animate="visible" custom={2} variants={fadeUp}
-            className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
-            Evoluções com IA, modelos personalizados, agenda, financeiro e relatórios — tudo organizado para que você foque no que realmente importa: seus pacientes.
+            className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+            Evoluções com IA em 30 segundos, agenda integrada, financeiro automático e relatórios clínicos — tudo pensado para o profissional de saúde que atende em clínicas.
           </motion.p>
+
           <motion.div initial="hidden" animate="visible" custom={3} variants={fadeUp}
-            className="flex flex-wrap items-center justify-center gap-3 mb-10">
-            {['✨ IA integrada', '📋 Modelos de evolução', '📊 Financeiro automático', '📱 Funciona no celular'].map(tag => (
-              <span key={tag} className="inline-flex items-center px-3 py-1.5 rounded-full bg-secondary text-foreground text-xs font-medium">
-                {tag}
-              </span>
-            ))}
-          </motion.div>
-          <motion.div initial="hidden" animate="visible" custom={4} variants={fadeUp}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
             <Button size="lg" onClick={() => navigate('/auth')}
-              className="gradient-primary gap-2 text-lg px-8 py-6 shadow-glow">
-              Experimentar 15 Dias Grátis <ArrowRight className="w-5 h-5" />
+              className="gradient-primary gap-2 text-base md:text-lg px-8 py-6 shadow-glow w-full sm:w-auto">
+              Criar Conta Grátis — 15 dias sem cobrar <ArrowRight className="w-5 h-5" />
             </Button>
-            <p className="text-sm text-muted-foreground">15 dias grátis. Cancele quando quiser.</p>
+            <p className="text-sm text-muted-foreground">Sem cartão. Cancele quando quiser.</p>
+          </motion.div>
+
+          {/* Social proof bar */}
+          <motion.div initial="hidden" animate="visible" custom={4} variants={fadeUp}
+            className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <div className="flex -space-x-1">
+                {['🧑‍⚕️','👩‍⚕️','🧑‍⚕️'].map((e,i) => <span key={i} className="text-base">{e}</span>)}
+              </div>
+              +500 profissionais ativos
+            </span>
+            <span className="flex items-center gap-1.5">
+              {[1,2,3,4,5].map(i => <Star key={i} className="w-4 h-4 fill-warning text-warning" />)}
+              4,9 de satisfação
+            </span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-success" /> Dados 100% seguros na nuvem
+            </span>
           </motion.div>
         </div>
+
+        {/* Hero screenshot mockup */}
+        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.7 }}
+          className="relative max-w-4xl mx-auto px-4 pb-0">
+          <div className="relative rounded-2xl overflow-hidden border border-border/60 shadow-2xl bg-card">
+            {/* browser bar */}
+            <div className="flex items-center gap-1.5 px-4 py-2.5 bg-muted/60 border-b border-border/40">
+              <div className="w-3 h-3 rounded-full bg-destructive/60" />
+              <div className="w-3 h-3 rounded-full bg-warning/60" />
+              <div className="w-3 h-3 rounded-full bg-success/60" />
+              <div className="flex-1 mx-3 h-5 bg-background/60 rounded-md flex items-center justify-center">
+                <span className="text-[10px] text-muted-foreground">evolucaodiaria.app.br/dashboard</span>
+              </div>
+            </div>
+            <img
+              src={demoDashboard}
+              alt="Dashboard do Evolução Diária"
+              className="w-full object-cover object-top"
+              style={{ maxHeight: '460px' }}
+            />
+          </div>
+          {/* glow under mockup */}
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-16 bg-primary/20 blur-2xl rounded-full pointer-events-none" />
+        </motion.div>
       </header>
 
       {/* Pain Points */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 mt-12">
         <div className="max-w-5xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Você se identifica?</h2>
-            <p className="text-muted-foreground text-lg">Esses problemas são mais comuns do que você imagina</p>
+            <p className="text-muted-foreground text-lg">Esses problemas afetam mais de 80% dos profissionais de saúde</p>
           </motion.div>
           <div className="grid md:grid-cols-3 gap-6">
             {PAIN_POINTS.map((p, i) => (
@@ -201,35 +274,92 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Transition — Solution */}
+      {/* Solution transition */}
       <section className="py-16 px-4 gradient-subtle">
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
           custom={0} variants={fadeUp} className="max-w-3xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 text-success text-sm font-medium mb-6">
-            <CheckCircle2 className="w-4 h-4" /> A solução existe
+            <CheckCircle2 className="w-4 h-4" /> A solução existe — e foi feita para você
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-            Um sistema pensado para a sua realidade
+            Um sistema construído do zero para a sua realidade
           </h2>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            O Evolução Diária não é um sistema genérico adaptado. Foi construído do zero para profissionais que atendem em clínicas — psicólogos, fonoaudiólogos, terapeutas ocupacionais e outros. Cada funcionalidade existe porque alguém como você pediu.
+            O Evolução Diária não é um sistema genérico adaptado. Cada funcionalidade existe porque um profissional como você pediu. Psicólogos, fonoaudiólogos, terapeutas ocupacionais, fisioterapeutas — você é o centro do produto.
           </p>
         </motion.div>
       </section>
 
-      {/* AI & Automation — NEW STAR SECTION */}
+      {/* ── REAL APP SCREENSHOTS ── */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+            custom={0} variants={fadeUp} className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 border border-primary/20">
+              <Monitor className="w-4 h-4" /> Veja o app de verdade
+            </div>
+            <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-3">
+              Tudo que você precisa, em uma tela só
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Nada de promessas. Veja exatamente como o sistema funciona no dia a dia.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {APP_SCREENSHOTS.map((s, i) => (
+              <motion.div key={s.label} initial="hidden" whileInView="visible"
+                viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
+                className="group flex flex-col">
+                {/* screenshot */}
+                <div className="relative rounded-2xl overflow-hidden border border-border/60 shadow-lg mb-4 bg-card">
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/50 border-b border-border/40">
+                    <div className="w-2.5 h-2.5 rounded-full bg-destructive/50" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-warning/50" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-success/50" />
+                    <span className="ml-2 text-[10px] text-muted-foreground font-medium">{s.label}</span>
+                  </div>
+                  <img
+                    src={s.img}
+                    alt={s.title}
+                    className="w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
+                    style={{ maxHeight: '280px' }}
+                  />
+                </div>
+                {/* caption */}
+                <div className="px-1">
+                  <h3 className="font-semibold text-foreground mb-1">{s.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* CTA below screenshots */}
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
+            custom={5} variants={fadeUp} className="text-center mt-12">
+            <Button size="lg" onClick={() => navigate('/auth')}
+              className="gradient-primary gap-2 text-base px-8 py-5 shadow-glow">
+              Quero usar assim também <ArrowRight className="w-5 h-5" />
+            </Button>
+            <p className="text-sm text-muted-foreground mt-3">15 dias grátis. Sem cartão de crédito.</p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* AI Section */}
+      <section className="py-20 px-4 gradient-subtle">
+        <div className="max-w-6xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-6">
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 border border-primary/20">
               <Wand2 className="w-4 h-4" /> Inteligência Artificial
             </span>
             <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-3">
               IA que trabalha <span className="text-primary">por você</span>
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Pare de gastar horas com texto, formatação e relatórios. A IA do Evolução Diária faz o trabalho pesado enquanto você cuida do que importa.
+              Pare de gastar horas com texto e relatórios. A IA do Evolução Diária faz o trabalho pesado enquanto você cuida dos seus pacientes.
             </p>
           </motion.div>
 
@@ -246,7 +376,7 @@ export default function Landing() {
                 <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 shadow-glow">
                   <f.icon className="w-6 h-6 text-primary-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2 pr-20">{f.title}</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2 pr-24">{f.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
@@ -255,7 +385,7 @@ export default function Landing() {
       </section>
 
       {/* Automation Stats */}
-      <section className="py-16 px-4 gradient-subtle">
+      <section className="py-16 px-4">
         <div className="max-w-5xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-12">
@@ -281,12 +411,12 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-20 px-4">
+      {/* Features Grid */}
+      <section className="py-20 px-4 gradient-subtle">
         <div className="max-w-6xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Tudo que você precisa</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Tudo que você precisa, integrado</h2>
             <p className="text-muted-foreground text-lg">Ferramentas práticas que economizam horas por semana</p>
           </motion.div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -305,8 +435,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How it works — Step by step */}
-      <section className="py-20 px-4 gradient-subtle">
+      {/* How it works */}
+      <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
@@ -334,12 +464,12 @@ export default function Landing() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 gradient-subtle">
         <div className="max-w-5xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Quem usa, recomenda</h2>
-            <p className="text-muted-foreground text-lg">Veja o que profissionais como você dizem</p>
+            <p className="text-muted-foreground text-lg">Profissionais reais contando sobre o impacto no dia a dia</p>
           </motion.div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {TESTIMONIALS.map((t, i) => (
@@ -363,38 +493,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Inside the App */}
-      <section className="py-20 px-4 gradient-subtle">
-        <div className="max-w-5xl mx-auto">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
-            custom={0} variants={fadeUp} className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              <Monitor className="w-4 h-4" /> Por dentro do sistema
-            </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Tudo que você precisa, em um só lugar</h2>
-            <p className="text-muted-foreground text-lg">Uma plataforma completa projetada para a sua rotina clínica</p>
-          </motion.div>
-          <div className="grid md:grid-cols-2 gap-6">
-            {[
-              { icon: '📊', title: 'Dashboard Inteligente', desc: 'Visão geral com agenda do dia, tarefas pendentes, mini-calendário e resumo dos seus atendimentos. Tudo atualizado em tempo real.' },
-              { icon: '📝', title: 'Evoluções com IA e Modelos', desc: 'Registre sessões com modelos estruturados personalizados por clínica. A IA melhora cada campo individualmente — disposição, atividade, desenvolvimento e muito mais.' },
-              { icon: '📅', title: 'Agenda Visual Integrada', desc: 'Calendário com eventos, sessões agendadas e lembretes. Visualização por dia, semana ou mês — nunca mais perca um atendimento.' },
-              { icon: '✨', title: 'Relatórios com IA', desc: 'Gere relatórios clínicos com inteligência artificial de forma guiada ou livre. Edite com editor rico, salve múltiplas versões e compartilhe em PDF profissional.' },
-              { icon: '💰', title: 'Controle Financeiro', desc: 'Acompanhe ganhos por clínica, sessão ou pacote. Veja presenças, faltas remuneradas e o impacto financeiro automaticamente.' },
-              { icon: '📋', title: 'Modelos de Evolução', desc: 'Crie modelos com campos personalizados — texto, seleção, checkbox, numérico. Cada clínica pode ter seus próprios modelos. IA integrada em cada campo.' },
-            ].map((item, i) => (
-              <motion.div key={item.title} initial="hidden" whileInView="visible"
-                viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
-                className="glass-card rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                <div className="text-4xl mb-4">{item.icon}</div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Emotional CTA */}
       <section className="py-20 px-4">
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
@@ -405,7 +503,7 @@ export default function Landing() {
               "Eu não estudei anos para ficar preenchendo planilha."
             </h2>
             <p className="text-muted-foreground text-lg mb-2 max-w-2xl mx-auto leading-relaxed">
-              Se você já pensou isso, saiba que não está sozinho. Milhares de profissionais de saúde gastam <span className="text-foreground font-semibold">até 10 horas por semana</span> com burocracia que poderia ser automatizada.
+              Se você já pensou isso, saiba que não está sozinho. Profissionais de saúde gastam <span className="text-foreground font-semibold">até 10 horas por semana</span> com burocracia que poderia ser automatizada.
             </p>
             <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
               Com o Evolução Diária, você recupera esse tempo — e ainda entrega documentação <span className="text-foreground font-semibold">mais profissional</span> do que antes.
@@ -477,13 +575,13 @@ export default function Landing() {
                 <ul className="text-sm text-muted-foreground space-y-2 mb-6 flex-1">
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Acesso completo + IA</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Modelos ilimitados</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> 15 dias grátis</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> 15 dias grátis inclusos</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Cancele quando quiser</li>
                 </ul>
                 <Button variant={plan.popular ? 'default' : 'outline'}
                   className={`w-full ${plan.popular ? 'gradient-primary' : ''}`}
                   onClick={() => navigate('/auth')}>
-                  Começar Teste Grátis
+                  Começar 15 Dias Grátis
                 </Button>
               </motion.div>
             ))}
@@ -501,12 +599,13 @@ export default function Landing() {
             <span className="text-primary">Você merece uma ferramenta que ajude nisso.</span>
           </h2>
           <p className="text-muted-foreground text-lg mb-8">
-            Comece agora. São 15 dias grátis, sem compromisso.
+            Comece agora. São 15 dias completamente grátis, sem compromisso, sem cartão.
           </p>
           <Button size="lg" onClick={() => navigate('/auth')}
             className="gradient-primary gap-2 text-lg px-10 py-6 shadow-glow">
             Criar Minha Conta Grátis <ArrowRight className="w-5 h-5" />
           </Button>
+          <p className="text-xs text-muted-foreground mt-4">✓ Sem cartão &nbsp;·&nbsp; ✓ 15 dias grátis &nbsp;·&nbsp; ✓ Cancele quando quiser</p>
         </motion.div>
       </section>
 
