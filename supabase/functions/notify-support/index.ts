@@ -99,8 +99,6 @@ serve(async (req) => {
                 <p style="color: #1e1b4b; line-height: 1.7; font-size: 15px; margin: 0; white-space: pre-wrap;">${messageText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
               </div>
 
-              ${conversationHtml}
-
               <!-- CTA -->
               <div style="text-align: center; margin: 24px 0 8px;">
                 <a href="https://evolucaodiaria.app.br/suporte" style="display: inline-block; background: #7c3aed; color: #ffffff; text-decoration: none; padding: 13px 32px; border-radius: 8px; font-weight: 600; font-size: 15px;">
