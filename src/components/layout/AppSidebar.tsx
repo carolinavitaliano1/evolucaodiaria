@@ -121,68 +121,65 @@ export function AppSidebar() {
           const showBadge = badge && unreadCount > 0;
           
           return (
-            <NavLink
-              key={to}
-              to={to}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                'hover:bg-accent group',
-                isActive && 'bg-primary text-primary-foreground'
-              )}
-            >
-              <div className="relative shrink-0">
-                <Icon className={cn(
-                  'w-[18px] h-[18px]',
-                  isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
-                )} />
+            <>
+              <NavLink
+                key={to}
+                to={to}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                  'hover:bg-accent group',
+                  isActive && 'bg-primary text-primary-foreground'
+                )}
+              >
+                <div className="relative shrink-0">
+                  <Icon className={cn(
+                    'w-[18px] h-[18px]',
+                    isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
+                  )} />
+                  {showBadge && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </div>
+                <span className={cn(
+                  'text-sm font-medium flex-1',
+                  isActive ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
+                )}>
+                  {label}
+                </span>
                 {showBadge && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                  <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
-              </div>
-              <span className={cn(
-                'text-sm font-medium flex-1',
-                isActive ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
-              )}>
-                {label}
-              </span>
-              {showBadge && (
-                <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
+              </NavLink>
+
+              {/* Equipe — logo após Mural */}
+              {to === '/mural' && showTeam && (
+                <NavLink
+                  to="/team"
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                    'hover:bg-accent group',
+                    location.pathname.startsWith('/team') && 'bg-primary text-primary-foreground'
+                  )}
+                >
+                  <UsersRound className={cn(
+                    'w-[18px] h-[18px]',
+                    location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
+                  )} />
+                  <span className={cn(
+                    'text-sm font-medium flex-1',
+                    location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
+                  )}>
+                    Equipe
+                  </span>
+                </NavLink>
               )}
-            </NavLink>
+            </>
           );
         })}
-
-        {/* Equipe — exclusive section for org owners/members */}
-        {showTeam && (
-          <>
-            <div className="pt-2 pb-1 px-3">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Equipe</p>
-            </div>
-            <NavLink
-              to="/team"
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                'hover:bg-accent group',
-                location.pathname.startsWith('/team') && 'bg-primary text-primary-foreground'
-              )}
-            >
-              <UsersRound className={cn(
-                'w-[18px] h-[18px]',
-                location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
-              )} />
-              <span className={cn(
-                'text-sm font-medium flex-1',
-                location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
-              )}>
-                Gestão de Equipe
-              </span>
-            </NavLink>
-          </>
-        )}
       </nav>
 
       {/* Footer */}
