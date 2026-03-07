@@ -252,32 +252,24 @@ export default function Clinics() {
   const pendingAppointments = privateAppointments.filter(a => a.status === 'agendado');
   const completedAppointments = privateAppointments.filter(a => a.status === 'concluído');
 
-  // Calculate total revenue: clinics (evolutions) + private appointments
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const monthlyEvolutions = evolutions.filter(e => {
-    const date = new Date(e.date);
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-  });
-
-  const clinicRevenue = patients.reduce((sum, p) => {
-    if (p.paymentType === 'fixo' && p.paymentValue) {
-      return sum + p.paymentValue;
-    }
-    if (p.paymentType === 'sessao' && p.paymentValue) {
-      const patientEvolutions = monthlyEvolutions.filter(
-        e => e.patientId === p.id && e.attendanceStatus === 'presente'
-      );
-      return sum + (patientEvolutions.length * p.paymentValue);
-    }
-    return sum;
-  }, 0);
-
-  const privateRevenue = privateAppointments
-    .filter(a => a.status === 'concluído')
-    .reduce((sum, a) => sum + a.price, 0);
-
-  const totalRevenue = clinicRevenue + privateRevenue;
+  const totalRevenue = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlyEvolutions = evolutions.filter(e => {
+      const date = new Date(e.date);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    });
+    const clinicRevenue = patients.reduce((sum, p) => {
+      if (p.paymentType === 'fixo' && p.paymentValue) return sum + p.paymentValue;
+      if (p.paymentType === 'sessao' && p.paymentValue) {
+        const count = monthlyEvolutions.filter(e => e.patientId === p.id && e.attendanceStatus === 'presente').length;
+        return sum + count * p.paymentValue;
+      }
+      return sum;
+    }, 0);
+    const privateRevenue = privateAppointments.filter(a => a.status === 'concluído').reduce((sum, a) => sum + a.price, 0);
+    return clinicRevenue + privateRevenue;
+  }, [evolutions, patients, privateAppointments]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
