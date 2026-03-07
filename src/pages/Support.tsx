@@ -644,9 +644,10 @@ function UserSupportView() {
     if (sessions && sessions.length > 0) {
       const closedAt = (sessions[0] as any).closed_at;
       const lastMsg = msgList[msgList.length - 1];
-      // Closed if last session close >= last message
+      // Consider closed if: no messages after session was closed
+      // Use a 2-second buffer to avoid millisecond race conditions
       const closed = lastMsg
-        ? new Date(closedAt) >= new Date(lastMsg.created_at)
+        ? new Date(closedAt).getTime() >= new Date(lastMsg.created_at).getTime() - 2000
         : true;
       setIsClosed(closed);
     } else {
@@ -656,10 +657,11 @@ function UserSupportView() {
     setLoading(false);
   }, [user]);
 
-  // Mark as seen & load on mount
+  // Load on mount — mark as seen only when user leaves or scrolls to bottom
   useEffect(() => {
-    markSupportSeen();
     loadMessages();
+    // Mark seen when user leaves the support page
+    return () => { markSupportSeen(); };
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -676,6 +678,7 @@ function UserSupportView() {
         setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
         // New message means chat was reopened/active
         setIsClosed(false);
+        // If admin replied, mark as seen immediately (user is on the page)
         if (newMsg.is_admin_reply) markSupportSeen();
       })
       .on('postgres_changes', {
