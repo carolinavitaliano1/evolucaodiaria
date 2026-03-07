@@ -172,7 +172,6 @@ export default function Dashboard() {
         <div className="lg:col-span-8 space-y-5">
           <TodayAppointments />
           <TaskList />
-          <DashboardMural />
           <NotificationSettings />
         </div>
       </div>
