@@ -77,8 +77,6 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
-    const stampValue = removeStamp ? null : (stampFile ? stampPreview : (clinic.stamp || undefined));
-
     onSave(clinic.id, {
       name: formData.name,
       type: formData.type,
