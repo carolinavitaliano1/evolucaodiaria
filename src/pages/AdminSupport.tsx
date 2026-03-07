@@ -332,7 +332,7 @@ export default function AdminSupport() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
                     <p className={cn('text-sm font-semibold text-foreground truncate', conv.unread > 0 && 'font-bold')}>
-                      {conv.user_name || conv.user_email || 'Usuário'}
+                      {conv.user_name || conv.user_email?.split('@')[0] || 'Sem nome'}
                     </p>
                     <span className="text-[10px] text-muted-foreground shrink-0">
                       {formatMsgTime(conv.last_at)}
@@ -368,7 +368,7 @@ export default function AdminSupport() {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-foreground truncate">
-                  {selectedConv?.user_name || selectedConv?.user_email || 'Usuário'}
+                  {selectedConv?.user_name || selectedConv?.user_email?.split('@')[0] || 'Sem nome'}
                 </p>
                 {selectedConv?.user_email && (
                   <p className="text-xs text-muted-foreground truncate">{selectedConv.user_email}</p>
@@ -431,7 +431,7 @@ export default function AdminSupport() {
                       >
                         {!isMe && !prevSameSide && (
                           <p className="text-[10px] font-bold text-primary mb-1">
-                            {selectedConv?.user_name || 'Usuário'}
+                            {selectedConv?.user_name || selectedConv?.user_email?.split('@')[0] || 'Sem nome'}
                           </p>
                         )}
                         <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
