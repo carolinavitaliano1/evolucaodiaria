@@ -740,9 +740,9 @@ export default function Clinics() {
           ) : privateAppointments.length === 0 ? (
             <div className="text-center py-12 bg-card rounded-xl border border-border">
               <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">Nenhum atendimento particular</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">Nenhum serviço cadastrado</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Agende seu primeiro atendimento particular
+                Cadastre seu primeiro serviço
               </p>
               <Button onClick={() => setServiceDialogOpen(true)} size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
