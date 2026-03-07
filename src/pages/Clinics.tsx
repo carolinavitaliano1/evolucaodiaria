@@ -621,21 +621,23 @@ export default function Clinics() {
         <TabsContent value="clinics" className="space-y-4">
           {/* Filter Chips — horizontal scroll on mobile */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
-            {(['all', 'propria', 'terceirizada', 'archived'] as const).map((type) => (
+            {([
+              { key: 'all',          label: `Ativas (${activeClinics.length})` },
+              { key: 'propria',      label: `Próprias (${activeClinics.filter(c => c.type === 'propria').length})` },
+              { key: 'terceirizada', label: `Outras (${activeClinics.filter(c => c.type === 'terceirizada').length})` },
+              { key: 'archived',     label: `Arquivadas (${archivedClinics.length})` },
+            ] as const).map(({ key, label }) => (
               <button
-                key={type}
-                onClick={() => setFilter(type)}
+                key={key}
+                onClick={() => setFilter(key)}
                 className={cn(
                   'px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0',
-                  filter === type 
-                    ? 'bg-primary text-primary-foreground' 
+                  filter === key
+                    ? 'bg-primary text-primary-foreground'
                     : 'bg-secondary text-muted-foreground hover:text-foreground'
                 )}
               >
-                {type === 'all' && `Ativas (${activeClinics.length})`}
-                {type === 'propria' && `Próprias (${activeClinics.filter(c => c.type === 'propria').length})`}
-                {type === 'terceirizada' && `Terceirizadas (${activeClinics.filter(c => c.type === 'terceirizada').length})`}
-                {type === 'archived' && `Arquivadas (${archivedClinics.length})`}
+                {label}
               </button>
             ))}
           </div>
