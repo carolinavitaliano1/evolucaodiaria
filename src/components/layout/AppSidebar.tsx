@@ -15,7 +15,8 @@ import {
   Smartphone,
   Megaphone,
   UsersRound,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -24,6 +25,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const allNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const, orgOnly: false },
