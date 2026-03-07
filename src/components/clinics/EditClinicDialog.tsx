@@ -351,15 +351,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             </RadioGroup>
           </div>
 
-          {/* Carimbo da Clínica */}
-          <div className="border-t pt-4">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <Stamp className="w-4 h-4 text-primary" />
-              Carimbo da Clínica
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1 mb-3">
-              Aparece no rodapé dos PDFs de extrato/fatura desta clínica.
-            </p>
+          <div className="flex justify-end gap-2 pt-4">
             <input
               ref={stampInputRef}
               type="file"
