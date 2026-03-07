@@ -4,7 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, MessageCircle, HeadphonesIcon, CheckCheck, Search, ChevronLeft, Clock } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Send, MessageCircle, HeadphonesIcon, CheckCheck, Search, ChevronLeft, Clock, PhoneOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -64,6 +68,8 @@ function AdminSupportView() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [closingChat, setClosingChat] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -369,6 +375,8 @@ function UserSupportView() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [closingChat, setClosingChat] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -451,6 +459,24 @@ function UserSupportView() {
     inputRef.current?.focus();
   };
 
+  const handleCloseChat = async () => {
+    if (!user) return;
+    setClosingChat(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await supabase.functions.invoke('close-support-chat', {
+        body: { userId: user.id, closedBy: 'user' },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      toast.success('Chat encerrado. Você receberá o histórico por e-mail.');
+      setMessages([]);
+    } catch {
+      toast.error('Erro ao encerrar o chat');
+    }
+    setClosingChat(false);
+    setShowCloseDialog(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
@@ -529,6 +555,23 @@ function UserSupportView() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Close chat bar */}
+      {messages.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-2 bg-card border-t border-border/60">
+          <p className="text-xs text-muted-foreground">Atendimento resolvido? Encerre o chat.</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCloseDialog(true)}
+            disabled={closingChat}
+            className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive text-xs h-7"
+          >
+            <PhoneOff className="w-3 h-3" />
+            Finalizar Chat
+          </Button>
+        </div>
+      )}
+
       <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
         <Textarea
           ref={inputRef}
@@ -545,6 +588,26 @@ function UserSupportView() {
             : <Send className="w-4 h-4" />}
         </Button>
       </div>
+
+      <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O histórico desta conversa será enviado por e-mail para você e para o suporte. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCloseChat}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {closingChat ? 'Encerrando...' : 'Finalizar e enviar e-mail'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
