@@ -551,6 +551,7 @@ export default function ClinicDetail() {
   };
 
   const isPropria = clinic.type === 'propria';
+  const isArchived = clinic.isArchived === true;
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto">
@@ -560,6 +561,13 @@ export default function ClinicDetail() {
           <ArrowLeft className="w-4 h-4" />
           Voltar para Clínicas
         </Button>
+
+        {isArchived && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+            <Archive className="w-4 h-4 shrink-0" />
+            <span>Esta clínica está <strong>arquivada</strong>. Você pode visualizar os dados, mas não é possível editar ou adicionar informações.</span>
+          </div>
+        )}
 
         <div className={cn(
           'rounded-3xl p-6 lg:p-8',
@@ -595,18 +603,20 @@ export default function ClinicDetail() {
                 )}
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                isPropria 
-                  ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              )}
-              onClick={() => setEditClinicOpen(true)}
-            >
-              <Pencil className="w-5 h-5" />
-            </Button>
+            {!isArchived && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  isPropria 
+                    ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+                onClick={() => setEditClinicOpen(true)}
+              >
+                <Pencil className="w-5 h-5" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -718,8 +728,9 @@ export default function ClinicDetail() {
                       </div>
                       <div>
                         <h3 
-                          className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+                          className={cn("font-semibold text-foreground transition-colors", !isArchived && "cursor-pointer hover:text-primary")}
                           onClick={() => {
+                            if (isArchived) return;
                             if (!hasEvolution) {
                               setQuickEvolutionPatient(patient.id);
                               setQuickEvolutionText('');
@@ -763,8 +774,9 @@ export default function ClinicDetail() {
                             size="sm"
                             variant="outline"
                             className="h-8 w-8 p-0"
-                            onClick={() => evolution && setEditingEvolution(evolution)}
-                            title="Editar evolução"
+                            onClick={() => !isArchived && evolution && setEditingEvolution(evolution)}
+                            disabled={isArchived}
+                            title={isArchived ? "Clínica arquivada" : "Editar evolução"}
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
@@ -1092,7 +1104,7 @@ export default function ClinicDetail() {
                 <Button 
                   className="gradient-primary gap-2"
                   onClick={handleBatchEvolution}
-                  disabled={selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim())}
+                  disabled={isArchived || selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim())}
                 >
                   <FileText className="w-4 h-4" />
                   Aplicar Evolução
@@ -1108,6 +1120,7 @@ export default function ClinicDetail() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-foreground">Pacientes</h2>
               
+              {!isArchived && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gradient-primary gap-2">
@@ -1321,6 +1334,7 @@ export default function ClinicDetail() {
                   </form>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
 
             {/* Search */}
@@ -1820,6 +1834,7 @@ export default function ClinicDetail() {
               <Button
                 className="flex-1 gradient-primary"
                 onClick={handleQuickEvolutionSubmit}
+                disabled={isArchived}
               >
                 Salvar Evolução
               </Button>

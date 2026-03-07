@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit } from 'lucide-react';
+import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Clinic } from '@/types';
 import { ServiceDialog } from '@/components/services/ServiceDialog';
 import { EditClinicDialog } from '@/components/clinics/EditClinicDialog';
@@ -24,6 +25,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+
+const CLINIC_LIMIT = 6;
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -51,8 +54,11 @@ interface PrivateAppointment {
 
 export default function Clinics() {
   const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic } = useApp();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [sendingSupportMsg, setSendingSupportMsg] = useState(false);
   const [filter, setFilter] = useState<'all' | 'propria' | 'terceirizada' | 'archived'>('all');
   const [stampFile, setStampFile] = useState<UploadedFile | null>(null);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
@@ -141,11 +147,38 @@ export default function Clinics() {
     }
   };
 
+  const handleNewClinicClick = () => {
+    const activeClinicsCount = clinics.filter(c => !c.isArchived).length;
+    if (activeClinicsCount >= CLINIC_LIMIT) {
+      setLimitDialogOpen(true);
+    } else {
+      setIsDialogOpen(true);
+    }
+  };
+
+  const handleSendSupportMessage = async () => {
+    if (!user) return;
+    setSendingSupportMsg(true);
+    try {
+      const { error } = await supabase.from('support_messages').insert({
+        user_id: user.id,
+        message: 'Olá! Tenho mais de 6 clínicas ativas e gostaria de negociar um valor especial de mensalidade para continuar usando o sistema com todas elas. Podemos conversar?',
+        is_admin_reply: false,
+      });
+      if (error) throw error;
+      toast.success('Mensagem enviada! Em breve nossa equipe entrará em contato.');
+      setLimitDialogOpen(false);
+    } catch {
+      toast.error('Erro ao enviar mensagem. Tente novamente.');
+    } finally {
+      setSendingSupportMsg(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    // Calcular scheduleTime a partir do primeiro horário do scheduleByDay
     const firstDayTime = formData.weekdays.length > 0 
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
@@ -338,12 +371,10 @@ export default function Clinics() {
 
           {activeTab === 'clinics' ? (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Nova Clínica
-                </Button>
-              </DialogTrigger>
+              <Button size="sm" className="gap-2" onClick={handleNewClinicClick}>
+                <Plus className="w-4 h-4" />
+                Nova Clínica
+              </Button>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Nova Clínica</DialogTitle>
@@ -934,6 +965,44 @@ export default function Clinics() {
           onSave={updateClinic}
         />
       )}
+
+      {/* Clinic Limit Dialog */}
+      <Dialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-warning" />
+              Limite de clínicas atingido
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Você atingiu o limite de <strong className="text-foreground">{CLINIC_LIMIT} clínicas ativas</strong>. Para criar uma nova clínica, primeiro arquive alguma que não esteja mais em uso.
+            </p>
+            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">Como liberar espaço:</p>
+              <p>• Vá até a clínica desejada e clique em <strong>Arquivar</strong> no menu de opções</p>
+              <p>• Clínicas arquivadas ficam disponíveis para consulta, mas não permitem edições</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Precisa de mais clínicas ativas? Entre em contato com o suporte para negociar um plano personalizado.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              className="w-full gap-2"
+              onClick={handleSendSupportMessage}
+              disabled={sendingSupportMsg}
+            >
+              <MessageCircle className="w-4 h-4" />
+              {sendingSupportMsg ? 'Enviando...' : 'Falar com suporte sobre meu plano'}
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setLimitDialogOpen(false)}>
+              Entendido, vou arquivar uma clínica
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
