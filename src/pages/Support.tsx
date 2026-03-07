@@ -37,6 +37,7 @@ interface Conversation {
   last_at: string;
   unread: number;
   is_closed: boolean;
+  closed_by: string | null;
 }
 
 function formatMsgTime(dateStr: string) {
