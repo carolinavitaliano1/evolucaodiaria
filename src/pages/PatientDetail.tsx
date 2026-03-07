@@ -288,184 +288,231 @@ export default function PatientDetail() {
     setIsExportingMonthly(true);
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const W = 210, margin = 18;
+      const W = 210, margin = 20;
+      const contentW = W - margin * 2;
       const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
-      const primaryColor: [number, number, number] = [99, 102, 241];
-      const successColor: [number, number, number] = [34, 197, 94];
-      const warningColor: [number, number, number] = [234, 179, 8];
-      const destructiveColor: [number, number, number] = [239, 68, 68];
-      const mutedColor: [number, number, number] = [148, 163, 184];
+      const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+
+      // Colors — formal palette
+      const darkText: [number, number, number] = [30, 30, 40];
+      const mutedText: [number, number, number] = [100, 100, 115];
+      const borderColor: [number, number, number] = [210, 210, 220];
+      const accentDark: [number, number, number] = [50, 50, 100];
 
       let y = margin;
 
-      // Header bar
-      doc.setFillColor(...primaryColor);
-      doc.rect(0, 0, W, 28, 'F');
+      // ── HEADER ──────────────────────────────────────────────────
+      // Top bar (dark, sober)
+      doc.setFillColor(40, 40, 60);
+      doc.rect(0, 0, W, 30, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.text('Relatório Mensal do Paciente', margin, 12);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${patient.name}  •  ${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}`, margin, 22);
-      y = 38;
-
-      // Clinic & patient info
-      doc.setTextColor(30, 30, 40);
+      doc.text('RELATÓRIO MENSAL DE ATENDIMENTO', margin, 13);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      const infoParts = [];
-      if (clinic?.name) infoParts.push(`Clínica: ${clinic.name}`);
-      if (patient.clinicalArea) infoParts.push(`Área: ${patient.clinicalArea}`);
-      if (patient.paymentValue) infoParts.push(`Valor/sessão: R$ ${patient.paymentValue.toFixed(2)}`);
-      if (infoParts.length > 0) {
-        doc.setTextColor(...mutedColor);
-        doc.text(infoParts.join('   |   '), margin, y);
-        y += 8;
+      doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, 22);
+      y = 40;
+
+      // Patient / clinic identification block
+      doc.setTextColor(...darkText);
+      doc.setFontSize(9);
+      const idLines: [string, string][] = [];
+      if (patient.name) idLines.push(['Paciente:', patient.name]);
+      if (patient.birthdate) {
+        const age = calculateAge(patient.birthdate);
+        idLines.push(['Data de Nascimento:', `${format(new Date(patient.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}${age !== null ? ` (${age} anos)` : ''}`]);
       }
+      if (clinic?.name) idLines.push(['Unidade Clínica:', clinic.name]);
+      if (patient.clinicalArea) idLines.push(['Área Clínica:', patient.clinicalArea]);
+      if (patient.diagnosis) idLines.push(['Diagnóstico:', patient.diagnosis]);
+      if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
+      if (patient.paymentValue) idLines.push(['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]);
+      idLines.push(['Período de Referência:', monthLabelCap]);
+      idLines.push(['Data de Emissão:', format(new Date(), 'dd/MM/yyyy', { locale: ptBR })]);
+
+      idLines.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...darkText);
+        doc.text(label, margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...mutedText);
+        const wrapped = doc.splitTextToSize(value, contentW - 52);
+        doc.text(wrapped, margin + 52, y);
+        y += wrapped.length > 1 ? wrapped.length * 5 + 1 : 6;
+      });
 
       // Divider
-      doc.setDrawColor(220, 220, 230);
-      doc.line(margin, y, W - margin, y);
-      y += 8;
+      doc.setDrawColor(...borderColor);
+      doc.line(margin, y + 2, W - margin, y + 2);
+      y += 10;
 
-      // Summary cards (horizontal row)
-      const cardW = (W - margin * 2 - 9) / 4;
-      const cards = [
-        { label: 'Sessões', value: String(monthlyTotal), color: primaryColor, sub: `${monthlyPresent} presentes` },
-        { label: 'Frequência', value: `${monthlyAttendanceRate}%`, color: successColor, sub: `${monthlyPresent + monthlyReposicao} realizadas` },
-        { label: 'Faltas', value: String(monthlyAbsent + monthlyPaidAbsent), color: destructiveColor, sub: `${monthlyPaidAbsent} remuneradas` },
-        { label: 'Receita', value: `R$ ${monthlyRevenue.toFixed(2)}`, color: warningColor, sub: `${monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem} pagas` },
-      ];
-      cards.forEach((card, i) => {
-        const x = margin + i * (cardW + 3);
-        doc.setFillColor(card.color[0], card.color[1], card.color[2]);
-        doc.roundedRect(x, y, cardW, 22, 3, 3, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.text(card.label.toUpperCase(), x + 4, y + 6);
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text(card.value, x + 4, y + 14);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'normal');
-        doc.text(card.sub, x + 4, y + 20);
-      });
-      y += 30;
-
-      // Status breakdown
-      doc.setTextColor(30, 30, 40);
+      // ── RESUMO QUANTITATIVO ──────────────────────────────────────
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('Detalhamento de Status', margin, y);
-      y += 7;
+      doc.setTextColor(...accentDark);
+      doc.text('1. RESUMO QUANTITATIVO', margin, y);
+      y += 8;
 
-      const statusRows = [
-        { label: '✅ Presente', value: monthlyPresent, color: successColor },
-        { label: '🔄 Reposição', value: monthlyReposicao, color: primaryColor },
-        { label: '💰 Falta Remunerada', value: monthlyPaidAbsent, color: warningColor },
-        { label: '🎉 Feriado Remunerado', value: monthlyFeriadoRem, color: primaryColor },
-        { label: '📅 Feriado Não Remunerado', value: monthlyFeriadoNaoRem, color: mutedColor },
-        { label: '❌ Falta', value: monthlyAbsent, color: destructiveColor },
-      ].filter(r => r.value > 0);
+      const summaryRows: [string, string][] = [
+        ['Total de sessões registradas:', String(monthlyTotal)],
+        ['Sessões realizadas (presença + reposição):', String(monthlyPresent + monthlyReposicao)],
+        ['Faltas não remuneradas:', String(monthlyAbsent)],
+        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
+        ['Feriados remunerados:', String(monthlyFeriadoRem)],
+        ['Feriados não remunerados:', String(monthlyFeriadoNaoRem)],
+        ['Taxa de frequência:', `${monthlyAttendanceRate}%`],
+        ['Valor total faturado no mês:', `R$ ${monthlyRevenue.toFixed(2)}`],
+      ];
 
-      statusRows.forEach((row, i) => {
-        const x = margin + (i % 2) * ((W - margin * 2) / 2 + 2);
-        if (i % 2 === 0 && i > 0) y += 8;
-        doc.setFillColor(row.color[0], row.color[1], row.color[2]);
-        doc.circle(x + 2, y - 1, 1.5, 'F');
-        doc.setTextColor(50, 50, 60);
-        doc.setFontSize(9);
+      summaryRows.forEach(([label, value]) => {
         doc.setFont('helvetica', 'normal');
-        doc.text(`${row.label}: ${row.value}`, x + 6, y + 1);
+        doc.setFontSize(9);
+        doc.setTextColor(...darkText);
+        doc.text(label, margin + 4, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text(value, W - margin - 2, y, { align: 'right' });
+        y += 6;
       });
-      if (statusRows.length > 0) y += 12;
 
-      // Mood summary
+      doc.setDrawColor(...borderColor);
+      doc.line(margin, y + 2, W - margin, y + 2);
+      y += 10;
+
+      // ── HUMOR DO MÊS ────────────────────────────────────────────
       const moodsWithData = monthlyMoodCounts.filter(m => m.count > 0);
       if (moodsWithData.length > 0) {
-        doc.setDrawColor(220, 220, 230);
-        doc.line(margin, y, W - margin, y);
-        y += 8;
-        doc.setTextColor(30, 30, 40);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text('Humor do Mês', margin, y);
-        y += 7;
-        const moodLine = moodsWithData.map(m => `${m.emoji} ${m.label}: ${m.count}`).join('    ');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(70, 70, 80);
-        doc.text(moodLine, margin, y, { maxWidth: W - margin * 2 });
+        doc.setTextColor(...accentDark);
+        doc.text('2. HUMOR DO MÊS', margin, y);
+        y += 8;
+        moodsWithData.forEach(m => {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(...darkText);
+          // Use label only — no emoji to avoid rendering issues
+          doc.text(`${m.label}:`, margin + 4, y);
+          doc.setFont('helvetica', 'bold');
+          doc.text(String(m.count), W - margin - 2, y, { align: 'right' });
+          y += 6;
+        });
+        doc.setDrawColor(...borderColor);
+        doc.line(margin, y + 2, W - margin, y + 2);
         y += 10;
       }
 
-      // Evolutions list
-      doc.setDrawColor(220, 220, 230);
-      doc.line(margin, y, W - margin, y);
-      y += 8;
-      doc.setTextColor(30, 30, 40);
+      // ── REGISTRO DAS SESSÕES ─────────────────────────────────────
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Evoluções do Mês (${monthlyEvolutions.length})`, margin, y);
+      doc.setTextColor(...accentDark);
+      doc.text(`${moodsWithData.length > 0 ? '3' : '2'}. REGISTRO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y);
       y += 8;
 
-      const statusLabel: Record<string, string> = {
+      const statusLabelMap: Record<string, string> = {
         presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
-        reposicao: 'Reposição', feriado_remunerado: 'Feriado Rem.', feriado_nao_remunerado: 'Feriado',
+        reposicao: 'Reposicao', feriado_remunerado: 'Feriado Remunerado', feriado_nao_remunerado: 'Feriado',
       };
 
       for (const evo of monthlyEvolutions) {
-        if (y > 260) { doc.addPage(); y = margin; }
+        if (y > 252) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-        const status = statusLabel[evo.attendanceStatus] || evo.attendanceStatus;
+        const status = statusLabelMap[evo.attendanceStatus] || evo.attendanceStatus;
+
         const moodInfo = getMoodInfo(evo.mood, customMoods);
 
-        // Row background
-        doc.setFillColor(248, 248, 252);
-        const textLines = evo.text ? doc.splitTextToSize(evo.text, W - margin * 2 - 8) : [];
-        const rowH = 12 + (textLines.length > 0 ? Math.min(textLines.length, 5) * 5 : 0);
-        doc.roundedRect(margin, y - 4, W - margin * 2, rowH, 2, 2, 'F');
+        // Thin separator line between sessions
+        doc.setDrawColor(...borderColor);
+        doc.line(margin, y - 1, W - margin, y - 1);
 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(40, 40, 50);
-        doc.text(dateStr, margin + 3, y + 2);
+        doc.setTextColor(...darkText);
+        doc.text(dateStr, margin + 2, y + 5);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(...primaryColor);
-        doc.text(status, margin + 28, y + 2);
+        doc.setTextColor(...mutedText);
+        doc.text(`Status: ${status}`, margin + 32, y + 5);
 
         if (moodInfo) {
-          doc.setTextColor(...mutedColor);
-          doc.text(`${moodInfo.emoji} ${moodInfo.label}`, margin + 75, y + 2);
+          // Label only — no emoji
+          doc.text(`Humor: ${moodInfo.label}`, margin + 100, y + 5);
         }
 
+        y += 9;
+
         if (evo.text) {
-          doc.setTextColor(60, 60, 70);
-          doc.setFontSize(8);
+          doc.setTextColor(...darkText);
+          doc.setFontSize(8.5);
           doc.setFont('helvetica', 'normal');
-          const lines = textLines.slice(0, 5);
-          lines.forEach((line: string, li: number) => {
-            doc.text(line, margin + 3, y + 9 + li * 5);
+          const textLines = doc.splitTextToSize(evo.text, contentW - 4);
+          textLines.forEach((line: string) => {
+            if (y > 268) { doc.addPage(); y = margin; }
+            doc.text(line, margin + 2, y);
+            y += 5;
           });
-          y += 9 + lines.length * 5 + 3;
+          y += 3;
         } else {
-          y += rowH + 2;
+          y += 2;
         }
       }
 
-      // Footer
+      // ── STAMP / SIGNATURE ────────────────────────────────────────
+      const selectedStamp = selectedStampId && selectedStampId !== 'none'
+        ? stamps.find(s => s.id === selectedStampId)
+        : stamps.find(s => s.is_default);
+
+      if (selectedStamp) {
+        // Ensure enough space; add page if needed
+        if (y > 220) { doc.addPage(); y = margin; }
+
+        doc.setDrawColor(...borderColor);
+        doc.line(margin, y + 4, W - margin, y + 4);
+        y += 12;
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...darkText);
+        doc.text('RESPONSÁVEL PELO ATENDIMENTO', margin, y);
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...mutedText);
+        doc.text(`${selectedStamp.name}   —   ${selectedStamp.clinical_area}`, margin, y);
+        y += 8;
+
+        // Signature image
+        if (selectedStamp.signature_image) {
+          try {
+            const imgEl = document.createElement('img');
+            imgEl.src = selectedStamp.signature_image;
+            await new Promise<void>(res => { imgEl.onload = () => res(); imgEl.onerror = () => res(); });
+            doc.addImage(selectedStamp.signature_image, 'PNG', margin, y, 60, 18, undefined, 'FAST');
+            y += 22;
+          } catch { /* skip if image fails */ }
+        }
+
+        // Stamp image
+        if (selectedStamp.stamp_image) {
+          try {
+            const imgEl2 = document.createElement('img');
+            imgEl2.src = selectedStamp.stamp_image;
+            await new Promise<void>(res => { imgEl2.onload = () => res(); imgEl2.onerror = () => res(); });
+            doc.addImage(selectedStamp.stamp_image, 'PNG', margin, y, 40, 40, undefined, 'FAST');
+            y += 44;
+          } catch { /* skip if image fails */ }
+        }
+      }
+
+      // ── FOOTER ───────────────────────────────────────────────────
       const pageCount = (doc as any).internal.getNumberOfPages();
       for (let p = 1; p <= pageCount; p++) {
         doc.setPage(p);
-        doc.setFontSize(8);
-        doc.setTextColor(...mutedColor);
+        doc.setFontSize(7.5);
+        doc.setTextColor(...mutedText);
         doc.text(
-          `${patient.name} — Relatório ${format(reportMonth, 'MM/yyyy')} — Página ${p}/${pageCount}`,
-          W / 2, 290, { align: 'center' }
+          `${patient.name}  —  Relatório de Referência: ${monthLabelCap}  —  Emitido em: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}  —  Pag. ${p}/${pageCount}`,
+          W / 2, 291, { align: 'center' }
         );
       }
 
@@ -706,7 +753,61 @@ export default function PatientDetail() {
         </div>
       </div>
 
+      {/* Clinical Info Card */}
+      {(patient.diagnosis || patient.observations || (patient.weekdays && patient.weekdays.length > 0) || patient.professionals || patient.responsibleName) && (
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <h2 className="font-semibold text-foreground text-sm">Informações Clínicas</h2>
+          </div>
+          <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+            {patient.diagnosis && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Diagnóstico</p>
+                <p className="text-sm text-foreground">{patient.diagnosis}</p>
+              </div>
+            )}
+            {patient.professionals && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Profissional(is)</p>
+                <p className="text-sm text-foreground">{patient.professionals}</p>
+              </div>
+            )}
+            {patient.responsibleName && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Responsável</p>
+                <p className="text-sm text-foreground">{patient.responsibleName}</p>
+              </div>
+            )}
+            {patient.weekdays && patient.weekdays.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Dias de Atendimento</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {patient.weekdays.map(day => (
+                    <span key={day} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                      {day.charAt(0).toUpperCase() + day.slice(1)}
+                    </span>
+                  ))}
+                  {patient.scheduleTime && (
+                    <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
+                      ⏰ {patient.scheduleTime}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            {patient.observations && (
+              <div className="md:col-span-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Observações</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{patient.observations}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Mood Chart */}
+
       {moodChartData.length >= 2 && (
         <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
           <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
