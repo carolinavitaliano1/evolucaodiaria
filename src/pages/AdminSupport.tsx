@@ -67,6 +67,8 @@ export default function AdminSupport() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [closingChat, setClosingChat] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
