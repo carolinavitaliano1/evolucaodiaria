@@ -459,6 +459,24 @@ function UserSupportView() {
     inputRef.current?.focus();
   };
 
+  const handleCloseChat = async () => {
+    if (!user) return;
+    setClosingChat(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await supabase.functions.invoke('close-support-chat', {
+        body: { userId: user.id, closedBy: 'user' },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      toast.success('Chat encerrado. Você receberá o histórico por e-mail.');
+      setMessages([]);
+    } catch {
+      toast.error('Erro ao encerrar o chat');
+    }
+    setClosingChat(false);
+    setShowCloseDialog(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
