@@ -394,6 +394,21 @@ export default function AdminSupport() {
             <div ref={bottomRef} />
           </div>
 
+          {/* Close chat bar */}
+          <div className="flex items-center justify-between px-4 py-2 bg-card border-t border-border/60">
+            <p className="text-xs text-muted-foreground">Encerre o chat após concluir o atendimento</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCloseDialog(true)}
+              disabled={closingChat || messages.length === 0}
+              className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive text-xs h-7"
+            >
+              <PhoneOff className="w-3 h-3" />
+              Finalizar Chat
+            </Button>
+          </div>
+
           {/* Input */}
           <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
             <Textarea
@@ -427,6 +442,26 @@ export default function AdminSupport() {
           <p className="text-sm font-medium">Selecione uma conversa para responder</p>
         </div>
       )}
+
+      <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O histórico completo desta conversa será enviado por e-mail para você e para o usuário. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCloseChat}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {closingChat ? 'Encerrando...' : 'Finalizar e enviar e-mail'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
