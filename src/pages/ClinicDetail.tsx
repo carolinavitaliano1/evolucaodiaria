@@ -1834,6 +1834,7 @@ export default function ClinicDetail() {
               <Button
                 className="flex-1 gradient-primary"
                 onClick={handleQuickEvolutionSubmit}
+                disabled={isArchived}
               >
                 Salvar Evolução
               </Button>
