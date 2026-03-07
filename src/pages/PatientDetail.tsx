@@ -283,13 +283,88 @@ export default function PatientDetail() {
     );
   }
 
+  // ── shared PDF builder helpers ──────────────────────────────────────────────
+  const buildPdfBase = (doc: jsPDF) => {
+    const W = 210, margin = 20, contentW = W - margin * 2;
+    const darkText: [number, number, number] = [30, 30, 40];
+    const mutedText: [number, number, number] = [100, 100, 115];
+    const borderColor: [number, number, number] = [210, 210, 220];
+    const accentDark: [number, number, number] = [50, 50, 100];
+    return { W, margin, contentW, darkText, mutedText, borderColor, accentDark };
+  };
+
+  const addSignatureBlock = async (
+    doc: jsPDF, y: number,
+    { W, margin, darkText, mutedText, borderColor, accentDark }: ReturnType<typeof buildPdfBase>,
+    stampOverride?: typeof stamps[0] | null,
+    showBlankLine = true,
+  ) => {
+    if (y > 230) { doc.addPage(); y = 20; }
+
+    doc.setDrawColor(...borderColor);
+    doc.line(margin, y + 4, W - margin, y + 4);
+    y += 12;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...accentDark);
+    doc.text('RESPONSÁVEL PELO ATENDIMENTO', margin, y);
+    y += 7;
+
+    if (stampOverride) {
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...darkText);
+      doc.text(stampOverride.name, margin, y);
+      doc.setTextColor(...mutedText);
+      doc.text(stampOverride.clinical_area, margin + 60, y);
+      y += 8;
+
+      if (stampOverride.signature_image) {
+        try {
+          const imgEl = document.createElement('img');
+          imgEl.src = stampOverride.signature_image;
+          await new Promise<void>(r => { imgEl.onload = () => r(); imgEl.onerror = () => r(); });
+          doc.addImage(stampOverride.signature_image, 'PNG', margin, y, 60, 18, undefined, 'FAST');
+          y += 22;
+        } catch { /* skip */ }
+      }
+
+      if (stampOverride.stamp_image) {
+        try {
+          const imgEl2 = document.createElement('img');
+          imgEl2.src = stampOverride.stamp_image;
+          await new Promise<void>(r => { imgEl2.onload = () => r(); imgEl2.onerror = () => r(); });
+          doc.addImage(stampOverride.stamp_image, 'PNG', margin, y, 40, 40, undefined, 'FAST');
+          y += 44;
+        } catch { /* skip */ }
+      }
+    } else if (showBlankLine) {
+      // blank signature line
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...mutedText);
+      doc.text('Nome:', margin, y);
+      doc.setDrawColor(...borderColor);
+      doc.line(margin + 14, y + 1, margin + 100, y + 1);
+      y += 10;
+      doc.text('Assinatura:', margin, y);
+      doc.line(margin + 24, y + 1, margin + 100, y + 1);
+      y += 10;
+      doc.text('Data:', margin);
+      doc.line(margin + 12, y + 1, margin + 60, y + 1);
+      y += 8;
+    }
+    return y;
+  };
+
+  // ── RELATÓRIO DE ATENDIMENTO (presença + falta + reposição) ──────────────
   const handleExportMonthlyPDF = async () => {
     if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
     setIsExportingMonthly(true);
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const W = 210, margin = 20;
-      const contentW = W - margin * 2;
+      const base = buildPdfBase(doc);
+      const { W, margin, contentW, darkText, mutedText, borderColor, accentDark } = base;
       const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
       const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
 
