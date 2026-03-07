@@ -3,10 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, HeadphonesIcon, Users, ChevronLeft } from 'lucide-react';
+import { Send, HeadphonesIcon, ChevronLeft, CheckCheck, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
@@ -27,15 +27,44 @@ interface Conversation {
   unread: number;
 }
 
+function formatMsgTime(dateStr: string) {
+  const d = new Date(dateStr);
+  if (isToday(d)) return format(d, 'HH:mm');
+  if (isYesterday(d)) return 'Ontem';
+  return format(d, 'dd/MM/yy');
+}
+
+function formatFullTime(dateStr: string) {
+  const d = new Date(dateStr);
+  if (isToday(d)) return format(d, 'HH:mm');
+  if (isYesterday(d)) return 'Ontem ' + format(d, 'HH:mm');
+  return format(d, "dd/MM 'às' HH:mm", { locale: ptBR });
+}
+
+function dayLabel(dateStr: string) {
+  const d = new Date(dateStr);
+  if (isToday(d)) return 'Hoje';
+  if (isYesterday(d)) return 'Ontem';
+  return format(d, "dd 'de' MMMM", { locale: ptBR });
+}
+
+function initials(name: string | null, email: string | null) {
+  const src = name || email || 'U';
+  return src.charAt(0).toUpperCase();
+}
+
 export default function AdminSupport() {
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [filtered, setFiltered] = useState<Conversation[]>([]);
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Check admin
   useEffect(() => {
@@ -45,28 +74,22 @@ export default function AdminSupport() {
       .select('is_support_admin')
       .eq('user_id', user.id)
       .single()
-      .then(({ data }) => {
-        setIsAdmin(!!(data as any)?.is_support_admin);
-      });
+      .then(({ data }) => { setIsAdmin(!!(data as any)?.is_support_admin); });
   }, [user]);
 
-  // Load all conversations (admin only)
   const loadConversations = async () => {
     const { data: msgs } = await supabase
       .from('support_messages')
       .select('*')
       .order('created_at', { ascending: false });
-
     if (!msgs) return;
 
-    // Group by user_id
     const map = new Map<string, SupportMessage[]>();
     for (const m of msgs as SupportMessage[]) {
       if (!map.has(m.user_id)) map.set(m.user_id, []);
       map.get(m.user_id)!.push(m);
     }
 
-    // Fetch profiles
     const userIds = Array.from(map.keys());
     const { data: profiles } = await supabase
       .from('profiles')
@@ -88,18 +111,26 @@ export default function AdminSupport() {
         unread: userMsgs.filter(m => !m.is_admin_reply).length,
       };
     });
-
     convs.sort((a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime());
     setConversations(convs);
   };
 
-  useEffect(() => {
-    if (isAdmin) loadConversations();
-  }, [isAdmin]);
+  useEffect(() => { if (isAdmin) loadConversations(); }, [isAdmin]);
 
-  // Load selected conversation messages
+  // Filter by search
   useEffect(() => {
-    if (!selected) return;
+    if (!search.trim()) { setFiltered(conversations); return; }
+    const q = search.toLowerCase();
+    setFiltered(conversations.filter(c =>
+      (c.user_name || '').toLowerCase().includes(q) ||
+      (c.user_email || '').toLowerCase().includes(q) ||
+      c.last_message.toLowerCase().includes(q)
+    ));
+  }, [search, conversations]);
+
+  // Load messages for selected conversation
+  useEffect(() => {
+    if (!selected) { setMessages([]); return; }
     supabase
       .from('support_messages')
       .select('*')
@@ -116,11 +147,14 @@ export default function AdminSupport() {
   useEffect(() => {
     if (!isAdmin) return;
     const channel = supabase
-      .channel('support-admin')
+      .channel('support-admin-v2')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages' }, (payload) => {
         const msg = payload.new as SupportMessage;
         if (msg.user_id === selected) {
-          setMessages(prev => [...prev, msg]);
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === msg.id);
+            return exists ? prev : [...prev, msg];
+          });
         }
         loadConversations();
       })
@@ -131,18 +165,29 @@ export default function AdminSupport() {
   const handleSend = async () => {
     if (!user || !selected || !text.trim()) return;
     setSending(true);
-    const { error } = await supabase.from('support_messages').insert({
+    const optimistic: SupportMessage = {
+      id: `tmp-${Date.now()}`,
       user_id: selected,
       message: text.trim(),
+      is_admin_reply: true,
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimistic]);
+    setText('');
+    const { error } = await supabase.from('support_messages').insert({
+      user_id: selected,
+      message: optimistic.message,
       is_admin_reply: true,
       admin_id: user.id,
     });
     if (error) {
       toast.error('Erro ao enviar resposta');
+      setMessages(prev => prev.filter(m => m.id !== optimistic.id));
     } else {
-      setText('');
+      loadConversations();
     }
     setSending(false);
+    inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -172,154 +217,190 @@ export default function AdminSupport() {
 
   const selectedConv = conversations.find(c => c.user_id === selected);
 
-  return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-4rem)] p-4 md:p-6 gap-4">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <HeadphonesIcon className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Painel de Suporte</h1>
-          <p className="text-xs text-muted-foreground">{conversations.length} conversas</p>
-        </div>
-      </div>
+  // Group messages by date
+  const grouped: { date: string; msgs: SupportMessage[] }[] = [];
+  for (const msg of messages) {
+    const day = format(new Date(msg.created_at), 'yyyy-MM-dd');
+    const last = grouped[grouped.length - 1];
+    if (last && last.date === day) last.msgs.push(msg);
+    else grouped.push({ date: day, msgs: [msg] });
+  }
 
-      <div className="flex-1 bg-card border border-border rounded-xl overflow-hidden flex min-h-0">
-        {/* Sidebar list */}
-        <div className={cn(
-          "w-full md:w-72 border-r border-border flex flex-col",
-          selected && "hidden md:flex"
-        )}>
-          <div className="p-3 border-b border-border">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5" /> Conversas
-            </p>
+  return (
+    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] overflow-hidden">
+      {/* ── Sidebar: conversation list ── */}
+      <div className={cn(
+        'flex flex-col bg-card border-r border-border',
+        'w-full md:w-80 md:min-w-[280px]',
+        selected ? 'hidden md:flex' : 'flex'
+      )}>
+        {/* Sidebar header */}
+        <div className="px-4 py-3 border-b border-border">
+          <h1 className="text-base font-bold text-foreground mb-2">Suporte</h1>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Pesquisar conversa..."
+              className="w-full pl-8 pr-3 py-1.5 text-sm bg-muted rounded-lg border-0 focus:outline-none focus:ring-1 focus:ring-ring"
+            />
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {conversations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 gap-2">
-                <p className="text-sm text-muted-foreground">Nenhuma conversa ainda</p>
-              </div>
-            ) : (
-              conversations.map(conv => (
-                <button
-                  key={conv.user_id}
-                  onClick={() => setSelected(conv.user_id)}
-                  className={cn(
-                    'w-full flex items-start gap-3 p-3 text-left hover:bg-accent transition-colors border-b border-border/50',
-                    selected === conv.user_id && 'bg-primary/5'
-                  )}
-                >
-                  <Avatar className="w-9 h-9 shrink-0">
-                    <AvatarFallback className="text-sm bg-primary/10 text-primary font-semibold">
-                      {(conv.user_name || conv.user_email || 'U').charAt(0).toUpperCase()}
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto divide-y divide-border/50">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 gap-2">
+              <p className="text-sm text-muted-foreground">Nenhuma conversa</p>
+            </div>
+          ) : (
+            filtered.map(conv => (
+              <button
+                key={conv.user_id}
+                onClick={() => setSelected(conv.user_id)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors',
+                  selected === conv.user_id && 'bg-primary/5'
+                )}
+              >
+                <div className="relative shrink-0">
+                  <Avatar className="w-11 h-11">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                      {initials(conv.user_name, conv.user_email)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {conv.user_name || conv.user_email || 'Usuário'}
-                      </p>
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {format(new Date(conv.last_at), "dd/MM", { locale: ptBR })}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{conv.last_message}</p>
+                  {conv.unread > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-success text-success-foreground text-[9px] font-bold flex items-center justify-center">
+                      {conv.unread > 9 ? '9+' : conv.unread}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className={cn('text-sm font-semibold text-foreground truncate', conv.unread > 0 && 'font-bold')}>
+                      {conv.user_name || conv.user_email || 'Usuário'}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {formatMsgTime(conv.last_at)}
+                    </span>
                   </div>
-                </button>
-              ))
-            )}
+                  <p className={cn('text-xs text-muted-foreground truncate mt-0.5', conv.unread > 0 && 'text-foreground font-medium')}>
+                    {conv.last_message}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ── Chat area ── */}
+      {selected ? (
+        <div className={cn('flex-1 flex flex-col min-w-0', !selected && 'hidden md:flex')}>
+          {/* Chat header */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-card border-b border-border">
+            <button className="md:hidden p-1.5 rounded-lg hover:bg-accent" onClick={() => setSelected(null)}>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <Avatar className="w-9 h-9">
+              <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-foreground truncate">
+                {selectedConv?.user_name || 'Usuário'}
+              </p>
+              {selectedConv?.user_email && (
+                <p className="text-xs text-muted-foreground truncate">{selectedConv.user_email}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div
+            className="flex-1 overflow-y-auto px-4 py-4 space-y-1"
+            style={{ background: 'hsl(var(--muted) / 0.3)' }}
+          >
+            {grouped.map(({ date, msgs }) => (
+              <div key={date} className="space-y-1">
+                <div className="flex items-center justify-center my-4">
+                  <span className="px-3 py-1 rounded-full bg-background border border-border text-xs text-muted-foreground">
+                    {dayLabel(date)}
+                  </span>
+                </div>
+
+                {msgs.map((msg, idx) => {
+                  const isMe = msg.is_admin_reply;
+                  const prevSameSide = idx > 0 && msgs[idx - 1].is_admin_reply === msg.is_admin_reply;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={cn('flex', isMe ? 'justify-end' : 'justify-start', prevSameSide ? 'mt-0.5' : 'mt-3')}
+                    >
+                      <div
+                        className={cn(
+                          'max-w-[78%] sm:max-w-[60%] px-3 py-2 text-sm shadow-sm',
+                          isMe
+                            ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm'
+                            : 'bg-card text-foreground rounded-2xl rounded-tl-sm border border-border'
+                        )}
+                      >
+                        {!isMe && !prevSameSide && (
+                          <p className="text-[10px] font-bold text-primary mb-1">
+                            {selectedConv?.user_name || 'Usuário'}
+                          </p>
+                        )}
+                        <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className={cn('text-[10px]', isMe ? 'text-primary-foreground/60' : 'text-muted-foreground')}>
+                            {formatFullTime(msg.created_at)}
+                          </span>
+                          {isMe && <CheckCheck className="w-3 h-3 text-primary-foreground/60" />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Input */}
+          <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
+            <Textarea
+              ref={inputRef}
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Responder..."
+              className="resize-none min-h-[42px] max-h-28 text-sm rounded-2xl bg-muted border-0 focus-visible:ring-1"
+              rows={1}
+            />
+            <Button
+              size="icon"
+              onClick={handleSend}
+              disabled={sending || !text.trim()}
+              className="shrink-0 h-10 w-10 rounded-full"
+            >
+              {sending ? (
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
           </div>
         </div>
-
-        {/* Chat area */}
-        {selected ? (
-          <div className={cn("flex-1 flex flex-col min-w-0", !selected && "hidden md:flex")}>
-            {/* Chat header */}
-            <div className="p-3 border-b border-border flex items-center gap-2">
-              <button
-                className="md:hidden p-1 rounded-lg hover:bg-accent"
-                onClick={() => setSelected(null)}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <Avatar className="w-8 h-8">
-                <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-                  {(selectedConv?.user_name || selectedConv?.user_email || 'U').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">
-                  {selectedConv?.user_name || 'Usuário'}
-                </p>
-                {selectedConv?.user_email && (
-                  <p className="text-xs text-muted-foreground truncate">{selectedConv.user_email}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {messages.map(msg => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    'flex',
-                    msg.is_admin_reply ? 'justify-end' : 'justify-start'
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm',
-                      msg.is_admin_reply
-                        ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                        : 'bg-muted text-foreground rounded-tl-sm'
-                    )}
-                  >
-                    <p className="whitespace-pre-wrap break-words">{msg.message}</p>
-                    <p className={cn(
-                      'text-[10px] mt-1',
-                      msg.is_admin_reply ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                    )}>
-                      {format(new Date(msg.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>
-
-            {/* Input */}
-            <div className="border-t border-border p-3 flex gap-2 items-end">
-              <Textarea
-                value={text}
-                onChange={e => setText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Responder... (Enter para enviar)"
-                className="resize-none min-h-[44px] max-h-28 text-sm"
-                rows={1}
-              />
-              <Button
-                size="icon"
-                onClick={handleSend}
-                disabled={sending || !text.trim()}
-                className="shrink-0 h-10 w-10"
-              >
-                {sending ? (
-                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
+      ) : (
+        <div className="hidden md:flex flex-1 items-center justify-center flex-col gap-3 text-muted-foreground">
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+            <HeadphonesIcon className="w-10 h-10 opacity-30" />
           </div>
-        ) : (
-          <div className="hidden md:flex flex-1 items-center justify-center flex-col gap-3 text-muted-foreground">
-            <HeadphonesIcon className="w-12 h-12 opacity-20" />
-            <p className="text-sm">Selecione uma conversa</p>
-          </div>
-        )}
-      </div>
+          <p className="text-sm font-medium">Selecione uma conversa para responder</p>
+        </div>
+      )}
     </div>
   );
 }
