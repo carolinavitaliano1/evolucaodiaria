@@ -7,7 +7,7 @@ import { TaskList } from '@/components/dashboard/TaskList';
 import { BirthdayCard } from '@/components/dashboard/BirthdayCard';
 import { TodayAppointments } from '@/components/dashboard/TodayAppointments';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
-import { DashboardMural } from '@/components/dashboard/DashboardMural';
+import { MuralNoticesBell } from '@/components/dashboard/MuralNoticesBell';
 import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -81,31 +81,36 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Subscription badge */}
-        {!subLoading && (
-          <div className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl border text-sm",
-            subscribed
-              ? "bg-primary/5 border-primary/20 text-primary"
-              : "bg-muted border-border text-muted-foreground"
-          )}>
-            <Crown className="w-4 h-4" />
-            <span className="font-medium">
-              {subscribed
-                ? `Plano ${planName || 'Ativo'}`
-                : 'Teste Gratuito'}
-            </span>
-            {subscribed && endDateStr && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarClock className="w-3 h-3" />
-                até {endDateStr}
+        <div className="flex items-center gap-2">
+          {/* Mural bell icon */}
+          <MuralNoticesBell />
+
+          {/* Subscription badge */}
+          {!subLoading && (
+            <div className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl border text-sm",
+              subscribed
+                ? "bg-primary/5 border-primary/20 text-primary"
+                : "bg-muted border-border text-muted-foreground"
+            )}>
+              <Crown className="w-4 h-4" />
+              <span className="font-medium">
+                {subscribed
+                  ? `Plano ${planName || 'Ativo'}`
+                  : 'Teste Gratuito'}
               </span>
-            )}
-            {!subscribed && (
-              <Badge variant="secondary" className="text-xs">30 dias</Badge>
-            )}
-          </div>
-        )}
+              {subscribed && endDateStr && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <CalendarClock className="w-3 h-3" />
+                  até {endDateStr}
+                </span>
+              )}
+              {!subscribed && (
+                <Badge variant="secondary" className="text-xs">30 dias</Badge>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -167,7 +172,6 @@ export default function Dashboard() {
         <div className="lg:col-span-8 space-y-5">
           <TodayAppointments />
           <TaskList />
-          <DashboardMural />
           <NotificationSettings />
         </div>
       </div>
