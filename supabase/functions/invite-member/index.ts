@@ -190,13 +190,17 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const searchRes = await fetch(
-      `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}&per_page=1`,
+      `${supabaseUrl}/auth/v1/admin/users?page=1&per_page=50`,
       { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
     );
     let userAlreadyExists = false;
     if (searchRes.ok) {
       const searchData = await searchRes.json();
-      userAlreadyExists = Array.isArray(searchData?.users) && searchData.users.length > 0;
+      // Verificar se algum usuário tem exatamente esse e-mail (comparação exata, case-insensitive)
+      userAlreadyExists = Array.isArray(searchData?.users) &&
+        searchData.users.some((u: { email?: string }) =>
+          u.email?.toLowerCase() === email.toLowerCase()
+        );
     } else {
       console.error('Erro ao buscar usuário no Auth:', await searchRes.text());
     }
