@@ -313,32 +313,40 @@ export default function PatientDetail() {
     y += 7;
 
     if (stampOverride) {
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...darkText);
-      doc.text(stampOverride.name, margin, y);
-      doc.setTextColor(...mutedText);
-      doc.text(stampOverride.clinical_area, margin + 60, y);
-      y += 8;
-
+      // 1. Assinatura (imagem) — se houver
       if (stampOverride.signature_image) {
         try {
           const imgEl = document.createElement('img');
           imgEl.src = stampOverride.signature_image;
           await new Promise<void>(r => { imgEl.onload = () => r(); imgEl.onerror = () => r(); });
           doc.addImage(stampOverride.signature_image, 'PNG', margin, y, 60, 18, undefined, 'FAST');
-          y += 22;
+          y += 20;
         } catch { /* skip */ }
       }
 
+      // 2. Carimbo (imagem) — se houver
       if (stampOverride.stamp_image) {
         try {
           const imgEl2 = document.createElement('img');
           imgEl2.src = stampOverride.stamp_image;
           await new Promise<void>(r => { imgEl2.onload = () => r(); imgEl2.onerror = () => r(); });
           doc.addImage(stampOverride.stamp_image, 'PNG', margin, y, 40, 40, undefined, 'FAST');
-          y += 44;
+          y += 43;
         } catch { /* skip */ }
       }
+
+      // 3. Nome do terapeuta
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...darkText);
+      doc.text(stampOverride.name, margin, y);
+      y += 5;
+
+      // 4. Função / Área clínica
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...mutedText);
+      doc.text(stampOverride.clinical_area, margin, y);
+      y += 7;
     } else if (showBlankLine) {
       // blank signature line
       doc.setFont('helvetica', 'normal');
