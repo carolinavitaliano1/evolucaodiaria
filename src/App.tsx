@@ -75,6 +75,8 @@ const App = () => (
                 <Route path="/install" element={<InstallApp />} />
                 <Route path="/mural" element={<Mural />} />
                 <Route path="/team" element={<Team />} />
+                <Route path="/suporte" element={<Support />} />
+                <Route path="/admin/suporte" element={<AdminSupport />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -31,14 +31,15 @@ const mainNavItems = [
 ];
 
 const moreNavItems = [
-  { to: '/financial',  icon: DollarSign,   label: 'Finanças',      perm: 'financial.view'  as const },
-  { to: '/reports',    icon: BarChart3,    label: 'Relatórios',    perm: 'reports.view'    as const },
-  { to: '/ai-reports', icon: Sparkles,     label: 'Relatórios IA', perm: 'ai_reports.view' as const },
-  { to: '/tasks',      icon: ClipboardList,label: 'Tarefas',       perm: 'tasks.view'      as const },
-  { to: '/mural',      icon: Megaphone,    label: 'Mural',         perm: 'mural.view'      as const, badge: true },
-  { to: '/pricing',    icon: CreditCard,   label: 'Planos',        perm: null },
-  { to: '/install',    icon: Smartphone,   label: 'Instalar App',  perm: null },
-  { to: '/profile',    icon: User,         label: 'Perfil',        perm: null },
+  { to: '/financial',  icon: DollarSign,     label: 'Finanças',      perm: 'financial.view'  as const },
+  { to: '/reports',    icon: BarChart3,      label: 'Relatórios',    perm: 'reports.view'    as const },
+  { to: '/ai-reports', icon: Sparkles,       label: 'Relatórios IA', perm: 'ai_reports.view' as const },
+  { to: '/tasks',      icon: ClipboardList,  label: 'Tarefas',       perm: 'tasks.view'      as const },
+  { to: '/mural',      icon: Megaphone,      label: 'Mural',         perm: 'mural.view'      as const, badge: true },
+  { to: '/suporte',    icon: HeadphonesIcon, label: 'Suporte',       perm: null },
+  { to: '/pricing',    icon: CreditCard,     label: 'Planos',        perm: null },
+  { to: '/install',    icon: Smartphone,     label: 'Instalar App',  perm: null },
+  { to: '/profile',    icon: User,           label: 'Perfil',        perm: null },
 ];
 
 export function MobileNav() {
