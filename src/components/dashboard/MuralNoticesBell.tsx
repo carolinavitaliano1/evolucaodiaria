@@ -78,11 +78,15 @@ export function MuralNoticesBell() {
     <Popover open={open} onOpenChange={handleOpen}>
       <PopoverTrigger asChild>
         <button className="relative p-2 rounded-xl hover:bg-accent transition-colors">
-          <Megaphone className="w-5 h-5 text-muted-foreground" />
+          <Megaphone className={cn('w-5 h-5 transition-colors', unreadCount > 0 ? 'text-foreground' : 'text-muted-foreground')} />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+            <>
+              {/* Ping pulse ring */}
+              <span className="absolute top-1 right-1 w-2.5 h-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+              </span>
+            </>
           )}
         </button>
       </PopoverTrigger>
