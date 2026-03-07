@@ -7,13 +7,9 @@ const corsHeaders = {
 
 const APP_URL = 'https://evolucaodiaria.app.br';
 
-function generateTempPassword(): string {
-  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let password = '';
-  for (let i = 0; i < 10; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
+function generateTempPassword(email: string): string {
+  // Senha é o próprio e-mail do usuário para facilitar o primeiro acesso
+  return email;
 }
 
 async function sendInviteEmailWithCredentials(
@@ -31,21 +27,24 @@ async function sendInviteEmailWithCredentials(
   }
 
   const credentialsBlock = tempPassword ? `
-    <div style="background:#f5f3ff;border:2px solid hsl(252,56%,57%);border-radius:12px;padding:24px;margin:24px 0;">
+    <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 8px;">
+      Uma conta foi criada para você! Use os dados abaixo para fazer seu primeiro acesso:
+    </p>
+    <div style="background:#f5f3ff;border:2px solid hsl(252,56%,57%);border-radius:12px;padding:24px;margin:16px 0 24px;">
       <p style="font-size:12px;font-weight:700;color:hsl(252,56%,57%);margin:0 0 16px;text-transform:uppercase;letter-spacing:0.08em;">🔐 Seus dados de acesso</p>
       <div style="background:#ffffff;border:1px solid #e5e0f8;border-radius:8px;padding:16px;margin-bottom:8px;">
         <p style="font-size:11px;color:hsl(240,5%,55%);margin:0 0 4px;text-transform:uppercase;letter-spacing:0.05em;">E-mail de login</p>
         <p style="font-size:16px;color:hsl(240,10%,15%);font-weight:700;margin:0;word-break:break-all;">${to}</p>
       </div>
       <div style="background:#ffffff;border:1px solid #e5e0f8;border-radius:8px;padding:16px;">
-        <p style="font-size:11px;color:hsl(240,5%,55%);margin:0 0 4px;text-transform:uppercase;letter-spacing:0.05em;">Senha temporária</p>
-        <p style="font-size:22px;color:hsl(252,56%,45%);font-weight:800;margin:0;font-family:monospace;letter-spacing:0.1em;">${tempPassword}</p>
+        <p style="font-size:11px;color:hsl(240,5%,55%);margin:0 0 4px;text-transform:uppercase;letter-spacing:0.05em;">Senha de acesso</p>
+        <p style="font-size:18px;color:hsl(252,56%,45%);font-weight:800;margin:0;font-family:monospace;letter-spacing:0.05em;word-break:break-all;">${tempPassword}</p>
       </div>
-      <p style="font-size:12px;color:hsl(240,5%,50%);margin:14px 0 0;line-height:1.6;">💡 Você pode alterar sua senha a qualquer momento em <strong>Perfil → Alterar Senha</strong>.</p>
+      <p style="font-size:12px;color:hsl(240,5%,50%);margin:14px 0 0;line-height:1.6;">💡 Recomendamos alterar sua senha após o primeiro acesso em <strong>Perfil → Alterar Senha</strong>.</p>
     </div>
   ` : `
     <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 24px;">
-      Como você já possui uma conta, basta fazer login normalmente. O convite será aplicado automaticamente ao acessar o sistema.
+      Como você já possui uma conta no Evolução Diária, basta fazer login normalmente com seu e-mail e senha habituais. O convite será aplicado automaticamente ao acessar o sistema.
     </p>
   `;
 
@@ -232,7 +231,7 @@ Deno.serve(async (req) => {
       emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null);
     } else {
       // Usuário novo → criar conta com senha temporária e enviar credenciais por e-mail
-      tempPassword = generateTempPassword();
+      tempPassword = generateTempPassword(email);
       console.log(`Criando conta para novo usuário: ${email}`);
 
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
