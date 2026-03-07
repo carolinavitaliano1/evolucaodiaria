@@ -54,8 +54,11 @@ interface PrivateAppointment {
 
 export default function Clinics() {
   const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic } = useApp();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [sendingSupportMsg, setSendingSupportMsg] = useState(false);
   const [filter, setFilter] = useState<'all' | 'propria' | 'terceirizada' | 'archived'>('all');
   const [stampFile, setStampFile] = useState<UploadedFile | null>(null);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
