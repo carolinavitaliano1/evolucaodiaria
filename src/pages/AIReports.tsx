@@ -569,9 +569,6 @@ export default function AIReports() {
           <Button variant="outline" size="sm" onClick={() => { loadSavedReports(); setShowSavedDialog(true); }} className="gap-2">
             <FolderOpen className="w-4 h-4" /> Salvos ({savedReports.length})
           </Button>
-          <Button variant="outline" size="sm" onClick={handleShareEmail} className="gap-2">
-            <Mail className="w-4 h-4" /> E-mail
-          </Button>
           <Button variant="outline" size="sm" onClick={handleShareLink} className="gap-2">
             <Link2 className="w-4 h-4" /> Copiar
           </Button>
