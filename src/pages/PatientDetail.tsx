@@ -1206,6 +1206,7 @@ export default function PatientDetail() {
                           </div>
                         </div>
                         {evo.text && <p className="text-foreground text-sm whitespace-pre-wrap">{evo.text}</p>}
+
                         {evo.attachments && evo.attachments.length > 0 && (
                           <div className="mt-3 space-y-2">
                             <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
