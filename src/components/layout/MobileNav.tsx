@@ -58,8 +58,8 @@ export function MobileNav() {
     return permissions.includes(i.perm as any);
   });
 
-  // Add Team option for org owners or members with team.view
-  const showTeam = isOwner || (isOrgMember && permissions.includes('team.view' as any));
+  // Show Team for all non-org-members (owners/standalone see em breve or full page)
+  const showTeam = !isOrgMember || isOwner || permissions.includes('team.view' as any);
   const teamItem = showTeam ? [{ to: '/team', icon: UsersRound, label: 'Equipe', perm: 'team.view' as const }] : [];
   const finalMore = [...allowedMore.filter(i => i.to !== '/profile'), ...teamItem, { to: '/profile', icon: User, label: 'Perfil', perm: null as any }];
 
