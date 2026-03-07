@@ -9,7 +9,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Send, MessageCircle, HeadphonesIcon, CheckCheck, Search, ChevronLeft, Clock, PhoneOff } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Send, MessageCircle, HeadphonesIcon, CheckCheck, Search, ChevronLeft, Clock, PhoneOff, User, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -28,6 +29,7 @@ interface Conversation {
   user_name: string | null;
   user_email: string | null;
   user_avatar: string | null;
+  user_phone: string | null;
   last_message: string;
   last_at: string;
   unread: number;
@@ -116,7 +118,7 @@ function AdminSupportView() {
     const userIds = Array.from(map.keys());
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, name, email, avatar_url')
+      .select('user_id, name, email, avatar_url, phone')
       .in('user_id', userIds);
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
@@ -130,6 +132,7 @@ function AdminSupportView() {
         user_name: profile?.name || null,
         user_email: profile?.email || null,
         user_avatar: profile?.avatar_url || null,
+        user_phone: profile?.phone || null,
         last_message: latest.message,
         last_at: latest.created_at,
         unread: userMsgs.filter(m => !m.is_admin_reply).length,
@@ -313,20 +316,57 @@ function AdminSupportView() {
             <button className="md:hidden p-1.5 rounded-lg hover:bg-accent" onClick={() => setSelected(null)}>
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <Avatar className="w-9 h-9">
-              <AvatarImage src={selectedConv?.user_avatar ?? undefined} alt={selectedConv?.user_name || 'Usuário'} />
-              <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-                {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">
-                {selectedConv?.user_name || selectedConv?.user_email?.split('@')[0] || 'Sem nome'}
-              </p>
-              {selectedConv?.user_email && (
-                <p className="text-xs text-muted-foreground truncate">{selectedConv.user_email}</p>
-              )}
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-accent/50 rounded-lg px-1 py-0.5 transition-colors">
+                  <Avatar className="w-9 h-9 shrink-0">
+                    <AvatarImage src={selectedConv?.user_avatar ?? undefined} alt={selectedConv?.user_name || ''} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                      {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground truncate">
+                      {selectedConv?.user_name || selectedConv?.user_email?.split('@')[0] || 'Sem nome'}
+                    </p>
+                    {selectedConv?.user_email && (
+                      <p className="text-xs text-muted-foreground truncate">{selectedConv.user_email}</p>
+                    )}
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="start" className="w-64 p-0 overflow-hidden">
+                <div className="bg-primary/5 px-4 py-3 border-b border-border flex items-center gap-3">
+                  <Avatar className="w-10 h-10 shrink-0">
+                    <AvatarImage src={selectedConv?.user_avatar ?? undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                      {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="font-semibold text-sm text-foreground truncate">
+                    {selectedConv?.user_name || selectedConv?.user_email?.split('@')[0] || 'Sem nome'}
+                  </p>
+                </div>
+                <div className="px-4 py-3 space-y-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-foreground">{selectedConv?.user_name || <span className="text-muted-foreground italic text-xs">Não informado</span>}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    {selectedConv?.user_email
+                      ? <a href={`mailto:${selectedConv.user_email}`} className="text-sm text-primary underline underline-offset-2 break-all">{selectedConv.user_email}</a>
+                      : <span className="text-muted-foreground italic text-xs">Não informado</span>}
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    {selectedConv?.user_phone
+                      ? <a href={`tel:${selectedConv.user_phone}`} className="text-sm text-primary">{selectedConv.user_phone}</a>
+                      : <span className="text-muted-foreground italic text-xs">Não informado</span>}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Messages */}
