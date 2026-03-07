@@ -133,8 +133,10 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>Entrar</Button>
-            <Button size="sm" onClick={() => navigate('/auth')} className="gradient-primary gap-1.5">
-              Testar 15 Dias Grátis <ArrowRight className="w-3.5 h-3.5" />
+            <Button size="sm" onClick={() => navigate('/auth')} className="gradient-primary gap-1.5 text-xs sm:text-sm px-3 sm:px-4">
+              <span className="hidden sm:inline">Testar 15 Dias Grátis</span>
+              <span className="sm:hidden">Testar Grátis</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
