@@ -627,14 +627,14 @@ export default function Clinics() {
 
         {/* Clinics Tab */}
         <TabsContent value="clinics" className="space-y-4">
-          {/* Filter Chips */}
-          <div className="flex gap-2 flex-wrap">
+          {/* Filter Chips — horizontal scroll on mobile */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
             {(['all', 'propria', 'terceirizada', 'archived'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setFilter(type)}
                 className={cn(
-                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0',
                   filter === type 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-secondary text-muted-foreground hover:text-foreground'
