@@ -48,6 +48,15 @@ export function AppSidebar() {
   const { theme } = useTheme();
   const { unreadCount } = useUnreadNotices();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const { productId, subscriptionEnd } = useSubscription();
+
+  // Calculate trial days remaining
+  const trialDaysLeft = (() => {
+    if (productId !== 'trial' || !subscriptionEnd) return null;
+    const diff = new Date(subscriptionEnd).getTime() - Date.now();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : null;
+  })();
 
   const handleLogout = async () => {
     await signOut();
