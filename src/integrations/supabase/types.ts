@@ -813,6 +813,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_support_admin: boolean
           name: string | null
           phone: string | null
           professional_id: string | null
@@ -825,6 +826,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_support_admin?: boolean
           name?: string | null
           phone?: string | null
           professional_id?: string | null
@@ -837,6 +839,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_support_admin?: boolean
           name?: string | null
           phone?: string | null
           professional_id?: string | null
@@ -968,6 +971,33 @@ export type Database = {
           signature_image?: string | null
           stamp_image?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          admin_id: string | null
+          created_at: string
+          id: string
+          is_admin_reply: boolean
+          message: string
+          user_id: string
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          is_admin_reply?: boolean
+          message: string
+          user_id: string
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          is_admin_reply?: boolean
+          message?: string
           user_id?: string
         }
         Relationships: []
