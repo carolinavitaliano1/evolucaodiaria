@@ -658,16 +658,8 @@ export default function PatientDetail() {
       const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
       const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
 
-      // Colors — formal palette
-      const darkText: [number, number, number] = [30, 30, 40];
-      const mutedText: [number, number, number] = [100, 100, 115];
-      const borderColor: [number, number, number] = [210, 210, 220];
-      const accentDark: [number, number, number] = [50, 50, 100];
 
-      let y = margin;
 
-      // ── HEADER — plain, no background ───────────────────────────
-      doc.setTextColor(...darkText);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('RELATÓRIO MENSAL DE ATENDIMENTO', margin, y);
