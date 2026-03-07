@@ -358,17 +358,18 @@ export default function Clinics() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        {/* Tab header row */}
+        <div className="flex items-center justify-between gap-3">
           <TabsList className="bg-secondary/50">
-            <TabsTrigger value="clinics" className="gap-2">
-              <Building2 className="w-4 h-4" />
+            <TabsTrigger value="clinics" className="gap-1.5 text-xs sm:text-sm">
+              <Building2 className="w-3.5 h-3.5" />
               Clínicas
             </TabsTrigger>
-            <TabsTrigger value="particulares" className="gap-2">
-              <Briefcase className="w-4 h-4" />
+            <TabsTrigger value="particulares" className="gap-1.5 text-xs sm:text-sm">
+              <Briefcase className="w-3.5 h-3.5" />
               Particulares
               {pendingAppointments.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
                   {pendingAppointments.length}
                 </Badge>
               )}
@@ -377,9 +378,10 @@ export default function Clinics() {
 
           {activeTab === 'clinics' ? (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <Button size="sm" className="gap-2" onClick={handleNewClinicClick}>
+              <Button size="sm" className="gap-1.5 shrink-0" onClick={handleNewClinicClick}>
                 <Plus className="w-4 h-4" />
-                Nova Clínica
+                <span className="hidden sm:inline">Nova Clínica</span>
+                <span className="sm:hidden">Nova</span>
               </Button>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
