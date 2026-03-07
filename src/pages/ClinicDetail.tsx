@@ -774,8 +774,9 @@ export default function ClinicDetail() {
                             size="sm"
                             variant="outline"
                             className="h-8 w-8 p-0"
-                            onClick={() => evolution && setEditingEvolution(evolution)}
-                            title="Editar evolução"
+                            onClick={() => !isArchived && evolution && setEditingEvolution(evolution)}
+                            disabled={isArchived}
+                            title={isArchived ? "Clínica arquivada" : "Editar evolução"}
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
