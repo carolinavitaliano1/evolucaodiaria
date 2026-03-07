@@ -51,7 +51,7 @@ serve(async (req) => {
         line_items: [{ price: priceId, quantity: 1 }],
         mode: "subscription",
         // No trial for returning customers
-        payment_method_types: ["card", "boleto"],
+        payment_method_types: ["card"],
         success_url: `${origin}/checkout-success`,
         cancel_url: `${origin}/pricing`,
       });
@@ -69,7 +69,7 @@ serve(async (req) => {
       customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      payment_method_types: ["card", "boleto"],
+      payment_method_types: ["card"],
       subscription_data: {
         trial_period_days: 15,
         trial_settings: {

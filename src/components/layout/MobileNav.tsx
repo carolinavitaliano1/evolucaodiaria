@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import { useSubscription } from '@/hooks/useSubscription';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -17,7 +18,8 @@ import {
   Smartphone,
   Megaphone,
   UsersRound,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -47,6 +49,14 @@ export function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const { unreadCount } = useUnreadNotices();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const { productId, subscriptionEnd } = useSubscription();
+
+  const trialDaysLeft = (() => {
+    if (productId !== 'trial' || !subscriptionEnd) return null;
+    const diff = new Date(subscriptionEnd).getTime() - Date.now();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : null;
+  })();
 
   const allowedMain = mainNavItems.filter(i => {
     if (!isOrgMember) return true;
@@ -132,6 +142,20 @@ export function MobileNav() {
               <span className="text-sm font-semibold text-muted-foreground">Mais opções</span>
               <ThemeToggle />
             </div>
+            {/* Trial badge in sheet */}
+            {trialDaysLeft !== null && (
+              <NavLink
+                to="/pricing"
+                onClick={() => setMoreOpen(false)}
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 hover:bg-warning/20 transition-colors"
+              >
+                <Clock className="w-3.5 h-3.5 text-warning shrink-0" />
+                <span className="text-xs font-semibold text-warning flex-1">
+                  {trialDaysLeft} {trialDaysLeft === 1 ? 'dia' : 'dias'} de teste restantes
+                </span>
+                <span className="text-[10px] text-warning/80">Assinar</span>
+              </NavLink>
+            )}
             <div className="py-2 space-y-2">
               {finalMore.map((item) => {
                 const to = item.to;

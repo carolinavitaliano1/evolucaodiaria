@@ -15,7 +15,8 @@ import {
   Smartphone,
   Megaphone,
   UsersRound,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -24,6 +25,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const allNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const, orgOnly: false },
@@ -46,6 +48,15 @@ export function AppSidebar() {
   const { theme } = useTheme();
   const { unreadCount } = useUnreadNotices();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const { productId, subscriptionEnd } = useSubscription();
+
+  // Calculate trial days remaining
+  const trialDaysLeft = (() => {
+    if (productId !== 'trial' || !subscriptionEnd) return null;
+    const diff = new Date(subscriptionEnd).getTime() - Date.now();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : null;
+  })();
 
   const handleLogout = async () => {
     await signOut();
@@ -155,6 +166,19 @@ export function AppSidebar() {
 
       {/* Footer */}
       <div className="p-3 border-t border-border space-y-0.5">
+        {/* Trial badge */}
+        {trialDaysLeft !== null && (
+          <NavLink
+            to="/pricing"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 mb-2 hover:bg-warning/20 transition-colors"
+          >
+            <Clock className="w-3.5 h-3.5 text-warning shrink-0" />
+            <span className="text-xs font-semibold text-warning flex-1">
+              {trialDaysLeft} {trialDaysLeft === 1 ? 'dia' : 'dias'} de teste
+            </span>
+            <span className="text-[10px] text-warning/70">Assinar</span>
+          </NavLink>
+        )}
         <NavLink
           to="/profile"
           className={cn(
