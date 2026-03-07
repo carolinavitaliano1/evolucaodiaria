@@ -26,7 +26,7 @@ interface MoodSelectorProps {
 }
 
 export function MoodSelector({ value, onChange }: MoodSelectorProps) {
-  const { customMoods } = useCustomMoods();
+  const { customMoods, addMood, deleteMood, loading } = useCustomMoods();
 
   const allMoods = [
     ...DEFAULT_MOOD_OPTIONS,
@@ -37,7 +37,12 @@ export function MoodSelector({ value, onChange }: MoodSelectorProps) {
     <div>
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm font-medium">Humor da Sessão</span>
-        <CustomMoodsManager />
+        <CustomMoodsManager
+          customMoods={customMoods}
+          loading={loading}
+          onAdd={addMood}
+          onDelete={deleteMood}
+        />
       </div>
       <div className="flex flex-wrap gap-1 mt-1">
         {allMoods.map(m => (
