@@ -619,25 +619,31 @@ export default function Clinics() {
 
         {/* Clinics Tab */}
         <TabsContent value="clinics" className="space-y-4">
-          {/* Filter Chips — horizontal scroll on mobile */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
+          {/* Filter Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {([
-              { key: 'all',          label: `Ativas (${activeClinics.length})` },
-              { key: 'propria',      label: `Próprias (${activeClinics.filter(c => c.type === 'propria').length})` },
-              { key: 'terceirizada', label: `Outras (${activeClinics.filter(c => c.type === 'terceirizada').length})` },
-              { key: 'archived',     label: `Arquivadas (${archivedClinics.length})` },
-            ] as const).map(({ key, label }) => (
+              { key: 'all',          label: 'Ativas',     count: activeClinics.length,                                         icon: Building2,        color: 'text-primary',     bg: 'bg-primary/10' },
+              { key: 'propria',      label: 'Próprias',   count: activeClinics.filter(c => c.type === 'propria').length,        icon: Building2,        color: 'text-violet-500',  bg: 'bg-violet-500/10' },
+              { key: 'terceirizada', label: 'Outras',     count: activeClinics.filter(c => c.type === 'terceirizada').length,   icon: Briefcase,        color: 'text-blue-500',    bg: 'bg-blue-500/10' },
+              { key: 'archived',     label: 'Arquivadas', count: archivedClinics.length,                                        icon: Archive,          color: 'text-muted-foreground', bg: 'bg-secondary' },
+            ] as const).map(({ key, label, count, icon: Icon, color, bg }) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
                 className={cn(
-                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0',
+                  'flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all',
                   filter === key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground hover:text-foreground'
+                    ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/30'
+                    : 'border-border bg-card hover:border-primary/30 hover:shadow-sm'
                 )}
               >
-                {label}
+                <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center shrink-0', bg)}>
+                  <Icon className={cn('w-4 h-4', color)} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground leading-none">{count}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{label}</p>
+                </div>
               </button>
             ))}
           </div>
