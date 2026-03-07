@@ -409,10 +409,16 @@ export default function PatientDetail() {
       doc.text(`${moodsWithData.length > 0 ? '3' : '2'}. REGISTRO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y);
       y += 8;
 
+      const statusLabelMap: Record<string, string> = {
+        presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
+        reposicao: 'Reposicao', feriado_remunerado: 'Feriado Remunerado', feriado_nao_remunerado: 'Feriado',
+      };
+
       for (const evo of monthlyEvolutions) {
         if (y > 252) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-        const status = statusLabelFormal[evo.attendanceStatus] || evo.attendanceStatus;
+        const status = statusLabelMap[evo.attendanceStatus] || evo.attendanceStatus;
+
         const moodInfo = getMoodInfo(evo.mood, customMoods);
 
         // Thin separator line between sessions
