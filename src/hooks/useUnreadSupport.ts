@@ -21,17 +21,16 @@ export function useUnreadSupportCount() {
     if (!user) return;
 
     if (isAdmin) {
-      // Admin: count user messages since last seen, only from open chats
+      // Admin: count non-admin messages after lastSeen, from open chats only
       const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
       const lastSeen = localStorage.getItem(adminLastSeenKey) ?? '1970-01-01';
 
-      // Get all closed sessions to exclude messages from closed chats
+      // Get latest closed session per user to exclude closed chats
       const { data: sessions } = await supabase
         .from('support_chat_sessions')
         .select('user_id, closed_at')
         .order('closed_at', { ascending: false });
 
-      // Build latest closed_at per user
       const closedMap = new Map<string, string>();
       for (const s of (sessions || []) as any[]) {
         if (!closedMap.has(s.user_id)) closedMap.set(s.user_id, s.closed_at);
@@ -43,16 +42,16 @@ export function useUnreadSupportCount() {
         .eq('is_admin_reply', false)
         .gt('created_at', lastSeen);
 
-      // Only count messages from open conversations (no closed session after the message)
+      // Only count messages from open conversations
       const count = (msgs || []).filter((m: any) => {
         const closedAt = closedMap.get(m.user_id);
-        if (!closedAt) return true; // no session = open
-        return new Date(m.created_at) > new Date(closedAt); // message came after close = reopened
+        if (!closedAt) return true;
+        return new Date(m.created_at) > new Date(closedAt);
       }).length;
 
       setUnreadCount(count);
     } else {
-      // User: simply count admin replies after the last time user saw the support page
+      // User: count admin replies after lastSeen
       const lastSeenKey = `support_last_seen_${user.id}`;
       const lastSeen = localStorage.getItem(lastSeenKey) ?? '1970-01-01';
 
@@ -70,7 +69,7 @@ export function useUnreadSupportCount() {
     fetchCount();
   }, [fetchCount]);
 
-  // Realtime: refresh badge when a support message is inserted
+  // Realtime: refresh badge when a new support message arrives
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -87,7 +86,7 @@ export function useUnreadSupportCount() {
     return () => { supabase.removeChannel(channel); };
   }, [user, isAdmin, fetchCount]);
 
-  // Realtime: zero badge when chat session is closed
+  // Realtime: zero user badge when their chat session is closed
   useEffect(() => {
     if (!user || isAdmin) return;
     const channel = supabase
@@ -98,7 +97,6 @@ export function useUnreadSupportCount() {
         table: 'support_chat_sessions',
         filter: `user_id=eq.${user.id}`,
       }, () => {
-        // Persist lastSeen = now so fetchCount also returns 0 after close
         const lastSeenKey = `support_last_seen_${user.id}`;
         localStorage.setItem(lastSeenKey, new Date().toISOString());
         setUnreadCount(0);
@@ -107,7 +105,7 @@ export function useUnreadSupportCount() {
     return () => { supabase.removeChannel(channel); };
   }, [user, isAdmin]);
 
-  /** Call this when the user opens /suporte or closes the chat */
+  /** Call when user opens /suporte — zeros badge immediately */
   const markSupportSeen = useCallback(() => {
     if (!user || isAdmin) return;
     const lastSeenKey = `support_last_seen_${user.id}`;
@@ -115,10 +113,9 @@ export function useUnreadSupportCount() {
     setUnreadCount(0);
   }, [user, isAdmin]);
 
-  /** Call this when the admin opens a conversation, replies or closes the chat */
+  /** Call when admin opens /suporte or selects a conversation */
   const markAdminSeen = useCallback(() => {
     if (!user) return;
-    // Use user.id directly — don't depend on async isAdmin state
     const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
     localStorage.setItem(adminLastSeenKey, new Date().toISOString());
     setUnreadCount(0);
