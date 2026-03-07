@@ -551,6 +551,7 @@ export default function ClinicDetail() {
   };
 
   const isPropria = clinic.type === 'propria';
+  const isArchived = clinic.isArchived === true;
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto">
@@ -560,6 +561,13 @@ export default function ClinicDetail() {
           <ArrowLeft className="w-4 h-4" />
           Voltar para Clínicas
         </Button>
+
+        {isArchived && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+            <Archive className="w-4 h-4 shrink-0" />
+            <span>Esta clínica está <strong>arquivada</strong>. Você pode visualizar os dados, mas não é possível editar ou adicionar informações.</span>
+          </div>
+        )}
 
         <div className={cn(
           'rounded-3xl p-6 lg:p-8',
@@ -595,18 +603,20 @@ export default function ClinicDetail() {
                 )}
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                isPropria 
-                  ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              )}
-              onClick={() => setEditClinicOpen(true)}
-            >
-              <Pencil className="w-5 h-5" />
-            </Button>
+            {!isArchived && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  isPropria 
+                    ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+                onClick={() => setEditClinicOpen(true)}
+              >
+                <Pencil className="w-5 h-5" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
