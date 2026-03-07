@@ -682,6 +682,7 @@ export default function ClinicDetail() {
               </TabsTrigger>
             </TabsList>
           ))}
+        </div>
 
         <TabsContent value="today" className="space-y-4">
           <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
