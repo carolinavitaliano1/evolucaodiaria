@@ -87,12 +87,7 @@ function AdminSupportView() {
         body: { userId: selected, closedBy: 'admin' },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      const result = res.data as any;
-      if (result?.sent > 0) {
-        toast.success(`Chat encerrado. ${result.sent} e-mail(s) enviado(s) com o histórico.`);
-      } else {
-        toast.success('Chat encerrado.');
-      }
+      toast.success('Atendimento encerrado.');
       markAdminSeen();
       setSelected(null);
       setMessages([]);
@@ -449,9 +444,9 @@ function AdminSupportView() {
       <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogTitle>Encerrar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
-              O histórico completo desta conversa será enviado por e-mail para você e para o usuário. Esta ação não pode ser desfeita.
+              Tem certeza que deseja encerrar este atendimento?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -460,7 +455,7 @@ function AdminSupportView() {
               onClick={handleCloseChat}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {closingChat ? 'Encerrando...' : 'Finalizar e enviar e-mail'}
+              {closingChat ? 'Encerrando...' : 'Sim, encerrar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -579,7 +574,7 @@ function UserSupportView() {
         body: { userId: user.id, closedBy: 'user' },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      toast.success('Chat encerrado. Você receberá o histórico por e-mail.');
+      toast.success('Atendimento encerrado.');
       setMessages([]);
       setHasMessages(false);
     } catch {
@@ -702,9 +697,9 @@ function UserSupportView() {
       <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogTitle>Encerrar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
-              O histórico desta conversa será enviado por e-mail para você e para o suporte. Esta ação não pode ser desfeita.
+              Tem certeza que deseja encerrar este atendimento?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -713,7 +708,7 @@ function UserSupportView() {
               onClick={handleCloseChat}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {closingChat ? 'Encerrando...' : 'Finalizar e enviar e-mail'}
+              {closingChat ? 'Encerrando...' : 'Sim, encerrar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
