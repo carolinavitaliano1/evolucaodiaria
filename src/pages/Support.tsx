@@ -65,6 +65,7 @@ function initials(name: string | null, email: string | null) {
 // ─────────────────────────────────────────────
 function AdminSupportView() {
   const { user } = useAuth();
+  const { markAdminSeen } = useUnreadSupportCount();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filtered, setFiltered] = useState<Conversation[]>([]);
   const [search, setSearch] = useState('');
