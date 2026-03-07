@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
+import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -36,8 +37,8 @@ const allNavItems = [
   { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const, orgOnly: false },
   { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const, orgOnly: false },
   { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const, orgOnly: false },
-  { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: true, orgOnly: false },
-  { to: '/suporte',   icon: HeadphonesIcon,  label: 'Suporte',      perm: null,                      orgOnly: false },
+  { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: 'notices' as const, orgOnly: false },
+  { to: '/suporte',   icon: HeadphonesIcon,  label: 'Suporte',      perm: null,            badge: 'support' as const, orgOnly: false },
   { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null,                      orgOnly: false },
   { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null,                      orgOnly: false },
 ];
@@ -47,6 +48,7 @@ export function AppSidebar() {
   const { signOut } = useAuth();
   const { theme } = useTheme();
   const { unreadCount } = useUnreadNotices();
+  const { unreadCount: supportUnread } = useUnreadSupportCount();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
 
@@ -118,7 +120,8 @@ export function AppSidebar() {
         {navItems.map(({ to, icon: Icon, label, badge }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
-          const showBadge = badge && unreadCount > 0;
+          const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : 0;
+          const showBadge = badgeCount > 0;
           
           return (
             <>
@@ -138,7 +141,7 @@ export function AppSidebar() {
                   )} />
                   {showBadge && (
                     <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
-                      {unreadCount > 9 ? '9+' : unreadCount}
+                      {badgeCount > 9 ? '9+' : badgeCount}
                     </span>
                   )}
                 </div>
@@ -150,7 +153,7 @@ export function AppSidebar() {
                 </span>
                 {showBadge && (
                   <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {badgeCount > 9 ? '9+' : badgeCount}
                   </span>
                 )}
               </NavLink>
