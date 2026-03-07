@@ -619,18 +619,20 @@ export default function AIReports() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={selectedPatient} onValueChange={setSelectedPatient}>
-                  <SelectTrigger><SelectValue placeholder="Selecione um paciente" /></SelectTrigger>
-                  <SelectContent>
-                    {patients
-                      .filter(p => !selectedClinic || selectedClinic === 'none' || p.clinicId === selectedClinic)
-                      .map(p => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}{(!selectedClinic || selectedClinic === 'none') ? ` — ${clinics.find(c => c.id === p.clinicId)?.name || ''}` : ''}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <PatientSearchSelect
+                  value={selectedPatient}
+                  onValueChange={setSelectedPatient}
+                  patients={patients
+                    .filter(p => !selectedClinic || selectedClinic === 'none' || p.clinicId === selectedClinic)
+                    .map(p => ({
+                      id: p.id,
+                      name: p.name,
+                      clinicName: (!selectedClinic || selectedClinic === 'none')
+                        ? clinics.find(c => c.id === p.clinicId)?.name
+                        : undefined,
+                    }))}
+                  placeholder="🔍 Pesquisar paciente..."
+                />
                 <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
