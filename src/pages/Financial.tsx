@@ -223,7 +223,7 @@ export default function Financial() {
       y += 6;
       doc.text(`Receita Clínicas: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       y += 6;
-      doc.text(`Receita Particulares: R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      doc.text(`Receita Serviços: R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       y += 6;
       if (totalLoss > 0) {
         doc.setTextColor(220, 53, 69);
