@@ -578,6 +578,9 @@ export default function AIReports() {
           <Button size="sm" onClick={() => handleExportPDF()} className="gap-2">
             <Download className="w-4 h-4" /> PDF
           </Button>
+          <Button variant="outline" size="sm" onClick={handleExportWord} className="gap-2">
+            <FileText className="w-4 h-4" /> Word
+          </Button>
         </div>
       </div>
 
