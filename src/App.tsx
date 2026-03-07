@@ -26,6 +26,8 @@ import AIReports from "./pages/AIReports";
 import InstallApp from "./pages/InstallApp";
 import Mural from "./pages/Mural";
 import Team from "./pages/Team";
+import Support from "./pages/Support";
+import AdminSupport from "./pages/AdminSupport";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +75,8 @@ const App = () => (
                 <Route path="/install" element={<InstallApp />} />
                 <Route path="/mural" element={<Mural />} />
                 <Route path="/team" element={<Team />} />
+                <Route path="/suporte" element={<Support />} />
+                <Route path="/admin/suporte" element={<AdminSupport />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
