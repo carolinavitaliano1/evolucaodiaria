@@ -5,9 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Wand2, Loader2 } from 'lucide-react';
+import { Wand2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -111,16 +111,7 @@ export default function TemplateForm({ template, values, onChange, showAiImprove
 
   return (
     <Card className="border-primary/20 bg-primary/5">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <FileText className="w-4 h-4 text-primary" />
-          {template.name}
-        </CardTitle>
-        {template.description && (
-          <p className="text-xs text-muted-foreground">{template.description}</p>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 pt-4">
         {template.fields.map(field => (
           <div key={field.id}>
             <Label className="text-sm">
