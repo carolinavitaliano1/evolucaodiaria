@@ -184,7 +184,7 @@ export function useNotifications(): UseNotificationsReturn {
       const success = await scheduleAppointmentNotification({
         appointmentId: privateApt.id,
         patientName: privateApt.client_name,
-        clinicName: 'Particular',
+        clinicName: 'Serviço',
         date: privateApt.date,
         time: privateApt.time,
         minutesBefore,

@@ -137,7 +137,7 @@ export default function Dashboard() {
               </div>
               {todayPrivate > 0 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">💼 Serviços Particulares</span>
+                  <span className="text-muted-foreground text-sm">💼 Serviços</span>
                   <span className="text-foreground font-semibold">{todayPrivate}</span>
                 </div>
               )}

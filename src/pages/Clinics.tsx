@@ -329,7 +329,7 @@ export default function Clinics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground leading-none">{pendingAppointments.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">Particulares</p>
+                <p className="text-xs text-muted-foreground mt-1">Serviços</p>
               </div>
             </div>
           </div>
@@ -359,7 +359,7 @@ export default function Clinics() {
             </TabsTrigger>
             <TabsTrigger value="particulares" className="gap-1.5 text-xs sm:text-sm">
               <Briefcase className="w-3.5 h-3.5" />
-              Particulares
+              Serviços
               {pendingAppointments.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
                   {pendingAppointments.length}
@@ -731,7 +731,7 @@ export default function Clinics() {
           )}
         </TabsContent>
 
-        {/* Particulares Tab */}
+        {/* Serviços Tab */}
         <TabsContent value="particulares" className="space-y-4">
           {loadingPrivate ? (
             <div className="text-center py-12 text-muted-foreground">

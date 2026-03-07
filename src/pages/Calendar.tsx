@@ -48,7 +48,7 @@ const EVENT_COLORS: Record<string, { bg: string; pill: string }> = {
 
 const TYPE_LABELS: Record<string, string> = {
   tarefa: 'Tarefa', lembrete: 'Lembrete', evento: 'Evento',
-  reuniao: 'Reunião', atendimento: 'Atendimento', particular: 'Particular',
+  reuniao: 'Reunião', atendimento: 'Atendimento', particular: 'Serviço',
 };
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);

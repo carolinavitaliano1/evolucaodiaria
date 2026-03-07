@@ -25,7 +25,7 @@ interface Service {
 import { PrivateAppointment } from '@/hooks/usePrivateAppointments';
 
 const SERVICE_TYPES = [
-  { value: 'atendimento', label: 'Atendimento Particular' },
+  { value: 'atendimento', label: 'Atendimento' },
   { value: 'supervisao', label: 'Supervisão Clínica' },
   { value: 'avaliacao', label: 'Avaliação Psicológica/Fonoaudiológica' },
   { value: 'grupo', label: 'Atendimento em Grupo' },
@@ -288,7 +288,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Briefcase className="w-5 h-5" />
-            Serviços Particulares
+            Serviços
           </DialogTitle>
         </DialogHeader>
 

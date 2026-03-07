@@ -223,7 +223,7 @@ export default function Financial() {
       y += 6;
       doc.text(`Receita Clínicas: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       y += 6;
-      doc.text(`Receita Particulares: R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      doc.text(`Receita Serviços: R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       y += 6;
       if (totalLoss > 0) {
         doc.setTextColor(220, 53, 69);
@@ -265,7 +265,7 @@ export default function Financial() {
         if (y > 250) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
-        doc.text('Atendimentos Particulares', margin, y);
+        doc.text('Serviços', margin, y);
         y += 8;
         doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
@@ -839,7 +839,7 @@ export default function Financial() {
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-foreground text-lg flex items-center gap-2">
                       <Briefcase className="w-4 h-4" />
-                      Atendimentos Particulares
+                      Serviços
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground">{monthlyPrivateAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos</p>
