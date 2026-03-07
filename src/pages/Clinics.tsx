@@ -147,11 +147,38 @@ export default function Clinics() {
     }
   };
 
+  const handleNewClinicClick = () => {
+    const activeClinicsCount = clinics.filter(c => !c.isArchived).length;
+    if (activeClinicsCount >= CLINIC_LIMIT) {
+      setLimitDialogOpen(true);
+    } else {
+      setIsDialogOpen(true);
+    }
+  };
+
+  const handleSendSupportMessage = async () => {
+    if (!user) return;
+    setSendingSupportMsg(true);
+    try {
+      const { error } = await supabase.from('support_messages').insert({
+        user_id: user.id,
+        message: 'Olá! Tenho mais de 6 clínicas ativas e gostaria de negociar um valor especial de mensalidade para continuar usando o sistema com todas elas. Podemos conversar?',
+        is_admin_reply: false,
+      });
+      if (error) throw error;
+      toast.success('Mensagem enviada! Em breve nossa equipe entrará em contato.');
+      setLimitDialogOpen(false);
+    } catch {
+      toast.error('Erro ao enviar mensagem. Tente novamente.');
+    } finally {
+      setSendingSupportMsg(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    // Calcular scheduleTime a partir do primeiro horário do scheduleByDay
     const firstDayTime = formData.weekdays.length > 0 
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
