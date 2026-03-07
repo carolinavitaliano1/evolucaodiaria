@@ -681,14 +681,16 @@ function UserSupportView() {
         setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
         // New message means chat was reopened/active
         setIsClosed(false);
+        setClosedBy(null);
         // If admin replied, mark as seen immediately (user is on the page)
         if (newMsg.is_admin_reply) markSupportSeen();
       })
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'support_chat_sessions',
         filter: `user_id=eq.${user.id}`,
-      }, () => {
+      }, (payload) => {
         setIsClosed(true);
+        setClosedBy((payload.new as any)?.closed_by || null);
         markSupportSeen();
       })
       .subscribe();
