@@ -1102,7 +1102,7 @@ export default function ClinicDetail() {
                 <Button 
                   className="gradient-primary gap-2"
                   onClick={handleBatchEvolution}
-                  disabled={selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim())}
+                  disabled={isArchived || selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim())}
                 >
                   <FileText className="w-4 h-4" />
                   Aplicar Evolução
