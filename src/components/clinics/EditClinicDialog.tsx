@@ -126,7 +126,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="terceirizada" id="edit-terceirizada" />
-                <Label htmlFor="edit-terceirizada" className="cursor-pointer text-sm">Terceirizada</Label>
+                <Label htmlFor="edit-terceirizada" className="cursor-pointer text-sm">Contratante</Label>
               </div>
             </RadioGroup>
           </div>

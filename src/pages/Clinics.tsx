@@ -689,8 +689,8 @@ export default function Clinics() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <h3 className="font-semibold text-foreground truncate">{clinic.name}</h3>
-                          <Badge variant="outline" className={cn("text-xs shrink-0", isPropria ? "border-primary/50 text-primary" : "border-secondary text-muted-foreground")}>
-                            {isPropria ? 'Própria' : 'Outra'}
+                          <Badge variant="outline" className={cn("text-xs shrink-0", isPropria ? "border-primary/50 text-primary" : "border-blue-500/50 text-blue-500")}>
+                            {isPropria ? 'Própria' : 'Contratante'}
                           </Badge>
                           {clinic.isArchived && <Badge variant="secondary" className="text-xs shrink-0">Arquivada</Badge>}
                         </div>
