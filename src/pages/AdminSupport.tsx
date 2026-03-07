@@ -499,14 +499,14 @@ export default function AdminSupport() {
       )}
 
       <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="mx-4 max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja encerrar este atendimento?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-row justify-end gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCloseChat}
