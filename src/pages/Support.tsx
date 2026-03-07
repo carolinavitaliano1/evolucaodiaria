@@ -441,6 +441,7 @@ function UserSupportView() {
         body: {
           senderName: (profile as any)?.name || null,
           senderEmail: (profile as any)?.email || user.email || null,
+          senderUserId: user.id,
           messageText: msgText,
         },
       });
