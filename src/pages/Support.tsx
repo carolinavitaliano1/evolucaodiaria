@@ -479,6 +479,7 @@ function UserSupportView() {
       });
       toast.success('Chat encerrado. Você receberá o histórico por e-mail.');
       setMessages([]);
+      setHasMessages(false);
     } catch {
       toast.error('Erro ao encerrar o chat');
     }
