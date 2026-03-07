@@ -96,7 +96,7 @@ export default function Clinics() {
   });
 
   useEffect(() => {
-    if (activeTab === 'particulares') {
+    if (activeTab === 'meus-servicos') {
       loadPrivateAppointments();
     }
   }, [activeTab]);
@@ -291,7 +291,7 @@ export default function Clinics() {
             </div>
             <div>
               <h1 className="font-bold text-foreground text-lg leading-none">Locais de Atendimento</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Clínicas e atendimentos particulares</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Clínicas e meus serviços</p>
             </div>
           </div>
         </div>
@@ -357,7 +357,7 @@ export default function Clinics() {
               <Building2 className="w-3.5 h-3.5" />
               Clínicas
             </TabsTrigger>
-            <TabsTrigger value="particulares" className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger value="meus-servicos" className="gap-1.5 text-xs sm:text-sm">
               <Briefcase className="w-3.5 h-3.5" />
               Serviços
               {pendingAppointments.length > 0 && (
@@ -732,7 +732,7 @@ export default function Clinics() {
         </TabsContent>
 
         {/* Serviços Tab */}
-        <TabsContent value="particulares" className="space-y-4">
+        <TabsContent value="meus-servicos" className="space-y-4">
           {loadingPrivate ? (
             <div className="text-center py-12 text-muted-foreground">
               Carregando...
@@ -740,9 +740,9 @@ export default function Clinics() {
           ) : privateAppointments.length === 0 ? (
             <div className="text-center py-12 bg-card rounded-xl border border-border">
               <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">Nenhum atendimento particular</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">Nenhum serviço cadastrado</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Agende seu primeiro atendimento particular
+                Cadastre seu primeiro serviço
               </p>
               <Button onClick={() => setServiceDialogOpen(true)} size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
