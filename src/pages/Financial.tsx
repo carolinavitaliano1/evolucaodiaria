@@ -265,7 +265,7 @@ export default function Financial() {
         if (y > 250) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
-        doc.text('Atendimentos Particulares', margin, y);
+        doc.text('Serviços', margin, y);
         y += 8;
         doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
