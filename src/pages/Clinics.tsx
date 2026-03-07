@@ -622,10 +622,10 @@ export default function Clinics() {
           {/* Filter Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {([
-              { key: 'all',          label: 'Ativas',     count: activeClinics.length,                                         icon: Building2,        color: 'text-primary',     bg: 'bg-primary/10' },
-              { key: 'propria',      label: 'Próprias',   count: activeClinics.filter(c => c.type === 'propria').length,        icon: Building2,        color: 'text-violet-500',  bg: 'bg-violet-500/10' },
-              { key: 'terceirizada', label: 'Outras',     count: activeClinics.filter(c => c.type === 'terceirizada').length,   icon: Briefcase,        color: 'text-blue-500',    bg: 'bg-blue-500/10' },
-              { key: 'archived',     label: 'Arquivadas', count: archivedClinics.length,                                        icon: Archive,          color: 'text-muted-foreground', bg: 'bg-secondary' },
+              { key: 'all',          label: 'Ativas',       count: activeClinics.length,                                         icon: Building2,        color: 'text-primary',     bg: 'bg-primary/10' },
+              { key: 'propria',      label: 'Próprias',     count: activeClinics.filter(c => c.type === 'propria').length,        icon: Building2,        color: 'text-violet-500',  bg: 'bg-violet-500/10' },
+              { key: 'terceirizada', label: 'Contratantes', count: activeClinics.filter(c => c.type === 'terceirizada').length,   icon: Briefcase,        color: 'text-blue-500',    bg: 'bg-blue-500/10' },
+              { key: 'archived',     label: 'Arquivadas',   count: archivedClinics.length,                                        icon: Archive,          color: 'text-muted-foreground', bg: 'bg-secondary' },
             ] as const).map(({ key, label, count, icon: Icon, color, bg }) => (
               <button
                 key={key}
