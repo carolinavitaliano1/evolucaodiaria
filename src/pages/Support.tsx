@@ -375,6 +375,8 @@ function UserSupportView() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [closingChat, setClosingChat] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
