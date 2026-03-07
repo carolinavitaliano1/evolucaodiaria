@@ -96,7 +96,7 @@ export default function Clinics() {
   });
 
   useEffect(() => {
-    if (activeTab === 'particulares') {
+    if (activeTab === 'meus-servicos') {
       loadPrivateAppointments();
     }
   }, [activeTab]);
