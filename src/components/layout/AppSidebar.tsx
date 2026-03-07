@@ -121,6 +121,34 @@ export function AppSidebar() {
             </NavLink>
           );
         })}
+
+        {/* Equipe — exclusive section for org owners/members */}
+        {showTeam && (
+          <>
+            <div className="pt-2 pb-1 px-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Equipe</p>
+            </div>
+            <NavLink
+              to="/team"
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                'hover:bg-accent group',
+                location.pathname.startsWith('/team') && 'bg-primary text-primary-foreground'
+              )}
+            >
+              <UsersRound className={cn(
+                'w-[18px] h-[18px]',
+                location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
+              )} />
+              <span className={cn(
+                'text-sm font-medium flex-1',
+                location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
+              )}>
+                Gestão de Equipe
+              </span>
+            </NavLink>
+          </>
+        )}
       </nav>
 
       {/* Footer */}
