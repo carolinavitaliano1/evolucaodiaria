@@ -360,8 +360,8 @@ function AdminSupportView() {
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    {(selectedConv as any)?.user_phone
-                      ? <a href={`tel:${(selectedConv as any).user_phone}`} className="text-sm text-primary">{(selectedConv as any).user_phone}</a>
+                    {selectedConv?.user_phone
+                      ? <a href={`tel:${selectedConv.user_phone}`} className="text-sm text-primary">{selectedConv.user_phone}</a>
                       : <span className="text-muted-foreground italic text-xs">Não informado</span>}
                   </div>
                 </div>
