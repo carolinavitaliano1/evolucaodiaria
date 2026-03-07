@@ -644,9 +644,10 @@ function UserSupportView() {
     if (sessions && sessions.length > 0) {
       const closedAt = (sessions[0] as any).closed_at;
       const lastMsg = msgList[msgList.length - 1];
-      // Closed if last session close >= last message
+      // Consider closed if: no messages after session was closed
+      // Use a 2-second buffer to avoid millisecond race conditions
       const closed = lastMsg
-        ? new Date(closedAt) >= new Date(lastMsg.created_at)
+        ? new Date(closedAt).getTime() >= new Date(lastMsg.created_at).getTime() - 2000
         : true;
       setIsClosed(closed);
     } else {
