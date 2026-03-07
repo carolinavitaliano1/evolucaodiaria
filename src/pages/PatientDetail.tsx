@@ -484,9 +484,9 @@ export default function PatientDetail() {
         // Signature image
         if (selectedStamp.signature_image) {
           try {
-            const img = new Image();
-            img.src = selectedStamp.signature_image;
-            await new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); });
+            const imgEl = document.createElement('img');
+            imgEl.src = selectedStamp.signature_image;
+            await new Promise<void>(res => { imgEl.onload = () => res(); imgEl.onerror = () => res(); });
             doc.addImage(selectedStamp.signature_image, 'PNG', margin, y, 60, 18, undefined, 'FAST');
             y += 22;
           } catch { /* skip if image fails */ }
@@ -495,9 +495,9 @@ export default function PatientDetail() {
         // Stamp image
         if (selectedStamp.stamp_image) {
           try {
-            const img2 = new Image();
-            img2.src = selectedStamp.stamp_image;
-            await new Promise<void>(res => { img2.onload = () => res(); img2.onerror = () => res(); });
+            const imgEl2 = document.createElement('img');
+            imgEl2.src = selectedStamp.stamp_image;
+            await new Promise<void>(res => { imgEl2.onload = () => res(); imgEl2.onerror = () => res(); });
             doc.addImage(selectedStamp.stamp_image, 'PNG', margin, y, 40, 40, undefined, 'FAST');
             y += 44;
           } catch { /* skip if image fails */ }
