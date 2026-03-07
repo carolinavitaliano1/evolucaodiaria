@@ -101,7 +101,7 @@ export default function AdminSupport() {
     const userIds = Array.from(map.keys());
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, name, email')
+      .select('user_id, name, email, phone')
       .in('user_id', userIds);
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
@@ -114,6 +114,7 @@ export default function AdminSupport() {
         user_id: uid,
         user_name: profile?.name || null,
         user_email: profile?.email || null,
+        user_phone: profile?.phone || null,
         last_message: latest.message,
         last_at: latest.created_at,
         unread: userMsgs.filter(m => !m.is_admin_reply).length,
