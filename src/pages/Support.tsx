@@ -93,6 +93,7 @@ function AdminSupportView() {
       } else {
         toast.success('Chat encerrado.');
       }
+      markAdminSeen();
       setSelected(null);
       setMessages([]);
       loadConversations();
