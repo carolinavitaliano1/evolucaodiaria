@@ -8,10 +8,6 @@ import {
   Smartphone, Lock, RefreshCw, Play,
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import demoDashboard from '@/assets/demo-dashboard.jpg';
-import demoEvolutions from '@/assets/demo-evolutions.jpg';
-import demoCalendar from '@/assets/demo-calendar.jpg';
-import demoReports from '@/assets/demo-reports.jpg';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
