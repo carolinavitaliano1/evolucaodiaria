@@ -1118,6 +1118,7 @@ export default function ClinicDetail() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-foreground">Pacientes</h2>
               
+              {!isArchived && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gradient-primary gap-2">
