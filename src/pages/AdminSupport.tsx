@@ -370,7 +370,7 @@ export default function AdminSupport() {
                   </div>
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="start" className="w-64 p-0 overflow-hidden">
+              <PopoverContent side="bottom" align="start" className="w-[min(16rem,calc(100vw-2rem))] p-0 overflow-hidden z-50">
                 <div className="bg-primary/5 px-4 py-3 border-b border-border flex items-center gap-3">
                   <Avatar className="w-10 h-10 shrink-0">
                     <AvatarImage src={selectedConv?.user_avatar ?? undefined} />
