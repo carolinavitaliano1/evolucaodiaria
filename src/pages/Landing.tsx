@@ -236,63 +236,6 @@ export default function Landing() {
         </motion.div>
       </section>
 
-      {/* ── REAL APP SCREENSHOTS ── */}
-      <section className="py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
-            custom={0} variants={fadeUp} className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 border border-primary/20">
-              <Monitor className="w-4 h-4" /> Veja o app de verdade
-            </div>
-            <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-3">
-              Tudo que você precisa, em uma tela só
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Nada de promessas. Veja exatamente como o sistema funciona no dia a dia.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            {APP_SCREENSHOTS.map((s, i) => (
-              <motion.div key={s.label} initial="hidden" whileInView="visible"
-                viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
-                className="group flex flex-col">
-                {/* screenshot */}
-                <div className="relative rounded-2xl overflow-hidden border border-border/60 shadow-lg mb-4 bg-card">
-                  <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/50 border-b border-border/40">
-                    <div className="w-2.5 h-2.5 rounded-full bg-destructive/50" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-warning/50" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-success/50" />
-                    <span className="ml-2 text-[10px] text-muted-foreground font-medium">{s.label}</span>
-                  </div>
-                  <img
-                    src={s.img}
-                    alt={s.title}
-                    className="w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
-                    style={{ maxHeight: '280px' }}
-                  />
-                </div>
-                {/* caption */}
-                <div className="px-1">
-                  <h3 className="font-semibold text-foreground mb-1">{s.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* CTA below screenshots */}
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
-            custom={5} variants={fadeUp} className="text-center mt-12">
-            <Button size="lg" onClick={() => navigate('/auth')}
-              className="gradient-primary gap-2 text-base px-8 py-5 shadow-glow">
-              Quero usar assim também <ArrowRight className="w-5 h-5" />
-            </Button>
-            <p className="text-sm text-muted-foreground mt-3">15 dias grátis. Sem cartão de crédito.</p>
-          </motion.div>
-        </div>
-      </section>
-
       {/* AI Section */}
       <section className="py-20 px-4 gradient-subtle">
         <div className="max-w-6xl mx-auto">
