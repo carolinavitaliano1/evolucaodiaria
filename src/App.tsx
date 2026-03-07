@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -28,8 +29,22 @@ import Mural from "./pages/Mural";
 import Team from "./pages/Team";
 import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
+
+// Smart root: logged-in → /dashboard, visitor → Landing page
+function RootRedirect() {
+  const { user, loading, sessionReady } = useAuth();
+  if (!sessionReady || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  return user ? <Navigate to="/dashboard" replace /> : <Landing />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -40,7 +55,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<RootRedirect />} />
               <Route path="/landing" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
