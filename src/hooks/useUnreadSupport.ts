@@ -99,11 +99,12 @@ export function useUnreadSupportCount() {
 
   /** Call this when the admin opens a conversation, replies or closes the chat */
   const markAdminSeen = useCallback(() => {
-    if (!user || !isAdmin) return;
+    if (!user) return;
+    // Use user.id directly — don't depend on async isAdmin state
     const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
     localStorage.setItem(adminLastSeenKey, new Date().toISOString());
     setUnreadCount(0);
-  }, [user, isAdmin]);
+  }, [user]);
 
   return { unreadCount, isAdmin, markSupportSeen, markAdminSeen };
 }
