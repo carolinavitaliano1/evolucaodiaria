@@ -75,6 +75,31 @@ function AdminSupportView() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const handleCloseChat = async () => {
+    if (!selected) return;
+    setClosingChat(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('close-support-chat', {
+        body: { userId: selected, closedBy: 'admin' },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const result = res.data as any;
+      if (result?.sent > 0) {
+        toast.success(`Chat encerrado. ${result.sent} e-mail(s) enviado(s) com o histórico.`);
+      } else {
+        toast.success('Chat encerrado.');
+      }
+      setSelected(null);
+      setMessages([]);
+      loadConversations();
+    } catch {
+      toast.error('Erro ao encerrar o chat');
+    }
+    setClosingChat(false);
+    setShowCloseDialog(false);
+  };
+
   const loadConversations = async () => {
     const { data: msgs } = await supabase
       .from('support_messages')
