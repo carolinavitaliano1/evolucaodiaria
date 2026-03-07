@@ -49,9 +49,6 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
 
   useEffect(() => {
     if (open && clinic) {
-      setStampPreview(clinic.stamp || null);
-      setStampFile(null);
-      setRemoveStamp(false);
       setFormData({
         name: clinic.name || '',
         type: clinic.type || 'propria',
