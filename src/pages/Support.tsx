@@ -71,24 +71,49 @@ export default function Support() {
   const handleSend = async () => {
     if (!user || !text.trim()) return;
     setSending(true);
+    const msgText = text.trim();
     const optimistic: SupportMessage = {
       id: `tmp-${Date.now()}`,
       user_id: user.id,
-      message: text.trim(),
+      message: msgText,
       is_admin_reply: false,
       created_at: new Date().toISOString(),
     };
     setMessages(prev => [...prev, optimistic]);
     setText('');
+
     const { error } = await supabase.from('support_messages').insert({
       user_id: user.id,
-      message: optimistic.message,
+      message: msgText,
       is_admin_reply: false,
     });
+
     if (error) {
       toast.error('Erro ao enviar mensagem');
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+      setSending(false);
+      return;
     }
+
+    // Notify admins via email (fire-and-forget, don't block UI)
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name, email')
+        .eq('user_id', user.id)
+        .single();
+
+      supabase.functions.invoke('notify-support', {
+        body: {
+          senderName: (profile as any)?.name || null,
+          senderEmail: (profile as any)?.email || user.email || null,
+          messageText: msgText,
+        },
+      });
+    } catch (_) {
+      // Silent fail — email notification is best-effort
+    }
+
     setSending(false);
     inputRef.current?.focus();
   };
