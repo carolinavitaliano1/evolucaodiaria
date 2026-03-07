@@ -357,13 +357,6 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             </Button>
             <Button type="submit">Salvar Alterações</Button>
           </div>
-              <div className="flex items-start gap-3">
-                <div className="border border-border rounded-lg p-2 bg-muted/30 flex items-center justify-center w-32 h-20">
-                  <img src={stampPreview} alt="Carimbo" className="max-w-full max-h-full object-contain" />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    type="button"
                     variant="outline"
                     size="sm"
                     className="gap-1.5 text-xs"
