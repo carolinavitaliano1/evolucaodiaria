@@ -379,10 +379,23 @@ function AdminSupportView() {
                 {msgs.map((msg, idx) => {
                   const isMe = msg.is_admin_reply;
                   const prevSameSide = idx > 0 && msgs[idx - 1].is_admin_reply === msg.is_admin_reply;
+                  const showAvatar = !isMe && !prevSameSide;
                   return (
-                    <div key={msg.id} className={cn('flex', isMe ? 'justify-end' : 'justify-start', prevSameSide ? 'mt-0.5' : 'mt-3')}>
+                    <div key={msg.id} className={cn('flex items-end gap-2', isMe ? 'justify-end' : 'justify-start', prevSameSide ? 'mt-0.5' : 'mt-3')}>
+                      {!isMe && (
+                        <div className="shrink-0 w-7">
+                          {showAvatar && (
+                            <Avatar className="w-7 h-7">
+                              <AvatarImage src={selectedConv?.user_avatar ?? undefined} alt={selectedConv?.user_name || ''} />
+                              <AvatarFallback className="bg-primary/10 text-primary font-bold text-[10px]">
+                                {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                      )}
                       <div className={cn(
-                        'max-w-[78%] sm:max-w-[60%] px-3 py-2 text-sm shadow-sm',
+                        'max-w-[75%] sm:max-w-[58%] px-3 py-2 text-sm shadow-sm',
                         isMe
                           ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm'
                           : 'bg-card text-foreground rounded-2xl rounded-tl-sm border border-border'
