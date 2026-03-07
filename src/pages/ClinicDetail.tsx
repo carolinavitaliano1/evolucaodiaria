@@ -728,8 +728,9 @@ export default function ClinicDetail() {
                       </div>
                       <div>
                         <h3 
-                          className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+                          className={cn("font-semibold text-foreground transition-colors", !isArchived && "cursor-pointer hover:text-primary")}
                           onClick={() => {
+                            if (isArchived) return;
                             if (!hasEvolution) {
                               setQuickEvolutionPatient(patient.id);
                               setQuickEvolutionText('');
