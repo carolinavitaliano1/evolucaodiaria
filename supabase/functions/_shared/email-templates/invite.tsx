@@ -18,10 +18,16 @@ interface InviteEmailProps {
   siteName: string
   siteUrl: string
   confirmationUrl: string
+  inviterName?: string
+  orgName?: string
+  roleLabel?: string
 }
 
 export const InviteEmail = ({
   confirmationUrl,
+  inviterName,
+  orgName,
+  roleLabel,
 }: InviteEmailProps) => (
   <Html lang="pt-BR" dir="ltr">
     <Head />
@@ -32,10 +38,24 @@ export const InviteEmail = ({
           <Text style={logoText}>📖 Evolução Diária</Text>
         </Section>
         <Heading style={h1}>Você foi convidado(a)!</Heading>
-        <Text style={text}>
-          Você recebeu um convite para fazer parte da equipe do <strong>Evolução Diária</strong>.
-          Clique no botão abaixo para aceitar o convite e acessar o sistema.
-        </Text>
+        {inviterName && orgName ? (
+          <>
+            <Text style={text}>
+              <strong>{inviterName}</strong> convidou você para fazer parte da equipe{' '}
+              <strong>{orgName}</strong> no Evolução Diária
+              {roleLabel ? ` como ${roleLabel}` : ''}.
+            </Text>
+            <Text style={text}>
+              Clique no botão abaixo para aceitar o convite. Se você ainda não tem uma conta,
+              será necessário criar uma para acessar o sistema.
+            </Text>
+          </>
+        ) : (
+          <Text style={text}>
+            Você recebeu um convite para fazer parte da equipe do <strong>Evolução Diária</strong>.
+            Clique no botão abaixo para aceitar o convite e acessar o sistema.
+          </Text>
+        )}
         <Button style={button} href={confirmationUrl}>
           Aceitar convite
         </Button>
@@ -54,7 +74,7 @@ const container = { maxWidth: '480px', margin: '0 auto', padding: '32px 28px' }
 const header = { marginBottom: '28px', paddingBottom: '20px', borderBottom: '1px solid #ede9f7' }
 const logoText = { fontSize: '20px', fontWeight: 'bold' as const, color: 'hsl(252, 56%, 57%)', margin: '0' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: 'hsl(240, 10%, 15%)', margin: '0 0 16px' }
-const text = { fontSize: '15px', color: 'hsl(240, 5%, 45%)', lineHeight: '1.6', margin: '0 0 28px' }
+const text = { fontSize: '15px', color: 'hsl(240, 5%, 45%)', lineHeight: '1.6', margin: '0 0 20px' }
 const button = {
   backgroundColor: 'hsl(252, 56%, 57%)',
   color: '#ffffff',
