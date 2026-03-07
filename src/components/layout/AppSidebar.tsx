@@ -58,6 +58,9 @@ export function AppSidebar() {
     return permissions.includes(item.perm as any);
   });
 
+  // Show /team link only for org owners or org members with team.view permission
+  const showTeam = isOwner || (isOrgMember && permissions.includes('team.view' as any));
+
   return (
     <aside className={cn(
       "hidden lg:flex flex-col w-60 min-h-screen border-r border-border",
