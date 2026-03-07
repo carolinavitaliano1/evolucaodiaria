@@ -650,6 +650,8 @@ export default function PatientDetail() {
     finally { setIsExportingFinancial(false); }
   };
 
+  const handleGeneratePeriodPdf = () => {
+
 
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
