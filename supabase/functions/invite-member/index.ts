@@ -56,7 +56,7 @@ async function sendInviteEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `Evolução Diária <onboarding@resend.dev>`,
+      from: `Evolução Diária <noreply@evolucaodiaria.app.br>`,
       to: [to],
       subject: `Convite para a equipe ${orgName} - Evolução Diária`,
       html,
