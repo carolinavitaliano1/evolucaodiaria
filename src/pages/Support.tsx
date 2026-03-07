@@ -222,7 +222,7 @@ function AdminSupportView() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-hidden">
       {/* ── Sidebar ── */}
       <div className={cn(
         'flex flex-col bg-card border-r border-border',
@@ -333,7 +333,7 @@ function AdminSupportView() {
                   </div>
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="start" className="w-64 p-0 overflow-hidden">
+              <PopoverContent side="bottom" align="start" className="w-[min(16rem,calc(100vw-2rem))] p-0 overflow-hidden z-50">
                 <div className="bg-primary/5 px-4 py-3 border-b border-border flex items-center gap-3">
                   <Avatar className="w-10 h-10 shrink-0">
                     <AvatarImage src={selectedConv?.user_avatar ?? undefined} />
@@ -407,7 +407,7 @@ function AdminSupportView() {
           </div>
 
           {/* Input */}
-          <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
+          <div className="flex items-end gap-2 px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] bg-card border-t border-border">
             <Button
               variant="outline"
               size="icon"
@@ -442,14 +442,14 @@ function AdminSupportView() {
       )}
 
       <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="mx-4 max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja encerrar este atendimento?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-row justify-end gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCloseChat}
@@ -597,7 +597,7 @@ function UserSupportView() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)]">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)]">
       <div className="flex items-center gap-3 px-4 py-3 bg-card border-b border-border">
         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
           <HeadphonesIcon className="w-5 h-5 text-primary" />
@@ -663,21 +663,22 @@ function UserSupportView() {
       </div>
 
       {/* Close chat bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-card border-t border-border/60">
-        <p className="text-xs text-muted-foreground">Atendimento resolvido? Encerre o chat.</p>
+      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-card border-t border-border/60">
+        <p className="text-xs text-muted-foreground truncate">Atendimento resolvido?</p>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowCloseDialog(true)}
           disabled={closingChat || messages.length === 0}
-          className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive text-xs h-7"
+          className="shrink-0 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive text-xs h-8 px-3"
         >
           <PhoneOff className="w-3 h-3" />
-          Encerrar Atendimento
+          <span className="hidden xs:inline">Encerrar</span>
+          <span className="xs:hidden">Encerrar</span>
         </Button>
       </div>
 
-      <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
+      <div className="flex items-end gap-2 px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] bg-card border-t border-border">
         <Textarea
           ref={inputRef}
           value={text}
@@ -695,14 +696,14 @@ function UserSupportView() {
       </div>
 
       <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="mx-4 max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja encerrar este atendimento?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-row justify-end gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCloseChat}

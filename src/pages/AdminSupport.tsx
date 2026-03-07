@@ -274,7 +274,7 @@ export default function AdminSupport() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-hidden">
       {/* ── Sidebar: conversation list ── */}
       <div className={cn(
         'flex flex-col bg-card border-r border-border',
@@ -370,7 +370,7 @@ export default function AdminSupport() {
                   </div>
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="start" className="w-64 p-0 overflow-hidden">
+              <PopoverContent side="bottom" align="start" className="w-[min(16rem,calc(100vw-2rem))] p-0 overflow-hidden z-50">
                 <div className="bg-primary/5 px-4 py-3 border-b border-border flex items-center gap-3">
                   <Avatar className="w-10 h-10 shrink-0">
                     <AvatarImage src={selectedConv?.user_avatar ?? undefined} />
@@ -455,7 +455,7 @@ export default function AdminSupport() {
           </div>
 
           {/* Input */}
-          <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
+          <div className="flex items-end gap-2 px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] bg-card border-t border-border">
             <Button
               variant="outline"
               size="icon"
@@ -499,14 +499,14 @@ export default function AdminSupport() {
       )}
 
       <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="mx-4 max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja encerrar este atendimento?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-row justify-end gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCloseChat}
