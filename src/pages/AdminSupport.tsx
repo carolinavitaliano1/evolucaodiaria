@@ -455,7 +455,7 @@ export default function AdminSupport() {
           </div>
 
           {/* Input */}
-          <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
+          <div className="flex items-end gap-2 px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] bg-card border-t border-border">
             <Button
               variant="outline"
               size="icon"
