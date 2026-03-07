@@ -351,7 +351,7 @@ export default function PatientDetail() {
       doc.text('Assinatura:', margin, y);
       doc.line(margin + 24, y + 1, margin + 100, y + 1);
       y += 10;
-      doc.text('Data:', margin);
+      doc.text('Data:', margin, y);
       doc.line(margin + 12, y + 1, margin + 60, y + 1);
       y += 8;
     }
