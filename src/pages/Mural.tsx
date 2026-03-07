@@ -215,6 +215,20 @@ export default function Mural() {
         toast.success('Aviso criado!');
         // Mark the new notice as unread so badge appears
         refetchUnread();
+        // Send email notification to all clients
+        supabase.functions.invoke('notify-mural', {
+          body: {
+            noticeTitle: payload.title,
+            noticeContent: payload.content || '',
+            noticeType: payload.type,
+          },
+        }).then(({ error: notifyError }) => {
+          if (notifyError) {
+            console.error('Erro ao enviar e-mails do mural:', notifyError);
+          } else {
+            toast.success('E-mails enviados aos clientes!', { duration: 3000 });
+          }
+        });
       }
     }
     setSaving(false);
