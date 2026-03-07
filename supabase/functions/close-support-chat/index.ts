@@ -41,12 +41,32 @@ serve(async (req) => {
 
     logStep("Closing chat for user", { userId, closedBy });
 
-    // Fetch full conversation
-    const { data: allMessages, error: msgErr } = await supabase
+    // Find last session close for this user (to know where current session started)
+    const { data: lastSessions } = await supabase
+      .from("support_chat_sessions")
+      .select("closed_at")
+      .eq("user_id", userId)
+      .order("closed_at", { ascending: false })
+      .limit(1);
+
+    const lastClosedAt = lastSessions && lastSessions.length > 0
+      ? (lastSessions[0] as any).closed_at
+      : null;
+
+    logStep("Last closed session", { lastClosedAt });
+
+    // Fetch only messages from the CURRENT session (after last close)
+    let query = supabase
       .from("support_messages")
       .select("message, is_admin_reply, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
+
+    if (lastClosedAt) {
+      query = query.gt("created_at", lastClosedAt);
+    }
+
+    const { data: allMessages, error: msgErr } = await query;
 
     if (msgErr) logStep("Error fetching messages", { error: msgErr.message });
 
