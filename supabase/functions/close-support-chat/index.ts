@@ -201,15 +201,16 @@ serve(async (req) => {
       }
     }
 
-    // 3. Delete all messages after sending
-    if (sent > 0 || errors.length === 0) {
-      const { error: delErr } = await supabase
-        .from("support_messages")
-        .delete()
-        .eq("user_id", userId);
-      if (delErr) logStep("Error deleting messages", { error: delErr.message });
-      else logStep("Messages deleted after closure");
-    }
+    // 3. Register closed session (keep messages for history — never delete them)
+    const { error: sessionErr } = await supabase
+      .from("support_chat_sessions")
+      .insert({
+        user_id: userId,
+        closed_by: closedBy ?? "user",
+        message_count: allMessages.length,
+      });
+    if (sessionErr) logStep("Error registering session", { error: sessionErr.message });
+    else logStep("Session registered", { userId, messageCount: allMessages.length });
 
     logStep("Done", { sent, errors: errors.length });
     return new Response(JSON.stringify({ sent, errors }), {

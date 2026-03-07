@@ -1002,6 +1002,30 @@ export type Database = {
         }
         Relationships: []
       }
+      support_chat_sessions: {
+        Row: {
+          closed_at: string
+          closed_by: string
+          id: string
+          message_count: number
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string
+          closed_by?: string
+          id?: string
+          message_count?: number
+          user_id: string
+        }
+        Update: {
+          closed_at?: string
+          closed_by?: string
+          id?: string
+          message_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       support_messages: {
         Row: {
           admin_id: string | null
