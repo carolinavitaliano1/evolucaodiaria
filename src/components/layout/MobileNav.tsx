@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import { useSubscription } from '@/hooks/useSubscription';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -17,7 +18,8 @@ import {
   Smartphone,
   Megaphone,
   UsersRound,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
