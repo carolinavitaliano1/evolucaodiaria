@@ -356,8 +356,8 @@ export default function Clinics() {
           </div>
         </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <TabsList className="bg-secondary/50">
             <TabsTrigger value="clinics" className="gap-2">
