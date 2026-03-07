@@ -7,13 +7,9 @@ const corsHeaders = {
 
 const APP_URL = 'https://evolucaodiaria.app.br';
 
-function generateTempPassword(): string {
-  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let password = '';
-  for (let i = 0; i < 10; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
+function generateTempPassword(email: string): string {
+  // Senha é o próprio e-mail do usuário para facilitar o primeiro acesso
+  return email;
 }
 
 async function sendInviteEmailWithCredentials(
