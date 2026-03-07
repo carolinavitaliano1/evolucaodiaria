@@ -98,7 +98,9 @@ export function useUnreadSupportCount() {
         table: 'support_chat_sessions',
         filter: `user_id=eq.${user.id}`,
       }, () => {
-        // Chat was closed — zero the badge (no new admin messages expected)
+        // Persist lastSeen = now so fetchCount also returns 0 after close
+        const lastSeenKey = `support_last_seen_${user.id}`;
+        localStorage.setItem(lastSeenKey, new Date().toISOString());
         setUnreadCount(0);
       })
       .subscribe();
