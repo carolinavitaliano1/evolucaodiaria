@@ -237,15 +237,6 @@ export default function PatientDetail() {
   }));
   const totalMoods = moodCounts.reduce((sum, m) => sum + m.count, 0);
 
-  if (!patient) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-muted-foreground">Paciente não encontrado</p>
-        <Button onClick={() => navigate('/clinics')} className="mt-4">Voltar</Button>
-      </div>
-    );
-  }
-
   const moodChartData = patientEvolutions
     .filter(e => e.mood)
     .sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime())
@@ -277,11 +268,20 @@ export default function PatientDetail() {
   const monthlyFeriadoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const monthlyFeriadoNaoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const monthlyTotal = monthlyEvolutions.length;
-  const monthlyRevenue = (monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem) * (patient.paymentValue || 0);
+  const monthlyRevenue = (monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem) * ((patient?.paymentValue) || 0);
   const monthlyAttendanceRate = monthlyTotal > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyTotal) * 100) : 0;
   const monthlyMoodCounts = allMoodOptions.map(m => ({
     ...m, count: monthlyEvolutions.filter(e => e.mood === m.value).length,
   }));
+
+  if (!patient) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Paciente não encontrado</p>
+        <Button onClick={() => navigate('/clinics')} className="mt-4">Voltar</Button>
+      </div>
+    );
+  }
 
   const handleExportMonthlyPDF = async () => {
     if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
