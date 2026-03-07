@@ -409,116 +409,104 @@ export default function PatientDetail() {
       doc.text(`${moodsWithData.length > 0 ? '3' : '2'}. REGISTRO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y);
       y += 8;
 
-      const statusLabelFormal: Record<string, string> = {
-        presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
-        reposicao: 'Reposicao', feriado_remunerado: 'Feriado Remunerado', feriado_nao_remunerado: 'Feriado',
-      };
-
-      const statusRows = [
-        { label: '✅ Presente', value: monthlyPresent, color: successColor },
-        { label: '🔄 Reposição', value: monthlyReposicao, color: primaryColor },
-        { label: '💰 Falta Remunerada', value: monthlyPaidAbsent, color: warningColor },
-        { label: '🎉 Feriado Remunerado', value: monthlyFeriadoRem, color: primaryColor },
-        { label: '📅 Feriado Não Remunerado', value: monthlyFeriadoNaoRem, color: mutedColor },
-        { label: '❌ Falta', value: monthlyAbsent, color: destructiveColor },
-      ].filter(r => r.value > 0);
-
-      statusRows.forEach((row, i) => {
-        const x = margin + (i % 2) * ((W - margin * 2) / 2 + 2);
-        if (i % 2 === 0 && i > 0) y += 8;
-        doc.setFillColor(row.color[0], row.color[1], row.color[2]);
-        doc.circle(x + 2, y - 1, 1.5, 'F');
-        doc.setTextColor(50, 50, 60);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${row.label}: ${row.value}`, x + 6, y + 1);
-      });
-      if (statusRows.length > 0) y += 12;
-
-      // Mood summary
-      const moodsWithData = monthlyMoodCounts.filter(m => m.count > 0);
-      if (moodsWithData.length > 0) {
-        doc.setDrawColor(220, 220, 230);
-        doc.line(margin, y, W - margin, y);
-        y += 8;
-        doc.setTextColor(30, 30, 40);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Humor do Mês', margin, y);
-        y += 7;
-        const moodLine = moodsWithData.map(m => `${m.emoji} ${m.label}: ${m.count}`).join('    ');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(70, 70, 80);
-        doc.text(moodLine, margin, y, { maxWidth: W - margin * 2 });
-        y += 10;
-      }
-
-      // Evolutions list
-      doc.setDrawColor(220, 220, 230);
-      doc.line(margin, y, W - margin, y);
-      y += 8;
-      doc.setTextColor(30, 30, 40);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Evoluções do Mês (${monthlyEvolutions.length})`, margin, y);
-      y += 8;
-
-      const statusLabel: Record<string, string> = {
-        presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
-        reposicao: 'Reposição', feriado_remunerado: 'Feriado Rem.', feriado_nao_remunerado: 'Feriado',
-      };
-
       for (const evo of monthlyEvolutions) {
-        if (y > 260) { doc.addPage(); y = margin; }
+        if (y > 252) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-        const status = statusLabel[evo.attendanceStatus] || evo.attendanceStatus;
+        const status = statusLabelFormal[evo.attendanceStatus] || evo.attendanceStatus;
         const moodInfo = getMoodInfo(evo.mood, customMoods);
 
-        // Row background
-        doc.setFillColor(248, 248, 252);
-        const textLines = evo.text ? doc.splitTextToSize(evo.text, W - margin * 2 - 8) : [];
-        const rowH = 12 + (textLines.length > 0 ? Math.min(textLines.length, 5) * 5 : 0);
-        doc.roundedRect(margin, y - 4, W - margin * 2, rowH, 2, 2, 'F');
+        // Thin separator line between sessions
+        doc.setDrawColor(...borderColor);
+        doc.line(margin, y - 1, W - margin, y - 1);
 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(40, 40, 50);
-        doc.text(dateStr, margin + 3, y + 2);
+        doc.setTextColor(...darkText);
+        doc.text(dateStr, margin + 2, y + 5);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(...primaryColor);
-        doc.text(status, margin + 28, y + 2);
+        doc.setTextColor(...mutedText);
+        doc.text(`Status: ${status}`, margin + 32, y + 5);
 
         if (moodInfo) {
-          doc.setTextColor(...mutedColor);
-          doc.text(`${moodInfo.emoji} ${moodInfo.label}`, margin + 75, y + 2);
+          // Label only — no emoji
+          doc.text(`Humor: ${moodInfo.label}`, margin + 100, y + 5);
         }
 
+        y += 9;
+
         if (evo.text) {
-          doc.setTextColor(60, 60, 70);
-          doc.setFontSize(8);
+          doc.setTextColor(...darkText);
+          doc.setFontSize(8.5);
           doc.setFont('helvetica', 'normal');
-          const lines = textLines.slice(0, 5);
-          lines.forEach((line: string, li: number) => {
-            doc.text(line, margin + 3, y + 9 + li * 5);
+          const textLines = doc.splitTextToSize(evo.text, contentW - 4);
+          textLines.forEach((line: string) => {
+            if (y > 268) { doc.addPage(); y = margin; }
+            doc.text(line, margin + 2, y);
+            y += 5;
           });
-          y += 9 + lines.length * 5 + 3;
+          y += 3;
         } else {
-          y += rowH + 2;
+          y += 2;
         }
       }
 
-      // Footer
+      // ── STAMP / SIGNATURE ────────────────────────────────────────
+      const selectedStamp = selectedStampId && selectedStampId !== 'none'
+        ? stamps.find(s => s.id === selectedStampId)
+        : stamps.find(s => s.is_default);
+
+      if (selectedStamp) {
+        // Ensure enough space; add page if needed
+        if (y > 220) { doc.addPage(); y = margin; }
+
+        doc.setDrawColor(...borderColor);
+        doc.line(margin, y + 4, W - margin, y + 4);
+        y += 12;
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...darkText);
+        doc.text('RESPONSÁVEL PELO ATENDIMENTO', margin, y);
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...mutedText);
+        doc.text(`${selectedStamp.name}   —   ${selectedStamp.clinical_area}`, margin, y);
+        y += 8;
+
+        // Signature image
+        if (selectedStamp.signature_image) {
+          try {
+            const img = new Image();
+            img.src = selectedStamp.signature_image;
+            await new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); });
+            doc.addImage(selectedStamp.signature_image, 'PNG', margin, y, 60, 18, undefined, 'FAST');
+            y += 22;
+          } catch { /* skip if image fails */ }
+        }
+
+        // Stamp image
+        if (selectedStamp.stamp_image) {
+          try {
+            const img2 = new Image();
+            img2.src = selectedStamp.stamp_image;
+            await new Promise<void>(res => { img2.onload = () => res(); img2.onerror = () => res(); });
+            doc.addImage(selectedStamp.stamp_image, 'PNG', margin, y, 40, 40, undefined, 'FAST');
+            y += 44;
+          } catch { /* skip if image fails */ }
+        }
+      }
+
+      // ── FOOTER ───────────────────────────────────────────────────
       const pageCount = (doc as any).internal.getNumberOfPages();
       for (let p = 1; p <= pageCount; p++) {
         doc.setPage(p);
-        doc.setFontSize(8);
-        doc.setTextColor(...mutedColor);
+        doc.setFontSize(7.5);
+        doc.setTextColor(...mutedText);
         doc.text(
-          `${patient.name} — Relatório ${format(reportMonth, 'MM/yyyy')} — Página ${p}/${pageCount}`,
-          W / 2, 290, { align: 'center' }
+          `${patient.name}  —  Relatório de Referência: ${monthLabelCap}  —  Emitido em: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}  —  Pag. ${p}/${pageCount}`,
+          W / 2, 291, { align: 'center' }
         );
       }
 
