@@ -289,69 +289,75 @@ export default function Clinics() {
   };
 
   return (
-    <div className="p-4 lg:p-6 max-w-7xl mx-auto pb-24">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-1">
-          Locais de Atendimento
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie suas clínicas e atendimentos particulares
-        </p>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <div className="bg-card rounded-xl p-4 border border-border">
+    <div className="min-h-screen bg-background">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-5xl mx-auto px-4 lg:px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Building2 className="w-4 h-4 text-primary" />
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{clinics.length}</p>
-              <p className="text-xs text-muted-foreground">Clínicas</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-secondary">
-              <Users className="w-4 h-4 text-foreground" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{totalPatients}</p>
-              <p className="text-xs text-muted-foreground">Pacientes</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-              <Briefcase className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{pendingAppointments.length}</p>
-              <p className="text-xs text-muted-foreground">Particulares</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-success/10">
-              <DollarSign className="w-4 h-4 text-success" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">
-                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-              <p className="text-xs text-muted-foreground">Faturado</p>
+              <h1 className="font-bold text-foreground text-lg leading-none">Locais de Atendimento</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Clínicas e atendimentos particulares</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <div className="max-w-5xl mx-auto px-4 lg:px-6 py-5 pb-24 space-y-5">
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground leading-none">{clinics.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Clínicas</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                <Users className="w-4 h-4 text-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground leading-none">{totalPatients}</p>
+                <p className="text-xs text-muted-foreground mt-1">Pacientes</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+                <Briefcase className="w-4 h-4 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground leading-none">{pendingAppointments.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Particulares</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                <DollarSign className="w-4 h-4 text-success" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-foreground leading-none">
+                  R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Faturado</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <TabsList className="bg-secondary/50">
             <TabsTrigger value="clinics" className="gap-2">
@@ -899,6 +905,7 @@ export default function Clinics() {
           )}
         </TabsContent>
       </Tabs>
+      </div>{/* end max-w-5xl container */}
 
       {/* Service Dialog (new + edit) */}
       <ServiceDialog 

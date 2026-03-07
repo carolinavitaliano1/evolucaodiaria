@@ -123,7 +123,7 @@ export default function Team() {
                 Este plano estará disponível em breve. Fique atento às novidades!
               </p>
               <Button variant="outline" onClick={() => navigate('/pricing')} className="w-full">
-                Ver Planos Disponíveis
+                Ver Planos Individuais Disponíveis
               </Button>
             </div>
           </div>
