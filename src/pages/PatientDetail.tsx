@@ -180,6 +180,7 @@ export default function PatientDetail() {
   // Monthly report state
   const [reportMonth, setReportMonth] = useState(new Date());
   const [isExportingMonthly, setIsExportingMonthly] = useState(false);
+  const [isExportingFinancial, setIsExportingFinancial] = useState(false);
 
   useEffect(() => {
     if (!user) return;
