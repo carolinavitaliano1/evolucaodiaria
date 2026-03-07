@@ -402,8 +402,8 @@ export default function Landing() {
               Com o Evolução Diária, você recupera esse tempo — e ainda entrega documentação <span className="text-foreground font-semibold">mais profissional</span> do que antes.
             </p>
             <Button size="lg" onClick={() => navigate('/auth')}
-              className="gradient-primary gap-2 text-lg px-8 py-6 shadow-glow">
-              Quero Recuperar Meu Tempo <ArrowRight className="w-5 h-5" />
+              className="gradient-primary gap-2 text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 shadow-glow w-full sm:w-auto max-w-sm">
+              Quero Recuperar Meu Tempo <ArrowRight className="w-5 h-5 shrink-0" />
             </Button>
           </div>
         </motion.div>
