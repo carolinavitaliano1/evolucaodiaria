@@ -357,7 +357,7 @@ export default function Clinics() {
               <Building2 className="w-3.5 h-3.5" />
               Clínicas
             </TabsTrigger>
-            <TabsTrigger value="particulares" className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger value="meus-servicos" className="gap-1.5 text-xs sm:text-sm">
               <Briefcase className="w-3.5 h-3.5" />
               Serviços
               {pendingAppointments.length > 0 && (
