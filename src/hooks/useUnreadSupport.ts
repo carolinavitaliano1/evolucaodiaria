@@ -52,34 +52,16 @@ export function useUnreadSupportCount() {
 
       setUnreadCount(count);
     } else {
-      // User: count admin replies since last seen, but only after the latest chat closure
-      // (messages before closure were part of the finished session)
+      // User: simply count admin replies after the last time user saw the support page
       const lastSeenKey = `support_last_seen_${user.id}`;
       const lastSeen = localStorage.getItem(lastSeenKey) ?? '1970-01-01';
-
-      // Get the most recent closed session for this user
-      const { data: sessions } = await supabase
-        .from('support_chat_sessions')
-        .select('closed_at')
-        .eq('user_id', user.id)
-        .order('closed_at', { ascending: false })
-        .limit(1);
-
-      const lastClosedAt = (sessions && sessions.length > 0) ? (sessions[0] as any).closed_at : null;
-
-      // If the chat is currently closed (has a session), no new admin messages to count
-      // because the user can't receive new ones while closed
-      // We only count messages AFTER the last closure (i.e., from a reopened session)
-      const afterDate = lastClosedAt
-        ? new Date(Math.max(new Date(lastSeen).getTime(), new Date(lastClosedAt).getTime())).toISOString()
-        : lastSeen;
 
       const { count } = await supabase
         .from('support_messages')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('is_admin_reply', true)
-        .gt('created_at', afterDate);
+        .gt('created_at', lastSeen);
       setUnreadCount(count ?? 0);
     }
   }, [user, isAdmin]);
