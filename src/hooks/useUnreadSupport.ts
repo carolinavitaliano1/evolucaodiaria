@@ -18,30 +18,60 @@ export function useUnreadSupportCount() {
   }, [user]);
 
   const fetchCount = useCallback(async () => {
-    if (!isAdmin) return;
-    // Count messages from users (not admin replies) — these are "pending" support messages
-    const { count } = await supabase
-      .from('support_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_admin_reply', false);
-    setUnreadCount(count ?? 0);
-  }, [isAdmin]);
+    if (!user) return;
+
+    if (isAdmin) {
+      // Admin: count user messages waiting for reply
+      const { count } = await supabase
+        .from('support_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_admin_reply', false);
+      setUnreadCount(count ?? 0);
+    } else {
+      // Regular user: count admin replies they haven't seen yet
+      // "Unseen" = admin replies that arrived after the last user message
+      // Simple heuristic: count admin replies whose created_at > last time user
+      // opened the support page. We store this timestamp in localStorage.
+      const lastSeenKey = `support_last_seen_${user.id}`;
+      const lastSeen = localStorage.getItem(lastSeenKey) ?? '1970-01-01';
+      const { count } = await supabase
+        .from('support_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_admin_reply', true)
+        .gt('created_at', lastSeen);
+      setUnreadCount(count ?? 0);
+    }
+  }, [user, isAdmin]);
 
   useEffect(() => {
     fetchCount();
   }, [fetchCount]);
 
-  // Realtime: update when new support messages come in
+  // Realtime: refresh badge when any support message is inserted
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!user) return;
     const channel = supabase
-      .channel('sidebar-support-badge')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages' }, () => {
+      .channel(`sidebar-support-badge-${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'support_messages',
+        ...(isAdmin ? {} : { filter: `user_id=eq.${user.id}` }),
+      }, () => {
         fetchCount();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [isAdmin, fetchCount]);
+  }, [user, isAdmin, fetchCount]);
 
-  return { unreadCount: isAdmin ? unreadCount : 0, isAdmin };
+  /** Call this when the user opens the /suporte page to clear their badge */
+  const markSupportSeen = useCallback(() => {
+    if (!user || isAdmin) return;
+    const lastSeenKey = `support_last_seen_${user.id}`;
+    localStorage.setItem(lastSeenKey, new Date().toISOString());
+    setUnreadCount(0);
+  }, [user, isAdmin]);
+
+  return { unreadCount, isAdmin, markSupportSeen };
 }
