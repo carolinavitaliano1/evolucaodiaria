@@ -285,7 +285,7 @@ function AdminSupportView() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-0.5">
                     <p className={cn('text-sm text-foreground truncate', conv.unread > 0 ? 'font-bold' : 'font-semibold')}>
-                      {conv.user_name || conv.user_email || 'Usuário'}
+                      {conv.user_name || conv.user_email?.split('@')[0] || 'Sem nome'}
                     </p>
                     <span className="text-[10px] text-muted-foreground shrink-0 flex items-center gap-0.5">
                       <Clock className="w-2.5 h-2.5" />
