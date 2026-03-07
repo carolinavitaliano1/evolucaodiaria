@@ -61,6 +61,7 @@ function initials(name: string | null, email: string | null) {
 
 export default function AdminSupport() {
   const { user } = useAuth();
+  const { markAdminSeen } = useUnreadSupportCount();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filtered, setFiltered] = useState<Conversation[]>([]);
