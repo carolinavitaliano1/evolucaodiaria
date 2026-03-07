@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +18,7 @@ export default function Auth() {
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [pendingInvite, setPendingInvite] = useState<{ memberId: string; orgId: string } | null>(null);
+  const inviteAcceptedRef = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -25,18 +26,14 @@ export default function Auth() {
     const org = params.get('org');
     const reset = params.get('reset');
     if (invite && org) setPendingInvite({ memberId: invite, orgId: org });
-    // Detect recovery via query param (our redirectTo includes ?reset=true)
     if (reset === 'true') setShowNewPassword(true);
 
-    // Detect recovery via URL hash (Supabase embeds tokens in the hash fragment)
-    // e.g. /auth#access_token=...&type=recovery
     const hash = window.location.hash;
     if (hash && hash.includes('type=recovery')) {
       setShowNewPassword(true);
     }
   }, []);
 
-  // Listen for PASSWORD_RECOVERY event as a secondary safety net
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -46,6 +43,56 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Auto-accept invite: when a logged-in user arrives with invite params,
+  // call accept-invite. Also detects pending invites by email for users
+  // who log in without the URL params (e.g. returning via normal login).
+  useEffect(() => {
+    if (!user || inviteAcceptedRef.current) return;
+
+    async function tryAcceptInvite(memberId?: string) {
+      inviteAcceptedRef.current = true;
+
+      if (memberId) {
+        // Accept by specific member ID (URL param flow)
+        const { data, error } = await supabase.functions.invoke('accept-invite', {
+          body: { member_id: memberId },
+        });
+        if (!error && data?.success) {
+          toast.success(`🎉 Bem-vindo à equipe ${data.organization?.name}!`, {
+            description: `Você entrou como ${data.role === 'admin' ? 'Administrador' : 'Profissional'}.`,
+          });
+        }
+        return;
+      }
+
+      // No URL param — check if there's a pending invite matching this email
+      const { data: pending } = await supabase
+        .from('organization_members')
+        .select('id, organization_id, role')
+        .eq('email', user!.email ?? '')
+        .eq('status', 'pending')
+        .limit(1)
+        .single();
+
+      if (pending) {
+        const { data, error } = await supabase.functions.invoke('accept-invite', {
+          body: { member_id: pending.id },
+        });
+        if (!error && data?.success) {
+          toast.success(`🎉 Bem-vindo à equipe ${data.organization?.name}!`, {
+            description: `Você entrou como ${data.role === 'admin' ? 'Administrador' : 'Profissional'}.`,
+          });
+        }
+      }
+    }
+
+    if (pendingInvite) {
+      tryAcceptInvite(pendingInvite.memberId);
+    } else {
+      tryAcceptInvite();
+    }
+  }, [user, pendingInvite]);
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupName, setSignupName] = useState('');
@@ -54,26 +101,11 @@ export default function Auth() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [resetEmail, setResetEmail] = useState('');
 
-  // Only redirect if session is confirmed AND this is not a recovery flow
   const isRecoveryFlow = showNewPassword ||
     window.location.hash.includes('type=recovery') ||
     new URLSearchParams(window.location.search).get('reset') === 'true';
 
   if (!loading && user && !isRecoveryFlow) {
-    if (pendingInvite) {
-      // Aceitar convite e depois redirecionar
-      supabase.functions.invoke('accept-invite', {
-        body: { member_id: pendingInvite.memberId },
-      }).then(({ data, error }) => {
-        if (!error && data?.success) {
-          toast.success(`🎉 Bem-vindo à equipe ${data.organization?.name}!`, {
-            description: `Você entrou como ${data.role === 'admin' ? 'Administrador' : 'Profissional'}.`,
-          });
-        } else if (error) {
-          console.error('Erro ao aceitar convite:', error);
-        }
-      });
-    }
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -143,7 +175,6 @@ export default function Auth() {
       toast.error('Erro ao atualizar senha', { description: error.message });
     } else {
       toast.success('Senha atualizada com sucesso!', { description: 'Você já pode entrar com a nova senha.' });
-      // Clear recovery tokens from URL so isRecoveryFlow becomes false and redirect works
       window.history.replaceState(null, '', window.location.pathname);
       setShowNewPassword(false);
       setNewPassword('');
@@ -162,7 +193,6 @@ export default function Auth() {
     </div>
   );
 
-  // ── New password form (arrived via recovery link) ──────────────────────────
   if (showNewPassword) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
@@ -196,7 +226,6 @@ export default function Auth() {
     );
   }
 
-  // ── Forgot password form ───────────────────────────────────────────────────
   if (showForgotPassword) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
@@ -229,7 +258,6 @@ export default function Auth() {
     );
   }
 
-  // ── Login / Signup tabs ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <div className="w-full max-w-md">

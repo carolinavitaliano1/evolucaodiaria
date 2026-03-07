@@ -8,7 +8,6 @@ const corsHeaders = {
 const APP_URL = 'https://evolucaodiaria.app.br';
 
 function generateTempPassword(email: string): string {
-  // Senha é o próprio e-mail do usuário para facilitar o primeiro acesso
   return email;
 }
 
@@ -18,13 +17,23 @@ async function sendInviteEmailWithCredentials(
   orgName: string,
   inviterName: string,
   roleLabel: string,
-  tempPassword: string | null
+  tempPassword: string | null,
+  patientNames: string[]
 ): Promise<boolean> {
   const resendApiKey = Deno.env.get('RESEND_API_KEY');
   if (!resendApiKey) {
     console.error('RESEND_API_KEY não configurada');
     return false;
   }
+
+  const patientsBlock = patientNames.length > 0 ? `
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:12px 0;">
+      <p style="font-size:12px;font-weight:700;color:#16a34a;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.08em;">📋 Pacientes sob sua responsabilidade</p>
+      <ul style="margin:0;padding-left:18px;">
+        ${patientNames.map(n => `<li style="font-size:14px;color:hsl(240,10%,15%);margin-bottom:4px;">${n}</li>`).join('')}
+      </ul>
+    </div>
+  ` : '';
 
   const credentialsBlock = tempPassword ? `
     <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 8px;">
@@ -42,10 +51,12 @@ async function sendInviteEmailWithCredentials(
       </div>
       <p style="font-size:12px;color:hsl(240,5%,50%);margin:14px 0 0;line-height:1.6;">💡 Recomendamos alterar sua senha após o primeiro acesso em <strong>Perfil → Alterar Senha</strong>.</p>
     </div>
+    ${patientsBlock}
   ` : `
-    <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 24px;">
-      Como você já possui uma conta no Evolução Diária, basta fazer login normalmente com seu e-mail e senha habituais. O convite será aplicado automaticamente ao acessar o sistema.
+    <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 8px;">
+      Como você já possui uma conta no Evolução Diária, basta fazer login normalmente com seu e-mail e senha habituais.
     </p>
+    ${patientsBlock}
   `;
 
   const actionLabel = tempPassword ? 'Acessar o sistema' : 'Aceitar convite';
@@ -63,7 +74,6 @@ async function sendInviteEmailWithCredentials(
     <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 8px;">
       <strong>${inviterName}</strong> convidou você para fazer parte da equipe <strong>${orgName}</strong> no Evolução Diária como <strong>${roleLabel}</strong>.
     </p>
-    ${tempPassword ? `<p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 4px;">Sua conta foi criada! Utilize os dados abaixo para acessar o sistema:</p>` : ''}
     ${credentialsBlock}
     <a href="${inviteUrl}" style="background-color:hsl(252,56%,57%);color:#ffffff;font-size:15px;font-weight:bold;border-radius:8px;padding:14px 24px;text-decoration:none;display:inline-block;">
       ${actionLabel}
@@ -91,6 +101,12 @@ async function sendInviteEmailWithCredentials(
     textLines.push(`Você pode alterar sua senha a qualquer momento nas configurações do perfil.`);
   } else {
     textLines.push(`Como você já possui uma conta, basta fazer login normalmente.`);
+  }
+
+  if (patientNames.length > 0) {
+    textLines.push(``);
+    textLines.push(`Pacientes sob sua responsabilidade:`);
+    patientNames.forEach(n => textLines.push(`- ${n}`));
   }
 
   textLines.push(``);
@@ -151,12 +167,12 @@ Deno.serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const { organization_id, email, role } = await req.json();
+    const { organization_id, email, role, patient_assignments } = await req.json();
     if (!organization_id || !email || !role) {
       return new Response(JSON.stringify({ error: 'organization_id, email e role são obrigatórios' }), { status: 400, headers: corsHeaders });
     }
 
-    // Verificar que o usuário logado é dono ou admin da organização
+    // Verificar permissão
     const { data: org } = await supabase.from('organizations').select('id, name, owner_id').eq('id', organization_id).single();
     if (!org) return new Response(JSON.stringify({ error: 'Organização não encontrada' }), { status: 404, headers: corsHeaders });
 
@@ -186,7 +202,17 @@ Deno.serve(async (req) => {
     const { data: inviterProfile } = await supabase.from('profiles').select('name').eq('user_id', userId).single();
     const inviterName = inviterProfile?.name || 'Um membro da equipe';
 
-    // Detectar se usuário já existe no Auth via endpoint REST admin
+    // Buscar nomes dos pacientes vinculados (para incluir no e-mail)
+    let patientNames: string[] = [];
+    if (Array.isArray(patient_assignments) && patient_assignments.length > 0) {
+      const patientIds = patient_assignments.map((a: any) => a.patient_id).filter(Boolean);
+      if (patientIds.length > 0) {
+        const { data: patientsData } = await supabase.from('patients').select('id, name').in('id', patientIds);
+        patientNames = patientsData?.map(p => p.name) ?? [];
+      }
+    }
+
+    // Detectar se usuário já existe no Auth
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const searchRes = await fetch(
@@ -194,15 +220,16 @@ Deno.serve(async (req) => {
       { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
     );
     let userAlreadyExists = false;
+    let existingUserId: string | null = null;
     if (searchRes.ok) {
       const searchData = await searchRes.json();
-      // Verificar se algum usuário tem exatamente esse e-mail (comparação exata, case-insensitive)
-      userAlreadyExists = Array.isArray(searchData?.users) &&
-        searchData.users.some((u: { email?: string }) =>
-          u.email?.toLowerCase() === email.toLowerCase()
-        );
-    } else {
-      console.error('Erro ao buscar usuário no Auth:', await searchRes.text());
+      const foundUser = Array.isArray(searchData?.users)
+        ? searchData.users.find((u: { email?: string; id?: string }) =>
+            u.email?.toLowerCase() === email.toLowerCase()
+          )
+        : null;
+      userAlreadyExists = !!foundUser;
+      existingUserId = foundUser?.id ?? null;
     }
 
     console.log(`Convite para ${email} — usuário existente no Auth: ${userAlreadyExists}`);
@@ -222,19 +249,29 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Erro ao criar convite' }), { status: 500, headers: corsHeaders });
     }
 
+    // Salvar vínculos de pacientes (pending — serão ativados ao aceitar o convite)
+    if (Array.isArray(patient_assignments) && patient_assignments.length > 0) {
+      const toInsert = patient_assignments.map((a: any) => ({
+        organization_id,
+        member_id: member.id,
+        patient_id: a.patient_id,
+        schedule_time: a.schedule_time || null,
+      }));
+      const { error: assignError } = await supabase.from('therapist_patient_assignments').insert(toInsert);
+      if (assignError) console.error('Erro ao salvar vínculos de pacientes:', assignError);
+    }
+
     const inviteUrl = `${APP_URL}/auth?invite=${member.id}&org=${organization_id}`;
-    const roleLabels: Record<string, string> = { admin: 'Administrador', professional: 'Profissional' };
+    const roleLabels: Record<string, string> = { admin: 'Supervisor / Administrador', professional: 'Terapeuta / Profissional' };
     const roleLabel = roleLabels[role] || role;
 
     let emailSent = false;
     let tempPassword: string | null = null;
 
     if (userAlreadyExists) {
-      // Usuário já tem conta → enviar e-mail simples sem credenciais
       console.log(`Enviando convite via Resend para usuário existente: ${email}`);
-      emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null);
+      emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null, patientNames);
     } else {
-      // Usuário novo → criar conta com senha temporária e enviar credenciais por e-mail
       tempPassword = generateTempPassword(email);
       console.log(`Criando conta para novo usuário: ${email}`);
 
@@ -252,7 +289,6 @@ Deno.serve(async (req) => {
 
       if (createError) {
         console.error('Erro ao criar usuário:', createError.message);
-        // Fallback: tentar inviteUserByEmail
         const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
           redirectTo: inviteUrl,
         });
@@ -261,12 +297,11 @@ Deno.serve(async (req) => {
           tempPassword = null;
           console.log(`Fallback: convite enviado via inviteUserByEmail para ${email}`);
         } else {
-          emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null);
+          emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null, patientNames);
         }
       } else {
         console.log(`Conta criada para ${email}, id: ${newUser.user?.id}`);
-        // Enviar e-mail com credenciais via Resend
-        emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, tempPassword);
+        emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, tempPassword, patientNames);
       }
     }
 
