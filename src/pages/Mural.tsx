@@ -105,7 +105,6 @@ export default function Mural() {
     const { data } = await supabase
       .from('notices')
       .select('*')
-      .eq('user_id', user.id)
       .order('pinned', { ascending: false })
       .order('created_at', { ascending: false });
     if (data) setNotices(data as Notice[]);
