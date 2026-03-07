@@ -866,7 +866,7 @@ function UserSupportView() {
         {isClosed && messages.length > 0 && (
           <div className="flex items-center justify-center py-4">
             <span className="px-4 py-2 rounded-full bg-muted border border-border text-xs text-muted-foreground text-center">
-              Atendimento encerrado
+              🔒 Chat encerrado por {closedBy === 'admin' ? 'Administrador' : 'você'}
             </span>
           </div>
         )}
