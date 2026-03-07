@@ -574,7 +574,7 @@ function UserSupportView() {
         body: { userId: user.id, closedBy: 'user' },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      toast.success('Chat encerrado. Você receberá o histórico por e-mail.');
+      toast.success('Atendimento encerrado.');
       setMessages([]);
       setHasMessages(false);
     } catch {
