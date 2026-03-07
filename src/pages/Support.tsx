@@ -374,6 +374,7 @@ function UserSupportView() {
   const { user } = useAuth();
   const { markSupportSeen } = useUnreadSupportCount();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [hasMessages, setHasMessages] = useState(false);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -389,7 +390,10 @@ function UserSupportView() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true });
-    if (data) setMessages(data as SupportMessage[]);
+    if (data) {
+      setMessages(data as SupportMessage[]);
+      if ((data as SupportMessage[]).length > 0) setHasMessages(true);
+    }
     setLoading(false);
   };
 
