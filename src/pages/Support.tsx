@@ -289,6 +289,7 @@ function AdminSupportView() {
               <ChevronLeft className="w-4 h-4" />
             </button>
             <Avatar className="w-9 h-9">
+              <AvatarImage src={selectedConv?.user_avatar ?? undefined} alt={selectedConv?.user_name || 'Usuário'} />
               <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
                 {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
               </AvatarFallback>
