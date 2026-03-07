@@ -1300,7 +1300,7 @@ export default function PatientDetail() {
                   className="gap-1.5 text-xs h-9 w-full"
                   size="sm"
                 >
-                  {isExportingFinancial ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />}
+                  {isExportingFinancial ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
                   <span className="truncate">Financeiro</span>
                 </Button>
               </div>
