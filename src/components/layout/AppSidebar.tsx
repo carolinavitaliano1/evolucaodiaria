@@ -94,6 +94,27 @@ export function AppSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {/* Perfil — primeiro item */}
+        <NavLink
+          to="/profile"
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+            'hover:bg-accent group',
+            location.pathname === '/profile' && 'bg-primary text-primary-foreground'
+          )}
+        >
+          <User className={cn(
+            'w-[18px] h-[18px]',
+            location.pathname === '/profile' ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
+          )} />
+          <span className={cn(
+            'text-sm font-medium flex-1',
+            location.pathname === '/profile' ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
+          )}>
+            Meu Perfil
+          </span>
+        </NavLink>
+
         {navItems.map(({ to, icon: Icon, label, badge }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
