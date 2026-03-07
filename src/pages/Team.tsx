@@ -6,7 +6,7 @@ import { ClinicTeam } from '@/components/clinics/ClinicTeam';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Button } from '@/components/ui/button';
 import { 
-  Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock
+  Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock, Info
 } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
