@@ -663,21 +663,22 @@ function UserSupportView() {
       </div>
 
       {/* Close chat bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-card border-t border-border/60">
-        <p className="text-xs text-muted-foreground">Atendimento resolvido? Encerre o chat.</p>
+      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-card border-t border-border/60">
+        <p className="text-xs text-muted-foreground truncate">Atendimento resolvido?</p>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowCloseDialog(true)}
           disabled={closingChat || messages.length === 0}
-          className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive text-xs h-7"
+          className="shrink-0 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive text-xs h-8 px-3"
         >
           <PhoneOff className="w-3 h-3" />
-          Encerrar Atendimento
+          <span className="hidden xs:inline">Encerrar</span>
+          <span className="xs:hidden">Encerrar</span>
         </Button>
       </div>
 
-      <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
+      <div className="flex items-end gap-2 px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] bg-card border-t border-border">
         <Textarea
           ref={inputRef}
           value={text}
