@@ -753,7 +753,61 @@ export default function PatientDetail() {
         </div>
       </div>
 
+      {/* Clinical Info Card */}
+      {(patient.diagnosis || patient.observations || (patient.weekdays && patient.weekdays.length > 0) || patient.professionals || patient.responsibleName) && (
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <h2 className="font-semibold text-foreground text-sm">Informações Clínicas</h2>
+          </div>
+          <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+            {patient.diagnosis && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Diagnóstico</p>
+                <p className="text-sm text-foreground">{patient.diagnosis}</p>
+              </div>
+            )}
+            {patient.professionals && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Profissional(is)</p>
+                <p className="text-sm text-foreground">{patient.professionals}</p>
+              </div>
+            )}
+            {patient.responsibleName && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Responsável</p>
+                <p className="text-sm text-foreground">{patient.responsibleName}</p>
+              </div>
+            )}
+            {patient.weekdays && patient.weekdays.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Dias de Atendimento</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {patient.weekdays.map(day => (
+                    <span key={day} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                      {day.charAt(0).toUpperCase() + day.slice(1)}
+                    </span>
+                  ))}
+                  {patient.scheduleTime && (
+                    <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
+                      ⏰ {patient.scheduleTime}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            {patient.observations && (
+              <div className="md:col-span-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Observações</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{patient.observations}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Mood Chart */}
+
       {moodChartData.length >= 2 && (
         <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
           <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
