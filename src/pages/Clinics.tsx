@@ -673,18 +673,18 @@ export default function Clinics() {
                 return (
                   <div
                     key={clinic.id}
+                    onClick={() => handleOpenClinic(clinic)}
                     className={cn(
-                      "bg-card rounded-xl border border-border p-4 transition-all",
+                      "bg-card rounded-xl border border-border p-4 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all",
                       clinic.isArchived && "opacity-60"
                     )}
                   >
-                    {/* Header row */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleOpenClinic(clinic)}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <h3 className="font-semibold text-foreground truncate">{clinic.name}</h3>
                           <Badge variant="outline" className={cn("text-xs shrink-0", isPropria ? "border-primary/50 text-primary" : "border-secondary text-muted-foreground")}>
-                            {isPropria ? 'Própria' : 'Terceirizada'}
+                            {isPropria ? 'Própria' : 'Outra'}
                           </Badge>
                           {clinic.isArchived && <Badge variant="secondary" className="text-xs shrink-0">Arquivada</Badge>}
                         </div>
@@ -718,22 +718,6 @@ export default function Clinics() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-
-                    {/* Quick-action button grid */}
-                    {!clinic.isArchived && (
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {quickActions.map(({ label, icon: Icon, color, tab }) => (
-                          <button
-                            key={tab}
-                            onClick={() => { setCurrentClinic(clinic); navigate(`/clinics/${clinic.id}?tab=${tab}`); }}
-                            className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl border border-border bg-background hover:bg-accent hover:border-primary/30 transition-all"
-                          >
-                            <Icon className={cn('w-4 h-4', color)} />
-                            <span className="text-[9px] font-medium text-foreground leading-none">{label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
               })}
