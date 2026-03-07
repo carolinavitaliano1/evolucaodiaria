@@ -24,7 +24,7 @@ export function CustomMoodsManager({ customMoods, loading, onAdd, onDelete }: Cu
 
   const handleAdd = async () => {
     if (!emoji || !label.trim()) return;
-    await addMood(emoji, label.trim(), score);
+    await onAdd(emoji, label.trim(), score);
     setLabel('');
     setEmoji('😎');
     setScore(5);
