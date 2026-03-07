@@ -572,18 +572,17 @@ export default function AIReports() {
           </Select>
         )}
         {saveDestination === 'patient' && (
-          <Select value={selectedPatient} onValueChange={setSelectedPatient}>
-            <SelectTrigger className="w-[200px] h-8 text-xs">
-              <SelectValue placeholder="Selecione o paciente" />
-            </SelectTrigger>
-            <SelectContent>
-              {patients.map(p => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name} — {clinics.find(c => c.id === p.clinicId)?.name || ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <PatientSearchSelect
+            value={selectedPatient}
+            onValueChange={setSelectedPatient}
+            patients={patients.map(p => ({
+              id: p.id,
+              name: p.name,
+              clinicName: clinics.find(c => c.id === p.clinicId)?.name,
+            }))}
+            placeholder="Pesquisar paciente..."
+            triggerClassName="w-[220px] h-8 text-xs"
+          />
         )}
         <Button 
           size="sm" 
