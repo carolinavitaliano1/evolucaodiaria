@@ -1272,15 +1272,27 @@ export default function PatientDetail() {
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-              <Button
-                onClick={handleExportMonthlyPDF}
-                disabled={isExportingMonthly || monthlyEvolutions.length === 0}
-                className="gap-2"
-                size="sm"
-              >
-                {isExportingMonthly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Baixar PDF
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleExportMonthlyPDF}
+                  disabled={isExportingMonthly || monthlyEvolutions.length === 0}
+                  variant="outline"
+                  className="gap-2"
+                  size="sm"
+                >
+                  {isExportingMonthly ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Relatório Atendimento
+                </Button>
+                <Button
+                  onClick={handleExportFinancialPDF}
+                  disabled={isExportingFinancial || monthlyEvolutions.length === 0}
+                  className="gap-2"
+                  size="sm"
+                >
+                  {isExportingFinancial ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+                  Relatório Financeiro
+                </Button>
+              </div>
             </div>
 
             <div className="p-5 space-y-5">
