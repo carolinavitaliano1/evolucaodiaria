@@ -223,6 +223,7 @@ export default function AdminSupport() {
         body: { userId: selected, closedBy: 'admin' },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
+      markAdminSeen();
       toast.success('Chat encerrado. Histórico enviado por e-mail.');
       setSelected(null);
       setMessages([]);
