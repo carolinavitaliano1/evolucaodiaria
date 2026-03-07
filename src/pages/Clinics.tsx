@@ -332,8 +332,8 @@ export default function Clinics() {
           </div>
           <div className="bg-card rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                <Briefcase className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+                <Briefcase className="w-4 h-4 text-warning" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground leading-none">{pendingAppointments.length}</p>
