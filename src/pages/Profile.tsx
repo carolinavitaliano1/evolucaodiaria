@@ -381,6 +381,49 @@ export default function Profile() {
     toast.success('Você saiu do sistema');
   };
 
+  async function changePassword() {
+    if (!currentPassword) {
+      toast.error('Informe sua senha atual');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('A nova senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      // Reautenticar com a senha atual
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        toast.error('Senha atual incorreta');
+        return;
+      }
+
+      // Atualizar para a nova senha
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+
+      toast.success('Senha alterada com sucesso!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err) {
+      console.error('Erro ao alterar senha:', err);
+      toast.error('Erro ao alterar senha');
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   async function handleManageSubscription() {
     setPortalLoading(true);
     try {
