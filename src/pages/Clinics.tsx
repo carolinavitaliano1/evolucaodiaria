@@ -905,6 +905,7 @@ export default function Clinics() {
           )}
         </TabsContent>
       </Tabs>
+      </div>{/* end max-w-5xl container */}
 
       {/* Service Dialog (new + edit) */}
       <ServiceDialog 
