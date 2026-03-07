@@ -371,12 +371,10 @@ export default function Clinics() {
 
           {activeTab === 'clinics' ? (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Nova Clínica
-                </Button>
-              </DialogTrigger>
+              <Button size="sm" className="gap-2" onClick={handleNewClinicClick}>
+                <Plus className="w-4 h-4" />
+                Nova Clínica
+              </Button>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Nova Clínica</DialogTitle>
