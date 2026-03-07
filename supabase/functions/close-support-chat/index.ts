@@ -20,6 +20,7 @@ serve(async (req) => {
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not set");
+    logStep("Resend key found", { keyLength: resendKey.length });
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -33,6 +34,7 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) throw new Error("Unauthorized");
+    logStep("Caller authenticated", { callerId: userData.user.id });
 
     const { userId, closedBy } = await req.json();
     if (!userId) throw new Error("userId is required");
@@ -40,32 +42,40 @@ serve(async (req) => {
     logStep("Closing chat for user", { userId, closedBy });
 
     // Fetch full conversation
-    const { data: allMessages } = await supabase
+    const { data: allMessages, error: msgErr } = await supabase
       .from("support_messages")
       .select("message, is_admin_reply, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
 
+    if (msgErr) logStep("Error fetching messages", { error: msgErr.message });
+
     if (!allMessages || allMessages.length === 0) {
+      logStep("No messages found, skipping email");
       return new Response(JSON.stringify({ sent: 0, reason: "no_messages" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
+    logStep("Messages fetched", { count: allMessages.length });
+
     // Fetch user profile
-    const { data: userProfile } = await supabase
+    const { data: userProfile, error: profileErr } = await supabase
       .from("profiles")
       .select("name, email")
       .eq("user_id", userId)
       .single();
 
+    if (profileErr) logStep("Error fetching user profile", { error: profileErr.message });
+
     const userName = (userProfile as any)?.name || (userProfile as any)?.email || "Usuário";
     const userEmail = (userProfile as any)?.email || null;
+    logStep("User profile", { userName, userEmail: userEmail ? "found" : "not found" });
 
     // Build conversation HTML rows
     const rows = allMessages.map((m: any) => {
-      const who = m.is_admin_reply ? "Suporte" : (userName);
+      const who = m.is_admin_reply ? "Suporte" : userName;
       const time = new Date(m.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
       const bg = m.is_admin_reply ? "#f3e8ff" : "#f0fdf4";
       const border = m.is_admin_reply ? "#c084fc" : "#86efac";
@@ -84,21 +94,17 @@ serve(async (req) => {
     const closedByLabel = closedBy === "admin" ? "pelo atendente" : "pelo usuário";
     const closedAt = new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-    const buildHtml = (recipientLabel: string) => `
+    const buildHtml = () => `
       <!DOCTYPE html>
       <html>
       <head><meta charset="UTF-8"></head>
       <body style="font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px;">
         <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-
-          <!-- Header -->
           <div style="background: #7c3aed; padding: 28px 32px 22px; text-align: center;">
             <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Evolução Diária</h1>
             <p style="color: #e9d5ff; margin: 6px 0 0; font-size: 13px;">✅ Atendimento Encerrado</p>
           </div>
-
           <div style="padding: 24px 32px 0;">
-            <!-- Info card -->
             <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
               <p style="font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px;">Resumo do atendimento</p>
               <table style="width: 100%; border-collapse: collapse;">
@@ -120,15 +126,9 @@ serve(async (req) => {
                 </tr>
               </table>
             </div>
-
-            <!-- Transcript -->
             <p style="font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px;">Histórico completo da conversa</p>
-            <div style="margin-bottom: 20px;">
-              ${rows}
-            </div>
+            <div style="margin-bottom: 20px;">${rows}</div>
           </div>
-
-          <!-- Footer -->
           <div style="background: #f9f9f9; padding: 16px 32px; text-align: center; border-top: 1px solid #eee; margin-top: 8px;">
             <p style="color: #aaa; font-size: 12px; margin: 0;">© 2025 Evolução Diária · evolucaodiaria.app.br</p>
           </div>
@@ -137,11 +137,13 @@ serve(async (req) => {
       </html>
     `;
 
-    let sent = 0;
     const subject = `✅ Atendimento encerrado — ${userName}`;
+    let sent = 0;
+    const errors: string[] = [];
 
     // 1. Send to user
     if (userEmail) {
+      logStep("Sending email to user", { to: userEmail });
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
@@ -149,22 +151,35 @@ serve(async (req) => {
           from: "Evolução Diária <notify@evolucaodiaria.app.br>",
           to: [userEmail],
           subject,
-          html: buildHtml("usuário"),
+          html: buildHtml(),
         }),
       });
-      if (res.ok) sent++;
-      else logStep("Failed to send to user", await res.text());
+      const resBody = await res.text();
+      if (res.ok) {
+        sent++;
+        logStep("Email sent to user", { status: res.status });
+      } else {
+        const errMsg = `User email failed (${res.status}): ${resBody}`;
+        logStep("Failed to send to user", { status: res.status, body: resBody });
+        errors.push(errMsg);
+      }
+    } else {
+      logStep("No user email — skipping user notification");
     }
 
     // 2. Send to all admins
-    const { data: admins } = await supabase
+    const { data: admins, error: adminErr } = await supabase
       .from("profiles")
       .select("email, name")
       .eq("is_support_admin", true)
       .not("email", "is", null);
 
+    if (adminErr) logStep("Error fetching admins", { error: adminErr.message });
+    logStep("Admins found", { count: (admins || []).length });
+
     for (const admin of (admins || [])) {
       if (!admin.email) continue;
+      logStep("Sending email to admin", { to: admin.email });
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
@@ -172,15 +187,32 @@ serve(async (req) => {
           from: "Evolução Diária <notify@evolucaodiaria.app.br>",
           to: [admin.email],
           subject,
-          html: buildHtml("admin"),
+          html: buildHtml(),
         }),
       });
-      if (res.ok) sent++;
-      else logStep("Failed to send to admin", { email: admin.email, err: await res.text() });
+      const resBody = await res.text();
+      if (res.ok) {
+        sent++;
+        logStep("Email sent to admin", { status: res.status });
+      } else {
+        const errMsg = `Admin email failed (${res.status}): ${resBody}`;
+        logStep("Failed to send to admin", { email: admin.email, status: res.status, body: resBody });
+        errors.push(errMsg);
+      }
     }
 
-    logStep("Done", { sent });
-    return new Response(JSON.stringify({ sent }), {
+    // 3. Delete all messages after sending
+    if (sent > 0 || errors.length === 0) {
+      const { error: delErr } = await supabase
+        .from("support_messages")
+        .delete()
+        .eq("user_id", userId);
+      if (delErr) logStep("Error deleting messages", { error: delErr.message });
+      else logStep("Messages deleted after closure");
+    }
+
+    logStep("Done", { sent, errors: errors.length });
+    return new Response(JSON.stringify({ sent, errors }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
