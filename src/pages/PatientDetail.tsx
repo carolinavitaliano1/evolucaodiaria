@@ -288,78 +288,131 @@ export default function PatientDetail() {
     setIsExportingMonthly(true);
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const W = 210, margin = 18;
+      const W = 210, margin = 20;
+      const contentW = W - margin * 2;
       const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
-      const primaryColor: [number, number, number] = [99, 102, 241];
-      const successColor: [number, number, number] = [34, 197, 94];
-      const warningColor: [number, number, number] = [234, 179, 8];
-      const destructiveColor: [number, number, number] = [239, 68, 68];
-      const mutedColor: [number, number, number] = [148, 163, 184];
+      const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+
+      // Colors — formal palette
+      const darkText: [number, number, number] = [30, 30, 40];
+      const mutedText: [number, number, number] = [100, 100, 115];
+      const borderColor: [number, number, number] = [210, 210, 220];
+      const accentDark: [number, number, number] = [50, 50, 100];
 
       let y = margin;
 
-      // Header bar
-      doc.setFillColor(...primaryColor);
-      doc.rect(0, 0, W, 28, 'F');
+      // ── HEADER ──────────────────────────────────────────────────
+      // Top bar (dark, sober)
+      doc.setFillColor(40, 40, 60);
+      doc.rect(0, 0, W, 30, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.text('Relatório Mensal do Paciente', margin, 12);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${patient.name}  •  ${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}`, margin, 22);
-      y = 38;
-
-      // Clinic & patient info
-      doc.setTextColor(30, 30, 40);
+      doc.text('RELATÓRIO MENSAL DE ATENDIMENTO', margin, 13);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      const infoParts = [];
-      if (clinic?.name) infoParts.push(`Clínica: ${clinic.name}`);
-      if (patient.clinicalArea) infoParts.push(`Área: ${patient.clinicalArea}`);
-      if (patient.paymentValue) infoParts.push(`Valor/sessão: R$ ${patient.paymentValue.toFixed(2)}`);
-      if (infoParts.length > 0) {
-        doc.setTextColor(...mutedColor);
-        doc.text(infoParts.join('   |   '), margin, y);
-        y += 8;
+      doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, 22);
+      y = 40;
+
+      // Patient / clinic identification block
+      doc.setTextColor(...darkText);
+      doc.setFontSize(9);
+      const idLines: [string, string][] = [];
+      if (patient.name) idLines.push(['Paciente:', patient.name]);
+      if (patient.birthdate) {
+        const age = calculateAge(patient.birthdate);
+        idLines.push(['Data de Nascimento:', `${format(new Date(patient.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}${age !== null ? ` (${age} anos)` : ''}`]);
       }
+      if (clinic?.name) idLines.push(['Unidade Clínica:', clinic.name]);
+      if (patient.clinicalArea) idLines.push(['Área Clínica:', patient.clinicalArea]);
+      if (patient.diagnosis) idLines.push(['Diagnóstico:', patient.diagnosis]);
+      if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
+      if (patient.paymentValue) idLines.push(['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]);
+      idLines.push(['Período de Referência:', monthLabelCap]);
+      idLines.push(['Data de Emissão:', format(new Date(), 'dd/MM/yyyy', { locale: ptBR })]);
+
+      idLines.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...darkText);
+        doc.text(label, margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...mutedText);
+        const wrapped = doc.splitTextToSize(value, contentW - 52);
+        doc.text(wrapped, margin + 52, y);
+        y += wrapped.length > 1 ? wrapped.length * 5 + 1 : 6;
+      });
 
       // Divider
-      doc.setDrawColor(220, 220, 230);
-      doc.line(margin, y, W - margin, y);
-      y += 8;
+      doc.setDrawColor(...borderColor);
+      doc.line(margin, y + 2, W - margin, y + 2);
+      y += 10;
 
-      // Summary cards (horizontal row)
-      const cardW = (W - margin * 2 - 9) / 4;
-      const cards = [
-        { label: 'Sessões', value: String(monthlyTotal), color: primaryColor, sub: `${monthlyPresent} presentes` },
-        { label: 'Frequência', value: `${monthlyAttendanceRate}%`, color: successColor, sub: `${monthlyPresent + monthlyReposicao} realizadas` },
-        { label: 'Faltas', value: String(monthlyAbsent + monthlyPaidAbsent), color: destructiveColor, sub: `${monthlyPaidAbsent} remuneradas` },
-        { label: 'Receita', value: `R$ ${monthlyRevenue.toFixed(2)}`, color: warningColor, sub: `${monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem} pagas` },
-      ];
-      cards.forEach((card, i) => {
-        const x = margin + i * (cardW + 3);
-        doc.setFillColor(card.color[0], card.color[1], card.color[2]);
-        doc.roundedRect(x, y, cardW, 22, 3, 3, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.text(card.label.toUpperCase(), x + 4, y + 6);
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text(card.value, x + 4, y + 14);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'normal');
-        doc.text(card.sub, x + 4, y + 20);
-      });
-      y += 30;
-
-      // Status breakdown
-      doc.setTextColor(30, 30, 40);
+      // ── RESUMO QUANTITATIVO ──────────────────────────────────────
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('Detalhamento de Status', margin, y);
-      y += 7;
+      doc.setTextColor(...accentDark);
+      doc.text('1. RESUMO QUANTITATIVO', margin, y);
+      y += 8;
+
+      const summaryRows: [string, string][] = [
+        ['Total de sessões registradas:', String(monthlyTotal)],
+        ['Sessões realizadas (presença + reposição):', String(monthlyPresent + monthlyReposicao)],
+        ['Faltas não remuneradas:', String(monthlyAbsent)],
+        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
+        ['Feriados remunerados:', String(monthlyFeriadoRem)],
+        ['Feriados não remunerados:', String(monthlyFeriadoNaoRem)],
+        ['Taxa de frequência:', `${monthlyAttendanceRate}%`],
+        ['Valor total faturado no mês:', `R$ ${monthlyRevenue.toFixed(2)}`],
+      ];
+
+      summaryRows.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(...darkText);
+        doc.text(label, margin + 4, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text(value, W - margin - 2, y, { align: 'right' });
+        y += 6;
+      });
+
+      doc.setDrawColor(...borderColor);
+      doc.line(margin, y + 2, W - margin, y + 2);
+      y += 10;
+
+      // ── HUMOR DO MÊS ────────────────────────────────────────────
+      const moodsWithData = monthlyMoodCounts.filter(m => m.count > 0);
+      if (moodsWithData.length > 0) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...accentDark);
+        doc.text('2. HUMOR DO MÊS', margin, y);
+        y += 8;
+        moodsWithData.forEach(m => {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(...darkText);
+          // Use label only — no emoji to avoid rendering issues
+          doc.text(`${m.label}:`, margin + 4, y);
+          doc.setFont('helvetica', 'bold');
+          doc.text(String(m.count), W - margin - 2, y, { align: 'right' });
+          y += 6;
+        });
+        doc.setDrawColor(...borderColor);
+        doc.line(margin, y + 2, W - margin, y + 2);
+        y += 10;
+      }
+
+      // ── REGISTRO DAS SESSÕES ─────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...accentDark);
+      doc.text(`${moodsWithData.length > 0 ? '3' : '2'}. REGISTRO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y);
+      y += 8;
+
+      const statusLabelFormal: Record<string, string> = {
+        presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
+        reposicao: 'Reposicao', feriado_remunerado: 'Feriado Remunerado', feriado_nao_remunerado: 'Feriado',
+      };
 
       const statusRows = [
         { label: '✅ Presente', value: monthlyPresent, color: successColor },
