@@ -97,13 +97,13 @@ function AdminSupportView() {
     // Fetch which user_ids have a closed session
     const { data: sessions } = await supabase
       .from('support_chat_sessions')
-      .select('user_id, closed_at')
+      .select('user_id, closed_at, closed_by')
       .order('closed_at', { ascending: false });
 
     // Keep only the LATEST session per user_id
-    const closedMap = new Map<string, string>();
+    const closedMap = new Map<string, { closed_at: string; closed_by: string }>();
     for (const s of (sessions || []) as any[]) {
-      if (!closedMap.has(s.user_id)) closedMap.set(s.user_id, s.closed_at);
+      if (!closedMap.has(s.user_id)) closedMap.set(s.user_id, { closed_at: s.closed_at, closed_by: s.closed_by });
     }
 
     const map = new Map<string, SupportMessage[]>();
@@ -124,10 +124,10 @@ function AdminSupportView() {
       const userMsgs = map.get(uid)!;
       const latest = userMsgs[0];
       const profile = profileMap.get(uid) as any;
-      const closedAt = closedMap.get(uid);
+      const sessionInfo = closedMap.get(uid);
+      const closedAt = sessionInfo?.closed_at;
 
       // A conversation is "closed" if the latest session close happened AFTER the last message
-      // OR if there are no messages after the session was closed
       const isClosed = closedAt
         ? new Date(closedAt) >= new Date(latest.created_at)
         : false;
@@ -149,6 +149,7 @@ function AdminSupportView() {
         last_at: latest.created_at,
         unread,
         is_closed: isClosed,
+        closed_by: isClosed ? (sessionInfo?.closed_by || null) : null,
       };
     });
     convs.sort((a, b) => {
