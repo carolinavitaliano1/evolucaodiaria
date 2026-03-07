@@ -731,7 +731,7 @@ export default function Clinics() {
           )}
         </TabsContent>
 
-        {/* Particulares Tab */}
+        {/* Serviços Tab */}
         <TabsContent value="particulares" className="space-y-4">
           {loadingPrivate ? (
             <div className="text-center py-12 text-muted-foreground">
