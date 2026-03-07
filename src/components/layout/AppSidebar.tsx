@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
+import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 
