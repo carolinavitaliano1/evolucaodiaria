@@ -414,6 +414,7 @@ function UserSupportView() {
           const exists = prev.some(m => m.id === (payload.new as SupportMessage).id);
           return exists ? prev : [...prev, payload.new as SupportMessage];
         });
+        setHasMessages(true);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
