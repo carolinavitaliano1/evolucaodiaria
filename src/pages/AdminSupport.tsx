@@ -196,6 +196,26 @@ export default function AdminSupport() {
     inputRef.current?.focus();
   };
 
+  const handleCloseChat = async () => {
+    if (!selected) return;
+    setClosingChat(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await supabase.functions.invoke('close-support-chat', {
+        body: { userId: selected, closedBy: 'admin' },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      toast.success('Chat encerrado. Histórico enviado por e-mail.');
+      setSelected(null);
+      setMessages([]);
+      loadConversations();
+    } catch {
+      toast.error('Erro ao encerrar o chat');
+    }
+    setClosingChat(false);
+    setShowCloseDialog(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
