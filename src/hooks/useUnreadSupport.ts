@@ -48,7 +48,7 @@ export function useUnreadSupportCount() {
     fetchCount();
   }, [fetchCount]);
 
-  // Realtime: refresh badge when any support message is inserted
+  // Realtime: refresh badge when a support message is inserted
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -64,6 +64,26 @@ export function useUnreadSupportCount() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, isAdmin, fetchCount]);
+
+  // Realtime: clear user badge when chat is closed (session inserted)
+  useEffect(() => {
+    if (!user || isAdmin) return;
+    const channel = supabase
+      .channel(`support-session-close-${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'support_chat_sessions',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        // Chat was closed — mark everything as seen and clear badge
+        const lastSeenKey = `support_last_seen_${user.id}`;
+        localStorage.setItem(lastSeenKey, new Date().toISOString());
+        setUnreadCount(0);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, isAdmin]);
 
   /** Call this when the user opens the /suporte page to clear their badge */
   const markSupportSeen = useCallback(() => {
