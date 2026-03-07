@@ -66,10 +66,20 @@ export function MuralNoticesBell() {
 
   const handleOpen = async (isOpen: boolean) => {
     setOpen(isOpen);
-    if (isOpen && notices.length > 0 && unreadCount > 0) {
-      // Mark all visible notices as read
-      await markAllAsRead(notices.map(n => n.id));
-      await refetch();
+    if (isOpen && unreadCount > 0) {
+      // Mark all as read immediately (zera o badge na hora)
+      if (notices.length > 0) {
+        markAllAsRead(notices.map(n => n.id));
+      } else {
+        // Fetch notices first then mark
+        const { data } = await supabase
+          .from('notices')
+          .select('id')
+          .order('created_at', { ascending: false });
+        if (data && data.length > 0) {
+          markAllAsRead(data.map(n => n.id));
+        }
+      }
     }
   };
 
