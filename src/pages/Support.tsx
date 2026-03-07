@@ -91,7 +91,7 @@ function AdminSupportView() {
     const userIds = Array.from(map.keys());
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, name, email')
+      .select('user_id, name, email, avatar_url')
       .in('user_id', userIds);
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
@@ -104,6 +104,7 @@ function AdminSupportView() {
         user_id: uid,
         user_name: profile?.name || null,
         user_email: profile?.email || null,
+        user_avatar: profile?.avatar_url || null,
         last_message: latest.message,
         last_at: latest.created_at,
         unread: userMsgs.filter(m => !m.is_admin_reply).length,
