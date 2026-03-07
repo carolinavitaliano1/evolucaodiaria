@@ -226,12 +226,7 @@ export default function AdminSupport() {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       markAdminSeen();
-      const result = invokeRes.data as any;
-      if (result?.sent > 0) {
-        toast.success(`Chat encerrado. ${result.sent} e-mail(s) enviado(s) com o histórico.`);
-      } else {
-        toast.success('Chat encerrado.');
-      }
+      toast.success('Atendimento encerrado.');
       setSelected(null);
       setMessages([]);
       loadConversations();
