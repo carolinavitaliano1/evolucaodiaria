@@ -194,6 +194,18 @@ export default function AdminSupport() {
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
     } else {
       loadConversations();
+      // Fire push notification to user (fire-and-forget)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        supabase.functions.invoke('push-support', {
+          body: {
+            targetUserId: selected,
+            title: 'Suporte respondeu ✉️',
+            body: optimistic.message.slice(0, 100),
+          },
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+      } catch (_) { /* silent */ }
     }
     setSending(false);
     inputRef.current?.focus();
