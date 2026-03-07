@@ -120,7 +120,8 @@ export function AppSidebar() {
         {navItems.map(({ to, icon: Icon, label, badge }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
-          const showBadge = badge && unreadCount > 0;
+          const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : 0;
+          const showBadge = badgeCount > 0;
           
           return (
             <>
