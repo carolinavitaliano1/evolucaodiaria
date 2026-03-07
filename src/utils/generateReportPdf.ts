@@ -8,6 +8,7 @@ interface ReportPdfOptions {
   clinicName?: string;
   clinicAddress?: string;
   clinicLetterhead?: string;
+  clinicStamp?: string;
   clinicEmail?: string;
   clinicCnpj?: string;
   clinicPhone?: string;
