@@ -1294,6 +1294,26 @@ export default function PatientDetail() {
                 </Button>
               </div>
             </div>
+            {/* Stamp selector for PDFs */}
+            {stamps.length > 0 && (
+              <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-muted/20">
+                <StampIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-xs text-muted-foreground">Carimbo para PDF:</span>
+                <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                  <SelectTrigger className="h-7 text-xs w-auto min-w-[180px]">
+                    <SelectValue placeholder="Sem carimbo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem carimbo (linha em branco)</SelectItem>
+                    {stamps.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="p-5 space-y-5">
               {monthlyEvolutions.length === 0 ? (
