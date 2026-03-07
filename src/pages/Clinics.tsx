@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle } from 'lucide-react';
+import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
