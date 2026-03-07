@@ -133,8 +133,10 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>Entrar</Button>
-            <Button size="sm" onClick={() => navigate('/auth')} className="gradient-primary gap-1.5">
-              Testar 15 Dias Grátis <ArrowRight className="w-3.5 h-3.5" />
+            <Button size="sm" onClick={() => navigate('/auth')} className="gradient-primary gap-1.5 text-xs sm:text-sm px-3 sm:px-4">
+              <span className="hidden sm:inline">Testar 15 Dias Grátis</span>
+              <span className="sm:hidden">Testar Grátis</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
@@ -167,17 +169,19 @@ export default function Landing() {
           </motion.p>
 
           <motion.div initial="hidden" animate="visible" custom={3} variants={fadeUp}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+            className="flex flex-col items-center gap-3 mb-10">
             <Button size="lg" onClick={() => navigate('/auth')}
-              className="gradient-primary gap-2 text-base md:text-lg px-8 py-6 shadow-glow w-full sm:w-auto">
-              Criar Conta Grátis — 15 dias sem cobrar <ArrowRight className="w-5 h-5" />
+              className="gradient-primary gap-2 text-base px-6 py-5 shadow-glow w-full max-w-sm sm:max-w-none sm:w-auto sm:text-lg sm:px-8 sm:py-6">
+              <span className="sm:hidden">Criar Conta Grátis — 15 dias</span>
+              <span className="hidden sm:inline">Criar Conta Grátis — 15 dias sem cobrar</span>
+              <ArrowRight className="w-5 h-5 shrink-0" />
             </Button>
             <p className="text-sm text-muted-foreground">Sem cartão. Cancele quando quiser.</p>
           </motion.div>
 
           {/* Social proof bar */}
           <motion.div initial="hidden" animate="visible" custom={4} variants={fadeUp}
-            className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <div className="flex -space-x-1">
                 {['🧑‍⚕️','👩‍⚕️','🧑‍⚕️'].map((e,i) => <span key={i} className="text-base">{e}</span>)}
@@ -189,7 +193,7 @@ export default function Landing() {
               4,9 de satisfação
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-success" /> Dados 100% seguros na nuvem
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" /> Dados 100% seguros na nuvem
             </span>
           </motion.div>
         </div>
@@ -258,14 +262,14 @@ export default function Landing() {
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
                 className="relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                 <div className="absolute top-4 right-4">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide max-w-[110px] text-center leading-tight">
                     {f.highlight}
                   </span>
                 </div>
-                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 shadow-glow">
+                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 shadow-glow shrink-0">
                   <f.icon className="w-6 h-6 text-primary-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2 pr-24">{f.title}</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2 pr-28">{f.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
@@ -398,8 +402,8 @@ export default function Landing() {
               Com o Evolução Diária, você recupera esse tempo — e ainda entrega documentação <span className="text-foreground font-semibold">mais profissional</span> do que antes.
             </p>
             <Button size="lg" onClick={() => navigate('/auth')}
-              className="gradient-primary gap-2 text-lg px-8 py-6 shadow-glow">
-              Quero Recuperar Meu Tempo <ArrowRight className="w-5 h-5" />
+              className="gradient-primary gap-2 text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 shadow-glow w-full sm:w-auto max-w-sm">
+              Quero Recuperar Meu Tempo <ArrowRight className="w-5 h-5 shrink-0" />
             </Button>
           </div>
         </motion.div>
@@ -491,8 +495,8 @@ export default function Landing() {
             Comece agora. São 15 dias completamente grátis, sem compromisso, sem cartão.
           </p>
           <Button size="lg" onClick={() => navigate('/auth')}
-            className="gradient-primary gap-2 text-lg px-10 py-6 shadow-glow">
-            Criar Minha Conta Grátis <ArrowRight className="w-5 h-5" />
+            className="gradient-primary gap-2 text-base sm:text-lg px-8 sm:px-10 py-5 sm:py-6 shadow-glow w-full sm:w-auto max-w-sm">
+            Criar Minha Conta Grátis <ArrowRight className="w-5 h-5 shrink-0" />
           </Button>
           <p className="text-xs text-muted-foreground mt-4">✓ Sem cartão &nbsp;·&nbsp; ✓ 15 dias grátis &nbsp;·&nbsp; ✓ Cancele quando quiser</p>
         </motion.div>
