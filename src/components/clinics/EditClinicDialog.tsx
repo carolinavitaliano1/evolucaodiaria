@@ -68,15 +68,6 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     }
   }, [open, clinic]);
 
-  const handleStampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setStampFile(file);
-    setRemoveStamp(false);
-    const reader = new FileReader();
-    reader.onload = (ev) => setStampPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
