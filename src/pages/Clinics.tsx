@@ -581,22 +581,6 @@ export default function Clinics() {
                     )}
                   </div>
 
-                  <div className="border-t pt-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Stamp className="w-4 h-4 text-muted-foreground" />
-                      <Label className="text-sm font-medium">Carimbo</Label>
-                    </div>
-                    <FileUpload
-                      parentType="clinic"
-                      parentId="new"
-                      existingFiles={stampFile ? [stampFile] : []}
-                      onUpload={(files) => setStampFile(files[0])}
-                      onRemove={() => setStampFile(null)}
-                      accept="image/*"
-                      multiple={false}
-                      maxFiles={1}
-                    />
-                  </div>
 
                   <div className="flex gap-2 pt-4">
                     <Button type="submit" className="flex-1">
