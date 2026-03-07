@@ -118,7 +118,7 @@ function classifyLine(trimmed: string): 'section' | 'subsection' | 'allcaps' | '
 export async function generateReportPdf(opts: ReportPdfOptions) {
   const {
     title, content, fileName, clinicName, clinicAddress,
-    clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone,
+    clinicLetterhead, clinicStamp, clinicEmail, clinicCnpj, clinicPhone,
     clinicServicesDescription
   } = opts;
 
@@ -176,7 +176,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     }
   };
 
-  // ── Letterhead ──
+  // ── Letterhead (full-width banner at top) ──
   if (clinicLetterhead) {
     try {
       const img = await loadImageFromUrl(clinicLetterhead);
@@ -191,23 +191,40 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     } catch { /* skip */ }
   }
 
-  // ── Report Title (16pt bold, centered) ──
-  y += 4;
+  // ── Header: stamp (left) + title (right/center) ──
+  const STAMP_SIZE = 30; // mm × mm square
+  const STAMP_MARGIN_RIGHT = 8;
+  const titleAreaX = clinicStamp ? MARGIN + STAMP_SIZE + STAMP_MARGIN_RIGHT : MARGIN;
+  const titleAreaW = clinicStamp ? CONTENT_W - STAMP_SIZE - STAMP_MARGIN_RIGHT : CONTENT_W;
+
+  let stampLoaded = false;
+  if (clinicStamp) {
+    try {
+      await loadImageFromUrl(clinicStamp);
+      pdf.addImage(clinicStamp, 'PNG', MARGIN, y, STAMP_SIZE, STAMP_SIZE);
+      stampLoaded = true;
+    } catch { /* skip */ }
+  }
+
+  // Title block
+  const titleStartY = y + 4;
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(TITLE_SIZE);
   pdf.setTextColor(30, 30, 30);
-  const titleLines = pdf.splitTextToSize(title.toUpperCase(), CONTENT_W - 20);
+  const titleLines = pdf.splitTextToSize(title.toUpperCase(), titleAreaW - 4);
+  let titleY = titleStartY;
+  const titleCenterX = titleAreaX + titleAreaW / 2;
   for (const tl of titleLines) {
-    pdf.text(tl, PAGE_W / 2, y, { align: 'center' });
-    y += 8;
+    pdf.text(tl, titleCenterX, titleY, { align: 'center' });
+    titleY += 8;
   }
-  y += 2;
+  titleY += 2;
 
-  // Thin divider
+  // Thin divider under title
   pdf.setDrawColor(180, 180, 180);
   pdf.setLineWidth(0.3);
-  pdf.line(MARGIN + 30, y, PAGE_W - MARGIN - 30, y);
-  y += 5;
+  pdf.line(titleAreaX, titleY, titleAreaX + titleAreaW - 4, titleY);
+  titleY += 5;
 
   // Date
   pdf.setFont(FONT, 'normal');
@@ -215,9 +232,12 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   pdf.setTextColor(120, 120, 120);
   pdf.text(
     `Data de Emissão: ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
-    PAGE_W / 2, y, { align: 'center' }
+    titleCenterX, titleY, { align: 'center' }
   );
-  y += 10;
+  titleY += 10;
+
+  // Advance y to whichever is lower: after stamp or after title block
+  y = Math.max(stampLoaded ? y + STAMP_SIZE + 6 : y, titleY);
 
   // ── Parse & Render content ──
   const rawLines = htmlToLines(content);
