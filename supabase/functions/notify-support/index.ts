@@ -34,10 +34,48 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) throw new Error("Unauthorized");
 
-    const { senderName, senderEmail, messageText } = await req.json();
+    const { senderName, senderEmail, senderUserId, messageText } = await req.json();
     if (!messageText) throw new Error("messageText is required");
 
     logStep("New support message from", { senderName, senderEmail });
+
+    // Fetch last 10 messages of this conversation for context
+    let conversationHtml = "";
+    if (senderUserId) {
+      const { data: history } = await supabase
+        .from("support_messages")
+        .select("message, is_admin_reply, created_at")
+        .eq("user_id", senderUserId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (history && history.length > 1) {
+        const sorted = [...history].reverse();
+        const rows = sorted.map((m: any) => {
+          const who = m.is_admin_reply ? "Suporte" : (senderName || senderEmail || "Usuário");
+          const time = new Date(m.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+          const bg = m.is_admin_reply ? "#f3e8ff" : "#f0fdf4";
+          const border = m.is_admin_reply ? "#c084fc" : "#86efac";
+          const whoColor = m.is_admin_reply ? "#7c3aed" : "#16a34a";
+          const isLast = m.created_at === history[0].created_at;
+          return `
+            <div style="margin-bottom: 8px; padding: 10px 14px; background: ${bg}; border-left: 3px solid ${border}; border-radius: 0 8px 8px 0; ${isLast ? 'outline: 2px solid #7c3aed; outline-offset: 1px;' : ''}">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 11px; font-weight: 700; color: ${whoColor};">${who}</span>
+                <span style="font-size: 10px; color: #aaa;">${time}</span>
+              </div>
+              <p style="color: #333; font-size: 14px; margin: 0; line-height: 1.6; white-space: pre-wrap;">${m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+            </div>
+          `;
+        }).join("");
+        conversationHtml = `
+          <div style="margin: 20px 0;">
+            <p style="font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Histórico da conversa</p>
+            ${rows}
+          </div>
+        `;
+      }
+    }
 
     // Get all support admins with email
     const { data: admins, error: adminsError } = await supabase
@@ -66,29 +104,51 @@ serve(async (req) => {
         <html>
         <head><meta charset="UTF-8"></head>
         <body style="font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px;">
-          <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="background: #7c3aed; padding: 32px 32px 24px; text-align: center;">
+          <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+
+            <!-- Header -->
+            <div style="background: #7c3aed; padding: 28px 32px 22px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Evolução Diária</h1>
-              <p style="color: #e9d5ff; margin: 8px 0 0; font-size: 13px;">Nova Mensagem de Suporte</p>
+              <p style="color: #e9d5ff; margin: 6px 0 0; font-size: 13px;">🎧 Nova Mensagem de Suporte</p>
             </div>
-            <div style="padding: 32px;">
-              <div style="display: inline-block; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #92400e; font-weight: 600; margin-bottom: 16px;">
-                🎧 Suporte
+
+            <!-- User info card -->
+            <div style="padding: 24px 32px 0;">
+              <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
+                <p style="font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px;">Informações do usuário</p>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 4px 0; font-size: 13px; color: #888; width: 80px;">Nome</td>
+                    <td style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #111;">${senderDisplay}</td>
+                  </tr>
+                  ${senderEmail ? `
+                  <tr>
+                    <td style="padding: 4px 0; font-size: 13px; color: #888;">E-mail</td>
+                    <td style="padding: 4px 0; font-size: 14px; color: #111;">
+                      <a href="mailto:${senderEmail}" style="color: #7c3aed; text-decoration: none;">${senderEmail}</a>
+                    </td>
+                  </tr>` : ""}
+                </table>
               </div>
-              <h2 style="color: #1a1a1a; font-size: 18px; margin: 0 0 8px; line-height: 1.3;">
-                Nova mensagem de <strong>${senderDisplay}</strong>
-              </h2>
-              ${senderEmail ? `<p style="color: #888; font-size: 13px; margin: 0 0 20px;">${senderEmail}</p>` : ''}
-              <div style="background: #f9f9f9; border-left: 3px solid #7c3aed; border-radius: 0 8px 8px 0; padding: 16px 20px; margin-bottom: 24px;">
-                <p style="color: #333; line-height: 1.7; font-size: 15px; margin: 0; white-space: pre-wrap;">${messageText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+
+              <!-- Latest message highlighted -->
+              <p style="font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px;">Nova mensagem</p>
+              <div style="background: #ede9fe; border-left: 4px solid #7c3aed; border-radius: 0 10px 10px 0; padding: 16px 20px; margin-bottom: 20px;">
+                <p style="color: #1e1b4b; line-height: 1.7; font-size: 15px; margin: 0; white-space: pre-wrap;">${messageText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
               </div>
+
+              ${conversationHtml}
+
+              <!-- CTA -->
               <div style="text-align: center; margin: 24px 0 8px;">
-                <a href="https://evolucaodiaria.app.br/admin/suporte" style="display: inline-block; background: #7c3aed; color: #ffffff; text-decoration: none; padding: 13px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
-                  Responder no Painel →
+                <a href="https://evolucaodiaria.app.br/suporte" style="display: inline-block; background: #7c3aed; color: #ffffff; text-decoration: none; padding: 13px 32px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                  Responder agora →
                 </a>
               </div>
             </div>
-            <div style="background: #f9f9f9; padding: 16px 32px; text-align: center; border-top: 1px solid #eee;">
+
+            <!-- Footer -->
+            <div style="background: #f9f9f9; padding: 16px 32px; text-align: center; border-top: 1px solid #eee; margin-top: 24px;">
               <p style="color: #aaa; font-size: 12px; margin: 0;">© 2025 Evolução Diária · evolucaodiaria.app.br</p>
             </div>
           </div>
@@ -105,7 +165,7 @@ serve(async (req) => {
         body: JSON.stringify({
           from: "Evolução Diária <notify@evolucaodiaria.app.br>",
           to: [admin.email],
-          subject: `🎧 Novo suporte: ${senderDisplay}`,
+          subject: `🎧 Suporte: ${senderDisplay}${senderEmail ? ` <${senderEmail}>` : ""}`,
           html,
         }),
       });
