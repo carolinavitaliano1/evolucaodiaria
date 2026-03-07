@@ -15,7 +15,8 @@ import {
   CreditCard,
   Sparkles,
   Smartphone,
-  Megaphone
+  Megaphone,
+  UsersRound
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
