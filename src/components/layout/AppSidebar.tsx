@@ -35,6 +35,7 @@ const allNavItems = [
   { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const, orgOnly: false },
   { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const, orgOnly: false },
   { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: true, orgOnly: false },
+  { to: '/suporte',   icon: HeadphonesIcon,  label: 'Suporte',      perm: null,                      orgOnly: false },
   { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null,                      orgOnly: false },
   { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null,                      orgOnly: false },
 ];

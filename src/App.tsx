@@ -26,6 +26,8 @@ import AIReports from "./pages/AIReports";
 import InstallApp from "./pages/InstallApp";
 import Mural from "./pages/Mural";
 import Team from "./pages/Team";
+import Support from "./pages/Support";
+import AdminSupport from "./pages/AdminSupport";
 
 const queryClient = new QueryClient();
 
