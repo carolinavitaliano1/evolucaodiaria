@@ -7,7 +7,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Send, HeadphonesIcon, ChevronLeft, CheckCheck, Search, PhoneOff } from 'lucide-react';
+import { Send, HeadphonesIcon, ChevronLeft, CheckCheck, Search, PhoneOff, Info, User, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -26,6 +26,7 @@ interface Conversation {
   user_id: string;
   user_name: string | null;
   user_email: string | null;
+  user_phone: string | null;
   last_message: string;
   last_at: string;
   unread: number;
@@ -69,6 +70,7 @@ export default function AdminSupport() {
   const [sending, setSending] = useState(false);
   const [closingChat, setClosingChat] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [showUserInfo, setShowUserInfo] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -99,7 +101,7 @@ export default function AdminSupport() {
     const userIds = Array.from(map.keys());
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, name, email')
+      .select('user_id, name, email, phone')
       .in('user_id', userIds);
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
@@ -112,6 +114,7 @@ export default function AdminSupport() {
         user_id: uid,
         user_name: profile?.name || null,
         user_email: profile?.email || null,
+        user_phone: profile?.phone || null,
         last_message: latest.message,
         last_at: latest.created_at,
         unread: userMsgs.filter(m => !m.is_admin_reply).length,
@@ -191,6 +194,18 @@ export default function AdminSupport() {
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
     } else {
       loadConversations();
+      // Fire push notification to user (fire-and-forget)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        supabase.functions.invoke('push-support', {
+          body: {
+            targetUserId: selected,
+            title: 'Suporte respondeu ✉️',
+            body: optimistic.message.slice(0, 100),
+          },
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+      } catch (_) { /* silent */ }
     }
     setSending(false);
     inputRef.current?.focus();
@@ -329,20 +344,48 @@ export default function AdminSupport() {
             <button className="md:hidden p-1.5 rounded-lg hover:bg-accent" onClick={() => setSelected(null)}>
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <Avatar className="w-9 h-9">
-              <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-                {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">
-                {selectedConv?.user_name || 'Usuário'}
-              </p>
-              {selectedConv?.user_email && (
-                <p className="text-xs text-muted-foreground truncate">{selectedConv.user_email}</p>
-              )}
-            </div>
+            <button
+              onClick={() => setShowUserInfo(v => !v)}
+              className="relative flex items-center gap-3 flex-1 min-w-0 text-left"
+            >
+              <Avatar className="w-9 h-9 shrink-0">
+                <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                  {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-foreground truncate">
+                  {selectedConv?.user_name || selectedConv?.user_email || 'Usuário'}
+                </p>
+                {selectedConv?.user_email && (
+                  <p className="text-xs text-muted-foreground truncate">{selectedConv.user_email}</p>
+                )}
+              </div>
+              <Info className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
           </div>
+
+          {/* User info panel */}
+          {showUserInfo && selectedConv && (
+            <div className="bg-muted/40 border-b border-border px-4 py-3 space-y-1.5 text-sm">
+              <div className="flex items-center gap-2">
+                <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="text-foreground font-medium">{selectedConv.user_name || <span className="text-muted-foreground italic">Sem nome</span>}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                {selectedConv.user_email
+                  ? <a href={`mailto:${selectedConv.user_email}`} className="text-primary underline underline-offset-2 break-all">{selectedConv.user_email}</a>
+                  : <span className="text-muted-foreground italic">Sem e-mail</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                {selectedConv.user_phone
+                  ? <a href={`tel:${selectedConv.user_phone}`} className="text-primary">{selectedConv.user_phone}</a>
+                  : <span className="text-muted-foreground italic">Sem telefone</span>}
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div
