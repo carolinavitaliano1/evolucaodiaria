@@ -169,6 +169,7 @@ serve(async (req) => {
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           from: "Evolução Diária <notify@evolucaodiaria.app.br>",
+          reply_to: "evolucaodiaria.contato@gmail.com",
           to: [userEmail],
           subject,
           html: buildHtml(),
@@ -205,6 +206,7 @@ serve(async (req) => {
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           from: "Evolução Diária <notify@evolucaodiaria.app.br>",
+          reply_to: "evolucaodiaria.contato@gmail.com",
           to: [admin.email],
           subject,
           html: buildHtml(),
