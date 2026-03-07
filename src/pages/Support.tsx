@@ -350,7 +350,7 @@ function AdminSupportView() {
                           : 'bg-card text-foreground rounded-2xl rounded-tl-sm border border-border'
                       )}>
                         {!isMe && !prevSameSide && (
-                          <p className="text-[10px] font-bold text-primary mb-1">{selectedConv?.user_name || 'Usuário'}</p>
+                          <p className="text-[10px] font-bold text-primary mb-1">{selectedConv?.user_name || selectedConv?.user_email?.split('@')[0] || 'Sem nome'}</p>
                         )}
                         <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
                         <div className="flex items-center justify-end gap-1 mt-1">
