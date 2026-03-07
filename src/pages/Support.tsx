@@ -222,7 +222,7 @@ function AdminSupportView() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-hidden">
       {/* ── Sidebar ── */}
       <div className={cn(
         'flex flex-col bg-card border-r border-border',

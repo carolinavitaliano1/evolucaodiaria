@@ -274,7 +274,7 @@ export default function AdminSupport() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-hidden">
       {/* ── Sidebar: conversation list ── */}
       <div className={cn(
         'flex flex-col bg-card border-r border-border',
