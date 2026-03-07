@@ -262,14 +262,14 @@ export default function Landing() {
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
                 className="relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                 <div className="absolute top-4 right-4">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide max-w-[110px] text-center leading-tight">
                     {f.highlight}
                   </span>
                 </div>
-                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 shadow-glow">
+                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 shadow-glow shrink-0">
                   <f.icon className="w-6 h-6 text-primary-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2 pr-24">{f.title}</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2 pr-28">{f.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
