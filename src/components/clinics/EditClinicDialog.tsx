@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Clinic } from '@/types';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -29,7 +28,6 @@ interface EditClinicDialogProps {
 }
 
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
-
   const [formData, setFormData] = useState({
     name: '',
     type: 'propria' as 'propria' | 'terceirizada',
@@ -67,7 +65,6 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
       });
     }
   }, [open, clinic]);
-
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +118,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             <RadioGroup
               value={formData.type}
               onValueChange={(v) => setFormData({ ...formData, type: v as any })}
-              className="flex gap-4 mt-2"
+              className="flex gap-4 mt-1"
             >
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="propria" id="edit-propria" />
@@ -134,11 +131,52 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             </RadioGroup>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="contato@clinica.com"
+              />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label>CNPJ</Label>
+              <Input
+                value={formData.cnpj}
+                onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                placeholder="00.000.000/0000-00"
+              />
+            </div>
+            <div>
+              <Label>Endereço</Label>
+              <Input
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Rua, número, cidade"
+              />
+            </div>
+          </div>
+
           <div>
-            <Label>Endereço</Label>
-            <Input
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            <Label>Descrição dos Serviços</Label>
+            <Textarea
+              value={formData.servicesDescription}
+              onChange={(e) => setFormData({ ...formData, servicesDescription: e.target.value })}
+              rows={2}
+              placeholder="Descreva os serviços oferecidos..."
             />
           </div>
 
@@ -151,244 +189,149 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             />
           </div>
 
-          <div className="border-t pt-4">
-            <Label className="text-sm font-medium">Dados Institucionais</Label>
-            <div className="space-y-3 mt-2">
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="contato@clinica.com"
-                />
-              </div>
-              <div>
-                <Label>CNPJ</Label>
-                <Input
-                  value={formData.cnpj}
-                  onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-                  placeholder="00.000.000/0000-00"
-                />
-              </div>
-              <div>
-                <Label>Telefone</Label>
-                <Input
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="(00) 0000-0000"
-                />
-              </div>
-              <div>
-                <Label>Serviços / Especialidades</Label>
-                <Input
-                  value={formData.servicesDescription}
-                  onChange={(e) => setFormData({ ...formData, servicesDescription: e.target.value })}
-                  placeholder="Psicologia - Psicopedagogia - Fonoaudiologia"
-                />
-              </div>
-            </div>
-          </div>
-
+          {/* Schedule */}
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Dias e Horários de Atendimento</Label>
-            <div className="space-y-3 mt-3">
-              {WEEKDAYS.map((day) => {
-                const isSelected = formData.weekdays.includes(day.value);
-                return (
-                  <div key={day.value} className="flex items-center gap-3 flex-wrap">
-                    <label
-                      className={cn(
-                        "flex items-center justify-center px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm w-14",
-                        isSelected
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card border-border hover:bg-secondary"
-                      )}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData({ ...formData, weekdays: [...formData.weekdays, day.value] });
-                          } else {
-                            const newScheduleByDay = { ...formData.scheduleByDay };
-                            delete newScheduleByDay[day.value];
-                            setFormData({
-                              ...formData,
-                              weekdays: formData.weekdays.filter(d => d !== day.value),
-                              scheduleByDay: newScheduleByDay,
-                            });
-                          }
-                        }}
-                        className="sr-only"
-                      />
-                      {day.label}
-                    </label>
-                    {isSelected && (
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">Entrada:</span>
-                          <Input
-                            type="time"
-                            value={formData.scheduleByDay[day.value]?.start || ''}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              scheduleByDay: {
-                                ...formData.scheduleByDay,
-                                [day.value]: {
-                                  ...formData.scheduleByDay[day.value],
-                                  start: e.target.value,
-                                  end: formData.scheduleByDay[day.value]?.end || ''
-                                }
-                              }
-                            })}
-                            className="w-24"
-                          />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">Saída:</span>
-                          <Input
-                            type="time"
-                            value={formData.scheduleByDay[day.value]?.end || ''}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              scheduleByDay: {
-                                ...formData.scheduleByDay,
-                                [day.value]: {
-                                  ...formData.scheduleByDay[day.value],
-                                  start: formData.scheduleByDay[day.value]?.start || '',
-                                  end: e.target.value,
-                                }
-                              }
-                            })}
-                            className="w-24"
-                          />
-                        </div>
-                      </div>
-                    )}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {WEEKDAYS.map((day) => (
+                <div key={day.value} className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <Checkbox
+                      id={`edit-day-${day.value}`}
+                      checked={formData.weekdays.includes(day.value)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setFormData({ ...formData, weekdays: [...formData.weekdays, day.value] });
+                        } else {
+                          const newScheduleByDay = { ...formData.scheduleByDay };
+                          delete newScheduleByDay[day.value];
+                          setFormData({
+                            ...formData,
+                            weekdays: formData.weekdays.filter(d => d !== day.value),
+                            scheduleByDay: newScheduleByDay,
+                          });
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`edit-day-${day.value}`} className="text-xs cursor-pointer">{day.label}</Label>
                   </div>
-                );
-              })}
+                  {formData.weekdays.includes(day.value) && (
+                    <div className="flex flex-col gap-0.5">
+                      <Input
+                        type="time"
+                        value={formData.scheduleByDay[day.value]?.start || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          scheduleByDay: {
+                            ...formData.scheduleByDay,
+                            [day.value]: {
+                              ...formData.scheduleByDay[day.value],
+                              start: e.target.value,
+                              end: formData.scheduleByDay[day.value]?.end || ''
+                            }
+                          }
+                        })}
+                        className="h-7 text-xs w-24"
+                      />
+                      <Input
+                        type="time"
+                        value={formData.scheduleByDay[day.value]?.end || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          scheduleByDay: {
+                            ...formData.scheduleByDay,
+                            [day.value]: {
+                              ...formData.scheduleByDay[day.value],
+                              start: formData.scheduleByDay[day.value]?.start || '',
+                              end: e.target.value,
+                            }
+                          }
+                        })}
+                        className="h-7 text-xs w-24"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="border-t pt-4">
-            <Label className="text-sm font-medium">Remuneração</Label>
-            <div className="space-y-3 mt-2">
-              <Select
-                value={formData.paymentType}
-                onValueChange={(v) => setFormData({ ...formData, paymentType: v as any })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo de pagamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixo_mensal">Fixo Mensal</SelectItem>
-                  <SelectItem value="fixo_diario">Fixo Diário</SelectItem>
-                  <SelectItem value="sessao">Por Sessão</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {formData.paymentType && (
-                <div>
-                  <Label>Valor (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.paymentAmount}
-                    onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
-                    placeholder="0,00"
-                  />
-                </div>
-              )}
+          {/* Payment */}
+          <div className="border-t pt-4 space-y-3">
+            <Label className="text-sm font-medium">Pagamento</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Desconto da Clínica (%)</Label>
+                <Label className="text-xs">Tipo de Pagamento</Label>
+                <Select
+                  value={formData.paymentType}
+                  onValueChange={(v) => setFormData({ ...formData, paymentType: v as any })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sessao">Por sessão</SelectItem>
+                    <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
+                    <SelectItem value="fixo_diario">Fixo diário</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Valor (R$)</Label>
                 <Input
                   type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={formData.discountPercentage}
-                  onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })}
-                  placeholder="0"
+                  value={formData.paymentAmount}
+                  onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
+                  placeholder="0,00"
+                  className="mt-1"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Porcentagem retida pela clínica</p>
               </div>
+            </div>
+            <div>
+              <Label className="text-xs">Porcentagem retida pela clínica</Label>
+              <Input
+                type="number"
+                value={formData.discountPercentage}
+                onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })}
+                placeholder="0"
+                className="mt-1"
+              />
             </div>
           </div>
 
+          {/* Absence payment */}
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Cobrança em Faltas</Label>
-            <p className="text-xs text-muted-foreground mt-1 mb-2">
-              Define se você recebe pagamento quando o paciente falta à sessão nesta clínica.
+            <p className="text-xs text-muted-foreground mt-1 mb-3">
+              Define se você recebe pagamento quando o paciente falta a sessão nesta clínica.
             </p>
             <RadioGroup
               value={formData.absencePaymentType}
               onValueChange={(v) => setFormData({ ...formData, absencePaymentType: v as any })}
-              className="mt-2 space-y-3"
+              className="space-y-2"
             >
-              <div className="flex items-start gap-2">
+              <div className={cn('flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors', formData.absencePaymentType === 'always' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40')}>
                 <RadioGroupItem value="always" id="edit-always" className="mt-0.5" />
-                <div>
-                  <Label htmlFor="edit-always" className="text-sm cursor-pointer">Sempre cobra</Label>
-                  <p className="text-xs text-muted-foreground">Você recebe por todas as faltas, independentemente de aviso prévio.</p>
-                </div>
+                <Label htmlFor="edit-always" className="cursor-pointer flex-1">
+                  <span className="font-medium text-sm">Sempre cobra</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Você recebe por todas as faltas, independentemente de aviso prévio.</p>
+                </Label>
               </div>
-              <div className="flex items-start gap-2">
+              <div className={cn('flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors', formData.absencePaymentType === 'never' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40')}>
                 <RadioGroupItem value="never" id="edit-never" className="mt-0.5" />
-                <div>
-                  <Label htmlFor="edit-never" className="text-sm cursor-pointer">Nunca cobra</Label>
-                  <p className="text-xs text-muted-foreground">Faltas não são cobradas. Você só recebe pelas sessões realizadas.</p>
-                </div>
+                <Label htmlFor="edit-never" className="cursor-pointer flex-1">
+                  <span className="font-medium text-sm">Nunca cobra</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Faltas não são cobradas. Você só recebe pelas sessões realizadas.</p>
+                </Label>
               </div>
-              <div className="flex items-start gap-2">
+              <div className={cn('flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors', formData.absencePaymentType === 'confirmed_only' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40')}>
                 <RadioGroupItem value="confirmed_only" id="edit-confirmed" className="mt-0.5" />
-                <div>
-                  <Label htmlFor="edit-confirmed" className="text-sm cursor-pointer">Somente confirmados</Label>
-                  <p className="text-xs text-muted-foreground">Cobra apenas faltas em que o paciente confirmou presença e não compareceu.</p>
-                </div>
+                <Label htmlFor="edit-confirmed" className="cursor-pointer flex-1">
+                  <span className="font-medium text-sm">Somente confirmados</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Cobra apenas faltas em que o paciente confirmou presença e não compareceu.</p>
+                </Label>
               </div>
             </RadioGroup>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit">Salvar Alterações</Button>
-          </div>
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs"
-                    onClick={() => stampInputRef.current?.click()}
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Trocar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs text-destructive hover:text-destructive"
-                    onClick={() => { setRemoveStamp(true); setStampPreview(null); setStampFile(null); }}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Remover
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={() => stampInputRef.current?.click()}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                {removeStamp ? 'Adicionar novo carimbo' : 'Adicionar carimbo'}
-              </Button>
-            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
