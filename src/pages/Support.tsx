@@ -37,6 +37,7 @@ interface Conversation {
   last_at: string;
   unread: number;
   is_closed: boolean;
+  closed_by: string | null;
 }
 
 function formatMsgTime(dateStr: string) {
@@ -96,13 +97,13 @@ function AdminSupportView() {
     // Fetch which user_ids have a closed session
     const { data: sessions } = await supabase
       .from('support_chat_sessions')
-      .select('user_id, closed_at')
+      .select('user_id, closed_at, closed_by')
       .order('closed_at', { ascending: false });
 
     // Keep only the LATEST session per user_id
-    const closedMap = new Map<string, string>();
+    const closedMap = new Map<string, { closed_at: string; closed_by: string }>();
     for (const s of (sessions || []) as any[]) {
-      if (!closedMap.has(s.user_id)) closedMap.set(s.user_id, s.closed_at);
+      if (!closedMap.has(s.user_id)) closedMap.set(s.user_id, { closed_at: s.closed_at, closed_by: s.closed_by });
     }
 
     const map = new Map<string, SupportMessage[]>();
@@ -123,10 +124,10 @@ function AdminSupportView() {
       const userMsgs = map.get(uid)!;
       const latest = userMsgs[0];
       const profile = profileMap.get(uid) as any;
-      const closedAt = closedMap.get(uid);
+      const sessionInfo = closedMap.get(uid);
+      const closedAt = sessionInfo?.closed_at;
 
       // A conversation is "closed" if the latest session close happened AFTER the last message
-      // OR if there are no messages after the session was closed
       const isClosed = closedAt
         ? new Date(closedAt) >= new Date(latest.created_at)
         : false;
@@ -148,6 +149,7 @@ function AdminSupportView() {
         last_at: latest.created_at,
         unread,
         is_closed: isClosed,
+        closed_by: isClosed ? (sessionInfo?.closed_by || null) : null,
       };
     });
     convs.sort((a, b) => {
@@ -543,7 +545,7 @@ function AdminSupportView() {
             {isClosed && (
               <div className="flex items-center justify-center py-4">
                 <span className="px-4 py-2 rounded-full bg-muted border border-border text-xs text-muted-foreground text-center">
-                  Atendimento encerrado — clique em "Reabrir" para continuar
+                  🔒 Chat encerrado por {selectedConv?.closed_by === 'admin' ? 'Administrador' : (selectedConv?.user_name || 'Usuário')}
                 </span>
               </div>
             )}
@@ -622,6 +624,7 @@ function UserSupportView() {
   const { markSupportSeen } = useUnreadSupportCount();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [isClosed, setIsClosed] = useState(false);
+  const [closedBy, setClosedBy] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -635,7 +638,7 @@ function UserSupportView() {
     if (!user) return;
     const [{ data: msgs }, { data: sessions }] = await Promise.all([
       supabase.from('support_messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('support_chat_sessions').select('closed_at').eq('user_id', user.id).order('closed_at', { ascending: false }).limit(1),
+      supabase.from('support_chat_sessions').select('closed_at, closed_by').eq('user_id', user.id).order('closed_at', { ascending: false }).limit(1),
     ]);
 
     const msgList = (msgs as SupportMessage[]) || [];
@@ -643,15 +646,16 @@ function UserSupportView() {
 
     if (sessions && sessions.length > 0) {
       const closedAt = (sessions[0] as any).closed_at;
+      const sessionClosedBy = (sessions[0] as any).closed_by || null;
       const lastMsg = msgList[msgList.length - 1];
-      // Consider closed if: no messages after session was closed
-      // Use a 2-second buffer to avoid millisecond race conditions
       const closed = lastMsg
         ? new Date(closedAt).getTime() >= new Date(lastMsg.created_at).getTime() - 2000
         : true;
       setIsClosed(closed);
+      setClosedBy(closed ? sessionClosedBy : null);
     } else {
       setIsClosed(false);
+      setClosedBy(null);
     }
 
     setLoading(false);
@@ -677,14 +681,16 @@ function UserSupportView() {
         setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
         // New message means chat was reopened/active
         setIsClosed(false);
+        setClosedBy(null);
         // If admin replied, mark as seen immediately (user is on the page)
         if (newMsg.is_admin_reply) markSupportSeen();
       })
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'support_chat_sessions',
         filter: `user_id=eq.${user.id}`,
-      }, () => {
+      }, (payload) => {
         setIsClosed(true);
+        setClosedBy((payload.new as any)?.closed_by || null);
         markSupportSeen();
       })
       .subscribe();
@@ -747,6 +753,7 @@ function UserSupportView() {
       toast.success('Atendimento encerrado.');
       markSupportSeen();
       setIsClosed(true);
+      setClosedBy('user');
     } catch {
       toast.error('Erro ao encerrar o chat');
     }
@@ -765,6 +772,7 @@ function UserSupportView() {
         .eq('user_id', user.id);
       if (error) throw error;
       setIsClosed(false);
+      setClosedBy(null);
       toast.success('Chamado reaberto. Você pode enviar novas mensagens.');
     } catch {
       toast.error('Erro ao reabrir chamado');
@@ -858,7 +866,7 @@ function UserSupportView() {
         {isClosed && messages.length > 0 && (
           <div className="flex items-center justify-center py-4">
             <span className="px-4 py-2 rounded-full bg-muted border border-border text-xs text-muted-foreground text-center">
-              Atendimento encerrado
+              🔒 Chat encerrado por {closedBy === 'admin' ? 'Administrador' : 'você'}
             </span>
           </div>
         )}
