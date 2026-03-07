@@ -291,7 +291,7 @@ export default function Clinics() {
             </div>
             <div>
               <h1 className="font-bold text-foreground text-lg leading-none">Locais de Atendimento</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Clínicas e atendimentos particulares</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Clínicas e meus serviços</p>
             </div>
           </div>
         </div>
