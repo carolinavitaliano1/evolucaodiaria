@@ -495,6 +495,48 @@ export default function AIReports() {
     });
   };
 
+  const handleExportWord = async () => {
+    if (!editor) return;
+    const text = editor.getText();
+    if (!text.trim()) return;
+
+    const title = reportTitle || 'Relatório Clínico';
+    const clinic = clinics.find(c => c.id === selectedClinic);
+    const dateStr = new Date().toLocaleDateString('pt-BR');
+
+    const headerHtml = clinic?.name
+      ? `<h2 style="text-align:center;">${clinic.name}</h2>${clinic.address ? `<p style="text-align:center;">${clinic.address}</p>` : ''}${clinic.phone ? `<p style="text-align:center;">Tel: ${clinic.phone}</p>` : ''}<hr/>`
+      : '';
+
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="UTF-8"></head>
+        <body style="font-family: Arial, sans-serif; margin: 40px;">
+          ${headerHtml}
+          <h1 style="text-align:center;">${title}</h1>
+          <p style="text-align:right; color:#666;">${dateStr}</p>
+          <hr/>
+          ${editor.getHTML()}
+        </body>
+      </html>
+    `;
+
+    try {
+      const { asBlob } = await import('html-docx-js-typescript');
+      const blob = await asBlob(fullHtml, { orientation: 'portrait', margins: { top: 720, bottom: 720, left: 1080, right: 1080 } });
+      const url = URL.createObjectURL(blob as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Documento Word exportado!');
+    } catch {
+      toast.error('Erro ao exportar Word');
+    }
+  };
+
   const handleShareEmail = () => {
     const text = editor?.getText() || '';
     const subject = encodeURIComponent(reportTitle || 'Relatório Clínico');
