@@ -1171,6 +1171,7 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_support_admin: { Args: { _user_id: string }; Returns: boolean }
       is_therapist_assigned_to_patient: {
         Args: { _patient_id: string; _user_id: string }
         Returns: boolean
