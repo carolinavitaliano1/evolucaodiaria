@@ -368,6 +368,295 @@ export default function PatientDetail() {
       const { W, margin, contentW, darkText, mutedText, borderColor, accentDark } = base;
       const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
       const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+      let y = margin;
+
+      // ── HEADER ──────────────────────────────────────────────────
+      doc.setTextColor(...darkText);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RELATÓRIO MENSAL DE ATENDIMENTO', margin, y);
+      y += 7;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...mutedText);
+      doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, y);
+      y += 5;
+      doc.setDrawColor(...borderColor);
+      doc.line(margin, y, W - margin, y);
+      y += 8;
+
+      // ── IDENTIFICAÇÃO ────────────────────────────────────────────
+      const idLines: [string, string][] = [];
+      if (patient.name) idLines.push(['Paciente:', patient.name]);
+      if (patient.birthdate) {
+        const age = calculateAge(patient.birthdate);
+        idLines.push(['Data de Nascimento:', `${format(new Date(patient.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}${age !== null ? ` (${age} anos)` : ''}`]);
+      }
+      if (clinic?.name) idLines.push(['Unidade Clínica:', clinic.name]);
+      if (patient.clinicalArea) idLines.push(['Área Clínica:', patient.clinicalArea]);
+      if (patient.diagnosis) idLines.push(['Diagnóstico:', patient.diagnosis]);
+      if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
+      idLines.push(['Período de Referência:', monthLabelCap]);
+      idLines.push(['Data de Emissão:', format(new Date(), 'dd/MM/yyyy', { locale: ptBR })]);
+
+      idLines.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...darkText);
+        doc.text(label, margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...mutedText);
+        const wrapped = doc.splitTextToSize(value, contentW - 52);
+        doc.text(wrapped, margin + 52, y);
+        y += wrapped.length > 1 ? wrapped.length * 5 + 1 : 6;
+      });
+
+      doc.setDrawColor(...borderColor);
+      doc.line(margin, y + 2, W - margin, y + 2);
+      y += 10;
+
+      // ── 1. RESUMO DE FREQUÊNCIA ──────────────────────────────────
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
+      doc.text('1. RESUMO DE FREQUÊNCIA', margin, y); y += 8;
+
+      const summaryRows: [string, string][] = [
+        ['Total de sessões registradas:', String(monthlyTotal)],
+        ['Presenças:', String(monthlyPresent)],
+        ['Reposições:', String(monthlyReposicao)],
+        ['Sessões realizadas (presença + reposição):', String(monthlyPresent + monthlyReposicao)],
+        ['Faltas:', String(monthlyAbsent)],
+        ['Taxa de frequência:', `${monthlyAttendanceRate}%`],
+      ];
+      summaryRows.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkText);
+        doc.text(label, margin + 4, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text(value, W - margin - 2, y, { align: 'right' });
+        y += 6;
+      });
+      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+
+      // ── 2. HUMOR ─────────────────────────────────────────────────
+      const moodsWithData = monthlyMoodCounts.filter(m => m.count > 0);
+      if (moodsWithData.length > 0) {
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
+        doc.text('2. HUMOR DO MÊS', margin, y); y += 8;
+        moodsWithData.forEach(m => {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkText);
+          doc.text(`${m.label}:`, margin + 4, y);
+          doc.setFont('helvetica', 'bold');
+          doc.text(String(m.count), W - margin - 2, y, { align: 'right' });
+          y += 6;
+        });
+        doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+      }
+
+      // ── 3. REGISTRO DAS SESSÕES ──────────────────────────────────
+      const section3 = moodsWithData.length > 0 ? '3' : '2';
+      const visibleEvolutions = monthlyEvolutions.filter(e =>
+        ['presente', 'falta', 'reposicao'].includes(e.attendanceStatus)
+      );
+      const statusLabelMap: Record<string, string> = {
+        presente: 'Presente', falta: 'Falta', reposicao: 'Reposição',
+      };
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
+      doc.text(`${section3}. REGISTRO DAS SESSÕES (${visibleEvolutions.length})`, margin, y); y += 8;
+
+      for (const evo of visibleEvolutions) {
+        if (y > 252) { doc.addPage(); y = margin; }
+        const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        const status = statusLabelMap[evo.attendanceStatus] || evo.attendanceStatus;
+        const moodInfo = getMoodInfo(evo.mood, customMoods);
+        doc.setDrawColor(...borderColor);
+        doc.line(margin, y - 1, W - margin, y - 1);
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
+        doc.text(dateStr, margin + 2, y + 5);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
+        doc.text(`Status: ${status}`, margin + 32, y + 5);
+        if (moodInfo) doc.text(`Humor: ${moodInfo.label}`, margin + 100, y + 5);
+        y += 9;
+        if (evo.text) {
+          doc.setTextColor(...darkText); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+          const textLines = doc.splitTextToSize(evo.text, contentW - 4);
+          textLines.forEach((line: string) => {
+            if (y > 268) { doc.addPage(); y = margin; }
+            doc.text(line, margin + 2, y); y += 5;
+          });
+          y += 3;
+        } else { y += 2; }
+      }
+
+      // ── ASSINATURA (sempre presente) ─────────────────────────────
+      const chosenStamp = selectedStampId && selectedStampId !== 'none'
+        ? stamps.find(s => s.id === selectedStampId)
+        : stamps.find(s => s.is_default);
+      y = await addSignatureBlock(doc, y, base, chosenStamp ?? null, true);
+
+      // ── RODAPÉ ───────────────────────────────────────────────────
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFontSize(7.5); doc.setTextColor(...mutedText);
+        doc.text(
+          `${patient.name}  —  Relatório de Referência: ${monthLabelCap}  —  Emitido em: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}  —  Pag. ${p}/${pageCount}`,
+          W / 2, 291, { align: 'center' }
+        );
+      }
+      doc.save(`relatorio-atendimento-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(reportMonth, 'yyyy-MM')}.pdf`);
+      toast.success('PDF gerado com sucesso!');
+    } catch (err) { console.error(err); toast.error('Erro ao gerar PDF'); }
+    finally { setIsExportingMonthly(false); }
+  };
+
+  // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
+  const handleExportFinancialPDF = async () => {
+    if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
+    setIsExportingFinancial(true);
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const base = buildPdfBase(doc);
+      const { W, margin, contentW, darkText, mutedText, borderColor, accentDark } = base;
+      const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
+      const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+      let y = margin;
+
+      // ── HEADER ──────────────────────────────────────────────────
+      doc.setTextColor(...darkText); doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+      doc.text('RELATÓRIO FINANCEIRO MENSAL', margin, y); y += 7;
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
+      doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, y); y += 5;
+      doc.setDrawColor(...borderColor); doc.line(margin, y, W - margin, y); y += 8;
+
+      // ── IDENTIFICAÇÃO ────────────────────────────────────────────
+      const idLines: [string, string][] = [];
+      if (patient.name) idLines.push(['Paciente:', patient.name]);
+      if (clinic?.name) idLines.push(['Unidade Clínica:', clinic.name]);
+      if (patient.clinicalArea) idLines.push(['Área Clínica:', patient.clinicalArea]);
+      if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
+      if (patient.paymentValue) idLines.push(['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]);
+      idLines.push(['Período de Referência:', monthLabelCap]);
+      idLines.push(['Data de Emissão:', format(new Date(), 'dd/MM/yyyy', { locale: ptBR })]);
+      idLines.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
+        doc.text(label, margin, y);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
+        const wrapped = doc.splitTextToSize(value, contentW - 52);
+        doc.text(wrapped, margin + 52, y);
+        y += wrapped.length > 1 ? wrapped.length * 5 + 1 : 6;
+      });
+      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+
+      // ── 1. RESUMO FINANCEIRO ─────────────────────────────────────
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
+      doc.text('1. RESUMO FINANCEIRO', margin, y); y += 8;
+
+      const paidSessions = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
+      const finRows: [string, string][] = [
+        ['Sessões realizadas (presença + reposição):', String(monthlyPresent + monthlyReposicao)],
+        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
+        ['Feriados remunerados:', String(monthlyFeriadoRem)],
+        ['Total de sessões cobradas:', String(paidSessions)],
+        ['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
+        ['TOTAL FATURADO NO MÊS:', `R$ ${monthlyRevenue.toFixed(2)}`],
+      ];
+      finRows.forEach(([label, value], i) => {
+        const isBold = i === finRows.length - 1;
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        doc.setFontSize(9); doc.setTextColor(...(isBold ? accentDark : darkText));
+        doc.text(label, margin + 4, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text(value, W - margin - 2, y, { align: 'right' });
+        y += 6;
+      });
+      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+
+      // ── 2. DETALHAMENTO DE FREQUÊNCIA ────────────────────────────
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
+      doc.text('2. DETALHAMENTO DE FREQUÊNCIA', margin, y); y += 8;
+
+      const freqRows: [string, string][] = [
+        ['Total de sessões registradas:', String(monthlyTotal)],
+        ['Presenças:', String(monthlyPresent)],
+        ['Reposições:', String(monthlyReposicao)],
+        ['Faltas:', String(monthlyAbsent)],
+        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
+        ['Feriados remunerados:', String(monthlyFeriadoRem)],
+        ['Feriados não remunerados:', String(monthlyFeriadoNaoRem)],
+        ['Taxa de frequência (presença/total):', `${monthlyAttendanceRate}%`],
+      ];
+      freqRows.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkText);
+        doc.text(label, margin + 4, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text(value, W - margin - 2, y, { align: 'right' });
+        y += 6;
+      });
+      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+
+      // ── 3. REGISTRO COMPLETO DAS SESSÕES ─────────────────────────
+      const allStatusLabel: Record<string, string> = {
+        presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
+        reposicao: 'Reposição', feriado_remunerado: 'Feriado Remunerado',
+        feriado_nao_remunerado: 'Feriado Não Remunerado',
+      };
+      const paidStatuses = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'];
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
+      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y); y += 8;
+
+      for (const evo of monthlyEvolutions) {
+        if (y > 258) { doc.addPage(); y = margin; }
+        const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
+        const isPaid = paidStatuses.includes(evo.attendanceStatus);
+        doc.setDrawColor(...borderColor); doc.line(margin, y - 1, W - margin, y - 1);
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
+        doc.text(dateStr, margin + 2, y + 5);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
+        doc.text(`Status: ${status}`, margin + 32, y + 5);
+        if (isPaid && patient.paymentValue) {
+          doc.setTextColor(...accentDark);
+          doc.text(`R$ ${patient.paymentValue.toFixed(2)}`, W - margin - 2, y + 5, { align: 'right' });
+        }
+        y += 9;
+        if (evo.text) {
+          doc.setTextColor(...darkText); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+          const textLines = doc.splitTextToSize(evo.text, contentW - 4);
+          textLines.forEach((line: string) => {
+            if (y > 268) { doc.addPage(); y = margin; }
+            doc.text(line, margin + 2, y); y += 5;
+          });
+          y += 3;
+        } else { y += 2; }
+      }
+
+      // ── ASSINATURA ───────────────────────────────────────────────
+      const chosenStamp = selectedStampId && selectedStampId !== 'none'
+        ? stamps.find(s => s.id === selectedStampId)
+        : stamps.find(s => s.is_default);
+      y = await addSignatureBlock(doc, y, base, chosenStamp ?? null, true);
+
+      // ── RODAPÉ ───────────────────────────────────────────────────
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFontSize(7.5); doc.setTextColor(...mutedText);
+        doc.text(
+          `${patient.name}  —  Relatório Financeiro: ${monthLabelCap}  —  Emitido em: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}  —  Pag. ${p}/${pageCount}`,
+          W / 2, 291, { align: 'center' }
+        );
+      }
+      doc.save(`relatorio-financeiro-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(reportMonth, 'yyyy-MM')}.pdf`);
+      toast.success('Relatório financeiro gerado!');
+    } catch (err) { console.error(err); toast.error('Erro ao gerar PDF financeiro'); }
+    finally { setIsExportingFinancial(false); }
+  };
+
+
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const base = buildPdfBase(doc);
+      const { W, margin, contentW, darkText, mutedText, borderColor, accentDark } = base;
+      const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
+      const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
 
       // Colors — formal palette
       const darkText: [number, number, number] = [30, 30, 40];
