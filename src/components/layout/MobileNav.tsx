@@ -142,6 +142,20 @@ export function MobileNav() {
               <span className="text-sm font-semibold text-muted-foreground">Mais opções</span>
               <ThemeToggle />
             </div>
+            {/* Trial badge in sheet */}
+            {trialDaysLeft !== null && (
+              <NavLink
+                to="/pricing"
+                onClick={() => setMoreOpen(false)}
+                className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 hover:bg-warning/20 transition-colors"
+              >
+                <Clock className="w-3.5 h-3.5 text-warning shrink-0" />
+                <span className="text-xs font-semibold text-warning flex-1">
+                  {trialDaysLeft} {trialDaysLeft === 1 ? 'dia' : 'dias'} de teste restantes
+                </span>
+                <span className="text-[10px] text-warning/80">Assinar</span>
+              </NavLink>
+            )}
             <div className="py-2 space-y-2">
               {finalMore.map((item) => {
                 const to = item.to;
