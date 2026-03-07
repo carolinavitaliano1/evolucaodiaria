@@ -1270,7 +1270,6 @@ export default function PatientDetail() {
           <div className="bg-card rounded-xl shadow-sm border border-border">
             {/* Month navigator */}
             <div className="flex flex-col gap-3 p-4 border-b border-border">
-              {/* Month navigator */}
               <div className="flex items-center justify-center gap-3">
                 <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => setReportMonth(m => subMonths(m, 1))}>
                   <ChevronLeft className="w-4 h-4" />
@@ -1282,49 +1281,55 @@ export default function PatientDetail() {
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-              {/* Export buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  onClick={handleExportMonthlyPDF}
-                  disabled={isExportingMonthly || monthlyEvolutions.length === 0}
-                  variant="outline"
-                  className="gap-1.5 text-xs h-9 w-full"
-                  size="sm"
-                >
-                  {isExportingMonthly ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
-                  <span className="truncate">Atendimento</span>
-                </Button>
-                <Button
-                  onClick={handleExportFinancialPDF}
-                  disabled={isExportingFinancial || monthlyEvolutions.length === 0}
-                  className="gap-1.5 text-xs h-9 w-full"
-                  size="sm"
-                >
-                  {isExportingFinancial ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
-                  <span className="truncate">Financeiro</span>
-                </Button>
+
+              {/* Download section */}
+              <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Download className="w-3.5 h-3.5" /> Baixar Relatório
+                </p>
+
+                {/* Stamp selector */}
+                <div className="flex items-center gap-2">
+                  <StampIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                    <SelectTrigger className="h-7 text-xs flex-1">
+                      <SelectValue placeholder="Sem carimbo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem carimbo (linha em branco)</SelectItem>
+                      {stamps.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Export buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={handleExportMonthlyPDF}
+                    disabled={isExportingMonthly || monthlyEvolutions.length === 0}
+                    variant="outline"
+                    className="gap-1.5 text-xs h-9 w-full"
+                    size="sm"
+                  >
+                    {isExportingMonthly ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
+                    <span className="truncate">Atendimento</span>
+                  </Button>
+                  <Button
+                    onClick={handleExportFinancialPDF}
+                    disabled={isExportingFinancial || monthlyEvolutions.length === 0}
+                    className="gap-1.5 text-xs h-9 w-full"
+                    size="sm"
+                  >
+                    {isExportingFinancial ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
+                    <span className="truncate">Financeiro</span>
+                  </Button>
+                </div>
               </div>
             </div>
-            {/* Stamp selector for PDFs */}
-            {stamps.length > 0 && (
-              <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-muted/20">
-                <StampIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-xs text-muted-foreground">Carimbo para PDF:</span>
-                <Select value={selectedStampId} onValueChange={setSelectedStampId}>
-                  <SelectTrigger className="h-7 text-xs w-auto min-w-[180px]">
-                    <SelectValue placeholder="Sem carimbo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem carimbo (linha em branco)</SelectItem>
-                    {stamps.map(s => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div className="p-5 space-y-5">
               {monthlyEvolutions.length === 0 ? (
