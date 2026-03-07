@@ -131,7 +131,11 @@ export function MobileNav() {
               <ThemeToggle />
             </div>
             <div className="py-2 space-y-2">
-              {finalMore.map(({ to, icon: Icon, label, badge }) => {
+              {finalMore.map((item) => {
+                const to = item.to;
+                const Icon = item.icon;
+                const label = item.label;
+                const badge = 'badge' in item ? item.badge : false;
                 const isActive = location.pathname === to || 
                   (to !== '/' && location.pathname.startsWith(to));
                 const showBadge = badge && unreadCount > 0;
