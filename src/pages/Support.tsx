@@ -246,6 +246,7 @@ function AdminSupportView() {
               >
                 <div className="relative shrink-0">
                   <Avatar className="w-11 h-11">
+                    <AvatarImage src={conv.user_avatar ?? undefined} alt={conv.user_name || 'Usuário'} />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-base">
                       {initials(conv.user_name, conv.user_email)}
                     </AvatarFallback>
