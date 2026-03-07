@@ -495,8 +495,8 @@ export default function Landing() {
             Comece agora. São 15 dias completamente grátis, sem compromisso, sem cartão.
           </p>
           <Button size="lg" onClick={() => navigate('/auth')}
-            className="gradient-primary gap-2 text-lg px-10 py-6 shadow-glow">
-            Criar Minha Conta Grátis <ArrowRight className="w-5 h-5" />
+            className="gradient-primary gap-2 text-base sm:text-lg px-8 sm:px-10 py-5 sm:py-6 shadow-glow w-full sm:w-auto max-w-sm">
+            Criar Minha Conta Grátis <ArrowRight className="w-5 h-5 shrink-0" />
           </Button>
           <p className="text-xs text-muted-foreground mt-4">✓ Sem cartão &nbsp;·&nbsp; ✓ 15 dias grátis &nbsp;·&nbsp; ✓ Cancele quando quiser</p>
         </motion.div>
