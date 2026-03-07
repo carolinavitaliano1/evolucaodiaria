@@ -19,18 +19,22 @@ export function useOrgMembership() {
       return;
     }
 
-    supabase
-      .from('organization_members')
-      .select('id, role')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .neq('role', 'owner') // owners must have their own subscription
-      .limit(1)
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('organization_members')
+          .select('id, role')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .neq('role', 'owner')
+          .limit(1);
         setIsOrgMember((data?.length ?? 0) > 0);
+      } catch {
+        // ignore
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    })();
   }, [user, sessionReady]);
 
   return { isOrgMember, loading };
