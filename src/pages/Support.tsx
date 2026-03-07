@@ -753,6 +753,7 @@ function UserSupportView() {
       toast.success('Atendimento encerrado.');
       markSupportSeen();
       setIsClosed(true);
+      setClosedBy('user');
     } catch {
       toast.error('Erro ao encerrar o chat');
     }
@@ -771,6 +772,7 @@ function UserSupportView() {
         .eq('user_id', user.id);
       if (error) throw error;
       setIsClosed(false);
+      setClosedBy(null);
       toast.success('Chamado reaberto. Você pode enviar novas mensagens.');
     } catch {
       toast.error('Erro ao reabrir chamado');
