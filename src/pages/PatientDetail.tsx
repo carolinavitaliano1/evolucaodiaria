@@ -651,7 +651,7 @@ export default function PatientDetail() {
   };
 
 
-    try {
+
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const base = buildPdfBase(doc);
       const { W, margin, contentW, darkText, mutedText, borderColor, accentDark } = base;
