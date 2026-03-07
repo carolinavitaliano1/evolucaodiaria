@@ -31,19 +31,17 @@ async function sendInviteEmailWithCredentials(
   }
 
   const credentialsBlock = tempPassword ? `
-    <div style="background:#f5f3ff;border:1px solid #ede9f7;border-radius:8px;padding:20px;margin:24px 0;">
-      <p style="font-size:13px;font-weight:bold;color:hsl(252,56%,57%);margin:0 0 12px;text-transform:uppercase;letter-spacing:0.05em;">Seus dados de acesso</p>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="font-size:13px;color:hsl(240,5%,45%);padding:4px 0;width:80px;">E-mail:</td>
-          <td style="font-size:14px;color:hsl(240,10%,15%);font-weight:600;padding:4px 0;">${to}</td>
-        </tr>
-        <tr>
-          <td style="font-size:13px;color:hsl(240,5%,45%);padding:4px 0;">Senha:</td>
-          <td style="font-size:14px;color:hsl(240,10%,15%);font-weight:600;padding:4px 0;font-family:monospace;">${tempPassword}</td>
-        </tr>
-      </table>
-      <p style="font-size:12px;color:hsl(240,5%,55%);margin:12px 0 0;">Você pode alterar sua senha a qualquer momento nas configurações do perfil.</p>
+    <div style="background:#f5f3ff;border:2px solid hsl(252,56%,57%);border-radius:12px;padding:24px;margin:24px 0;">
+      <p style="font-size:12px;font-weight:700;color:hsl(252,56%,57%);margin:0 0 16px;text-transform:uppercase;letter-spacing:0.08em;">🔐 Seus dados de acesso</p>
+      <div style="background:#ffffff;border:1px solid #e5e0f8;border-radius:8px;padding:16px;margin-bottom:8px;">
+        <p style="font-size:11px;color:hsl(240,5%,55%);margin:0 0 4px;text-transform:uppercase;letter-spacing:0.05em;">E-mail de login</p>
+        <p style="font-size:16px;color:hsl(240,10%,15%);font-weight:700;margin:0;word-break:break-all;">${to}</p>
+      </div>
+      <div style="background:#ffffff;border:1px solid #e5e0f8;border-radius:8px;padding:16px;">
+        <p style="font-size:11px;color:hsl(240,5%,55%);margin:0 0 4px;text-transform:uppercase;letter-spacing:0.05em;">Senha temporária</p>
+        <p style="font-size:22px;color:hsl(252,56%,45%);font-weight:800;margin:0;font-family:monospace;letter-spacing:0.1em;">${tempPassword}</p>
+      </div>
+      <p style="font-size:12px;color:hsl(240,5%,50%);margin:14px 0 0;line-height:1.6;">💡 Você pode alterar sua senha a qualquer momento em <strong>Perfil → Alterar Senha</strong>.</p>
     </div>
   ` : `
     <p style="font-size:15px;color:hsl(240,5%,45%);line-height:1.6;margin:0 0 24px;">
