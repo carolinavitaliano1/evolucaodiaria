@@ -195,6 +195,7 @@ export default function AdminSupport() {
       toast.error('Erro ao enviar resposta');
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
     } else {
+      markAdminSeen();
       loadConversations();
       // Fire push notification to user (fire-and-forget)
       try {
