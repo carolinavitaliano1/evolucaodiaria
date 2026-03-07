@@ -87,12 +87,7 @@ function AdminSupportView() {
         body: { userId: selected, closedBy: 'admin' },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      const result = res.data as any;
-      if (result?.sent > 0) {
-        toast.success(`Chat encerrado. ${result.sent} e-mail(s) enviado(s) com o histórico.`);
-      } else {
-        toast.success('Chat encerrado.');
-      }
+      toast.success('Atendimento encerrado.');
       markAdminSeen();
       setSelected(null);
       setMessages([]);
