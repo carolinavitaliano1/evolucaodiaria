@@ -21,17 +21,17 @@ export function useUnreadSupportCount() {
     if (!user) return;
 
     if (isAdmin) {
-      // Admin: count user messages waiting for reply
+      // Admin: count user messages that arrived AFTER the last time admin replied/seen
+      const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
+      const lastSeen = localStorage.getItem(adminLastSeenKey) ?? '1970-01-01';
       const { count } = await supabase
         .from('support_messages')
         .select('*', { count: 'exact', head: true })
-        .eq('is_admin_reply', false);
+        .eq('is_admin_reply', false)
+        .gt('created_at', lastSeen);
       setUnreadCount(count ?? 0);
     } else {
       // Regular user: count admin replies they haven't seen yet
-      // "Unseen" = admin replies that arrived after the last user message
-      // Simple heuristic: count admin replies whose created_at > last time user
-      // opened the support page. We store this timestamp in localStorage.
       const lastSeenKey = `support_last_seen_${user.id}`;
       const lastSeen = localStorage.getItem(lastSeenKey) ?? '1970-01-01';
       const { count } = await supabase
@@ -73,5 +73,13 @@ export function useUnreadSupportCount() {
     setUnreadCount(0);
   }, [user, isAdmin]);
 
-  return { unreadCount, isAdmin, markSupportSeen };
+  /** Call this when the admin replies or finalizes a chat to clear their badge */
+  const markAdminSeen = useCallback(() => {
+    if (!user || !isAdmin) return;
+    const adminLastSeenKey = `support_admin_last_seen_${user.id}`;
+    localStorage.setItem(adminLastSeenKey, new Date().toISOString());
+    setUnreadCount(0);
+  }, [user, isAdmin]);
+
+  return { unreadCount, isAdmin, markSupportSeen, markAdminSeen };
 }
