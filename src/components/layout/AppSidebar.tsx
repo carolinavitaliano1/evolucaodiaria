@@ -200,25 +200,6 @@ export function AppSidebar() {
             <span className="text-[10px] text-warning/70">Assinar</span>
           </NavLink>
         )}
-        <NavLink
-          to="/profile"
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-            'hover:bg-accent group',
-            location.pathname === '/profile' && 'bg-primary text-primary-foreground'
-          )}
-        >
-          <User className={cn(
-            'w-[18px] h-[18px]',
-            location.pathname === '/profile' ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
-          )} />
-          <span className={cn(
-            'text-sm font-medium',
-            location.pathname === '/profile' ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
-          )}>
-            Meu Perfil
-          </span>
-        </NavLink>
 
         <button
           onClick={handleLogout}
