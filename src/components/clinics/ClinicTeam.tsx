@@ -185,7 +185,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   }
 
   function copyInviteLink(memberId: string) {
-    const url = `${window.location.origin}/auth?invite=${memberId}&org=${organization?.id}`;
+    const url = `https://evolucaodiaria.app.br/auth?invite=${memberId}&org=${organization?.id}`;
     navigator.clipboard.writeText(url);
     toast.success('Link de convite copiado!');
   }
