@@ -39,44 +39,6 @@ serve(async (req) => {
 
     logStep("New support message from", { senderName, senderEmail });
 
-    // Fetch last 10 messages of this conversation for context
-    let conversationHtml = "";
-    if (senderUserId) {
-      const { data: history } = await supabase
-        .from("support_messages")
-        .select("message, is_admin_reply, created_at")
-        .eq("user_id", senderUserId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (history && history.length > 1) {
-        const sorted = [...history].reverse();
-        const rows = sorted.map((m: any) => {
-          const who = m.is_admin_reply ? "Suporte" : (senderName || senderEmail || "Usuário");
-          const time = new Date(m.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-          const bg = m.is_admin_reply ? "#f3e8ff" : "#f0fdf4";
-          const border = m.is_admin_reply ? "#c084fc" : "#86efac";
-          const whoColor = m.is_admin_reply ? "#7c3aed" : "#16a34a";
-          const isLast = m.created_at === history[0].created_at;
-          return `
-            <div style="margin-bottom: 8px; padding: 10px 14px; background: ${bg}; border-left: 3px solid ${border}; border-radius: 0 8px 8px 0; ${isLast ? 'outline: 2px solid #7c3aed; outline-offset: 1px;' : ''}">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span style="font-size: 11px; font-weight: 700; color: ${whoColor};">${who}</span>
-                <span style="font-size: 10px; color: #aaa;">${time}</span>
-              </div>
-              <p style="color: #333; font-size: 14px; margin: 0; line-height: 1.6; white-space: pre-wrap;">${m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
-            </div>
-          `;
-        }).join("");
-        conversationHtml = `
-          <div style="margin: 20px 0;">
-            <p style="font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Histórico da conversa</p>
-            ${rows}
-          </div>
-        `;
-      }
-    }
-
     // Get all support admins with email
     const { data: admins, error: adminsError } = await supabase
       .from("profiles")
@@ -136,8 +98,6 @@ serve(async (req) => {
               <div style="background: #ede9fe; border-left: 4px solid #7c3aed; border-radius: 0 10px 10px 0; padding: 16px 20px; margin-bottom: 20px;">
                 <p style="color: #1e1b4b; line-height: 1.7; font-size: 15px; margin: 0; white-space: pre-wrap;">${messageText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
               </div>
-
-              ${conversationHtml}
 
               <!-- CTA -->
               <div style="text-align: center; margin: 24px 0 8px;">
