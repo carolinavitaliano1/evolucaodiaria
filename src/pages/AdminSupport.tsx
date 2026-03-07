@@ -356,6 +356,7 @@ export default function AdminSupport() {
               className="relative flex items-center gap-3 flex-1 min-w-0 text-left"
             >
               <Avatar className="w-9 h-9 shrink-0">
+                <AvatarImage src={selectedConv?.user_avatar ?? undefined} alt={selectedConv?.user_name || 'Usuário'} />
                 <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
                   {initials(selectedConv?.user_name ?? null, selectedConv?.user_email ?? null)}
                 </AvatarFallback>
