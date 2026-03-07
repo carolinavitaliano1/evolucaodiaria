@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
+import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { 
@@ -33,21 +34,22 @@ const mainNavItems = [
 ];
 
 const moreNavItems = [
-  { to: '/financial',  icon: DollarSign,     label: 'Finanças',      perm: 'financial.view'  as const },
-  { to: '/reports',    icon: BarChart3,      label: 'Relatórios',    perm: 'reports.view'    as const },
-  { to: '/ai-reports', icon: Sparkles,       label: 'Relatórios IA', perm: 'ai_reports.view' as const },
-  { to: '/tasks',      icon: ClipboardList,  label: 'Tarefas',       perm: 'tasks.view'      as const },
-  { to: '/mural',      icon: Megaphone,      label: 'Mural',         perm: 'mural.view'      as const, badge: true },
-  { to: '/suporte',    icon: HeadphonesIcon, label: 'Suporte',       perm: null },
-  { to: '/pricing',    icon: CreditCard,     label: 'Planos',        perm: null },
-  { to: '/install',    icon: Smartphone,     label: 'Instalar App',  perm: null },
-  { to: '/profile',    icon: User,           label: 'Perfil',        perm: null },
+  { to: '/financial',  icon: DollarSign,     label: 'Finanças',      perm: 'financial.view'  as const, badge: null },
+  { to: '/reports',    icon: BarChart3,      label: 'Relatórios',    perm: 'reports.view'    as const, badge: null },
+  { to: '/ai-reports', icon: Sparkles,       label: 'Relatórios IA', perm: 'ai_reports.view' as const, badge: null },
+  { to: '/tasks',      icon: ClipboardList,  label: 'Tarefas',       perm: 'tasks.view'      as const, badge: null },
+  { to: '/mural',      icon: Megaphone,      label: 'Mural',         perm: 'mural.view'      as const, badge: 'notices' as const },
+  { to: '/suporte',    icon: HeadphonesIcon, label: 'Suporte',       perm: null,                       badge: 'support' as const },
+  { to: '/pricing',    icon: CreditCard,     label: 'Planos',        perm: null,                       badge: null },
+  { to: '/install',    icon: Smartphone,     label: 'Instalar App',  perm: null,                       badge: null },
+  { to: '/profile',    icon: User,           label: 'Perfil',        perm: null,                       badge: null },
 ];
 
 export function MobileNav() {
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const { unreadCount } = useUnreadNotices();
+  const { unreadCount: noticesCount } = useUnreadNotices();
+  const { unreadCount: supportCount } = useUnreadSupportCount();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
 
@@ -70,20 +72,27 @@ export function MobileNav() {
     return permissions.includes(i.perm as any);
   });
 
-  // Show Team for all non-org-members (owners/standalone see em breve or full page)
   const showTeam = !isOrgMember || isOwner || permissions.includes('team.view' as any);
-  const teamItem = showTeam ? [{ to: '/team', icon: UsersRound, label: 'Equipe', perm: 'team.view' as const }] : [];
-  // Build finalMore: Perfil first, then others, inserting Equipe right after Mural
-  const baseMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any }, ...allowedMore.filter(i => i.to !== '/profile')];
+  const teamItem = showTeam ? [{ to: '/team', icon: UsersRound, label: 'Equipe', perm: 'team.view' as const, badge: null as any }] : [];
+  const baseMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any, badge: null as any }, ...allowedMore.filter(i => i.to !== '/profile')];
   const muralIdx = baseMore.findIndex(i => i.to === '/mural');
   const finalMore = muralIdx >= 0 && teamItem.length > 0
     ? [...baseMore.slice(0, muralIdx + 1), ...teamItem, ...baseMore.slice(muralIdx + 1)]
     : [...baseMore, ...teamItem];
 
+  // Total unread for the "Mais" button dot
+  const totalMoreUnread = noticesCount + supportCount;
+
   const isMoreActive = finalMore.some(item =>
     location.pathname === item.to ||
     (item.to !== '/' && location.pathname.startsWith(item.to))
   );
+
+  const getBadgeCount = (badge: string | null) => {
+    if (badge === 'notices') return noticesCount;
+    if (badge === 'support') return supportCount;
+    return 0;
+  };
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/98 backdrop-blur-sm border-t border-border">
@@ -101,19 +110,10 @@ export function MobileNav() {
                 isActive ? 'text-primary' : 'text-muted-foreground'
               )}
             >
-              <div className={cn(
-                'p-1.5 rounded-lg transition-colors',
-                isActive && 'bg-primary'
-              )}>
-                <Icon className={cn(
-                  'w-5 h-5',
-                  isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                )} />
+              <div className={cn('p-1.5 rounded-lg transition-colors', isActive && 'bg-primary')}>
+                <Icon className={cn('w-5 h-5', isActive ? 'text-primary-foreground' : 'text-muted-foreground')} />
               </div>
-              <span className={cn(
-                'text-[10px] font-medium',
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              )}>
+              <span className={cn('text-[10px] font-medium', isActive ? 'text-primary' : 'text-muted-foreground')}>
                 {label}
               </span>
             </NavLink>
@@ -131,9 +131,9 @@ export function MobileNav() {
             >
               <div className={cn('relative p-1.5 rounded-lg transition-colors', isMoreActive && 'bg-primary')}>
                 <MoreHorizontal className={cn('w-5 h-5', isMoreActive ? 'text-primary-foreground' : 'text-muted-foreground')} />
-                {unreadCount > 0 && (
+                {totalMoreUnread > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {totalMoreUnread > 9 ? '9+' : totalMoreUnread}
                   </span>
                 )}
               </div>
@@ -147,7 +147,6 @@ export function MobileNav() {
               <span className="text-sm font-semibold text-muted-foreground">Mais opções</span>
               <ThemeToggle />
             </div>
-            {/* Trial badge in sheet */}
             {trialDaysLeft !== null && (
               <NavLink
                 to="/pricing"
@@ -166,10 +165,9 @@ export function MobileNav() {
                 const to = item.to;
                 const Icon = item.icon;
                 const label = item.label;
-                const badge = 'badge' in item ? item.badge : false;
                 const isActive = location.pathname === to || 
                   (to !== '/' && location.pathname.startsWith(to));
-                const showBadge = badge && unreadCount > 0;
+                const badgeCount = getBadgeCount(item.badge);
                 
                 return (
                   <NavLink
@@ -185,9 +183,9 @@ export function MobileNav() {
                     <span className={cn('font-medium flex-1', isActive ? 'text-primary-foreground' : 'text-foreground')}>
                       {label}
                     </span>
-                    {showBadge && (
+                    {badgeCount > 0 && (
                       <span className="bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                        {unreadCount > 9 ? '9+' : unreadCount}
+                        {badgeCount > 9 ? '9+' : badgeCount}
                       </span>
                     )}
                   </NavLink>
