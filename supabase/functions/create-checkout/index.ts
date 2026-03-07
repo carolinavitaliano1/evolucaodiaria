@@ -31,22 +31,55 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
+    // Check if customer already exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
+    let customerId: string | undefined;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+
+      // If customer already had a trial, don't offer another one
+      const allSubs = await stripe.subscriptions.list({
+        customer: customerId,
+        limit: 10,
+      });
+      const hadTrial = allSubs.data.some(s => s.trial_end !== null);
+
+      const origin = req.headers.get("origin") || "https://clinipro.lovable.app";
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: "subscription",
+        // No trial for returning customers
+        payment_method_types: ["card", "boleto"],
+        success_url: `${origin}/checkout-success`,
+        cancel_url: `${origin}/pricing`,
+      });
+
+      return new Response(JSON.stringify({ url: session.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     const origin = req.headers.get("origin") || "https://clinipro.lovable.app";
 
+    // New customer — offer 15-day trial without requiring card upfront
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+      customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      payment_method_types: ["card", "boleto"],
       subscription_data: {
         trial_period_days: 15,
+        trial_settings: {
+          end_behavior: {
+            missing_payment_method: "cancel",
+          },
+        },
       },
+      // Do not require payment method during trial
+      payment_method_collection: "if_required",
       success_url: `${origin}/checkout-success`,
       cancel_url: `${origin}/pricing`,
     });
