@@ -624,6 +624,7 @@ function UserSupportView() {
   const { markSupportSeen } = useUnreadSupportCount();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [isClosed, setIsClosed] = useState(false);
+  const [closedBy, setClosedBy] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -637,7 +638,7 @@ function UserSupportView() {
     if (!user) return;
     const [{ data: msgs }, { data: sessions }] = await Promise.all([
       supabase.from('support_messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('support_chat_sessions').select('closed_at').eq('user_id', user.id).order('closed_at', { ascending: false }).limit(1),
+      supabase.from('support_chat_sessions').select('closed_at, closed_by').eq('user_id', user.id).order('closed_at', { ascending: false }).limit(1),
     ]);
 
     const msgList = (msgs as SupportMessage[]) || [];
@@ -645,15 +646,16 @@ function UserSupportView() {
 
     if (sessions && sessions.length > 0) {
       const closedAt = (sessions[0] as any).closed_at;
+      const sessionClosedBy = (sessions[0] as any).closed_by || null;
       const lastMsg = msgList[msgList.length - 1];
-      // Consider closed if: no messages after session was closed
-      // Use a 2-second buffer to avoid millisecond race conditions
       const closed = lastMsg
         ? new Date(closedAt).getTime() >= new Date(lastMsg.created_at).getTime() - 2000
         : true;
       setIsClosed(closed);
+      setClosedBy(closed ? sessionClosedBy : null);
     } else {
       setIsClosed(false);
+      setClosedBy(null);
     }
 
     setLoading(false);
