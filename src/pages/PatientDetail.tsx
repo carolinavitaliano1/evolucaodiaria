@@ -301,18 +301,20 @@ export default function PatientDetail() {
 
       let y = margin;
 
-      // ── HEADER ──────────────────────────────────────────────────
-      // Top bar (dark, sober)
-      doc.setFillColor(40, 40, 60);
-      doc.rect(0, 0, W, 30, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(13);
+      // ── HEADER — plain, no background ───────────────────────────
+      doc.setTextColor(...darkText);
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('RELATÓRIO MENSAL DE ATENDIMENTO', margin, 13);
+      doc.text('RELATÓRIO MENSAL DE ATENDIMENTO', margin, y);
+      y += 7;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, 22);
-      y = 40;
+      doc.setTextColor(...mutedText);
+      doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, y);
+      y += 5;
+      doc.setDrawColor(...borderColor);
+      doc.line(margin, y, W - margin, y);
+      y += 8;
 
       // Patient / clinic identification block
       doc.setTextColor(...darkText);
@@ -327,7 +329,6 @@ export default function PatientDetail() {
       if (patient.clinicalArea) idLines.push(['Área Clínica:', patient.clinicalArea]);
       if (patient.diagnosis) idLines.push(['Diagnóstico:', patient.diagnosis]);
       if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
-      if (patient.paymentValue) idLines.push(['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]);
       idLines.push(['Período de Referência:', monthLabelCap]);
       idLines.push(['Data de Emissão:', format(new Date(), 'dd/MM/yyyy', { locale: ptBR })]);
 
@@ -354,15 +355,14 @@ export default function PatientDetail() {
       doc.text('1. RESUMO QUANTITATIVO', margin, y);
       y += 8;
 
+      // Only show presence, reposition and absence — no paid leaves/holidays
       const summaryRows: [string, string][] = [
         ['Total de sessões registradas:', String(monthlyTotal)],
+        ['Presenças:', String(monthlyPresent)],
+        ['Reposições:', String(monthlyReposicao)],
         ['Sessões realizadas (presença + reposição):', String(monthlyPresent + monthlyReposicao)],
-        ['Faltas não remuneradas:', String(monthlyAbsent)],
-        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
-        ['Feriados remunerados:', String(monthlyFeriadoRem)],
-        ['Feriados não remunerados:', String(monthlyFeriadoNaoRem)],
+        ['Faltas:', String(monthlyAbsent)],
         ['Taxa de frequência:', `${monthlyAttendanceRate}%`],
-        ['Valor total faturado no mês:', `R$ ${monthlyRevenue.toFixed(2)}`],
       ];
 
       summaryRows.forEach(([label, value]) => {
