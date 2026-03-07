@@ -487,6 +487,7 @@ export default function AIReports() {
       clinicName: clinic?.name,
       clinicAddress: clinic?.address,
       clinicLetterhead: clinic?.letterhead,
+      clinicStamp: clinic?.stamp,
       clinicEmail: clinic?.email,
       clinicCnpj: clinic?.cnpj,
       clinicPhone: clinic?.phone,
