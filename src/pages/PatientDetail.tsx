@@ -664,20 +664,6 @@ export default function PatientDetail() {
     finally { setIsExportingFinancial(false); }
   };
 
-  const handleGeneratePeriodPdf = () => {
-    if (!startDate || !endDate) return;
-    const filtered = patientEvolutions.filter(evo => {
-      const d = new Date(evo.date + 'T12:00:00');
-      return d >= startDate && d <= endDate;
-    });
-    if (filtered.length === 0) { toast.error('Nenhuma evolução no período.'); return; }
-    generateMultipleEvolutionsPdf({
-      evolutions: filtered.sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime()),
-      patient, clinic, startDate, endDate, stamps,
-    });
-    setPeriodDialogOpen(false);
-  };
-
   const handleSubmitEvolution = (e: React.FormEvent) => {
     e.preventDefault();
     if (!evolutionText.trim() && attachedFiles.length === 0 && Object.keys(templateFormValues).length === 0) return;
