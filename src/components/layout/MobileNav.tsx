@@ -73,7 +73,12 @@ export function MobileNav() {
   // Show Team for all non-org-members (owners/standalone see em breve or full page)
   const showTeam = !isOrgMember || isOwner || permissions.includes('team.view' as any);
   const teamItem = showTeam ? [{ to: '/team', icon: UsersRound, label: 'Equipe', perm: 'team.view' as const }] : [];
-  const finalMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any }, ...allowedMore.filter(i => i.to !== '/profile'), ...teamItem];
+  // Build finalMore: Perfil first, then others, inserting Equipe right after Mural
+  const baseMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any }, ...allowedMore.filter(i => i.to !== '/profile')];
+  const muralIdx = baseMore.findIndex(i => i.to === '/mural');
+  const finalMore = muralIdx >= 0 && teamItem.length > 0
+    ? [...baseMore.slice(0, muralIdx + 1), ...teamItem, ...baseMore.slice(muralIdx + 1)]
+    : [...baseMore, ...teamItem];
 
   const isMoreActive = finalMore.some(item =>
     location.pathname === item.to ||
