@@ -81,31 +81,36 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Subscription badge */}
-        {!subLoading && (
-          <div className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl border text-sm",
-            subscribed
-              ? "bg-primary/5 border-primary/20 text-primary"
-              : "bg-muted border-border text-muted-foreground"
-          )}>
-            <Crown className="w-4 h-4" />
-            <span className="font-medium">
-              {subscribed
-                ? `Plano ${planName || 'Ativo'}`
-                : 'Teste Gratuito'}
-            </span>
-            {subscribed && endDateStr && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarClock className="w-3 h-3" />
-                até {endDateStr}
+        <div className="flex items-center gap-2">
+          {/* Mural bell icon */}
+          <MuralNoticesBell />
+
+          {/* Subscription badge */}
+          {!subLoading && (
+            <div className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl border text-sm",
+              subscribed
+                ? "bg-primary/5 border-primary/20 text-primary"
+                : "bg-muted border-border text-muted-foreground"
+            )}>
+              <Crown className="w-4 h-4" />
+              <span className="font-medium">
+                {subscribed
+                  ? `Plano ${planName || 'Ativo'}`
+                  : 'Teste Gratuito'}
               </span>
-            )}
-            {!subscribed && (
-              <Badge variant="secondary" className="text-xs">30 dias</Badge>
-            )}
-          </div>
-        )}
+              {subscribed && endDateStr && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <CalendarClock className="w-3 h-3" />
+                  até {endDateStr}
+                </span>
+              )}
+              {!subscribed && (
+                <Badge variant="secondary" className="text-xs">30 dias</Badge>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
