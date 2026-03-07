@@ -217,16 +217,7 @@ export default function PatientDetail() {
     url: a.data.startsWith('http') ? a.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${a.data}`,
   })), [patientAttachments]);
 
-  if (!patient) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-muted-foreground">Paciente não encontrado</p>
-        <Button onClick={() => navigate('/clinics')} className="mt-4">Voltar</Button>
-      </div>
-    );
-  }
-
-  // All-time summaries
+  // All-time summaries (computed before early return so hooks order is stable)
   const totalPresent = patientEvolutions.filter(e => e.attendanceStatus === 'presente').length;
   const totalReposicao = patientEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
   const totalAbsent = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
@@ -235,7 +226,7 @@ export default function PatientDetail() {
   const totalFeriadoNaoRem = patientEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const totalSessions = patientEvolutions.length;
   const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
-  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient.paymentValue || 0);
+  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
@@ -245,6 +236,15 @@ export default function PatientDetail() {
     ...m, count: patientEvolutions.filter(e => e.mood === m.value).length,
   }));
   const totalMoods = moodCounts.reduce((sum, m) => sum + m.count, 0);
+
+  if (!patient) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Paciente não encontrado</p>
+        <Button onClick={() => navigate('/clinics')} className="mt-4">Voltar</Button>
+      </div>
+    );
+  }
 
   const moodChartData = patientEvolutions
     .filter(e => e.mood)
