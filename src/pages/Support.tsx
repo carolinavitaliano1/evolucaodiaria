@@ -75,6 +75,31 @@ function AdminSupportView() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const handleCloseChat = async () => {
+    if (!selected) return;
+    setClosingChat(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('close-support-chat', {
+        body: { userId: selected, closedBy: 'admin' },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const result = res.data as any;
+      if (result?.sent > 0) {
+        toast.success(`Chat encerrado. ${result.sent} e-mail(s) enviado(s) com o histórico.`);
+      } else {
+        toast.success('Chat encerrado.');
+      }
+      setSelected(null);
+      setMessages([]);
+      loadConversations();
+    } catch {
+      toast.error('Erro ao encerrar o chat');
+    }
+    setClosingChat(false);
+    setShowCloseDialog(false);
+  };
+
   const loadConversations = async () => {
     const { data: msgs } = await supabase
       .from('support_messages')
@@ -345,6 +370,16 @@ function AdminSupportView() {
 
           {/* Input */}
           <div className="flex items-end gap-2 px-3 py-2 bg-card border-t border-border">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowCloseDialog(true)}
+              disabled={closingChat || messages.length === 0}
+              title="Finalizar Chat"
+              className="shrink-0 h-10 w-10 rounded-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            >
+              <PhoneOff className="w-4 h-4" />
+            </Button>
             <Textarea
               ref={inputRef}
               value={text}
@@ -367,6 +402,26 @@ function AdminSupportView() {
           <p className="text-sm font-medium">Selecione uma conversa para responder</p>
         </div>
       )}
+
+      <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O histórico completo desta conversa será enviado por e-mail para você e para o usuário. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCloseChat}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {closingChat ? 'Encerrando...' : 'Finalizar e enviar e-mail'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
