@@ -887,13 +887,8 @@ export default function PatientDetail() {
 
       doc.save(`relatorio-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(reportMonth, 'yyyy-MM')}.pdf`);
       toast.success('PDF gerado com sucesso!');
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao gerar PDF');
-    } finally {
-      setIsExportingMonthly(false);
-    }
-  };
+
+
 
   const handleGeneratePeriodPdf = () => {
     if (!startDate || !endDate) return;
