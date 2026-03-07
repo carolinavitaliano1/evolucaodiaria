@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
       emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null);
     } else {
       // Usuário novo → criar conta com senha temporária e enviar credenciais por e-mail
-      tempPassword = generateTempPassword();
+      tempPassword = generateTempPassword(email);
       console.log(`Criando conta para novo usuário: ${email}`);
 
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
