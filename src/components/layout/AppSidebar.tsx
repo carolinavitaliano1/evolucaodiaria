@@ -13,7 +13,8 @@ import {
   CreditCard,
   Sparkles,
   Smartphone,
-  Megaphone
+  Megaphone,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -21,19 +22,20 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 
-const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/clinics', icon: Building2, label: 'Clínicas' },
-  { to: '/patients', icon: Users, label: 'Pacientes' },
-  { to: '/calendar', icon: Calendar, label: 'Agenda' },
-  { to: '/financial', icon: DollarSign, label: 'Financeiro' },
-  { to: '/reports', icon: BarChart3, label: 'Relatórios' },
-  { to: '/ai-reports', icon: Sparkles, label: 'Relatórios IA' },
-  { to: '/tasks', icon: ClipboardList, label: 'Tarefas' },
-  { to: '/mural', icon: Megaphone, label: 'Mural', badge: true },
-  { to: '/pricing', icon: CreditCard, label: 'Planos' },
-  { to: '/install', icon: Smartphone, label: 'Instalar App' },
+const allNavItems = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const },
+  { to: '/clinics',   icon: Building2,       label: 'Clínicas',     perm: 'clinics.view'   as const },
+  { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const },
+  { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const },
+  { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const },
+  { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const },
+  { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const },
+  { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const },
+  { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: true },
+  { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null },
+  { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null },
 ];
 
 export function AppSidebar() {
@@ -41,11 +43,20 @@ export function AppSidebar() {
   const { signOut } = useAuth();
   const { theme } = useTheme();
   const { unreadCount } = useUnreadNotices();
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
 
   const handleLogout = async () => {
     await signOut();
     toast.success('Você saiu do sistema');
   };
+
+  // For org members (non-owners), filter items by their permissions.
+  // Owners and non-org users see everything.
+  const navItems = allNavItems.filter(item => {
+    if (!isOrgMember) return true;          // owner or standalone user
+    if (item.perm === null) return false;   // hide pricing/install for org members
+    return permissions.includes(item.perm as any);
+  });
 
   return (
     <aside className={cn(
@@ -66,7 +77,7 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-0.5">
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems.map(({ to, icon: Icon, label, badge }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
