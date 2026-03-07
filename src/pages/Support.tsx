@@ -321,7 +321,7 @@ function AdminSupportView() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground truncate">
-                {selectedConv?.user_name || 'Usuário'}
+                {selectedConv?.user_name || selectedConv?.user_email?.split('@')[0] || 'Sem nome'}
               </p>
               {selectedConv?.user_email && (
                 <p className="text-xs text-muted-foreground truncate">{selectedConv.user_email}</p>
