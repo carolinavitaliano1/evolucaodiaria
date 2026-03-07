@@ -444,11 +444,12 @@ export default function CalendarPage() {
 
       {/* ══════════ WEEK VIEW ══════════ */}
       {viewMode === 'week' && (
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="overflow-x-auto flex-1 flex flex-col">
-            {/* Week header */}
-            <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '48px repeat(7, minmax(80px, 1fr))', minWidth: '608px' }}>
-              <div className="border-r border-border" />
+        <div className="flex-1 overflow-auto">
+          {/* Single scrollable container — header + grid scroll together horizontally */}
+          <div style={{ minWidth: '608px' }}>
+            {/* Week header — sticky to top */}
+            <div className="grid border-b border-border bg-card sticky top-0 z-20" style={{ gridTemplateColumns: '48px repeat(7, minmax(80px, 1fr))' }}>
+              <div className="border-r border-border h-full" />
               {weekDays.map(day => (
                 <div
                   key={day.toISOString()}
@@ -462,8 +463,8 @@ export default function CalendarPage() {
                 </div>
               ))}
             </div>
-            {/* All-day row */}
-            <div className="grid border-b border-border bg-card shrink-0" style={{ gridTemplateColumns: '48px repeat(7, minmax(80px, 1fr))', minWidth: '608px' }}>
+            {/* All-day row — sticky to top below header */}
+            <div className="grid border-b border-border bg-card sticky top-[52px] z-20" style={{ gridTemplateColumns: '48px repeat(7, minmax(80px, 1fr))' }}>
               <div className="border-r border-border flex items-center justify-center px-0.5">
                 <span className="text-[8px] text-muted-foreground text-center leading-tight">dia<br/>todo</span>
               </div>
@@ -481,7 +482,38 @@ export default function CalendarPage() {
                 );
               })}
             </div>
-            <HourlyGrid days={weekDays} />
+            {/* Hourly grid — inline (not its own scroll) */}
+            <div className="grid relative" style={{ gridTemplateColumns: `48px repeat(7, minmax(80px, 1fr))` }}>
+              {HOURS.map(hour => (
+                <div key={`row-${hour}`} className="contents">
+                  <div className="border-r border-b border-border h-14 flex items-start justify-end pr-2 pt-0.5 sticky left-0 bg-background z-10">
+                    <span className="text-[10px] text-muted-foreground leading-none">{hour === 0 ? '' : `${String(hour).padStart(2, '0')}:00`}</span>
+                  </div>
+                  {weekDays.map(day => {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const hourItems = getAllForDay(day).filter(item => {
+                      if (!item.time) return false;
+                      return parseInt(item.time.slice(0, 2), 10) === hour;
+                    });
+                    return (
+                      <div
+                        key={`${dateStr}-${hour}`}
+                        className={cn(
+                          "border-r border-b border-border h-14 p-0.5 space-y-0.5 transition-colors",
+                          dragOverDate === dateStr ? "bg-primary/10" : isSameDay(day, selectedDate) ? "bg-primary/5" : "hover:bg-secondary/20"
+                        )}
+                        onClick={() => { setSelectedDate(day); setEventDialogOpen(true); }}
+                        onDragOver={e => { e.preventDefault(); setDragOverDate(dateStr); }}
+                        onDragLeave={() => setDragOverDate(null)}
+                        onDrop={e => handleDrop(e, dateStr)}
+                      >
+                        {hourItems.map(item => <EventPill key={item.id} item={item} />)}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
