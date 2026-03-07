@@ -87,7 +87,7 @@ export function TodayAppointments() {
       return {
         id: `private-${a.id}`,
         name: a.client_name,
-        subtitle: serviceName || 'Particular',
+        subtitle: serviceName || 'Serviço',
         time: a.time || '00:00',
         isPrivate: true,
         privateAppointment: a,

@@ -839,7 +839,7 @@ export default function Financial() {
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-foreground text-lg flex items-center gap-2">
                       <Briefcase className="w-4 h-4" />
-                      Atendimentos Particulares
+                      Serviços
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground">{monthlyPrivateAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos</p>

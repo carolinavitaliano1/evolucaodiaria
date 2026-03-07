@@ -359,7 +359,7 @@ export default function Clinics() {
             </TabsTrigger>
             <TabsTrigger value="particulares" className="gap-1.5 text-xs sm:text-sm">
               <Briefcase className="w-3.5 h-3.5" />
-              Particulares
+              Serviços
               {pendingAppointments.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
                   {pendingAppointments.length}
