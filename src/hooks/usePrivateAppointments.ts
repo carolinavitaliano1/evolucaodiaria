@@ -28,7 +28,7 @@ export function usePrivateAppointments() {
       setLoading(true);
       const { data, error } = await supabase
         .from('private_appointments')
-        .select('*')
+        .select('*, services(name, type)')
         .order('date', { ascending: true });
 
       if (error) throw error;
