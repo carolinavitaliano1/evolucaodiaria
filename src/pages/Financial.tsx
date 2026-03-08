@@ -961,7 +961,7 @@ export default function Financial() {
             R$ {revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {propriaClinics.length} {propriaClinics.length === 1 ? 'clínica' : 'clínicas'}
+            {propriaClinics.length} {propriaClinics.length === 1 ? 'consultório' : 'consultórios'}
           </p>
           {grandTotal > 0 && (
             <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
