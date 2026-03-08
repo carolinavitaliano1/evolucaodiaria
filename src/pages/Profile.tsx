@@ -700,7 +700,7 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Stamps section is below */}
+      {/* Stamps */}
       <Card className="glass-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
