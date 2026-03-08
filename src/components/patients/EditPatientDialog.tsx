@@ -50,9 +50,11 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
   useEffect(() => {
     if (open && patient) {
+      const p = patient as any;
       setFormData({
         name: patient.name || '',
         birthdate: patient.birthdate || '',
+        cpf: p.cpf || '',
         phone: patient.phone || '',
         clinicalArea: patient.clinicalArea || '',
         diagnosis: patient.diagnosis || '',
@@ -60,6 +62,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         observations: patient.observations || '',
         responsibleName: patient.responsibleName || '',
         responsibleEmail: patient.responsibleEmail || '',
+        responsibleCpf: p.responsible_cpf || '',
         contractStartDate: patient.contractStartDate || '',
         weekdays: patient.weekdays || [],
         scheduleByDay: (patient.scheduleByDay || {}) as { [day: string]: { start: string; end: string } },
@@ -81,6 +84,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     onSave(patient.id, {
       name: formData.name,
       birthdate: formData.birthdate,
+      ...(formData.cpf && { cpf: formData.cpf } as any),
       phone: formData.phone || undefined,
       clinicalArea: formData.clinicalArea || undefined,
       diagnosis: formData.diagnosis || undefined,
@@ -88,6 +92,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       observations: formData.observations || undefined,
       responsibleName: formData.responsibleName || undefined,
       responsibleEmail: formData.responsibleEmail || undefined,
+      ...(formData.responsibleCpf && { responsible_cpf: formData.responsibleCpf } as any),
       contractStartDate: formData.contractStartDate || undefined,
       weekdays: formData.weekdays,
       scheduleTime: firstDayTime || undefined,
