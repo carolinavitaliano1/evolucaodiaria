@@ -2281,9 +2281,9 @@ export default function PatientDetail() {
                   value={prPaymentDate}
                   onChange={e => setPrPaymentDate(e.target.value)}
                   className="h-9 text-xs"
-
-            {/* Sessions selector / calculator */}
-            <div className="border border-border rounded-lg overflow-hidden">
+                 />
+              </div>
+            </div>
               {/* Mode tabs */}
               <div className="flex border-b border-border">
                 <button
