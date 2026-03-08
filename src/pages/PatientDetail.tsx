@@ -873,10 +873,10 @@ export default function PatientDetail() {
 
       // ── HEADER ──────────────────────────────────────────────────
       doc.setTextColor(...darkText); doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-      doc.text('RELATÓRIO FINANCEIRO MENSAL', margin, y); y += 7;
+      doc.text('RELATÓRIO FINANCEIRO MENSAL', margin, y); y += 6;
       doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
-      doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, y); y += 5;
-      doc.setDrawColor(...borderColor); doc.line(margin, y, W - margin, y); y += 8;
+      doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, y); y += 4;
+      doc.setDrawColor(...borderColor); doc.line(margin, y, W - margin, y); y += 6;
 
       // ── IDENTIFICAÇÃO ────────────────────────────────────────────
       const idLines: [string, string][] = [];
@@ -893,13 +893,13 @@ export default function PatientDetail() {
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
         const wrapped = doc.splitTextToSize(value, contentW - 52);
         doc.text(wrapped, margin + 52, y);
-        y += wrapped.length > 1 ? wrapped.length * 5 + 1 : 6;
+        y += wrapped.length > 1 ? wrapped.length * 4.5 + 1 : 5;
       });
-      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 7;
 
       // ── 1. RESUMO FINANCEIRO ─────────────────────────────────────
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text('1. RESUMO FINANCEIRO', margin, y); y += 8;
+      doc.text('1. RESUMO FINANCEIRO', margin, y); y += 6;
 
       const paidSessions = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
       const finRows: [string, string][] = [
@@ -917,13 +917,13 @@ export default function PatientDetail() {
         doc.text(label, margin + 4, y);
         doc.setFont('helvetica', 'bold');
         doc.text(value, W - margin - 2, y, { align: 'right' });
-        y += 6;
+        y += 5;
       });
-      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 7;
 
       // ── 2. DETALHAMENTO DE FREQUÊNCIA ────────────────────────────
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text('2. DETALHAMENTO DE FREQUÊNCIA', margin, y); y += 8;
+      doc.text('2. DETALHAMENTO DE FREQUÊNCIA', margin, y); y += 6;
 
       const freqRows: [string, string][] = [
         ['Total de sessões registradas:', String(monthlyTotal)],
@@ -940,9 +940,9 @@ export default function PatientDetail() {
         doc.text(label, margin + 4, y);
         doc.setFont('helvetica', 'bold');
         doc.text(value, W - margin - 2, y, { align: 'right' });
-        y += 6;
+        y += 5;
       });
-      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 7;
 
       // ── 3. REGISTRO COMPLETO DAS SESSÕES ─────────────────────────
       const allStatusLabel: Record<string, string> = {
@@ -952,23 +952,23 @@ export default function PatientDetail() {
       };
       const paidStatuses = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'];
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y); y += 8;
+      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y); y += 6;
 
       for (const evo of monthlyEvolutions) {
-        if (y > 268) { doc.addPage(); y = margin; }
+        if (y > 260) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
         const isPaid = paidStatuses.includes(evo.attendanceStatus);
         doc.setDrawColor(...borderColor); doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
-        doc.text(dateStr, margin + 2, y + 5);
+        doc.text(dateStr, margin + 2, y + 4);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
-        doc.text(status, margin + 32, y + 5);
+        doc.text(status, margin + 32, y + 4);
         if (isPaid && patient.paymentValue) {
           doc.setTextColor(...accentDark);
-          doc.text(`R$ ${patient.paymentValue.toFixed(2)}`, W - margin - 2, y + 5, { align: 'right' });
+          doc.text(`R$ ${patient.paymentValue.toFixed(2)}`, W - margin - 2, y + 4, { align: 'right' });
         }
-        y += 9;
+        y += 7;
       }
 
       // ── ASSINATURA ───────────────────────────────────────────────
