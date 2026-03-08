@@ -423,7 +423,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
         pdf.text(wl, MARGIN + numW + 2, y);
         y += LINE_HEIGHT;
       }
-      y += 3; // spacing between numbered items
+      y += 2; // spacing between numbered items
       continue;
     }
 
