@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { generateReportPdf } from '@/utils/generateReportPdf';
+import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import jsPDF from 'jspdf';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
@@ -182,13 +183,27 @@ export default function PatientDetail() {
   const [isExportingMonthly, setIsExportingMonthly] = useState(false);
   const [isExportingFinancial, setIsExportingFinancial] = useState(false);
 
+  // Fiscal receipt state
+  const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
+  const [fiscalStartDate, setFiscalStartDate] = useState<Date>();
+  const [fiscalEndDate, setFiscalEndDate] = useState<Date>();
+  const [fiscalStampId, setFiscalStampId] = useState<string>('');
+  const [isExportingFiscalPdf, setIsExportingFiscalPdf] = useState(false);
+  const [isExportingFiscalWord, setIsExportingFiscalWord] = useState(false);
+  const [fiscalPaymentStatus, setFiscalPaymentStatus] = useState<'paid' | 'pending' | 'partial'>('pending');
+  const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
+  const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
+
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).order('created_at').then(({ data }) => {
       if (data) {
         setStamps(data);
         const defaultStamp = data.find(s => s.is_default);
-        if (defaultStamp) setSelectedStampId(defaultStamp.id);
+        if (defaultStamp) {
+          setSelectedStampId(defaultStamp.id);
+          setFiscalStampId(defaultStamp.id);
+        }
       }
     });
   }, [user]);
@@ -528,6 +543,161 @@ export default function PatientDetail() {
     });
     setPeriodDialogOpen(false);
   };
+
+  // ── RECIBO FISCAL helpers ────────────────────────────────────────────────
+  const getFiscalEvolutions = () => {
+    if (!fiscalStartDate || !fiscalEndDate) return [];
+    return patientEvolutions.filter(evo => {
+      const d = new Date(evo.date + 'T12:00:00');
+      return d >= fiscalStartDate && d <= fiscalEndDate;
+    }).sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime());
+  };
+
+  const buildFiscalReceiptOpts = () => {
+    const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
+    return {
+      patient: {
+        id: patient.id,
+        name: patient.name,
+        birthdate: patient.birthdate,
+        cpf: (patient as any).cpf,
+        phone: patient.phone || undefined,
+        clinicalArea: patient.clinicalArea || undefined,
+        responsibleName: patient.responsibleName || undefined,
+        responsibleEmail: (patient as any).responsibleEmail || undefined,
+        responsible_cpf: (patient as any).responsible_cpf || (patient as any).responsibleCpf || undefined,
+        paymentType: patient.paymentType || undefined,
+        paymentValue: patient.paymentValue || undefined,
+      },
+      clinic: clinic ? {
+        name: clinic.name,
+        cnpj: clinic.cnpj || undefined,
+        address: clinic.address || undefined,
+        email: clinic.email || undefined,
+        phone: clinic.phone || undefined,
+      } : undefined,
+      evolutions: getFiscalEvolutions().map(e => ({
+        id: e.id, date: e.date, attendanceStatus: e.attendanceStatus, text: e.text,
+      })),
+      startDate: fiscalStartDate!,
+      endDate: fiscalEndDate!,
+      stamp: fiscalStamp ? {
+        id: fiscalStamp.id, name: fiscalStamp.name,
+        clinical_area: fiscalStamp.clinical_area,
+        stamp_image: fiscalStamp.stamp_image,
+        signature_image: fiscalStamp.signature_image,
+      } : null,
+      therapistName: fiscalStamp?.name || undefined,
+      professionalId: undefined as string | undefined,
+      totalPaid: fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : undefined,
+      paymentStatus: fiscalPaymentStatus,
+      paymentDate: fiscalPaymentDate || null,
+    };
+  };
+
+  const handleExportFiscalPdf = async () => {
+    if (!fiscalStartDate || !fiscalEndDate) return;
+    if (getFiscalEvolutions().length === 0) { toast.error('Nenhuma sessão no período selecionado.'); return; }
+    setIsExportingFiscalPdf(true);
+    try {
+      await generateFiscalReceiptPdf(buildFiscalReceiptOpts());
+    } catch { toast.error('Erro ao gerar recibo'); }
+    finally { setIsExportingFiscalPdf(false); }
+  };
+
+  const handleExportFiscalWord = async () => {
+    if (!fiscalStartDate || !fiscalEndDate) return;
+    const fiscalEvos = getFiscalEvolutions();
+    if (fiscalEvos.length === 0) { toast.error('Nenhuma sessão no período selecionado.'); return; }
+    setIsExportingFiscalWord(true);
+    try {
+      const STATUS_LABELS: Record<string, { label: string; billable: boolean }> = {
+        presente: { label: 'Presente', billable: true },
+        reposicao: { label: 'Reposição', billable: true },
+        falta_remunerada: { label: 'Falta Remunerada', billable: true },
+        feriado_remunerado: { label: 'Feriado Remunerado', billable: true },
+        falta: { label: 'Falta', billable: false },
+        feriado_nao_remunerado: { label: 'Feriado', billable: false },
+      };
+      const formatCpf = (cpf: string) => {
+        const d = cpf.replace(/\D/g, '');
+        if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        return cpf;
+      };
+      const periodLabel = `${format(fiscalStartDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(fiscalEndDate, 'dd/MM/yyyy', { locale: ptBR })}`;
+      const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
+      const payVal = patient.paymentValue || 0;
+      const areaLabel = patient.clinicalArea || fiscalStamp?.clinical_area || 'Atendimento';
+
+      let sessionTotal = 0;
+      let sessionCount = 0;
+      const rows = fiscalEvos.map(e => {
+        const st = STATUS_LABELS[e.attendanceStatus] ?? { label: e.attendanceStatus, billable: false };
+        const val = st.billable && patient.paymentType !== 'fixo' ? payVal : 0;
+        const dateStr = format(new Date(e.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        if (st.billable) { sessionTotal += val; sessionCount++; }
+        return `<tr style="border-bottom:1px solid #eee"><td style="padding:4px 8px">${dateStr}</td><td style="padding:4px 8px">${areaLabel}</td><td style="padding:4px 8px">${st.label}</td><td style="padding:4px 8px;text-align:right">${val > 0 ? `R$ ${val.toFixed(2)}` : '—'}</td></tr>`;
+      }).join('');
+      if (patient.paymentType === 'fixo' && payVal > 0) {
+        sessionTotal = payVal;
+        sessionCount = fiscalEvos.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
+      }
+      const displayTotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : sessionTotal;
+      const payStatusLabel = fiscalPaymentStatus === 'paid' ? 'PAGO' : fiscalPaymentStatus === 'partial' ? 'PARCIALMENTE PAGO' : 'PENDENTE';
+      const patCpf = (patient as any).cpf;
+      const respCpf = (patient as any).responsible_cpf || (patient as any).responsibleCpf;
+
+      const html = `<html><body style="font-family:Arial,sans-serif;font-size:11pt;margin:40px">
+        <h2 style="color:#1e3a8a;margin-bottom:4px">RECIBO DE ATENDIMENTO</h2>
+        <p style="color:#666;margin-top:0">Período: ${periodLabel} &nbsp;·&nbsp; Emissão: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}</p>
+        <hr/>
+        <h3 style="color:#1e3a8a">TOMADOR DO SERVIÇO</h3>
+        <p><strong>Nome:</strong> ${patient.name}</p>
+        ${patCpf ? `<p><strong>CPF/CNPJ:</strong> ${formatCpf(patCpf)}</p>` : ''}
+        ${patient.birthdate ? `<p><strong>Nascimento:</strong> ${format(new Date(patient.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</p>` : ''}
+        ${patient.phone ? `<p><strong>Telefone:</strong> ${patient.phone}</p>` : ''}
+        ${patient.responsibleName ? `<hr/><h4>Responsável Legal</h4><p><strong>Nome:</strong> ${patient.responsibleName}</p>${respCpf ? `<p><strong>CPF:</strong> ${formatCpf(respCpf)}</p>` : ''}` : ''}
+        <hr/>
+        <h3 style="color:#1e3a8a">PRESTADOR DE SERVIÇO</h3>
+        ${fiscalStamp?.name ? `<p><strong>Nome:</strong> ${fiscalStamp.name}</p>` : ''}
+        ${fiscalStamp?.clinical_area ? `<p><strong>Área:</strong> ${fiscalStamp.clinical_area}</p>` : ''}
+        ${clinic?.name ? `<p><strong>Clínica:</strong> ${clinic.name}</p>` : ''}
+        ${clinic?.cnpj ? `<p><strong>CNPJ:</strong> ${formatCpf(clinic.cnpj)}</p>` : ''}
+        ${clinic?.address ? `<p><strong>Endereço:</strong> ${clinic.address}</p>` : ''}
+        <hr/>
+        <h3 style="color:#1e3a8a">DETALHAMENTO DAS SESSÕES (${fiscalEvos.length})</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:10pt">
+          <thead><tr style="background:#f0f4ff"><th style="padding:6px 8px;text-align:left">Data</th><th style="padding:6px 8px;text-align:left">Área / Serviço</th><th style="padding:6px 8px;text-align:left">Status</th><th style="padding:6px 8px;text-align:right">Valor</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <hr/>
+        <h3 style="color:#1e3a8a">RESUMO FINANCEIRO</h3>
+        ${patient.paymentType === 'fixo' ? `<p>Modalidade: Mensalidade fixa &nbsp;|&nbsp; Sessões: ${sessionCount} &nbsp;|&nbsp; Valor: R$ ${payVal.toFixed(2)}</p>` : `<p>Modalidade: Por sessão &nbsp;|&nbsp; Sessões cobráveis: ${sessionCount} &nbsp;|&nbsp; Valor/sessão: R$ ${payVal.toFixed(2)}</p>`}
+        <p style="font-size:13pt"><strong>TOTAL DO PERÍODO: R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
+        <p><strong>Status:</strong> ${payStatusLabel}${fiscalPaymentDate && fiscalPaymentStatus === 'paid' ? ` &nbsp;·&nbsp; Recebido em: ${format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}` : ''}</p>
+        <hr/>
+        <p style="color:#555;font-size:9pt">Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.</p>
+        <br/><br/>
+        <p>___________________________</p>
+        ${fiscalStamp?.name ? `<p><strong>${fiscalStamp.name}</strong></p>` : ''}
+        ${fiscalStamp?.clinical_area ? `<p>${fiscalStamp.clinical_area}</p>` : ''}
+        </body></html>`;
+
+      const { asBlob } = await import('html-docx-js-typescript');
+      const blob = await asBlob(html) as Blob;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = patient.name.replace(/\s+/g, '-').toLowerCase();
+      a.download = `recibo-fiscal-${safeName}-${format(fiscalStartDate, 'yyyy-MM-dd')}_${format(fiscalEndDate, 'yyyy-MM-dd')}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Recibo Word gerado com sucesso!');
+    } catch { toast.error('Erro ao gerar recibo Word'); }
+    finally { setIsExportingFiscalWord(false); }
+  };
+
 
   // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
   const handleExportFinancialPDF = async () => {
@@ -1328,6 +1498,22 @@ export default function PatientDetail() {
                     <span className="truncate">Financeiro</span>
                   </Button>
                 </div>
+
+                {/* Fiscal Receipt */}
+                <div className="pt-2 border-t border-border/50">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                    <Receipt className="w-3.5 h-3.5" /> Recibo Fiscal (NF)
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5 text-xs h-9 border-primary/40 text-primary hover:bg-primary/5"
+                    onClick={() => setFiscalDialogOpen(true)}
+                  >
+                    <Receipt className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Gerar Extrato Fiscal</span>
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1556,6 +1742,147 @@ export default function PatientDetail() {
 
       <EditPatientDialog patient={patient} open={editPatientOpen} onOpenChange={setEditPatientOpen}
         onSave={updatePatient} clinicPackages={clinic ? getClinicPackages(clinic.id) : []} />
+
+      {/* ── FISCAL RECEIPT DIALOG ─────────────────────────────────────────── */}
+      <Dialog open={fiscalDialogOpen} onOpenChange={setFiscalDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-primary" /> Gerar Extrato Fiscal
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {/* Period */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Data Início</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1 text-xs h-9", !fiscalStartDate && "text-muted-foreground")}>
+                      <CalendarRange className="mr-2 h-3.5 w-3.5" />
+                      {fiscalStartDate ? format(fiscalStartDate, "dd/MM/yyyy") : "Selecione"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent mode="single" selected={fiscalStartDate} onSelect={setFiscalStartDate} initialFocus className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label className="text-xs">Data Fim</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1 text-xs h-9", !fiscalEndDate && "text-muted-foreground")}>
+                      <CalendarRange className="mr-2 h-3.5 w-3.5" />
+                      {fiscalEndDate ? format(fiscalEndDate, "dd/MM/yyyy") : "Selecione"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent mode="single" selected={fiscalEndDate} onSelect={setFiscalEndDate} initialFocus className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {fiscalStartDate && fiscalEndDate && (
+              <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+                {getFiscalEvolutions().length} sessão(ões) encontrada(s) no período
+              </p>
+            )}
+
+            {/* Stamp selector */}
+            {stamps.length > 0 && (
+              <div>
+                <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                  <StampIcon className="w-3.5 h-3.5" /> Carimbo Profissional
+                </Label>
+                <Select value={fiscalStampId} onValueChange={setFiscalStampId}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Selecione o carimbo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem carimbo</SelectItem>
+                    {stamps.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Payment info */}
+            <div className="space-y-3 bg-muted/30 rounded-lg p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Informações de Pagamento</p>
+              <div>
+                <Label className="text-xs mb-1.5 block">Status</Label>
+                <div className="flex gap-2">
+                  {(['pending', 'paid', 'partial'] as const).map(s => (
+                    <button key={s} onClick={() => setFiscalPaymentStatus(s)}
+                      className={cn('flex-1 text-xs py-1.5 rounded-lg border font-medium transition-colors',
+                        fiscalPaymentStatus === s
+                          ? s === 'paid' ? 'bg-success/10 border-success text-success'
+                            : s === 'partial' ? 'bg-warning/10 border-warning text-warning'
+                            : 'bg-muted border-border text-foreground'
+                          : 'border-border text-muted-foreground hover:border-foreground/30')}>
+                      {s === 'paid' ? '✓ Pago' : s === 'partial' ? '~ Parcial' : '⏳ Pendente'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {fiscalPaymentStatus === 'paid' && (
+                <div>
+                  <Label className="text-xs mb-1 block">Data do Recebimento</Label>
+                  <Input type="date" value={fiscalPaymentDate} onChange={e => setFiscalPaymentDate(e.target.value)} className="h-9 text-xs" />
+                </div>
+              )}
+              <div>
+                <Label className="text-xs mb-1 block">
+                  Valor Total Pago (opcional — sobrescreve o calculado)
+                </Label>
+                <Input
+                  type="number" step="0.01" min="0"
+                  value={fiscalTotalPaid}
+                  onChange={e => setFiscalTotalPaid(e.target.value)}
+                  placeholder={`R$ calculado automaticamente`}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* CPF warning */}
+            {!(patient as any).cpf && !patient.responsibleName && (
+              <p className="text-xs text-warning bg-warning/10 rounded-lg px-3 py-2 flex items-start gap-2">
+                ⚠️ O paciente não tem CPF cadastrado. Para fins de nota fiscal, edite o cadastro do paciente e adicione o CPF/CNPJ.
+              </p>
+            )}
+
+            {/* Export buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button
+                onClick={handleExportFiscalPdf}
+                disabled={isExportingFiscalPdf || !fiscalStartDate || !fiscalEndDate}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-9"
+              >
+                {isExportingFiscalPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                PDF
+              </Button>
+              <Button
+                onClick={handleExportFiscalWord}
+                disabled={isExportingFiscalWord || !fiscalStartDate || !fiscalEndDate}
+                size="sm"
+                className="gap-1.5 text-xs h-9"
+              >
+                {isExportingFiscalWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                Word (.docx)
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deletePatientOpen} onOpenChange={setDeletePatientOpen}>
         <AlertDialogContent>
