@@ -95,7 +95,8 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
   y += 6;
 
   doc.setFontSize(10); doc.setTextColor(...mutedText);
-  doc.text(`Local e data: ${locationStr}_______________, ____/____/________`, margin, y);
+  const localText = location ? `Local e data: ${location}, ____/____/________` : `Local e data: _______________, ____/____/________`;
+  doc.text(localText, margin, y);
   y += 12;
 
   if (stamp?.signature_image) {
