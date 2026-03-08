@@ -429,10 +429,12 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       const permissionsMap = Object.fromEntries(
         ALL_PERMISSIONS.map(p => [p, editPermissions.includes(p)])
       );
-      await supabase.from('organization_members').update({
+      const { error: updateError } = await supabase.from('organization_members').update({
         permissions: permissionsMap,
         role_label: editRoleLabel || null,
+        role: manageMember.role, // persist the role selected via preset cards
       }).eq('id', manageMember.id);
+      if (updateError) throw updateError;
 
       await supabase.from('therapist_patient_assignments').delete().eq('member_id', manageMember.id);
       const toInsert = Object.entries(editPatients).map(([patient_id, schedule_time]) => ({
@@ -446,9 +448,12 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
         if (error) throw error;
       }
       toast.success('Permissões e pacientes atualizados');
-      loadTeam();
+      await loadTeam(); // refresh grid after save
       setManageMember(null);
-    } catch { toast.error('Erro ao salvar'); }
+    } catch (err) {
+      console.error('saveAssignments error', err);
+      toast.error('Erro ao salvar');
+    }
     finally { setSavingAssign(false); }
   }
 
