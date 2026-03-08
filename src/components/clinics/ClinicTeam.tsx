@@ -33,6 +33,8 @@ import {
   DEFAULT_THERAPIST_PERMISSIONS,
   DEFAULT_ADMIN_PERMISSIONS,
   ALL_PERMISSIONS,
+  PRESET_ROLES,
+  PresetRole,
 } from '@/hooks/useOrgPermissions';
 import { cn } from '@/lib/utils';
 
