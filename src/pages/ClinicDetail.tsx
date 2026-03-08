@@ -1,6 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toLocalDateString } from '@/lib/utils';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail } from 'lucide-react';
+import { ServiceDialog } from '@/components/services/ServiceDialog';
+import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -283,6 +287,60 @@ export default function ClinicDetail() {
   const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
   const [editingEvolution, setEditingEvolution] = useState<typeof evolutions[0] | null>(null);
 
+  // Services (private_appointments) for this propria clinic
+  interface ClinicPrivateApt {
+    id: string; client_name: string; client_email?: string | null; client_phone?: string | null;
+    service_id?: string | null; clinic_id?: string | null; date: string; time: string;
+    price: number; status: string; notes?: string | null; paid?: boolean | null; created_at: string;
+  }
+  const [clinicServices, setClinicServices] = useState<ClinicPrivateApt[]>([]);
+  const [loadingClinicServices, setLoadingClinicServices] = useState(false);
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+  const [editServiceApt, setEditServiceApt] = useState<ClinicPrivateApt | null>(null);
+  const [editServiceAptOpen, setEditServiceAptOpen] = useState(false);
+  const [deleteServiceAptOpen, setDeleteServiceAptOpen] = useState(false);
+  const [serviceAptToDelete, setServiceAptToDelete] = useState<ClinicPrivateApt | null>(null);
+
+  const loadClinicServices = async () => {
+    if (!id) return;
+    setLoadingClinicServices(true);
+    const { data } = await supabase
+      .from('private_appointments')
+      .select('*')
+      .eq('clinic_id', id)
+      .order('date', { ascending: false })
+      .order('time', { ascending: true });
+    setClinicServices((data as any[]) || []);
+    setLoadingClinicServices(false);
+  };
+
+  const updateClinicServiceStatus = async (aptId: string, status: string) => {
+    await supabase.from('private_appointments').update({ status }).eq('id', aptId);
+    loadClinicServices();
+  };
+
+  const toggleClinicServicePaid = async (aptId: string, current: boolean) => {
+    await supabase.from('private_appointments').update({ paid: !current }).eq('id', aptId);
+    loadClinicServices();
+  };
+
+  const deleteClinicServiceApt = async () => {
+    if (!serviceAptToDelete) return;
+    await supabase.from('private_appointments').delete().eq('id', serviceAptToDelete.id);
+    toast.success('Agendamento apagado!');
+    setDeleteServiceAptOpen(false);
+    setServiceAptToDelete(null);
+    loadClinicServices();
+  };
+
+  const getServiceStatusColor = (status: string) => {
+    switch (status) {
+      case 'agendado': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'concluído': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+      case 'cancelado': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+      default: return 'bg-secondary text-secondary-foreground';
+    }
+  };
 
   if (!clinic) {
     return (
@@ -676,6 +734,7 @@ export default function ClinicDetail() {
             { value: 'evolutions-day', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'templates', icon: <LayoutTemplate className="w-5 h-5" />, label: 'Modelos', color: 'text-indigo-500' },
+            ...(isPropria ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
           ].map(tab => (
             <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
               <TabsTrigger
@@ -1574,11 +1633,133 @@ export default function ClinicDetail() {
           <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />
         </TabsContent>
 
+
         {/* Reports Tab */}
         <TabsContent value="reports">
           <ClinicReports clinicId={clinic.id} clinicName={clinic.name} clinicAddress={clinic.address || undefined} clinicLetterhead={clinic.letterhead || undefined} clinic={clinic} />
         </TabsContent>
+
+        {/* Serviços Tab — only for propria clinics */}
+        {isPropria && (
+          <TabsContent value="services" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-cyan-500" />
+                Serviços Agendados
+              </h2>
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={() => { loadClinicServices(); setServiceDialogOpen(true); }}
+                disabled={isArchived}
+              >
+                <Plus className="w-4 h-4" />
+                Novo Serviço
+              </Button>
+            </div>
+
+            {loadingClinicServices ? (
+              <div className="text-center py-12 text-muted-foreground">Carregando...</div>
+            ) : clinicServices.length === 0 ? (
+              <div className="text-center py-12 bg-card rounded-xl border border-border">
+                <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Nenhum serviço agendado</h3>
+                <p className="text-sm text-muted-foreground mb-4">Agende o primeiro atendimento particular nesta clínica</p>
+                <Button size="sm" className="gap-2" onClick={() => setServiceDialogOpen(true)} disabled={isArchived}>
+                  <Plus className="w-4 h-4" /> Novo Serviço
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {clinicServices.map((apt) => (
+                  <div key={apt.id} className="bg-card rounded-xl border border-border p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          <h3 className="font-medium text-foreground text-sm truncate max-w-[150px] sm:max-w-none">{apt.client_name}</h3>
+                          <Badge className={cn("text-xs shrink-0", getServiceStatusColor(apt.status))}>
+                            {apt.status === 'agendado' && 'Agendado'}
+                            {apt.status === 'concluído' && 'Concluído'}
+                            {apt.status === 'cancelado' && 'Cancelado'}
+                          </Badge>
+                          {apt.paid && (
+                            <Badge variant="outline" className="text-xs border-success/50 text-success shrink-0">Pago</Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-1">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(apt.date + 'T00:00:00'), "dd/MM/yy", { locale: ptBR })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {apt.time}
+                          </span>
+                          <span className="flex items-center gap-1 text-success font-medium">
+                            <DollarSign className="w-3 h-3" />
+                            R$ {apt.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        {(apt.client_phone || apt.client_email) && (
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            {apt.client_phone && (
+                              <span className="flex items-center gap-1"><Phone className="w-3 h-3 shrink-0" />{apt.client_phone}</span>
+                            )}
+                            {apt.client_email && (
+                              <span className="flex items-center gap-1 truncate max-w-[180px] sm:max-w-none">
+                                <Mail className="w-3 h-3 shrink-0" />{apt.client_email}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {apt.status === 'agendado' && (
+                          <>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-success hover:text-success hover:bg-success/10"
+                              onClick={() => updateClinicServiceStatus(apt.id, 'concluído')} title="Concluir">
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => updateClinicServiceStatus(apt.id, 'cancelado')} title="Cancelar">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                        {apt.status === 'concluído' && !apt.paid && (
+                          <Button size="sm" variant="outline" className="text-success border-success/50 hover:bg-success/10 text-xs"
+                            onClick={() => toggleClinicServicePaid(apt.id, apt.paid || false)}>
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            <span className="hidden sm:inline">Confirmar Pagamento</span>
+                            <span className="sm:hidden">Pago</span>
+                          </Button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => { setEditServiceApt(apt); setEditServiceAptOpen(true); }}>
+                              <Edit className="w-4 h-4 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive"
+                              onClick={() => { setServiceAptToDelete(apt); setDeleteServiceAptOpen(true); }}>
+                              <Trash2 className="w-4 h-4 mr-2" /> Apagar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
+
 
       {/* Edit Package Dialog */}
       {editingPackage && (
@@ -1883,6 +2064,40 @@ export default function ClinicDetail() {
           showFaltaRemunerada={clinic?.paysOnAbsence}
         />
       )}
+
+      {/* Serviços tab — ServiceDialog and dialogs */}
+      {isPropria && (
+        <>
+          <ServiceDialog
+            open={serviceDialogOpen}
+            onOpenChange={(open) => { setServiceDialogOpen(open); if (!open) loadClinicServices(); }}
+            clinicId={clinic.id}
+            onAppointmentSaved={loadClinicServices}
+          />
+          <ServiceDialog
+            open={editServiceAptOpen}
+            onOpenChange={(open) => { setEditServiceAptOpen(open); if (!open) { setEditServiceApt(null); loadClinicServices(); } }}
+            editAppointment={editServiceApt as any}
+            clinicId={clinic.id}
+            onAppointmentSaved={loadClinicServices}
+          />
+          <AlertDialog open={deleteServiceAptOpen} onOpenChange={setDeleteServiceAptOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Apagar agendamento?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja apagar o agendamento de <strong>{serviceAptToDelete?.client_name}</strong>? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={deleteClinicServiceApt} className="bg-destructive hover:bg-destructive/90">Apagar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </div>
   );
 }
+

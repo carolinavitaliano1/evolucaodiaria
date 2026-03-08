@@ -43,6 +43,7 @@ interface PrivateAppointment {
   client_email?: string;
   client_phone?: string;
   service_id?: string;
+  clinic_id?: string;
   date: string;
   time: string;
   price: number;
@@ -754,6 +755,14 @@ export default function Clinics() {
                             Pago
                           </Badge>
                         )}
+                        {apt.clinic_id && (() => {
+                          const linkedClinic = clinics.find(c => c.id === apt.clinic_id);
+                          return linkedClinic ? (
+                            <Badge variant="outline" className="text-xs border-primary/40 text-primary shrink-0 gap-1">
+                              <MapPin className="w-2.5 h-2.5" />{linkedClinic.name}
+                            </Badge>
+                          ) : null;
+                        })()}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2">

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Briefcase, Calendar, Plus, Trash2, Pencil } from 'lucide-react';
+import { Briefcase, Calendar, MapPin, Plus, Trash2, Pencil } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -20,6 +20,11 @@ interface Service {
   duration_minutes: number;
   price: number;
   is_active: boolean;
+}
+
+interface ClinicOption {
+  id: string;
+  name: string;
 }
 
 import { PrivateAppointment } from '@/hooks/usePrivateAppointments';
@@ -41,9 +46,11 @@ interface ServiceDialogProps {
   onOpenChange: (open: boolean) => void;
   editAppointment?: PrivateAppointment | null;
   onAppointmentSaved?: () => void;
+  /** Pre-select and lock the clinic for new appointments */
+  clinicId?: string;
 }
 
-export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointmentSaved }: ServiceDialogProps) {
+export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointmentSaved, clinicId }: ServiceDialogProps) {
   const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +59,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   const [customTypes, setCustomTypes] = useState<string[]>([]);
   const [newCustomType, setNewCustomType] = useState('');
   const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
+  const [propriaClinics, setPropriaClinics] = useState<ClinicOption[]>([]);
 
   // Service form states
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -64,6 +72,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   // Appointment form states
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string>('');
+  const [selectedClinicId, setSelectedClinicId] = useState<string>('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -78,11 +87,13 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
     if (open) {
       loadServices();
       loadCustomTypes();
+      loadPropriaClinics();
       // Pre-fill form if editing an appointment
       if (editAppointment) {
         setActiveTab('agendar');
         setEditingAppointmentId(editAppointment.id);
         setSelectedService(editAppointment.service_id || '');
+        setSelectedClinicId((editAppointment as any).clinic_id || clinicId || '');
         setClientName(editAppointment.client_name);
         setClientPhone(editAppointment.client_phone || '');
         setClientEmail(editAppointment.client_email || '');
@@ -94,10 +105,26 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         setAppointmentPaid(editAppointment.paid || false);
       } else {
         setEditingAppointmentId(null);
-        setActiveTab('servicos');
+        setActiveTab(clinicId ? 'agendar' : 'servicos');
+        setSelectedClinicId(clinicId || '');
       }
     }
-  }, [open, editAppointment]);
+  }, [open, editAppointment, clinicId]);
+
+  async function loadPropriaClinics() {
+    try {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) return;
+      const { data } = await supabase
+        .from('clinics')
+        .select('id, name')
+        .eq('user_id', u.id)
+        .eq('type', 'propria')
+        .eq('is_archived', false)
+        .order('name');
+      if (data) setPropriaClinics(data);
+    } catch {}
+  }
 
   async function loadCustomTypes() {
     try {
@@ -153,6 +180,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
 
   function resetAppointmentForm() {
     setSelectedService('');
+    setSelectedClinicId(clinicId || '');
     setClientName('');
     setClientPhone('');
     setClientEmail('');
@@ -243,8 +271,9 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         return;
       }
 
-      const appointmentData = {
+      const appointmentData: any = {
         service_id: selectedService || null,
+        clinic_id: selectedClinicId || null,
         client_name: clientName,
         client_phone: clientPhone || null,
         client_email: clientEmail || null,
@@ -325,6 +354,36 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
                 </p>
               )}
             </div>
+
+            {/* Clinic selector — hidden when clinicId is fixed */}
+            {!clinicId && propriaClinics.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  Local (Clínica Própria)
+                </Label>
+                <Select value={selectedClinicId} onValueChange={setSelectedClinicId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhum local vinculado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum local</SelectItem>
+                    {propriaClinics.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {clinicId && propriaClinics.length > 0 && (
+              <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-sm text-primary">
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>{propriaClinics.find(c => c.id === clinicId)?.name ?? 'Clínica vinculada'}</span>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="clientName">Nome do Cliente *</Label>
@@ -492,37 +551,28 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
                       <Label className="text-xs">Nome do novo tipo</Label>
                       <Input
                         value={newCustomType}
-                        onChange={(e) => setNewCustomType(e.target.value)}
-                        placeholder="Ex: Terapia Online"
-                        autoFocus
+                        onChange={e => setNewCustomType(e.target.value)}
+                        placeholder="Ex: Orientação Parental"
+                        className="h-8 text-sm"
                       />
                     </div>
-                    <Button size="sm" onClick={async () => {
-                      if (newCustomType.trim()) {
-                        try {
-                          const { data: { user } } = await supabase.auth.getUser();
-                          if (!user) { toast.error('Faça login primeiro'); return; }
-                          const { error } = await supabase
-                            .from('custom_service_types' as any)
-                            .insert({ user_id: user.id, name: newCustomType.trim() } as any);
-                          if (error) throw error;
-                          setCustomTypes(prev => [...prev, newCustomType.trim()]);
-                          setServiceType(newCustomType.trim());
-                          setNewCustomType('');
-                          setShowCustomTypeInput(false);
-                          toast.success('Tipo personalizado salvo!');
-                        } catch (error) {
-                          console.error('Error saving custom type:', error);
-                          toast.error('Erro ao salvar tipo personalizado');
-                        }
-                      }
-                    }}>
+                    <Button
+                      size="sm"
+                      className="h-8"
+                      onClick={async () => {
+                        if (!newCustomType.trim()) return;
+                        const { data: { user: u } } = await supabase.auth.getUser();
+                        if (!u) return;
+                        await supabase.from('custom_service_types' as any).insert({ user_id: u.id, name: newCustomType.trim() });
+                        setCustomTypes(prev => [...prev, newCustomType.trim()]);
+                        setServiceType(newCustomType.trim());
+                        setNewCustomType('');
+                        setShowCustomTypeInput(false);
+                      }}
+                    >
                       Adicionar
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => {
-                      setShowCustomTypeInput(false);
-                      setNewCustomType('');
-                    }}>
+                    <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowCustomTypeInput(false)}>
                       Cancelar
                     </Button>
                   </div>
@@ -537,10 +587,11 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
                     type="number"
                     value={serviceDuration}
                     onChange={(e) => setServiceDuration(e.target.value)}
+                    placeholder="50"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="servicePrice">Valor (R$) *</Label>
+                  <Label htmlFor="servicePrice">Valor (R$)</Label>
                   <Input
                     id="servicePrice"
                     type="number"
@@ -564,45 +615,56 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
               </div>
 
               <div className="flex gap-2">
+                <Button onClick={saveService} disabled={saving} className="flex-1">
+                  {saving ? 'Salvando...' : editingService ? 'Salvar' : 'Cadastrar Serviço'}
+                </Button>
                 {editingService && (
-                  <Button variant="outline" size="sm" onClick={resetServiceForm}>
+                  <Button variant="outline" onClick={resetServiceForm}>
                     Cancelar
                   </Button>
                 )}
-                <Button size="sm" onClick={saveService} disabled={saving}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  {editingService ? 'Salvar' : 'Adicionar'}
-                </Button>
               </div>
             </div>
 
             {/* Services List */}
-            {services.length > 0 && (
+            {loading ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
+            ) : services.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum serviço cadastrado ainda.</p>
+            ) : (
               <div className="space-y-2">
-                <h4 className="font-medium text-sm text-muted-foreground">Serviços Cadastrados</h4>
-                <div className="space-y-2">
-                  {services.map(service => (
-                    <div
-                      key={service.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium">{service.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {SERVICE_TYPES.find(t => t.value === service.type)?.label} • {service.duration_minutes}min • R$ {service.price.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => editService(service)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => deleteService(service.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
+                <h4 className="text-sm font-medium text-muted-foreground">Serviços cadastrados</h4>
+                {services.map(service => (
+                  <div
+                    key={service.id}
+                    className="flex items-center justify-between p-3 border rounded-lg bg-card"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{service.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {service.duration_minutes}min · R$ {service.price.toFixed(2)}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => editService(service)}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => deleteService(service.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </TabsContent>
