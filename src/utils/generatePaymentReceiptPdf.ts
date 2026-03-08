@@ -113,7 +113,8 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
   // "Local e data:" line
   doc.setFontSize(10);
   doc.setTextColor(...mutedText);
-  doc.text(`Local e data: _____________________________________________`, margin, y);
+  const locationStr = location ? `${location}, ` : '';
+  doc.text(`Local e data: ${locationStr}_______________, ____/____/________`, margin, y);
   y += 12;
 
   // ── ASSINATURA / CARIMBO ─────────────────────────────────────────────────
