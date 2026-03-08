@@ -753,6 +753,7 @@ export type Database = {
           client_email: string | null
           client_name: string
           client_phone: string | null
+          clinic_id: string | null
           created_at: string
           date: string
           id: string
@@ -769,6 +770,7 @@ export type Database = {
           client_email?: string | null
           client_name: string
           client_phone?: string | null
+          clinic_id?: string | null
           created_at?: string
           date: string
           id?: string
@@ -785,6 +787,7 @@ export type Database = {
           client_email?: string | null
           client_name?: string
           client_phone?: string | null
+          clinic_id?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -798,6 +801,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "private_appointments_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "private_appointments_service_id_fkey"
             columns: ["service_id"]

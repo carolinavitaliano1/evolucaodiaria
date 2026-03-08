@@ -1,0 +1,1 @@
+ALTER TABLE public.private_appointments ADD COLUMN IF NOT EXISTS clinic_id uuid REFERENCES public.clinics(id) ON DELETE SET NULL;
