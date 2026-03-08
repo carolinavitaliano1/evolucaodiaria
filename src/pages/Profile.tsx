@@ -719,6 +719,9 @@ export default function Profile() {
                   )}
                   <h3 className="font-semibold">{stamp.name}</h3>
                   <p className="text-sm text-muted-foreground">{stamp.clinical_area}</p>
+                  {stamp.cbo && (
+                    <p className="text-xs text-muted-foreground mt-0.5">CBO: {stamp.cbo}</p>
+                  )}
                   
                   {stamp.stamp_image && (
                     <div className="mt-3 p-2 bg-muted rounded">
