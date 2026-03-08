@@ -79,7 +79,7 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
   }, [patientId]);
 
   const handleDownloadPdf = (report: { title: string; content: string }) => {
-    generateReportPdf({ title: report.title, content: report.content, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription });
+    generateReportPdf({ title: report.title, content: report.content, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription, therapistName: therapistProfile?.name || undefined, therapistProfessionalId: therapistProfile?.professional_id || undefined, therapistCbo: (stamps.find(s => s.is_default) as any)?.cbo || undefined });
   };
 
   const handleDelete = async (id: string) => {
