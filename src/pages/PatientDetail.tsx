@@ -211,6 +211,7 @@ export default function PatientDetail() {
   const [prLocalDate, setPrLocalDate] = useState('');
   const [prSelectedSessions, setPrSelectedSessions] = useState<string[]>([]);
   const [prSessionMode, setPrSessionMode] = useState<'manual' | 'select'>('select');
+  const [prUseResponsible, setPrUseResponsible] = useState(false);
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
 
