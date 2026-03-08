@@ -1959,6 +1959,12 @@ export default function ClinicDetail() {
                             <DollarSign className="w-3 h-3" />
                             R$ {apt.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
+                          {apt.paid && apt.payment_date && (
+                            <span className="flex items-center gap-1 text-success">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Pago em {format(new Date(apt.payment_date + 'T00:00:00'), 'dd/MM/yy')}
+                            </span>
+                          )}
                         </div>
                         {(apt.client_phone || apt.client_email) && (
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
