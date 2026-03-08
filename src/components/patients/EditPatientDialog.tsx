@@ -31,6 +31,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
   const [formData, setFormData] = useState({
     name: '',
     birthdate: '',
+    cpf: '',
     phone: '',
     clinicalArea: '',
     diagnosis: '',
@@ -38,6 +39,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     observations: '',
     responsibleName: '',
     responsibleEmail: '',
+    responsibleCpf: '',
     contractStartDate: '',
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
