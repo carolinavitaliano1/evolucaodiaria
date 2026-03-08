@@ -141,8 +141,14 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <DollarSign className="w-6 h-6 text-success mb-2" />
           <p className="text-muted-foreground text-xs">Faturamento Bruto</p>
           <p className="text-xl font-bold text-foreground">
-            R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {totalRevenueWithServices.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
+          {servicesMonthRevenue > 0 && (
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Briefcase className="w-3 h-3" />
+              + R$ {servicesMonthRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} serviços
+            </p>
+          )}
           {discountPercent > 0 && (
             <div className="mt-2 pt-2 border-t border-border">
               <p className="text-muted-foreground text-xs">Valor Líquido ({discountPercent}% desc.)</p>
