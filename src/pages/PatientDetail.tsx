@@ -360,12 +360,36 @@ export default function PatientDetail() {
     stampOverride?: typeof stamps[0] | null,
     showBlankLine = true,
   ) => {
-    if (y > 230) { doc.addPage(); y = 20; }
+    // Estimate how much space the block needs
+    const hasSig = !!(stampOverride?.signature_image);
+    const hasStampImg = !!(stampOverride?.stamp_image);
+    const stampCbo = (stampOverride as any)?.cbo;
+    const profId = therapistProfile?.professional_id;
+    // header (divider+title) + sig img + stamp img + line + name + area + cbo + reg
+    const estimatedH =
+      14 + // divider + title
+      (hasSig ? 22 : 0) +
+      (hasStampImg ? 44 : 0) +
+      6 + // sig line
+      6 + // name
+      (stampOverride?.clinical_area ? 5 : 0) +
+      (stampCbo ? 5 : 0) +
+      (profId ? 5 : 0) +
+      4; // bottom padding
+
+    const PAGE_H = 297;
+    const FOOTER_SAFE = 15; // leave 15 mm for footer
+    const usableBottom = PAGE_H - FOOTER_SAFE;
+
+    // If block won't fit, add a new page
+    if (y + estimatedH > usableBottom) {
+      doc.addPage();
+      y = 20;
+    }
 
     doc.setDrawColor(...borderColor);
     doc.line(margin, y + 4, W - margin, y + 4);
     y += 12;
-
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
@@ -396,26 +420,35 @@ export default function PatientDetail() {
         } catch { /* skip */ }
       }
 
-      // 3. Nome do terapeuta
+      // 3. Linha de assinatura
+      doc.setDrawColor(100, 100, 100);
+      doc.setLineWidth(0.4);
+      doc.line(margin, y, margin + 70, y);
+      y += 5;
+
+      // 4. Nome (negrito)
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
       doc.setTextColor(...darkText);
       doc.text(stampOverride.name, margin, y);
       y += 5.5;
 
+      // 5. Área clínica
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
       doc.setTextColor(...mutedText);
-      doc.text(stampOverride.clinical_area, margin, y);
-      y += 5;
+      if (stampOverride.clinical_area) {
+        doc.text(stampOverride.clinical_area, margin, y);
+        y += 5;
+      }
 
-      // CBO do carimbo (prioridade) ou registro profissional
-      const stampCbo = (stampOverride as any).cbo;
-      const profId = therapistProfile?.professional_id;
+      // 6. CBO
       if (stampCbo) {
         doc.text(`CBO: ${stampCbo}`, margin, y);
         y += 5;
       }
+
+      // 7. Registro profissional
       if (profId) {
         doc.text(`Registro: ${profId}`, margin, y);
         y += 5;
