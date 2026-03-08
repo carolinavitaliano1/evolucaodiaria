@@ -210,15 +210,53 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
     });
   }, [pending, search, filterTherapist]);
 
+  function buildMessage(item: PendingEvolution) {
+    const formattedDate = format(parseISO(item.date), "dd 'de' MMMM", { locale: ptBR });
+    return `Olá ${item.therapistName}, notamos que a evolução do paciente *${item.patientName}* do dia *${formattedDate}* ainda não foi finalizada. Por favor, regularize assim que possível. 🙏`;
+  }
+
   function sendWhatsAppNotification(item: PendingEvolution) {
     if (!item.therapistPhone) {
       toast.error('Terapeuta não possui telefone cadastrado');
       return;
     }
-    const formattedDate = format(parseISO(item.date), "dd 'de' MMMM", { locale: ptBR });
-    const msg = `Olá ${item.therapistName}, notamos que a evolução do paciente *${item.patientName}* do dia *${formattedDate}* ainda não foi finalizada. Por favor, regularize assim que possível. 🙏`;
-    openWhatsApp(item.therapistPhone, msg);
+    openWhatsApp(item.therapistPhone, buildMessage(item));
     toast.success('WhatsApp aberto!');
+  }
+
+  async function notifyAll() {
+    const withPhone = filtered.filter(i => i.therapistPhone);
+    if (!withPhone.length) {
+      toast.error('Nenhum terapeuta com telefone cadastrado nos pendentes filtrados');
+      return;
+    }
+    setNotifyingAll(true);
+    // Group by therapist to avoid duplicate tabs — send one message per therapist
+    // listing all their pending patients in one go
+    const byTherapist: Record<string, PendingEvolution[]> = {};
+    withPhone.forEach(i => {
+      if (!byTherapist[i.therapistUserId]) byTherapist[i.therapistUserId] = [];
+      byTherapist[i.therapistUserId].push(i);
+    });
+    let opened = 0;
+    for (const [, items] of Object.entries(byTherapist)) {
+      const phone = items[0].therapistPhone!;
+      const name = items[0].therapistName;
+      if (items.length === 1) {
+        openWhatsApp(phone, buildMessage(items[0]));
+      } else {
+        const list = items
+          .map(i => `• *${i.patientName}* (${format(parseISO(i.date), "dd/MM", { locale: ptBR })})`)
+          .join('\n');
+        const msg = `Olá ${name}, identificamos evoluções pendentes para os seguintes pacientes:\n\n${list}\n\nPor favor, regularize assim que possível. 🙏`;
+        openWhatsApp(phone, msg);
+      }
+      opened++;
+      // Small delay so browsers don't block multiple tabs
+      await new Promise(r => setTimeout(r, 600));
+    }
+    toast.success(`${opened} terapeuta(s) notificado(s)!`);
+    setNotifyingAll(false);
   }
 
   const therapistOptions = useMemo(() => {
@@ -238,6 +276,14 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
     const mostBehind = Object.entries(byTherapist).sort((a, b) => b[1] - a[1])[0];
     return { total: pending.length, byTherapist, mostBehind };
   }, [pending]);
+
+  // Urgency helper reused in render
+  function getUrgency(dateStr: string): 'high' | 'medium' | 'low' {
+    const hoursAgo = differenceInHours(new Date(), parseISO(dateStr));
+    if (hoursAgo >= 72) return 'high';
+    if (hoursAgo >= 24) return 'medium';
+    return 'low';
+  }
 
   return (
     <div className="space-y-5">
