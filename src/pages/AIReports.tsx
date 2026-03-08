@@ -585,8 +585,8 @@ export default function AIReports() {
     <div className="space-y-6">
       {!canUseAI && (
         <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-            <Lock className="w-8 h-8 text-muted-foreground" />
+        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+            <LockKeyhole className="w-8 h-8 text-muted-foreground" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-foreground">Acesso Restrito</h2>
