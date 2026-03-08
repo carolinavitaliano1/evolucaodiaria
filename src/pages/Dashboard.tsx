@@ -85,6 +85,8 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           {/* Mural bell icon */}
           <MuralNoticesBell />
+          {/* Internal compliance alerts */}
+          <InternalAlertsBell />
 
           {/* Subscription badge */}
           {!subLoading && (
