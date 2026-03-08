@@ -130,6 +130,7 @@ function getPresetIcon(icon: string) {
 export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const { user } = useAuth();
   const { patients } = useApp();
+  const navigate = useNavigate();
 
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
