@@ -2085,24 +2085,56 @@ export default function PatientDetail() {
               );
             })()}
 
+            {/* Payer toggle */}
+            {(() => {
+              const isMinorAuto = (() => {
+                if (!patient.birthdate) return false;
+                try {
+                  const b = new Date(patient.birthdate + 'T12:00:00');
+                  let a = new Date().getFullYear() - b.getFullYear();
+                  const m = new Date().getMonth() - b.getMonth();
+                  if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
+                  return a < 18;
+                } catch { return false; }
+              })();
+              const payerName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
+              const payerCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
+              return (
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Pagador no recibo</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {prUseResponsible
+                          ? <><span className="text-foreground font-medium">{patient.responsibleName || '[Responsável não cadastrado]'}</span>{payerCpfRaw ? ` · CPF: ${payerCpfRaw}` : ' · CPF não cadastrado'}</>
+                          : <><span className="text-foreground font-medium">{patient.name}</span>{payerCpfRaw ? ` · CPF: ${payerCpfRaw}` : ' · CPF não cadastrado'}</>
+                        }
+                      </p>
+                    </div>
+                    <Switch
+                      checked={prUseResponsible}
+                      onCheckedChange={setPrUseResponsible}
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <span className="text-xs text-muted-foreground">
+                      {isMinorAuto
+                        ? '⚠ Paciente menor de idade — responsável selecionado automaticamente'
+                        : 'Usar responsável financeiro no recibo'}
+                    </span>
+                  </label>
+                </div>
+              );
+            })()}
+
             {/* Preview text */}
             <div className="bg-muted/40 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed italic">
               {(() => {
                 const prStampPreview = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) : stamps.find(s => s.is_default) || stamps[0];
                 const tName = prStampPreview?.name || therapistProfile?.name || '[Terapeuta]';
                 const tCpf = therapistProfile?.cpf ? `, inscrito(a) no CPF/CNPJ sob o número ${therapistProfile.cpf},` : '';
-                const isMinorPR = (() => {
-                  if (!patient.birthdate) return false;
-                  try {
-                    const b = new Date(patient.birthdate + 'T12:00:00');
-                    let a = new Date().getFullYear() - b.getFullYear();
-                    const m = new Date().getMonth() - b.getMonth();
-                    if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
-                    return a < 18;
-                  } catch { return false; }
-                })();
-                const pName = isMinorPR && patient.responsibleName ? patient.responsibleName : patient.name;
-                const pCpfRaw = isMinorPR ? (patient as any).responsible_cpf : (patient as any).cpf;
+                const pName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
+                const pCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
                 const pCpf = pCpfRaw ? `, inscrito(a) no CPF sob o número ${pCpfRaw},` : '';
                 const amtDisplay = prAmount ? `R$ ${parseFloat(prAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ [valor]';
                 const dateDisplay = prPaymentDate ? format(new Date(prPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '___/___/______';
@@ -2112,6 +2144,143 @@ export default function PatientDetail() {
                 </>;
               })()}
             </div>
+
+            {/* Sessions selector — only shows performed (billable) sessions */}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="flex border-b border-border">
+                <button onClick={() => setPrSessionMode('select')}
+                  className={cn('flex-1 text-xs py-2 font-medium transition-colors',
+                    prSessionMode === 'select' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+                  Selecionar Sessões
+                </button>
+                <button onClick={() => { setPrSessionMode('manual'); setPrSelectedSessions([]); }}
+                  className={cn('flex-1 text-xs py-2 font-medium transition-colors',
+                    prSessionMode === 'manual' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+                  Digitar Manualmente
+                </button>
+              </div>
+              <div className="p-3 space-y-2">
+                {prSessionMode === 'select' ? (() => {
+                  // Only billable sessions are selectable
+                  const billable = [...evolutions]
+                    .filter(e => ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus))
+                    .sort((a, b) => b.date.localeCompare(a.date));
+                  const statusLabel: Record<string, string> = {
+                    presente: 'Presente', falta_remunerada: 'Falta Rem.',
+                    reposicao: 'Reposição', feriado_remunerado: 'Feriado Rem.',
+                  };
+                  if (billable.length === 0) return (
+                    <p className="text-xs text-muted-foreground text-center py-2">Nenhuma sessão realizada registrada.</p>
+                  );
+                  const allSelected = prSelectedSessions.length === billable.length && billable.length > 0;
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-muted-foreground">
+                          {prSelectedSessions.length > 0
+                            ? `${prSelectedSessions.length} sessão(ões) selecionada(s)`
+                            : `${billable.length} sessão(ões) realizada(s) disponível(is)`}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (allSelected) {
+                              setPrSelectedSessions([]); setPrAmount(''); setPrPeriod(''); setPrSessions('');
+                            } else {
+                              const ids = billable.map(e => e.id);
+                              setPrSelectedSessions(ids);
+                              const unit = parseFloat(prUnitValue);
+                              if (!isNaN(unit) && unit > 0) setPrAmount((ids.length * unit).toFixed(2));
+                              setPrSessions(String(ids.length));
+                              const sorted = [...billable].sort((a, b) => a.date.localeCompare(b.date));
+                              const first = format(new Date(sorted[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+                              const last = format(new Date(sorted[sorted.length - 1].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+                              setPrPeriod(first === last ? first : `${first} a ${last}`);
+                            }
+                          }}
+                          className="text-xs text-primary underline underline-offset-2"
+                        >
+                          {allSelected ? 'Desmarcar todas' : 'Selecionar todas'}
+                        </button>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                        {billable.map(evo => {
+                          const checked = prSelectedSessions.includes(evo.id);
+                          return (
+                            <label key={evo.id}
+                              className={cn('flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors text-xs border',
+                                checked ? 'bg-primary/10 border-primary/30' : 'border-transparent hover:bg-muted/60')}>
+                              <input type="checkbox" checked={checked} className="accent-primary"
+                                onChange={e => {
+                                  const newSelected = e.target.checked
+                                    ? [...prSelectedSessions, evo.id]
+                                    : prSelectedSessions.filter(id => id !== evo.id);
+                                  setPrSelectedSessions(newSelected);
+                                  const unit = parseFloat(prUnitValue);
+                                  if (!isNaN(unit) && unit > 0) setPrAmount((newSelected.length * unit).toFixed(2));
+                                  setPrSessions(String(newSelected.length));
+                                  if (newSelected.length > 0) {
+                                    const sel = evolutions.filter(ev => newSelected.includes(ev.id));
+                                    const s = [...sel].sort((a, b) => a.date.localeCompare(b.date));
+                                    const first = format(new Date(s[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+                                    const last = format(new Date(s[s.length-1].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+                                    setPrPeriod(first === last ? first : `${first} a ${last}`);
+                                  } else { setPrPeriod(''); }
+                                }}
+                              />
+                              <span className="flex-1 font-medium">{format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                              <span className="text-success text-xs">{statusLabel[evo.attendanceStatus] || evo.attendanceStatus}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block text-muted-foreground">Valor por Sessão (R$)</Label>
+                        <Input type="number" min="0" step="0.01" value={prUnitValue} placeholder="0,00" className="h-8 text-xs"
+                          onChange={e => {
+                            const u = e.target.value; setPrUnitValue(u);
+                            const unit = parseFloat(u);
+                            if (!isNaN(unit) && unit > 0 && prSelectedSessions.length > 0)
+                              setPrAmount((prSelectedSessions.length * unit).toFixed(2));
+                          }} />
+                      </div>
+                    </>
+                  );
+                })() : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs mb-1 block text-muted-foreground">Nº de Sessões</Label>
+                      <Input type="number" min="1" step="1" value={prSessions} placeholder="Ex: 4" className="h-9 text-xs"
+                        onChange={e => { const s = e.target.value; setPrSessions(s); const sessions = parseFloat(s); const unit = parseFloat(prUnitValue); if (!isNaN(sessions) && !isNaN(unit) && sessions > 0 && unit > 0) setPrAmount((sessions * unit).toFixed(2)); }} />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block text-muted-foreground">Valor por Sessão (R$)</Label>
+                      <Input type="number" min="0" step="0.01" value={prUnitValue} placeholder="0,00" className="h-9 text-xs"
+                        onChange={e => { const u = e.target.value; setPrUnitValue(u); const sessions = parseFloat(prSessions); const unit = parseFloat(u); if (!isNaN(sessions) && !isNaN(unit) && sessions > 0 && unit > 0) setPrAmount((sessions * unit).toFixed(2)); }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs mb-1 block">Valor Total (R$)</Label>
+                <Input
+                  type="number" step="0.01" min="0"
+                  value={prAmount}
+                  onChange={e => { setPrAmount(e.target.value); setPrSessions(''); }}
+                  placeholder="0,00"
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={prPaymentDate}
+                  onChange={e => setPrPaymentDate(e.target.value)}
+                  className="h-9 text-xs"
 
             {/* Sessions selector / calculator */}
             <div className="border border-border rounded-lg overflow-hidden">
