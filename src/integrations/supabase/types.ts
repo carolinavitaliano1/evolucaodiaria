@@ -772,6 +772,7 @@ export type Database = {
           clinic_id: string
           clinical_area: string | null
           contract_start_date: string | null
+          cpf: string | null
           created_at: string
           diagnosis: string | null
           id: string
@@ -784,6 +785,7 @@ export type Database = {
           payment_value: number | null
           phone: string | null
           professionals: string | null
+          responsible_cpf: string | null
           responsible_email: string | null
           responsible_name: string | null
           schedule_by_day: Json | null
@@ -798,6 +800,7 @@ export type Database = {
           clinic_id: string
           clinical_area?: string | null
           contract_start_date?: string | null
+          cpf?: string | null
           created_at?: string
           diagnosis?: string | null
           id?: string
@@ -810,6 +813,7 @@ export type Database = {
           payment_value?: number | null
           phone?: string | null
           professionals?: string | null
+          responsible_cpf?: string | null
           responsible_email?: string | null
           responsible_name?: string | null
           schedule_by_day?: Json | null
@@ -824,6 +828,7 @@ export type Database = {
           clinic_id?: string
           clinical_area?: string | null
           contract_start_date?: string | null
+          cpf?: string | null
           created_at?: string
           diagnosis?: string | null
           id?: string
@@ -836,6 +841,7 @@ export type Database = {
           payment_value?: number | null
           phone?: string | null
           professionals?: string | null
+          responsible_cpf?: string | null
           responsible_email?: string | null
           responsible_name?: string | null
           schedule_by_day?: Json | null
