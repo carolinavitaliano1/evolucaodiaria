@@ -42,9 +42,15 @@ interface ClinicPaymentRecord {
 
 export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { clinics, patients, evolutions, updateClinic } = useApp();
+  const { user } = useAuth();
   const { isOrg } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
+
+  // Contratante payment record for selected month
+  const [paymentRecord, setPaymentRecord] = useState<ClinicPaymentRecord | null>(null);
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentDateOpen, setPaymentDateOpen] = useState(false);
 
   const clinic = clinics.find(c => c.id === clinicId);
   const [discountPercent, setDiscountPercent] = useState(clinic?.discountPercentage || 0);
@@ -58,7 +64,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   useEffect(() => {
     supabase
       .from('private_appointments')
-      .select('id, price, status, paid, date, time, client_name, services(name)')
+      .select('id, price, status, paid, payment_date, date, time, client_name, services(name)')
       .eq('clinic_id', clinicId)
       .order('date', { ascending: false })
       .then(({ data }) => {
@@ -77,6 +83,69 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         }
       });
   }, [clinicId]);
+
+  // Load payment record for contratante clinic selected month
+  useEffect(() => {
+    if (!clinic || clinic.type !== 'terceirizada' || !user) return;
+    const m = selectedDate.getMonth() + 1;
+    const y = selectedDate.getFullYear();
+    supabase
+      .from('clinic_payment_records' as any)
+      .select('*')
+      .eq('clinic_id', clinicId)
+      .eq('month', m)
+      .eq('year', y)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setPaymentRecord({
+            id: (data as any).id,
+            month: (data as any).month,
+            year: (data as any).year,
+            amount: (data as any).amount,
+            paid: (data as any).paid,
+            payment_date: (data as any).payment_date,
+            notes: (data as any).notes,
+          });
+        } else {
+          setPaymentRecord(null);
+        }
+      });
+  }, [clinic?.type, clinicId, selectedDate, user]);
+
+  const savePaymentRecord = async (updates: Partial<ClinicPaymentRecord>) => {
+    if (!user) return;
+    setSavingPayment(true);
+    const m = selectedDate.getMonth() + 1;
+    const y = selectedDate.getFullYear();
+    const base = paymentRecord ?? { month: m, year: y, amount: totalPatientRevenue, paid: false, payment_date: null, notes: null };
+    const merged = { ...base, ...updates };
+    try {
+      if (paymentRecord?.id) {
+        await supabase.from('clinic_payment_records' as any).update({
+          paid: merged.paid,
+          payment_date: merged.payment_date,
+          amount: merged.amount,
+          notes: merged.notes,
+        }).eq('id', paymentRecord.id);
+      } else {
+        const { data } = await supabase.from('clinic_payment_records' as any).insert({
+          user_id: user.id,
+          clinic_id: clinicId,
+          month: m,
+          year: y,
+          amount: merged.amount,
+          paid: merged.paid,
+          payment_date: merged.payment_date,
+          notes: merged.notes,
+        }).select().maybeSingle();
+        if (data) merged.id = (data as any).id;
+      }
+      setPaymentRecord(merged as ClinicPaymentRecord);
+    } finally {
+      setSavingPayment(false);
+    }
+  };
 
   const saveDiscount = useCallback((value: number) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
