@@ -193,6 +193,11 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
       }
 
       setPending(pendingList);
+
+      // Notify parent of today's pending count for badge
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const todayCount = pendingList.filter(p => p.date === todayStr).length;
+      onTodayPendingCount?.(todayCount);
     } catch (err) {
       console.error('ComplianceDashboard error:', err);
       toast.error('Erro ao carregar pendências');
