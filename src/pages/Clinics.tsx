@@ -675,7 +675,7 @@ export default function Clinics() {
                         <div className="flex items-center gap-2 mb-0.5">
                           <h3 className="font-semibold text-foreground truncate">{clinic.name}</h3>
                           <Badge variant="outline" className={cn("text-xs shrink-0", isPropria ? "border-primary/50 text-primary" : "border-muted-foreground/40 text-muted-foreground")}>
-                            {isPropria ? 'Própria' : 'Contratante'}
+                            {isPropria ? 'Consultório' : 'Contratante'}
                           </Badge>
                           {clinic.isArchived && <Badge variant="secondary" className="text-xs shrink-0">Arquivada</Badge>}
                         </div>
