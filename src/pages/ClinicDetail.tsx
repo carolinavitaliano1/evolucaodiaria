@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toLocalDateString } from '@/lib/utils';
 import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import jsPDF from 'jspdf';
 import { ServiceDialog } from '@/components/services/ServiceDialog';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -370,6 +372,137 @@ export default function ClinicDetail() {
       totalRecebido: thisMonth.filter(a => a.status === 'concluído' && a.paid).reduce((s, a) => s + a.price, 0),
     };
   }, [clinicServices]);
+
+  // Chart data: last 6 months agendado vs concluído
+  const servicesChartData = useMemo(() => {
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const label = format(d, 'MMM/yy', { locale: ptBR });
+      const monthSvcs = clinicServices.filter(a => {
+        const ad = new Date(a.date + 'T00:00:00');
+        return ad.getMonth() === m && ad.getFullYear() === y;
+      });
+      months.push({
+        label,
+        Agendado: Number(monthSvcs.filter(a => a.status === 'agendado').reduce((s, a) => s + a.price, 0).toFixed(2)),
+        Concluído: Number(monthSvcs.filter(a => a.status === 'concluído').reduce((s, a) => s + a.price, 0).toFixed(2)),
+      });
+    }
+    return months;
+  }, [clinicServices]);
+
+  const [isExportingServicesPDF, setIsExportingServicesPDF] = useState(false);
+
+  const handleExportServicesPDF = async () => {
+    setIsExportingServicesPDF(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      let y = 20;
+
+      const periodLabel = servicesPeriodFilter === 'month'
+        ? format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })
+        : 'Todos os períodos';
+
+      doc.setFontSize(18);
+      doc.setTextColor(51, 51, 51);
+      doc.text('Relatório de Serviços', margin, y); y += 8;
+      doc.setFontSize(11);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${clinic?.name ?? ''} — ${periodLabel}`, margin, y); y += 5;
+      if (servicesStatusFilter !== 'all') {
+        doc.text(`Filtro: ${servicesStatusFilter}`, margin, y); y += 5;
+      }
+      y += 6;
+
+      // Summary
+      doc.setDrawColor(180, 180, 180);
+      doc.line(margin, y, pageWidth - margin, y); y += 6;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(51, 51, 51);
+      doc.text('RESUMO DO MÊS ATUAL', margin, y); y += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Agendado: R$ ${servicesMonthSummary.totalAgendado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 5;
+      doc.text(`Concluído: R$ ${servicesMonthSummary.totalConcluido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 5;
+      doc.text(`Recebido: R$ ${servicesMonthSummary.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 8;
+
+      doc.setDrawColor(180, 180, 180);
+      doc.line(margin, y, pageWidth - margin, y); y += 8;
+
+      // Services list
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(51, 51, 51);
+      doc.text('SERVIÇOS', margin, y); y += 8;
+
+      // Table header
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      const c1 = margin, c2 = margin + 28, c3 = margin + 80, c4 = margin + 115, c5 = pageWidth - margin - 20;
+      doc.text('Data', c1, y);
+      doc.text('Cliente', c2, y);
+      doc.text('Status', c3, y);
+      doc.text('Pago', c4, y);
+      doc.text('Valor', c5, y);
+      y += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, y, pageWidth - margin, y); y += 5;
+
+      doc.setFont('helvetica', 'normal');
+      let totalListed = 0;
+      filteredClinicServices.forEach(apt => {
+        if (y > 275) { doc.addPage(); y = 20; }
+        const dateStr = format(new Date(apt.date + 'T00:00:00'), 'dd/MM/yyyy');
+        doc.setTextColor(51, 51, 51);
+        doc.text(dateStr, c1, y);
+        doc.text(apt.client_name.substring(0, 24), c2, y);
+
+        if (apt.status === 'concluído') doc.setTextColor(34, 139, 34);
+        else if (apt.status === 'cancelado') doc.setTextColor(220, 53, 69);
+        else doc.setTextColor(59, 130, 246);
+        doc.text(apt.status, c3, y);
+
+        doc.setTextColor(80, 80, 80);
+        doc.text(apt.paid ? 'Sim' : 'Não', c4, y);
+        doc.text(`R$ ${apt.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, c5, y);
+        if (apt.status !== 'cancelado') totalListed += apt.price;
+        y += 6;
+      });
+
+      y += 3;
+      doc.setDrawColor(180, 180, 180);
+      doc.line(margin, y, pageWidth - margin, y); y += 6;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(51, 51, 51);
+      doc.text(`Total listado: R$ ${totalListed.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      doc.text(`${filteredClinicServices.length} serviço(s)`, pageWidth - margin - 30, y);
+
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`, pageWidth / 2, 290, { align: 'center' });
+      }
+
+      doc.save(`servicos-${clinic?.name?.replace(/\s+/g, '-').toLowerCase() ?? 'clinica'}-${format(new Date(), 'yyyy-MM')}.pdf`);
+      toast.success('PDF exportado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao exportar PDF');
+    } finally {
+      setIsExportingServicesPDF(false);
+    }
+  };
 
   if (!clinic) {
     return (
@@ -1691,16 +1824,25 @@ export default function ClinicDetail() {
         {isPropria && (
           <TabsContent value="services" className="space-y-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-cyan-500" />
+                <Briefcase className="w-5 h-5 text-primary" />
                 Serviços
               </h2>
-              <Button size="sm" className="gap-2"
-                onClick={() => { loadClinicServices(); setServiceDialogOpen(true); }}
-                disabled={isArchived}>
-                <Plus className="w-4 h-4" /> Novo Serviço
-              </Button>
+              <div className="flex items-center gap-2">
+                {clinicServices.length > 0 && (
+                  <Button size="sm" variant="outline" className="gap-2 text-xs"
+                    onClick={handleExportServicesPDF} disabled={isExportingServicesPDF}>
+                    {isExportingServicesPDF ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                    <span className="hidden sm:inline">Exportar PDF</span>
+                  </Button>
+                )}
+                <Button size="sm" className="gap-2"
+                  onClick={() => { loadClinicServices(); setServiceDialogOpen(true); }}
+                  disabled={isArchived}>
+                  <Plus className="w-4 h-4" /> Novo Serviço
+                </Button>
+              </div>
             </div>
 
             {/* Financial summary cards — month */}
@@ -1725,9 +1867,28 @@ export default function ClinicDetail() {
               </div>
             </div>
 
+            {/* Bar chart — last 6 months */}
+            {clinicServices.length > 0 && (
+              <div className="bg-card rounded-xl border border-border p-4">
+                <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Evolução dos últimos 6 meses (R$)</p>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={servicesChartData} barCategoryGap="30%" barGap={4}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v}`} width={55} />
+                    <Tooltip
+                      formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
+                      contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="Agendado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Concluído" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
-              {/* Period */}
               <div className="flex rounded-lg border border-border overflow-hidden text-xs">
                 {([['month', 'Mês atual'], ['all', 'Todos']] as const).map(([val, label]) => (
                   <button key={val} onClick={() => setServicesPeriodFilter(val)}
@@ -1737,7 +1898,6 @@ export default function ClinicDetail() {
                   </button>
                 ))}
               </div>
-              {/* Status */}
               <div className="flex rounded-lg border border-border overflow-hidden text-xs">
                 {([['all', 'Todos'], ['agendado', 'Agendado'], ['concluído', 'Concluído'], ['cancelado', 'Cancelado']] as const).map(([val, label]) => (
                   <button key={val} onClick={() => setServicesStatusFilter(val)}
