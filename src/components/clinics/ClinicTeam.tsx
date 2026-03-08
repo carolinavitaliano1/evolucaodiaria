@@ -883,22 +883,53 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                 </DialogTitle>
               </DialogHeader>
 
-              <ScrollArea className="flex-1 overflow-y-auto pr-1">
+               <ScrollArea className="flex-1 overflow-y-auto pr-1">
                 <div className="space-y-5 pt-1 pb-2">
-                  {/* Role + Label + Status */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Função base</Label>
-                      <Select value={manageMember.role} onValueChange={(v: any) => handleChangeRole(manageMember.id, v)}>
-                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="professional">Profissional</SelectItem>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  {/* Preset role quick-select */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tipo de Cargo</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PRESET_ROLES.map(preset => {
+                        const Icon = getPresetIcon(preset.icon);
+                        const isActive = editRoleLabel === preset.label && manageMember.role === preset.baseRole;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => {
+                              handleChangeRole(manageMember.id, preset.baseRole);
+                              setEditRoleLabel(preset.label);
+                              setEditPermissions([...preset.permissions]);
+                            }}
+                            className={cn(
+                              'text-left p-2.5 rounded-lg border-2 transition-all flex items-center gap-2.5',
+                              isActive
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/40 bg-card'
+                            )}
+                          >
+                            <div className={cn(
+                              'w-7 h-7 rounded-md flex items-center justify-center shrink-0',
+                              isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                            )}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className={cn('text-xs font-semibold truncate', isActive ? 'text-primary' : 'text-foreground')}>
+                                {preset.label}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground truncate">{preset.description.split('.')[0]}.</p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div className="space-y-1.5 col-span-2">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Especialidade / Título</Label>
+                  </div>
+
+                  {/* Label + Status */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5 col-span-3">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Especialidade / Título personalizado</Label>
                       <Input
                         placeholder="Ex: Fonoaudióloga, Secretária..."
                         value={editRoleLabel}
