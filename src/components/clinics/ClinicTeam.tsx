@@ -412,11 +412,12 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
 
   async function handleChangeRole(memberId: string, newRole: 'admin' | 'professional') {
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId);
-    if (error) toast.error('Erro ao alterar função');
-    else {
-      toast.success('Função atualizada');
-      // NOTE: caller is responsible for updating editPermissions via preset selection
-      loadTeam();
+    if (error) {
+      toast.error('Erro ao alterar função');
+    } else {
+      // Update local state immediately — do NOT reload team here to avoid
+      // wiping editPermissions that the user just selected via preset
+      setMembers(prev => prev.map(m => m.id === memberId ? { ...m, role: newRole } : m));
       setManageMember(prev => prev ? { ...prev, role: newRole } : null);
     }
   }
