@@ -178,7 +178,6 @@ export default function Profile() {
             phone,
             professional_id: professionalId,
             cpf: cpf || null,
-            cbo: cbo || null,
             avatar_url: avatarUrl
           })
           .eq('id', profile.id);
