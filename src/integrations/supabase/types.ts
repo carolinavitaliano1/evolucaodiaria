@@ -1106,6 +1106,7 @@ export type Database = {
       }
       stamps: {
         Row: {
+          cbo: string | null
           clinical_area: string
           created_at: string
           id: string
@@ -1117,6 +1118,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cbo?: string | null
           clinical_area: string
           created_at?: string
           id?: string
@@ -1128,6 +1130,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cbo?: string | null
           clinical_area?: string
           created_at?: string
           id?: string
