@@ -29,6 +29,10 @@ export const ALL_PERMISSIONS = [
   'evolutions.create',
   'evolutions.edit',
   'evolutions.delete',
+  'evolutions.status_only',   // ver se evolução foi preenchida (sem ler conteúdo)
+  // Ferramentas de IA
+  'ai_reports.use',           // Gerador de Relatórios via IA
+  'ai_evolutions.use',        // Resumo/Melhoria de Evoluções com IA
   // Financeiro
   'financial.view',
   'financial.edit',
