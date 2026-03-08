@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface Profile {
+  interface Profile {
   id: string;
   user_id: string;
   name: string | null;
@@ -18,7 +18,6 @@ interface Profile {
   phone: string | null;
   professional_id: string | null;
   cpf: string | null;
-  cbo: string | null;
   avatar_url: string | null;
 }
 
@@ -27,6 +26,7 @@ interface StampItem {
   user_id: string;
   name: string;
   clinical_area: string;
+  cbo: string | null;
   stamp_image: string | null;
   signature_image: string | null;
   is_default: boolean;
@@ -50,12 +50,12 @@ export default function Profile() {
   const [phone, setPhone] = useState('');
   const [professionalId, setProfessionalId] = useState('');
   const [cpf, setCpf] = useState('');
-  const [cbo, setCbo] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Stamp form states
   const [stampName, setStampName] = useState('');
   const [stampArea, setStampArea] = useState('');
+  const [stampCbo, setStampCbo] = useState('');
   const [stampImage, setStampImage] = useState<string | null>(null);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState(false);
@@ -102,7 +102,7 @@ export default function Profile() {
 
       const { data: profileData } = await (supabase
         .from('profiles') as any)
-        .select('id, user_id, name, email, phone, professional_id, cpf, cbo, avatar_url')
+        .select('id, user_id, name, email, phone, professional_id, cpf, avatar_url')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -113,7 +113,6 @@ export default function Profile() {
         setPhone(profileData.phone || '');
         setProfessionalId(profileData.professional_id || '');
         setCpf(profileData.cpf || '');
-        setCbo(profileData.cbo || '');
         setAvatarUrl(profileData.avatar_url);
       }
 
@@ -179,7 +178,6 @@ export default function Profile() {
             phone,
             professional_id: professionalId,
             cpf: cpf || null,
-            cbo: cbo || null,
             avatar_url: avatarUrl
           })
           .eq('id', profile.id);
@@ -195,7 +193,6 @@ export default function Profile() {
             phone,
             professional_id: professionalId,
             cpf: cpf || null,
-            cbo: cbo || null,
             avatar_url: avatarUrl
           });
 
@@ -217,6 +214,7 @@ export default function Profile() {
       setEditingStamp(stamp);
       setStampName(stamp.name);
       setStampArea(stamp.clinical_area);
+      setStampCbo(stamp.cbo || '');
       setStampImage(stamp.stamp_image);
       setSignatureImage(stamp.signature_image);
       setIsDefault(stamp.is_default);
@@ -224,6 +222,7 @@ export default function Profile() {
       setEditingStamp(null);
       setStampName('');
       setStampArea('');
+      setStampCbo('');
       setStampImage(null);
       setSignatureImage(null);
       setIsDefault(false);
@@ -256,6 +255,7 @@ export default function Profile() {
           .update({
             name: stampName,
             clinical_area: stampArea,
+            cbo: stampCbo || null,
             stamp_image: stampImage,
             signature_image: signatureImage,
             is_default: isDefault
@@ -270,6 +270,7 @@ export default function Profile() {
             user_id: userId,
             name: stampName,
             clinical_area: stampArea,
+            cbo: stampCbo || null,
             stamp_image: stampImage,
             signature_image: signatureImage,
             is_default: isDefault
@@ -550,11 +551,11 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Fiscal fields section */}
+          {/* Fiscal fields section — apenas CPF; CBO fica no carimbo */}
           <div className="border-t border-border pt-4 space-y-3">
             <div>
               <p className="text-sm font-semibold text-foreground mb-0.5">🧾 Dados para Nota Fiscal / Recibo</p>
-              <p className="text-xs text-muted-foreground">Esses dados são usados automaticamente ao gerar extratos fiscais.</p>
+              <p className="text-xs text-muted-foreground">CPF usado automaticamente nos extratos fiscais. O CBO é definido em cada carimbo.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -564,15 +565,6 @@ export default function Profile() {
                   value={cpf}
                   onChange={(e) => setCpf(e.target.value)}
                   placeholder="000.000.000-00"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cbo">CBO <span className="text-muted-foreground font-normal text-xs">(Classificação Brasileira de Ocupações)</span></Label>
-                <Input
-                  id="cbo"
-                  value={cbo}
-                  onChange={(e) => setCbo(e.target.value)}
-                  placeholder="Ex: 2515-35 (Psicólogo Clínico)"
                 />
               </div>
             </div>
@@ -727,6 +719,9 @@ export default function Profile() {
                   )}
                   <h3 className="font-semibold">{stamp.name}</h3>
                   <p className="text-sm text-muted-foreground">{stamp.clinical_area}</p>
+                  {stamp.cbo && (
+                    <p className="text-xs text-muted-foreground mt-0.5">CBO: {stamp.cbo}</p>
+                  )}
                   
                   {stamp.stamp_image && (
                     <div className="mt-3 p-2 bg-muted rounded">
@@ -800,6 +795,16 @@ export default function Profile() {
                 value={stampArea}
                 onChange={(e) => setStampArea(e.target.value)}
                 placeholder="Ex: Psicologia, Fonoaudiologia"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stampCbo">CBO <span className="text-muted-foreground font-normal text-xs">(Classificação Brasileira de Ocupações)</span></Label>
+              <Input
+                id="stampCbo"
+                value={stampCbo}
+                onChange={(e) => setStampCbo(e.target.value)}
+                placeholder="Ex: 2515-35 (Psicólogo Clínico)"
               />
             </div>
 

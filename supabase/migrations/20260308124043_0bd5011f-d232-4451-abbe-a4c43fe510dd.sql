@@ -1,0 +1,1 @@
+ALTER TABLE public.stamps ADD COLUMN IF NOT EXISTS cbo text;

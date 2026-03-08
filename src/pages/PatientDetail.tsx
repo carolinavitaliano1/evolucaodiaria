@@ -171,7 +171,7 @@ export default function PatientDetail() {
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [archivePatientOpen, setArchivePatientOpen] = useState(false);
-  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
+  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
   const [isImprovingText, setIsImprovingText] = useState(false);
   const [clinicTemplates, setClinicTemplates] = useState<EvolutionTemplate[]>([]);
@@ -635,7 +635,7 @@ export default function PatientDetail() {
       therapistName: fiscalStamp?.name || therapistProfile?.name || undefined,
       professionalId: therapistProfile?.professional_id || undefined,
       therapistCpf: therapistProfile?.cpf || undefined,
-      cbo: therapistProfile?.cbo || undefined,
+      cbo: fiscalStamp?.cbo || undefined,
       totalPaid: fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : undefined,
       paymentStatus: fiscalPaymentStatus,
       paymentDate: fiscalPaymentDate || null,
@@ -768,7 +768,7 @@ export default function PatientDetail() {
         ${(fiscalStamp?.name || therapistProfile?.name) ? `<p><strong>Nome:</strong> ${fiscalStamp?.name || therapistProfile?.name}</p>` : ''}
         ${therapistProfile?.professional_id ? `<p><strong>Registro:</strong> ${therapistProfile.professional_id}</p>` : ''}
         ${therapistProfile?.cpf ? `<p><strong>CPF:</strong> ${formatCpf(therapistProfile.cpf)}</p>` : ''}
-        ${therapistProfile?.cbo ? `<p><strong>CBO:</strong> ${therapistProfile.cbo}</p>` : ''}
+        ${(fiscalStamp?.cbo) ? `<p><strong>CBO:</strong> ${fiscalStamp.cbo}</p>` : ''}
         ${fiscalStamp?.clinical_area ? `<p><strong>Área:</strong> ${fiscalStamp.clinical_area}</p>` : ''}
         ${clinic?.name ? `<p><strong>Clínica:</strong> ${clinic.name}</p>` : ''}
         ${clinic?.cnpj ? `<p><strong>CNPJ:</strong> ${formatCpf(clinic.cnpj)}</p>` : ''}
