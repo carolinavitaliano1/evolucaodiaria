@@ -61,6 +61,7 @@ interface StampData {
   id: string;
   name: string;
   clinical_area: string;
+  cbo?: string | null;
   stamp_image: string | null;
   signature_image: string | null;
 }
