@@ -935,6 +935,8 @@ export default function PatientDetail() {
     const now = new Date();
     const monthName = format(now, 'MMMM/yyyy', { locale: ptBR });
     setPrPeriod(monthName);
+    // Pre-fill location from clinic address
+    setPrLocation(clinic?.address || '');
     // Try to fetch last payment record for amount/date
     if (user && patient.id) {
       const month = now.getMonth() + 1;
