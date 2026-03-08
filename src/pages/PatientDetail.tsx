@@ -81,7 +81,6 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
   const handleDownloadPdf = (report: { title: string; content: string }) => {
     generateReportPdf({ title: report.title, content: report.content, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription });
   };
-  };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('saved_reports').delete().eq('id', id);
