@@ -171,7 +171,7 @@ export default function PatientDetail() {
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [archivePatientOpen, setArchivePatientOpen] = useState(false);
-  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
+  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string>('');
   const [isImprovingText, setIsImprovingText] = useState(false);
   const [clinicTemplates, setClinicTemplates] = useState<EvolutionTemplate[]>([]);
