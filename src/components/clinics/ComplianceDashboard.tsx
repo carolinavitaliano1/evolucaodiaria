@@ -9,9 +9,9 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertTriangle, CalendarIcon, Search, RefreshCw, MessageCircle,
-  User, ChevronDown, ClipboardCheck, CheckCircle2, Filter,
+  User, ClipboardCheck, CheckCircle2, Clock, BellRing,
 } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay, parseISO, isWithinInterval } from 'date-fns';
+import { format, subDays, parseISO, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
