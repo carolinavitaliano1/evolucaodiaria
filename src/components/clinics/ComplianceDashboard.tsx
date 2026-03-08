@@ -219,56 +219,98 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
     });
   }, [pending, search, filterTherapist]);
 
+  async function createInternalNotification(item: PendingEvolution) {
+    if (!user) return;
+    const formattedDate = format(parseISO(item.date), "dd/MM/yyyy", { locale: ptBR });
+    await supabase.from('internal_notifications').insert({
+      recipient_user_id: item.therapistUserId,
+      created_by_user_id: user.id,
+      type: 'compliance_alert',
+      title: `⚠️ Evolução pendente — ${item.patientName}`,
+      message: `A evolução do paciente ${item.patientName} do dia ${formattedDate} ainda não foi registrada. Por favor, regularize assim que possível.`,
+      patient_name: item.patientName,
+      date_ref: item.date,
+    });
+  }
+
   function buildMessage(item: PendingEvolution) {
     const formattedDate = format(parseISO(item.date), "dd 'de' MMMM", { locale: ptBR });
     return `Olá ${item.therapistName}, notamos que a evolução do paciente *${item.patientName}* do dia *${formattedDate}* ainda não foi finalizada. Por favor, regularize assim que possível. 🙏`;
   }
 
-  function sendWhatsAppNotification(item: PendingEvolution) {
-    if (!item.therapistPhone) {
-      toast.error('Terapeuta não possui telefone cadastrado');
-      return;
-    }
-    openWhatsApp(item.therapistPhone, buildMessage(item));
-    toast.success('WhatsApp aberto!');
+  async function sendWhatsAppNotification(item: PendingEvolution) {
+    const hasPhone = !!item.therapistPhone;
+    if (hasPhone) openWhatsApp(item.therapistPhone!, buildMessage(item));
+    await createInternalNotification(item);
+    toast.success(hasPhone ? 'Notificado via WhatsApp + alerta interno!' : 'Alerta interno enviado!');
   }
 
   async function notifyAll() {
-    const withPhone = filtered.filter(i => i.therapistPhone);
-    if (!withPhone.length) {
-      toast.error('Nenhum terapeuta com telefone cadastrado nos pendentes filtrados');
-      return;
-    }
     setNotifyingAll(true);
-    // Group by therapist to avoid duplicate tabs — send one message per therapist
-    // listing all their pending patients in one go
     const byTherapist: Record<string, PendingEvolution[]> = {};
-    withPhone.forEach(i => {
+    filtered.forEach(i => {
       if (!byTherapist[i.therapistUserId]) byTherapist[i.therapistUserId] = [];
       byTherapist[i.therapistUserId].push(i);
     });
-    let opened = 0;
+    let notified = 0;
     for (const [, items] of Object.entries(byTherapist)) {
-      const phone = items[0].therapistPhone!;
+      for (const item of items) await createInternalNotification(item);
+      const phone = items[0].therapistPhone;
       const name = items[0].therapistName;
-      if (items.length === 1) {
-        openWhatsApp(phone, buildMessage(items[0]));
-      } else {
-        const list = items
-          .map(i => `• *${i.patientName}* (${format(parseISO(i.date), "dd/MM", { locale: ptBR })})`)
-          .join('\n');
-        const msg = `Olá ${name}, identificamos evoluções pendentes para os seguintes pacientes:\n\n${list}\n\nPor favor, regularize assim que possível. 🙏`;
-        openWhatsApp(phone, msg);
+      if (phone) {
+        if (items.length === 1) {
+          openWhatsApp(phone, buildMessage(items[0]));
+        } else {
+          const list = items.map(i => `• *${i.patientName}* (${format(parseISO(i.date), "dd/MM", { locale: ptBR })})`).join('\n');
+          openWhatsApp(phone, `Olá ${name}, identificamos evoluções pendentes:\n\n${list}\n\nPor favor, regularize assim que possível. 🙏`);
+        }
+        await new Promise(r => setTimeout(r, 600));
       }
-      opened++;
-      // Small delay so browsers don't block multiple tabs
-      await new Promise(r => setTimeout(r, 600));
+      notified++;
     }
-    toast.success(`${opened} terapeuta(s) notificado(s)!`);
+    toast.success(`${notified} terapeuta(s) notificado(s) (interno + WhatsApp)!`);
     setNotifyingAll(false);
   }
 
-  const therapistOptions = useMemo(() => {
+  function exportPdf() {
+    const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 20;
+    doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+    doc.text('Relatório de Conformidade — Evoluções Pendentes', pageW / 2, y, { align: 'center' });
+    y += 8; doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, pageW / 2, y, { align: 'center' });
+    y += 5;
+    const periodLabel = PERIOD_OPTIONS.find(o => o.value === periodDays)?.label ?? periodDays;
+    const therapistLabel = filterTherapist === 'all' ? 'Todos' : (members.find(m => m.userId === filterTherapist)?.name ?? filterTherapist);
+    doc.text(`Período: ${periodLabel}  |  Terapeuta: ${therapistLabel}  |  Total: ${filtered.length} pendência(s)`, pageW / 2, y, { align: 'center' });
+    y += 8; doc.setDrawColor(200, 200, 200); doc.line(14, y, pageW - 14, y); y += 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('Paciente', 14, y); doc.text('Terapeuta', 80, y); doc.text('Data', 140, y); doc.text('Status', 170, y);
+    y += 4; doc.line(14, y, pageW - 14, y); y += 5;
+    doc.setFont('helvetica', 'normal');
+    for (const item of filtered) {
+      if (y > 270) { doc.addPage(); y = 20; }
+      const hoursAgo = differenceInHours(new Date(), parseISO(item.date));
+      const statusLabel = hoursAgo >= 72 ? 'CRÍTICO' : hoursAgo >= 24 ? 'PENDENTE' : 'HOJE';
+      doc.setTextColor(0, 0, 0);
+      doc.text(item.patientName.slice(0, 28), 14, y);
+      doc.text(item.therapistName.slice(0, 22), 80, y);
+      doc.text(format(parseISO(item.date), 'dd/MM/yyyy'), 140, y);
+      if (statusLabel === 'CRÍTICO') doc.setTextColor(200, 50, 50);
+      else if (statusLabel === 'PENDENTE') doc.setTextColor(180, 120, 0);
+      else doc.setTextColor(30, 140, 60);
+      doc.text(statusLabel, 170, y);
+      y += 6;
+    }
+    y += 4; doc.setTextColor(0, 0, 0); doc.line(14, y, pageW - 14, y); y += 5;
+    doc.setFontSize(8); doc.setTextColor(120, 120, 120);
+    doc.text('Evolução Diária — Relatório de Conformidade Clínica', pageW / 2, y, { align: 'center' });
+    doc.save(`conformidade_${format(new Date(), 'yyyy-MM-dd_HHmm')}.pdf`);
+    toast.success('PDF exportado!');
+  }
+
+
     const seen = new Set<string>();
     return members.filter(m => {
       if (seen.has(m.userId)) return false;
