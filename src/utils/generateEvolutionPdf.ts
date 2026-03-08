@@ -94,7 +94,7 @@ export interface GenerateAllPatientsPdfOptions {
 
 // ─── ALL PATIENTS DAILY PDF ──────────────────────────────────────────────────
 
-export async function generateAllPatientsPdf({ items, clinic, date, stamps }: GenerateAllPatientsPdfOptions): Promise<void> {
+export async function generateAllPatientsPdf({ items, clinic, date, stamps, professionalId }: GenerateAllPatientsPdfOptions): Promise<void> {
   if (items.length === 0) return;
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
