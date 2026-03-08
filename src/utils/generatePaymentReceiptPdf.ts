@@ -38,8 +38,8 @@ function formatCpf(cpf: string): string {
 export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, returnBlob?: false): Promise<void>;
 export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, returnBlob?: true): Promise<Blob>;
 export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, returnBlob = false): Promise<void | Blob> {
-  const { therapistName, therapistCpf, therapistProfessionalId, therapistCbo, therapistClinicalArea, stamp,
-    payerName, payerCpf, amount, serviceName, period, paymentMethod, paymentDate } = opts;
+  const { therapistName, therapistCpf, therapistAddress, therapistProfessionalId, therapistCbo, therapistClinicalArea, stamp,
+    payerName, payerCpf, location, amount, serviceName, period, paymentMethod, paymentDate } = opts;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
