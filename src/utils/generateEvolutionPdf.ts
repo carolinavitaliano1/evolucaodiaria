@@ -587,11 +587,16 @@ async function renderStamp(
   // Name below stamp — always shown
   pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(60, 60, 60);
   pdf.text(stamp.name, pageWidth - margin - 5, y, { align: 'right' });
-  y += 4;
-  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(120, 120, 120);
+  y += 4.5;
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(100, 100, 100);
   pdf.text(stamp.clinical_area, pageWidth - margin - 5, y, { align: 'right' });
+  y += 4;
+  if (stamp.cbo) {
+    pdf.text(`CBO: ${stamp.cbo}`, pageWidth - margin - 5, y, { align: 'right' });
+    y += 4;
+  }
   pdf.setTextColor(0, 0, 0);
-  y += 6;
+  y += 2;
 
   return y;
 }
