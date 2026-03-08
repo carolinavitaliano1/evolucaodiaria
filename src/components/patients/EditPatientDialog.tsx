@@ -223,6 +223,16 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             </div>
           </div>
 
+          <div>
+            <Label>E-mail</Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="email@exemplo.com"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Área Clínica</Label>
