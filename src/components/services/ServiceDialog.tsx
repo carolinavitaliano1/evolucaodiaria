@@ -716,48 +716,6 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
                 )}
               </div>
             </div>
-
-            {/* Services List */}
-            {loading ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
-            ) : services.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhum serviço cadastrado ainda.</p>
-            ) : (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Serviços cadastrados</h4>
-                {services.map(service => (
-                  <div
-                    key={service.id}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-card"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{service.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {service.duration_minutes}min · R$ {service.price.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7"
-                        onClick={() => editService(service)}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => deleteService(service.id)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </TabsContent>
         </Tabs>
       </DialogContent>
