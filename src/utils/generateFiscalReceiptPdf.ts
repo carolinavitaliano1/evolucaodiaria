@@ -65,7 +65,7 @@ function formatCpf(cpf: string): string {
   return cpf;
 }
 
-const LINE_H = 6.5;      // standard line height (mm) — increased to prevent overlap
+const LINE_H = 5.5;      // standard line height (mm)
 const LABEL_W = 50;      // fixed label column width (mm)
 
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: false): Promise<void>;
@@ -87,19 +87,19 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   let y = margin;
 
   const ensureSpace = (needed: number) => {
-    if (y + needed > 272) { doc.addPage(); y = margin; }
+    if (y + needed > 279) { doc.addPage(); y = margin; }
   };
 
   const drawLine = () => {
     doc.setDrawColor(...borderColor);
     doc.line(margin, y, W - margin, y);
-    y += 7;
+    y += 5;
   };
 
   // Render a label:value row where label is bold left and value is normal, wrapping properly
   const labelValue = (label: string, value: string) => {
-    ensureSpace(8);
-    doc.setFontSize(9);
+    ensureSpace(7);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...darkText);
     doc.text(label, margin, y);
@@ -111,7 +111,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     doc.text(wrapped, margin + LABEL_W, y);
 
     // Advance by however many lines the value takes
-    y += Math.max(1, wrapped.length) * LINE_H + 1;
+    y += Math.max(1, wrapped.length) * LINE_H + 0.5;
   };
 
   // ── CABEÇALHO ────────────────────────────────────────────────────────────
