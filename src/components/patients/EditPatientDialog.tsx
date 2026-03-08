@@ -257,20 +257,33 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Responsável</Label>
-            <div className="grid grid-cols-2 gap-3 mt-2">
-              <div>
-                <Label className="text-xs">Nome</Label>
-                <Input
-                  value={formData.responsibleName}
-                  onChange={(e) => setFormData({ ...formData, responsibleName: e.target.value })}
-                />
+            <p className="text-xs text-muted-foreground mb-2">Preencha se o paciente for menor de 18 anos ou tiver representante legal.</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Nome do Responsável</Label>
+                  <Input
+                    value={formData.responsibleName}
+                    onChange={(e) => setFormData({ ...formData, responsibleName: e.target.value })}
+                    placeholder="Nome completo"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">CPF do Responsável</Label>
+                  <Input
+                    value={formData.responsibleCpf}
+                    onChange={(e) => setFormData({ ...formData, responsibleCpf: e.target.value })}
+                    placeholder="000.000.000-00"
+                  />
+                </div>
               </div>
               <div>
-                <Label className="text-xs">E-mail</Label>
+                <Label className="text-xs">E-mail do Responsável</Label>
                 <Input
                   type="email"
                   value={formData.responsibleEmail}
                   onChange={(e) => setFormData({ ...formData, responsibleEmail: e.target.value })}
+                  placeholder="email@exemplo.com"
                 />
               </div>
             </div>
