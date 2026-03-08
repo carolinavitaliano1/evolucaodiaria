@@ -607,16 +607,21 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
                   <div className="flex items-center gap-2 pl-4 sm:pl-0">
                     <Button
                       size="sm"
-                      variant={item.therapistPhone ? 'default' : 'outline'}
-                      disabled={!item.therapistPhone}
-                      onClick={() => sendWhatsAppNotification(item)}
+                      variant="default"
+                      onClick={() => sendNotification(item)}
                       className={cn(
                         'gap-1.5 text-xs h-7 px-2.5',
-                        item.therapistPhone && 'bg-[#25D366] hover:bg-[#1ebc58] text-white border-[#25D366]'
+                        item.therapistPhone
+                          ? 'bg-[#25D366] hover:bg-[#1ebc58] text-white border-[#25D366]'
+                          : 'bg-primary hover:bg-primary/90'
                       )}
-                      title={!item.therapistPhone ? 'Terapeuta sem telefone cadastrado' : 'Notificar via WhatsApp'}
+                      title={item.therapistPhone ? 'Notificar via WhatsApp + alerta interno' : 'Enviar alerta interno (sem telefone)'}
                     >
-                      <MessageCircle className="w-3.5 h-3.5" />
+                      {item.therapistPhone ? (
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      ) : (
+                        <Bell className="w-3.5 h-3.5" />
+                      )}
                       Notificar
                     </Button>
                   </div>
