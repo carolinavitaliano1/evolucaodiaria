@@ -424,22 +424,132 @@ export default function Financial() {
       }
 
       // ─── Standalone services ──────────────────────────────────────────
-      if (standaloneRevenue > 0) {
+      if (standaloneServiceAppointments.length > 0) {
         sectionTitle('SERVIÇOS PARTICULARES (FORA DE CLÍNICA)');
-        ensureSpace(14);
-        setFill(C.light);
-        setDraw(C.border);
-        doc.setLineWidth(0.2);
-        doc.roundedRect(margin, y, contentW, 12, 2, 2, 'FD');
-        setTxt(C.mid);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.text(`${standaloneServiceAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos`, margin + 5, y + 7.5);
-        setTxt(C.primary);
+
+        // Table header
+        ensureSpace(10);
+        setFill(C.primary);
+        doc.rect(margin, y, contentW, 9, 'F');
+        setTxt(C.white);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.text(`R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 5, y + 7.5, { align: 'right' });
-        y += 16;
+        doc.setFontSize(7);
+        const ts = {
+          cli: margin + 2,
+          srv: margin + 46,
+          pay: margin + 92,
+          sta: margin + 118,
+          dat: margin + 138,
+          val: pageWidth - margin - 2,
+        };
+        doc.text('CLIENTE', ts.cli, y + 5.8);
+        doc.text('SERVIÇO', ts.srv, y + 5.8);
+        doc.text('PAG.', ts.pay, y + 5.8);
+        doc.text('STATUS', ts.sta, y + 5.8);
+        doc.text('CONTRATAÇÃO', ts.dat, y + 5.8);
+        doc.text('VALOR', ts.val, y + 5.8, { align: 'right' });
+        y += 10;
+
+        let svcTotalPaid = 0;
+        let svcTotalPending = 0;
+
+        standaloneServiceAppointments.forEach((apt: any, idx: number) => {
+          ensureSpace(9);
+          setFill(idx % 2 === 0 ? C.white : C.rowAlt);
+          doc.rect(margin, y, contentW, 8, 'F');
+
+          // Cliente
+          setTxt(C.dark);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.text((apt.client_name || '').substring(0, 20), ts.cli, y + 5.2);
+
+          // Serviço
+          setTxt(C.mid);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          const svcName = apt.services?.name || apt.service_name || '—';
+          doc.text(svcName.substring(0, 22), ts.srv, y + 5.2);
+
+          // Status pagamento (Pago / Pendente)
+          if (apt.paid) {
+            setFill(C.greenLight);
+            doc.roundedRect(ts.pay - 1, y + 0.8, 22, 6, 1, 1, 'F');
+            setTxt(C.green);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Pago', ts.pay + 1, y + 5.2);
+            svcTotalPaid += apt.price || 0;
+          } else {
+            setFill(C.orangeLight);
+            doc.roundedRect(ts.pay - 1, y + 0.8, 22, 6, 1, 1, 'F');
+            setTxt(C.orange);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Pendente', ts.pay + 1, y + 5.2);
+            svcTotalPending += apt.price || 0;
+          }
+
+          // Status atendimento (Concluído / Aguardando / etc.)
+          const statusMap: Record<string, { label: string; color: [number,number,number]; bg: [number,number,number] }> = {
+            'concluído':  { label: 'Concluído',  color: C.green,  bg: C.greenLight },
+            'agendado':   { label: 'Aguardando', color: C.accent, bg: C.primaryLight },
+            'cancelado':  { label: 'Cancelado',  color: C.red,    bg: C.redLight },
+          };
+          const sm = statusMap[apt.status] || { label: apt.status || '—', color: C.mid, bg: C.light };
+          setFill(sm.bg);
+          const smW = doc.getTextWidth(sm.label) + 4;
+          doc.roundedRect(ts.sta - 1, y + 0.8, smW, 6, 1, 1, 'F');
+          setTxt(sm.color);
+          doc.setFont('helvetica', 'bold');
+          doc.text(sm.label, ts.sta + 1, y + 5.2);
+
+          // Data contratação
+          setTxt(C.mid);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          const dateStr = apt.date ? format(new Date(apt.date + 'T12:00:00'), 'dd/MM/yyyy') : '—';
+          doc.text(dateStr, ts.dat, y + 5.2);
+
+          // Data finalização (se concluído e tiver payment_date)
+          if (apt.status === 'concluído' && apt.payment_date) {
+            const finDate = format(new Date(apt.payment_date + 'T12:00:00'), 'dd/MM/yyyy');
+            doc.setFontSize(6.5);
+            setTxt(C.muted);
+            doc.text(`Fin: ${finDate}`, ts.dat, y + 7.8);
+          }
+
+          // Valor
+          setTxt(C.dark);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.text(`R$ ${(apt.price || 0).toFixed(2)}`, ts.val, y + 5.2, { align: 'right' });
+
+          setDraw(C.border);
+          doc.setLineWidth(0.1);
+          doc.line(margin, y + 8, pageWidth - margin, y + 8);
+          y += 8;
+        });
+
+        // Totals footer
+        ensureSpace(22);
+        y += 4;
+        const svcFooterH = 9;
+        setFill(C.greenLight);
+        setDraw(C.green);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, y, contentW / 2 - 2, svcFooterH, 1.5, 1.5, 'FD');
+        setTxt(C.green);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('Total Pago:', margin + 4, y + 6);
+        doc.text(`R$ ${svcTotalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentW / 2 - 5, y + 6, { align: 'right' });
+
+        setFill(C.orangeLight);
+        setDraw(C.orange);
+        doc.roundedRect(margin + contentW / 2 + 2, y, contentW / 2 - 2, svcFooterH, 1.5, 1.5, 'FD');
+        setTxt(C.orange);
+        doc.text('Total Pendente:', margin + contentW / 2 + 6, y + 6);
+        doc.text(`R$ ${svcTotalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 6, { align: 'right' });
+        y += svcFooterH + 6;
       }
 
       // ─── Patient payments table ────────────────────────────────────────
