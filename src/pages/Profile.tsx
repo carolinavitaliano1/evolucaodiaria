@@ -112,6 +112,8 @@ export default function Profile() {
         setEmail(profileData.email || '');
         setPhone(profileData.phone || '');
         setProfessionalId(profileData.professional_id || '');
+        setCpf(profileData.cpf || '');
+        setCbo(profileData.cbo || '');
         setAvatarUrl(profileData.avatar_url);
       }
 
