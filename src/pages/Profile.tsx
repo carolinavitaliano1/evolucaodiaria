@@ -270,6 +270,7 @@ export default function Profile() {
             user_id: userId,
             name: stampName,
             clinical_area: stampArea,
+            cbo: stampCbo || null,
             stamp_image: stampImage,
             signature_image: signatureImage,
             is_default: isDefault
