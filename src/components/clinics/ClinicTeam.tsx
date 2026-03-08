@@ -412,11 +412,12 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
 
   async function handleChangeRole(memberId: string, newRole: 'admin' | 'professional') {
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId);
-    if (error) toast.error('Erro ao alterar função');
-    else {
-      toast.success('Função atualizada');
-      // NOTE: caller is responsible for updating editPermissions via preset selection
-      loadTeam();
+    if (error) {
+      toast.error('Erro ao alterar função');
+    } else {
+      // Update local state immediately — do NOT reload team here to avoid
+      // wiping editPermissions that the user just selected via preset
+      setMembers(prev => prev.map(m => m.id === memberId ? { ...m, role: newRole } : m));
       setManageMember(prev => prev ? { ...prev, role: newRole } : null);
     }
   }
@@ -428,10 +429,12 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       const permissionsMap = Object.fromEntries(
         ALL_PERMISSIONS.map(p => [p, editPermissions.includes(p)])
       );
-      await supabase.from('organization_members').update({
+      const { error: updateError } = await supabase.from('organization_members').update({
         permissions: permissionsMap,
         role_label: editRoleLabel || null,
+        role: manageMember.role, // persist the role selected via preset cards
       }).eq('id', manageMember.id);
+      if (updateError) throw updateError;
 
       await supabase.from('therapist_patient_assignments').delete().eq('member_id', manageMember.id);
       const toInsert = Object.entries(editPatients).map(([patient_id, schedule_time]) => ({
@@ -445,9 +448,12 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
         if (error) throw error;
       }
       toast.success('Permissões e pacientes atualizados');
-      loadTeam();
+      await loadTeam(); // refresh grid after save
       setManageMember(null);
-    } catch { toast.error('Erro ao salvar'); }
+    } catch (err) {
+      console.error('saveAssignments error', err);
+      toast.error('Erro ao salvar');
+    }
     finally { setSavingAssign(false); }
   }
 
@@ -983,7 +989,11 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                     <div className="grid grid-cols-2 gap-2">
                       {PRESET_ROLES.map(preset => {
                         const Icon = getPresetIcon(preset.icon);
-                        const isActive = editRoleLabel === preset.label && manageMember.role === preset.baseRole;
+                        // Active if role matches AND all preset permissions are in editPermissions
+                        const isActive =
+                          manageMember.role === preset.baseRole &&
+                          preset.permissions.length === editPermissions.length &&
+                          preset.permissions.every(p => editPermissions.includes(p));
                         return (
                           <button
                             key={preset.id}
