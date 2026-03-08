@@ -17,6 +17,8 @@ interface Profile {
   email: string | null;
   phone: string | null;
   professional_id: string | null;
+  cpf: string | null;
+  cbo: string | null;
   avatar_url: string | null;
 }
 
@@ -47,6 +49,8 @@ export default function Profile() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [professionalId, setProfessionalId] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [cbo, setCbo] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Stamp form states
@@ -108,6 +112,8 @@ export default function Profile() {
         setEmail(profileData.email || '');
         setPhone(profileData.phone || '');
         setProfessionalId(profileData.professional_id || '');
+        setCpf(profileData.cpf || '');
+        setCbo(profileData.cbo || '');
         setAvatarUrl(profileData.avatar_url);
       }
 
@@ -172,6 +178,8 @@ export default function Profile() {
             email,
             phone,
             professional_id: professionalId,
+            cpf: cpf || null,
+            cbo: cbo || null,
             avatar_url: avatarUrl
           })
           .eq('id', profile.id);
@@ -186,6 +194,8 @@ export default function Profile() {
             email,
             phone,
             professional_id: professionalId,
+            cpf: cpf || null,
+            cbo: cbo || null,
             avatar_url: avatarUrl
           });
 
@@ -537,6 +547,34 @@ export default function Profile() {
                 onChange={(e) => setProfessionalId(e.target.value)}
                 placeholder="CRP/CRFa/etc"
               />
+            </div>
+          </div>
+
+          {/* Fiscal fields section */}
+          <div className="border-t border-border pt-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-0.5">🧾 Dados para Nota Fiscal / Recibo</p>
+              <p className="text-xs text-muted-foreground">Esses dados são usados automaticamente ao gerar extratos fiscais.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF do Terapeuta</Label>
+                <Input
+                  id="cpf"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cbo">CBO <span className="text-muted-foreground font-normal text-xs">(Classificação Brasileira de Ocupações)</span></Label>
+                <Input
+                  id="cbo"
+                  value={cbo}
+                  onChange={(e) => setCbo(e.target.value)}
+                  placeholder="Ex: 2515-35 (Psicólogo Clínico)"
+                />
+              </div>
             </div>
           </div>
           <div className="flex justify-end">

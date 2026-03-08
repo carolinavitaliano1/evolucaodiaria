@@ -201,7 +201,7 @@ export default function PatientDetail() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('profiles').select('name, professional_id, phone, email').eq('user_id', user.id).maybeSingle()
+    supabase.from('profiles').select('name, professional_id, cpf, cbo').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
 
@@ -634,8 +634,8 @@ export default function PatientDetail() {
       } : null,
       therapistName: fiscalStamp?.name || therapistProfile?.name || undefined,
       professionalId: therapistProfile?.professional_id || undefined,
-      therapistCpf: undefined as string | undefined,
-      cbo: undefined as string | undefined,
+      therapistCpf: therapistProfile?.cpf || undefined,
+      cbo: therapistProfile?.cbo || undefined,
       totalPaid: fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : undefined,
       paymentStatus: fiscalPaymentStatus,
       paymentDate: fiscalPaymentDate || null,
@@ -767,6 +767,8 @@ export default function PatientDetail() {
         <h3 style="color:#1e3a8a">PRESTADOR DE SERVIÇO</h3>
         ${(fiscalStamp?.name || therapistProfile?.name) ? `<p><strong>Nome:</strong> ${fiscalStamp?.name || therapistProfile?.name}</p>` : ''}
         ${therapistProfile?.professional_id ? `<p><strong>Registro:</strong> ${therapistProfile.professional_id}</p>` : ''}
+        ${therapistProfile?.cpf ? `<p><strong>CPF:</strong> ${formatCpf(therapistProfile.cpf)}</p>` : ''}
+        ${therapistProfile?.cbo ? `<p><strong>CBO:</strong> ${therapistProfile.cbo}</p>` : ''}
         ${fiscalStamp?.clinical_area ? `<p><strong>Área:</strong> ${fiscalStamp.clinical_area}</p>` : ''}
         ${clinic?.name ? `<p><strong>Clínica:</strong> ${clinic.name}</p>` : ''}
         ${clinic?.cnpj ? `<p><strong>CNPJ:</strong> ${formatCpf(clinic.cnpj)}</p>` : ''}
