@@ -163,7 +163,8 @@ export default function ClinicDetail() {
   const [batchGlobalStampId, setBatchGlobalStampId] = useState<string>('none');
   const [batchIndividualStamps, setBatchIndividualStamps] = useState<Record<string, string>>({});
   const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, import('@/types').Evolution['attendanceStatus']>>({});
-  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean | null }[]>([]);
+  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image?: string | null; is_default: boolean | null }[]>([]);
+  const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
