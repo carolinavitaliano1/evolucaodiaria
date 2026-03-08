@@ -399,18 +399,19 @@ export default function Financial() {
           doc.setFontSize(9);
           doc.text(clinic.name, margin + 6, y + 5.5);
           const clinicNameW = doc.getTextWidth(clinic.name);
-          // Badge — measure text width at badge font size first
+          // Badge — set font FIRST, then measure, then draw
           const badge = isContratante ? 'Contratante' : 'Consultório';
-          doc.setFont('helvetica', 'normal');
+          doc.setFont('helvetica', 'bold');
           doc.setFontSize(6.5);
           const badgeTextW = doc.getTextWidth(badge);
-          const badgePadX = 3;
+          const badgePadX = 4; // generous padding so text never clips
           const badgeW = badgeTextW + badgePadX * 2;
-          const badgeX = margin + 6 + clinicNameW + 3;
+          const badgeX = margin + 6 + clinicNameW + 4;
           setFill(isContratante ? C.accent : C.primary);
-          doc.roundedRect(badgeX, y + 1.5, badgeW, 5, 1, 1, 'F');
+          doc.roundedRect(badgeX, y + 1.2, badgeW, 5.5, 1.2, 1.2, 'F');
           setTxt(C.white);
-          doc.text(badge, badgeX + badgePadX + badgeTextW / 2, y + 5, { align: 'center' });
+          // text x = left edge of badge + half of badge width (true center)
+          doc.text(badge, badgeX + badgeW / 2, y + 4.9, { align: 'center' });
 
           // Stats line
           setTxt(C.muted);
