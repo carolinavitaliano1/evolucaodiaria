@@ -595,7 +595,9 @@ export default function Patients() {
             Pacientes
           </h1>
           <p className="text-sm text-muted-foreground">
-            Busque e gerencie todos os seus pacientes
+            {ownOnly
+              ? 'Exibindo apenas seus pacientes vinculados'
+              : 'Busque e gerencie todos os seus pacientes'}
           </p>
         </div>
         <Button onClick={() => navigate('/clinics')} className="gap-2">
@@ -604,13 +606,21 @@ export default function Patients() {
         </Button>
       </div>
 
+      {/* own_only banner */}
+      {ownOnly && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20 text-sm text-primary mb-4">
+          <Lock className="w-3.5 h-3.5 shrink-0" />
+          <span>Você está vendo apenas os pacientes vinculados à sua conta. Contate o administrador para alterar os vínculos.</span>
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Buscar por nome, área clínica ou diagnóstico..."
+          placeholder={canSeeClinical ? 'Buscar por nome, área clínica ou diagnóstico...' : 'Buscar por nome...'}
           className="pl-10"
         />
       </div>
@@ -623,8 +633,8 @@ export default function Patients() {
               <Users className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{patients.length}</p>
-              <p className="text-xs text-muted-foreground">Total de Pacientes</p>
+              <p className="text-2xl font-bold text-foreground">{visiblePatients.length}</p>
+              <p className="text-xs text-muted-foreground">{ownOnly ? 'Meus Pacientes' : 'Total de Pacientes'}</p>
             </div>
           </div>
         </div>
