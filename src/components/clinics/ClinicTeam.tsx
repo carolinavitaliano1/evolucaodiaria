@@ -707,11 +707,37 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
             </DialogContent>
           </Dialog>
         )}
+        </div>
+
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Buscar por nome, e-mail ou cargo..."
+            className="pl-9 h-9"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors text-xs"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {filteredMembers.length === 0 && members.length > 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4 italic">
+            Nenhum colaborador encontrado para "{searchQuery}"
+          </p>
+        )}
       </div>
 
       {/* ── Collaborators Grid ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {members.map(member => {
+        {filteredMembers.map(member => {
           const displayName = member.profile?.name || member.email;
           const displayRole = member.role_label || ROLE_LABELS[member.role] || member.role;
           const initials = getInitials(member.profile?.name, member.email);
