@@ -2114,6 +2114,16 @@ export default function PatientDetail() {
               </Select>
             </div>
 
+            <div>
+              <Label className="text-xs mb-1 block">Local (cidade/estado)</Label>
+              <Input
+                value={prLocation}
+                onChange={e => setPrLocation(e.target.value)}
+                placeholder="Ex: São Paulo, SP"
+                className="h-9 text-xs"
+              />
+            </div>
+
             {stamps.length > 0 && (
               <div>
                 <Label className="text-xs flex items-center gap-1.5 mb-1.5">
