@@ -92,7 +92,17 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   };
 
   const totalRevenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
-  const netRevenue = totalRevenue * (1 - discountPercent / 100);
+
+  // Services revenue for selected month (concluído status, paid)
+  const servicesMonthRevenue = clinicServices
+    .filter(s => s.status === 'concluído')
+    .reduce((sum, s) => sum + s.price, 0);
+  const servicesMonthPaid = clinicServices
+    .filter(s => s.status === 'concluído' && s.paid)
+    .reduce((sum, s) => sum + s.price, 0);
+
+  const totalRevenueWithServices = totalRevenue + servicesMonthRevenue;
+  const netRevenue = totalRevenueWithServices * (1 - discountPercent / 100);
   const totalSessions = presentEvos.length;
   const totalAbsences = absentEvos.length;
   const totalPaidAbsences = paidAbsenceEvos.length;
