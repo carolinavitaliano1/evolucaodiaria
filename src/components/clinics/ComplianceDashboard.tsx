@@ -475,16 +475,16 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
             <BellRing className="w-4 h-4 shrink-0" />
             <span>
               <span className="font-semibold text-foreground">{filtered.length}</span> pendência(s) —{' '}
-              {filtered.filter(i => i.therapistPhone).length} com telefone cadastrado
+              notificação interna + WhatsApp (quando disponível)
             </span>
           </div>
           <Button
             size="sm"
             onClick={notifyAll}
-            disabled={notifyingAll || filtered.every(i => !i.therapistPhone)}
+            disabled={notifyingAll}
             className="gap-2 bg-[#25D366] hover:bg-[#1ebc58] text-white border-[#25D366] shrink-0"
           >
-            <MessageCircle className="w-3.5 h-3.5" />
+            <Bell className="w-3.5 h-3.5" />
             {notifyingAll ? 'Notificando...' : 'Notificar Todos os Pendentes'}
           </Button>
         </div>
