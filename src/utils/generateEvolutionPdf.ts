@@ -548,7 +548,8 @@ async function renderStamp(
   pageHeight: number,
   margin: number,
   startY: number,
-  addHeader: () => Promise<number>
+  addHeader: () => Promise<number>,
+  professionalId?: string | null
 ): Promise<number> {
   const stamp = stamps.find(s => s.id === stampId);
   if (!stamp) return startY;
@@ -556,23 +557,9 @@ async function renderStamp(
   let y = startY;
   const maxW = 50;
   const maxH = 28;
+  const sigX = pageWidth - margin - maxW;
 
-  // Space was already reserved by the caller (textBottomSafe includes stamp height).
-  // No page break here — stamp must stay on same page as its evolution.
-
-  // Stamp image
-  if (stamp.stamp_image) {
-    try {
-      const si = await loadImage(stamp.stamp_image);
-      let sw = maxW;
-      let sh = (si.height / si.width) * sw;
-      if (sh > maxH) { sh = maxH; sw = (si.width / si.height) * sh; }
-      pdf.addImage(stamp.stamp_image, 'PNG', pageWidth - margin - sw, y, sw, sh);
-      y += sh + 2;
-    } catch {}
-  }
-
-  // Signature image from stamp
+  // Signature image from stamp (above stamp image)
   if (stamp.signature_image) {
     try {
       const si = await loadImage(stamp.signature_image);
@@ -584,17 +571,46 @@ async function renderStamp(
     } catch {}
   }
 
-  // Name below stamp — always shown
-  pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(60, 60, 60);
+  // Stamp image
+  if (stamp.stamp_image) {
+    try {
+      const si = await loadImage(stamp.stamp_image);
+      let sw = maxW;
+      let sh = (si.height / si.width) * sw;
+      if (sh > maxH) { sh = maxH; sw = (si.width / si.height) * sh; }
+      pdf.addImage(stamp.stamp_image, 'PNG', pageWidth - margin - sw, y, sw, sh);
+      y += sh + 3;
+    } catch {}
+  }
+
+  // Signature line
+  pdf.setDrawColor(120, 120, 120);
+  pdf.setLineWidth(0.3);
+  pdf.line(sigX, y, pageWidth - margin, y);
+  y += 5;
+
+  // Name (bold)
+  pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(40, 40, 40);
   pdf.text(stamp.name, pageWidth - margin - 5, y, { align: 'right' });
   y += 4.5;
-  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(100, 100, 100);
+
+  // Clinical area
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(90, 90, 90);
   pdf.text(stamp.clinical_area, pageWidth - margin - 5, y, { align: 'right' });
   y += 4;
+
+  // CBO (from stamp)
   if (stamp.cbo) {
     pdf.text(`CBO: ${stamp.cbo}`, pageWidth - margin - 5, y, { align: 'right' });
     y += 4;
   }
+
+  // Professional registration (from profile)
+  if (professionalId) {
+    pdf.text(`Registro: ${professionalId}`, pageWidth - margin - 5, y, { align: 'right' });
+    y += 4;
+  }
+
   pdf.setTextColor(0, 0, 0);
   y += 2;
 
