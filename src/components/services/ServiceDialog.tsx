@@ -85,6 +85,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   const [appointmentNotes, setAppointmentNotes] = useState('');
   const [appointmentStatus, setAppointmentStatus] = useState('agendado');
   const [appointmentPaid, setAppointmentPaid] = useState(false);
+  const [appointmentPaymentDate, setAppointmentPaymentDate] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -107,10 +108,12 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         setAppointmentNotes(editAppointment.notes || '');
         setAppointmentStatus(editAppointment.status);
         setAppointmentPaid(editAppointment.paid || false);
+        setAppointmentPaymentDate(editAppointment.payment_date || '');
       } else {
         setEditingAppointmentId(null);
         setActiveTab(clinicId ? 'agendar' : 'servicos');
         setSelectedClinicId(clinicId || '');
+        setAppointmentPaymentDate('');
       }
     }
   }, [open, editAppointment, clinicId]);
@@ -210,6 +213,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
     setAppointmentTime('');
     setAppointmentPrice('');
     setAppointmentNotes('');
+    setAppointmentPaymentDate('');
   }
 
   function editService(service: Service) {
@@ -305,6 +309,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         notes: appointmentNotes || null,
         status: appointmentStatus,
         paid: appointmentPaid,
+        payment_date: appointmentPaid && appointmentPaymentDate ? appointmentPaymentDate : null,
       };
 
       if (editingAppointmentId) {
@@ -505,32 +510,75 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
             </div>
 
             {editingAppointmentId && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={appointmentStatus} onValueChange={setAppointmentStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="agendado">Agendado</SelectItem>
-                      <SelectItem value="realizado">Realizado</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select value={appointmentStatus} onValueChange={setAppointmentStatus}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="agendado">Agendado</SelectItem>
+                        <SelectItem value="concluído">Concluído</SelectItem>
+                        <SelectItem value="cancelado">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Pagamento</Label>
+                    <Select value={appointmentPaid ? 'pago' : 'pendente'} onValueChange={v => { setAppointmentPaid(v === 'pago'); if (v !== 'pago') setAppointmentPaymentDate(''); }}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pendente">Pendente</SelectItem>
+                        <SelectItem value="pago">Pago</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Pagamento</Label>
-                  <Select value={appointmentPaid ? 'pago' : 'pendente'} onValueChange={v => setAppointmentPaid(v === 'pago')}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="pago">Pago</SelectItem>
-                    </SelectContent>
-                  </Select>
+                {appointmentPaid && (
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentDate">Data do Pagamento</Label>
+                    <Input
+                      id="paymentDate"
+                      type="date"
+                      value={appointmentPaymentDate}
+                      onChange={(e) => setAppointmentPaymentDate(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Payment status for new appointments */}
+            {!editingAppointmentId && (
+              <div className="flex items-center gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
+                <span className="text-sm text-muted-foreground flex-1">Status do Pagamento</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-medium ${appointmentPaid ? 'text-success' : 'text-muted-foreground'}`}>
+                    {appointmentPaid ? 'Pago' : 'Pendente'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setAppointmentPaid(!appointmentPaid); if (appointmentPaid) setAppointmentPaymentDate(''); }}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${appointmentPaid ? 'bg-success' : 'bg-input'}`}
+                  >
+                    <span className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform ${appointmentPaid ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
                 </div>
+              </div>
+            )}
+            {!editingAppointmentId && appointmentPaid && (
+              <div className="space-y-2">
+                <Label htmlFor="newPaymentDate">Data do Pagamento</Label>
+                <Input
+                  id="newPaymentDate"
+                  type="date"
+                  value={appointmentPaymentDate}
+                  onChange={(e) => setAppointmentPaymentDate(e.target.value)}
+                />
               </div>
             )}
 

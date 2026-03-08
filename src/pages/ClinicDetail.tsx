@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toLocalDateString } from '@/lib/utils';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import { ServiceDialog } from '@/components/services/ServiceDialog';
@@ -293,7 +293,8 @@ export default function ClinicDetail() {
   interface ClinicPrivateApt {
     id: string; client_name: string; client_email?: string | null; client_phone?: string | null;
     service_id?: string | null; clinic_id?: string | null; date: string; time: string;
-    price: number; status: string; notes?: string | null; paid?: boolean | null; created_at: string;
+    price: number; status: string; notes?: string | null; paid?: boolean | null;
+    payment_date?: string | null; created_at: string;
   }
   const [clinicServices, setClinicServices] = useState<ClinicPrivateApt[]>([]);
   const [loadingClinicServices, setLoadingClinicServices] = useState(false);
@@ -323,8 +324,12 @@ export default function ClinicDetail() {
     loadClinicServices();
   };
 
-  const toggleClinicServicePaid = async (aptId: string, current: boolean) => {
-    await supabase.from('private_appointments').update({ paid: !current }).eq('id', aptId);
+  const toggleClinicServicePaid = async (aptId: string, current: boolean, paymentDate?: string) => {
+    const newPaid = !current;
+    await supabase.from('private_appointments').update({
+      paid: newPaid,
+      payment_date: newPaid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+    }).eq('id', aptId);
     loadClinicServices();
   };
 
@@ -1954,6 +1959,12 @@ export default function ClinicDetail() {
                             <DollarSign className="w-3 h-3" />
                             R$ {apt.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
+                          {apt.paid && apt.payment_date && (
+                            <span className="flex items-center gap-1 text-success">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Pago em {format(new Date(apt.payment_date + 'T00:00:00'), 'dd/MM/yy')}
+                            </span>
+                          )}
                         </div>
                         {(apt.client_phone || apt.client_email) && (
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

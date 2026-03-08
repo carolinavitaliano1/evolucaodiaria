@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase, CheckCircle2, Clock, XCircle, CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,9 @@ import { format, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -20,17 +23,34 @@ interface ServiceRecord {
   price: number;
   status: string;
   paid: boolean | null;
+  payment_date: string | null;
   date: string;
   time: string;
   client_name: string;
   service_name: string | null;
 }
 
+interface ClinicPaymentRecord {
+  id?: string;
+  month: number;
+  year: number;
+  amount: number;
+  paid: boolean;
+  payment_date: string | null;
+  notes: string | null;
+}
+
 export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { clinics, patients, evolutions, updateClinic } = useApp();
+  const { user } = useAuth();
   const { isOrg } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
+
+  // Contratante payment record for selected month
+  const [paymentRecord, setPaymentRecord] = useState<ClinicPaymentRecord | null>(null);
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentDateOpen, setPaymentDateOpen] = useState(false);
 
   const clinic = clinics.find(c => c.id === clinicId);
   const [discountPercent, setDiscountPercent] = useState(clinic?.discountPercentage || 0);
@@ -44,7 +64,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   useEffect(() => {
     supabase
       .from('private_appointments')
-      .select('id, price, status, paid, date, time, client_name, services(name)')
+      .select('id, price, status, paid, payment_date, date, time, client_name, services(name)')
       .eq('clinic_id', clinicId)
       .order('date', { ascending: false })
       .then(({ data }) => {
@@ -54,6 +74,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             price: d.price,
             status: d.status,
             paid: d.paid,
+            payment_date: d.payment_date ?? null,
             date: d.date,
             time: d.time,
             client_name: d.client_name,
@@ -62,6 +83,69 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         }
       });
   }, [clinicId]);
+
+  // Load payment record for contratante clinic selected month
+  useEffect(() => {
+    if (!clinic || clinic.type !== 'terceirizada' || !user) return;
+    const m = selectedDate.getMonth() + 1;
+    const y = selectedDate.getFullYear();
+    supabase
+      .from('clinic_payment_records' as any)
+      .select('*')
+      .eq('clinic_id', clinicId)
+      .eq('month', m)
+      .eq('year', y)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setPaymentRecord({
+            id: (data as any).id,
+            month: (data as any).month,
+            year: (data as any).year,
+            amount: (data as any).amount,
+            paid: (data as any).paid,
+            payment_date: (data as any).payment_date,
+            notes: (data as any).notes,
+          });
+        } else {
+          setPaymentRecord(null);
+        }
+      });
+  }, [clinic?.type, clinicId, selectedDate, user]);
+
+  const savePaymentRecord = async (updates: Partial<ClinicPaymentRecord>) => {
+    if (!user) return;
+    setSavingPayment(true);
+    const m = selectedDate.getMonth() + 1;
+    const y = selectedDate.getFullYear();
+    const base = paymentRecord ?? { month: m, year: y, amount: totalPatientRevenue, paid: false, payment_date: null, notes: null };
+    const merged = { ...base, ...updates };
+    try {
+      if (paymentRecord?.id) {
+        await supabase.from('clinic_payment_records' as any).update({
+          paid: merged.paid,
+          payment_date: merged.payment_date,
+          amount: merged.amount,
+          notes: merged.notes,
+        }).eq('id', paymentRecord.id);
+      } else {
+        const { data } = await supabase.from('clinic_payment_records' as any).insert({
+          user_id: user.id,
+          clinic_id: clinicId,
+          month: m,
+          year: y,
+          amount: merged.amount,
+          paid: merged.paid,
+          payment_date: merged.payment_date,
+          notes: merged.notes,
+        }).select().maybeSingle();
+        if (data) merged.id = (data as any).id;
+      }
+      setPaymentRecord(merged as ClinicPaymentRecord);
+    } finally {
+      setSavingPayment(false);
+    }
+  };
 
   const saveDiscount = useCallback((value: number) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -247,15 +331,17 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-foreground truncate">{service.client_name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {service.service_name ?? 'Serviço'} · {format(new Date(service.date + 'T12:00:00'), 'dd/MM')}
-                        {service.status === 'concluído' && service.paid && (
-                          <span className="text-success ml-1">· Pago</span>
-                        )}
-                        {service.status === 'concluído' && !service.paid && (
-                          <span className="text-warning ml-1">· Não recebido</span>
-                        )}
-                      </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {service.service_name ?? 'Serviço'} · {format(new Date(service.date + 'T12:00:00'), 'dd/MM')}
+                    {service.status === 'concluído' && service.paid && (
+                      <span className="text-success ml-1">
+                        · Pago{service.payment_date ? ` em ${format(new Date(service.payment_date + 'T00:00:00'), 'dd/MM')}` : ''}
+                      </span>
+                    )}
+                    {service.status === 'concluído' && !service.paid && (
+                      <span className="text-warning ml-1">· Não recebido</span>
+                    )}
+                  </p>
                     </div>
                   </div>
                   <p className="font-bold text-foreground text-xs shrink-0">
@@ -348,6 +434,78 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           </div>
         )}
       </div>
+
+      {/* Contratante payment record */}
+      {clinic.type === 'terceirizada' && (
+        <div className="bg-card rounded-2xl p-5 border border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle2 className="w-4 h-4 text-primary" />
+            <h3 className="font-bold text-foreground text-sm">Pagamento da Clínica</h3>
+            <span className="ml-auto text-[10px] text-muted-foreground capitalize">{monthName}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Registre se você já recebeu o pagamento desta clínica contratante para este mês.
+          </p>
+
+          <div className="flex flex-col gap-3">
+            {/* Toggle pago/pendente */}
+            <div className="flex items-center justify-between rounded-xl bg-secondary/40 border border-border/60 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {paymentRecord?.paid ? '✅ Pago' : '⏳ Pendente'}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Valor previsto: R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={savingPayment}
+                onClick={() => savePaymentRecord({ paid: !paymentRecord?.paid, payment_date: !paymentRecord?.paid ? new Date().toISOString().split('T')[0] : null })}
+                className={cn(
+                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50',
+                  paymentRecord?.paid ? 'bg-success' : 'bg-input'
+                )}
+              >
+                <span className={cn(
+                  'pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform',
+                  paymentRecord?.paid ? 'translate-x-5' : 'translate-x-0'
+                )} />
+              </button>
+            </div>
+
+            {/* Payment date picker — shown when paid */}
+            {paymentRecord?.paid && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Data do Recebimento</label>
+                <Popover open={paymentDateOpen} onOpenChange={setPaymentDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal text-sm h-9 gap-2", !paymentRecord.payment_date && "text-muted-foreground")}>
+                      <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
+                      {paymentRecord.payment_date
+                        ? format(new Date(paymentRecord.payment_date + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                        : 'Selecionar data'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={paymentRecord.payment_date ? new Date(paymentRecord.payment_date + 'T00:00:00') : undefined}
+                      onSelect={(d) => {
+                        if (d) {
+                          savePaymentRecord({ payment_date: d.toISOString().split('T')[0] });
+                          setPaymentDateOpen(false);
+                        }
+                      }}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 
