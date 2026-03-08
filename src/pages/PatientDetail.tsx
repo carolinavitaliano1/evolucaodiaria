@@ -194,6 +194,7 @@ export default function PatientDetail() {
   const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
   const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
   const [fiscalTotalPaidFromApp, setFiscalTotalPaidFromApp] = useState<number | null>(null);
+  const [isSavingFiscalToDocuments, setIsSavingFiscalToDocuments] = useState(false);
 
   // Therapist profile for fiscal receipt
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
@@ -649,6 +650,51 @@ export default function PatientDetail() {
       await generateFiscalReceiptPdf(buildFiscalReceiptOpts());
     } catch { toast.error('Erro ao gerar recibo'); }
     finally { setIsExportingFiscalPdf(false); }
+  };
+
+  const handleSaveFiscalToDocuments = async () => {
+    if (!fiscalStartDate || !fiscalEndDate || !patient || !user) return;
+    if (getFiscalEvolutions().length === 0) { toast.error('Nenhuma sessão no período selecionado.'); return; }
+    setIsSavingFiscalToDocuments(true);
+    try {
+      // Generate PDF blob without downloading
+      const blob = await generateFiscalReceiptPdf(buildFiscalReceiptOpts(), true);
+
+      const safeName = patient.name.replace(/\s+/g, '-').toLowerCase();
+      const safeStart = format(fiscalStartDate, 'yyyy-MM-dd');
+      const safeEnd = format(fiscalEndDate, 'yyyy-MM-dd');
+      const fileName = `recibo-fiscal-${safeName}-${safeStart}_${safeEnd}.pdf`;
+      const filePath = `${user.id}/fiscal/${patient.id}/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(filePath, blob, { contentType: 'application/pdf', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Save record in attachments table
+      const { error: dbError } = await supabase.from('attachments').insert({
+        user_id: user.id,
+        parent_id: patient.id,
+        parent_type: 'patient',
+        name: fileName,
+        file_path: filePath,
+        file_type: 'application/pdf',
+        file_size: blob.size,
+      });
+
+      if (dbError) throw dbError;
+
+      // Refresh patient attachments in the app state
+      await loadAttachmentsForPatient(patient.id);
+      toast.success('Recibo fiscal salvo nos documentos do paciente!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao salvar o recibo nos documentos.');
+    } finally {
+      setIsSavingFiscalToDocuments(false);
+    }
   };
 
   const handleExportFiscalWord = async () => {
@@ -1914,25 +1960,37 @@ export default function PatientDetail() {
             )}
 
             {/* Export buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={handleExportFiscalPdf}
+                  disabled={isExportingFiscalPdf || !fiscalStartDate || !fiscalEndDate}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-9"
+                >
+                  {isExportingFiscalPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Baixar PDF
+                </Button>
+                <Button
+                  onClick={handleExportFiscalWord}
+                  disabled={isExportingFiscalWord || !fiscalStartDate || !fiscalEndDate}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-9"
+                >
+                  {isExportingFiscalWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                  Word (.docx)
+                </Button>
+              </div>
               <Button
-                onClick={handleExportFiscalPdf}
-                disabled={isExportingFiscalPdf || !fiscalStartDate || !fiscalEndDate}
-                variant="outline"
+                onClick={handleSaveFiscalToDocuments}
+                disabled={isSavingFiscalToDocuments || !fiscalStartDate || !fiscalEndDate}
                 size="sm"
-                className="gap-1.5 text-xs h-9"
+                className="w-full gap-1.5 text-xs h-9"
               >
-                {isExportingFiscalPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                PDF
-              </Button>
-              <Button
-                onClick={handleExportFiscalWord}
-                disabled={isExportingFiscalWord || !fiscalStartDate || !fiscalEndDate}
-                size="sm"
-                className="gap-1.5 text-xs h-9"
-              >
-                {isExportingFiscalWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                Word (.docx)
+                {isSavingFiscalToDocuments ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+                {isSavingFiscalToDocuments ? 'Salvando...' : 'Salvar nos Documentos do Paciente'}
               </Button>
             </div>
           </div>
