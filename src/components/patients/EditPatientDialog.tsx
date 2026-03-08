@@ -73,6 +73,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         birthdate: patient.birthdate || '',
         cpf: p.cpf || '',
         phone: patient.phone || '',
+        email: p.email || '',
         clinicalArea: patient.clinicalArea || '',
         diagnosis: patient.diagnosis || '',
         professionals: patient.professionals || '',
