@@ -2033,6 +2033,51 @@ export default function PatientDetail() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
 
+            {/* Missing data warnings */}
+            {(() => {
+              const isMinorW = (() => {
+                if (!patient.birthdate) return false;
+                try {
+                  const b = new Date(patient.birthdate + 'T12:00:00');
+                  let a = new Date().getFullYear() - b.getFullYear();
+                  const m = new Date().getMonth() - b.getMonth();
+                  if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
+                  return a < 18;
+                } catch { return false; }
+              })();
+              const missingTherapistCpf = !therapistProfile?.cpf;
+              const missingPayerCpf = isMinorW
+                ? !(patient as any).responsible_cpf
+                : !(patient as any).cpf;
+              const payerLabel = isMinorW ? 'CPF do responsável' : 'CPF do paciente';
+              const missingClinicCnpj = !clinic?.cnpj;
+              const missingClinicAddress = !clinic?.address;
+              const warnings: { msg: string; link: string; label: string }[] = [];
+              if (missingTherapistCpf) warnings.push({ msg: 'CPF do terapeuta não cadastrado.', link: '/profile', label: 'Ir para Perfil' });
+              if (missingPayerCpf) warnings.push({ msg: `${payerLabel} não cadastrado.`, link: `/patients/${patient.id}`, label: 'Editar paciente' });
+              if (missingClinicCnpj && clinic) warnings.push({ msg: 'CNPJ da clínica não cadastrado.', link: `/clinics/${clinic.id}`, label: 'Editar clínica' });
+              if (missingClinicAddress && clinic) warnings.push({ msg: 'Endereço da clínica não cadastrado.', link: `/clinics/${clinic.id}`, label: 'Editar clínica' });
+              if (warnings.length === 0) return null;
+              return (
+                <div className="space-y-1.5">
+                  {warnings.map((w, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs">
+                      <span className="flex items-center gap-1.5 text-destructive/80">
+                        <span>⚠</span>
+                        <span>{w.msg}</span>
+                      </span>
+                      <button
+                        onClick={() => { setPaymentReceiptOpen(false); navigate(w.link); }}
+                        className="shrink-0 text-xs font-medium text-primary underline underline-offset-2 hover:no-underline"
+                      >
+                        {w.label}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             {/* Preview text */}
             <div className="bg-muted/40 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed italic">
               {(() => {
