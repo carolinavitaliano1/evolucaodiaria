@@ -13,6 +13,9 @@ interface ReportPdfOptions {
   clinicCnpj?: string;
   clinicPhone?: string;
   clinicServicesDescription?: string;
+  therapistName?: string;
+  therapistProfessionalId?: string;
+  therapistCbo?: string;
 }
 
 function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
@@ -119,7 +122,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   const {
     title, content, fileName, clinicName, clinicAddress,
     clinicLetterhead, clinicStamp, clinicEmail, clinicCnpj, clinicPhone,
-    clinicServicesDescription
+    clinicServicesDescription, therapistName, therapistProfessionalId, therapistCbo
   } = opts;
 
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -430,33 +433,40 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   const leftCenterX = MARGIN + CONTENT_W * 0.25;
   const rightCenterX = MARGIN + CONTENT_W * 0.75;
 
-  // Signature block needs ~25mm (spacing + lines + labels)
-  const sigBlockHeight = 25;
+  // Signature block needs ~35mm (spacing + lines + labels + credentials)
+  const sigBlockHeight = 35;
   const sigSpacingAbove = 15;
 
-  // If not enough room for signatures on current page, add new page
   if (y + sigSpacingAbove + sigBlockHeight > USABLE_BOTTOM) {
     pdf.addPage();
     y = MARGIN;
   }
 
-  // Place signatures after content with breathing room
   const sigY = y + sigSpacingAbove;
 
-  // Left signature: Terapeuta Responsável
+  // Left: Terapeuta Responsável (with name + CBO/reg if available)
   pdf.setDrawColor(100, 100, 100);
   pdf.setLineWidth(0.4);
   pdf.line(leftCenterX - sigLineW / 2, sigY, leftCenterX + sigLineW / 2, sigY);
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(9);
   pdf.setTextColor(50, 50, 50);
-  pdf.text('Terapeuta Responsável', leftCenterX, sigY + 5, { align: 'center' });
+  pdf.text(therapistName || 'Terapeuta Responsável', leftCenterX, sigY + 5, { align: 'center' });
   pdf.setFont(FONT, 'normal');
   pdf.setFontSize(7);
   pdf.setTextColor(130, 130, 130);
-  pdf.text('(Assinatura e Carimbo)', leftCenterX, sigY + 9, { align: 'center' });
+  if (therapistProfessionalId) {
+    pdf.text(`Registro: ${therapistProfessionalId}`, leftCenterX, sigY + 9, { align: 'center' });
+    if (therapistCbo) {
+      pdf.text(`CBO: ${therapistCbo}`, leftCenterX, sigY + 13, { align: 'center' });
+    }
+  } else if (therapistCbo) {
+    pdf.text(`CBO: ${therapistCbo}`, leftCenterX, sigY + 9, { align: 'center' });
+  } else {
+    pdf.text('(Assinatura e Carimbo)', leftCenterX, sigY + 9, { align: 'center' });
+  }
 
-  // Right signature: Responsável Técnico
+  // Right: Responsável Técnico
   pdf.setDrawColor(100, 100, 100);
   pdf.setLineWidth(0.4);
   pdf.line(rightCenterX - sigLineW / 2, sigY, rightCenterX + sigLineW / 2, sigY);

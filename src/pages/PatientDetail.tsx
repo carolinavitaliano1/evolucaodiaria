@@ -81,6 +81,7 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
   const handleDownloadPdf = (report: { title: string; content: string }) => {
     generateReportPdf({ title: report.title, content: report.content, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription });
   };
+  };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('saved_reports').delete().eq('id', id);
@@ -366,6 +367,7 @@ export default function PatientDetail() {
     doc.line(margin, y + 4, W - margin, y + 4);
     y += 12;
 
+
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...accentDark);
@@ -398,15 +400,28 @@ export default function PatientDetail() {
       // 3. Nome do terapeuta
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
       doc.setTextColor(...darkText);
       doc.text(stampOverride.name, margin, y);
-      y += 5;
+      y += 5.5;
 
-      // 4. Função / Área clínica
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...mutedText);
       doc.text(stampOverride.clinical_area, margin, y);
-      y += 7;
+      y += 5;
+
+      // CBO do carimbo (prioridade) ou registro profissional
+      const stampCbo = (stampOverride as any).cbo;
+      const profId = therapistProfile?.professional_id;
+      if (stampCbo) {
+        doc.text(`CBO: ${stampCbo}`, margin, y);
+        y += 5;
+      }
+      if (profId) {
+        doc.text(`Registro: ${profId}`, margin, y);
+        y += 5;
+      }
+      y += 2;
     } else if (showBlankLine) {
       // blank signature line
       doc.setFont('helvetica', 'normal');
