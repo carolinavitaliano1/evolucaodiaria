@@ -142,6 +142,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const [selectedPatients, setSelectedPatients] = useState<Record<string, string>>({});
   const [invitePermissions, setInvitePermissions] = useState<PermissionKey[]>([...DEFAULT_THERAPIST_PERMISSIONS]);
   const [inviting, setInviting] = useState(false);
+  const [invitePreset, setInvitePreset] = useState<string>('terapeuta');
 
   // Member management modal
   const [manageMember, setManageMember] = useState<OrganizationMember | null>(null);
