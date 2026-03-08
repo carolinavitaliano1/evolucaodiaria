@@ -54,8 +54,9 @@ const PERIOD_OPTIONS = [
   { value: 'custom', label: 'Personalizado' },
 ];
 
-export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDashboardProps) {
+export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCount }: ComplianceDashboardProps) {
   const { patients } = useApp();
+  const { user } = useAuth();
   const [pending, setPending] = useState<PendingEvolution[]>([]);
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [loading, setLoading] = useState(true);
