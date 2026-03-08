@@ -635,7 +635,7 @@ export default function PatientDetail() {
       therapistName: fiscalStamp?.name || therapistProfile?.name || undefined,
       professionalId: therapistProfile?.professional_id || undefined,
       therapistCpf: therapistProfile?.cpf || undefined,
-      cbo: therapistProfile?.cbo || undefined,
+      cbo: fiscalStamp?.cbo || undefined,
       totalPaid: fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : undefined,
       paymentStatus: fiscalPaymentStatus,
       paymentDate: fiscalPaymentDate || null,
