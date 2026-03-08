@@ -1,4 +1,4 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck } from 'lucide-react';
 import { TeamFinancialReport } from '@/components/clinics/TeamFinancialReport';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
@@ -21,7 +21,6 @@ export default function Financial() {
   const { getMonthlyAppointments } = usePrivateAppointments();
   const { user } = useAuth();
 
-  // Load all evolutions for financial calculations
   useEffect(() => {
     if (user) loadAllEvolutions();
   }, [user]);
@@ -36,7 +35,6 @@ export default function Financial() {
   const [invoiceStartDate, setInvoiceStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [invoiceEndDate, setInvoiceEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
 
-  // Month filter state
   const [selectedDate, setSelectedDate] = useState(new Date());
   const selectedMonth = selectedDate.getMonth();
   const selectedYear = selectedDate.getFullYear();
@@ -63,7 +61,6 @@ export default function Financial() {
 
   const isCurrentMonth = selectedMonth === new Date().getMonth() && selectedYear === new Date().getFullYear();
 
-  // Load stamps and profile
   useEffect(() => {
     if (!user) return;
     Promise.all([
@@ -75,13 +72,11 @@ export default function Financial() {
     });
   }, [user]);
 
-  // Get all evolutions for the selected month
   const monthlyEvolutions = evolutions.filter(e => {
     const date = new Date(e.date + 'T12:00:00');
     return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
   });
 
-  // Separate by attendance status
   const presentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
   const absentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
@@ -92,58 +87,63 @@ export default function Financial() {
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !patient.paymentValue) return 0;
-
-    if (patient.paymentType === 'fixo') {
-      return patient.paymentValue;
-    }
-
+    if (patient.paymentType === 'fixo') return patient.paymentValue;
     const presentCount = presentEvolutions.filter(e => e.patientId === patientId).length;
     const paidAbsenceCount = paidAbsenceEvolutions.filter(e => e.patientId === patientId).length;
     const feriadoRemCount = feriadoRemEvolutions.filter(e => e.patientId === patientId).length;
-
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
-    
     let paidRegularAbsences = 0;
     const regularAbsences = absentEvolutions.filter(e => e.patientId === patientId);
-    
-    if (absenceType === 'always') {
-      paidRegularAbsences = regularAbsences.length;
-    } else if (absenceType === 'confirmed_only') {
-      paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-    }
-
+    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
+    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
     return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
   };
 
   const calculatePatientLoss = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !patient.paymentValue || patient.paymentType === 'fixo') return 0;
-
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
-    
     if (absenceType === 'always') return 0;
-    
     const patientAbsences = absentEvolutions.filter(e => e.patientId === patientId);
-    
-    if (absenceType === 'never') {
-      return patientAbsences.length * patient.paymentValue;
-    }
-    
+    if (absenceType === 'never') return patientAbsences.length * patient.paymentValue;
     if (absenceType === 'confirmed_only') {
       const nonConfirmedAbsences = patientAbsences.filter(e => !e.confirmedAttendance);
       return nonConfirmedAbsences.length * patient.paymentValue;
     }
-    
     return 0;
   };
 
   const monthlyPrivateAppointments = getMonthlyAppointments(selectedMonth, selectedYear);
+
+  // Separate: services WITH clinic (linked) vs WITHOUT clinic (standalone particulares)
+  const linkedServiceAppointments = monthlyPrivateAppointments.filter(a => a.clinic_id);
+  const standaloneServiceAppointments = monthlyPrivateAppointments.filter(a => !a.clinic_id);
+
+  const standaloneRevenue = standaloneServiceAppointments
+    .filter(a => a.status === 'concluído')
+    .reduce((sum, a) => sum + (a.price || 0), 0);
+
+  // All private appointments revenue (for backward compat in PDF)
   const privateRevenue = monthlyPrivateAppointments
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
 
+  // Revenue split by clinic type
+  const propriaClinics = clinics.filter(c => c.type === 'propria' && !c.isArchived);
+  const contratanteClinics = clinics.filter(c => c.type !== 'propria' && !c.isArchived);
+
+  const revenueByClinicType = (type: 'propria' | 'contratante') => {
+    const targetClinics = type === 'propria' ? propriaClinics : contratanteClinics;
+    return targetClinics.reduce((sum, clinic) => {
+      const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
+      return sum + clinicPatients.reduce((s, p) => s + calculatePatientRevenue(p.id), 0);
+    }, 0);
+  };
+
+  const revenuePropriaClinicas = revenueByClinicType('propria');
+  const revenueContratante = revenueByClinicType('contratante');
   const totalRevenue = patients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
   const totalLoss = patients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
   const netRevenue = totalRevenue + privateRevenue;
@@ -152,25 +152,10 @@ export default function Financial() {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
     const revenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
     const loss = clinicPatients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
-    const sessions = presentEvolutions.filter(e =>
-      clinicPatients.some(p => p.id === e.patientId)
-    ).length;
-    const paidAbsences = paidAbsenceEvolutions.filter(e =>
-      clinicPatients.some(p => p.id === e.patientId)
-    ).length;
-    const absences = absentEvolutions.filter(e => 
-      clinicPatients.some(p => p.id === e.patientId)
-    ).length;
-    
-    return {
-      clinic,
-      patientCount: clinicPatients.length,
-      revenue,
-      loss,
-      sessions,
-      paidAbsences,
-      absences,
-    };
+    const sessions = presentEvolutions.filter(e => clinicPatients.some(p => p.id === e.patientId)).length;
+    const paidAbsences = paidAbsenceEvolutions.filter(e => clinicPatients.some(p => p.id === e.patientId)).length;
+    const absences = absentEvolutions.filter(e => clinicPatients.some(p => p.id === e.patientId)).length;
+    return { clinic, patientCount: clinicPatients.length, revenue, loss, sessions, paidAbsences, absences };
   });
 
   const patientStats = patients.map(patient => {
@@ -180,18 +165,7 @@ export default function Financial() {
     const sessions = presentEvolutions.filter(e => e.patientId === patient.id).length;
     const paidAbsences = paidAbsenceEvolutions.filter(e => e.patientId === patient.id).length;
     const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
-
-    return {
-      patient,
-      clinic,
-      revenue,
-      loss,
-      sessions,
-      paidAbsences,
-      absences,
-      paymentType: patient.paymentType,
-      paymentValue: patient.paymentValue || 0,
-    };
+    return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0 };
   }).filter(p => p.paymentValue > 0);
 
   const handleExportPDF = async () => {
@@ -206,7 +180,6 @@ export default function Financial() {
       doc.setTextColor(51, 51, 51);
       doc.text('Relatório Financeiro', margin, y);
       y += 10;
-      
       doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
       doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), margin, y);
@@ -219,39 +192,32 @@ export default function Financial() {
 
       doc.setFontSize(11);
       doc.setTextColor(80, 80, 80);
-      doc.text(`Faturamento Total: R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
-      y += 6;
-      doc.text(`Receita Clínicas: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
-      y += 6;
-      doc.text(`Receita Serviços: R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
-      y += 6;
+      doc.text(`Faturamento Total: R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 6;
+      doc.text(`Receita Clínicas Próprias: R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 6;
+      doc.text(`Receita Contratante: R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 6;
+      doc.text(`Serviços Particulares: R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 6;
       if (totalLoss > 0) {
         doc.setTextColor(220, 53, 69);
         doc.text(`Perdas por Faltas: - R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
         doc.setTextColor(80, 80, 80);
       }
       y += 6;
-      doc.text(`Total de Atendimentos: ${presentEvolutions.length}`, margin, y);
-      y += 6;
-      doc.text(`Faltas Remuneradas: ${paidAbsenceEvolutions.length}`, margin, y);
-      y += 6;
-      doc.text(`Faltas: ${absentEvolutions.length}`, margin, y);
-      y += 15;
+      doc.text(`Total de Atendimentos: ${presentEvolutions.length}`, margin, y); y += 6;
+      doc.text(`Faltas Remuneradas: ${paidAbsenceEvolutions.length}`, margin, y); y += 6;
+      doc.text(`Faltas: ${absentEvolutions.length}`, margin, y); y += 15;
 
       if (clinicStats.length > 0) {
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
         doc.text('Faturamento por Clínica', margin, y);
         y += 10;
-
         doc.setFontSize(10);
         clinicStats.forEach(({ clinic, patientCount, revenue, loss, sessions, paidAbsences, absences }) => {
           if (y > 270) { doc.addPage(); y = 20; }
-          const netClinicRevenue = revenue;
           doc.setTextColor(51, 51, 51);
-          doc.text(clinic.name, margin, y);
+          doc.text(`${clinic.name} (${clinic.type === 'propria' ? 'Própria' : 'Contratante'})`, margin, y);
           doc.setTextColor(80, 80, 80);
-          doc.text(`R$ ${netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 40, y);
+          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 40, y);
           y += 5;
           doc.setFontSize(9);
           doc.text(`${patientCount} pacientes | ${sessions} sessões | ${paidAbsences} faltas rem. | ${absences} faltas`, margin + 5, y);
@@ -261,17 +227,16 @@ export default function Financial() {
         y += 5;
       }
 
-      if (privateRevenue > 0) {
+      if (standaloneRevenue > 0) {
         if (y > 250) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
-        doc.text('Serviços', margin, y);
+        doc.text('Serviços Particulares (fora de clínica)', margin, y);
         y += 8;
         doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
-        doc.text(`${monthlyPrivateAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos`, margin, y);
-        y += 5;
-        doc.text(`R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+        doc.text(`${standaloneServiceAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos`, margin, y); y += 5;
+        doc.text(`R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
         y += 15;
       }
 
@@ -281,7 +246,6 @@ export default function Financial() {
         doc.setTextColor(51, 51, 51);
         doc.text('Detalhamento por Paciente', margin, y);
         y += 10;
-
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
         doc.text('Paciente', margin, y);
@@ -293,18 +257,16 @@ export default function Financial() {
         doc.setDrawColor(200, 200, 200);
         doc.line(margin, y, pageWidth - margin, y);
         y += 5;
-
         doc.setFontSize(9);
-        patientStats.forEach(({ patient, clinic, revenue, loss, sessions, absences, paymentType, paymentValue }) => {
+        patientStats.forEach(({ patient, clinic, revenue, sessions, paymentType, paymentValue }) => {
           if (y > 275) { doc.addPage(); y = 20; }
-          const netPatientRevenue = revenue;
           doc.setTextColor(51, 51, 51);
           doc.text(patient.name.substring(0, 20), margin, y);
           doc.setTextColor(80, 80, 80);
           doc.text((clinic?.name || '').substring(0, 15), margin + 50, y);
           doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', margin + 95, y);
           doc.text(sessions.toString(), margin + 125, y);
-          doc.text(`R$ ${netPatientRevenue.toFixed(2)}`, pageWidth - margin - 20, y);
+          doc.text(`R$ ${revenue.toFixed(2)}`, pageWidth - margin - 20, y);
           y += 6;
         });
       }
@@ -314,10 +276,7 @@ export default function Financial() {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
-        doc.text(
-          `Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`,
-          pageWidth / 2, 290, { align: 'center' }
-        );
+        doc.text(`Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`, pageWidth / 2, 290, { align: 'center' });
       }
 
       doc.save(`financeiro-${format(selectedDate, 'yyyy-MM')}.pdf`);
@@ -331,31 +290,22 @@ export default function Financial() {
   };
 
   const handleExportClinicInvoice = async () => {
-    if (!invoiceClinicId) {
-      toast.error('Selecione uma clínica');
-      return;
-    }
+    if (!invoiceClinicId) { toast.error('Selecione uma clínica'); return; }
     setIsExportingInvoice(true);
     try {
       const clinic = clinics.find(c => c.id === invoiceClinicId);
       if (!clinic) throw new Error('Clínica não encontrada');
-
       const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
-      
-      // Use custom date range or fall back to selected month
       const useCustomRange = invoiceStartDate && invoiceEndDate;
       const rangeStart = useCustomRange ? invoiceStartDate : format(startOfMonth(selectedDate), 'yyyy-MM-dd');
       const rangeEnd = useCustomRange ? invoiceEndDate : format(endOfMonth(selectedDate), 'yyyy-MM-dd');
-      
       const clinicEvolutions = evolutions.filter(e => {
         if (!clinicPatients.some(p => p.id === e.patientId)) return false;
         return e.date >= rangeStart && e.date <= rangeEnd;
       }).sort((a, b) => a.date.localeCompare(b.date));
-      
       const periodLabel = useCustomRange
         ? `${format(parseISO(invoiceStartDate), 'dd/MM/yyyy')} a ${format(parseISO(invoiceEndDate), 'dd/MM/yyyy')}`
         : monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
       const stamp = selectedStampId && selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
       const therapistName = profile?.name || user?.user_metadata?.full_name || 'Terapeuta';
 
@@ -364,12 +314,8 @@ export default function Financial() {
       const margin = 20;
       const contentW = pageWidth - margin * 2;
       let y = 20;
+      const ensureSpace = (needed: number) => { if (y + needed > 275) { doc.addPage(); y = 20; } };
 
-      const ensureSpace = (needed: number) => {
-        if (y + needed > 275) { doc.addPage(); y = 20; }
-      };
-
-      // Header
       doc.setFontSize(16);
       doc.setTextColor(51, 51, 51);
       doc.text('EXTRATO DE ATENDIMENTOS', pageWidth / 2, y, { align: 'center' });
@@ -379,7 +325,6 @@ export default function Financial() {
       doc.text(periodLabel, pageWidth / 2, y, { align: 'center' });
       y += 12;
 
-      // Clinic info
       doc.setDrawColor(180, 180, 180);
       doc.line(margin, y, pageWidth - margin, y);
       y += 6;
@@ -398,7 +343,6 @@ export default function Financial() {
       if (clinic.email) { doc.text(`E-mail: ${clinic.email}`, margin, y); y += 5; }
       y += 3;
 
-      // Therapist info
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(51, 51, 51);
@@ -407,32 +351,22 @@ export default function Financial() {
       doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
       doc.text(`Nome: ${therapistName}`, margin, y); y += 5;
-      if (stamp) {
-        doc.text(`Área: ${stamp.clinical_area}`, margin, y); y += 5;
-      }
-      if (profile?.professional_id) {
-        doc.text(`Registro: ${profile.professional_id}`, margin, y); y += 5;
-      }
+      if (stamp) { doc.text(`Área: ${stamp.clinical_area}`, margin, y); y += 5; }
+      if (profile?.professional_id) { doc.text(`Registro: ${profile.professional_id}`, margin, y); y += 5; }
       y += 3;
       doc.setDrawColor(180, 180, 180);
       doc.line(margin, y, pageWidth - margin, y);
       y += 8;
 
-      // Session table
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(51, 51, 51);
       doc.text('DETALHAMENTO DE SESSÕES', margin, y);
       y += 8;
 
-      // Table header
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      const col1 = margin;
-      const col2 = margin + 25;
-      const col3 = margin + 80;
-      const col4 = margin + 115;
-      const col5 = pageWidth - margin - 25;
+      const col1 = margin, col2 = margin + 25, col3 = margin + 80, col4 = margin + 115, col5 = pageWidth - margin - 25;
       doc.text('Data', col1, y);
       doc.text('Paciente', col2, y);
       doc.text('Status', col3, y);
@@ -443,11 +377,7 @@ export default function Financial() {
       doc.line(margin, y, pageWidth - margin, y);
       y += 5;
 
-      let totalSessions = 0;
-      let totalPaidAbsences = 0;
-      let totalAbsences = 0;
-      let totalInvoiceValue = 0;
-
+      let totalSessions = 0, totalPaidAbsences = 0, totalAbsences = 0, totalInvoiceValue = 0;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
 
@@ -455,30 +385,22 @@ export default function Financial() {
         ensureSpace(8);
         const patient = clinicPatients.find(p => p.id === evo.patientId);
         if (!patient) return;
-
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy');
         const patientName = patient.name.substring(0, 22);
-        
         let statusLabel = '';
         let sessionValue = 0;
 
         if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao') {
           statusLabel = evo.attendanceStatus === 'reposicao' ? 'Reposição' : 'Presente';
           totalSessions++;
-          if (patient.paymentType === 'sessao' && patient.paymentValue) {
-            sessionValue = patient.paymentValue;
-          }
+          if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
         } else if (evo.attendanceStatus === 'falta_remunerada') {
           statusLabel = 'Falta Rem.';
           totalPaidAbsences++;
-          if (patient.paymentType === 'sessao' && patient.paymentValue) {
-            sessionValue = patient.paymentValue;
-          }
+          if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
         } else if (evo.attendanceStatus === 'feriado_remunerado') {
           statusLabel = 'Feriado Rem.';
-          if (patient.paymentType === 'sessao' && patient.paymentValue) {
-            sessionValue = patient.paymentValue;
-          }
+          if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
         } else if (evo.attendanceStatus === 'feriado_nao_remunerado') {
           statusLabel = 'Feriado';
         } else if (evo.attendanceStatus === 'falta') {
@@ -486,38 +408,26 @@ export default function Financial() {
           totalAbsences++;
           const absenceType = clinic.absencePaymentType || (clinic.paysOnAbsence === false ? 'never' : 'always');
           if (patient.paymentType === 'sessao' && patient.paymentValue) {
-            if (absenceType === 'always') {
-              sessionValue = patient.paymentValue;
-            } else if (absenceType === 'confirmed_only' && evo.confirmedAttendance) {
-              sessionValue = patient.paymentValue;
-            }
+            if (absenceType === 'always') sessionValue = patient.paymentValue;
+            else if (absenceType === 'confirmed_only' && evo.confirmedAttendance) sessionValue = patient.paymentValue;
           }
         }
 
         totalInvoiceValue += sessionValue;
-
         doc.setTextColor(51, 51, 51);
         doc.text(dateStr, col1, y);
         doc.text(patientName, col2, y);
-        
-        if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao' || evo.attendanceStatus === 'feriado_remunerado') {
-          doc.setTextColor(34, 139, 34);
-        } else if (evo.attendanceStatus === 'falta_remunerada') {
-          doc.setTextColor(200, 150, 0);
-        } else if (evo.attendanceStatus === 'feriado_nao_remunerado') {
-          doc.setTextColor(100, 100, 100);
-        } else {
-          doc.setTextColor(220, 53, 69);
-        }
+        if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao' || evo.attendanceStatus === 'feriado_remunerado') doc.setTextColor(34, 139, 34);
+        else if (evo.attendanceStatus === 'falta_remunerada') doc.setTextColor(200, 150, 0);
+        else if (evo.attendanceStatus === 'feriado_nao_remunerado') doc.setTextColor(100, 100, 100);
+        else doc.setTextColor(220, 53, 69);
         doc.text(statusLabel, col3, y);
-        
         doc.setTextColor(80, 80, 80);
         doc.text(patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão', col4, y);
         doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col5, y);
         y += 6;
       });
 
-      // Add fixed-payment patients
       const fixedPatients = clinicPatients.filter(p => p.paymentType === 'fixo' && p.paymentValue);
       fixedPatients.forEach(patient => {
         ensureSpace(8);
@@ -533,7 +443,6 @@ export default function Financial() {
         y += 6;
       });
 
-      // Totals
       y += 2;
       ensureSpace(25);
       doc.setDrawColor(180, 180, 180);
@@ -547,17 +456,13 @@ export default function Financial() {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text(`Sessões realizadas: ${totalSessions}`, margin, y); y += 5;
-      if (totalPaidAbsences > 0) {
-        doc.text(`Faltas remuneradas: ${totalPaidAbsences}`, margin, y); y += 5;
-      }
-      if (totalAbsences > 0) {
-        doc.text(`Faltas: ${totalAbsences}`, margin, y); y += 5;
-      }
+      if (totalPaidAbsences > 0) { doc.text(`Faltas remuneradas: ${totalPaidAbsences}`, margin, y); y += 5; }
+      if (totalAbsences > 0) { doc.text(`Faltas: ${totalAbsences}`, margin, y); y += 5; }
       y += 3;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
       doc.text(`VALOR BRUTO: R$ ${totalInvoiceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
-      
+
       const discountPct = clinic.discountPercentage || 0;
       if (discountPct > 0) {
         y += 7;
@@ -572,12 +477,10 @@ export default function Financial() {
       }
       y += 15;
 
-      // Signature area
       ensureSpace(60);
       doc.setDrawColor(180, 180, 180);
       doc.line(margin, y, pageWidth - margin, y);
       y += 8;
-
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
@@ -588,38 +491,22 @@ export default function Financial() {
       const lineWidth = contentW * 0.5;
       const lineStartX = centerX - lineWidth / 2;
 
-      if (stamp?.stamp_image) {
-        try {
-          doc.addImage(stamp.stamp_image, 'PNG', centerX - 25, y, 50, 25);
-          y += 26;
-        } catch (e) { /* ignore */ }
-      }
-
-      if (stamp?.signature_image) {
-        try {
-          doc.addImage(stamp.signature_image, 'PNG', centerX - 25, y - 3, 50, 20);
-          y += 17;
-        } catch (e) { /* ignore */ }
-      }
+      if (stamp?.stamp_image) { try { doc.addImage(stamp.stamp_image, 'PNG', centerX - 25, y, 50, 25); y += 26; } catch (e) {} }
+      if (stamp?.signature_image) { try { doc.addImage(stamp.signature_image, 'PNG', centerX - 25, y - 3, 50, 20); y += 17; } catch (e) {} }
 
       doc.setDrawColor(100, 100, 100);
       doc.line(lineStartX, y, lineStartX + lineWidth, y);
       doc.setFontSize(9);
       doc.setTextColor(60, 60, 60);
       doc.text(therapistName, centerX, y + 5, { align: 'center' });
-      if (stamp) {
-        doc.text(stamp.clinical_area, centerX, y + 10, { align: 'center' });
-      }
+      if (stamp) doc.text(stamp.clinical_area, centerX, y + 10, { align: 'center' });
 
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
-        doc.text(
-          `Extrato gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`,
-          pageWidth / 2, 290, { align: 'center' }
-        );
+        doc.text(`Extrato gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`, pageWidth / 2, 290, { align: 'center' });
       }
 
       const fileSuffix = useCustomRange ? `${invoiceStartDate}_${invoiceEndDate}` : format(selectedDate, 'yyyy-MM');
@@ -634,249 +521,257 @@ export default function Financial() {
     }
   };
 
+  const grandTotal = totalRevenue + standaloneRevenue;
+
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
       {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
-          <span className="text-2xl sm:text-4xl">💰</span>
-          Financeiro
-        </h1>
-        
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3">
+            <span className="text-3xl sm:text-4xl">💰</span>
+            Financeiro
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">Visão consolidada das suas receitas</p>
+        </div>
+
         {/* Month selector */}
-        <div className="flex items-center gap-2 mt-2">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToPreviousMonth}>
+        <div className="flex items-center gap-2 bg-card border border-border rounded-xl p-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPreviousMonth}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <button 
+          <button
             onClick={goToCurrentMonth}
             className={cn(
-              "text-sm sm:text-base font-medium px-3 py-1 rounded-lg transition-colors capitalize",
+              "text-sm font-semibold px-3 py-1 rounded-lg transition-colors capitalize min-w-[140px] text-center",
               isCurrentMonth ? "text-primary" : "text-muted-foreground hover:text-foreground"
             )}
           >
             {monthName}
           </button>
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToNextMonth} disabled={isCurrentMonth}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth} disabled={isCurrentMonth}>
             <ChevronRight className="w-4 h-4" />
           </Button>
-          {!isCurrentMonth && (
-            <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={goToCurrentMonth}>
-              Mês atual
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Main Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="lg:col-span-2 rounded-2xl sm:rounded-3xl p-4 sm:p-8 gradient-primary shadow-glow">
-          <div className="flex items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-primary-foreground/80 mb-1 sm:mb-2 text-sm sm:text-base">Faturamento do Mês</p>
-              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-primary-foreground mb-2 sm:mb-4 break-words">
-                R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </h2>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-primary-foreground/80 text-xs sm:text-base">
-                <span className="flex items-center gap-1 sm:gap-2">
-                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {presentEvolutions.length} atend.
+      {/* Hero revenue card */}
+      <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 gradient-primary shadow-glow mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-primary-foreground/70 text-sm mb-1">Faturamento Total do Mês</p>
+            <h2 className="text-3xl sm:text-5xl font-bold text-primary-foreground mb-3 break-words">
+              R$ {grandTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </h2>
+            <div className="flex flex-wrap gap-2 sm:gap-4 text-primary-foreground/80 text-xs sm:text-sm">
+              <span className="flex items-center gap-1.5 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
+                <CalendarCheck className="w-3.5 h-3.5" />
+                {presentEvolutions.length} atend.
+              </span>
+              {reposicaoEvolutions.length > 0 && (
+                <span className="flex items-center gap-1.5 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
+                  🔄 {reposicaoEvolutions.length} repos.
                 </span>
-                {reposicaoEvolutions.length > 0 && (
-                  <span className="flex items-center gap-1 sm:gap-2 text-primary-foreground/90">
-                    🔄 {reposicaoEvolutions.length} repos.
-                  </span>
-                )}
-                {paidAbsenceEvolutions.length > 0 && (
-                  <span className="flex items-center gap-1 sm:gap-2 text-amber-200">
-                    {paidAbsenceEvolutions.length} faltas rem.
-                  </span>
-                )}
-                {absentEvolutions.length > 0 && (
-                  <span className="flex items-center gap-1 sm:gap-2 text-amber-200">
-                    <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />
-                    {absentEvolutions.length} faltas
-                  </span>
-                )}
-                {totalLoss > 0 && (
-                  <span className="flex items-center gap-1 sm:gap-2 text-red-200">
-                    -R$ {totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em faltas não pagas
-                  </span>
-                )}
-              </div>
+              )}
+              {paidAbsenceEvolutions.length > 0 && (
+                <span className="flex items-center gap-1.5 bg-amber-500/20 px-2.5 py-1 rounded-full text-amber-200">
+                  {paidAbsenceEvolutions.length} faltas rem.
+                </span>
+              )}
+              {absentEvolutions.length > 0 && (
+                <span className="flex items-center gap-1.5 bg-red-500/20 px-2.5 py-1 rounded-full text-red-200">
+                  <TrendingDown className="w-3.5 h-3.5" />
+                  {absentEvolutions.length} faltas
+                </span>
+              )}
             </div>
-            <DollarSign className="w-10 h-10 sm:w-16 sm:h-16 text-primary-foreground/30 shrink-0" />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="bg-card rounded-2xl p-5 border border-border">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-xl bg-success/10">
-                <TrendingUp className="w-5 h-5 text-success" />
-              </div>
-              <span className="text-muted-foreground">Receita Clínicas</span>
-            </div>
-            <p className="text-2xl font-bold text-success">
-              R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
-          </div>
-
-          {totalLoss > 0 && (
-            <div className="bg-card rounded-2xl p-5 border border-destructive/30">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-xl bg-destructive/10">
-                  <TrendingDown className="w-5 h-5 text-destructive" />
-                </div>
-                <span className="text-muted-foreground">Perdas por Faltas</span>
-              </div>
-              <p className="text-2xl font-bold text-destructive">
-                - R$ {totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {totalLoss > 0 && (
+              <p className="text-red-200 text-xs mt-2 flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Estimativa de perda por faltas: R$ {totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
+            )}
+          </div>
+          <DollarSign className="w-14 h-14 sm:w-20 sm:h-20 text-primary-foreground/20 shrink-0" />
+        </div>
+      </div>
+
+      {/* Revenue breakdown cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 sm:mb-8">
+        {/* Receita Contratante */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5 text-blue-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Receita Contratante</p>
+              <p className="text-[10px] text-muted-foreground/70">Clínicas terceirizadas</p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            R$ {revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {contratanteClinics.length} {contratanteClinics.length === 1 ? 'clínica' : 'clínicas'}
+          </p>
+          {grandTotal > 0 && (
+            <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(revenueContratante / grandTotal) * 100}%` }} />
             </div>
           )}
+        </div>
 
-          {totalLoss === 0 && (
-            <div className="bg-card rounded-2xl p-5 border border-border">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-xl bg-accent/10">
-                  <Users className="w-5 h-5 text-accent" />
-                </div>
-                <span className="text-muted-foreground">Pacientes Ativos</span>
-              </div>
-              <p className="text-3xl font-bold text-foreground">{patients.length}</p>
+        {/* Receita Clínicas Próprias */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+              <Stethoscope className="w-5 h-5 text-success" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Receita Clínicas Próprias</p>
+              <p className="text-[10px] text-muted-foreground/70">Unidades próprias</p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            R$ {revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {propriaClinics.length} {propriaClinics.length === 1 ? 'clínica' : 'clínicas'}
+          </p>
+          {grandTotal > 0 && (
+            <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-success rounded-full transition-all" style={{ width: `${(revenuePropriaClinicas / grandTotal) * 100}%` }} />
+            </div>
+          )}
+        </div>
+
+        {/* Serviços Particulares */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+              <Briefcase className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Serviços Particulares</p>
+              <p className="text-[10px] text-muted-foreground/70">Agendamentos fora de clínica</p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            R$ {standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {standaloneServiceAppointments.filter(a => a.status === 'concluído').length} atend. concluídos
+          </p>
+          {grandTotal > 0 && (
+            <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${(standaloneRevenue / grandTotal) * 100}%` }} />
             </div>
           )}
         </div>
       </div>
 
       {/* Revenue by Clinic */}
-      <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border mb-6 sm:mb-8">
-        <h2 className="font-bold text-foreground mb-4 sm:mb-6 flex items-center gap-2 text-sm sm:text-base">
-          🏥 Faturamento por Clínica
+      <div className="bg-card rounded-2xl p-5 sm:p-6 border border-border mb-6 sm:mb-8">
+        <h2 className="font-bold text-foreground mb-5 flex items-center gap-2 text-sm sm:text-base">
+          <Building2 className="w-4 h-4 text-primary" />
+          Detalhamento por Clínica
         </h2>
 
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-4">
           {clinicStats.map(({ clinic, patientCount, revenue, loss, sessions, paidAbsences, absences }) => {
-            const netClinicRevenue = revenue;
             const discountPct = clinic.discountPercentage || 0;
             const netAfterDiscount = revenue * (1 - discountPct / 100);
-            const percentage = (totalRevenue + privateRevenue) > 0 ? (revenue / (totalRevenue + privateRevenue)) * 100 : 0;
+            const percentage = grandTotal > 0 ? (revenue / grandTotal) * 100 : 0;
             const isPropria = clinic.type === 'propria';
 
             return (
-              <div key={clinic.id} className="border-b border-border pb-4 sm:pb-6 last:border-0 last:pb-0">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                      <h3 className="font-bold text-foreground text-sm sm:text-lg truncate">{clinic.name}</h3>
-                      {(clinic.absencePaymentType === 'never' || (clinic.paysOnAbsence === false && !clinic.absencePaymentType)) && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
-                          Não paga faltas
-                        </span>
-                      )}
-                      {clinic.absencePaymentType === 'confirmed_only' && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
-                          Paga só confirmados
-                        </span>
-                      )}
-                      {discountPct > 0 && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary whitespace-nowrap">
-                          {discountPct}% desc.
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      {patientCount} pacientes | {sessions} sessões
-                      {paidAbsences > 0 && ` | ${paidAbsences} faltas rem.`}
-                    </p>
+              <div key={clinic.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl bg-secondary/40 border border-border/50">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full font-medium",
+                      isPropria ? "bg-success/10 text-success" : "bg-blue-500/10 text-blue-500"
+                    )}>
+                      {isPropria ? 'Própria' : 'Contratante'}
+                    </span>
+                    <h3 className="font-semibold text-foreground text-sm truncate">{clinic.name}</h3>
+                    {clinic.absencePaymentType === 'never' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Não paga faltas</span>
+                    )}
+                    {clinic.absencePaymentType === 'confirmed_only' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Paga só confirmados</span>
+                    )}
+                    {discountPct > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{discountPct}% desc.</span>
+                    )}
                   </div>
-                  <div className="text-left sm:text-right">
-                    {discountPct > 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground line-through">
-                          R$ {netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
-                        <p className="font-bold text-base sm:text-xl text-success">
-                          R$ {netAfterDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="font-bold text-base sm:text-xl text-foreground">
-                        R$ {netClinicRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                    )}
-                    {loss > 0 && (
-                      <p className="text-xs sm:text-sm text-destructive flex items-center sm:justify-end gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        {absences} faltas (-R$ {loss.toFixed(2)})
-                      </p>
-                    )}
-                    {loss === 0 && (
-                      <p className="text-xs sm:text-sm text-muted-foreground">{percentage.toFixed(0)}% do total</p>
-                    )}
+                  <p className="text-xs text-muted-foreground">
+                    {patientCount} pacientes · {sessions} sessões{paidAbsences > 0 && ` · ${paidAbsences} faltas rem.`}
+                  </p>
+                  <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all", isPropria ? "gradient-primary" : "bg-blue-500")}
+                      style={{ width: `${percentage}%` }}
+                    />
                   </div>
                 </div>
-
-                <div className="relative w-full h-3 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      'absolute h-full transition-all duration-500 rounded-full',
-                      isPropria ? 'gradient-primary' : 'gradient-secondary'
-                    )}
-                    style={{ width: `${percentage}%` }}
-                  />
+                <div className="text-left sm:text-right shrink-0">
+                  {discountPct > 0 ? (
+                    <>
+                      <p className="text-xs text-muted-foreground line-through">R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      <p className="font-bold text-lg text-success">R$ {netAfterDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </>
+                  ) : (
+                    <p className="font-bold text-lg text-foreground">R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  )}
+                  {loss > 0 && (
+                    <p className="text-xs text-destructive flex items-center sm:justify-end gap-1">
+                      <AlertTriangle className="w-3 h-3" /> {absences} faltas (-R$ {loss.toFixed(2)})
+                    </p>
+                  )}
+                  {loss === 0 && grandTotal > 0 && (
+                    <p className="text-xs text-muted-foreground">{percentage.toFixed(0)}% do total</p>
+                  )}
                 </div>
               </div>
             );
           })}
 
-          {/* Private Appointments Section */}
-          {privateRevenue > 0 && (
-            <div className="border-b border-border pb-6 last:border-0 last:pb-0">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-foreground text-lg flex items-center gap-2">
-                      <Briefcase className="w-4 h-4" />
-                      Serviços
-                    </h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{monthlyPrivateAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos</p>
+          {/* Standalone private services */}
+          {standaloneRevenue > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-600">Particular</span>
+                  <h3 className="font-semibold text-foreground text-sm">Serviços Particulares</h3>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-xl text-foreground">
-                    R$ {privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {((privateRevenue / (totalRevenue + privateRevenue)) * 100).toFixed(0)}% do total
-                  </p>
+                <p className="text-xs text-muted-foreground">
+                  {standaloneServiceAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos · sem vínculo com clínica
+                </p>
+                <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${grandTotal > 0 ? (standaloneRevenue / grandTotal) * 100 : 0}%` }} />
                 </div>
               </div>
-
-              <div className="relative w-full h-3 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="absolute h-full transition-all duration-500 rounded-full bg-gradient-to-r from-amber-500 to-orange-500"
-                  style={{ width: `${(privateRevenue / (totalRevenue + privateRevenue)) * 100}%` }}
-                />
+              <div className="text-left sm:text-right shrink-0">
+                <p className="font-bold text-lg text-foreground">R$ {standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                {grandTotal > 0 && <p className="text-xs text-muted-foreground">{((standaloneRevenue / grandTotal) * 100).toFixed(0)}% do total</p>}
               </div>
             </div>
           )}
 
-          {clinicStats.length === 0 && privateRevenue === 0 && (
-            <p className="text-center text-muted-foreground py-8">
-              Nenhuma clínica cadastrada
-            </p>
+          {clinicStats.length === 0 && standaloneRevenue === 0 && (
+            <p className="text-center text-muted-foreground py-8">Nenhuma clínica cadastrada</p>
           )}
         </div>
       </div>
 
-      {/* Team Financial Reports — one per org clinic */}
+      {/* Team Financial Reports */}
       {clinics
         .filter(c => !c.isArchived && (c as any).organization_id)
         .map(orgClinic => (
           <div key={orgClinic.id} className="mb-6 sm:mb-8">
-            <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border">
+            <div className="bg-card rounded-2xl p-5 sm:p-6 border border-border">
               <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-sm sm:text-base">
                 <Users className="w-4 h-4 text-primary" />
                 Equipe — {orgClinic.name}
@@ -887,10 +782,10 @@ export default function Financial() {
         ))}
 
       {/* Payments Table */}
-      <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+      <div className="bg-card rounded-2xl p-5 sm:p-6 border border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <h2 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
-            💳 Controle de Pagamentos
+            💳 Controle de Pagamentos por Paciente
           </h2>
           <div className="flex flex-col sm:flex-row gap-2">
             <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
@@ -908,77 +803,42 @@ export default function Financial() {
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Clínica</label>
                     <Select value={invoiceClinicId} onValueChange={setInvoiceClinicId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a clínica" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecione a clínica" /></SelectTrigger>
                       <SelectContent>
-                        {clinics.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
+                        {clinics.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">Data Início</label>
-                      <Input
-                        type="date"
-                        value={invoiceStartDate}
-                        onChange={(e) => setInvoiceStartDate(e.target.value)}
-                      />
+                      <Input type="date" value={invoiceStartDate} onChange={(e) => setInvoiceStartDate(e.target.value)} />
                     </div>
                     <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">Data Fim</label>
-                      <Input
-                        type="date"
-                        value={invoiceEndDate}
-                        onChange={(e) => setInvoiceEndDate(e.target.value)}
-                      />
+                      <Input type="date" value={invoiceEndDate} onChange={(e) => setInvoiceEndDate(e.target.value)} />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    As datas são pré-preenchidas com o mês selecionado. Ajuste se necessário.
-                  </p>
+                  <p className="text-xs text-muted-foreground">As datas são pré-preenchidas com o mês selecionado. Ajuste se necessário.</p>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">Carimbo (opcional)</label>
                     <Select value={selectedStampId} onValueChange={setSelectedStampId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sem carimbo" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Sem carimbo" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Sem carimbo</SelectItem>
-                        {stamps.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name} - {s.clinical_area}</SelectItem>
-                        ))}
+                        {stamps.map(s => <SelectItem key={s.id} value={s.id}>{s.name} - {s.clinical_area}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button 
-                    onClick={handleExportClinicInvoice} 
-                    disabled={isExportingInvoice || !invoiceClinicId}
-                    className="w-full gap-2"
-                  >
-                    {isExportingInvoice ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4" />
-                    )}
+                  <Button onClick={handleExportClinicInvoice} disabled={isExportingInvoice || !invoiceClinicId} className="w-full gap-2">
+                    {isExportingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     {isExportingInvoice ? 'Gerando...' : 'Exportar Extrato PDF'}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
-            <Button 
-              variant="outline" 
-              className="gap-2 w-full sm:w-auto text-xs sm:text-sm"
-              onClick={handleExportPDF}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
+            <Button variant="outline" className="gap-2 w-full sm:w-auto text-xs sm:text-sm" onClick={handleExportPDF} disabled={isExporting}>
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               {isExporting ? 'Exportando...' : 'Relatório Geral PDF'}
             </Button>
           </div>
@@ -988,79 +848,54 @@ export default function Financial() {
           <table className="w-full min-w-[500px]">
             <thead>
               <tr className="border-b-2 border-border">
-                <th className="text-left py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Paciente</th>
-                <th className="text-left py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm hidden sm:table-cell">Clínica</th>
-                <th className="text-left py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Tipo</th>
-                <th className="text-center py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Sess.</th>
-                <th className="text-center py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Faltas</th>
-                <th className="text-right py-2 sm:py-3 px-2 font-semibold text-foreground text-xs sm:text-sm">Valor</th>
+                <th className="text-left py-3 px-3 font-semibold text-foreground text-xs">Paciente</th>
+                <th className="text-left py-3 px-3 font-semibold text-foreground text-xs hidden sm:table-cell">Clínica</th>
+                <th className="text-left py-3 px-3 font-semibold text-foreground text-xs">Tipo</th>
+                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Sess.</th>
+                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Faltas</th>
+                <th className="text-right py-3 px-3 font-semibold text-foreground text-xs">Valor</th>
               </tr>
             </thead>
             <tbody>
-              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue }) => {
-                const netPatientRevenue = revenue;
-                
-                return (
-                  <tr key={patient.id} className="border-b border-border hover:bg-secondary/50">
-                    <td className="py-2 sm:py-3 px-2 text-foreground text-xs sm:text-sm">
-                      <span className="truncate block max-w-[100px] sm:max-w-none">{patient.name}</span>
-                      {patient.packageId && (() => {
-                        const pkg = clinicPackages.find(p => p.id === patient.packageId);
-                        return pkg ? <span className="block text-[10px] text-muted-foreground">{pkg.name}</span> : null;
-                      })()}
-                    </td>
-                    <td className="py-2 sm:py-3 px-2 text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">{clinic?.name}</td>
-                    <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm">
-                      <span className={cn(
-                        'px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium whitespace-nowrap',
-                        paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
-                      )}>
-                        {paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}`}
+              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue }) => (
+                <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
+                  <td className="py-3 px-3 text-foreground text-xs">
+                    <span className="truncate block max-w-[100px] sm:max-w-none font-medium">{patient.name}</span>
+                    {patient.packageId && (() => {
+                      const pkg = clinicPackages.find(p => p.id === patient.packageId);
+                      return pkg ? <span className="block text-[10px] text-muted-foreground">{pkg.name}</span> : null;
+                    })()}
+                  </td>
+                  <td className="py-3 px-3 text-muted-foreground text-xs hidden sm:table-cell">{clinic?.name}</td>
+                  <td className="py-3 px-3 text-xs">
+                    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent')}>
+                      {paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-center text-foreground text-xs">
+                    {sessions}
+                    {paidAbsences > 0 && <span className="text-amber-600 text-[10px] block">+{paidAbsences} rem.</span>}
+                  </td>
+                  <td className="py-3 px-3 text-center text-xs">
+                    {absences > 0 ? (
+                      <span className={cn('inline-flex items-center gap-0.5', loss > 0 ? 'text-destructive' : 'text-amber-600')}>
+                        {absences}{loss > 0 && <AlertTriangle className="w-2.5 h-2.5" />}
                       </span>
-                    </td>
-                    <td className="py-2 sm:py-3 px-2 text-center text-foreground text-xs sm:text-sm">
-                      {sessions}
-                      {paidAbsences > 0 && (
-                        <span className="text-amber-600 text-[10px] block">+{paidAbsences} rem.</span>
-                      )}
-                    </td>
-                    <td className="py-2 sm:py-3 px-2 text-center text-xs sm:text-sm">
-                      {absences > 0 ? (
-                        <span className={cn(
-                          'inline-flex items-center gap-0.5',
-                          loss > 0 ? 'text-destructive' : 'text-amber-600'
-                        )}>
-                          {absences}
-                          {loss > 0 && <AlertTriangle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </td>
-                    <td className="py-2 sm:py-3 px-2 text-right">
-                      <div className="flex flex-col items-end">
-                        <span className={cn(
-                          'font-bold text-xs sm:text-sm',
-                          loss > 0 ? 'text-foreground' : 'text-success'
-                        )}>
-                          R$ {netPatientRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </span>
-                        {loss > 0 && (
-                          <span className="text-xs text-destructive hidden sm:block">
-                            -R$ {loss.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-
+                    ) : <span className="text-muted-foreground">0</span>}
+                  </td>
+                  <td className="py-3 px-3 text-right">
+                    <div className="flex flex-col items-end">
+                      <span className={cn('font-bold text-xs', loss > 0 ? 'text-foreground' : 'text-success')}>
+                        R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                      {loss > 0 && <span className="text-xs text-destructive hidden sm:block">-R$ {loss.toFixed(2)}</span>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
               {patientStats.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Nenhum paciente com valor configurado
-                  </td>
+                  <td colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum paciente com valor configurado</td>
                 </tr>
               )}
             </tbody>
