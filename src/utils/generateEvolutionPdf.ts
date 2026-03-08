@@ -225,8 +225,8 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps, prof
 
 // ─── SINGLE / MULTIPLE EVOLUTIONS PDF ────────────────────────────────────────
 
-export async function generateEvolutionPdf({ evolution, patient, clinic, stamps }: GenerateSinglePdfOptions): Promise<void> {
-  return generateMultipleEvolutionsPdf({ evolutions: [evolution], patient, clinic, stamps });
+export async function generateEvolutionPdf({ evolution, patient, clinic, stamps, professionalId }: GenerateSinglePdfOptions): Promise<void> {
+  return generateMultipleEvolutionsPdf({ evolutions: [evolution], patient, clinic, stamps, professionalId });
 }
 
 export async function generateMultipleEvolutionsPdf({
@@ -236,6 +236,7 @@ export async function generateMultipleEvolutionsPdf({
   startDate,
   endDate,
   stamps,
+  professionalId,
 }: GenerateMultiplePdfOptions): Promise<void> {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = pdf.internal.pageSize.getWidth();
