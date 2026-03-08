@@ -883,6 +883,40 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   </p>
                 )}
               </div>
+
+              {/* Quick Actions */}
+              {canManage && member.role !== 'owner' && (
+                <div className="flex gap-1.5 pt-2 border-t border-border mt-auto" onClick={e => e.stopPropagation()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] gap-1 px-2"
+                    onClick={() => openManageModal(member)}
+                  >
+                    <Settings className="w-3 h-3" />
+                    Permissões
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] gap-1 px-2"
+                    onClick={() => navigate('/calendar')}
+                  >
+                    <CalendarDays className="w-3 h-3" />
+                    Ver Agenda
+                  </Button>
+                  {member.status !== 'pending' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20')}
+                      onClick={() => handleToggleMemberStatus(member)}
+                    >
+                      {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
