@@ -583,6 +583,20 @@ export default function AIReports() {
 
   return (
     <div className="space-y-6">
+      {!canUseAI && (
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+            <Lock className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Acesso Restrito</h2>
+            <p className="text-muted-foreground mt-1 max-w-sm">
+              Você não tem permissão para acessar o Gerador de Relatórios com IA. Entre em contato com o administrador.
+            </p>
+          </div>
+        </div>
+      )}
+      {canUseAI && <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
