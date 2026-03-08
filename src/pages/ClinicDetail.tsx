@@ -74,7 +74,7 @@ function getTodayWeekday() {
   return days[new Date().getDay()];
 }
 
-function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, clinic }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinic?: Clinic }) {
+function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, clinic, therapistName, therapistProfessionalId, therapistCbo, therapistClinicalArea, therapistStampImage, therapistSignatureImage }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinic?: Clinic; therapistName?: string; therapistProfessionalId?: string; therapistCbo?: string; therapistClinicalArea?: string; therapistStampImage?: string | null; therapistSignatureImage?: string | null }) {
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
 
   useEffect(() => {
@@ -94,6 +94,12 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
       clinicCnpj: clinic?.cnpj,
       clinicPhone: clinic?.phone,
       clinicServicesDescription: clinic?.servicesDescription,
+      therapistName,
+      therapistProfessionalId,
+      therapistCbo,
+      therapistClinicalArea,
+      therapistStampImage,
+      therapistSignatureImage,
     });
   };
 
