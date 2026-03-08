@@ -309,6 +309,7 @@ export default function ClinicDetail() {
     service_id?: string | null; clinic_id?: string | null; date: string; time: string;
     price: number; status: string; notes?: string | null; paid?: boolean | null;
     payment_date?: string | null; created_at: string;
+    service_name?: string | null;
   }
   const [clinicServices, setClinicServices] = useState<ClinicPrivateApt[]>([]);
   const [loadingClinicServices, setLoadingClinicServices] = useState(false);
@@ -325,11 +326,15 @@ export default function ClinicDetail() {
     setLoadingClinicServices(true);
     const { data } = await supabase
       .from('private_appointments')
-      .select('*')
+      .select('*, services(name)')
       .eq('clinic_id', id)
       .order('date', { ascending: false })
       .order('time', { ascending: true });
-    setClinicServices((data as any[]) || []);
+    const mapped = (data as any[] || []).map((apt: any) => ({
+      ...apt,
+      service_name: apt.services?.name ?? null,
+    }));
+    setClinicServices(mapped);
     setLoadingClinicServices(false);
   };
 
@@ -2107,6 +2112,12 @@ export default function ClinicDetail() {
                             <Badge variant="outline" className="text-xs border-success/50 text-success shrink-0">Pago</Badge>
                           )}
                         </div>
+                        {apt.service_name && (
+                          <p className="text-xs text-primary font-medium mb-1 flex items-center gap-1">
+                            <Briefcase className="w-3 h-3 shrink-0" />
+                            {apt.service_name}
+                          </p>
+                        )}
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-1">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
