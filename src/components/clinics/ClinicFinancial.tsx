@@ -429,46 +429,48 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       <div className="bg-card rounded-2xl p-5 border border-border">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <h3 className="font-bold text-foreground text-sm">Detalhamento por Paciente</h3>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Status filter */}
-            <div className="flex items-center gap-0.5 rounded-lg bg-secondary border border-border p-0.5">
-              {(['all', 'paid', 'pending'] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setPaymentFilter(f)}
-                  className={cn(
-                    'text-[10px] px-2 py-1 rounded-md transition-colors',
-                    paymentFilter === f
-                      ? f === 'paid' ? 'bg-success text-white' : f === 'pending' ? 'bg-warning text-white' : 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  {f === 'all' ? 'Todos' : f === 'paid' ? '✓ Pagos' : '⏳ Pend.'}
-                </button>
-              ))}
+          {clinic.type === 'propria' && (
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Status filter */}
+              <div className="flex items-center gap-0.5 rounded-lg bg-secondary border border-border p-0.5">
+                {(['all', 'paid', 'pending'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setPaymentFilter(f)}
+                    className={cn(
+                      'text-[10px] px-2 py-1 rounded-md transition-colors',
+                      paymentFilter === f
+                        ? f === 'paid' ? 'bg-success text-white' : f === 'pending' ? 'bg-warning text-white' : 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {f === 'all' ? 'Todos' : f === 'paid' ? '✓ Pagos' : '⏳ Pend.'}
+                  </button>
+                ))}
+              </div>
+              {/* Date range filter */}
+              <div className="flex items-center gap-1">
+                <Input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={e => setFilterStartDate(e.target.value)}
+                  className="h-7 text-xs w-28 px-2"
+                  placeholder="De"
+                />
+                <span className="text-muted-foreground text-xs">–</span>
+                <Input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={e => setFilterEndDate(e.target.value)}
+                  className="h-7 text-xs w-28 px-2"
+                  placeholder="Até"
+                />
+                {(filterStartDate || filterEndDate) && (
+                  <button onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }} className="text-xs text-muted-foreground hover:text-foreground px-1">✕</button>
+                )}
+              </div>
             </div>
-            {/* Date range filter */}
-            <div className="flex items-center gap-1">
-              <Input
-                type="date"
-                value={filterStartDate}
-                onChange={e => setFilterStartDate(e.target.value)}
-                className="h-7 text-xs w-28 px-2"
-                placeholder="De"
-              />
-              <span className="text-muted-foreground text-xs">–</span>
-              <Input
-                type="date"
-                value={filterEndDate}
-                onChange={e => setFilterEndDate(e.target.value)}
-                className="h-7 text-xs w-28 px-2"
-                placeholder="Até"
-              />
-              {(filterStartDate || filterEndDate) && (
-                <button onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }} className="text-xs text-muted-foreground hover:text-foreground px-1">✕</button>
-              )}
-            </div>
-          </div>
+          )}
         </div>
         {patientBreakdown.length === 0 ? (
           <p className="text-center text-muted-foreground py-8 text-sm">
@@ -497,36 +499,38 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                       <p className="font-bold text-foreground text-sm">
                         R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
-                      <button
-                        type="button"
-                        disabled={savingPatientPayment === patient.id}
-                        title={pr?.paid ? 'Marcar como pendente' : 'Marcar como pago'}
-                        onClick={async () => {
-                          if (!user) return;
-                          setSavingPatientPayment(patient.id);
-                          const m = selectedDate.getMonth() + 1;
-                          const y = selectedDate.getFullYear();
-                          const newPaid = !pr?.paid;
-                          const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
-                          const existing = pr as any;
-                          if (existing?.id) {
-                            await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', existing.id);
-                          } else {
-                            await supabase.from('patient_payment_records' as any).insert({ user_id: user.id, patient_id: patient.id, clinic_id: clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate });
-                          }
-                          setPatientPaymentRecords(prev => ({ ...prev, [patient.id]: { ...(prev[patient.id] || {}), paid: newPaid, payment_date: newDate, id: existing?.id } as any }));
-                          setSavingPatientPayment(null);
-                        }}
-                        className={cn(
-                          'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50',
-                          pr?.paid ? 'bg-success' : 'bg-input'
-                        )}
-                      >
-                        <span className={cn('pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform', pr?.paid ? 'translate-x-4' : 'translate-x-0')} />
-                      </button>
+                      {clinic.type === 'propria' && (
+                        <button
+                          type="button"
+                          disabled={savingPatientPayment === patient.id}
+                          title={pr?.paid ? 'Marcar como pendente' : 'Marcar como pago'}
+                          onClick={async () => {
+                            if (!user) return;
+                            setSavingPatientPayment(patient.id);
+                            const m = selectedDate.getMonth() + 1;
+                            const y = selectedDate.getFullYear();
+                            const newPaid = !pr?.paid;
+                            const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
+                            const existing = pr as any;
+                            if (existing?.id) {
+                              await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', existing.id);
+                            } else {
+                              await supabase.from('patient_payment_records' as any).insert({ user_id: user.id, patient_id: patient.id, clinic_id: clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate });
+                            }
+                            setPatientPaymentRecords(prev => ({ ...prev, [patient.id]: { ...(prev[patient.id] || {}), paid: newPaid, payment_date: newDate, id: existing?.id } as any }));
+                            setSavingPatientPayment(null);
+                          }}
+                          className={cn(
+                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50',
+                            pr?.paid ? 'bg-success' : 'bg-input'
+                          )}
+                        >
+                          <span className={cn('pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform', pr?.paid ? 'translate-x-4' : 'translate-x-0')} />
+                        </button>
+                      )}
                     </div>
                   </div>
-                  {pr?.paid && pr.payment_date && (
+                  {clinic.type === 'propria' && pr?.paid && pr.payment_date && (
                     <p className="text-[10px] text-success flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Pago em {format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy')}
