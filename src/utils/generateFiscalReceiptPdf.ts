@@ -115,18 +115,18 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   };
 
   // ── CABEÇALHO ────────────────────────────────────────────────────────────
-  doc.setFontSize(15);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('RECIBO DE ATENDIMENTO', margin, y);
-  y += 8;
+  y += 6;
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
   const periodLabel = `${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`;
   doc.text(`Período: ${periodLabel}   ·   Emissão: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, margin, y);
-  y += 6;
+  y += 4;
   drawLine();
 
   // ── DADOS DO PACIENTE / TOMADOR DO SERVIÇO ─────────────────────────────
@@ -134,7 +134,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('TOMADOR DO SERVIÇO', margin, y);
-  y += 8;
+  y += 6;
 
   // Determine age to decide which CPF goes on the fiscal document
   const patientAge = (() => {
