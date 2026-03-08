@@ -122,7 +122,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   const {
     title, content, fileName, clinicName, clinicAddress,
     clinicLetterhead, clinicStamp, clinicEmail, clinicCnpj, clinicPhone,
-    clinicServicesDescription
+    clinicServicesDescription, therapistName, therapistProfessionalId, therapistCbo
   } = opts;
 
   const pdf = new jsPDF('p', 'mm', 'a4');
