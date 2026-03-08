@@ -52,11 +52,11 @@ const PERIOD_OPTIONS = [
 ];
 
 export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDashboardProps) {
-  const { patients, evolutions } = useApp();
+  const { patients } = useApp();
   const [pending, setPending] = useState<PendingEvolution[]>([]);
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [notifying, setNotifying] = useState<string | null>(null); // appointmentId being notified
+  const [notifyingAll, setNotifyingAll] = useState(false);
 
   // Filters
   const [search, setSearch] = useState('');
