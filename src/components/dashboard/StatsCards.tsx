@@ -10,9 +10,6 @@ import { useState, useEffect } from 'react';
 export function StatsCards() {
   const { clinics, patients, appointments, evolutions } = useApp();
   const { user } = useAuth();
-  // Data is loaded by Dashboard — StatsCards just reads from context
-
-
 
   const today = toLocalDateString(new Date());
   const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
@@ -28,35 +25,81 @@ export function StatsCards() {
   const clinicTodayCount = new Set([...oneOffPatientIds, ...weekdayPatientIds]).size;
 
   const [privateToday, setPrivateToday] = useState(0);
+  const [privateMonthlyRevenue, setPrivateMonthlyRevenue] = useState(0);
+
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const loadPrivateData = async () => {
+    if (!user) return;
+    const monthStart = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+    const nextMonth = currentMonth === 11 ? 1 : currentMonth + 2;
+    const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+    const monthEnd = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
+    const [todayRes, monthRes] = await Promise.all([
+      supabase
+        .from('private_appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('date', today),
+      supabase
+        .from('private_appointments')
+        .select('price')
+        .eq('user_id', user.id)
+        .gte('date', monthStart)
+        .lt('date', monthEnd),
+    ]);
+
+    setPrivateToday(todayRes.count ?? 0);
+    const revenue = (monthRes.data || []).reduce((sum, a) => sum + (a.price || 0), 0);
+    setPrivateMonthlyRevenue(revenue);
+  };
+
   useEffect(() => {
     if (!user) return;
-    supabase.from('private_appointments').select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id).eq('date', today)
-      .then(({ count }) => setPrivateToday(count ?? 0));
+    loadPrivateData();
+
+    // Realtime: re-fetch whenever private_appointments change
+    const channel = supabase
+      .channel('stats-private-appointments')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'private_appointments', filter: `user_id=eq.${user.id}` },
+        () => loadPrivateData()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user, today]);
 
   const totalTodayCount = clinicTodayCount + privateToday;
-  
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+
   const monthlyEvolutions = evolutions.filter(e => {
     const date = new Date(e.date);
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   });
 
-  // Calculate monthly revenue (simplified)
-  const monthlyRevenue = patients.reduce((sum, p) => {
+  // Clinic patient revenue (fixo + sessao)
+  const clinicMonthlyRevenue = patients.reduce((sum, p) => {
     if (p.paymentType === 'fixo' && p.paymentValue) {
       return sum + p.paymentValue;
     }
     if (p.paymentType === 'sessao' && p.paymentValue) {
       const patientEvolutions = monthlyEvolutions.filter(
-        e => e.patientId === p.id && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'falta_remunerada' || e.attendanceStatus === 'feriado_remunerado')
+        e => e.patientId === p.id && (
+          e.attendanceStatus === 'presente' ||
+          e.attendanceStatus === 'reposicao' ||
+          e.attendanceStatus === 'falta_remunerada' ||
+          e.attendanceStatus === 'feriado_remunerado'
+        )
       );
       return sum + (patientEvolutions.length * p.paymentValue);
     }
     return sum;
   }, 0);
+
+  const monthlyRevenue = clinicMonthlyRevenue + privateMonthlyRevenue;
 
   const stats = [
     {
@@ -126,20 +169,20 @@ export function StatsCards() {
                 )} />
               </div>
             </div>
-            
+
             <div className="flex items-baseline gap-1">
               {stat.prefix && <span className={cn(
                 'text-sm',
                 isLilas ? 'text-foreground/60' : 'text-muted-foreground'
               )}>{stat.prefix}</span>}
               <span className="text-2xl font-semibold text-foreground">
-                {stat.format 
+                {stat.format
                   ? stat.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
                   : stat.value
                 }
               </span>
             </div>
-            
+
             {stat.suffix && (
               <p className={cn(
                 'text-xs mt-1',
