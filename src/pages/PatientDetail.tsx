@@ -200,7 +200,10 @@ export default function PatientDetail() {
       if (data) {
         setStamps(data);
         const defaultStamp = data.find(s => s.is_default);
-        if (defaultStamp) setSelectedStampId(defaultStamp.id);
+        if (defaultStamp) {
+          setSelectedStampId(defaultStamp.id);
+          setFiscalStampId(defaultStamp.id);
+        }
       }
     });
   }, [user]);
