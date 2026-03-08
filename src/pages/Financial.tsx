@@ -343,7 +343,7 @@ export default function Financial() {
 
       const summaryItems = [
         { label: 'Faturamento Total',        value: `R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,                   bold: true },
-        { label: 'Receita Clínicas Próprias',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        { label: 'Receita Consultórios',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Receita Contratante',      value: `R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Serviços Particulares',    value: `R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         ...(totalLoss > 0 ? [{ label: 'Perdas por Faltas', value: `- R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, loss: true }] : []),
@@ -399,7 +399,7 @@ export default function Financial() {
           doc.setFontSize(9);
           doc.text(clinic.name, margin + 6, y + 5.5);
           // Badge
-          const badge = isContratante ? 'Contratante' : 'Própria';
+          const badge = isContratante ? 'Contratante' : 'Consultório';
           const badgeW = doc.getTextWidth(badge) + 4;
           setFill(isContratante ? C.accent : C.primary);
           doc.roundedRect(margin + 6 + doc.getTextWidth(clinic.name) + 3, y + 1.5, badgeW, 5, 1, 1, 'F');
@@ -953,15 +953,15 @@ export default function Financial() {
               <Stethoscope className="w-5 h-5 text-success" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Receita Clínicas Próprias</p>
-              <p className="text-[10px] text-muted-foreground/70">Unidades próprias</p>
+              <p className="text-xs text-muted-foreground">Receita Consultórios</p>
+              <p className="text-[10px] text-muted-foreground/70">Consultórios próprios</p>
             </div>
           </div>
           <p className="text-2xl font-bold text-foreground">
             R$ {revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {propriaClinics.length} {propriaClinics.length === 1 ? 'clínica' : 'clínicas'}
+            {propriaClinics.length} {propriaClinics.length === 1 ? 'consultório' : 'consultórios'}
           </p>
           {grandTotal > 0 && (
             <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -1017,7 +1017,7 @@ export default function Financial() {
                       "text-[10px] px-2 py-0.5 rounded-full font-medium",
                       isPropria ? "bg-success/10 text-success" : "bg-blue-500/10 text-blue-500"
                     )}>
-                      {isPropria ? 'Própria' : 'Contratante'}
+                      {isPropria ? 'Consultório' : 'Contratante'}
                     </span>
                     <h3 className="font-semibold text-foreground text-sm truncate">{clinic.name}</h3>
                     {clinic.absencePaymentType === 'never' && (
