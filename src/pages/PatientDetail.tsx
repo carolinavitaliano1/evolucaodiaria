@@ -366,6 +366,7 @@ export default function PatientDetail() {
     doc.line(margin, y + 4, W - margin, y + 4);
     y += 12;
 
+
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...accentDark);
