@@ -333,6 +333,8 @@ export const DEFAULT_THERAPIST_PERMISSIONS: PermissionKey[] = [
   'evolutions.view',
   'evolutions.own_only',
   'evolutions.create',
+  'evolutions.status_only',
+  'ai_evolutions.use',
   'mural.view',
   'tasks.view',
 ];
@@ -350,6 +352,9 @@ export const DEFAULT_ADMIN_PERMISSIONS: PermissionKey[] = [
   'evolutions.view',
   'evolutions.create',
   'evolutions.edit',
+  'evolutions.status_only',
+  'ai_reports.use',
+  'ai_evolutions.use',
   'financial.view',
   'financial.edit',
   'financial.export',
