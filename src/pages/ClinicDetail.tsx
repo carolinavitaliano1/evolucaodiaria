@@ -287,6 +287,60 @@ export default function ClinicDetail() {
   const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
   const [editingEvolution, setEditingEvolution] = useState<typeof evolutions[0] | null>(null);
 
+  // Services (private_appointments) for this propria clinic
+  interface ClinicPrivateApt {
+    id: string; client_name: string; client_email?: string | null; client_phone?: string | null;
+    service_id?: string | null; clinic_id?: string | null; date: string; time: string;
+    price: number; status: string; notes?: string | null; paid?: boolean | null; created_at: string;
+  }
+  const [clinicServices, setClinicServices] = useState<ClinicPrivateApt[]>([]);
+  const [loadingClinicServices, setLoadingClinicServices] = useState(false);
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+  const [editServiceApt, setEditServiceApt] = useState<ClinicPrivateApt | null>(null);
+  const [editServiceAptOpen, setEditServiceAptOpen] = useState(false);
+  const [deleteServiceAptOpen, setDeleteServiceAptOpen] = useState(false);
+  const [serviceAptToDelete, setServiceAptToDelete] = useState<ClinicPrivateApt | null>(null);
+
+  const loadClinicServices = async () => {
+    if (!id) return;
+    setLoadingClinicServices(true);
+    const { data } = await supabase
+      .from('private_appointments')
+      .select('*')
+      .eq('clinic_id', id)
+      .order('date', { ascending: false })
+      .order('time', { ascending: true });
+    setClinicServices((data as any[]) || []);
+    setLoadingClinicServices(false);
+  };
+
+  const updateClinicServiceStatus = async (aptId: string, status: string) => {
+    await supabase.from('private_appointments').update({ status }).eq('id', aptId);
+    loadClinicServices();
+  };
+
+  const toggleClinicServicePaid = async (aptId: string, current: boolean) => {
+    await supabase.from('private_appointments').update({ paid: !current }).eq('id', aptId);
+    loadClinicServices();
+  };
+
+  const deleteClinicServiceApt = async () => {
+    if (!serviceAptToDelete) return;
+    await supabase.from('private_appointments').delete().eq('id', serviceAptToDelete.id);
+    toast.success('Agendamento apagado!');
+    setDeleteServiceAptOpen(false);
+    setServiceAptToDelete(null);
+    loadClinicServices();
+  };
+
+  const getServiceStatusColor = (status: string) => {
+    switch (status) {
+      case 'agendado': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'concluído': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+      case 'cancelado': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+      default: return 'bg-secondary text-secondary-foreground';
+    }
+  };
 
   if (!clinic) {
     return (
