@@ -43,6 +43,7 @@ interface PrivateAppointment {
   client_email?: string;
   client_phone?: string;
   service_id?: string;
+  clinic_id?: string;
   date: string;
   time: string;
   price: number;
