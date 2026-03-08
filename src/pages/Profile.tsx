@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface Profile {
+  interface Profile {
   id: string;
   user_id: string;
   name: string | null;
@@ -18,7 +18,6 @@ interface Profile {
   phone: string | null;
   professional_id: string | null;
   cpf: string | null;
-  cbo: string | null;
   avatar_url: string | null;
 }
 
