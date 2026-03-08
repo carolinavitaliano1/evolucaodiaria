@@ -719,144 +719,132 @@ export default function Clinics() {
         {/* Serviços Tab */}
         <TabsContent value="meus-servicos" className="space-y-4">
           {loadingPrivate ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Carregando...
-            </div>
+            <div className="text-center py-12 text-muted-foreground">Carregando...</div>
           ) : privateAppointments.length === 0 ? (
             <div className="text-center py-12 bg-card rounded-xl border border-border">
               <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">Nenhum serviço cadastrado</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Cadastre seu primeiro serviço
-              </p>
+              <p className="text-sm text-muted-foreground mb-4">Cadastre seu primeiro serviço</p>
               <Button onClick={() => setServiceDialogOpen(true)} size="sm" className="gap-2">
-                <Plus className="w-4 h-4" />
-                Cadastrar Serviço
+                <Plus className="w-4 h-4" />Cadastrar Serviço
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
-              {privateAppointments.map((apt) => (
-                <div 
-                  key={apt.id}
-                  className="bg-card rounded-xl border border-border p-4"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                        <h3 className="font-medium text-foreground text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{apt.client_name}</h3>
-                        <Badge className={cn("text-xs shrink-0", getStatusColor(apt.status))}>
-                          {apt.status === 'agendado' && 'Agendado'}
-                          {apt.status === 'concluído' && 'Concluído'}
-                          {apt.status === 'cancelado' && 'Cancelado'}
-                        </Badge>
-                        {apt.paid && (
-                          <Badge variant="outline" className="text-xs border-success/50 text-success shrink-0">
-                            Pago
+              {privateAppointments.map((apt) => {
+                const linkedClinic = apt.clinic_id ? clinics.find(c => c.id === apt.clinic_id) : null;
+                return (
+                  <div key={apt.id} className="bg-card rounded-xl border border-border p-4">
+                    {/* Top row: name + badges + menu */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          <h3 className="font-semibold text-foreground text-sm truncate">{apt.client_name}</h3>
+                          <Badge className={cn("text-[11px] px-1.5 py-0 h-5 shrink-0", getStatusColor(apt.status))}>
+                            {apt.status === 'agendado' ? 'Agendado' : apt.status === 'concluído' ? 'Concluído' : 'Cancelado'}
                           </Badge>
-                        )}
-                        {apt.clinic_id && (() => {
-                          const linkedClinic = clinics.find(c => c.id === apt.clinic_id);
-                          return linkedClinic ? (
-                            <Badge variant="outline" className="text-xs border-primary/40 text-primary shrink-0 gap-1">
-                              <MapPin className="w-2.5 h-2.5" />{linkedClinic.name}
-                            </Badge>
-                          ) : null;
-                        })()}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                          {format(new Date(apt.date + 'T00:00:00'), "dd/MM/yy", { locale: ptBR })}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                          {apt.time}
-                        </span>
-                        <span className="flex items-center gap-1 text-success font-medium">
-                          <DollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                          R$ {apt.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-
-                      {(apt.client_phone || apt.client_email) && (
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
-                          {apt.client_phone && (
-                            <span className="flex items-center gap-1 truncate">
-                              <Phone className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{apt.client_phone}</span>
-                            </span>
+                          {apt.paid && (
+                            <Badge variant="outline" className="text-[11px] px-1.5 py-0 h-5 border-success/50 text-success shrink-0">Pago</Badge>
                           )}
-                          {apt.client_email && (
-                            <span className="flex items-center gap-1 truncate max-w-[180px] sm:max-w-none">
-                              <Mail className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{apt.client_email}</span>
-                            </span>
+                          {linkedClinic && (
+                            <Badge variant="outline" className="text-[11px] px-1.5 py-0 h-5 border-primary/40 text-primary shrink-0 gap-1 max-w-[110px] truncate">
+                              <MapPin className="w-2.5 h-2.5 shrink-0" /><span className="truncate">{linkedClinic.name}</span>
+                            </Badge>
                           )}
                         </div>
-                      )}
-                    </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      {apt.status === 'agendado' && (
-                        <>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-success hover:text-success hover:bg-success/10"
-                            onClick={() => updateAppointmentStatus(apt.id, 'concluído')}
-                            title="Marcar como concluído"
-                          >
-                            <Check className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => updateAppointmentStatus(apt.id, 'cancelado')}
-                            title="Cancelar"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
+                        {/* Date / time / price row */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 shrink-0" />
+                            {format(new Date(apt.date + 'T00:00:00'), "dd/MM/yy", { locale: ptBR })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 shrink-0" />
+                            {apt.time}
+                          </span>
+                          <span className="flex items-center gap-1 text-success font-semibold">
+                            <DollarSign className="w-3 h-3 shrink-0" />
+                            R$ {apt.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
 
-                      {apt.status === 'concluído' && !apt.paid && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-success border-success/50 hover:bg-success/10 text-xs"
-                          onClick={() => togglePaid(apt.id, apt.paid || false)}
-                        >
-                          <DollarSign className="w-4 h-4 mr-1" />
-                          <span className="hidden sm:inline">Confirmar Pagamento</span>
-                          <span className="sm:hidden">Pago</span>
-                        </Button>
-                      )}
+                        {/* Contact row */}
+                        {(apt.client_phone || apt.client_email) && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-1">
+                            {apt.client_phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="w-3 h-3 shrink-0" />{apt.client_phone}
+                              </span>
+                            )}
+                            {apt.client_email && (
+                              <span className="flex items-center gap-1 max-w-[200px] truncate">
+                                <Mail className="w-3 h-3 shrink-0" /><span className="truncate">{apt.client_email}</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
+                      {/* Menu always in top-right */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => { setAppointmentToEdit(apt); setEditAppointmentOpen(true); }}>
-                            <Edit className="w-4 h-4 mr-2" /> Editar
+                            <Edit className="w-4 h-4 mr-2" />Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={() => { setAppointmentToDelete(apt); setDeleteAppointmentOpen(true); }}
                           >
-                            <Trash2 className="w-4 h-4 mr-2" /> Apagar
+                            <Trash2 className="w-4 h-4 mr-2" />Apagar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+
+                    {/* Action buttons in a clean bottom row */}
+                    {(apt.status === 'agendado' || (apt.status === 'concluído' && !apt.paid)) && (
+                      <div className="flex items-center gap-2 pt-2 mt-1 border-t border-border/60">
+                        {apt.status === 'agendado' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 h-8 text-xs gap-1.5 text-success border-success/40 hover:bg-success/10"
+                              onClick={() => updateAppointmentStatus(apt.id, 'concluído')}
+                            >
+                              <Check className="w-3.5 h-3.5" />Concluir
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 h-8 text-xs gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
+                              onClick={() => updateAppointmentStatus(apt.id, 'cancelado')}
+                            >
+                              <X className="w-3.5 h-3.5" />Cancelar
+                            </Button>
+                          </>
+                        )}
+                        {apt.status === 'concluído' && !apt.paid && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-8 text-xs gap-1.5 text-success border-success/40 hover:bg-success/10"
+                            onClick={() => togglePaid(apt.id, apt.paid || false)}
+                          >
+                            <DollarSign className="w-3.5 h-3.5" />Confirmar Pagamento
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
