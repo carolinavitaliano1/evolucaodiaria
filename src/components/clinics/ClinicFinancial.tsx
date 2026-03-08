@@ -427,9 +427,53 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
       {/* Patient breakdown */}
       <div className="bg-card rounded-2xl p-5 border border-border">
-        <h3 className="font-bold text-foreground mb-4 text-sm">Detalhamento por Paciente</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <h3 className="font-bold text-foreground text-sm">Detalhamento por Paciente</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status filter */}
+            <div className="flex items-center gap-0.5 rounded-lg bg-secondary border border-border p-0.5">
+              {(['all', 'paid', 'pending'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setPaymentFilter(f)}
+                  className={cn(
+                    'text-[10px] px-2 py-1 rounded-md transition-colors',
+                    paymentFilter === f
+                      ? f === 'paid' ? 'bg-success text-white' : f === 'pending' ? 'bg-warning text-white' : 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {f === 'all' ? 'Todos' : f === 'paid' ? '✓ Pagos' : '⏳ Pend.'}
+                </button>
+              ))}
+            </div>
+            {/* Date range filter */}
+            <div className="flex items-center gap-1">
+              <Input
+                type="date"
+                value={filterStartDate}
+                onChange={e => setFilterStartDate(e.target.value)}
+                className="h-7 text-xs w-28 px-2"
+                placeholder="De"
+              />
+              <span className="text-muted-foreground text-xs">–</span>
+              <Input
+                type="date"
+                value={filterEndDate}
+                onChange={e => setFilterEndDate(e.target.value)}
+                className="h-7 text-xs w-28 px-2"
+                placeholder="Até"
+              />
+              {(filterStartDate || filterEndDate) && (
+                <button onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }} className="text-xs text-muted-foreground hover:text-foreground px-1">✕</button>
+              )}
+            </div>
+          </div>
+        </div>
         {patientBreakdown.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8 text-sm">Nenhum registro neste mês</p>
+          <p className="text-center text-muted-foreground py-8 text-sm">
+            {paymentFilter !== 'all' || filterStartDate || filterEndDate ? 'Nenhum resultado para os filtros' : 'Nenhum registro neste mês'}
+          </p>
         ) : (
           <div className="space-y-2">
             {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, reposicoes }) => {
