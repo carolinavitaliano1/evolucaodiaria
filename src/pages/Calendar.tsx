@@ -78,6 +78,7 @@ export default function CalendarPage() {
     clinicId: '', patientId: '',
     date: format(selectedDate, 'yyyy-MM-dd'), time: '', notes: '',
   });
+  const [whatsappTarget, setWhatsappTarget] = useState<{ name: string; phone: string; date: string; time: string } | null>(null);
 
   const loadCalendarEvents = useCallback(async () => {
     if (!user?.id) return;
