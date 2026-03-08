@@ -799,6 +799,16 @@ export default function Profile() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="stampCbo">CBO <span className="text-muted-foreground font-normal text-xs">(Classificação Brasileira de Ocupações)</span></Label>
+              <Input
+                id="stampCbo"
+                value={stampCbo}
+                onChange={(e) => setStampCbo(e.target.value)}
+                placeholder="Ex: 2515-35 (Psicólogo Clínico)"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Imagem do Carimbo</Label>
               <FileUpload
                 accept="image/*"
