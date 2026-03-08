@@ -9,9 +9,9 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertTriangle, CalendarIcon, Search, RefreshCw, MessageCircle,
-  User, ChevronDown, ClipboardCheck, CheckCircle2, Filter,
+  User, ClipboardCheck, CheckCircle2, Clock, BellRing,
 } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay, parseISO, isWithinInterval } from 'date-fns';
+import { format, subDays, parseISO, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -52,11 +52,11 @@ const PERIOD_OPTIONS = [
 ];
 
 export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDashboardProps) {
-  const { patients, evolutions } = useApp();
+  const { patients } = useApp();
   const [pending, setPending] = useState<PendingEvolution[]>([]);
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [notifying, setNotifying] = useState<string | null>(null); // appointmentId being notified
+  const [notifyingAll, setNotifyingAll] = useState(false);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -210,15 +210,53 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
     });
   }, [pending, search, filterTherapist]);
 
+  function buildMessage(item: PendingEvolution) {
+    const formattedDate = format(parseISO(item.date), "dd 'de' MMMM", { locale: ptBR });
+    return `Olá ${item.therapistName}, notamos que a evolução do paciente *${item.patientName}* do dia *${formattedDate}* ainda não foi finalizada. Por favor, regularize assim que possível. 🙏`;
+  }
+
   function sendWhatsAppNotification(item: PendingEvolution) {
     if (!item.therapistPhone) {
       toast.error('Terapeuta não possui telefone cadastrado');
       return;
     }
-    const formattedDate = format(parseISO(item.date), "dd 'de' MMMM", { locale: ptBR });
-    const msg = `Olá ${item.therapistName}, notamos que a evolução do paciente *${item.patientName}* do dia *${formattedDate}* ainda não foi finalizada. Por favor, regularize assim que possível. 🙏`;
-    openWhatsApp(item.therapistPhone, msg);
+    openWhatsApp(item.therapistPhone, buildMessage(item));
     toast.success('WhatsApp aberto!');
+  }
+
+  async function notifyAll() {
+    const withPhone = filtered.filter(i => i.therapistPhone);
+    if (!withPhone.length) {
+      toast.error('Nenhum terapeuta com telefone cadastrado nos pendentes filtrados');
+      return;
+    }
+    setNotifyingAll(true);
+    // Group by therapist to avoid duplicate tabs — send one message per therapist
+    // listing all their pending patients in one go
+    const byTherapist: Record<string, PendingEvolution[]> = {};
+    withPhone.forEach(i => {
+      if (!byTherapist[i.therapistUserId]) byTherapist[i.therapistUserId] = [];
+      byTherapist[i.therapistUserId].push(i);
+    });
+    let opened = 0;
+    for (const [, items] of Object.entries(byTherapist)) {
+      const phone = items[0].therapistPhone!;
+      const name = items[0].therapistName;
+      if (items.length === 1) {
+        openWhatsApp(phone, buildMessage(items[0]));
+      } else {
+        const list = items
+          .map(i => `• *${i.patientName}* (${format(parseISO(i.date), "dd/MM", { locale: ptBR })})`)
+          .join('\n');
+        const msg = `Olá ${name}, identificamos evoluções pendentes para os seguintes pacientes:\n\n${list}\n\nPor favor, regularize assim que possível. 🙏`;
+        openWhatsApp(phone, msg);
+      }
+      opened++;
+      // Small delay so browsers don't block multiple tabs
+      await new Promise(r => setTimeout(r, 600));
+    }
+    toast.success(`${opened} terapeuta(s) notificado(s)!`);
+    setNotifyingAll(false);
   }
 
   const therapistOptions = useMemo(() => {
@@ -238,6 +276,14 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
     const mostBehind = Object.entries(byTherapist).sort((a, b) => b[1] - a[1])[0];
     return { total: pending.length, byTherapist, mostBehind };
   }, [pending]);
+
+  // Urgency helper reused in render
+  function getUrgency(dateStr: string): 'high' | 'medium' | 'low' {
+    const hoursAgo = differenceInHours(new Date(), parseISO(dateStr));
+    if (hoursAgo >= 72) return 'high';
+    if (hoursAgo >= 24) return 'medium';
+    return 'low';
+  }
 
   return (
     <div className="space-y-5">
@@ -365,6 +411,28 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
         )}
       </div>
 
+      {/* Notificar Todos */}
+      {!loading && filtered.length > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <BellRing className="w-4 h-4 shrink-0" />
+            <span>
+              <span className="font-semibold text-foreground">{filtered.length}</span> pendência(s) —{' '}
+              {filtered.filter(i => i.therapistPhone).length} com telefone cadastrado
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={notifyAll}
+            disabled={notifyingAll || filtered.every(i => !i.therapistPhone)}
+            className="gap-2 bg-[#25D366] hover:bg-[#1ebc58] text-white border-[#25D366] shrink-0"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            {notifyingAll ? 'Notificando...' : 'Notificar Todos os Pendentes'}
+          </Button>
+        </div>
+      )}
+
       {/* Table / List */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -384,8 +452,16 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
         </div>
       ) : (
         <div className="rounded-2xl border border-border overflow-hidden">
+          {/* Legend */}
+          <div className="flex items-center gap-4 px-4 py-2 bg-muted/20 border-b border-border text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success inline-block" /> Hoje</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-warning inline-block" /> &gt;24h</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-destructive inline-block" /> &gt;72h (crítico)</span>
+          </div>
+
           {/* Desktop table header */}
-          <div className="hidden sm:grid grid-cols-[1fr_1fr_120px_140px] gap-4 px-4 py-2 bg-muted/30 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          <div className="hidden sm:grid grid-cols-[24px_1fr_1fr_120px_140px] gap-4 px-4 py-2 bg-muted/30 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <span />
             <span>Paciente</span>
             <span>Terapeuta</span>
             <span>Data</span>
@@ -394,37 +470,58 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
 
           <div className="divide-y divide-border">
             {filtered.map(item => {
-              const isNotifying = notifying === item.appointmentId;
-              const daysAgo = Math.floor(
-                (Date.now() - parseISO(item.date).getTime()) / (1000 * 60 * 60 * 24)
-              );
-              const urgency = daysAgo >= 3 ? 'high' : daysAgo >= 1 ? 'medium' : 'low';
+              const urgency = getUrgency(item.date);
+              const hoursAgo = differenceInHours(new Date(), parseISO(item.date));
+              const daysAgo = Math.floor(hoursAgo / 24);
+
+              const dotColor =
+                urgency === 'high' ? 'bg-destructive' :
+                urgency === 'medium' ? 'bg-warning' :
+                'bg-success';
+
+              const rowBg =
+                urgency === 'high' ? 'bg-destructive/5 hover:bg-destructive/10' :
+                urgency === 'medium' ? 'bg-warning/5 hover:bg-warning/10' :
+                'hover:bg-muted/20';
+
+              const borderLeft =
+                urgency === 'high' ? 'border-l-2 border-l-destructive' :
+                urgency === 'medium' ? 'border-l-2 border-l-warning' :
+                'border-l-2 border-l-success';
 
               return (
                 <div
                   key={item.appointmentId}
                   className={cn(
-                    'flex flex-col sm:grid sm:grid-cols-[1fr_1fr_120px_140px] gap-2 sm:gap-4 px-4 py-3.5 items-start sm:items-center transition-colors hover:bg-muted/20',
-                    urgency === 'high' && 'border-l-2 border-l-destructive'
+                    'flex flex-col sm:grid sm:grid-cols-[24px_1fr_1fr_120px_140px] gap-2 sm:gap-4 px-4 py-3.5 items-start sm:items-center transition-colors',
+                    rowBg, borderLeft
                   )}
                 >
+                  {/* Color dot */}
+                  <div className="hidden sm:flex items-center justify-center">
+                    <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', dotColor)} />
+                  </div>
+
                   {/* Patient */}
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <User className="w-3.5 h-3.5 text-primary" />
-                    </div>
+                    <span className={cn('sm:hidden w-2 h-2 rounded-full shrink-0 mt-1', dotColor)} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{item.patientName}</p>
                       {urgency === 'high' && (
-                        <span className="text-[10px] text-destructive font-semibold flex items-center gap-0.5">
-                          <AlertTriangle className="w-2.5 h-2.5" /> {daysAgo}d de atraso
+                        <span className="text-[10px] text-destructive font-semibold flex items-center gap-0.5 mt-0.5">
+                          <AlertTriangle className="w-2.5 h-2.5" /> {daysAgo}d de atraso — crítico
+                        </span>
+                      )}
+                      {urgency === 'medium' && (
+                        <span className="text-[10px] text-warning font-semibold flex items-center gap-0.5 mt-0.5">
+                          <Clock className="w-2.5 h-2.5" /> {hoursAgo}h pendente
                         </span>
                       )}
                     </div>
                   </div>
 
                   {/* Therapist */}
-                  <div className="flex items-center gap-1.5 min-w-0 sm:block">
+                  <div className="flex items-center gap-1.5 min-w-0 sm:block pl-4 sm:pl-0">
                     <span className="sm:hidden text-xs text-muted-foreground">Terapeuta:</span>
                     <div className="flex items-center gap-1.5">
                       <Badge variant="outline" className="text-xs py-0 gap-1">
@@ -438,7 +535,7 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
                   </div>
 
                   {/* Date */}
-                  <div className="flex items-center gap-1.5 sm:block">
+                  <div className="flex items-center gap-1.5 sm:block pl-4 sm:pl-0">
                     <span className="sm:hidden text-xs text-muted-foreground">Data:</span>
                     <span className="text-sm text-foreground">
                       {format(parseISO(item.date), "dd MMM yyyy", { locale: ptBR })}
@@ -446,11 +543,11 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
                   </div>
 
                   {/* Action */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 pl-4 sm:pl-0">
                     <Button
                       size="sm"
                       variant={item.therapistPhone ? 'default' : 'outline'}
-                      disabled={!item.therapistPhone || isNotifying}
+                      disabled={!item.therapistPhone}
                       onClick={() => sendWhatsAppNotification(item)}
                       className={cn(
                         'gap-1.5 text-xs h-7 px-2.5',
@@ -459,7 +556,7 @@ export function ComplianceDashboard({ clinicId, organizationId }: ComplianceDash
                       title={!item.therapistPhone ? 'Terapeuta sem telefone cadastrado' : 'Notificar via WhatsApp'}
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      {isNotifying ? '...' : 'Notificar'}
+                      Notificar
                     </Button>
                   </div>
                 </div>
