@@ -197,6 +197,17 @@ export default function PatientDetail() {
   const [fiscalTotalPaidFromApp, setFiscalTotalPaidFromApp] = useState<number | null>(null);
   const [isSavingFiscalToDocuments, setIsSavingFiscalToDocuments] = useState(false);
 
+  // Payment receipt state
+  const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
+  const [prAmount, setPrAmount] = useState('');
+  const [prService, setPrService] = useState('');
+  const [prPeriod, setPrPeriod] = useState('');
+  const [prPaymentMethod, setPrPaymentMethod] = useState('transferência bancária');
+  const [prPaymentDate, setPrPaymentDate] = useState('');
+  const [prStampId, setPrStampId] = useState('');
+  const [isExportingPR, setIsExportingPR] = useState(false);
+  const [isExportingPRWord, setIsExportingPRWord] = useState(false);
+
   // Therapist profile for fiscal receipt
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
 
