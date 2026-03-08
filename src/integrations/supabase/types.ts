@@ -186,6 +186,56 @@ export type Database = {
           },
         ]
       }
+      clinic_payment_records: {
+        Row: {
+          amount: number
+          clinic_id: string
+          created_at: string
+          id: string
+          month: number
+          notes: string | null
+          paid: boolean
+          payment_date: string | null
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          clinic_id: string
+          created_at?: string
+          id?: string
+          month: number
+          notes?: string | null
+          paid?: boolean
+          payment_date?: string | null
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          paid?: boolean
+          payment_date?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_payment_records_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinics: {
         Row: {
           absence_payment_type: string | null
@@ -759,6 +809,7 @@ export type Database = {
           id: string
           notes: string | null
           paid: boolean | null
+          payment_date: string | null
           price: number
           service_id: string | null
           status: string
@@ -776,6 +827,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid?: boolean | null
+          payment_date?: string | null
           price?: number
           service_id?: string | null
           status?: string
@@ -793,6 +845,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid?: boolean | null
+          payment_date?: string | null
           price?: number
           service_id?: string | null
           status?: string
