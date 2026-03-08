@@ -399,15 +399,28 @@ export default function PatientDetail() {
       // 3. Nome do terapeuta
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
       doc.setTextColor(...darkText);
       doc.text(stampOverride.name, margin, y);
-      y += 5;
+      y += 5.5;
 
-      // 4. Função / Área clínica
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...mutedText);
       doc.text(stampOverride.clinical_area, margin, y);
-      y += 7;
+      y += 5;
+
+      // CBO do carimbo (prioridade) ou registro profissional
+      const stampCbo = (stampOverride as any).cbo;
+      const profId = therapistProfile?.professional_id;
+      if (stampCbo) {
+        doc.text(`CBO: ${stampCbo}`, margin, y);
+        y += 5;
+      }
+      if (profId) {
+        doc.text(`Registro: ${profId}`, margin, y);
+        y += 5;
+      }
+      y += 2;
     } else if (showBlankLine) {
       // blank signature line
       doc.setFont('helvetica', 'normal');
