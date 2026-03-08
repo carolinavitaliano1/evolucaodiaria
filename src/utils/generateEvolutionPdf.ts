@@ -208,7 +208,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps, prof
 
     // Per-evolution stamp
     if (evo.stampId && stamps) {
-      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, addHeader);
+      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, addHeader, professionalId);
     }
 
     if (pi < items.length - 1) {
