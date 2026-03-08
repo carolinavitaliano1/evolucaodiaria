@@ -15,11 +15,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
-  Settings, UserCheck, UserX, Lock, ShieldCheck
+  Settings, Lock, ShieldCheck, MoreVertical, UserCheck, UserX,
+  Briefcase
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,6 +34,7 @@ import {
   DEFAULT_ADMIN_PERMISSIONS,
   ALL_PERMISSIONS,
 } from '@/hooks/useOrgPermissions';
+import { cn } from '@/lib/utils';
 
 interface OrganizationMember {
   id: string;
@@ -77,12 +81,6 @@ const ROLE_LABELS: Record<string, string> = {
   professional: 'Profissional',
 };
 
-const ROLE_ICONS: Record<string, React.ReactNode> = {
-  owner: <Crown className="w-3 h-3" />,
-  admin: <Shield className="w-3 h-3" />,
-  professional: <User className="w-3 h-3" />,
-};
-
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
   pending: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
@@ -102,6 +100,26 @@ function parsePermissions(raw: any): PermissionKey[] {
     return Object.keys(raw).filter(k => (raw as any)[k]) as PermissionKey[];
   }
   return [];
+}
+
+function getInitials(name: string | null | undefined, email: string): string {
+  if (name) {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0][0]?.toUpperCase() || '?';
+  }
+  return email[0]?.toUpperCase() || '?';
+}
+
+// Deterministic color from string
+const AVATAR_COLORS = [
+  'bg-blue-500', 'bg-violet-500', 'bg-rose-500', 'bg-amber-500',
+  'bg-emerald-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-pink-500',
+];
+function getAvatarColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
 export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
@@ -147,7 +165,6 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     if (organization && canManage) loadLateEvolutions();
   }, [organization, canManage]);
 
-  // Sync invite permissions when role changes
   useEffect(() => {
     setInvitePermissions(inviteRole === 'admin' ? [...DEFAULT_ADMIN_PERMISSIONS] : [...DEFAULT_THERAPIST_PERMISSIONS]);
   }, [inviteRole]);
@@ -317,8 +334,8 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     } finally { setInviting(false); }
   }
 
-  async function handleResendInvite(member: OrganizationMember, e: React.MouseEvent) {
-    e.stopPropagation();
+  async function handleResendInvite(member: OrganizationMember, e?: React.MouseEvent) {
+    e?.stopPropagation();
     if (!organization) return;
     setResendingId(member.id);
     try {
@@ -373,13 +390,11 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       const permissionsMap = Object.fromEntries(
         ALL_PERMISSIONS.map(p => [p, editPermissions.includes(p)])
       );
-      // Save permissions + role_label
       await supabase.from('organization_members').update({
         permissions: permissionsMap,
         role_label: editRoleLabel || null,
       }).eq('id', manageMember.id);
 
-      // Save patient assignments
       await supabase.from('therapist_patient_assignments').delete().eq('member_id', manageMember.id);
       const toInsert = Object.entries(editPatients).map(([patient_id, schedule_time]) => ({
         organization_id: organization.id,
@@ -460,11 +475,15 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     );
   }
 
+  const activeMembers = members.filter(m => m.status === 'active');
+  const pendingMembers = members.filter(m => m.status === 'pending');
+  const inactiveMembers = members.filter(m => m.status === 'inactive');
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Late Evolutions Alert */}
       {canManage && lateEvolutions.length > 0 && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-destructive" />
             <h4 className="font-semibold text-sm text-destructive">
@@ -486,45 +505,70 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-foreground">Equipe da clínica</h3>
-          <p className="text-sm text-muted-foreground">{members.filter(m => m.status === 'active').length} membro(s) ativo(s)</p>
+      {/* Header + Stats + Invite button */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        {/* Stats pills */}
+        <div className="flex items-center gap-2 flex-wrap flex-1">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-200 dark:border-green-800">
+            <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+            <span className="text-xs font-semibold text-green-700 dark:text-green-400">{activeMembers.length} ativo{activeMembers.length !== 1 ? 's' : ''}</span>
+          </div>
+          {pendingMembers.length > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-200 dark:border-yellow-800">
+              <Clock className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
+              <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">{pendingMembers.length} pendente{pendingMembers.length !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {inactiveMembers.length > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted border border-border">
+              <UserX className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground">{inactiveMembers.length} inativo{inactiveMembers.length !== 1 ? 's' : ''}</span>
+            </div>
+          )}
         </div>
+
         {canManage && (
           <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); } }}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
+              <Button size="sm" className="gap-2 shrink-0">
                 <UserPlus className="w-4 h-4" />
-                Convidar
+                Convidar Colaborador
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
               <DialogHeader>
-                <DialogTitle>Convidar profissional</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <UserPlus className="w-4 h-4 text-primary" />
+                  </div>
+                  Convidar Colaborador
+                </DialogTitle>
               </DialogHeader>
               <ScrollArea className="flex-1 overflow-y-auto pr-1">
-                <div className="space-y-4 pt-2 pb-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>E-mail do profissional</Label>
-                      <Input type="email" placeholder="profissional@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+                <div className="space-y-5 pt-2 pb-2">
+                  {/* Basic info */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Identificação</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5 col-span-2">
+                        <Label>E-mail do colaborador</Label>
+                        <Input type="email" placeholder="colaborador@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Cargo inicial</Label>
+                        <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="professional">Profissional / Terapeuta</SelectItem>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Especialidade / Título <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
+                        <Input placeholder="Ex: Fonoaudióloga, Secretária..." value={inviteRoleLabel} onChange={e => setInviteRoleLabel(e.target.value)} />
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Função base</Label>
-                      <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="professional">Profissional / Terapeuta</SelectItem>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Cargo personalizado <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
-                    <Input placeholder="Ex: Fonoaudióloga, Secretária, Financeiro..." value={inviteRoleLabel} onChange={e => setInviteRoleLabel(e.target.value)} />
                   </div>
 
                   <Separator />
@@ -533,10 +577,10 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-primary" />
-                      <Label className="text-sm font-semibold">Permissões de acesso</Label>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Permissões de acesso</p>
                     </div>
-                    <p className="text-xs text-muted-foreground -mt-1">
-                      Defina exatamente o que este profissional poderá acessar no sistema.
+                    <p className="text-xs text-muted-foreground">
+                      Defina exatamente o que este colaborador poderá acessar no sistema.
                     </p>
                     <div className="space-y-4">
                       {PERMISSION_GROUPS.map(group => (
@@ -561,7 +605,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <CalendarDays className="w-4 h-4 text-primary" />
-                      <Label className="text-sm font-semibold">Pacientes vinculados <span className="text-xs font-normal text-muted-foreground">(opcional)</span></Label>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pacientes vinculados <span className="font-normal normal-case">(opcional)</span></p>
                     </div>
                     {clinicPatients.length === 0 ? (
                       <p className="text-sm text-muted-foreground italic">Nenhum paciente nesta clínica.</p>
@@ -594,7 +638,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                 <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
                 <Button onClick={handleInvite} disabled={inviting || !inviteEmail} className="gap-2">
                   {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                  Enviar convite
+                  Enviar convite por e-mail
                 </Button>
               </div>
             </DialogContent>
@@ -602,110 +646,173 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
         )}
       </div>
 
-      {/* Members List */}
-      <div className="space-y-2">
+      {/* ── Collaborators Grid ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {members.map(member => {
-          const isClickable = canManage && member.role !== 'owner';
+          const displayName = member.profile?.name || member.email;
           const displayRole = member.role_label || ROLE_LABELS[member.role] || member.role;
+          const initials = getInitials(member.profile?.name, member.email);
+          const avatarColor = getAvatarColor(member.email);
+          const isClickable = canManage && member.role !== 'owner';
+
           return (
             <div
               key={member.id}
-              className={`rounded-lg border bg-card transition-colors ${isClickable ? 'cursor-pointer hover:border-primary/40 hover:bg-primary/5' : ''}`}
+              className={cn(
+                'relative rounded-xl border bg-card p-4 flex flex-col gap-3 transition-all',
+                isClickable && 'hover:border-primary/40 hover:shadow-sm cursor-pointer',
+                member.status === 'inactive' && 'opacity-60'
+              )}
               onClick={() => isClickable && openManageModal(member)}
             >
-              <div className="flex items-center justify-between p-3 gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold
-                    ${member.status === 'active' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                    {member.status === 'active'
-                      ? (member.profile?.name?.[0]?.toUpperCase() || member.email[0]?.toUpperCase())
-                      : <Mail className="w-3.5 h-3.5" />}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className={`font-medium text-sm truncate ${member.status === 'inactive' ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                        {member.profile?.name || member.email}
-                      </p>
-                      {member.status === 'active' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
-                    </div>
-                    {member.profile?.name && (
-                      <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+              {/* Top row: avatar + actions menu */}
+              <div className="flex items-start justify-between">
+                <div className="relative">
+                  <Avatar className="w-14 h-14">
+                    {member.profile?.avatar_url && (
+                      <AvatarImage src={member.profile.avatar_url} alt={displayName} />
                     )}
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <AvatarFallback className={cn('text-white font-bold text-base', avatarColor)}>
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  {/* Status dot */}
+                  <span className={cn(
+                    'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card',
+                    member.status === 'active' ? 'bg-green-500' :
+                    member.status === 'pending' ? 'bg-yellow-400' : 'bg-muted-foreground'
+                  )} />
+                </div>
+
+                {/* Actions dropdown */}
+                {canManage && member.role !== 'owner' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                      <DropdownMenuItem onClick={() => openManageModal(member)}>
+                        <Settings className="w-3.5 h-3.5 mr-2" />
+                        Gerenciar acesso
+                      </DropdownMenuItem>
                       {member.status === 'pending' && (
-                        <span className="text-xs text-yellow-600 dark:text-yellow-400">Aguardando aceite por e-mail</span>
-                      )}
-                      {member.status === 'active' && (member.assignments?.length ?? 0) > 0 && (
-                        <span className="text-xs text-muted-foreground">{member.assignments!.length} paciente(s)</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                  <Badge variant="outline" className={`text-xs border ${STATUS_COLORS[member.status]} hidden sm:flex`}>
-                    {STATUS_LABELS[member.status]}
-                  </Badge>
-
-                  {member.role === 'owner' ? (
-                    <Badge variant="outline" className="text-xs gap-1">
-                      <Crown className="w-2.5 h-2.5" />
-                      Dono
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs gap-1 hidden sm:flex">
-                      {ROLE_ICONS[member.role]}
-                      {displayRole}
-                    </Badge>
-                  )}
-
-                  {canManage && member.status === 'pending' && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-                          onClick={e => handleResendInvite(member, e)} disabled={resendingId === member.id}>
+                        <DropdownMenuItem onClick={() => handleResendInvite(member)} disabled={resendingId === member.id}>
                           {resendingId === member.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <RefreshCw className="w-3.5 h-3.5" />}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Reenviar convite</TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  {isClickable && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground"
-                          onClick={e => { e.stopPropagation(); openManageModal(member); }}>
-                          <Settings className="w-3.5 h-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Gerenciar acesso</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
+                            ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                            : <RefreshCw className="w-3.5 h-3.5 mr-2" />}
+                          Reenviar convite
+                        </DropdownMenuItem>
+                      )}
+                      {member.status !== 'pending' && (
+                        <DropdownMenuItem onClick={() => handleToggleMemberStatus(member)}>
+                          {member.status === 'active'
+                            ? <><UserX className="w-3.5 h-3.5 mr-2" />Suspender acesso</>
+                            : <><UserCheck className="w-3.5 h-3.5 mr-2" />Reativar acesso</>}
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setRemoveMemberId(member.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-2" />
+                        Remover da equipe
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
 
-              {/* Patient list preview */}
-              {member.status === 'active' && member.assignments && member.assignments.length > 0 && (
-                <div className="px-3 pb-3 pt-0">
-                  <div className="flex flex-wrap gap-1.5">
-                    {member.assignments.map(a => (
-                      <div key={a.id} className="flex items-center gap-1 bg-muted/60 rounded-md px-2 py-0.5 text-xs text-muted-foreground">
+              {/* Name + email */}
+              <div className="min-w-0">
+                <p className={cn('font-semibold text-sm leading-tight truncate', member.status === 'inactive' && 'line-through text-muted-foreground')}>
+                  {member.profile?.name || <span className="text-muted-foreground font-normal text-xs">{member.email}</span>}
+                </p>
+                {member.profile?.name && (
+                  <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                )}
+              </div>
+
+              {/* Role + specialty badges */}
+              <div className="flex flex-wrap gap-1.5">
+                {member.role === 'owner' ? (
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-amber-300 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
+                    <Crown className="w-2.5 h-2.5" />
+                    Dono
+                  </Badge>
+                ) : member.role === 'admin' ? (
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-blue-300 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20">
+                    <Shield className="w-2.5 h-2.5" />
+                    Administrador
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5">
+                    <User className="w-2.5 h-2.5" />
+                    Profissional
+                  </Badge>
+                )}
+                {member.role_label && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 py-0 h-5">
+                    <Briefcase className="w-2.5 h-2.5" />
+                    {member.role_label}
+                  </Badge>
+                )}
+                <Badge variant="outline" className={cn('text-[10px] py-0 h-5 border', STATUS_COLORS[member.status])}>
+                  {STATUS_LABELS[member.status]}
+                </Badge>
+              </div>
+
+              {/* Patients + joined info */}
+              <div className="space-y-1 mt-auto">
+                {member.status === 'active' && (member.assignments?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {member.assignments!.slice(0, 3).map(a => (
+                      <span key={a.id} className="inline-flex items-center gap-1 bg-muted/60 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         <User className="w-2.5 h-2.5" />
-                        <span>{a.patient_name || a.patient_id.slice(0, 6)}</span>
-                        {a.schedule_time && (
-                          <span className="text-primary font-medium">· {a.schedule_time}</span>
-                        )}
-                      </div>
+                        {a.patient_name?.split(' ')[0] || '—'}
+                        {a.schedule_time && <span className="text-primary font-medium">· {a.schedule_time}</span>}
+                      </span>
                     ))}
+                    {(member.assignments?.length ?? 0) > 3 && (
+                      <span className="inline-flex items-center bg-muted/60 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        +{(member.assignments?.length ?? 0) - 3}
+                      </span>
+                    )}
                   </div>
-                </div>
-              )}
+                )}
+                {member.status === 'pending' && (
+                  <p className="text-[10px] text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    Aguardando aceite do convite
+                  </p>
+                )}
+                {member.status === 'active' && member.joined_at && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Entrou em {format(new Date(member.joined_at), "dd/MM/yyyy", { locale: ptBR })}
+                  </p>
+                )}
+              </div>
             </div>
           );
         })}
+
+        {/* Add collaborator card */}
+        {canManage && (
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="rounded-xl border-2 border-dashed border-border hover:border-primary/40 bg-card hover:bg-primary/5 p-4 flex flex-col items-center justify-center gap-3 transition-all min-h-[180px] cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <UserPlus className="w-5 h-5 text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">Convidar Colaborador</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Enviar convite por e-mail</p>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* ──────────────────────────────────────────────────────────────
@@ -716,15 +823,22 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
           {manageMember && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold">
-                    {(manageMember.profile?.name?.[0] || manageMember.email[0])?.toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div>{manageMember.profile?.name || manageMember.email}</div>
-                    {manageMember.profile?.name && (
-                      <div className="text-xs font-normal text-muted-foreground">{manageMember.email}</div>
-                    )}
+                <DialogTitle>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-10 h-10">
+                      {manageMember.profile?.avatar_url && (
+                        <AvatarImage src={manageMember.profile.avatar_url} />
+                      )}
+                      <AvatarFallback className={cn('text-white font-bold text-sm', getAvatarColor(manageMember.email))}>
+                        {getInitials(manageMember.profile?.name, manageMember.email)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="font-semibold">{manageMember.profile?.name || manageMember.email}</div>
+                      {manageMember.profile?.name && (
+                        <div className="text-xs font-normal text-muted-foreground">{manageMember.email}</div>
+                      )}
+                    </div>
                   </div>
                 </DialogTitle>
               </DialogHeader>
@@ -744,7 +858,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                       </Select>
                     </div>
                     <div className="space-y-1.5 col-span-2">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Cargo personalizado</Label>
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Especialidade / Título</Label>
                       <Input
                         placeholder="Ex: Fonoaudióloga, Secretária..."
                         value={editRoleLabel}
@@ -786,7 +900,6 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                       </TabsTrigger>
                     </TabsList>
 
-                    {/* Permissions tab */}
                     <TabsContent value="permissions" className="mt-4 space-y-4">
                       <p className="text-xs text-muted-foreground">
                         Controle exatamente quais módulos este profissional pode acessar.
@@ -813,7 +926,6 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                       ))}
                     </TabsContent>
 
-                    {/* Patients tab */}
                     <TabsContent value="patients" className="mt-4 space-y-2">
                       <p className="text-xs text-muted-foreground">
                         Selecione quais pacientes este profissional pode visualizar e atender.
@@ -863,7 +975,6 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                 </div>
               </ScrollArea>
 
-              {/* Actions */}
               <div className="flex items-center justify-between pt-3 border-t mt-3">
                 <Button
                   variant="ghost"
@@ -891,9 +1002,9 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       <AlertDialog open={!!removeMemberId} onOpenChange={open => !open && setRemoveMemberId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover membro</AlertDialogTitle>
+            <AlertDialogTitle>Remover colaborador</AlertDialogTitle>
             <AlertDialogDescription>
-              Este membro perderá acesso à equipe e todos os vínculos com pacientes serão removidos. Deseja continuar?
+              Este colaborador perderá acesso à equipe e todos os vínculos com pacientes serão removidos. Deseja continuar?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
