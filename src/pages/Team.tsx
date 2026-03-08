@@ -172,9 +172,9 @@ export default function Team() {
           <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl bg-warning/10 border border-warning/30">
             <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
             <div className="text-sm">
-              <p className="font-semibold text-warning">Gestão de equipe disponível apenas para clínicas próprias</p>
+              <p className="font-semibold text-warning">Gestão de equipe disponível apenas para consultórios</p>
               <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                As clínicas <strong className="text-foreground">{contratanteClinics.map(c => c.name).join(', ')}</strong> são do tipo <strong className="text-foreground">Contratante</strong> — locais onde você trabalha mas não é o responsável. Elas não aparecem aqui pois a equipe é gerenciada pela própria clínica contratante.
+                As clínicas <strong className="text-foreground">{contratanteClinics.map(c => c.name).join(', ')}</strong> são do tipo <strong className="text-foreground">Contratante</strong> — locais onde você trabalha mas não é o responsável. Elas não aparecem aqui pois a equipe é gerenciada pela clínica contratante.
               </p>
             </div>
           </div>
