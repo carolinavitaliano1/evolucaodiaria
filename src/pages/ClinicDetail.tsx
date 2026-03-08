@@ -1481,7 +1481,8 @@ export default function ClinicDetail() {
                     </div>
 
                     <div className="border-t pt-4 space-y-3">
-                      <p className="font-semibold">👤 Responsável Legal (opcional)</p>
+                      <p className="font-semibold">👤 Responsável Legal <span className="text-muted-foreground font-normal text-sm">(obrigatório para menores de 18 anos)</span></p>
+                      <p className="text-xs text-muted-foreground -mt-1">O CPF do responsável será usado na nota fiscal quando o paciente for menor de idade.</p>
                       <div>
                         <Label>Nome do Responsável</Label>
                         <Input
@@ -1491,7 +1492,7 @@ export default function ClinicDetail() {
                         />
                       </div>
                       <div>
-                        <Label>CPF do Responsável</Label>
+                        <Label>CPF do Responsável <span className="text-muted-foreground font-normal text-xs">(para nota fiscal)</span></Label>
                         <Input
                           value={formData.responsible_cpf}
                           onChange={(e) => setFormData({ ...formData, responsible_cpf: e.target.value })}
