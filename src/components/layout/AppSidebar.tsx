@@ -67,18 +67,20 @@ export function AppSidebar() {
     toast.success('Você saiu do sistema');
   };
 
-  // For org members (non-owners), filter items by their permissions.
-  // Owners and non-org users see everything.
-  const navItems = allNavItems.filter(item => {
-    if (!isOrgMember) return true;          // owner or standalone user
-    if (item.perm === null) return false;   // hide pricing/install for org members
-    return permissions.includes(item.perm as any);
-  });
+  // Build nav list: org members see all items but restricted ones are shown as locked
+  // Non-org users / owners see everything normally; pricing/install hidden for org members
+  const navItemsWithAccess = allNavItems.map(item => {
+    if (!isOrgMember) return { ...item, locked: false, hidden: false };
+    if (item.perm === null) return { ...item, locked: false, hidden: true }; // hide pricing/install
+    const hasAccess = permissions.includes(item.perm as any);
+    return { ...item, locked: !hasAccess, hidden: false };
+  }).filter(i => !i.hidden);
 
   // Show /team for everyone (non-owners see "em breve" page)
   const showTeam = !isOrgMember || isOwner || permissions.includes('team.view' as any);
 
   return (
+    <TooltipProvider delayDuration={200}>
     <aside className={cn(
       "hidden lg:flex flex-col w-60 min-h-screen border-r border-border",
       theme === 'lilas' ? 'sidebar-lilas' : 'bg-card'
@@ -119,46 +121,60 @@ export function AppSidebar() {
           </span>
         </NavLink>
 
-        {navItems.map(({ to, icon: Icon, label, badge }) => {
-          const isActive = location.pathname === to || 
-            (to !== '/' && location.pathname.startsWith(to));
+        {navItemsWithAccess.map(({ to, icon: Icon, label, badge, locked }) => {
+          const isActive = !locked && (location.pathname === to || 
+            (to !== '/' && location.pathname.startsWith(to)));
           const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : 0;
-          const showBadge = badgeCount > 0;
+          const showBadge = badgeCount > 0 && !locked;
           
           return (
-            <>
-              <NavLink
-                key={to}
-                to={to}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                  'hover:bg-accent group',
-                  isActive && 'bg-primary text-primary-foreground'
-                )}
-              >
-                <div className="relative shrink-0">
-                  <Icon className={cn(
-                    'w-[18px] h-[18px]',
-                    isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
-                  )} />
+            <div key={to}>
+              {locked ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-40 cursor-not-allowed select-none">
+                      <Icon className="w-[18px] h-[18px] text-muted-foreground" />
+                      <span className="text-sm font-medium flex-1 text-foreground">{label}</span>
+                      <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Sem permissão para acessar {label}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <NavLink
+                  to={to}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                    'hover:bg-accent group',
+                    isActive && 'bg-primary text-primary-foreground'
+                  )}
+                >
+                  <div className="relative shrink-0">
+                    <Icon className={cn(
+                      'w-[18px] h-[18px]',
+                      isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
+                    )} />
+                    {showBadge && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                        {badgeCount > 9 ? '9+' : badgeCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className={cn(
+                    'text-sm font-medium flex-1',
+                    isActive ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
+                  )}>
+                    {label}
+                  </span>
                   {showBadge && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                    <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                       {badgeCount > 9 ? '9+' : badgeCount}
                     </span>
                   )}
-                </div>
-                <span className={cn(
-                  'text-sm font-medium flex-1',
-                  isActive ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
-                )}>
-                  {label}
-                </span>
-                {showBadge && (
-                  <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                    {badgeCount > 9 ? '9+' : badgeCount}
-                  </span>
-                )}
-              </NavLink>
+                </NavLink>
+              )}
 
               {/* Equipe — logo após Mural */}
               {to === '/mural' && showTeam && (
@@ -182,7 +198,7 @@ export function AppSidebar() {
                   </span>
                 </NavLink>
               )}
-            </>
+            </div>
           );
         })}
       </nav>
