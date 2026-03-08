@@ -40,6 +40,9 @@ export default function Patients() {
   const navigate = useNavigate();
   const { patients, clinics, evolutions, setCurrentPatient, getClinicPackages } = useApp();
   const { user } = useAuth();
+  const { permissions: orgPermissions, isOwner: isOrgOwner, isOrgMember } = useOrgPermissions();
+  const { assignedPatientIds, loading: assignmentsLoading } = useMyAssignedPatientIds();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -48,6 +51,10 @@ export default function Patients() {
   const [endDate, setEndDate] = useState<Date>();
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [profile, setProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
+
+  // Permission-based flags
+  const ownOnly = isOrgMember && hasPermission(orgPermissions, 'patients.own_only') && !isOrgOwner;
+  const canSeeClinical = !isOrgMember || isOrgOwner || hasPermission(orgPermissions, 'evolutions.view');
 
   useEffect(() => {
     if (!user) return;
@@ -59,15 +66,23 @@ export default function Patients() {
     });
   }, [user]);
 
+  // Base patient list filtered by own_only permission
+  const visiblePatients = useMemo(() => {
+    if (ownOnly && !assignmentsLoading) {
+      return patients.filter(p => assignedPatientIds.has(p.id));
+    }
+    return patients;
+  }, [patients, ownOnly, assignedPatientIds, assignmentsLoading]);
+
   const filteredPatients = useMemo(() => {
-    if (!searchTerm.trim()) return patients;
+    if (!searchTerm.trim()) return visiblePatients;
     const term = searchTerm.toLowerCase();
-    return patients.filter(p => 
+    return visiblePatients.filter(p =>
       p.name.toLowerCase().includes(term) ||
-      p.clinicalArea?.toLowerCase().includes(term) ||
-      p.diagnosis?.toLowerCase().includes(term)
+      (canSeeClinical && p.clinicalArea?.toLowerCase().includes(term)) ||
+      (canSeeClinical && p.diagnosis?.toLowerCase().includes(term))
     );
-  }, [patients, searchTerm]);
+  }, [visiblePatients, searchTerm, canSeeClinical]);
 
   const handleOpenPatient = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
