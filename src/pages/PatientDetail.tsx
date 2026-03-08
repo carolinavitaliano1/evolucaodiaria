@@ -1877,14 +1877,17 @@ export default function PatientDetail() {
                 </div>
               )}
               <div>
-                <Label className="text-xs mb-1 block">
-                  Valor Total Pago (opcional — sobrescreve o calculado)
+                <Label className="text-xs mb-1 block flex items-center gap-1.5">
+                  Valor Total Pago
+                  <span className="text-muted-foreground font-normal">
+                    {fiscalTotalPaidFromApp !== null ? '— pré-preenchido do app (editável)' : '— opcional'}
+                  </span>
                 </Label>
                 <Input
                   type="number" step="0.01" min="0"
                   value={fiscalTotalPaid}
                   onChange={e => setFiscalTotalPaid(e.target.value)}
-                  placeholder={`R$ calculado automaticamente`}
+                  placeholder="R$ calculado automaticamente pelas sessões"
                   className="h-9 text-xs"
                 />
               </div>
