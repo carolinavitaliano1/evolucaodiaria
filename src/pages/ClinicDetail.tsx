@@ -523,17 +523,44 @@ export default function ClinicDetail() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.birthdate) return;
 
-    // Determinar scheduleTime a partir de scheduleByDay (pegar o primeiro horário para compatibilidade)
     const firstDayTime = formData.weekdays.length > 0 
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
     const selectedPkg = formData.packageId ? clinicPackages.find(p => p.id === formData.packageId) : null;
 
+    // Save patient with payment_due_day via direct supabase call
+    const { data: newPatient } = await supabase
+      .from('patients')
+      .insert({
+        clinic_id: clinic.id,
+        user_id: user?.id!,
+        name: formData.name,
+        birthdate: formData.birthdate,
+        phone: formData.phone || null,
+        clinical_area: formData.clinicalArea || null,
+        diagnosis: formData.diagnosis || null,
+        professionals: formData.professionals || null,
+        observations: formData.observations || null,
+        responsible_name: formData.responsibleName || null,
+        responsible_email: formData.responsibleEmail || null,
+        payment_type: clinic.paymentType === 'sessao' ? 'sessao' : clinic.paymentType === 'fixo_mensal' ? 'fixo' : 'sessao',
+        payment_value: selectedPkg ? selectedPkg.price : (clinic.paymentAmount ?? null),
+        contract_start_date: formData.contractStartDate || null,
+        weekdays: formData.weekdays.length > 0 ? formData.weekdays : null,
+        schedule_time: firstDayTime || null,
+        schedule_by_day: Object.keys(formData.scheduleByDay).length > 0 ? formData.scheduleByDay : null,
+        package_id: formData.packageId || null,
+        payment_due_day: formData.paymentDueDay ? parseInt(formData.paymentDueDay) : null,
+      })
+      .select()
+      .single();
+
+    // Also add to context so UI updates
     addPatient({
       clinicId: clinic.id,
       name: formData.name,
@@ -553,6 +580,23 @@ export default function ClinicDetail() {
       scheduleByDay: formData.scheduleByDay,
       packageId: formData.packageId || undefined,
     });
+
+    // If initial payment status was set, create payment record
+    if (newPatient && (formData.initialPaymentPaid || formData.paymentDueDay) && user) {
+      const now = new Date();
+      const paymentValue = selectedPkg ? selectedPkg.price : (clinic.paymentAmount ?? 0);
+      await supabase.from('patient_payment_records' as any).insert({
+        user_id: user.id,
+        patient_id: newPatient.id,
+        clinic_id: clinic.id,
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        amount: paymentValue,
+        paid: formData.initialPaymentPaid,
+        payment_date: formData.initialPaymentPaid && formData.initialPaymentDate ? formData.initialPaymentDate : (formData.initialPaymentPaid ? now.toISOString().split('T')[0] : null),
+        notes: null,
+      });
+    }
 
     setFormData({
       name: '',
