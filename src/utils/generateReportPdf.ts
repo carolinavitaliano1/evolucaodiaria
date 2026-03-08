@@ -13,6 +13,9 @@ interface ReportPdfOptions {
   clinicCnpj?: string;
   clinicPhone?: string;
   clinicServicesDescription?: string;
+  therapistName?: string;
+  therapistProfessionalId?: string;
+  therapistCbo?: string;
 }
 
 function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
