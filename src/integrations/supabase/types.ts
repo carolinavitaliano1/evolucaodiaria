@@ -775,6 +775,7 @@ export type Database = {
           cpf: string | null
           created_at: string
           diagnosis: string | null
+          email: string | null
           id: string
           is_archived: boolean | null
           name: string
@@ -803,6 +804,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           diagnosis?: string | null
+          email?: string | null
           id?: string
           is_archived?: boolean | null
           name: string
@@ -831,6 +833,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           diagnosis?: string | null
+          email?: string | null
           id?: string
           is_archived?: boolean | null
           name?: string
