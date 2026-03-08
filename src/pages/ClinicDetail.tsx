@@ -270,6 +270,9 @@ export default function ClinicDetail() {
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
     sessionDuration: '50',
     packageId: '',
+    paymentDueDay: '',
+    initialPaymentPaid: false,
+    initialPaymentDate: '',
   });
 
   const clinicPackages = clinic ? getClinicPackages(clinic.id) : [];
@@ -520,17 +523,44 @@ export default function ClinicDetail() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.birthdate) return;
 
-    // Determinar scheduleTime a partir de scheduleByDay (pegar o primeiro horário para compatibilidade)
     const firstDayTime = formData.weekdays.length > 0 
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
     const selectedPkg = formData.packageId ? clinicPackages.find(p => p.id === formData.packageId) : null;
 
+    // Save patient with payment_due_day via direct supabase call
+    const { data: newPatient } = await supabase
+      .from('patients')
+      .insert({
+        clinic_id: clinic.id,
+        user_id: user?.id!,
+        name: formData.name,
+        birthdate: formData.birthdate,
+        phone: formData.phone || null,
+        clinical_area: formData.clinicalArea || null,
+        diagnosis: formData.diagnosis || null,
+        professionals: formData.professionals || null,
+        observations: formData.observations || null,
+        responsible_name: formData.responsibleName || null,
+        responsible_email: formData.responsibleEmail || null,
+        payment_type: clinic.paymentType === 'sessao' ? 'sessao' : clinic.paymentType === 'fixo_mensal' ? 'fixo' : 'sessao',
+        payment_value: selectedPkg ? selectedPkg.price : (clinic.paymentAmount ?? null),
+        contract_start_date: formData.contractStartDate || null,
+        weekdays: formData.weekdays.length > 0 ? formData.weekdays : null,
+        schedule_time: firstDayTime || null,
+        schedule_by_day: Object.keys(formData.scheduleByDay).length > 0 ? formData.scheduleByDay : null,
+        package_id: formData.packageId || null,
+        payment_due_day: formData.paymentDueDay ? parseInt(formData.paymentDueDay) : null,
+      })
+      .select()
+      .single();
+
+    // Also add to context so UI updates
     addPatient({
       clinicId: clinic.id,
       name: formData.name,
@@ -551,6 +581,23 @@ export default function ClinicDetail() {
       packageId: formData.packageId || undefined,
     });
 
+    // If initial payment status was set, create payment record
+    if (newPatient && (formData.initialPaymentPaid || formData.paymentDueDay) && user) {
+      const now = new Date();
+      const paymentValue = selectedPkg ? selectedPkg.price : (clinic.paymentAmount ?? 0);
+      await supabase.from('patient_payment_records' as any).insert({
+        user_id: user.id,
+        patient_id: newPatient.id,
+        clinic_id: clinic.id,
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        amount: paymentValue,
+        paid: formData.initialPaymentPaid,
+        payment_date: formData.initialPaymentPaid && formData.initialPaymentDate ? formData.initialPaymentDate : (formData.initialPaymentPaid ? now.toISOString().split('T')[0] : null),
+        notes: null,
+      });
+    }
+
     setFormData({
       name: '',
       birthdate: '',
@@ -566,6 +613,9 @@ export default function ClinicDetail() {
       scheduleByDay: {},
       sessionDuration: '50',
       packageId: '',
+      paymentDueDay: '',
+      initialPaymentPaid: false,
+      initialPaymentDate: '',
     });
     setIsDialogOpen(false);
     toast.success('Paciente cadastrado com sucesso!');
@@ -1455,6 +1505,51 @@ export default function ClinicDetail() {
                           {clinic.paymentType === 'fixo_diario' && ' por dia'}
                         </p>
                       ) : null}
+
+                      {/* Payment due day */}
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Dia de vencimento</Label>
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={31}
+                              placeholder="Ex: 10"
+                              value={formData.paymentDueDay}
+                              onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">dia</span>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Status inicial</Label>
+                          <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 h-10">
+                            <span className={`text-xs font-medium ${formData.initialPaymentPaid ? 'text-success' : 'text-muted-foreground'}`}>
+                              {formData.initialPaymentPaid ? 'Pago' : 'Pendente'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, initialPaymentPaid: !formData.initialPaymentPaid, initialPaymentDate: !formData.initialPaymentPaid ? new Date().toISOString().split('T')[0] : '' })}
+                              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${formData.initialPaymentPaid ? 'bg-success' : 'bg-input'}`}
+                            >
+                              <span className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform ${formData.initialPaymentPaid ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Payment date — shown when initial payment is set to Pago */}
+                      {formData.initialPaymentPaid && (
+                        <div className="mt-3 space-y-1.5">
+                          <Label className="text-xs">Data do pagamento</Label>
+                          <Input
+                            type="date"
+                            value={formData.initialPaymentDate}
+                            onChange={(e) => setFormData({ ...formData, initialPaymentDate: e.target.value })}
+                          />
+                        </div>
+                      )}
                     </div>
 
 

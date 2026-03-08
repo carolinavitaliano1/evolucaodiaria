@@ -705,6 +705,66 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_payment_records: {
+        Row: {
+          amount: number
+          clinic_id: string
+          created_at: string
+          id: string
+          month: number
+          notes: string | null
+          paid: boolean
+          patient_id: string
+          payment_date: string | null
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          clinic_id: string
+          created_at?: string
+          id?: string
+          month: number
+          notes?: string | null
+          paid?: boolean
+          patient_id: string
+          payment_date?: string | null
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          paid?: boolean
+          patient_id?: string
+          payment_date?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_payment_records_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_payment_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           avatar_url: string | null
@@ -719,6 +779,7 @@ export type Database = {
           name: string
           observations: string | null
           package_id: string | null
+          payment_due_day: number | null
           payment_type: string | null
           payment_value: number | null
           phone: string | null
@@ -744,6 +805,7 @@ export type Database = {
           name: string
           observations?: string | null
           package_id?: string | null
+          payment_due_day?: number | null
           payment_type?: string | null
           payment_value?: number | null
           phone?: string | null
@@ -769,6 +831,7 @@ export type Database = {
           name?: string
           observations?: string | null
           package_id?: string | null
+          payment_due_day?: number | null
           payment_type?: string | null
           payment_value?: number | null
           phone?: string | null
