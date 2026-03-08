@@ -558,7 +558,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
             <button
               onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
               className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
-                statusFilter === 'active' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400'
+                statusFilter === 'active' ? 'bg-success text-success-foreground border-success' : 'bg-success/10 border-success/30 text-success hover:border-success/60'
               )}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -568,7 +568,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
               <button
                 onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
                 className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
-                  statusFilter === 'pending' ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:border-amber-400'
+                  statusFilter === 'pending' ? 'bg-warning text-warning-foreground border-warning' : 'bg-warning/10 border-warning/30 text-warning hover:border-warning/60'
                 )}
               >
                 <Clock className="w-3.5 h-3.5" />
