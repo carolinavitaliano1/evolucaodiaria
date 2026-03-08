@@ -950,30 +950,14 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                       </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="permissions" className="mt-4 space-y-4">
-                      <p className="text-xs text-muted-foreground">
-                        Controle exatamente quais módulos este profissional pode acessar.
+                    <TabsContent value="permissions" className="mt-4">
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Controle exatamente o nível de acesso de cada módulo.
                       </p>
-                      {PERMISSION_GROUPS.map(group => (
-                        <div key={group.label} className="space-y-2">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {group.keys.map(perm => (
-                              <div
-                                key={perm}
-                                className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                                onClick={() => togglePerm(perm, editPermissions, setEditPermissions)}
-                              >
-                                <Checkbox
-                                  checked={editPermissions.includes(perm)}
-                                  onCheckedChange={() => togglePerm(perm, editPermissions, setEditPermissions)}
-                                />
-                                <span className="text-xs">{PERMISSION_LABELS[perm]}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                      <PermissionEditor
+                        permissions={editPermissions}
+                        onChange={setEditPermissions}
+                      />
                     </TabsContent>
 
                     <TabsContent value="patients" className="mt-4 space-y-2">
