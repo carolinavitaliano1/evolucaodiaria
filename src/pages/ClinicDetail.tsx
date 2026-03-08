@@ -1657,17 +1657,35 @@ export default function ClinicDetail() {
           </div>
         </TabsContent>
 
+        {/* Financial Tab */}
+        <TabsContent value="financial">
+          <ClinicFinancial clinicId={clinic.id} />
+        </TabsContent>
+
+        {/* Agenda Tab */}
+        <TabsContent value="agenda">
+          <ClinicAgenda clinicId={clinic.id} />
+        </TabsContent>
+
+        {/* Notes Tab */}
+        <TabsContent value="notes">
+          <ClinicNotes clinicId={clinic.id} />
+        </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates">
+          <EvolutionTemplates clinicId={clinic.id} />
+        </TabsContent>
+
         {/* Evolutions Day Tab */}
         <TabsContent value="evolutions-day">
           <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />
         </TabsContent>
 
-
         {/* Reports Tab */}
         <TabsContent value="reports">
           <ClinicReports clinicId={clinic.id} clinicName={clinic.name} clinicAddress={clinic.address || undefined} clinicLetterhead={clinic.letterhead || undefined} clinic={clinic} />
         </TabsContent>
-
 
         {/* Serviços Tab — only for propria clinics */}
         {isPropria && (
