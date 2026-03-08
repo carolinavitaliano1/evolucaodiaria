@@ -533,28 +533,53 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       )}
 
       {/* Header + Stats + Invite button */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        {/* Stats pills */}
-        <div className="flex items-center gap-2 flex-wrap flex-1">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-200 dark:border-green-800">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-            <span className="text-xs font-semibold text-green-700 dark:text-green-400">{activeMembers.length} ativo{activeMembers.length !== 1 ? 's' : ''}</span>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Stats pills */}
+          <div className="flex items-center gap-2 flex-wrap flex-1">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
+                statusFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted border-border text-muted-foreground hover:border-primary/40'
+              )}
+            >
+              <Users className="w-3.5 h-3.5" />
+              {members.length} total
+            </button>
+            <button
+              onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
+              className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
+                statusFilter === 'active' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400'
+              )}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              {activeMembers.length} ativo{activeMembers.length !== 1 ? 's' : ''}
+            </button>
+            {pendingMembers.length > 0 && (
+              <button
+                onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
+                className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
+                  statusFilter === 'pending' ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:border-amber-400'
+                )}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                {pendingMembers.length} pendente{pendingMembers.length !== 1 ? 's' : ''}
+              </button>
+            )}
+            {inactiveMembers.length > 0 && (
+              <button
+                onClick={() => setStatusFilter(statusFilter === 'inactive' ? 'all' : 'inactive')}
+                className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
+                  statusFilter === 'inactive' ? 'bg-muted-foreground text-background border-muted-foreground' : 'bg-muted border-border text-muted-foreground hover:border-primary/40'
+                )}
+              >
+                <UserX className="w-3.5 h-3.5" />
+                {inactiveMembers.length} inativo{inactiveMembers.length !== 1 ? 's' : ''}
+              </button>
+            )}
           </div>
-          {pendingMembers.length > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-200 dark:border-yellow-800">
-              <Clock className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">{pendingMembers.length} pendente{pendingMembers.length !== 1 ? 's' : ''}</span>
-            </div>
-          )}
-          {inactiveMembers.length > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted border border-border">
-              <UserX className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-semibold text-muted-foreground">{inactiveMembers.length} inativo{inactiveMembers.length !== 1 ? 's' : ''}</span>
-            </div>
-          )}
-        </div>
 
-        {canManage && (
+          {canManage && (
           <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); setInvitePreset('terapeuta'); } }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2 shrink-0">
