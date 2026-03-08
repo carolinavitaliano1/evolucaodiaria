@@ -953,8 +953,8 @@ export default function Financial() {
               <Stethoscope className="w-5 h-5 text-success" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Receita Clínicas Próprias</p>
-              <p className="text-[10px] text-muted-foreground/70">Unidades próprias</p>
+              <p className="text-xs text-muted-foreground">Receita Consultórios</p>
+              <p className="text-[10px] text-muted-foreground/70">Consultórios próprios</p>
             </div>
           </div>
           <p className="text-2xl font-bold text-foreground">
