@@ -2211,14 +2211,25 @@ export default function PatientDetail() {
               </Select>
             </div>
 
-            <div>
-              <Label className="text-xs mb-1 block">Local (cidade/estado)</Label>
-              <Input
-                value={prLocation}
-                onChange={e => setPrLocation(e.target.value)}
-                placeholder="Ex: São Paulo, SP"
-                className="h-9 text-xs"
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs mb-1 block">Local (cidade/estado)</Label>
+                <Input
+                  value={prLocation}
+                  onChange={e => setPrLocation(e.target.value)}
+                  placeholder="Ex: São Paulo, SP"
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Data do recibo</Label>
+                <Input
+                  type="date"
+                  value={prLocalDate}
+                  onChange={e => setPrLocalDate(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
             </div>
 
             {stamps.length > 0 && (
