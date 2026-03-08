@@ -200,6 +200,8 @@ export default function PatientDetail() {
   // Payment receipt state
   const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
   const [prAmount, setPrAmount] = useState('');
+  const [prSessions, setPrSessions] = useState('');
+  const [prUnitValue, setPrUnitValue] = useState('');
   const [prService, setPrService] = useState('');
   const [prPeriod, setPrPeriod] = useState('');
   const [prPaymentMethod, setPrPaymentMethod] = useState('transferência bancária');
@@ -937,6 +939,9 @@ export default function PatientDetail() {
     setPrPeriod(monthName);
     // Pre-fill location from clinic address
     setPrLocation(clinic?.address || '');
+    // Reset session fields
+    setPrSessions('');
+    setPrUnitValue(patient.paymentValue ? patient.paymentValue.toFixed(2) : '');
     // Try to fetch last payment record for amount/date
     if (user && patient.id) {
       const month = now.getMonth() + 1;
@@ -2033,7 +2038,7 @@ export default function PatientDetail() {
               {(() => {
                 const prStampPreview = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) : stamps.find(s => s.is_default) || stamps[0];
                 const tName = prStampPreview?.name || therapistProfile?.name || '[Terapeuta]';
-                const tCpf = therapistProfile?.cpf ? ` (CPF: ${therapistProfile.cpf})` : '';
+                const tCpf = therapistProfile?.cpf ? `, inscrito(a) no CPF/CNPJ sob o número ${therapistProfile.cpf},` : '';
                 const isMinorPR = (() => {
                   if (!patient.birthdate) return false;
                   try {
@@ -2045,23 +2050,68 @@ export default function PatientDetail() {
                   } catch { return false; }
                 })();
                 const pName = isMinorPR && patient.responsibleName ? patient.responsibleName : patient.name;
+                const pCpfRaw = isMinorPR ? (patient as any).responsible_cpf : (patient as any).cpf;
+                const pCpf = pCpfRaw ? `, inscrito(a) no CPF sob o número ${pCpfRaw},` : '';
                 const amtDisplay = prAmount ? `R$ ${parseFloat(prAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ [valor]';
                 const dateDisplay = prPaymentDate ? format(new Date(prPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '___/___/______';
                 return <>
-                  <p>Eu, <strong>{tName}</strong>{tCpf}, declaro para os devidos fins que recebi de <strong>{pName}</strong> a importância de <strong>{amtDisplay}</strong>, referente ao pagamento do serviço de <strong>{prService || '[serviço]'}</strong>, realizado no período de <strong>{prPeriod || '[período]'}</strong>.</p>
+                  <p>Eu, <strong>{tName}</strong>{tCpf} declaro para os devidos fins que recebi de <strong>{pName}</strong>{pCpf} a importância de <strong>{amtDisplay}</strong>, referente ao pagamento do serviço de <strong>{prService || '[serviço]'}</strong>, realizado no período de <strong>{prPeriod || '[período]'}</strong>.</p>
                   <p className="mt-2">A quantia foi paga através de <strong>{prPaymentMethod}</strong> na data de <strong>{dateDisplay}</strong>.</p>
                 </>;
               })()}
             </div>
 
+            {/* Sessions calculator */}
+            <div className="border border-border rounded-lg p-3 space-y-2">
+              <Label className="text-xs font-medium block text-foreground">Calcular por Sessões (opcional)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs mb-1 block text-muted-foreground">Nº de Sessões</Label>
+                  <Input
+                    type="number" min="1" step="1"
+                    value={prSessions}
+                    onChange={e => {
+                      const s = e.target.value;
+                      setPrSessions(s);
+                      const sessions = parseFloat(s);
+                      const unit = parseFloat(prUnitValue);
+                      if (!isNaN(sessions) && !isNaN(unit) && sessions > 0 && unit > 0) {
+                        setPrAmount((sessions * unit).toFixed(2));
+                      }
+                    }}
+                    placeholder="Ex: 4"
+                    className="h-9 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block text-muted-foreground">Valor por Sessão (R$)</Label>
+                  <Input
+                    type="number" min="0" step="0.01"
+                    value={prUnitValue}
+                    onChange={e => {
+                      const u = e.target.value;
+                      setPrUnitValue(u);
+                      const sessions = parseFloat(prSessions);
+                      const unit = parseFloat(u);
+                      if (!isNaN(sessions) && !isNaN(unit) && sessions > 0 && unit > 0) {
+                        setPrAmount((sessions * unit).toFixed(2));
+                      }
+                    }}
+                    placeholder="0,00"
+                    className="h-9 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs mb-1 block">Valor (R$)</Label>
+                <Label className="text-xs mb-1 block">Valor Total (R$)</Label>
                 <Input
                   type="number" step="0.01" min="0"
                   value={prAmount}
-                  onChange={e => setPrAmount(e.target.value)}
+                  onChange={e => { setPrAmount(e.target.value); setPrSessions(''); }}
                   placeholder="0,00"
                   className="h-9 text-xs"
                 />
@@ -2076,6 +2126,7 @@ export default function PatientDetail() {
                 />
               </div>
             </div>
+
 
             <div>
               <Label className="text-xs mb-1 block">Serviço / Área Clínica</Label>
