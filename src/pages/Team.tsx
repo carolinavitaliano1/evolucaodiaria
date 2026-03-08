@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { ClinicTeam } from '@/components/clinics/ClinicTeam';
+import { ComplianceDashboard } from '@/components/clinics/ComplianceDashboard';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Button } from '@/components/ui/button';
-import { 
-  Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock, Info
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock, Info,
+  ClipboardCheck, UsersIcon
 } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +22,8 @@ export default function Team() {
   const navigate = useNavigate();
   const { isOwner, loading: permLoading } = useOrgPermissions();
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'team' | 'compliance'>('team');
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
 
   const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
   const hasAccess = isOwnerEmail || isOwner;
@@ -32,6 +37,17 @@ export default function Team() {
       setSelectedClinicId(teamClinics[0].id);
     }
   }, [teamClinics]);
+
+  // Load org id whenever the selected clinic changes
+  useEffect(() => {
+    if (!selectedClinicId) return;
+    supabase
+      .from('clinics')
+      .select('organization_id')
+      .eq('id', selectedClinicId)
+      .single()
+      .then(({ data }) => setOrganizationId(data?.organization_id ?? null));
+  }, [selectedClinicId]);
 
   const selectedClinic = teamClinics.find(c => c.id === selectedClinicId);
 
@@ -74,7 +90,6 @@ export default function Team() {
         {/* Coming soon content */}
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="max-w-md w-full text-center space-y-8">
-            {/* Icon */}
             <div className="flex justify-center">
               <div className="relative">
                 <div className="w-28 h-28 rounded-3xl bg-primary/10 flex items-center justify-center">
@@ -85,30 +100,25 @@ export default function Team() {
                 </div>
               </div>
             </div>
-
-            {/* Badge */}
             <div className="flex justify-center">
               <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold border border-primary/20">
                 <Clock className="w-4 h-4" />
                 Em breve
               </span>
             </div>
-
-            {/* Text */}
             <div className="space-y-3">
               <h2 className="text-2xl font-bold text-foreground">Plano Clínica</h2>
               <p className="text-muted-foreground leading-relaxed">
                 A <strong>Gestão de Equipe</strong> é exclusiva do Plano Clínica — convide terapeutas, secretárias e administradores, defina permissões individuais e gerencie toda a sua equipe em um só lugar.
               </p>
             </div>
-
-            {/* Feature list */}
             <div className="bg-card border border-border rounded-2xl p-5 text-left space-y-3">
               {[
                 { icon: UsersRound, text: 'Convide terapeutas e colaboradores' },
                 { icon: Lock, text: 'Permissões granulares por módulo' },
                 { icon: Sparkles, text: 'Cargos personalizados (secretária, financeiro…)' },
                 { icon: Building2, text: 'Vincule pacientes a profissionais específicos' },
+                { icon: ClipboardCheck, text: 'Painel de conformidade de evoluções' },
               ].map(({ icon: Icon, text }) => (
                 <div key={text} className="flex items-center gap-3">
                   <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -118,8 +128,6 @@ export default function Team() {
                 </div>
               ))}
             </div>
-
-            {/* CTA */}
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
                 Este plano estará disponível em breve. Fique atento às novidades!
@@ -174,7 +182,7 @@ export default function Team() {
             <div className="text-sm">
               <p className="font-semibold text-warning">Gestão de equipe disponível apenas para consultórios</p>
               <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                As clínicas <strong className="text-foreground">{contratanteClinics.map(c => c.name).join(', ')}</strong> são do tipo <strong className="text-foreground">Contratante</strong> — locais onde você trabalha mas não é o responsável. Elas não aparecem aqui pois a equipe é gerenciada pela clínica contratante.
+                As clínicas <strong className="text-foreground">{contratanteClinics.map(c => c.name).join(', ')}</strong> são do tipo <strong className="text-foreground">Contratante</strong> — locais onde você trabalha mas não é o responsável.
               </p>
             </div>
           </div>
@@ -204,10 +212,56 @@ export default function Team() {
           </div>
         )}
 
-        {/* Team component */}
+        {/* Tab switcher */}
+        {selectedClinic && (
+          <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
+            <button
+              onClick={() => setActiveTab('team')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                activeTab === 'team'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <UsersIcon className="w-4 h-4" />
+              Equipe
+            </button>
+            <button
+              onClick={() => setActiveTab('compliance')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                activeTab === 'compliance'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              Conformidade
+            </button>
+          </div>
+        )}
+
+        {/* Content */}
         {selectedClinic ? (
           <div className="bg-card rounded-2xl border border-border p-5 lg:p-6">
-            <ClinicTeam clinicId={selectedClinic.id} clinicName={selectedClinic.name} />
+            {activeTab === 'team' && (
+              <ClinicTeam clinicId={selectedClinic.id} clinicName={selectedClinic.name} />
+            )}
+            {activeTab === 'compliance' && organizationId && (
+              <ComplianceDashboard
+                clinicId={selectedClinic.id}
+                organizationId={organizationId}
+              />
+            )}
+            {activeTab === 'compliance' && !organizationId && (
+              <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                <ClipboardCheck className="w-10 h-10 text-muted-foreground" />
+                <p className="text-muted-foreground text-sm">
+                  Ative a gestão de equipe primeiro para usar o painel de conformidade.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
