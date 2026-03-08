@@ -26,6 +26,9 @@ export interface PaymentReceiptOptions {
   period: string;
   paymentMethod: string;
   paymentDate: string;
+  clinicName?: string | null;
+  clinicAddress?: string | null;
+  clinicCnpj?: string | null;
 }
 
 function formatCpf(cpf: string): string {
