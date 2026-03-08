@@ -309,6 +309,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         notes: appointmentNotes || null,
         status: appointmentStatus,
         paid: appointmentPaid,
+        payment_date: appointmentPaid && appointmentPaymentDate ? appointmentPaymentDate : null,
       };
 
       if (editingAppointmentId) {
