@@ -165,6 +165,22 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const myMember = members.find(m => m.user_id === user?.id);
   const canManage = isOwner || myMember?.role === 'admin';
 
+  // Search/filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'inactive'>('all');
+
+  const filteredMembers = useMemo(() => {
+    return members.filter(m => {
+      const q = searchQuery.toLowerCase();
+      const nameMatch = (m.profile?.name || '').toLowerCase().includes(q);
+      const emailMatch = m.email.toLowerCase().includes(q);
+      const roleMatch = (m.role_label || ROLE_LABELS[m.role] || '').toLowerCase().includes(q);
+      const matchesSearch = !q || nameMatch || emailMatch || roleMatch;
+      const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [members, searchQuery, statusFilter]);
+
   useEffect(() => { loadTeam(); }, [clinicId]);
 
   useEffect(() => {
