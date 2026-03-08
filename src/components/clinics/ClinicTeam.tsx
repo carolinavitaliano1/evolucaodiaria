@@ -382,7 +382,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   }
 
   async function handleChangeRole(memberId: string, newRole: 'admin' | 'professional') {
-    const defaultPerms = newRole === 'admin' ? DEFAULT_ADMIN_PERMISSIONS : DEFAULT_THERAPIST_PERMISSIONS;
+    const defaultPerms = [...DEFAULT_THERAPIST_PERMISSIONS];
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId);
     if (error) toast.error('Erro ao alterar função');
     else {
