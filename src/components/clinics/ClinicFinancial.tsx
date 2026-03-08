@@ -236,9 +236,15 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             <div className="flex justify-between items-center pt-3 border-t border-border">
               <p className="font-bold text-foreground">Total Bruto</p>
               <p className="font-bold text-foreground text-lg">
-                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {totalRevenueWithServices.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
+            {servicesMonthRevenue > 0 && (
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <p className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" /> Serviços (concluídos)</p>
+                <p>R$ {servicesMonthRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              </div>
+            )}
             {discountPercent > 0 && (
               <div className="flex justify-between items-center">
                 <p className="font-bold text-success">Valor Líquido ({discountPercent}%)</p>
