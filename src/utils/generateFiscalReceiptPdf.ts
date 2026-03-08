@@ -324,20 +324,45 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   drawLine();
 
   // ── DECLARAÇÃO / ASSINATURA ───────────────────────────────────────────
+  // Pre-load stamp images to measure actual heights before deciding layout
+  let sigImgH = 0, stImgH = 0;
+  if (stamp?.signature_image) {
+    try {
+      const si = document.createElement('img');
+      si.src = stamp.signature_image;
+      await new Promise<void>(r => { si.onload = () => r(); si.onerror = () => r(); });
+      let sw = 45; let sh = (si.height / si.width) * sw;
+      if (sh > 12) { sh = 12; }
+      sigImgH = sh + 2;
+    } catch { /* skip */ }
+  }
+  if (stamp?.stamp_image) {
+    try {
+      const sti = document.createElement('img');
+      sti.src = stamp.stamp_image;
+      await new Promise<void>(r => { sti.onload = () => r(); sti.onerror = () => r(); });
+      let sw = 40; let sh = (sti.height / sti.width) * sw;
+      if (sh > 18) { sh = 18; }
+      stImgH = sh + 3;
+    } catch { /* skip */ }
+  }
+  const textRows = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
+  const sigBlockH = sigImgH + stImgH + 5 + 5 + textRows * 5; // line + name + fields
+
+  // Declaration text
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
   const declaration = `Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.`;
   const declLines = doc.splitTextToSize(declaration, contentW);
-  declLines.forEach((line: string) => { ensureSpace(6); doc.text(line, margin, y); y += 5; });
-  y += 5;
+  const declH = declLines.length * 5 + 5;
 
-  // Signature block — estimate height to avoid orphan on new page
-  const hasSig = !!stamp?.signature_image;
-  const hasStampImg = !!stamp?.stamp_image;
-  const sigEstH = (hasSig ? 22 : 0) + (hasStampImg ? 22 : 0) + 6 + 6 + 5 + 5 + 5 + 5;
-  ensureSpace(sigEstH);
+  // If declaration + signature block won't fit on current page, just continue — never jump to new page
+  // (the document should be compact enough to fit on one page)
+  declLines.forEach((line: string) => { doc.text(line, margin, y); y += 5; });
+  y += 4;
 
+  // Signature block — placed right after declaration, no page break
   if (stamp?.signature_image) {
     try {
       const imgEl = document.createElement('img');
