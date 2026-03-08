@@ -293,7 +293,8 @@ export default function ClinicDetail() {
   interface ClinicPrivateApt {
     id: string; client_name: string; client_email?: string | null; client_phone?: string | null;
     service_id?: string | null; clinic_id?: string | null; date: string; time: string;
-    price: number; status: string; notes?: string | null; paid?: boolean | null; created_at: string;
+    price: number; status: string; notes?: string | null; paid?: boolean | null;
+    payment_date?: string | null; created_at: string;
   }
   const [clinicServices, setClinicServices] = useState<ClinicPrivateApt[]>([]);
   const [loadingClinicServices, setLoadingClinicServices] = useState(false);
