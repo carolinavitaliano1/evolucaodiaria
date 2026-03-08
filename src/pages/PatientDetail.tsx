@@ -1743,6 +1743,147 @@ export default function PatientDetail() {
       <EditPatientDialog patient={patient} open={editPatientOpen} onOpenChange={setEditPatientOpen}
         onSave={updatePatient} clinicPackages={clinic ? getClinicPackages(clinic.id) : []} />
 
+      {/* ── FISCAL RECEIPT DIALOG ─────────────────────────────────────────── */}
+      <Dialog open={fiscalDialogOpen} onOpenChange={setFiscalDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-primary" /> Gerar Extrato Fiscal
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {/* Period */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Data Início</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1 text-xs h-9", !fiscalStartDate && "text-muted-foreground")}>
+                      <CalendarRange className="mr-2 h-3.5 w-3.5" />
+                      {fiscalStartDate ? format(fiscalStartDate, "dd/MM/yyyy") : "Selecione"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent mode="single" selected={fiscalStartDate} onSelect={setFiscalStartDate} initialFocus className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label className="text-xs">Data Fim</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1 text-xs h-9", !fiscalEndDate && "text-muted-foreground")}>
+                      <CalendarRange className="mr-2 h-3.5 w-3.5" />
+                      {fiscalEndDate ? format(fiscalEndDate, "dd/MM/yyyy") : "Selecione"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent mode="single" selected={fiscalEndDate} onSelect={setFiscalEndDate} initialFocus className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {fiscalStartDate && fiscalEndDate && (
+              <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+                {getFiscalEvolutions().length} sessão(ões) encontrada(s) no período
+              </p>
+            )}
+
+            {/* Stamp selector */}
+            {stamps.length > 0 && (
+              <div>
+                <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                  <StampIcon className="w-3.5 h-3.5" /> Carimbo Profissional
+                </Label>
+                <Select value={fiscalStampId} onValueChange={setFiscalStampId}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Selecione o carimbo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem carimbo</SelectItem>
+                    {stamps.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Payment info */}
+            <div className="space-y-3 bg-muted/30 rounded-lg p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Informações de Pagamento</p>
+              <div>
+                <Label className="text-xs mb-1.5 block">Status</Label>
+                <div className="flex gap-2">
+                  {(['pending', 'paid', 'partial'] as const).map(s => (
+                    <button key={s} onClick={() => setFiscalPaymentStatus(s)}
+                      className={cn('flex-1 text-xs py-1.5 rounded-lg border font-medium transition-colors',
+                        fiscalPaymentStatus === s
+                          ? s === 'paid' ? 'bg-success/10 border-success text-success'
+                            : s === 'partial' ? 'bg-warning/10 border-warning text-warning'
+                            : 'bg-muted border-border text-foreground'
+                          : 'border-border text-muted-foreground hover:border-foreground/30')}>
+                      {s === 'paid' ? '✓ Pago' : s === 'partial' ? '~ Parcial' : '⏳ Pendente'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {fiscalPaymentStatus === 'paid' && (
+                <div>
+                  <Label className="text-xs mb-1 block">Data do Recebimento</Label>
+                  <Input type="date" value={fiscalPaymentDate} onChange={e => setFiscalPaymentDate(e.target.value)} className="h-9 text-xs" />
+                </div>
+              )}
+              <div>
+                <Label className="text-xs mb-1 block">
+                  Valor Total Pago (opcional — sobrescreve o calculado)
+                </Label>
+                <Input
+                  type="number" step="0.01" min="0"
+                  value={fiscalTotalPaid}
+                  onChange={e => setFiscalTotalPaid(e.target.value)}
+                  placeholder={`R$ calculado automaticamente`}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* CPF warning */}
+            {!(patient as any).cpf && !patient.responsibleName && (
+              <p className="text-xs text-warning bg-warning/10 rounded-lg px-3 py-2 flex items-start gap-2">
+                ⚠️ O paciente não tem CPF cadastrado. Para fins de nota fiscal, edite o cadastro do paciente e adicione o CPF/CNPJ.
+              </p>
+            )}
+
+            {/* Export buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button
+                onClick={handleExportFiscalPdf}
+                disabled={isExportingFiscalPdf || !fiscalStartDate || !fiscalEndDate}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-9"
+              >
+                {isExportingFiscalPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                PDF
+              </Button>
+              <Button
+                onClick={handleExportFiscalWord}
+                disabled={isExportingFiscalWord || !fiscalStartDate || !fiscalEndDate}
+                size="sm"
+                className="gap-1.5 text-xs h-9"
+              >
+                {isExportingFiscalWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                Word (.docx)
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={deletePatientOpen} onOpenChange={setDeletePatientOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
