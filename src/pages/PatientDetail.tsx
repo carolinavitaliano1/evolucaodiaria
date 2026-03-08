@@ -871,7 +871,87 @@ export default function PatientDetail() {
     finally { setIsExportingFiscalWord(false); }
   };
 
+  // ── RECIBO DE PAGAMENTO ───────────────────────────────────────────────────
+  const buildPaymentReceiptOpts = () => {
+    const prStamp = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) || null : null;
+    const isMinorPR = (() => {
+      if (!patient.birthdate) return false;
+      try {
+        const b = new Date(patient.birthdate + 'T12:00:00');
+        let a = new Date().getFullYear() - b.getFullYear();
+        const m = new Date().getMonth() - b.getMonth();
+        if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
+        return a < 18;
+      } catch { return false; }
+    })();
+    const payerName = isMinorPR && patient.responsibleName ? patient.responsibleName : patient.name;
+    const payerCpf = isMinorPR
+      ? ((patient as any).responsible_cpf || (patient as any).responsibleCpf || (patient as any).cpf || null)
+      : ((patient as any).cpf || null);
 
+    return {
+      therapistName: prStamp?.name || therapistProfile?.name || '',
+      therapistCpf: therapistProfile?.cpf || null,
+      therapistProfessionalId: therapistProfile?.professional_id || null,
+      therapistCbo: prStamp?.cbo || therapistProfile?.cbo || null,
+      therapistClinicalArea: prStamp?.clinical_area || patient.clinicalArea || null,
+      stamp: prStamp,
+      payerName,
+      payerCpf,
+      amount: prAmount ? parseFloat(prAmount) : 0,
+      serviceName: prService || patient.clinicalArea || 'Atendimento',
+      period: prPeriod,
+      paymentMethod: prPaymentMethod,
+      paymentDate: prPaymentDate,
+    };
+  };
+
+  const handleExportPaymentReceiptPdf = async () => {
+    setIsExportingPR(true);
+    try {
+      await generatePaymentReceiptPdf(buildPaymentReceiptOpts());
+    } catch { toast.error('Erro ao gerar recibo'); }
+    finally { setIsExportingPR(false); }
+  };
+
+  const handleExportPaymentReceiptWord = async () => {
+    setIsExportingPRWord(true);
+    try {
+      await generatePaymentReceiptWord(buildPaymentReceiptOpts());
+    } catch { toast.error('Erro ao gerar recibo Word'); }
+    finally { setIsExportingPRWord(false); }
+  };
+
+  // Helper to open payment receipt dialog and pre-fill data
+  const openPaymentReceiptDialog = async () => {
+    // Pre-fill service from patient
+    setPrService(patient.clinicalArea || stamps.find(s => s.is_default)?.clinical_area || stamps[0]?.clinical_area || '');
+    // Pre-fill period as current month
+    const now = new Date();
+    const monthName = format(now, 'MMMM/yyyy', { locale: ptBR });
+    setPrPeriod(monthName);
+    // Try to fetch last payment record for amount/date
+    if (user && patient.id) {
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      const { data } = await supabase
+        .from('patient_payment_records')
+        .select('amount, payment_date')
+        .eq('patient_id', patient.id)
+        .eq('user_id', user.id)
+        .eq('month', month)
+        .eq('year', year)
+        .maybeSingle();
+      if (data) {
+        if (data.amount > 0) setPrAmount(data.amount.toFixed(2));
+        else if (patient.paymentValue) setPrAmount(patient.paymentValue.toFixed(2));
+        if (data.payment_date) setPrPaymentDate(data.payment_date);
+      } else if (patient.paymentValue) {
+        setPrAmount(patient.paymentValue.toFixed(2));
+      }
+    }
+    setPaymentReceiptOpen(true);
+  };
   // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
   const handleExportFinancialPDF = async () => {
     if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
