@@ -407,6 +407,27 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
               </div>
             )}
 
+            {/* Patient selector — only when coming from a clinic */}
+            {clinicId && clinicPatients.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" />
+                  Paciente cadastrado nesta clínica
+                </Label>
+                <Select onValueChange={handlePatientSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar paciente (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinicPatients.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Preenche os campos abaixo automaticamente</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="clientName">Nome do Cliente *</Label>
               <Input
