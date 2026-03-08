@@ -607,28 +607,15 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
 
                   {/* Permissions */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-primary" />
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Permissões de acesso</p>
-                    </div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Permissões de acesso</p>
                     <p className="text-xs text-muted-foreground">
-                      Defina exatamente o que este colaborador poderá acessar no sistema.
+                      Defina o nível de acesso de cada módulo. Você pode ajustar após selecionar o cargo.
                     </p>
-                    <div className="space-y-4">
-                      {PERMISSION_GROUPS.map(group => (
-                        <div key={group.label} className="space-y-2">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {group.keys.map(perm => (
-                              <div key={perm} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer" onClick={() => togglePerm(perm, invitePermissions, setInvitePermissions)}>
-                                <Checkbox checked={invitePermissions.includes(perm)} onCheckedChange={() => togglePerm(perm, invitePermissions, setInvitePermissions)} />
-                                <span className="text-xs">{PERMISSION_LABELS[perm]}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <PermissionEditor
+                      permissions={invitePermissions}
+                      onChange={setInvitePermissions}
+                      compact={true}
+                    />
                   </div>
 
                   <Separator />
