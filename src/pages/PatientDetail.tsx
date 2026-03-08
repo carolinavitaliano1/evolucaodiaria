@@ -949,6 +949,18 @@ export default function PatientDetail() {
     setPrPeriod(monthName);
     // Pre-fill location from clinic address
     setPrLocation(clinic?.address || '');
+    // Auto-detect minor and set responsible toggle
+    const isMinorAuto = (() => {
+      if (!patient.birthdate) return false;
+      try {
+        const b = new Date(patient.birthdate + 'T12:00:00');
+        let a = now.getFullYear() - b.getFullYear();
+        const m = now.getMonth() - b.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+        return a < 18;
+      } catch { return false; }
+    })();
+    setPrUseResponsible(isMinorAuto);
     // Reset session fields
     setPrSessions('');
     setPrSelectedSessions([]);
