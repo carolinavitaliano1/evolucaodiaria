@@ -402,8 +402,8 @@ export default function Clinics() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <Button size="sm" className="gap-1.5 shrink-0" onClick={handleNewClinicClick}>
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Nova Clínica</span>
-                <span className="sm:hidden">Nova</span>
+                <span className="hidden sm:inline">Cadastrar Clínica | Consultório</span>
+                <span className="sm:hidden">Cadastrar</span>
               </Button>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
