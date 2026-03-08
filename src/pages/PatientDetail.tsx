@@ -795,7 +795,7 @@ export default function PatientDetail() {
       doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y); y += 8;
 
       for (const evo of monthlyEvolutions) {
-        if (y > 258) { doc.addPage(); y = margin; }
+        if (y > 268) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
         const isPaid = paidStatuses.includes(evo.attendanceStatus);
@@ -803,21 +803,12 @@ export default function PatientDetail() {
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
         doc.text(dateStr, margin + 2, y + 5);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
-        doc.text(`Status: ${status}`, margin + 32, y + 5);
+        doc.text(status, margin + 32, y + 5);
         if (isPaid && patient.paymentValue) {
           doc.setTextColor(...accentDark);
           doc.text(`R$ ${patient.paymentValue.toFixed(2)}`, W - margin - 2, y + 5, { align: 'right' });
         }
         y += 9;
-        if (evo.text) {
-          doc.setTextColor(...darkText); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
-          const textLines = doc.splitTextToSize(evo.text, contentW - 4);
-          textLines.forEach((line: string) => {
-            if (y > 268) { doc.addPage(); y = margin; }
-            doc.text(line, margin + 2, y); y += 5;
-          });
-          y += 3;
-        } else { y += 2; }
       }
 
       // ── ASSINATURA ───────────────────────────────────────────────
