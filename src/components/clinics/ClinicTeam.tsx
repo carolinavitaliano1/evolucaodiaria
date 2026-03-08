@@ -124,6 +124,13 @@ function getAvatarColor(str: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
+function getPresetIcon(icon: string) {
+  if (icon === 'shield') return Shield;
+  if (icon === 'calendar') return CalendarDays;
+  if (icon === 'banknote') return Banknote;
+  return User;
+}
+
 export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const { user } = useAuth();
   const { patients } = useApp();
