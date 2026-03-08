@@ -38,6 +38,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     birthdate: '',
     cpf: '',
     phone: '',
+    email: '',
     clinicalArea: '',
     diagnosis: '',
     professionals: '',
