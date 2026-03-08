@@ -1757,6 +1757,15 @@ export default function PatientDetail() {
                     <Receipt className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">Gerar Extrato Fiscal</span>
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5 text-xs h-9 border-success/40 text-success hover:bg-success/5"
+                    onClick={openPaymentReceiptDialog}
+                  >
+                    <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Recibo de Pagamento</span>
+                  </Button>
                 </div>
               </div>
             </div>
