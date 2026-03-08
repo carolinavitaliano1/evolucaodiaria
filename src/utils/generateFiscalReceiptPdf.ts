@@ -377,6 +377,11 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   const safeName = patient.name.replace(/\s+/g, '-').toLowerCase();
   const safeStart = format(startDate, 'yyyy-MM-dd');
   const safeEnd = format(endDate, 'yyyy-MM-dd');
+
+  if (returnBlob) {
+    return doc.output('blob') as Blob;
+  }
+
   doc.save(`recibo-fiscal-${safeName}-${safeStart}_${safeEnd}.pdf`);
   toast.success('Recibo fiscal gerado com sucesso!');
 }
