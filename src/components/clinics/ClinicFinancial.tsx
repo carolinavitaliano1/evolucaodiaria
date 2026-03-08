@@ -19,6 +19,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { clinics, patients, evolutions, updateClinic } = useApp();
   const { isOrg } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [clinicServices, setClinicServices] = useState<{ price: number; status: string; paid: boolean | null }[]>([]);
 
   const clinic = clinics.find(c => c.id === clinicId);
   const [discountPercent, setDiscountPercent] = useState(clinic?.discountPercentage || 0);
@@ -27,6 +28,15 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   useEffect(() => {
     if (clinic) setDiscountPercent(clinic.discountPercentage || 0);
   }, [clinic?.discountPercentage]);
+
+  // Load private_appointments linked to this clinic
+  useEffect(() => {
+    supabase
+      .from('private_appointments')
+      .select('price, status, paid')
+      .eq('clinic_id', clinicId)
+      .then(({ data }) => { if (data) setClinicServices(data as any[]); });
+  }, [clinicId]);
 
   const saveDiscount = useCallback((value: number) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
