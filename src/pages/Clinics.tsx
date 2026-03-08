@@ -747,16 +747,57 @@ export default function Clinics() {
 
         {/* Serviços Tab */}
         <TabsContent value="meus-servicos" className="space-y-4">
+          {/* Registered services section */}
+          <div className="bg-card rounded-2xl border border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+                <Briefcase className="w-4 h-4 text-primary" />
+                Meus Serviços Cadastrados
+              </h3>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => setServiceDialogOpen(true)}>
+                <Plus className="w-3.5 h-3.5" /> Gerenciar
+              </Button>
+            </div>
+            {registeredServices.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground mb-3">Nenhum serviço cadastrado ainda.</p>
+                <Button size="sm" className="gap-2" onClick={() => setServiceDialogOpen(true)}>
+                  <Plus className="w-4 h-4" /> Cadastrar Serviço
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {registeredServices.map(svc => (
+                  <div key={svc.id} className="flex items-center justify-between bg-secondary/40 rounded-xl px-3 py-2.5 border border-border/60">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground text-sm truncate">{svc.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-primary">{svc.type}</Badge>
+                        {svc.duration_minutes > 0 && <span>{svc.duration_minutes} min</span>}
+                        <span className="text-success font-semibold">R$ {svc.price.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                      onClick={() => { setServiceToDelete(svc); setDeleteServiceOpen(true); }}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Appointments section */}
+          <div>
+            <h3 className="font-semibold text-foreground flex items-center gap-2 text-sm mb-3">
+              <Calendar className="w-4 h-4 text-primary" />
+              Agendamentos
+            </h3>
           {loadingPrivate ? (
             <div className="text-center py-12 text-muted-foreground">Carregando...</div>
           ) : privateAppointments.length === 0 ? (
-            <div className="text-center py-12 bg-card rounded-xl border border-border">
-              <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">Nenhum serviço cadastrado</h3>
-              <p className="text-sm text-muted-foreground mb-4">Cadastre seu primeiro serviço</p>
-              <Button onClick={() => setServiceDialogOpen(true)} size="sm" className="gap-2">
-                <Plus className="w-4 h-4" />Cadastrar Serviço
-              </Button>
+            <div className="text-center py-8 bg-card rounded-xl border border-border">
+              <p className="text-sm text-muted-foreground">Nenhum agendamento ainda.</p>
             </div>
           ) : (
             <div className="space-y-3">
