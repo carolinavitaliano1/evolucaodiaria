@@ -902,7 +902,7 @@ export default function PatientDetail() {
       stamp: prStamp,
       payerName,
       payerCpf,
-      location: prLocation || null,
+      location: prLocation ? (prLocalDate ? `${prLocation}, ${prLocalDate}` : prLocation) : null,
       amount: prAmount ? parseFloat(prAmount) : 0,
       serviceName: prService || patient.clinicalArea || 'Atendimento',
       period: prPeriod,
