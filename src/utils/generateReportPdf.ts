@@ -432,17 +432,37 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     y += PARAGRAPH_GAP;
   }
 
-  // ── Signature Block (flows after content with proper spacing) ──
+  // ── Signature Block ──
+  // Accurately estimate height before placing so it never lands alone on a page
   const sigLineW = 60;
   const leftCenterX = MARGIN + CONTENT_W * 0.25;
   const rightCenterX = MARGIN + CONTENT_W * 0.75;
 
-  // Estimate block height: images (sig ~20mm, stamp ~35mm) + line + text rows
-  const hasImages = !!(therapistSignatureImage || therapistStampImage);
-  const sigBlockHeight = hasImages ? 80 : 35;
-  const sigSpacingAbove = 15;
+  const sigSpacingAbove = 12;
+  // Measure actual heights by pre-loading images
+  let sigImgH = 0, stImgH = 0;
+  if (therapistSignatureImage) {
+    try {
+      const si = await loadImageFromUrl(therapistSignatureImage);
+      sigImgH = Math.min((si.height / si.width) * 55, 18) + 3;
+    } catch { /* skip */ }
+  }
+  if (therapistStampImage) {
+    try {
+      const sti = await loadImageFromUrl(therapistStampImage);
+      stImgH = Math.min((sti.height / sti.width) * 40, 35) + 3;
+    } catch { /* skip */ }
+  }
+  const textRows =
+    1 + // sig line
+    1 + // name
+    (therapistClinicalArea ? 1 : 0) +
+    (therapistCbo ? 1 : 0) +
+    (therapistProfessionalId ? 1 : 0);
+  const sigBlockHeight = sigSpacingAbove + sigImgH + stImgH + 5 + textRows * 5 + 4;
 
-  if (y + sigSpacingAbove + sigBlockHeight > USABLE_BOTTOM) {
+  // If it won't fit, start a new page — never let the stamp appear alone or cut off
+  if (y + sigBlockHeight > USABLE_BOTTOM) {
     pdf.addPage();
     y = MARGIN;
   }
@@ -450,7 +470,6 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   let sigY = y + sigSpacingAbove;
 
   // ── Left side: Terapeuta Responsável ──
-  // Signature image (above stamp image)
   if (therapistSignatureImage) {
     try {
       const sigImg = await loadImageFromUrl(therapistSignatureImage);
@@ -461,7 +480,6 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     } catch { /* skip */ }
   }
 
-  // Stamp image
   if (therapistStampImage) {
     try {
       const stImg = await loadImageFromUrl(therapistStampImage);
@@ -487,21 +505,21 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
 
   // Clinical area
   pdf.setFont(FONT, 'normal');
-  pdf.setFontSize(7);
-  pdf.setTextColor(130, 130, 130);
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(100, 100, 100);
   if (therapistClinicalArea) {
     pdf.text(therapistClinicalArea, leftCenterX, sigY, { align: 'center' });
-    sigY += 4;
+    sigY += 5;
   }
   // CBO
   if (therapistCbo) {
     pdf.text(`CBO: ${therapistCbo}`, leftCenterX, sigY, { align: 'center' });
-    sigY += 4;
+    sigY += 5;
   }
   // Professional registration
   if (therapistProfessionalId) {
     pdf.text(`Registro: ${therapistProfessionalId}`, leftCenterX, sigY, { align: 'center' });
-    sigY += 4;
+    sigY += 5;
   }
 
   // ── Right side: Responsável Técnico ──
