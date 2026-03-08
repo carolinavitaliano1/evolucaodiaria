@@ -171,8 +171,8 @@ export default function Profile() {
       setSaving(true);
 
       if (profile) {
-        const { error } = await supabase
-          .from('profiles')
+        const { error } = await (supabase
+          .from('profiles') as any)
           .update({
             name,
             email,
@@ -186,8 +186,8 @@ export default function Profile() {
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('profiles')
+        const { error } = await (supabase
+          .from('profiles') as any)
           .insert({
             user_id: userId,
             name,
