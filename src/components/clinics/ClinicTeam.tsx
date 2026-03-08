@@ -984,7 +984,11 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                     <div className="grid grid-cols-2 gap-2">
                       {PRESET_ROLES.map(preset => {
                         const Icon = getPresetIcon(preset.icon);
-                        const isActive = editRoleLabel === preset.label && manageMember.role === preset.baseRole;
+                        // Active if role matches AND all preset permissions are in editPermissions
+                        const isActive =
+                          manageMember.role === preset.baseRole &&
+                          preset.permissions.length === editPermissions.length &&
+                          preset.permissions.every(p => editPermissions.includes(p));
                         return (
                           <button
                             key={preset.id}
