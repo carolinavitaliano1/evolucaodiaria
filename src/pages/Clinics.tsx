@@ -927,7 +927,7 @@ export default function Clinics() {
         open={serviceDialogOpen} 
         onOpenChange={(open) => {
           setServiceDialogOpen(open);
-          if (!open) loadPrivateAppointments();
+          if (!open) { loadPrivateAppointments(); loadRegisteredServices(); }
         }} 
       />
       <ServiceDialog
