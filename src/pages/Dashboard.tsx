@@ -8,6 +8,7 @@ import { BirthdayCard } from '@/components/dashboard/BirthdayCard';
 import { TodayAppointments } from '@/components/dashboard/TodayAppointments';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { MuralNoticesBell } from '@/components/dashboard/MuralNoticesBell';
+import { InternalAlertsBell } from '@/components/dashboard/InternalAlertsBell';
 import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -84,6 +85,8 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           {/* Mural bell icon */}
           <MuralNoticesBell />
+          {/* Internal compliance alerts */}
+          <InternalAlertsBell />
 
           {/* Subscription badge */}
           {!subLoading && (

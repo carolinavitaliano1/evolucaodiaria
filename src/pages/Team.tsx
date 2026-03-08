@@ -24,6 +24,7 @@ export default function Team() {
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'team' | 'compliance'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [complianceBadge, setComplianceBadge] = useState(0);
 
   const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
   const hasAccess = isOwnerEmail || isOwner;
@@ -238,6 +239,11 @@ export default function Team() {
             >
               <ClipboardCheck className="w-4 h-4" />
               Conformidade
+              {complianceBadge > 0 && (
+                <span className="w-4 h-4 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
+                  {complianceBadge > 9 ? '9+' : complianceBadge}
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -252,6 +258,7 @@ export default function Team() {
               <ComplianceDashboard
                 clinicId={selectedClinic.id}
                 organizationId={organizationId}
+                onTodayPendingCount={setComplianceBadge}
               />
             )}
             {activeTab === 'compliance' && !organizationId && (

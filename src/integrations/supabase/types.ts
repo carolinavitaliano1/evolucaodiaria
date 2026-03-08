@@ -551,6 +551,45 @@ export type Database = {
           },
         ]
       }
+      internal_notifications: {
+        Row: {
+          created_at: string
+          created_by_user_id: string
+          date_ref: string | null
+          id: string
+          message: string
+          patient_name: string | null
+          read: boolean
+          recipient_user_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id: string
+          date_ref?: string | null
+          id?: string
+          message: string
+          patient_name?: string | null
+          read?: boolean
+          recipient_user_id: string
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string
+          date_ref?: string | null
+          id?: string
+          message?: string
+          patient_name?: string | null
+          read?: boolean
+          recipient_user_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       message_templates: {
         Row: {
           category: string
