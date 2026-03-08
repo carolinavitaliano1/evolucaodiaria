@@ -1804,7 +1804,22 @@ export default function PatientDetail() {
               );
             })()}
 
-            <PatientSavedReports patientId={patient.id} clinicName={clinic?.name} clinicAddress={clinic?.address || undefined} clinicLetterhead={clinic?.letterhead || undefined} clinicEmail={clinic?.email} clinicCnpj={clinic?.cnpj} clinicPhone={clinic?.phone} clinicServicesDescription={clinic?.servicesDescription} />
+            <PatientSavedReports
+              patientId={patient.id}
+              clinicName={clinic?.name}
+              clinicAddress={clinic?.address || undefined}
+              clinicLetterhead={clinic?.letterhead || undefined}
+              clinicEmail={clinic?.email}
+              clinicCnpj={clinic?.cnpj}
+              clinicPhone={clinic?.phone}
+              clinicServicesDescription={clinic?.servicesDescription}
+              therapistName={therapistProfile?.name || undefined}
+              therapistProfessionalId={therapistProfile?.professional_id || undefined}
+              therapistCbo={stamps.find(s => s.is_default)?.cbo || stamps[0]?.cbo || undefined}
+              therapistClinicalArea={stamps.find(s => s.is_default)?.clinical_area || stamps[0]?.clinical_area || undefined}
+              therapistStampImage={stamps.find(s => s.is_default)?.stamp_image || stamps[0]?.stamp_image || undefined}
+              therapistSignatureImage={stamps.find(s => s.is_default)?.signature_image || stamps[0]?.signature_image || undefined}
+            />
           </div>
         </TabsContent>
 

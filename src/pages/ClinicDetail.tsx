@@ -1971,7 +1971,19 @@ export default function ClinicDetail() {
 
         {/* Reports Tab */}
         <TabsContent value="reports">
-          <ClinicReports clinicId={clinic.id} clinicName={clinic.name} clinicAddress={clinic.address || undefined} clinicLetterhead={clinic.letterhead || undefined} clinic={clinic} />
+          <ClinicReports
+            clinicId={clinic.id}
+            clinicName={clinic.name}
+            clinicAddress={clinic.address || undefined}
+            clinicLetterhead={clinic.letterhead || undefined}
+            clinic={clinic}
+            therapistName={therapistProfile?.name || undefined}
+            therapistProfessionalId={therapistProfile?.professional_id || undefined}
+            therapistCbo={stamps.find(s => s.is_default)?.cbo || stamps[0]?.cbo || undefined}
+            therapistClinicalArea={stamps.find(s => s.is_default)?.clinical_area || stamps[0]?.clinical_area || undefined}
+            therapistStampImage={stamps.find(s => s.is_default)?.stamp_image || stamps[0]?.stamp_image || undefined}
+            therapistSignatureImage={(stamps.find(s => s.is_default) as any)?.signature_image || (stamps[0] as any)?.signature_image || undefined}
+          />
         </TabsContent>
 
         {/* Serviços Tab — only for propria clinics */}
