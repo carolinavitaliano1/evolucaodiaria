@@ -132,12 +132,22 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             />
           </div>
 
-          <div>
-            <Label>Telefone</Label>
-            <Input
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>CPF / CNPJ</Label>
+              <Input
+                value={formData.cpf}
+                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                placeholder="000.000.000-00"
+              />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
