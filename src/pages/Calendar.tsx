@@ -8,8 +8,9 @@ import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Clock, User, Briefcase,
   Calendar, LayoutGrid, Columns, CalendarDays,
-  Pencil, Trash2, X, MapPin,
+  Pencil, Trash2, X, MapPin, MessageSquare,
 } from 'lucide-react';
+import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
