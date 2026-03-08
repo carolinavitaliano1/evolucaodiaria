@@ -370,7 +370,7 @@ export async function generateMultipleEvolutionsPdf({
 
     // Per-evolution stamp
     if (evo.stampId && stamps) {
-      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, addHeader);
+      y = await renderStamp(pdf, evo.stampId, stamps, pageWidth, pageHeight, margin, y, addHeader, professionalId);
     }
 
     // Separator
