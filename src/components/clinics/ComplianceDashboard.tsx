@@ -353,6 +353,12 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
           Atualizar
         </Button>
+        {filtered.length > 0 && (
+          <Button variant="outline" size="sm" onClick={exportPdf} className="gap-2 shrink-0">
+            <FileDown className="w-3.5 h-3.5" />
+            Exportar PDF
+          </Button>
+        )}
       </div>
 
       {/* Stats bar */}
