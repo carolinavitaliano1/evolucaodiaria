@@ -482,7 +482,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.from('patients').insert({
         user_id: user.id, clinic_id: patient.clinicId, name: patient.name, birthdate: patient.birthdate,
-        phone: patient.phone || null, clinical_area: patient.clinicalArea || null,
+        phone: patient.phone || null, email: (patient as any).email || null, clinical_area: patient.clinicalArea || null,
         diagnosis: patient.diagnosis || null, professionals: patient.professionals || null,
         observations: patient.observations || null, responsible_name: patient.responsibleName || null,
         responsible_email: patient.responsibleEmail || null, payment_type: patient.paymentType || null,
