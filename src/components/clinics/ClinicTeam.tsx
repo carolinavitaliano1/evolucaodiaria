@@ -881,7 +881,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   </div>
                 )}
                 {member.status === 'pending' && (
-                  <p className="text-[10px] text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                  <p className="text-[10px] text-warning flex items-center gap-1">
                     <Mail className="w-3 h-3" />
                     Aguardando aceite do convite
                   </p>
