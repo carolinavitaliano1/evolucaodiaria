@@ -335,6 +335,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       setInviteRoleLabel('');
       setSelectedPatients({});
       setInvitePermissions([...DEFAULT_THERAPIST_PERMISSIONS]);
+      setInvitePreset('terapeuta');
       setInviteOpen(false);
       loadTeam();
     } catch (err: any) {
