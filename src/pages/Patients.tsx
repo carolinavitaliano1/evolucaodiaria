@@ -701,18 +701,26 @@ export default function Patients() {
                         {patient.phone}
                       </span>
                     )}
-                    {patient.clinicalArea && (
+                    {patient.clinicalArea && canSeeClinical && (
                       <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                         {patient.clinicalArea}
                       </span>
                     )}
-                    <span className="bg-secondary px-2 py-0.5 rounded-full">
-                      {patientEvolutions.length} evoluções
-                    </span>
+                    {!canSeeClinical && (
+                      <span className="flex items-center gap-1 text-muted-foreground/60 italic">
+                        <EyeOff className="w-3 h-3" /> Dados clínicos restritos
+                      </span>
+                    )}
+                    {canSeeClinical && (
+                      <span className="bg-secondary px-2 py-0.5 rounded-full">
+                        {patientEvolutions.length} evoluções
+                      </span>
+                    )}
                   </div>
                 </div>
                 
-                {/* Export Buttons */}
+                {/* Export Buttons — only shown to users with clinical access */}
+                {canSeeClinical && (
                 <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
                   <Button
                     variant="outline"
