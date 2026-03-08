@@ -1006,6 +1006,10 @@ export default function Financial() {
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               {isExporting ? 'Exportando...' : 'Relatório Geral PDF'}
             </Button>
+            <Button variant="outline" className="gap-2 w-full sm:w-auto text-xs sm:text-sm" onClick={handleExportCSV}>
+              <Download className="w-4 h-4" />
+              Exportar CSV
+            </Button>
           </div>
         </div>
 
