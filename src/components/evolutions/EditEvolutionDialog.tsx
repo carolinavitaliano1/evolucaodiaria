@@ -11,6 +11,7 @@ import { Image, PenLine, Save, Wand2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import TemplateForm from './TemplateForm';
 import { MoodSelector } from './MoodSelector';
 import { cn } from '@/lib/utils';
