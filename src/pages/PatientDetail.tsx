@@ -1291,6 +1291,16 @@ export default function PatientDetail() {
 
             {/* Action buttons */}
             <div className="flex items-center gap-1 flex-shrink-0">
+              {patient.phone && (
+                <Button
+                  variant="ghost" size="icon"
+                  className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
+                  onClick={() => setWhatsappOpen(true)}
+                  title="Enviar mensagem via WhatsApp"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
               </Button>
