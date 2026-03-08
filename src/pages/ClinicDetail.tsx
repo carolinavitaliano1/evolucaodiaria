@@ -300,6 +300,8 @@ export default function ClinicDetail() {
   const [editServiceAptOpen, setEditServiceAptOpen] = useState(false);
   const [deleteServiceAptOpen, setDeleteServiceAptOpen] = useState(false);
   const [serviceAptToDelete, setServiceAptToDelete] = useState<ClinicPrivateApt | null>(null);
+  const [servicesStatusFilter, setServicesStatusFilter] = useState<'all' | 'agendado' | 'concluído' | 'cancelado'>('all');
+  const [servicesPeriodFilter, setServicesPeriodFilter] = useState<'month' | 'all'>('month');
 
   const loadClinicServices = async () => {
     if (!id) return;
@@ -341,6 +343,33 @@ export default function ClinicDetail() {
       default: return 'bg-secondary text-secondary-foreground';
     }
   };
+
+  // Filtered services list
+  const filteredClinicServices = useMemo(() => {
+    const now = new Date();
+    return clinicServices.filter(apt => {
+      if (servicesStatusFilter !== 'all' && apt.status !== servicesStatusFilter) return false;
+      if (servicesPeriodFilter === 'month') {
+        const d = new Date(apt.date + 'T00:00:00');
+        if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
+      }
+      return true;
+    });
+  }, [clinicServices, servicesStatusFilter, servicesPeriodFilter]);
+
+  // Services financial summary (current month)
+  const servicesMonthSummary = useMemo(() => {
+    const now = new Date();
+    const thisMonth = clinicServices.filter(a => {
+      const d = new Date(a.date + 'T00:00:00');
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    return {
+      totalAgendado: thisMonth.filter(a => a.status === 'agendado').reduce((s, a) => s + a.price, 0),
+      totalConcluido: thisMonth.filter(a => a.status === 'concluído').reduce((s, a) => s + a.price, 0),
+      totalRecebido: thisMonth.filter(a => a.status === 'concluído' && a.paid).reduce((s, a) => s + a.price, 0),
+    };
+  }, [clinicServices]);
 
   if (!clinic) {
     return (
