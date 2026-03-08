@@ -260,6 +260,7 @@ export default function PatientDetail() {
         if (defaultStamp) {
           setSelectedStampId(defaultStamp.id);
           setFiscalStampId(defaultStamp.id);
+          setPrStampId(defaultStamp.id);
         }
       }
     });
