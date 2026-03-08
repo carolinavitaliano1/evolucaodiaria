@@ -473,8 +473,8 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   if (therapistSignatureImage) {
     try {
       const sigImg = await loadImageFromUrl(therapistSignatureImage);
-      const sigW = 55;
-      const sigH = Math.min((sigImg.height / sigImg.width) * sigW, 18);
+      const sigW = 40;
+      const sigH = Math.min((sigImg.height / sigImg.width) * sigW, 12);
       pdf.addImage(therapistSignatureImage, 'PNG', leftCenterX - sigLineW / 2, sigY, sigW, sigH);
       sigY += sigH + 3;
     } catch { /* skip */ }
@@ -483,8 +483,8 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   if (therapistStampImage) {
     try {
       const stImg = await loadImageFromUrl(therapistStampImage);
-      const stW = Math.min(sigLineW, 40);
-      const stH = Math.min((stImg.height / stImg.width) * stW, 35);
+      const stW = Math.min(sigLineW, 35);
+      const stH = Math.min((stImg.height / stImg.width) * stW, 18);
       pdf.addImage(therapistStampImage, 'PNG', leftCenterX - sigLineW / 2, sigY, stW, stH);
       sigY += stH + 3;
     } catch { /* skip */ }

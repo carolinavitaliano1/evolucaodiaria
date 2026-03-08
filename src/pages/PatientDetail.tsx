@@ -368,8 +368,8 @@ export default function PatientDetail() {
     // header (divider+title) + sig img + stamp img + line + name + area + cbo + reg
     const estimatedH =
       14 + // divider + title
-      (hasSig ? 22 : 0) +
-      (hasStampImg ? 44 : 0) +
+      (hasSig ? 14 : 0) +
+      (hasStampImg ? 22 : 0) +
       6 + // sig line
       6 + // name
       (stampOverride?.clinical_area ? 5 : 0) +
@@ -398,25 +398,29 @@ export default function PatientDetail() {
     y += 7;
 
     if (stampOverride) {
-      // 1. Assinatura (imagem) — se houver
+      // 1. Assinatura (imagem) — proporcional, máx 45×12
       if (stampOverride.signature_image) {
         try {
           const imgEl = document.createElement('img');
           imgEl.src = stampOverride.signature_image;
           await new Promise<void>(r => { imgEl.onload = () => r(); imgEl.onerror = () => r(); });
-          doc.addImage(stampOverride.signature_image, 'PNG', margin, y, 60, 18, undefined, 'FAST');
-          y += 20;
+          let sw = 45; let sh = (imgEl.height / imgEl.width) * sw;
+          if (sh > 12) { sh = 12; sw = (imgEl.width / imgEl.height) * sh; }
+          doc.addImage(stampOverride.signature_image, 'PNG', margin, y, sw, sh, undefined, 'FAST');
+          y += sh + 2;
         } catch { /* skip */ }
       }
 
-      // 2. Carimbo (imagem) — se houver
+      // 2. Carimbo (imagem) — proporcional, máx 40×18
       if (stampOverride.stamp_image) {
         try {
           const imgEl2 = document.createElement('img');
           imgEl2.src = stampOverride.stamp_image;
           await new Promise<void>(r => { imgEl2.onload = () => r(); imgEl2.onerror = () => r(); });
-          doc.addImage(stampOverride.stamp_image, 'PNG', margin, y, 40, 40, undefined, 'FAST');
-          y += 43;
+          let sw = 40; let sh = (imgEl2.height / imgEl2.width) * sw;
+          if (sh > 18) { sh = 18; sw = (imgEl2.width / imgEl2.height) * sh; }
+          doc.addImage(stampOverride.stamp_image, 'PNG', margin, y, sw, sh, undefined, 'FAST');
+          y += sh + 3;
         } catch { /* skip */ }
       }
 
