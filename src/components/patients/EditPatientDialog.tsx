@@ -428,8 +428,63 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                   />
                 </div>
               </div>
+
+              {isPropria && (
+                <div>
+                  <Label className="text-xs">Dia de Vencimento</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={31}
+                    placeholder="Ex: 10"
+                    value={formData.paymentDueDay}
+                    onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
+                  />
+                </div>
+              )}
             </div>
           </div>
+
+          {isPropria && (
+            <div className="border-t pt-4">
+              <Label className="text-sm font-medium">Status do Pagamento (mês atual)</Label>
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center justify-between rounded-xl bg-secondary/40 border border-border/60 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {currentPaymentRecord?.paid ? '✅ Pago' : '⏳ Pendente'}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={currentPaymentRecord?.paid || false}
+                    disabled={savingPayment}
+                    onCheckedChange={async (checked) => {
+                      const dateVal = checked ? new Date().toISOString().split('T')[0] : '';
+                      setCurrentPaymentRecord((prev: any) => ({ ...(prev || {}), paid: checked, payment_date: dateVal || null }));
+                      await handleSavePaymentRecord(checked, dateVal);
+                    }}
+                  />
+                </div>
+                {currentPaymentRecord?.paid && (
+                  <div>
+                    <Label className="text-xs">Data do Pagamento</Label>
+                    <Input
+                      type="date"
+                      value={currentPaymentRecord?.payment_date || ''}
+                      onChange={async (e) => {
+                        const d = e.target.value;
+                        setCurrentPaymentRecord((prev: any) => ({ ...prev, payment_date: d }));
+                        await handleSavePaymentRecord(true, d);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
