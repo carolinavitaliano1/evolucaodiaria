@@ -41,6 +41,8 @@ export interface FiscalReceiptOptions {
   } | null;
   therapistName?: string;
   professionalId?: string;
+  therapistCpf?: string;
+  cbo?: string;
   totalPaid?: number;
   paymentStatus?: 'paid' | 'pending' | 'partial';
   paymentDate?: string | null;
@@ -62,8 +64,11 @@ function formatCpf(cpf: string): string {
   return cpf;
 }
 
+const LINE_H = 6.5;      // standard line height (mm) — increased to prevent overlap
+const LABEL_W = 50;      // fixed label column width (mm)
+
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Promise<void> {
-  const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, totalPaid, paymentStatus, paymentDate } = opts;
+  const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, therapistCpf, cbo, totalPaid, paymentStatus, paymentDate } = opts;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
@@ -85,20 +90,25 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   const drawLine = () => {
     doc.setDrawColor(...borderColor);
     doc.line(margin, y, W - margin, y);
-    y += 6;
+    y += 7;
   };
 
-  const labelValue = (label: string, value: string, indented = false) => {
-    const x = indented ? margin + 4 : margin;
-    doc.setFont('helvetica', 'bold');
+  // Render a label:value row where label is bold left and value is normal, wrapping properly
+  const labelValue = (label: string, value: string) => {
+    ensureSpace(8);
     doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(...darkText);
-    doc.text(label, x, y);
+    doc.text(label, margin, y);
+
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...mutedText);
-    const wrapped = doc.splitTextToSize(value, contentW - 50);
-    doc.text(wrapped, x + 48, y);
-    y += wrapped.length > 1 ? wrapped.length * 5.2 + 1 : 6;
+    const maxValueW = contentW - LABEL_W;
+    const wrapped = doc.splitTextToSize(value, maxValueW);
+    doc.text(wrapped, margin + LABEL_W, y);
+
+    // Advance by however many lines the value takes
+    y += Math.max(1, wrapped.length) * LINE_H + 1;
   };
 
   // ── CABEÇALHO ────────────────────────────────────────────────────────────
@@ -106,14 +116,14 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('RECIBO DE ATENDIMENTO', margin, y);
-  y += 7;
+  y += 8;
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
   const periodLabel = `${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`;
   doc.text(`Período: ${periodLabel}   ·   Emissão: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, margin, y);
-  y += 5;
+  y += 6;
   drawLine();
 
   // ── DADOS DO PACIENTE / TOMADOR DO SERVIÇO ─────────────────────────────
@@ -121,7 +131,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('TOMADOR DO SERVIÇO', margin, y);
-  y += 7;
+  y += 8;
 
   labelValue('Nome:', patient.name);
   if (patient.cpf) labelValue('CPF/CNPJ:', formatCpf(patient.cpf));
@@ -142,18 +152,18 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
 
   // Responsável (menor de idade)
   if (patient.responsibleName) {
-    y += 2;
-    doc.setFontSize(8.5);
+    y += 3;
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...mutedText);
     doc.text('Responsável Legal:', margin, y);
-    y += 5;
+    y += 7;
     labelValue('Nome:', patient.responsibleName);
     if (patient.responsible_cpf) labelValue('CPF:', formatCpf(patient.responsible_cpf));
     if (patient.responsibleEmail) labelValue('E-mail:', patient.responsibleEmail);
   }
 
-  y += 2;
+  y += 3;
   drawLine();
 
   // ── DADOS DO PRESTADOR DE SERVIÇO ─────────────────────────────────────
@@ -161,10 +171,12 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('PRESTADOR DE SERVIÇO', margin, y);
-  y += 7;
+  y += 8;
 
   if (therapistName) labelValue('Nome:', therapistName);
   if (professionalId) labelValue('Registro:', professionalId);
+  if (therapistCpf) labelValue('CPF:', formatCpf(therapistCpf));
+  if (cbo) labelValue('CBO:', cbo);
   if (stamp?.clinical_area) labelValue('Área:', stamp.clinical_area);
   if (clinic?.name) labelValue('Clínica:', clinic.name);
   if (clinic?.cnpj) labelValue('CNPJ:', formatCpf(clinic.cnpj));
@@ -172,7 +184,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   if (clinic?.phone) labelValue('Telefone:', clinic.phone);
   if (clinic?.email) labelValue('E-mail:', clinic.email);
 
-  y += 2;
+  y += 3;
   drawLine();
 
   // ── DETALHAMENTO DAS SESSÕES ───────────────────────────────────────────
@@ -180,27 +192,28 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text(`DETALHAMENTO DAS SESSÕES (${evolutions.length})`, margin, y);
-  y += 8;
+  y += 9;
 
   // Table header
+  const c1 = margin, c2 = margin + 32, c3 = margin + 92, c4 = W - margin - 5;
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...mutedText);
-  const c1 = margin, c2 = margin + 30, c3 = margin + 90, c4 = W - margin - 5;
   doc.text('Data', c1, y);
   doc.text('Área Clínica / Serviço', c2, y);
   doc.text('Status', c3, y);
   doc.text('Valor', c4, y, { align: 'right' });
-  y += 3;
+  y += 4;
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, W - margin, y);
-  y += 5;
+  y += 6;
 
   let sessionTotal = 0;
   let sessionCount = 0;
 
   const paymentValue = patient.paymentValue || 0;
   const areaLabel = patient.clinicalArea || stamp?.clinical_area || 'Atendimento';
+  const areaDisplay = areaLabel.length > 26 ? areaLabel.substring(0, 25) + '…' : areaLabel;
 
   doc.setFont('helvetica', 'normal');
   for (const evo of evolutions) {
@@ -212,13 +225,19 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
     doc.setFontSize(8.5);
     doc.setTextColor(...darkText);
     doc.text(dateStr, c1, y);
-    doc.text(areaLabel.length > 25 ? areaLabel.substring(0, 24) + '…' : areaLabel, c2, y);
+    doc.text(areaDisplay, c2, y);
+
     if (st.billable) doc.setTextColor(...darkText);
     else doc.setTextColor(...mutedText);
     doc.text(st.label, c3, y);
-    doc.setTextColor(sessionValue > 0 ? darkText[0] : mutedText[0], sessionValue > 0 ? darkText[1] : mutedText[1], sessionValue > 0 ? darkText[2] : mutedText[2]);
+
+    doc.setTextColor(
+      sessionValue > 0 ? darkText[0] : mutedText[0],
+      sessionValue > 0 ? darkText[1] : mutedText[1],
+      sessionValue > 0 ? darkText[2] : mutedText[2],
+    );
     doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '—', c4, y, { align: 'right' });
-    y += 6;
+    y += 7;
 
     if (st.billable) { sessionTotal += sessionValue; sessionCount++; }
   }
@@ -231,17 +250,17 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   }
 
   // ── RESUMO FINANCEIRO ─────────────────────────────────────────────────
-  ensureSpace(40);
-  y += 2;
+  ensureSpace(50);
+  y += 3;
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, W - margin, y);
-  y += 6;
+  y += 7;
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('RESUMO FINANCEIRO', margin, y);
-  y += 7;
+  y += 8;
 
   const summaryRows: [string, string][] = [];
   if (patient.paymentType === 'fixo') {
@@ -258,6 +277,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   summaryRows.push(['TOTAL DO PERÍODO:', `R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
 
   summaryRows.forEach(([label, value], i) => {
+    ensureSpace(8);
     const isTotal = i === summaryRows.length - 1;
     doc.setFontSize(isTotal ? 10.5 : 9);
     doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
@@ -266,18 +286,16 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...(isTotal ? accentColor : darkText));
     doc.text(value, W - margin - 2, y, { align: 'right' });
-    y += isTotal ? 7 : 6;
+    y += isTotal ? 8 : 7;
   });
 
   // Payment status badge
   ensureSpace(14);
-  y += 2;
-  const statusText = paymentStatus === 'paid' ? '✓ PAGO'
-    : paymentStatus === 'partial' ? '~ PARCIALMENTE PAGO'
-    : '⏳ PENDENTE';
-  const statusColor: [number, number, number] = paymentStatus === 'paid' ? successColor
-    : paymentStatus === 'partial' ? warningColor
-    : warningColor;
+  y += 3;
+  const statusText = paymentStatus === 'paid' ? 'PAGO'
+    : paymentStatus === 'partial' ? 'PARCIALMENTE PAGO'
+    : 'PENDENTE';
+  const statusColor: [number, number, number] = paymentStatus === 'paid' ? successColor : warningColor;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...statusColor);
@@ -285,9 +303,10 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   if (paymentDate && paymentStatus === 'paid') {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...mutedText);
-    doc.text(`   ·   Recebido em: ${format(new Date(paymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`, margin + 4 + doc.getTextWidth(`Status: ${statusText}`), y);
+    const labelW = doc.getTextWidth(`Status: ${statusText}`);
+    doc.text(`   ·   Recebido em: ${format(new Date(paymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`, margin + 4 + labelW, y);
   }
-  y += 8;
+  y += 9;
 
   drawLine();
 
@@ -297,35 +316,37 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   doc.setTextColor(...mutedText);
   const declaration = `Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.`;
   const declLines = doc.splitTextToSize(declaration, contentW);
-  declLines.forEach((line: string) => { ensureSpace(6); doc.text(line, margin, y); y += 5.5; });
-  y += 6;
+  declLines.forEach((line: string) => { ensureSpace(7); doc.text(line, margin, y); y += 6; });
+  y += 7;
 
   // Signature block
-  ensureSpace(70);
+  ensureSpace(80);
   if (stamp?.signature_image) {
     try {
       doc.addImage(stamp.signature_image, 'PNG', margin, y, 55, 18, undefined, 'FAST');
-      y += 20;
+      y += 22;
     } catch { /* skip */ }
   }
   if (stamp?.stamp_image) {
     try {
       doc.addImage(stamp.stamp_image, 'PNG', margin, y, 38, 38, undefined, 'FAST');
-      y += 40;
+      y += 42;
     } catch { /* skip */ }
   }
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, margin + contentW * 0.55, y);
-  y += 5;
+  y += 6;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...darkText);
   doc.text(therapistName || '________________________________', margin, y);
-  y += 5;
+  y += 6;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
-  if (stamp?.clinical_area) { doc.text(stamp.clinical_area, margin, y); y += 4.5; }
-  if (professionalId) { doc.text(`Registro: ${professionalId}`, margin, y); y += 4.5; }
+  if (stamp?.clinical_area) { doc.text(stamp.clinical_area, margin, y); y += 5.5; }
+  if (professionalId) { doc.text(`Registro: ${professionalId}`, margin, y); y += 5.5; }
+  if (therapistCpf) { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, y); y += 5.5; }
+  if (cbo) { doc.text(`CBO: ${cbo}`, margin, y); y += 5.5; }
 
   // ── RODAPÉ ───────────────────────────────────────────────────────────
   const pageCount = (doc as any).internal.getNumberOfPages();

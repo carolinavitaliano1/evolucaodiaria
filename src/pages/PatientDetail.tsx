@@ -194,6 +194,15 @@ export default function PatientDetail() {
   const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
   const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
 
+  // Therapist profile for fiscal receipt
+  const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name, professional_id, phone, email').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data) setTherapistProfile(data); });
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).order('created_at').then(({ data }) => {
@@ -587,8 +596,10 @@ export default function PatientDetail() {
         stamp_image: fiscalStamp.stamp_image,
         signature_image: fiscalStamp.signature_image,
       } : null,
-      therapistName: fiscalStamp?.name || undefined,
-      professionalId: undefined as string | undefined,
+      therapistName: fiscalStamp?.name || therapistProfile?.name || undefined,
+      professionalId: therapistProfile?.professional_id || undefined,
+      therapistCpf: undefined as string | undefined,
+      cbo: undefined as string | undefined,
       totalPaid: fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : undefined,
       paymentStatus: fiscalPaymentStatus,
       paymentDate: fiscalPaymentDate || null,
@@ -660,7 +671,8 @@ export default function PatientDetail() {
         ${patient.responsibleName ? `<hr/><h4>Responsável Legal</h4><p><strong>Nome:</strong> ${patient.responsibleName}</p>${respCpf ? `<p><strong>CPF:</strong> ${formatCpf(respCpf)}</p>` : ''}` : ''}
         <hr/>
         <h3 style="color:#1e3a8a">PRESTADOR DE SERVIÇO</h3>
-        ${fiscalStamp?.name ? `<p><strong>Nome:</strong> ${fiscalStamp.name}</p>` : ''}
+        ${(fiscalStamp?.name || therapistProfile?.name) ? `<p><strong>Nome:</strong> ${fiscalStamp?.name || therapistProfile?.name}</p>` : ''}
+        ${therapistProfile?.professional_id ? `<p><strong>Registro:</strong> ${therapistProfile.professional_id}</p>` : ''}
         ${fiscalStamp?.clinical_area ? `<p><strong>Área:</strong> ${fiscalStamp.clinical_area}</p>` : ''}
         ${clinic?.name ? `<p><strong>Clínica:</strong> ${clinic.name}</p>` : ''}
         ${clinic?.cnpj ? `<p><strong>CNPJ:</strong> ${formatCpf(clinic.cnpj)}</p>` : ''}
@@ -680,7 +692,8 @@ export default function PatientDetail() {
         <p style="color:#555;font-size:9pt">Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.</p>
         <br/><br/>
         <p>___________________________</p>
-        ${fiscalStamp?.name ? `<p><strong>${fiscalStamp.name}</strong></p>` : ''}
+        ${(fiscalStamp?.name || therapistProfile?.name) ? `<p><strong>${fiscalStamp?.name || therapistProfile?.name}</strong></p>` : ''}
+        ${therapistProfile?.professional_id ? `<p>Registro: ${therapistProfile.professional_id}</p>` : ''}
         ${fiscalStamp?.clinical_area ? `<p>${fiscalStamp.clinical_area}</p>` : ''}
         </body></html>`;
 

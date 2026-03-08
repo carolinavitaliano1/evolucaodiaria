@@ -259,12 +259,14 @@ export default function ClinicDetail() {
     name: '',
     birthdate: '',
     phone: '',
+    cpf: '',
     clinicalArea: '',
     diagnosis: '',
     professionals: '',
     observations: '',
     responsibleName: '',
     responsibleEmail: '',
+    responsible_cpf: '',
     contractStartDate: '',
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
@@ -542,12 +544,14 @@ export default function ClinicDetail() {
         name: formData.name,
         birthdate: formData.birthdate,
         phone: formData.phone || null,
+        cpf: formData.cpf || null,
         clinical_area: formData.clinicalArea || null,
         diagnosis: formData.diagnosis || null,
         professionals: formData.professionals || null,
         observations: formData.observations || null,
         responsible_name: formData.responsibleName || null,
         responsible_email: formData.responsibleEmail || null,
+        responsible_cpf: formData.responsible_cpf || null,
         payment_type: clinic.paymentType === 'sessao' ? 'sessao' : clinic.paymentType === 'fixo_mensal' ? 'fixo' : 'sessao',
         payment_value: selectedPkg ? selectedPkg.price : (clinic.paymentAmount ?? null),
         contract_start_date: formData.contractStartDate || null,
@@ -602,12 +606,14 @@ export default function ClinicDetail() {
       name: '',
       birthdate: '',
       phone: '',
+      cpf: '',
       clinicalArea: '',
       diagnosis: '',
       professionals: '',
       observations: '',
       responsibleName: '',
       responsibleEmail: '',
+      responsible_cpf: '',
       contractStartDate: '',
       weekdays: [],
       scheduleByDay: {},
@@ -1429,12 +1435,21 @@ export default function ClinicDetail() {
                       />
                     </div>
 
-                    <div>
+                     <div>
                       <Label>Telefone</Label>
                       <Input
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         placeholder="(00) 00000-0000"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>CPF / CNPJ</Label>
+                      <Input
+                        value={formData.cpf}
+                        onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                        placeholder="000.000.000-00"
                       />
                     </div>
 
@@ -1463,6 +1478,35 @@ export default function ClinicDetail() {
                         onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
                         placeholder="Queixa inicial, histórico..."
                       />
+                    </div>
+
+                    <div className="border-t pt-4 space-y-3">
+                      <p className="font-semibold">👤 Responsável Legal (opcional)</p>
+                      <div>
+                        <Label>Nome do Responsável</Label>
+                        <Input
+                          value={formData.responsibleName}
+                          onChange={(e) => setFormData({ ...formData, responsibleName: e.target.value })}
+                          placeholder="Ex: Maria Silva"
+                        />
+                      </div>
+                      <div>
+                        <Label>CPF do Responsável</Label>
+                        <Input
+                          value={formData.responsible_cpf}
+                          onChange={(e) => setFormData({ ...formData, responsible_cpf: e.target.value })}
+                          placeholder="000.000.000-00"
+                        />
+                      </div>
+                      <div>
+                        <Label>E-mail do Responsável</Label>
+                        <Input
+                          type="email"
+                          value={formData.responsibleEmail}
+                          onChange={(e) => setFormData({ ...formData, responsibleEmail: e.target.value })}
+                          placeholder="email@exemplo.com"
+                        />
+                      </div>
                     </div>
 
                     {/* Package selection and payment info */}
