@@ -1445,7 +1445,7 @@ export default function ClinicDetail() {
                     </div>
 
                     <div>
-                      <Label>CPF / CNPJ</Label>
+                      <Label>CPF do Paciente <span className="text-muted-foreground font-normal text-xs">(para fins de cadastro)</span></Label>
                       <Input
                         value={formData.cpf}
                         onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
