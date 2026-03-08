@@ -177,7 +177,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
               </PopoverContent>
             </Popover>
 
-            {evolutionsByPatient.length > 0 && (
+            {evolutionsByPatient.length > 0 && canViewContent && (
               <Button onClick={handleExportAllInOne} disabled={isExporting} className="gap-2 gradient-primary" size="sm">
                 <Download className="w-4 h-4" />
                 {isExporting ? 'Exportando...' : 'Exportar Todos'}
