@@ -16,6 +16,7 @@ export interface PrivateAppointment {
   paid?: boolean;
   payment_date?: string | null;
   created_at: string;
+  services?: { name: string; type: string } | null;
 }
 
 export function usePrivateAppointments() {
@@ -27,7 +28,7 @@ export function usePrivateAppointments() {
       setLoading(true);
       const { data, error } = await supabase
         .from('private_appointments')
-        .select('*')
+        .select('*, services(name, type)')
         .order('date', { ascending: true });
 
       if (error) throw error;

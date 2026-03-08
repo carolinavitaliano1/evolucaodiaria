@@ -468,7 +468,7 @@ export default function Financial() {
           setTxt(C.mid);
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(7);
-          const svcName = apt.services?.name || apt.service_name || '—';
+          const svcName = (apt as any).services?.name || '—';
           doc.text(svcName.substring(0, 22), ts.srv, y + 5.2);
 
           // Status pagamento (Pago / Pendente)
