@@ -11,7 +11,7 @@ export function InternalAlertsBell() {
   const { notifications, unreadCount, markRead, markAllRead, dismiss } = useInternalNotifications();
   const [open, setOpen] = useState(false);
 
-  if (!notifications.length && unreadCount === 0) return null;
+  // Always render so the bell is visible even when there are no notifications yet
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

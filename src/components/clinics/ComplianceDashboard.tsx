@@ -204,7 +204,8 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
     } finally {
       setLoading(false);
     }
-  }, [clinicId, organizationId, dateRange, patients, onTodayPendingCount]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clinicId, organizationId, dateRange, patients]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
