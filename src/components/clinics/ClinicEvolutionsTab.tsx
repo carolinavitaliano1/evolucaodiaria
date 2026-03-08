@@ -2,13 +2,14 @@ import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicOrg, OrgMemberProfile } from '@/hooks/useClinicOrg';
+import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const { patients, evolutions } = useApp();
   const { user } = useAuth();
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { isOrg, members } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -40,6 +42,10 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportingPatientId, setExportingPatientId] = useState<string | null>(null);
   const [filterUserId, setFilterUserId] = useState<string>('all');
+
+  // Status-only: can see if evolution exists but not read its content
+  const canViewContent = !isOrgMember || isOwner || hasPermission(permissions, 'evolutions.view');
+  const canSeeStatus = canViewContent || hasPermission(permissions, 'evolutions.status_only');
 
   useEffect(() => {
     if (!user) return;
@@ -171,7 +177,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
               </PopoverContent>
             </Popover>
 
-            {evolutionsByPatient.length > 0 && (
+            {evolutionsByPatient.length > 0 && canViewContent && (
               <Button onClick={handleExportAllInOne} disabled={isExporting} className="gap-2 gradient-primary" size="sm">
                 <Download className="w-4 h-4" />
                 {isExporting ? 'Exportando...' : 'Exportar Todos'}
@@ -220,29 +226,36 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
                           </span>
                         )}
                       </div>
-                      {patient.clinicalArea && (
+                      {canViewContent && patient.clinicalArea && (
                         <p className="text-xs text-muted-foreground mt-0.5">{patient.clinicalArea}</p>
                       )}
-                      {evo.text && (
+                      {canViewContent && evo.text && (
                         <p className="text-sm text-muted-foreground mt-2 line-clamp-3 whitespace-pre-wrap">
                           {evo.text}
                         </p>
                       )}
-                      {evo.templateData && !evo.text && (
+                      {canViewContent && evo.templateData && !evo.text && (
                         <p className="text-xs text-muted-foreground mt-1 italic">Evolução por modelo</p>
+                      )}
+                      {!canViewContent && (
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 italic">
+                          <Lock className="w-3 h-3" /> Conteúdo clínico restrito
+                        </p>
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 flex-shrink-0"
-                    onClick={() => handleExportSingle(evo, patient)}
-                    disabled={isExportingThis}
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    {isExportingThis ? '...' : 'PDF'}
-                  </Button>
+                  {canViewContent && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 flex-shrink-0"
+                      onClick={() => handleExportSingle(evo, patient)}
+                      disabled={isExportingThis}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      {isExportingThis ? '...' : 'PDF'}
+                    </Button>
+                  )}
                 </div>
               </div>
             );

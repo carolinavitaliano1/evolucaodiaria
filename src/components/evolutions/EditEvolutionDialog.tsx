@@ -11,6 +11,7 @@ import { Image, PenLine, Save, Wand2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import TemplateForm from './TemplateForm';
 import { MoodSelector } from './MoodSelector';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,8 @@ interface EditEvolutionDialogProps {
 
 export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, showFaltaRemunerada = true }: EditEvolutionDialogProps) {
   const { user } = useAuth();
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const canUseAI = !isOrgMember || isOwner || hasPermission(permissions, 'ai_evolutions.use');
   const [text, setText] = useState(evolution.text);
   const [date, setDate] = useState(evolution.date);
   const [attendanceStatus, setAttendanceStatus] = useState(evolution.attendanceStatus);
@@ -187,6 +190,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
               <Label>Evolução</Label>
               <Textarea value={text} onChange={(e) => setText(e.target.value)}
                 placeholder="Digite a evolução do paciente..." className="min-h-32" />
+              {canUseAI && (
               <Button
                 type="button"
                 variant="outline"
@@ -204,6 +208,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
                 {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                 Melhorar com IA
               </Button>
+              )}
             </div>
           )}
 

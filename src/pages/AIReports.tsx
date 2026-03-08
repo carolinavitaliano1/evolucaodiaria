@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +16,7 @@ import {
   Sparkles, FileText, Send, Loader2, Download, Copy, UserSearch, MessageSquare,
   Save, FolderOpen, Trash2, Bold, Italic, Underline as UnderlineIcon, AlignLeft,
   AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Type, List, Share2, Mail, Link2,
-  MoveLeft, MoveHorizontal, MoveRight
+  MoveLeft, MoveHorizontal, MoveRight, LockKeyhole
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -294,6 +295,8 @@ export default function AIReports() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const isLilas = theme === 'lilas';
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const canUseAI = !isOrgMember || isOwner || hasPermission(permissions, 'ai_reports.use');
 
   const [selectedPatient, setSelectedPatient] = useState('');
   const [selectedClinic, setSelectedClinic] = useState('');
@@ -580,6 +583,20 @@ export default function AIReports() {
 
   return (
     <div className="space-y-6">
+      {!canUseAI && (
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+            <LockKeyhole className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Acesso Restrito</h2>
+            <p className="text-muted-foreground mt-1 max-w-sm">
+              Você não tem permissão para acessar o Gerador de Relatórios com IA. Entre em contato com o administrador.
+            </p>
+          </div>
+        </div>
+      )}
+      {canUseAI && <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -794,6 +811,7 @@ export default function AIReports() {
           )}
         </DialogContent>
       </Dialog>
+      </>}
     </div>
   );
 }

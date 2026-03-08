@@ -29,6 +29,10 @@ export const ALL_PERMISSIONS = [
   'evolutions.create',
   'evolutions.edit',
   'evolutions.delete',
+  'evolutions.status_only',   // ver se evolução foi preenchida (sem ler conteúdo)
+  // Ferramentas de IA
+  'ai_reports.use',           // Gerador de Relatórios via IA
+  'ai_evolutions.use',        // Resumo/Melhoria de Evoluções com IA
   // Financeiro
   'financial.view',
   'financial.edit',
@@ -60,11 +64,14 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'calendar.view': 'Ver Agenda',
   'calendar.own_only': 'Apenas seus agendamentos',
   'calendar.edit': 'Editar Agenda',
-  'evolutions.view': 'Ver Evoluções',
+  'evolutions.view': 'Ver Evoluções (conteúdo clínico)',
   'evolutions.own_only': 'Apenas suas evoluções',
   'evolutions.create': 'Criar Evoluções',
   'evolutions.edit': 'Editar Evoluções',
   'evolutions.delete': 'Excluir Evoluções',
+  'evolutions.status_only': 'Ver status de preenchimento (sem conteúdo)',
+  'ai_reports.use': 'Usar Gerador de Relatórios com IA',
+  'ai_evolutions.use': 'Usar IA nas Evoluções (resumo/melhoria)',
   'financial.view': 'Ver Financeiro',
   'financial.edit': 'Editar Financeiro',
   'financial.export': 'Exportar Financeiro',
@@ -107,6 +114,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     allKeys: [
       'patients.view', 'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
       'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
+      'evolutions.status_only',
     ],
     levels: [
       {
@@ -117,13 +125,24 @@ export const PERMISSION_MODULES: PermissionModule[] = [
         revokes: [
           'patients.view', 'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
           'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
+          'evolutions.status_only',
+        ],
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        description: 'Vê se evoluções foram preenchidas, sem acessar o conteúdo clínico.',
+        grants: ['patients.view', 'evolutions.status_only'],
+        revokes: [
+          'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
+          'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
         ],
       },
       {
         id: 'view',
         label: 'Ver',
         description: 'Visualiza apenas os pacientes e evoluções atribuídos.',
-        grants: ['patients.view', 'patients.own_only', 'evolutions.view', 'evolutions.own_only'],
+        grants: ['patients.view', 'patients.own_only', 'evolutions.view', 'evolutions.own_only', 'evolutions.status_only'],
         revokes: ['patients.create', 'patients.edit', 'patients.delete', 'evolutions.create', 'evolutions.edit', 'evolutions.delete'],
       },
       {
@@ -132,7 +151,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
         description: 'Cria e edita pacientes e evoluções atribuídos.',
         grants: [
           'patients.view', 'patients.own_only', 'patients.create', 'patients.edit',
-          'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit',
+          'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.status_only',
         ],
         revokes: ['patients.delete', 'evolutions.delete'],
       },
@@ -143,7 +162,46 @@ export const PERMISSION_MODULES: PermissionModule[] = [
         grants: [
           'patients.view', 'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
           'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
+          'evolutions.status_only',
         ],
+        revokes: [],
+      },
+    ],
+  },
+
+  // ── Ferramentas de IA ──────────────────────────────────────────────────────
+  {
+    id: 'ai_tools',
+    label: 'Ferramentas de IA',
+    icon: 'report',
+    allKeys: ['ai_reports.use', 'ai_evolutions.use'],
+    levels: [
+      {
+        id: 'none',
+        label: 'Bloqueado',
+        description: 'Sem acesso a nenhuma ferramenta de IA.',
+        grants: [],
+        revokes: ['ai_reports.use', 'ai_evolutions.use'],
+      },
+      {
+        id: 'own',
+        label: 'Evoluções IA',
+        description: 'Pode melhorar e resumir evoluções com IA.',
+        grants: ['ai_evolutions.use'],
+        revokes: ['ai_reports.use'],
+      },
+      {
+        id: 'edit',
+        label: 'Relatórios IA',
+        description: 'Acessa o gerador de relatórios clínicos com IA.',
+        grants: ['ai_reports.use'],
+        revokes: ['ai_evolutions.use'],
+      },
+      {
+        id: 'all',
+        label: 'Todas',
+        description: 'Acesso completo às ferramentas de IA.',
+        grants: ['ai_reports.use', 'ai_evolutions.use'],
         revokes: [],
       },
     ],
@@ -275,6 +333,8 @@ export const DEFAULT_THERAPIST_PERMISSIONS: PermissionKey[] = [
   'evolutions.view',
   'evolutions.own_only',
   'evolutions.create',
+  'evolutions.status_only',
+  'ai_evolutions.use',
   'mural.view',
   'tasks.view',
 ];
@@ -292,6 +352,9 @@ export const DEFAULT_ADMIN_PERMISSIONS: PermissionKey[] = [
   'evolutions.view',
   'evolutions.create',
   'evolutions.edit',
+  'evolutions.status_only',
+  'ai_reports.use',
+  'ai_evolutions.use',
   'financial.view',
   'financial.edit',
   'financial.export',
@@ -336,7 +399,7 @@ export const PRESET_ROLES: PresetRole[] = [
   {
     id: 'secretaria',
     label: 'Secretária',
-    description: 'Gestão de agendas e cadastro de pacientes. Sem acesso ao conteúdo clínico.',
+    description: 'Gestão de agendas e cadastro de pacientes. Vê status de evoluções, sem conteúdo clínico.',
     baseRole: 'professional',
     icon: 'calendar',
     permissions: [
@@ -345,6 +408,7 @@ export const PRESET_ROLES: PresetRole[] = [
       'patients.view',
       'patients.create',
       'patients.edit',
+      'evolutions.status_only',
       'calendar.view',
       'calendar.edit',
       'tasks.view',
