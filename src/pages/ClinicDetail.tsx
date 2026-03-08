@@ -2413,6 +2413,7 @@ export default function ClinicDetail() {
           }}
           onSave={updatePatient}
           clinicPackages={clinicPackages}
+          clinicType={clinic?.type as 'propria' | 'terceirizada' | undefined}
         />
       )}
 

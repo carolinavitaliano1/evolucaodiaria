@@ -658,6 +658,32 @@ export default function Financial() {
     }
   };
 
+// Add CSV export function before the return statement
+  const handleExportCSV = () => {
+    const rows = [
+      ['Paciente', 'Clínica', 'Tipo', 'Sessões', 'Faltas Rem.', 'Faltas', 'Valor (R$)', 'Status Pagamento', 'Data Pagamento'],
+      ...patientStats.map(({ patient, clinic, sessions, paidAbsences, absences, paymentType, paymentValue, revenue, pr }) => [
+        patient.name,
+        clinic?.name || '',
+        paymentType === 'fixo' ? 'Fixo Mensal' : `Por Sessão (R$${paymentValue}/sessão)`,
+        sessions.toString(),
+        paidAbsences.toString(),
+        absences.toString(),
+        revenue.toFixed(2).replace('.', ','),
+        pr?.paid ? 'Pago' : 'Pendente',
+        pr?.paid && pr.payment_date ? format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy') : '',
+      ])
+    ];
+    const csvContent = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `financeiro-${monthName.replace(/ /g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const grandTotal = totalRevenue + standaloneRevenue;
   const paidTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (pr?.paid ? revenue : 0), 0);
   const pendingTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (!pr?.paid ? revenue : 0), 0);
@@ -979,6 +1005,10 @@ export default function Financial() {
             <Button variant="outline" className="gap-2 w-full sm:w-auto text-xs sm:text-sm" onClick={handleExportPDF} disabled={isExporting}>
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               {isExporting ? 'Exportando...' : 'Relatório Geral PDF'}
+            </Button>
+            <Button variant="outline" className="gap-2 w-full sm:w-auto text-xs sm:text-sm" onClick={handleExportCSV}>
+              <Download className="w-4 h-4" />
+              Exportar CSV
             </Button>
           </div>
         </div>

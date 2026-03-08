@@ -49,6 +49,12 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
 
+  // Filters
+  type PaymentFilter = 'all' | 'paid' | 'pending';
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
   // Contratante payment record for selected month
   const [paymentRecord, setPaymentRecord] = useState<ClinicPaymentRecord | null>(null);
   const [savingPayment, setSavingPayment] = useState(false);
@@ -241,7 +247,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const totalPaidAbsences = paidAbsenceEvos.length;
   const totalReposicoes = reposicaoEvos.length;
 
-  const patientBreakdown = clinicPatients
+  const allPatientBreakdown = clinicPatients
     .map(patient => ({
       patient,
       revenue: calculatePatientRevenue(patient.id),
@@ -252,6 +258,16 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     }))
     .filter(p => p.revenue > 0 || p.sessions > 0 || p.absences > 0)
     .sort((a, b) => b.revenue - a.revenue);
+
+  const patientBreakdown = allPatientBreakdown.filter(({ patient }) => {
+    const pr = patientPaymentRecords[patient.id];
+    if (paymentFilter === 'paid' && !pr?.paid) return false;
+    if (paymentFilter === 'pending' && pr?.paid) return false;
+    if (filterStartDate && pr?.payment_date && pr.payment_date < filterStartDate) return false;
+    if (filterEndDate && pr?.payment_date && pr.payment_date > filterEndDate) return false;
+    if ((filterStartDate || filterEndDate) && paymentFilter === 'paid' && !pr?.payment_date) return false;
+    return true;
+  });
 
   const statusConfig = {
     'agendado': { label: 'Agendado', icon: Clock, className: 'text-primary bg-primary/10' },
@@ -411,9 +427,53 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
       {/* Patient breakdown */}
       <div className="bg-card rounded-2xl p-5 border border-border">
-        <h3 className="font-bold text-foreground mb-4 text-sm">Detalhamento por Paciente</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <h3 className="font-bold text-foreground text-sm">Detalhamento por Paciente</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status filter */}
+            <div className="flex items-center gap-0.5 rounded-lg bg-secondary border border-border p-0.5">
+              {(['all', 'paid', 'pending'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setPaymentFilter(f)}
+                  className={cn(
+                    'text-[10px] px-2 py-1 rounded-md transition-colors',
+                    paymentFilter === f
+                      ? f === 'paid' ? 'bg-success text-white' : f === 'pending' ? 'bg-warning text-white' : 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {f === 'all' ? 'Todos' : f === 'paid' ? '✓ Pagos' : '⏳ Pend.'}
+                </button>
+              ))}
+            </div>
+            {/* Date range filter */}
+            <div className="flex items-center gap-1">
+              <Input
+                type="date"
+                value={filterStartDate}
+                onChange={e => setFilterStartDate(e.target.value)}
+                className="h-7 text-xs w-28 px-2"
+                placeholder="De"
+              />
+              <span className="text-muted-foreground text-xs">–</span>
+              <Input
+                type="date"
+                value={filterEndDate}
+                onChange={e => setFilterEndDate(e.target.value)}
+                className="h-7 text-xs w-28 px-2"
+                placeholder="Até"
+              />
+              {(filterStartDate || filterEndDate) && (
+                <button onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }} className="text-xs text-muted-foreground hover:text-foreground px-1">✕</button>
+              )}
+            </div>
+          </div>
+        </div>
         {patientBreakdown.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8 text-sm">Nenhum registro neste mês</p>
+          <p className="text-center text-muted-foreground py-8 text-sm">
+            {paymentFilter !== 'all' || filterStartDate || filterEndDate ? 'Nenhum resultado para os filtros' : 'Nenhum registro neste mês'}
+          </p>
         ) : (
           <div className="space-y-2">
             {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, reposicoes }) => {
