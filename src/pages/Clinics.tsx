@@ -127,8 +127,9 @@ export default function Clinics() {
   useEffect(() => {
     if (activeTab === 'meus-servicos') {
       loadPrivateAppointments();
+      loadRegisteredServices();
     }
-  }, [activeTab]);
+  }, [activeTab, user]);
 
   const loadPrivateAppointments = async () => {
     try {
