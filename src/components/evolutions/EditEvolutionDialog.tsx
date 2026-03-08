@@ -190,6 +190,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
               <Label>Evolução</Label>
               <Textarea value={text} onChange={(e) => setText(e.target.value)}
                 placeholder="Digite a evolução do paciente..." className="min-h-32" />
+              {canUseAI && (
               <Button
                 type="button"
                 variant="outline"
@@ -207,6 +208,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
                 {isImprovingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                 Melhorar com IA
               </Button>
+              )}
             </div>
           )}
 
