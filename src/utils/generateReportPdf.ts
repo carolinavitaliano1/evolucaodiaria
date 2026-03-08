@@ -48,11 +48,11 @@ const FOOTER_FONT_SIZE = 6.5;
 
 // Spacing - kept minimal so user edits in the editor control spacing via empty paragraphs
 const LINE_HEIGHT = 5; // ~1.5 spacing for 10pt
-const SECTION_GAP = 4; // reduced from 7 so user controls spacing
+const SECTION_GAP = 3; // reduced for compact layout
 const PARAGRAPH_GAP = 1.5; // reduced from 3 - empty lines from user add this gap
 
 // Footer area
-const FOOTER_RESERVE = 28;
+const FOOTER_RESERVE = 18; // real footer uses ~8mm; reserve 18mm
 const USABLE_BOTTOM = PAGE_H - FOOTER_RESERVE;
 
 // ── Helpers ──
@@ -313,9 +313,9 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       pdf.setTextColor(25, 25, 25);
       const hLines = pdf.splitTextToSize(headingText, CONTENT_W - 6);
       for (const hl of hLines) {
-        ensureSpace(8);
+        ensureSpace(7);
         pdf.text(hl, MARGIN + 3, y);
-        y += 7;
+        y += 6;
       }
       y += 1;
       setBody();
@@ -423,7 +423,7 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
         pdf.text(wl, MARGIN + numW + 2, y);
         y += LINE_HEIGHT;
       }
-      y += 3; // spacing between numbered items
+      y += 2; // spacing between numbered items
       continue;
     }
 

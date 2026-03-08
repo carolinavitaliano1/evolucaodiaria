@@ -1,54 +1,73 @@
 
-## Problema
+## Como funcionaria um modelo multidisciplinar no app
 
-O usuário enviou um PDF do relatório financeiro onde há excesso de espaço vazio no final da primeira página que seria suficiente para caber o carimbo, mas ele foi empurrado para uma segunda página desnecessária.
+A estrutura atual já é quase toda compatível — clínicas, pacientes, evoluções, templates e carimbos são por usuário. O que falta é suporte para **múltiplos profissionais dentro de uma mesma clínica**, cada um com seu próprio acesso, carimbos e evoluções, mas compartilhando a base de pacientes.
 
-## Causa raiz identificada
+---
 
-Analisando o código em `src/pages/PatientDetail.tsx` (funções `handleExportMonthlyPDF` e `handleExportFinancialPDF`):
-
-- **Header block**: `y += 7` (título) + `y += 5` (subtítulo) + `y += 8` (após linha) = **20mm** só no cabeçalho
-- **Seção de identificação**: cada campo `y += 6`, mais `y += 10` após o divisor = muita folga
-- **Entre seções**: divisor `y + 2`, depois `y += 10` — 12mm entre cada seção
-- **Título de seção**: `y += 8` para o título numerado
-- **Linhas de dados**: `y += 6` cada uma + `y += 10` ao fechar a seção
-
-Em `src/utils/generateReportPdf.ts`:
-- `FOOTER_RESERVE = 28` — reserva 28mm de rodapé (excessivo, o rodapé usa ~6mm)
-- `SECTION_GAP = 4` com `y += 7` por linha de heading + `y += 1` depois
-
-## Solução
-
-### 1. `src/pages/PatientDetail.tsx` — Reduzir espaçamentos em ambos os relatórios
+### O que precisaria ser adicionado (sem remover nada)
 
 ```
-Mudanças nos dois handlers (atendimento + financeiro):
-- y += 7 após título → y += 6
-- y += 8 após linha divisora do header → y += 6
-- y += 6 por linha de identificação → y += 5
-- y += 10 após divisor entre seções → y += 7
-- y += 8 após título de seção numerada → y += 6
-- y += 6 por linha de dados → y += 5
-- y += 10 após divisor final → y += 7
-- y += 9 por sessão (tabela de sessões) → y += 7
-- Limite de quebra de página: y > 268 → y > 272
+ESTRUTURA ATUAL                    ESTRUTURA MULTIDISCIPLINAR
+─────────────────────────          ─────────────────────────────────
+usuário único → clínica            organização → clínica → membros
+usuário único → pacientes          pacientes compartilhados por clínica
+usuário único → evoluções          evoluções com "autor" (profissional)
 ```
 
-### 2. `src/utils/generateReportPdf.ts` — Reduzir reserva de rodapé e gaps
+**1. Organizações / Equipes**
+- Nova tabela `organizations` — uma clínica multidisciplinar seria uma organização
+- Nova tabela `organization_members` — com papéis: `owner`, `admin`, `professional`
+- O dono convida outros usuários via e-mail
 
-```
-- FOOTER_RESERVE: 28 → 18
-- USABLE_BOTTOM recalculado: 297 - 18 = 279
-- SECTION_GAP: 4 → 3
-- y += 7 por linha de heading → y += 6
-- Numbered list y += 3 → y += 2
-```
+**2. Pacientes compartilhados**
+- Pacientes passariam a ser da organização, não só do usuário
+- Cada profissional vê os pacientes da clínica, não só os seus
+- Permissões por papel: quem pode criar/editar/arquivar
 
-### 3. `addSignatureBlock` em `PatientDetail.tsx` — Ajustar estimativa de altura
+**3. Evoluções por profissional**
+- Cada evolução já tem `user_id` — continuaria funcionando como "autor"
+- Na visualização, apareceria o nome do profissional que registrou
+- Carimbo automático do profissional logado
 
-Com os novos espaçamentos menores, o bloco de carimbo ficará menor na estimativa e caberá na página disponível.
+**4. Templates por organização**
+- Templates criados pelo dono ficam disponíveis para toda a equipe
+- Cada profissional ainda pode ter seus próprios templates pessoais
 
-## Arquivos a alterar
+**5. Financeiro separado por profissional**
+- Cada membro vê seus próprios recebimentos
+- O dono/admin vê o consolidado de todos
 
-- `src/pages/PatientDetail.tsx` — seções de header, identificação, seções numeradas e tabela de sessões nos dois handlers de PDF
-- `src/utils/generateReportPdf.ts` — constantes de espaçamento e reserva de rodapé
+---
+
+### Impacto no que já existe
+
+| Funcionalidade atual | Impacto |
+|---|---|
+| Clínica própria (terapeuta solo) | Zero — continua igual |
+| Templates de evolução | Zero — apenas compartilhamento opcional |
+| Carimbos pessoais | Zero — cada membro tem os seus |
+| Exportação PDF | Pequena — adicionar nome do profissional no rodapé |
+| Dashboard | Pequena — filtro por membro |
+
+O terapeuta solo continua usando o app exatamente como hoje. O modo multidisciplinar seria **opt-in** — ao criar uma clínica, escolheria entre "uso individual" ou "equipe multidisciplinar".
+
+---
+
+### Implementação em fases
+
+**Fase 1** — Convite e membros
+- Tabelas `organizations` e `organization_members`
+- Fluxo de convite por e-mail
+- Papéis: dono, admin, profissional
+
+**Fase 2** — Dados compartilhados
+- Pacientes e evoluções vinculados à organização
+- Filtros por profissional na agenda e evoluções
+
+**Fase 3** — Financeiro consolidado
+- Relatórios por membro e consolidado para o admin
+
+---
+
+Quer que eu implemente isso? Posso começar pela Fase 1 (estrutura de equipe e convites) mantendo tudo que existe intacto para usuários solo.
