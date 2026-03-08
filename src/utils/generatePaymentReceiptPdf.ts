@@ -42,7 +42,8 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
 export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, returnBlob?: true): Promise<Blob>;
 export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, returnBlob = false): Promise<void | Blob> {
   const { therapistName, therapistCpf, therapistAddress, therapistProfessionalId, therapistCbo,
-    therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period, paymentMethod, paymentDate } = opts;
+    therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period,
+    paymentMethod, paymentDate, clinicName, clinicAddress, clinicCnpj } = opts;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210, margin = 20, contentW = W - margin * 2;
@@ -54,12 +55,23 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
 
   const drawLine = () => { doc.setDrawColor(...borderColor); doc.line(margin, y, W - margin, y); y += 5; };
 
+  // Header
   doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentColor);
   doc.text('RECIBO DE PAGAMENTO', margin, y);
   const emissao = format(new Date(), 'dd/MM/yyyy', { locale: ptBR });
   doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
   doc.text(`Emissão: ${emissao}`, W - margin, y, { align: 'right' });
   y += 5; drawLine(); y += 4;
+
+  // Clinic block (if available)
+  if (clinicName || clinicAddress || clinicCnpj) {
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentColor);
+    if (clinicName) { doc.text(clinicName, margin, y); y += 5; }
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
+    if (clinicAddress) { doc.splitTextToSize(clinicAddress, contentW).forEach((l: string) => { doc.text(l, margin, y); y += 4.5; }); }
+    if (clinicCnpj) { doc.text(`CNPJ: ${formatCpf(clinicCnpj)}`, margin, y); y += 4.5; }
+    y += 3; drawLine(); y += 4;
+  }
 
   const therapistCpfFmt = therapistCpf ? formatCpf(therapistCpf) : null;
   const payerCpfFmt = payerCpf ? formatCpf(payerCpf) : null;
