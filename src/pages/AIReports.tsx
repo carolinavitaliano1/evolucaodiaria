@@ -811,6 +811,7 @@ export default function AIReports() {
           )}
         </DialogContent>
       </Dialog>
+      </>}
     </div>
   );
 }
