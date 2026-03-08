@@ -169,8 +169,13 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   }, [organization, canManage]);
 
   useEffect(() => {
-    setInvitePermissions(inviteRole === 'admin' ? [...DEFAULT_ADMIN_PERMISSIONS] : [...DEFAULT_THERAPIST_PERMISSIONS]);
-  }, [inviteRole]);
+    const preset = PRESET_ROLES.find(p => p.id === invitePreset);
+    if (preset) {
+      setInviteRole(preset.baseRole);
+      setInviteRoleLabel(preset.label);
+      setInvitePermissions([...preset.permissions]);
+    }
+  }, [invitePreset]);
 
   async function loadTeam() {
     setLoading(true);
