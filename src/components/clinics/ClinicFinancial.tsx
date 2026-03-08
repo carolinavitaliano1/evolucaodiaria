@@ -49,6 +49,12 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
 
+  // Filters
+  type PaymentFilter = 'all' | 'paid' | 'pending';
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
   // Contratante payment record for selected month
   const [paymentRecord, setPaymentRecord] = useState<ClinicPaymentRecord | null>(null);
   const [savingPayment, setSavingPayment] = useState(false);
