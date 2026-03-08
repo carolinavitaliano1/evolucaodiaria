@@ -183,6 +183,17 @@ export default function PatientDetail() {
   const [isExportingMonthly, setIsExportingMonthly] = useState(false);
   const [isExportingFinancial, setIsExportingFinancial] = useState(false);
 
+  // Fiscal receipt state
+  const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
+  const [fiscalStartDate, setFiscalStartDate] = useState<Date>();
+  const [fiscalEndDate, setFiscalEndDate] = useState<Date>();
+  const [fiscalStampId, setFiscalStampId] = useState<string>('');
+  const [isExportingFiscalPdf, setIsExportingFiscalPdf] = useState(false);
+  const [isExportingFiscalWord, setIsExportingFiscalWord] = useState(false);
+  const [fiscalPaymentStatus, setFiscalPaymentStatus] = useState<'paid' | 'pending' | 'partial'>('pending');
+  const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
+  const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
+
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).order('created_at').then(({ data }) => {
