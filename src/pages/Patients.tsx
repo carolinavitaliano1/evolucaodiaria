@@ -474,6 +474,7 @@ export default function Patients() {
       y += 12;
 
       const financialRows = [
+        ...(patientPackage ? [{ label: 'Pacote / Modalidade', value: patientPackage.name }] : []),
         { label: 'Sessões Realizadas (Presenças + Reposições)', value: String(presences) },
         { label: 'Faltas Remuneradas', value: String(faltasRem) },
         { label: 'Faltas (sem cobrança)', value: String(absences) },
