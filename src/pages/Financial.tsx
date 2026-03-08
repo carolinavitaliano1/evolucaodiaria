@@ -399,7 +399,7 @@ export default function Financial() {
           doc.setFontSize(9);
           doc.text(clinic.name, margin + 6, y + 5.5);
           // Badge
-          const badge = isContratante ? 'Contratante' : 'Própria';
+          const badge = isContratante ? 'Contratante' : 'Consultório';
           const badgeW = doc.getTextWidth(badge) + 4;
           setFill(isContratante ? C.accent : C.primary);
           doc.roundedRect(margin + 6 + doc.getTextWidth(clinic.name) + 3, y + 1.5, badgeW, 5, 1, 1, 'F');
