@@ -988,6 +988,24 @@ export default function Clinics() {
         />
       )}
 
+      {/* Delete Service AlertDialog */}
+      <AlertDialog open={deleteServiceOpen} onOpenChange={setDeleteServiceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover serviço?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O serviço <span className="font-semibold">{serviceToDelete?.name}</span> será removido da lista.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteService} className="bg-destructive hover:bg-destructive/90">
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Clinic Limit Dialog */}
       <Dialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>
         <DialogContent className="max-w-md">
