@@ -132,10 +132,18 @@ export default function PatientDetail() {
     addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages, loadEvolutionsForClinic, loadAttachmentsForPatient } = useApp();
   const { user } = useAuth();
   const { customMoods } = useCustomMoods();
+  const { permissions: orgPermissions, isOwner: isOrgOwner } = useOrgPermissions();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
   const { isOrg, members } = useClinicOrg(patient?.clinicId || '');
+  const { assignments: therapistAssignments, allMembers: orgMembers, loading: assignmentsLoading, canManage: canManageAssignments, toggleAssignment, updateScheduleTime } = usePatientAssignments(id || '', patient?.clinicId || '');
+
+  // Whether current user can see clinical content
+  const canSeeClinical = !orgPermissions.includes('patients.own_only') || isOrgOwner ||
+    orgPermissions.includes('evolutions.view');
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [assignmentScheduleTimes, setAssignmentScheduleTimes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!patient?.clinicId) return;
