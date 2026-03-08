@@ -1960,25 +1960,37 @@ export default function PatientDetail() {
             )}
 
             {/* Export buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={handleExportFiscalPdf}
+                  disabled={isExportingFiscalPdf || !fiscalStartDate || !fiscalEndDate}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-9"
+                >
+                  {isExportingFiscalPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Baixar PDF
+                </Button>
+                <Button
+                  onClick={handleExportFiscalWord}
+                  disabled={isExportingFiscalWord || !fiscalStartDate || !fiscalEndDate}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-9"
+                >
+                  {isExportingFiscalWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                  Word (.docx)
+                </Button>
+              </div>
               <Button
-                onClick={handleExportFiscalPdf}
-                disabled={isExportingFiscalPdf || !fiscalStartDate || !fiscalEndDate}
-                variant="outline"
+                onClick={handleSaveFiscalToDocuments}
+                disabled={isSavingFiscalToDocuments || !fiscalStartDate || !fiscalEndDate}
                 size="sm"
-                className="gap-1.5 text-xs h-9"
+                className="w-full gap-1.5 text-xs h-9"
               >
-                {isExportingFiscalPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                PDF
-              </Button>
-              <Button
-                onClick={handleExportFiscalWord}
-                disabled={isExportingFiscalWord || !fiscalStartDate || !fiscalEndDate}
-                size="sm"
-                className="gap-1.5 text-xs h-9"
-              >
-                {isExportingFiscalWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                Word (.docx)
+                {isSavingFiscalToDocuments ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+                {isSavingFiscalToDocuments ? 'Salvando...' : 'Salvar nos Documentos do Paciente'}
               </Button>
             </div>
           </div>
