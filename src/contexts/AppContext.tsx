@@ -505,6 +505,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.birthdate !== undefined) updateData.birthdate = updates.birthdate;
       if (updates.phone !== undefined) updateData.phone = updates.phone || null;
+      if ((updates as any).email !== undefined) updateData.email = (updates as any).email || null;
       if (updates.clinicalArea !== undefined) updateData.clinical_area = updates.clinicalArea || null;
       if (updates.diagnosis !== undefined) updateData.diagnosis = updates.diagnosis || null;
       if (updates.professionals !== undefined) updateData.professionals = updates.professionals || null;
