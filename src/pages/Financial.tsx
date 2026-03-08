@@ -137,8 +137,14 @@ export default function Financial() {
   const revenueByClinicType = (type: 'propria' | 'contratante') => {
     const targetClinics = type === 'propria' ? propriaClinics : contratanteClinics;
     return targetClinics.reduce((sum, clinic) => {
+      // Patients revenue
       const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
-      return sum + clinicPatients.reduce((s, p) => s + calculatePatientRevenue(p.id), 0);
+      const patientsRevenue = clinicPatients.reduce((s, p) => s + calculatePatientRevenue(p.id), 0);
+      // Services (private_appointments) revenue linked to this clinic
+      const clinicServicesRevenue = linkedServiceAppointments
+        .filter(a => a.clinic_id === clinic.id && a.status === 'concluído')
+        .reduce((s, a) => s + (a.price || 0), 0);
+      return sum + patientsRevenue + clinicServicesRevenue;
     }, 0);
   };
 
@@ -146,7 +152,11 @@ export default function Financial() {
   const revenueContratante = revenueByClinicType('contratante');
   const totalRevenue = patients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
   const totalLoss = patients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
-  const netRevenue = totalRevenue + privateRevenue;
+  // Linked services revenue (already counted per clinic above, add separately for total)
+  const linkedServicesRevenue = linkedServiceAppointments
+    .filter(a => a.status === 'concluído')
+    .reduce((sum, a) => sum + (a.price || 0), 0);
+  const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue;
 
   const clinicStats = clinics.map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
