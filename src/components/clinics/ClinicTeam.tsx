@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +19,7 @@ import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
   Settings, Lock, MoreVertical, UserCheck, UserX,
-  Briefcase, Banknote,
+  Briefcase, Banknote, Search, SlidersHorizontal,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
@@ -129,6 +130,7 @@ function getPresetIcon(icon: string) {
 export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const { user } = useAuth();
   const { patients } = useApp();
+  const navigate = useNavigate();
 
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
@@ -163,6 +165,22 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   const isOwner = organization?.owner_id === user?.id;
   const myMember = members.find(m => m.user_id === user?.id);
   const canManage = isOwner || myMember?.role === 'admin';
+
+  // Search/filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'inactive'>('all');
+
+  const filteredMembers = useMemo(() => {
+    return members.filter(m => {
+      const q = searchQuery.toLowerCase();
+      const nameMatch = (m.profile?.name || '').toLowerCase().includes(q);
+      const emailMatch = m.email.toLowerCase().includes(q);
+      const roleMatch = (m.role_label || ROLE_LABELS[m.role] || '').toLowerCase().includes(q);
+      const matchesSearch = !q || nameMatch || emailMatch || roleMatch;
+      const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [members, searchQuery, statusFilter]);
 
   useEffect(() => { loadTeam(); }, [clinicId]);
 
@@ -515,28 +533,53 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
       )}
 
       {/* Header + Stats + Invite button */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        {/* Stats pills */}
-        <div className="flex items-center gap-2 flex-wrap flex-1">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-200 dark:border-green-800">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-            <span className="text-xs font-semibold text-green-700 dark:text-green-400">{activeMembers.length} ativo{activeMembers.length !== 1 ? 's' : ''}</span>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Stats pills */}
+          <div className="flex items-center gap-2 flex-wrap flex-1">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
+                statusFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted border-border text-muted-foreground hover:border-primary/40'
+              )}
+            >
+              <Users className="w-3.5 h-3.5" />
+              {members.length} total
+            </button>
+            <button
+              onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
+              className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
+                statusFilter === 'active' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400'
+              )}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              {activeMembers.length} ativo{activeMembers.length !== 1 ? 's' : ''}
+            </button>
+            {pendingMembers.length > 0 && (
+              <button
+                onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
+                className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
+                  statusFilter === 'pending' ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:border-amber-400'
+                )}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                {pendingMembers.length} pendente{pendingMembers.length !== 1 ? 's' : ''}
+              </button>
+            )}
+            {inactiveMembers.length > 0 && (
+              <button
+                onClick={() => setStatusFilter(statusFilter === 'inactive' ? 'all' : 'inactive')}
+                className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
+                  statusFilter === 'inactive' ? 'bg-muted-foreground text-background border-muted-foreground' : 'bg-muted border-border text-muted-foreground hover:border-primary/40'
+                )}
+              >
+                <UserX className="w-3.5 h-3.5" />
+                {inactiveMembers.length} inativo{inactiveMembers.length !== 1 ? 's' : ''}
+              </button>
+            )}
           </div>
-          {pendingMembers.length > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-200 dark:border-yellow-800">
-              <Clock className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">{pendingMembers.length} pendente{pendingMembers.length !== 1 ? 's' : ''}</span>
-            </div>
-          )}
-          {inactiveMembers.length > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted border border-border">
-              <UserX className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-semibold text-muted-foreground">{inactiveMembers.length} inativo{inactiveMembers.length !== 1 ? 's' : ''}</span>
-            </div>
-          )}
-        </div>
 
-        {canManage && (
+          {canManage && (
           <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); setInvitePreset('terapeuta'); } }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2 shrink-0">
@@ -664,11 +707,37 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
             </DialogContent>
           </Dialog>
         )}
+        </div>
+
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Buscar por nome, e-mail ou cargo..."
+            className="pl-9 h-9"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors text-xs"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {filteredMembers.length === 0 && members.length > 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4 italic">
+            Nenhum colaborador encontrado para "{searchQuery}"
+          </p>
+        )}
       </div>
 
       {/* ── Collaborators Grid ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {members.map(member => {
+        {filteredMembers.map(member => {
           const displayName = member.profile?.name || member.email;
           const displayRole = member.role_label || ROLE_LABELS[member.role] || member.role;
           const initials = getInitials(member.profile?.name, member.email);
@@ -814,6 +883,40 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   </p>
                 )}
               </div>
+
+              {/* Quick Actions */}
+              {canManage && member.role !== 'owner' && (
+                <div className="flex gap-1.5 pt-2 border-t border-border mt-auto" onClick={e => e.stopPropagation()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] gap-1 px-2"
+                    onClick={() => openManageModal(member)}
+                  >
+                    <Settings className="w-3 h-3" />
+                    Permissões
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] gap-1 px-2"
+                    onClick={() => navigate('/calendar')}
+                  >
+                    <CalendarDays className="w-3 h-3" />
+                    Ver Agenda
+                  </Button>
+                  {member.status !== 'pending' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20')}
+                      onClick={() => handleToggleMemberStatus(member)}
+                    >
+                      {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
