@@ -201,7 +201,7 @@ export default function PatientDetail() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('profiles').select('name, professional_id, phone, email').eq('user_id', user.id).maybeSingle()
+    supabase.from('profiles').select('name, professional_id, cpf, cbo').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
 
