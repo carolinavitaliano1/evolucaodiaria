@@ -27,6 +27,8 @@ interface EditEvolutionDialogProps {
 
 export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, showFaltaRemunerada = true }: EditEvolutionDialogProps) {
   const { user } = useAuth();
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const canUseAI = !isOrgMember || isOwner || hasPermission(permissions, 'ai_evolutions.use');
   const [text, setText] = useState(evolution.text);
   const [date, setDate] = useState(evolution.date);
   const [attendanceStatus, setAttendanceStatus] = useState(evolution.attendanceStatus);
