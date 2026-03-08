@@ -5,12 +5,9 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -19,8 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
-  Settings, Lock, ShieldCheck, MoreVertical, UserCheck, UserX,
-  Briefcase, Banknote, ChevronRight
+  Settings, Lock, MoreVertical, UserCheck, UserX,
+  Briefcase, Banknote,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
@@ -28,14 +25,11 @@ import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   PermissionKey,
-  PERMISSION_GROUPS,
-  PERMISSION_LABELS,
   DEFAULT_THERAPIST_PERMISSIONS,
-  DEFAULT_ADMIN_PERMISSIONS,
   ALL_PERMISSIONS,
   PRESET_ROLES,
-  PresetRole,
 } from '@/hooks/useOrgPermissions';
+import { PermissionEditor } from '@/components/clinics/PermissionEditor';
 import { cn } from '@/lib/utils';
 
 interface OrganizationMember {
