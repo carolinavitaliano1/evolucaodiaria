@@ -163,21 +163,20 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
 
   // Responsável Legal — obrigatório para menores, exibido quando informado
   if (patient.responsibleName || isMinor) {
-    y += 3;
+    y += 2;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...mutedText);
     doc.text(isMinor ? 'Responsável Legal (Pagador — menor de idade):' : 'Responsável Legal:', margin, y);
-    y += 7;
+    y += 5;
     if (patient.responsibleName) labelValue('Nome:', patient.responsibleName);
     if (patient.responsible_cpf) {
-      // For minors, highlight the responsible CPF as the fiscal CPF
       labelValue(isMinor ? 'CPF (Nota Fiscal):' : 'CPF:', formatCpf(patient.responsible_cpf));
     }
     if (patient.responsibleEmail) labelValue('E-mail:', patient.responsibleEmail);
   }
 
-  y += 3;
+  y += 2;
   drawLine();
 
   // ── DADOS DO PRESTADOR DE SERVIÇO ─────────────────────────────────────
@@ -185,7 +184,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('PRESTADOR DE SERVIÇO', margin, y);
-  y += 8;
+  y += 6;
 
   if (therapistName) labelValue('Nome:', therapistName);
   if (professionalId) labelValue('Registro:', professionalId);
@@ -198,7 +197,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   if (clinic?.phone) labelValue('Telefone:', clinic.phone);
   if (clinic?.email) labelValue('E-mail:', clinic.email);
 
-  y += 3;
+  y += 2;
   drawLine();
 
   // ── DETALHAMENTO DAS SESSÕES ───────────────────────────────────────────
@@ -206,21 +205,21 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text(`DETALHAMENTO DAS SESSÕES (${evolutions.length})`, margin, y);
-  y += 9;
+  y += 7;
 
   // Table header
   const c1 = margin, c2 = margin + 32, c3 = margin + 92, c4 = W - margin - 5;
-  doc.setFontSize(8.5);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...mutedText);
   doc.text('Data', c1, y);
   doc.text('Área Clínica / Serviço', c2, y);
   doc.text('Status', c3, y);
   doc.text('Valor', c4, y, { align: 'right' });
-  y += 4;
+  y += 3;
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, W - margin, y);
-  y += 6;
+  y += 5;
 
   let sessionTotal = 0;
   let sessionCount = 0;
