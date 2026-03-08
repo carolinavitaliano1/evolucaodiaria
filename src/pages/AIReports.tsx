@@ -309,6 +309,23 @@ export default function AIReports() {
   const [saveDestination, setSaveDestination] = useState<'patient' | 'clinic'>('patient');
   const [saveClinicId, setSaveClinicId] = useState('');
 
+  // Therapist profile + default stamp for PDF exports
+  const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null } | null>(null);
+  const [defaultStamp, setDefaultStamp] = useState<{ name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name, professional_id, cpf').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data) setTherapistProfile(data); });
+    supabase.from('stamps').select('name, clinical_area, cbo, stamp_image, signature_image, is_default').eq('user_id', user.id)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const def = data.find((s: any) => s.is_default) || data[0];
+          setDefaultStamp(def);
+        }
+      });
+  }, [user]);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -492,6 +509,12 @@ export default function AIReports() {
       clinicCnpj: clinic?.cnpj,
       clinicPhone: clinic?.phone,
       clinicServicesDescription: clinic?.servicesDescription,
+      therapistName: therapistProfile?.name || undefined,
+      therapistProfessionalId: therapistProfile?.professional_id || undefined,
+      therapistCbo: defaultStamp?.cbo || undefined,
+      therapistClinicalArea: defaultStamp?.clinical_area || undefined,
+      therapistStampImage: defaultStamp?.stamp_image || undefined,
+      therapistSignatureImage: defaultStamp?.signature_image || undefined,
     });
   };
 

@@ -16,6 +16,9 @@ interface ReportPdfOptions {
   therapistName?: string;
   therapistProfessionalId?: string;
   therapistCbo?: string;
+  therapistStampImage?: string | null;
+  therapistSignatureImage?: string | null;
+  therapistClinicalArea?: string | null;
 }
 
 function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
@@ -122,7 +125,8 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   const {
     title, content, fileName, clinicName, clinicAddress,
     clinicLetterhead, clinicStamp, clinicEmail, clinicCnpj, clinicPhone,
-    clinicServicesDescription, therapistName, therapistProfessionalId, therapistCbo
+    clinicServicesDescription, therapistName, therapistProfessionalId, therapistCbo,
+    therapistStampImage, therapistSignatureImage, therapistClinicalArea
   } = opts;
 
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -433,8 +437,9 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   const leftCenterX = MARGIN + CONTENT_W * 0.25;
   const rightCenterX = MARGIN + CONTENT_W * 0.75;
 
-  // Signature block needs ~35mm (spacing + lines + labels + credentials)
-  const sigBlockHeight = 35;
+  // Estimate block height: images (sig ~20mm, stamp ~35mm) + line + text rows
+  const hasImages = !!(therapistSignatureImage || therapistStampImage);
+  const sigBlockHeight = hasImages ? 80 : 35;
   const sigSpacingAbove = 15;
 
   if (y + sigSpacingAbove + sigBlockHeight > USABLE_BOTTOM) {
@@ -442,42 +447,75 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     y = MARGIN;
   }
 
-  const sigY = y + sigSpacingAbove;
+  let sigY = y + sigSpacingAbove;
 
-  // Left: Terapeuta Responsável (with name + CBO/reg if available)
+  // ── Left side: Terapeuta Responsável ──
+  // Signature image (above stamp image)
+  if (therapistSignatureImage) {
+    try {
+      const sigImg = await loadImageFromUrl(therapistSignatureImage);
+      const sigW = 55;
+      const sigH = Math.min((sigImg.height / sigImg.width) * sigW, 18);
+      pdf.addImage(therapistSignatureImage, 'PNG', leftCenterX - sigLineW / 2, sigY, sigW, sigH);
+      sigY += sigH + 3;
+    } catch { /* skip */ }
+  }
+
+  // Stamp image
+  if (therapistStampImage) {
+    try {
+      const stImg = await loadImageFromUrl(therapistStampImage);
+      const stW = Math.min(sigLineW, 40);
+      const stH = Math.min((stImg.height / stImg.width) * stW, 35);
+      pdf.addImage(therapistStampImage, 'PNG', leftCenterX - sigLineW / 2, sigY, stW, stH);
+      sigY += stH + 3;
+    } catch { /* skip */ }
+  }
+
+  // Signature line
   pdf.setDrawColor(100, 100, 100);
   pdf.setLineWidth(0.4);
   pdf.line(leftCenterX - sigLineW / 2, sigY, leftCenterX + sigLineW / 2, sigY);
+  sigY += 5;
+
+  // Name (bold)
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(9);
   pdf.setTextColor(50, 50, 50);
-  pdf.text(therapistName || 'Terapeuta Responsável', leftCenterX, sigY + 5, { align: 'center' });
+  pdf.text(therapistName || 'Terapeuta Responsável', leftCenterX, sigY, { align: 'center' });
+  sigY += 5;
+
+  // Clinical area
   pdf.setFont(FONT, 'normal');
   pdf.setFontSize(7);
   pdf.setTextColor(130, 130, 130);
+  if (therapistClinicalArea) {
+    pdf.text(therapistClinicalArea, leftCenterX, sigY, { align: 'center' });
+    sigY += 4;
+  }
+  // CBO
+  if (therapistCbo) {
+    pdf.text(`CBO: ${therapistCbo}`, leftCenterX, sigY, { align: 'center' });
+    sigY += 4;
+  }
+  // Professional registration
   if (therapistProfessionalId) {
-    pdf.text(`Registro: ${therapistProfessionalId}`, leftCenterX, sigY + 9, { align: 'center' });
-    if (therapistCbo) {
-      pdf.text(`CBO: ${therapistCbo}`, leftCenterX, sigY + 13, { align: 'center' });
-    }
-  } else if (therapistCbo) {
-    pdf.text(`CBO: ${therapistCbo}`, leftCenterX, sigY + 9, { align: 'center' });
-  } else {
-    pdf.text('(Assinatura e Carimbo)', leftCenterX, sigY + 9, { align: 'center' });
+    pdf.text(`Registro: ${therapistProfessionalId}`, leftCenterX, sigY, { align: 'center' });
+    sigY += 4;
   }
 
-  // Right: Responsável Técnico
+  // ── Right side: Responsável Técnico ──
   pdf.setDrawColor(100, 100, 100);
   pdf.setLineWidth(0.4);
-  pdf.line(rightCenterX - sigLineW / 2, sigY, rightCenterX + sigLineW / 2, sigY);
+  pdf.line(rightCenterX - sigLineW / 2, y + sigSpacingAbove, rightCenterX + sigLineW / 2, y + sigSpacingAbove);
   pdf.setFont(FONT, 'bold');
   pdf.setFontSize(9);
   pdf.setTextColor(50, 50, 50);
-  pdf.text('Responsável Técnico', rightCenterX, sigY + 5, { align: 'center' });
+  pdf.text('Responsável Técnico', rightCenterX, y + sigSpacingAbove + 5, { align: 'center' });
   pdf.setFont(FONT, 'normal');
   pdf.setFontSize(7);
   pdf.setTextColor(130, 130, 130);
-  pdf.text('(Assinatura e Carimbo)', rightCenterX, sigY + 9, { align: 'center' });
+  pdf.text('(Assinatura e Carimbo)', rightCenterX, y + sigSpacingAbove + 9, { align: 'center' });
 
   // ── Footer on all pages (pushed to very bottom) ──
   const totalPages = pdf.getNumberOfPages();

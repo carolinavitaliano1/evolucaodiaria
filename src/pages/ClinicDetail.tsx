@@ -74,7 +74,7 @@ function getTodayWeekday() {
   return days[new Date().getDay()];
 }
 
-function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, clinic }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinic?: Clinic }) {
+function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, clinic, therapistName, therapistProfessionalId, therapistCbo, therapistClinicalArea, therapistStampImage, therapistSignatureImage }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinic?: Clinic; therapistName?: string; therapistProfessionalId?: string; therapistCbo?: string; therapistClinicalArea?: string; therapistStampImage?: string | null; therapistSignatureImage?: string | null }) {
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
 
   useEffect(() => {
@@ -94,6 +94,12 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
       clinicCnpj: clinic?.cnpj,
       clinicPhone: clinic?.phone,
       clinicServicesDescription: clinic?.servicesDescription,
+      therapistName,
+      therapistProfessionalId,
+      therapistCbo,
+      therapistClinicalArea,
+      therapistStampImage,
+      therapistSignatureImage,
     });
   };
 
@@ -157,7 +163,8 @@ export default function ClinicDetail() {
   const [batchGlobalStampId, setBatchGlobalStampId] = useState<string>('none');
   const [batchIndividualStamps, setBatchIndividualStamps] = useState<Record<string, string>>({});
   const [batchAttendanceStatus, setBatchAttendanceStatus] = useState<Record<string, import('@/types').Evolution['attendanceStatus']>>({});
-  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; is_default: boolean | null }[]>([]);
+  const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image?: string | null; is_default: boolean | null }[]>([]);
+  const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
@@ -176,16 +183,18 @@ export default function ClinicDetail() {
   }, [id]);
 
 
-  // Load stamps
+  // Load stamps + therapist profile
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
       if (data) {
         setStamps(data);
-        const defaultStamp = data.find(s => s.is_default);
+        const defaultStamp = data.find((s: any) => s.is_default);
         if (defaultStamp) setBatchGlobalStampId(defaultStamp.id);
       }
     });
+    supabase.from('profiles').select('name, professional_id').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
 
   // Load clinic templates
@@ -1962,7 +1971,19 @@ export default function ClinicDetail() {
 
         {/* Reports Tab */}
         <TabsContent value="reports">
-          <ClinicReports clinicId={clinic.id} clinicName={clinic.name} clinicAddress={clinic.address || undefined} clinicLetterhead={clinic.letterhead || undefined} clinic={clinic} />
+          <ClinicReports
+            clinicId={clinic.id}
+            clinicName={clinic.name}
+            clinicAddress={clinic.address || undefined}
+            clinicLetterhead={clinic.letterhead || undefined}
+            clinic={clinic}
+            therapistName={therapistProfile?.name || undefined}
+            therapistProfessionalId={therapistProfile?.professional_id || undefined}
+            therapistCbo={stamps.find(s => s.is_default)?.cbo || stamps[0]?.cbo || undefined}
+            therapistClinicalArea={stamps.find(s => s.is_default)?.clinical_area || stamps[0]?.clinical_area || undefined}
+            therapistStampImage={stamps.find(s => s.is_default)?.stamp_image || stamps[0]?.stamp_image || undefined}
+            therapistSignatureImage={(stamps.find(s => s.is_default) as any)?.signature_image || (stamps[0] as any)?.signature_image || undefined}
+          />
         </TabsContent>
 
         {/* Serviços Tab — only for propria clinics */}

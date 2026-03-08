@@ -69,7 +69,7 @@ const MoodTooltip = ({ active, payload, customMoods }: any) => {
   );
 };
 
-function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription }: { patientId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinicEmail?: string; clinicCnpj?: string; clinicPhone?: string; clinicServicesDescription?: string }) {
+function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription, therapistName, therapistProfessionalId, therapistCbo, therapistClinicalArea, therapistStampImage, therapistSignatureImage }: { patientId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinicEmail?: string; clinicCnpj?: string; clinicPhone?: string; clinicServicesDescription?: string; therapistName?: string; therapistProfessionalId?: string; therapistCbo?: string; therapistClinicalArea?: string; therapistStampImage?: string | null; therapistSignatureImage?: string | null }) {
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
 
   useEffect(() => {
@@ -79,7 +79,7 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
   }, [patientId]);
 
   const handleDownloadPdf = (report: { title: string; content: string }) => {
-    generateReportPdf({ title: report.title, content: report.content, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription });
+    generateReportPdf({ title: report.title, content: report.content, clinicName, clinicAddress, clinicLetterhead, clinicEmail, clinicCnpj, clinicPhone, clinicServicesDescription, therapistName, therapistProfessionalId, therapistCbo, therapistClinicalArea, therapistStampImage, therapistSignatureImage });
   };
 
   const handleDelete = async (id: string) => {
@@ -1804,7 +1804,22 @@ export default function PatientDetail() {
               );
             })()}
 
-            <PatientSavedReports patientId={patient.id} clinicName={clinic?.name} clinicAddress={clinic?.address || undefined} clinicLetterhead={clinic?.letterhead || undefined} clinicEmail={clinic?.email} clinicCnpj={clinic?.cnpj} clinicPhone={clinic?.phone} clinicServicesDescription={clinic?.servicesDescription} />
+            <PatientSavedReports
+              patientId={patient.id}
+              clinicName={clinic?.name}
+              clinicAddress={clinic?.address || undefined}
+              clinicLetterhead={clinic?.letterhead || undefined}
+              clinicEmail={clinic?.email}
+              clinicCnpj={clinic?.cnpj}
+              clinicPhone={clinic?.phone}
+              clinicServicesDescription={clinic?.servicesDescription}
+              therapistName={therapistProfile?.name || undefined}
+              therapistProfessionalId={therapistProfile?.professional_id || undefined}
+              therapistCbo={stamps.find(s => s.is_default)?.cbo || stamps[0]?.cbo || undefined}
+              therapistClinicalArea={stamps.find(s => s.is_default)?.clinical_area || stamps[0]?.clinical_area || undefined}
+              therapistStampImage={stamps.find(s => s.is_default)?.stamp_image || stamps[0]?.stamp_image || undefined}
+              therapistSignatureImage={stamps.find(s => s.is_default)?.signature_image || stamps[0]?.signature_image || undefined}
+            />
           </div>
         </TabsContent>
 
