@@ -193,20 +193,24 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
       }
 
       setPending(pendingList);
-
-      // Notify parent of today's pending count for badge
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
-      const todayCount = pendingList.filter(p => p.date === todayStr).length;
-      onTodayPendingCount?.(todayCount);
     } catch (err) {
       console.error('ComplianceDashboard error:', err);
       toast.error('Erro ao carregar pendências');
     } finally {
       setLoading(false);
     }
-  }, [clinicId, organizationId, dateRange, patients, onTodayPendingCount]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clinicId, organizationId, dateRange, patients]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Update parent badge — separate effect to avoid re-render loop
+  useEffect(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayCount = pending.filter(p => p.date === todayStr).length;
+    onTodayPendingCount?.(todayCount);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending]);
 
   const filtered = useMemo(() => {
     return pending.filter(p => {
@@ -238,7 +242,7 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
     return `Olá ${item.therapistName}, notamos que a evolução do paciente *${item.patientName}* do dia *${formattedDate}* ainda não foi finalizada. Por favor, regularize assim que possível. 🙏`;
   }
 
-  async function sendWhatsAppNotification(item: PendingEvolution) {
+  async function sendNotification(item: PendingEvolution) {
     const hasPhone = !!item.therapistPhone;
     if (hasPhone) openWhatsApp(item.therapistPhone!, buildMessage(item));
     await createInternalNotification(item);
@@ -603,16 +607,21 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
                   <div className="flex items-center gap-2 pl-4 sm:pl-0">
                     <Button
                       size="sm"
-                      variant={item.therapistPhone ? 'default' : 'outline'}
-                      disabled={!item.therapistPhone}
-                      onClick={() => sendWhatsAppNotification(item)}
+                      variant="default"
+                      onClick={() => sendNotification(item)}
                       className={cn(
                         'gap-1.5 text-xs h-7 px-2.5',
-                        item.therapistPhone && 'bg-[#25D366] hover:bg-[#1ebc58] text-white border-[#25D366]'
+                        item.therapistPhone
+                          ? 'bg-[#25D366] hover:bg-[#1ebc58] text-white border-[#25D366]'
+                          : 'bg-primary hover:bg-primary/90'
                       )}
-                      title={!item.therapistPhone ? 'Terapeuta sem telefone cadastrado' : 'Notificar via WhatsApp'}
+                      title={item.therapistPhone ? 'Notificar via WhatsApp + alerta interno' : 'Enviar alerta interno (sem telefone)'}
                     >
-                      <MessageCircle className="w-3.5 h-3.5" />
+                      {item.therapistPhone ? (
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      ) : (
+                        <Bell className="w-3.5 h-3.5" />
+                      )}
                       Notificar
                     </Button>
                   </div>
