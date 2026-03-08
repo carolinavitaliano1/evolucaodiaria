@@ -16,7 +16,8 @@ import {
   Megaphone,
   UsersRound,
   HeadphonesIcon,
-  Clock
+  Clock,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -27,20 +28,21 @@ import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const allNavItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const, orgOnly: false },
-  { to: '/clinics',   icon: Building2,       label: 'Clínicas',     perm: 'clinics.view'   as const, orgOnly: false },
-  { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const, orgOnly: false },
-  { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const, orgOnly: false },
-  { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const, orgOnly: false },
-  { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const, orgOnly: false },
-  { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const, orgOnly: false },
-  { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const, orgOnly: false },
-  { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: 'notices' as const, orgOnly: false },
-  { to: '/suporte',   icon: HeadphonesIcon,  label: 'Suporte',      perm: null,            badge: 'support' as const, orgOnly: false },
-  { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null,                      orgOnly: false },
-  { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null,                      orgOnly: false },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const },
+  { to: '/clinics',   icon: Building2,       label: 'Clínicas',     perm: 'clinics.view'   as const },
+  { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const },
+  { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const },
+  { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const },
+  { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const },
+  { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const },
+  { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const },
+  { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: 'notices' as const },
+  { to: '/suporte',   icon: HeadphonesIcon,  label: 'Suporte',      perm: null,            badge: 'support' as const },
+  { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null             },
+  { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null             },
 ];
 
 export function AppSidebar() {
