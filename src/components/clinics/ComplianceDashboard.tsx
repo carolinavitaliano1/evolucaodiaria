@@ -204,7 +204,7 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
     } finally {
       setLoading(false);
     }
-  }, [clinicId, organizationId, dateRange, patients]);
+  }, [clinicId, organizationId, dateRange, patients, onTodayPendingCount]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
