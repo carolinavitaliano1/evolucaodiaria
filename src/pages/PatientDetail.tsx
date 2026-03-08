@@ -939,6 +939,9 @@ export default function PatientDetail() {
     setPrPeriod(monthName);
     // Pre-fill location from clinic address
     setPrLocation(clinic?.address || '');
+    // Reset session fields
+    setPrSessions('');
+    setPrUnitValue(patient.paymentValue ? patient.paymentValue.toFixed(2) : '');
     // Try to fetch last payment record for amount/date
     if (user && patient.id) {
       const month = now.getMonth() + 1;
