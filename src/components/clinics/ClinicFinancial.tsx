@@ -68,6 +68,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             price: d.price,
             status: d.status,
             paid: d.paid,
+            payment_date: d.payment_date ?? null,
             date: d.date,
             time: d.time,
             client_name: d.client_name,
