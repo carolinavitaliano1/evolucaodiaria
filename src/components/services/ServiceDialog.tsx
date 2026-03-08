@@ -213,6 +213,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
     setAppointmentTime('');
     setAppointmentPrice('');
     setAppointmentNotes('');
+    setAppointmentPaymentDate('');
   }
 
   function editService(service: Service) {
