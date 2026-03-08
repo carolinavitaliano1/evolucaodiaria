@@ -421,8 +421,12 @@ export default function Patients() {
       y += 10;
 
       // Patient & Therapist info box
+      const clinicPackages = getClinicPackages(patient.clinicId);
+      const patientPackage = patient.packageId ? clinicPackages.find(p => p.id === patient.packageId) : null;
+      const infoRows = 2 + (patientPackage ? 1 : 0);
+      const infoBoxH = infoRows * 8 + 6;
       pdf.setFillColor(245, 245, 245);
-      pdf.roundedRect(margin, y, contentWidth, 22, 3, 3, 'F');
+      pdf.roundedRect(margin, y, contentWidth, infoBoxH, 3, 3, 'F');
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(50, 50, 50);
@@ -447,7 +451,14 @@ export default function Patients() {
         pdf.text(patient.clinicalArea, margin + contentWidth / 2 + 15, y + 7);
       }
 
-      y += 30;
+      if (patientPackage) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Pacote:', margin + 5, y + 21);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`${patientPackage.name} — R$ ${patientPackage.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 22, y + 21);
+      }
+
+      y += infoBoxH + 9;
 
       // Financial details table
       const colLabel = margin + 5;
