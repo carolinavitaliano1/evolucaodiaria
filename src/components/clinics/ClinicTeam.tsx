@@ -80,8 +80,8 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-  pending: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
+  active: 'bg-success/10 text-success border-success/30',
+  pending: 'bg-warning/10 text-warning border-warning/30',
   inactive: 'bg-muted text-muted-foreground border-border',
 };
 
