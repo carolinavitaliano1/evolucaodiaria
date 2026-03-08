@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 export interface PaymentReceiptOptions {
   therapistName: string;
   therapistCpf?: string | null;
+  therapistAddress?: string | null;    // "residente e domiciliado em..."
   therapistProfessionalId?: string | null;
   therapistCbo?: string | null;
   therapistClinicalArea?: string | null;
@@ -17,13 +18,14 @@ export interface PaymentReceiptOptions {
     stamp_image: string | null;
     signature_image: string | null;
   } | null;
-  payerName: string;       // patient name or responsible name
-  payerCpf?: string | null;
+  payerName: string;        // responsible name (if minor) or patient name
+  payerCpf?: string | null; // responsible CPF (if minor) or patient CPF
+  location?: string | null; // "Local" field, e.g. "São Paulo"
   amount: number;
-  serviceName: string;     // e.g. "Psicologia" or custom text
-  period: string;          // e.g. "março/2026" or "01/03/2026 a 31/03/2026"
-  paymentMethod: string;   // e.g. "transferência bancária"
-  paymentDate: string;     // e.g. "2026-03-15"
+  serviceName: string;      // e.g. "Psicologia"
+  period: string;           // e.g. "março/2026"
+  paymentMethod: string;    // e.g. "transferência bancária"
+  paymentDate: string;      // e.g. "2026-03-15"
 }
 
 function formatCpf(cpf: string): string {
