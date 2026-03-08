@@ -918,7 +918,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20')}
+                      className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-success hover:bg-success/10')}
                       onClick={() => handleToggleMemberStatus(member)}
                     >
                       {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
