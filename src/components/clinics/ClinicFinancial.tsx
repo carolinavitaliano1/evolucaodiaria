@@ -86,6 +86,26 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       });
   }, [clinicId]);
 
+  // Load patient payment records for selected month
+  useEffect(() => {
+    if (!user || !clinicId) return;
+    const m = selectedDate.getMonth() + 1;
+    const y = selectedDate.getFullYear();
+    supabase
+      .from('patient_payment_records' as any)
+      .select('*')
+      .eq('clinic_id', clinicId)
+      .eq('month', m)
+      .eq('year', y)
+      .then(({ data }) => {
+        if (data) {
+          const map: Record<string, any> = {};
+          (data as any[]).forEach(r => { map[r.patient_id] = r; });
+          setPatientPaymentRecords(map);
+        }
+      });
+  }, [clinicId, selectedDate, user]);
+
   // Load payment record for contratante clinic selected month
   useEffect(() => {
     if (!clinic || clinic.type !== 'terceirizada' || !user) return;
