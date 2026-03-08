@@ -31,6 +31,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
   const [formData, setFormData] = useState({
     name: '',
     birthdate: '',
+    cpf: '',
     phone: '',
     clinicalArea: '',
     diagnosis: '',
@@ -38,6 +39,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     observations: '',
     responsibleName: '',
     responsibleEmail: '',
+    responsibleCpf: '',
     contractStartDate: '',
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
@@ -48,9 +50,11 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
   useEffect(() => {
     if (open && patient) {
+      const p = patient as any;
       setFormData({
         name: patient.name || '',
         birthdate: patient.birthdate || '',
+        cpf: p.cpf || '',
         phone: patient.phone || '',
         clinicalArea: patient.clinicalArea || '',
         diagnosis: patient.diagnosis || '',
@@ -58,6 +62,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         observations: patient.observations || '',
         responsibleName: patient.responsibleName || '',
         responsibleEmail: patient.responsibleEmail || '',
+        responsibleCpf: p.responsible_cpf || '',
         contractStartDate: patient.contractStartDate || '',
         weekdays: patient.weekdays || [],
         scheduleByDay: (patient.scheduleByDay || {}) as { [day: string]: { start: string; end: string } },
@@ -79,6 +84,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     onSave(patient.id, {
       name: formData.name,
       birthdate: formData.birthdate,
+      ...(formData.cpf && { cpf: formData.cpf } as any),
       phone: formData.phone || undefined,
       clinicalArea: formData.clinicalArea || undefined,
       diagnosis: formData.diagnosis || undefined,
@@ -86,6 +92,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       observations: formData.observations || undefined,
       responsibleName: formData.responsibleName || undefined,
       responsibleEmail: formData.responsibleEmail || undefined,
+      ...(formData.responsibleCpf && { responsible_cpf: formData.responsibleCpf } as any),
       contractStartDate: formData.contractStartDate || undefined,
       weekdays: formData.weekdays,
       scheduleTime: firstDayTime || undefined,
@@ -125,12 +132,22 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             />
           </div>
 
-          <div>
-            <Label>Telefone</Label>
-            <Input
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>CPF / CNPJ</Label>
+              <Input
+                value={formData.cpf}
+                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                placeholder="000.000.000-00"
+              />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
