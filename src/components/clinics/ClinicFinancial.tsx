@@ -331,15 +331,17 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-foreground truncate">{service.client_name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {service.service_name ?? 'Serviço'} · {format(new Date(service.date + 'T12:00:00'), 'dd/MM')}
-                        {service.status === 'concluído' && service.paid && (
-                          <span className="text-success ml-1">· Pago</span>
-                        )}
-                        {service.status === 'concluído' && !service.paid && (
-                          <span className="text-warning ml-1">· Não recebido</span>
-                        )}
-                      </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {service.service_name ?? 'Serviço'} · {format(new Date(service.date + 'T12:00:00'), 'dd/MM')}
+                    {service.status === 'concluído' && service.paid && (
+                      <span className="text-success ml-1">
+                        · Pago{service.payment_date ? ` em ${format(new Date(service.payment_date + 'T00:00:00'), 'dd/MM')}` : ''}
+                      </span>
+                    )}
+                    {service.status === 'concluído' && !service.paid && (
+                      <span className="text-warning ml-1">· Não recebido</span>
+                    )}
+                  </p>
                     </div>
                   </div>
                   <p className="font-bold text-foreground text-xs shrink-0">
