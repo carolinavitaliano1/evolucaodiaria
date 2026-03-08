@@ -212,24 +212,34 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Detectar se usuário já existe no Auth
+    // Detectar se usuário já existe no Auth — busca direta por e-mail
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const searchRes = await fetch(
-      `${supabaseUrl}/auth/v1/admin/users?page=1&per_page=50`,
-      { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
-    );
     let userAlreadyExists = false;
     let existingUserId: string | null = null;
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      const foundUser = Array.isArray(searchData?.users)
-        ? searchData.users.find((u: { email?: string; id?: string }) =>
-            u.email?.toLowerCase() === email.toLowerCase()
-          )
-        : null;
+    try {
+      const { data: existingAuthUser } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const foundUser = existingAuthUser?.users?.find(
+        (u) => u.email?.toLowerCase() === email.toLowerCase()
+      );
       userAlreadyExists = !!foundUser;
       existingUserId = foundUser?.id ?? null;
+    } catch (e) {
+      // fallback: busca paginada via REST
+      const searchRes = await fetch(
+        `${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(email)}&page=1&per_page=1`,
+        { headers: { 'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey } }
+      );
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        const foundUser = Array.isArray(searchData?.users)
+          ? searchData.users.find((u: { email?: string; id?: string }) =>
+              u.email?.toLowerCase() === email.toLowerCase()
+            )
+          : null;
+        userAlreadyExists = !!foundUser;
+        existingUserId = foundUser?.id ?? null;
+      }
     }
 
     console.log(`Convite para ${email} — usuário existente no Auth: ${userAlreadyExists}`);
