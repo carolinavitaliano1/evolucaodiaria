@@ -5,11 +5,9 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -19,8 +17,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
-  Settings, Lock, ShieldCheck, MoreVertical, UserCheck, UserX,
-  Briefcase, Banknote, ChevronRight
+  Settings, Lock, MoreVertical, UserCheck, UserX,
+  Briefcase, Banknote,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
@@ -28,14 +26,11 @@ import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   PermissionKey,
-  PERMISSION_GROUPS,
-  PERMISSION_LABELS,
   DEFAULT_THERAPIST_PERMISSIONS,
-  DEFAULT_ADMIN_PERMISSIONS,
   ALL_PERMISSIONS,
   PRESET_ROLES,
-  PresetRole,
 } from '@/hooks/useOrgPermissions';
+import { PermissionEditor } from '@/components/clinics/PermissionEditor';
 import { cn } from '@/lib/utils';
 
 interface OrganizationMember {
@@ -388,7 +383,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   }
 
   async function handleChangeRole(memberId: string, newRole: 'admin' | 'professional') {
-    const defaultPerms = newRole === 'admin' ? DEFAULT_ADMIN_PERMISSIONS : DEFAULT_THERAPIST_PERMISSIONS;
+    const defaultPerms = [...DEFAULT_THERAPIST_PERMISSIONS];
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId);
     if (error) toast.error('Erro ao alterar função');
     else {
@@ -437,8 +432,6 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     setEditPermissions(
       member.permissions.length > 0
         ? [...member.permissions]
-        : member.role === 'admin'
-        ? [...DEFAULT_ADMIN_PERMISSIONS]
         : [...DEFAULT_THERAPIST_PERMISSIONS]
     );
     setEditRoleLabel(member.role_label || '');
@@ -615,28 +608,15 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
 
                   {/* Permissions */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-primary" />
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Permissões de acesso</p>
-                    </div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Permissões de acesso</p>
                     <p className="text-xs text-muted-foreground">
-                      Defina exatamente o que este colaborador poderá acessar no sistema.
+                      Defina o nível de acesso de cada módulo. Você pode ajustar após selecionar o cargo.
                     </p>
-                    <div className="space-y-4">
-                      {PERMISSION_GROUPS.map(group => (
-                        <div key={group.label} className="space-y-2">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {group.keys.map(perm => (
-                              <div key={perm} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer" onClick={() => togglePerm(perm, invitePermissions, setInvitePermissions)}>
-                                <Checkbox checked={invitePermissions.includes(perm)} onCheckedChange={() => togglePerm(perm, invitePermissions, setInvitePermissions)} />
-                                <span className="text-xs">{PERMISSION_LABELS[perm]}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <PermissionEditor
+                      permissions={invitePermissions}
+                      onChange={setInvitePermissions}
+                      compact={true}
+                    />
                   </div>
 
                   <Separator />
@@ -971,30 +951,14 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                       </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="permissions" className="mt-4 space-y-4">
-                      <p className="text-xs text-muted-foreground">
-                        Controle exatamente quais módulos este profissional pode acessar.
+                    <TabsContent value="permissions" className="mt-4">
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Controle exatamente o nível de acesso de cada módulo.
                       </p>
-                      {PERMISSION_GROUPS.map(group => (
-                        <div key={group.label} className="space-y-2">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {group.keys.map(perm => (
-                              <div
-                                key={perm}
-                                className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                                onClick={() => togglePerm(perm, editPermissions, setEditPermissions)}
-                              >
-                                <Checkbox
-                                  checked={editPermissions.includes(perm)}
-                                  onCheckedChange={() => togglePerm(perm, editPermissions, setEditPermissions)}
-                                />
-                                <span className="text-xs">{PERMISSION_LABELS[perm]}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                      <PermissionEditor
+                        permissions={editPermissions}
+                        onChange={setEditPermissions}
+                      />
                     </TabsContent>
 
                     <TabsContent value="patients" className="mt-4 space-y-2">
