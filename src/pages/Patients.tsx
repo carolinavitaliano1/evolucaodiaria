@@ -36,7 +36,7 @@ function calculateAge(birthdate: string | null | undefined): number | null {
 
 export default function Patients() {
   const navigate = useNavigate();
-  const { patients, clinics, evolutions, setCurrentPatient } = useApp();
+  const { patients, clinics, evolutions, setCurrentPatient, getClinicPackages } = useApp();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
