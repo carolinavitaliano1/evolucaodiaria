@@ -569,6 +569,9 @@ export default function ClinicDetail() {
       scheduleByDay: {},
       sessionDuration: '50',
       packageId: '',
+      paymentDueDay: '',
+      initialPaymentPaid: false,
+      initialPaymentDate: '',
     });
     setIsDialogOpen(false);
     toast.success('Paciente cadastrado com sucesso!');
