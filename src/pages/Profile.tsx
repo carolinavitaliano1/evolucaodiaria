@@ -17,6 +17,8 @@ interface Profile {
   email: string | null;
   phone: string | null;
   professional_id: string | null;
+  cpf: string | null;
+  cbo: string | null;
   avatar_url: string | null;
 }
 
