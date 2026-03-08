@@ -174,7 +174,7 @@ export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions): P
     <p style="text-align:justify">Eu, <strong>${therapistName}</strong>${cpfPart}${addrPart} declaro para os devidos fins que recebi de <strong>${payerName}</strong>${payerCpfPart} a importância de <strong>R$ ${amountStr}</strong>, referente ao pagamento do serviço de <strong>${serviceName}</strong>, realizado no período de <strong>${period}</strong>.</p>
     <p style="text-align:justify">A quantia foi paga através de <strong>${paymentMethod}</strong> na data de <strong>${payDateStr}</strong>.</p>
     <p>Por ser verdade, firmo o presente recibo.</p>
-    <br/><p>Local e data: ${locationStr}_______________, ____/____/________</p>
+    <br/><p>Local e data: ${location ? `${location}, ____/____/________` : '_______________, ____/____/________'}</p>
     <br/><br/><br/>
     <p>___________________________</p>
     <p><strong>${therapistName}</strong></p>
