@@ -100,9 +100,9 @@ export default function Profile() {
     try {
       setLoading(true);
 
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
+      const { data: profileData } = await (supabase
+        .from('profiles') as any)
+        .select('id, user_id, name, email, phone, professional_id, cpf, cbo, avatar_url')
         .eq('user_id', userId)
         .maybeSingle();
 
