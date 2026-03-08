@@ -65,7 +65,7 @@ function formatCpf(cpf: string): string {
   return cpf;
 }
 
-const LINE_H = 6.5;      // standard line height (mm) — increased to prevent overlap
+const LINE_H = 5.5;      // standard line height (mm)
 const LABEL_W = 50;      // fixed label column width (mm)
 
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: false): Promise<void>;
@@ -87,19 +87,19 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   let y = margin;
 
   const ensureSpace = (needed: number) => {
-    if (y + needed > 272) { doc.addPage(); y = margin; }
+    if (y + needed > 279) { doc.addPage(); y = margin; }
   };
 
   const drawLine = () => {
     doc.setDrawColor(...borderColor);
     doc.line(margin, y, W - margin, y);
-    y += 7;
+    y += 5;
   };
 
   // Render a label:value row where label is bold left and value is normal, wrapping properly
   const labelValue = (label: string, value: string) => {
-    ensureSpace(8);
-    doc.setFontSize(9);
+    ensureSpace(7);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...darkText);
     doc.text(label, margin, y);
@@ -111,22 +111,22 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     doc.text(wrapped, margin + LABEL_W, y);
 
     // Advance by however many lines the value takes
-    y += Math.max(1, wrapped.length) * LINE_H + 1;
+    y += Math.max(1, wrapped.length) * LINE_H + 0.5;
   };
 
   // ── CABEÇALHO ────────────────────────────────────────────────────────────
-  doc.setFontSize(15);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('RECIBO DE ATENDIMENTO', margin, y);
-  y += 8;
+  y += 6;
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
   const periodLabel = `${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`;
   doc.text(`Período: ${periodLabel}   ·   Emissão: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, margin, y);
-  y += 6;
+  y += 4;
   drawLine();
 
   // ── DADOS DO PACIENTE / TOMADOR DO SERVIÇO ─────────────────────────────
@@ -134,7 +134,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('TOMADOR DO SERVIÇO', margin, y);
-  y += 8;
+  y += 6;
 
   // Determine age to decide which CPF goes on the fiscal document
   const patientAge = (() => {
@@ -163,21 +163,20 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
 
   // Responsável Legal — obrigatório para menores, exibido quando informado
   if (patient.responsibleName || isMinor) {
-    y += 3;
+    y += 2;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...mutedText);
     doc.text(isMinor ? 'Responsável Legal (Pagador — menor de idade):' : 'Responsável Legal:', margin, y);
-    y += 7;
+    y += 5;
     if (patient.responsibleName) labelValue('Nome:', patient.responsibleName);
     if (patient.responsible_cpf) {
-      // For minors, highlight the responsible CPF as the fiscal CPF
       labelValue(isMinor ? 'CPF (Nota Fiscal):' : 'CPF:', formatCpf(patient.responsible_cpf));
     }
     if (patient.responsibleEmail) labelValue('E-mail:', patient.responsibleEmail);
   }
 
-  y += 3;
+  y += 2;
   drawLine();
 
   // ── DADOS DO PRESTADOR DE SERVIÇO ─────────────────────────────────────
@@ -185,7 +184,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('PRESTADOR DE SERVIÇO', margin, y);
-  y += 8;
+  y += 6;
 
   if (therapistName) labelValue('Nome:', therapistName);
   if (professionalId) labelValue('Registro:', professionalId);
@@ -198,7 +197,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   if (clinic?.phone) labelValue('Telefone:', clinic.phone);
   if (clinic?.email) labelValue('E-mail:', clinic.email);
 
-  y += 3;
+  y += 2;
   drawLine();
 
   // ── DETALHAMENTO DAS SESSÕES ───────────────────────────────────────────
@@ -206,21 +205,21 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text(`DETALHAMENTO DAS SESSÕES (${evolutions.length})`, margin, y);
-  y += 9;
+  y += 7;
 
   // Table header
   const c1 = margin, c2 = margin + 32, c3 = margin + 92, c4 = W - margin - 5;
-  doc.setFontSize(8.5);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...mutedText);
   doc.text('Data', c1, y);
   doc.text('Área Clínica / Serviço', c2, y);
   doc.text('Status', c3, y);
   doc.text('Valor', c4, y, { align: 'right' });
-  y += 4;
+  y += 3;
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, W - margin, y);
-  y += 6;
+  y += 5;
 
   let sessionTotal = 0;
   let sessionCount = 0;
@@ -231,12 +230,12 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
 
   doc.setFont('helvetica', 'normal');
   for (const evo of evolutions) {
-    ensureSpace(8);
+    ensureSpace(7);
     const st = STATUS_LABELS[evo.attendanceStatus] ?? { label: evo.attendanceStatus, billable: false };
     const sessionValue = st.billable && patient.paymentType !== 'fixo' ? paymentValue : 0;
     const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setTextColor(...darkText);
     doc.text(dateStr, c1, y);
     doc.text(areaDisplay, c2, y);
@@ -251,7 +250,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       sessionValue > 0 ? darkText[2] : mutedText[2],
     );
     doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '—', c4, y, { align: 'right' });
-    y += 7;
+    y += 6;
 
     if (st.billable) { sessionTotal += sessionValue; sessionCount++; }
   }
@@ -264,17 +263,17 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   }
 
   // ── RESUMO FINANCEIRO ─────────────────────────────────────────────────
-  ensureSpace(50);
-  y += 3;
+  ensureSpace(45);
+  y += 2;
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, W - margin, y);
-  y += 7;
+  y += 5;
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
   doc.text('RESUMO FINANCEIRO', margin, y);
-  y += 8;
+  y += 6;
 
   const summaryRows: [string, string][] = [];
   if (patient.paymentType === 'fixo') {
@@ -291,21 +290,21 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   summaryRows.push(['TOTAL DO PERÍODO:', `R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
 
   summaryRows.forEach(([label, value], i) => {
-    ensureSpace(8);
+    ensureSpace(7);
     const isTotal = i === summaryRows.length - 1;
-    doc.setFontSize(isTotal ? 10.5 : 9);
+    doc.setFontSize(isTotal ? 10.5 : 9.5);
     doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
     doc.setTextColor(...(isTotal ? darkText : mutedText));
     doc.text(label, margin + 4, y);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...(isTotal ? accentColor : darkText));
     doc.text(value, W - margin - 2, y, { align: 'right' });
-    y += isTotal ? 8 : 7;
+    y += isTotal ? 7 : 5.5;
   });
 
   // Payment status badge
-  ensureSpace(14);
-  y += 3;
+  ensureSpace(12);
+  y += 2;
   const statusText = paymentStatus === 'paid' ? 'PAGO'
     : paymentStatus === 'partial' ? 'PARCIALMENTE PAGO'
     : 'PENDENTE';
@@ -320,7 +319,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     const labelW = doc.getTextWidth(`Status: ${statusText}`);
     doc.text(`   ·   Recebido em: ${format(new Date(paymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`, margin + 4 + labelW, y);
   }
-  y += 9;
+  y += 7;
 
   drawLine();
 
@@ -330,37 +329,52 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   doc.setTextColor(...mutedText);
   const declaration = `Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.`;
   const declLines = doc.splitTextToSize(declaration, contentW);
-  declLines.forEach((line: string) => { ensureSpace(7); doc.text(line, margin, y); y += 6; });
-  y += 7;
+  declLines.forEach((line: string) => { ensureSpace(6); doc.text(line, margin, y); y += 5; });
+  y += 5;
 
-  // Signature block
-  ensureSpace(80);
+  // Signature block — estimate height to avoid orphan on new page
+  const hasSig = !!stamp?.signature_image;
+  const hasStampImg = !!stamp?.stamp_image;
+  const sigEstH = (hasSig ? 22 : 0) + (hasStampImg ? 22 : 0) + 6 + 6 + 5 + 5 + 5 + 5;
+  ensureSpace(sigEstH);
+
   if (stamp?.signature_image) {
     try {
-      doc.addImage(stamp.signature_image, 'PNG', margin, y, 55, 18, undefined, 'FAST');
-      y += 22;
+      const imgEl = document.createElement('img');
+      imgEl.src = stamp.signature_image;
+      await new Promise<void>(r => { imgEl.onload = () => r(); imgEl.onerror = () => r(); });
+      let sw = 45; let sh = (imgEl.height / imgEl.width) * sw;
+      if (sh > 12) { sh = 12; sw = (imgEl.width / imgEl.height) * sh; }
+      doc.addImage(stamp.signature_image, 'PNG', margin, y, sw, sh, undefined, 'FAST');
+      y += sh + 2;
     } catch { /* skip */ }
   }
   if (stamp?.stamp_image) {
     try {
-      doc.addImage(stamp.stamp_image, 'PNG', margin, y, 38, 38, undefined, 'FAST');
-      y += 42;
+      const imgEl2 = document.createElement('img');
+      imgEl2.src = stamp.stamp_image;
+      await new Promise<void>(r => { imgEl2.onload = () => r(); imgEl2.onerror = () => r(); });
+      let sw = 40; let sh = (imgEl2.height / imgEl2.width) * sw;
+      if (sh > 18) { sh = 18; sw = (imgEl2.width / imgEl2.height) * sh; }
+      doc.addImage(stamp.stamp_image, 'PNG', margin, y, sw, sh, undefined, 'FAST');
+      y += sh + 3;
     } catch { /* skip */ }
   }
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, margin + contentW * 0.55, y);
-  y += 6;
-  doc.setFontSize(9);
+  y += 5;
+  doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...darkText);
   doc.text(therapistName || '________________________________', margin, y);
-  y += 6;
+  y += 5;
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
   doc.setTextColor(...mutedText);
-  if (stamp?.clinical_area) { doc.text(stamp.clinical_area, margin, y); y += 5.5; }
-  if (professionalId) { doc.text(`Registro: ${professionalId}`, margin, y); y += 5.5; }
-  if (therapistCpf) { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, y); y += 5.5; }
-  if (cbo) { doc.text(`CBO: ${cbo}`, margin, y); y += 5.5; }
+  if (stamp?.clinical_area) { doc.text(stamp.clinical_area, margin, y); y += 5; }
+  if (professionalId) { doc.text(`Registro: ${professionalId}`, margin, y); y += 5; }
+  if (therapistCpf) { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, y); y += 5; }
+  if (cbo) { doc.text(`CBO: ${cbo}`, margin, y); y += 5; }
 
   // ── RODAPÉ ───────────────────────────────────────────────────────────
   const pageCount = (doc as any).internal.getNumberOfPages();
