@@ -138,7 +138,8 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
 
 export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions): Promise<void> {
   const { therapistName, therapistCpf, therapistAddress, therapistProfessionalId, therapistCbo,
-    therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period, paymentMethod, paymentDate } = opts;
+    therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period,
+    paymentMethod, paymentDate, clinicName, clinicAddress, clinicCnpj } = opts;
 
   const fmt = (cpf: string) => {
     const d = cpf.replace(/\D/g, '');
@@ -156,10 +157,19 @@ export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions): P
   const area = stamp?.clinical_area || therapistClinicalArea || '';
   const locationStr = location ? `${location}, ` : '';
 
+  const clinicBlock = (clinicName || clinicAddress || clinicCnpj)
+    ? `<div style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd">
+        ${clinicName ? `<p style="font-weight:bold;color:#1e3a8a;margin:0">${clinicName}</p>` : ''}
+        ${clinicAddress ? `<p style="margin:2px 0;font-size:9pt;color:#555">${clinicAddress}</p>` : ''}
+        ${clinicCnpj ? `<p style="margin:2px 0;font-size:9pt;color:#555">CNPJ: ${fmt(clinicCnpj)}</p>` : ''}
+      </div>`
+    : '';
+
   const html = `<html><body style="font-family:Arial,sans-serif;font-size:12pt;margin:48px;line-height:1.7">
     <h2 style="color:#1e3a8a;margin-bottom:4px">RECIBO DE PAGAMENTO</h2>
     <p style="color:#666;margin-top:0;font-size:9pt">Emissão: ${emissao}</p>
     <hr style="border:1px solid #ddd;margin:16px 0"/>
+    ${clinicBlock}
     <p style="text-align:justify">Eu, <strong>${therapistName}</strong>${cpfPart}${addrPart} declaro para os devidos fins que recebi de <strong>${payerName}</strong>${payerCpfPart} a importância de <strong>R$ ${amountStr}</strong>, referente ao pagamento do serviço de <strong>${serviceName}</strong>, realizado no período de <strong>${period}</strong>.</p>
     <p style="text-align:justify">A quantia foi paga através de <strong>${paymentMethod}</strong> na data de <strong>${payDateStr}</strong>.</p>
     <p>Por ser verdade, firmo o presente recibo.</p>
