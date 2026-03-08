@@ -1435,12 +1435,21 @@ export default function ClinicDetail() {
                       />
                     </div>
 
-                    <div>
+                     <div>
                       <Label>Telefone</Label>
                       <Input
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         placeholder="(00) 00000-0000"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>CPF / CNPJ</Label>
+                      <Input
+                        value={formData.cpf}
+                        onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                        placeholder="000.000.000-00"
                       />
                     </div>
 
