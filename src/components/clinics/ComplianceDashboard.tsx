@@ -42,6 +42,7 @@ interface MemberProfile {
 interface ComplianceDashboardProps {
   clinicId: string;
   organizationId: string;
+  onTodayPendingCount?: (count: number) => void;
 }
 
 const PERIOD_OPTIONS = [
