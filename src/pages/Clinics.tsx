@@ -917,6 +917,7 @@ export default function Clinics() {
               })}
             </div>
           )}
+          </div>
         </TabsContent>
       </Tabs>
       </div>{/* end max-w-5xl container */}
