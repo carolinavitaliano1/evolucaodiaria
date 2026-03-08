@@ -95,7 +95,8 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
   y += 6;
 
   doc.setFontSize(10); doc.setTextColor(...mutedText);
-  const localText = location ? `Local e data: ${location}, ____/____/________` : `Local e data: _______________, ____/____/________`;
+  // location may already contain "City, DD/MM/YYYY" when localDate was filled
+  const localText = location ? `Local e data: ${location}` : `Local e data: _______________, ____/____/________`;
   doc.text(localText, margin, y);
   y += 12;
 
