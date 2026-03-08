@@ -16,6 +16,9 @@ interface ReportPdfOptions {
   therapistName?: string;
   therapistProfessionalId?: string;
   therapistCbo?: string;
+  therapistStampImage?: string | null;
+  therapistSignatureImage?: string | null;
+  therapistClinicalArea?: string | null;
 }
 
 function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
