@@ -71,6 +71,7 @@ interface GenerateSinglePdfOptions {
   patient: Patient;
   clinic?: Clinic;
   stamps?: StampData[];
+  professionalId?: string | null;
 }
 
 interface GenerateMultiplePdfOptions {
@@ -80,6 +81,7 @@ interface GenerateMultiplePdfOptions {
   startDate?: Date;
   endDate?: Date;
   stamps?: StampData[];
+  professionalId?: string | null;
 }
 
 export interface GenerateAllPatientsPdfOptions {
@@ -87,6 +89,7 @@ export interface GenerateAllPatientsPdfOptions {
   clinic?: Clinic;
   date: Date;
   stamps?: StampData[];
+  professionalId?: string | null;
 }
 
 // ─── ALL PATIENTS DAILY PDF ──────────────────────────────────────────────────
