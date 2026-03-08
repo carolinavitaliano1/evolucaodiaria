@@ -214,6 +214,7 @@ export default function Profile() {
       setEditingStamp(stamp);
       setStampName(stamp.name);
       setStampArea(stamp.clinical_area);
+      setStampCbo(stamp.cbo || '');
       setStampImage(stamp.stamp_image);
       setSignatureImage(stamp.signature_image);
       setIsDefault(stamp.is_default);
@@ -221,6 +222,7 @@ export default function Profile() {
       setEditingStamp(null);
       setStampName('');
       setStampArea('');
+      setStampCbo('');
       setStampImage(null);
       setSignatureImage(null);
       setIsDefault(false);
