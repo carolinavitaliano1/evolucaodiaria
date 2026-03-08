@@ -626,7 +626,7 @@ export default function Clinics() {
           ) : (
             <Button size="sm" className="gap-2" onClick={() => setServiceDialogOpen(true)}>
               <Plus className="w-4 h-4" />
-              Cadastrar Serviço
+              Cadastrar | Gerenciar
             </Button>
           )}
         </div>
