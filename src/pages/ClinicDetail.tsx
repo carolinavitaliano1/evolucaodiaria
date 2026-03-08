@@ -1480,6 +1480,35 @@ export default function ClinicDetail() {
                       />
                     </div>
 
+                    <div className="border-t pt-4 space-y-3">
+                      <p className="font-semibold">👤 Responsável Legal (opcional)</p>
+                      <div>
+                        <Label>Nome do Responsável</Label>
+                        <Input
+                          value={formData.responsibleName}
+                          onChange={(e) => setFormData({ ...formData, responsibleName: e.target.value })}
+                          placeholder="Ex: Maria Silva"
+                        />
+                      </div>
+                      <div>
+                        <Label>CPF do Responsável</Label>
+                        <Input
+                          value={formData.responsible_cpf}
+                          onChange={(e) => setFormData({ ...formData, responsible_cpf: e.target.value })}
+                          placeholder="000.000.000-00"
+                        />
+                      </div>
+                      <div>
+                        <Label>E-mail do Responsável</Label>
+                        <Input
+                          type="email"
+                          value={formData.responsibleEmail}
+                          onChange={(e) => setFormData({ ...formData, responsibleEmail: e.target.value })}
+                          placeholder="email@exemplo.com"
+                        />
+                      </div>
+                    </div>
+
                     {/* Package selection and payment info */}
                     <div className="border-t pt-4">
                       <p className="font-semibold mb-2">💰 Pagamento</p>
