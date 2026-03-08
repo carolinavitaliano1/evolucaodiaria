@@ -273,37 +273,47 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
 
       if (!assignments?.length) return;
 
-      const late: LateEvolution[] = [];
-
+      // Gather scheduled assignments (check patient weekdays first — no DB call needed)
+      const scheduled: { patientId: string; memberId: string; userId: string; patientName: string; therapistName: string }[] = [];
       for (const a of assignments) {
         const patient = clinicPatients.find(p => p.id === a.patient_id);
         if (!patient) continue;
-
         const isScheduled = patient.weekdays?.some(d =>
           todayWeekday.startsWith(d.toLowerCase().slice(0, 3))
         );
         if (!isScheduled) continue;
-
         const member = members.find(m => m.id === a.member_id);
         if (!member?.user_id) continue;
-
-        const { data: evols } = await supabase
-          .from('evolutions')
-          .select('id')
-          .eq('patient_id', a.patient_id)
-          .eq('user_id', member.user_id)
-          .gte('date', yesterday)
-          .limit(1);
-
-        if (!evols?.length) {
-          late.push({
-            patient_id: a.patient_id,
-            patient_name: patient.name,
-            scheduled_date: today,
-            therapist_name: member.profile?.name || member.email,
-          });
-        }
+        scheduled.push({
+          patientId: a.patient_id,
+          memberId: a.member_id,
+          userId: member.user_id,
+          patientName: patient.name,
+          therapistName: member.profile?.name || member.email,
+        });
       }
+
+      if (!scheduled.length) { setLateEvolutions([]); return; }
+
+      // Single batch query for all evolutions in range
+      const patientIds = [...new Set(scheduled.map(s => s.patientId))];
+      const { data: evols } = await supabase
+        .from('evolutions')
+        .select('patient_id, user_id')
+        .in('patient_id', patientIds)
+        .gte('date', yesterday)
+        .lte('date', today);
+
+      const evolSet = new Set((evols || []).map(e => `${e.patient_id}::${e.user_id}`));
+
+      const late: LateEvolution[] = scheduled
+        .filter(s => !evolSet.has(`${s.patientId}::${s.userId}`))
+        .map(s => ({
+          patient_id: s.patientId,
+          patient_name: s.patientName,
+          scheduled_date: today,
+          therapist_name: s.therapistName,
+        }));
 
       setLateEvolutions(late);
     } catch (err) {

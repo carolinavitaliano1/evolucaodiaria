@@ -8,10 +8,11 @@ import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 export function InternalAlertsBell() {
-  const { notifications, unreadCount, markRead, markAllRead, dismiss } = useInternalNotifications();
+  const { notifications, loading, unreadCount, markRead, markAllRead, dismiss } = useInternalNotifications();
   const [open, setOpen] = useState(false);
 
-  // Always render so the bell is visible even when there are no notifications yet
+  // Only hide if done loading and there are truly no notifications ever
+  if (!loading && notifications.length === 0) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
