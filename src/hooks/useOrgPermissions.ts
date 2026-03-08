@@ -118,6 +118,98 @@ export const DEFAULT_ADMIN_PERMISSIONS: PermissionKey[] = [
   'team.manage',
 ];
 
+/**
+ * Preset roles with display label, base role, and default permissions.
+ * These are editable after selection — they're just a starting point.
+ */
+export interface PresetRole {
+  id: string;
+  label: string;
+  description: string;
+  baseRole: 'admin' | 'professional';
+  permissions: PermissionKey[];
+  icon: string;
+}
+
+export const PRESET_ROLES: PresetRole[] = [
+  {
+    id: 'administrador',
+    label: 'Administrador',
+    description: 'Acesso total ao sistema, configurações e faturamento global.',
+    baseRole: 'admin',
+    icon: 'shield',
+    permissions: [
+      'dashboard.view',
+      'clinics.view',
+      'clinics.create',
+      'clinics.edit',
+      'patients.view',
+      'patients.create',
+      'patients.edit',
+      'calendar.view',
+      'evolutions.view',
+      'evolutions.create',
+      'financial.view',
+      'reports.view',
+      'ai_reports.view',
+      'tasks.view',
+      'mural.view',
+      'team.view',
+      'team.manage',
+    ],
+  },
+  {
+    id: 'terapeuta',
+    label: 'Terapeuta',
+    description: 'Acesso aos próprios pacientes, prontuários, evoluções e agenda pessoal.',
+    baseRole: 'professional',
+    icon: 'user',
+    permissions: [
+      'dashboard.view',
+      'clinics.view',
+      'patients.view',
+      'patients.own_only',
+      'calendar.view',
+      'calendar.own_only',
+      'evolutions.view',
+      'evolutions.own_only',
+      'evolutions.create',
+      'mural.view',
+      'tasks.view',
+    ],
+  },
+  {
+    id: 'secretaria',
+    label: 'Secretária',
+    description: 'Gestão de agendas e cadastro de pacientes. Sem acesso ao conteúdo clínico.',
+    baseRole: 'professional',
+    icon: 'calendar',
+    permissions: [
+      'dashboard.view',
+      'clinics.view',
+      'patients.view',
+      'patients.create',
+      'patients.edit',
+      'calendar.view',
+      'tasks.view',
+      'mural.view',
+      'financial.view',
+    ],
+  },
+  {
+    id: 'financeiro',
+    label: 'Financeiro',
+    description: 'Acesso exclusivo ao fluxo de caixa, extratos e contas a pagar/receber.',
+    baseRole: 'professional',
+    icon: 'banknote',
+    permissions: [
+      'dashboard.view',
+      'financial.view',
+      'reports.view',
+    ],
+  },
+];
+
 export interface OrgMembershipInfo {
   isOrgMember: boolean;
   isOwner: boolean;
