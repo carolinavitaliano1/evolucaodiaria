@@ -749,14 +749,11 @@ export default function Clinics() {
         <TabsContent value="meus-servicos" className="space-y-4">
           {/* Registered services section */}
           <div className="bg-card rounded-2xl border border-border p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center mb-3">
               <h3 className="font-semibold text-foreground flex items-center gap-2 text-sm">
                 <Briefcase className="w-4 h-4 text-primary" />
                 Meus Serviços Cadastrados
               </h3>
-              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => setServiceDialogOpen(true)}>
-                <Plus className="w-3.5 h-3.5" /> Gerenciar
-              </Button>
             </div>
             {registeredServices.length === 0 ? (
               <div className="text-center py-6">
