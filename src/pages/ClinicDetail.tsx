@@ -270,6 +270,9 @@ export default function ClinicDetail() {
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
     sessionDuration: '50',
     packageId: '',
+    paymentDueDay: '',
+    initialPaymentPaid: false,
+    initialPaymentDate: '',
   });
 
   const clinicPackages = clinic ? getClinicPackages(clinic.id) : [];
