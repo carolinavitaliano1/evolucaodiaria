@@ -242,7 +242,7 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
     return `Olá ${item.therapistName}, notamos que a evolução do paciente *${item.patientName}* do dia *${formattedDate}* ainda não foi finalizada. Por favor, regularize assim que possível. 🙏`;
   }
 
-  async function sendWhatsAppNotification(item: PendingEvolution) {
+  async function sendNotification(item: PendingEvolution) {
     const hasPhone = !!item.therapistPhone;
     if (hasPhone) openWhatsApp(item.therapistPhone!, buildMessage(item));
     await createInternalNotification(item);
