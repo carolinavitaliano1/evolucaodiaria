@@ -1,4 +1,4 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { TeamFinancialReport } from '@/components/clinics/TeamFinancialReport';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+
+type PaymentStatusFilter = 'all' | 'paid' | 'pending';
 
 export default function Financial() {
   const { clinics, patients, evolutions, payments, clinicPackages, loadAllEvolutions } = useApp();
@@ -39,6 +41,15 @@ export default function Financial() {
   const selectedMonth = selectedDate.getMonth();
   const selectedYear = selectedDate.getFullYear();
   const monthName = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
+
+  // Filters
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>('all');
+  const [tableStartDate, setTableStartDate] = useState('');
+  const [tableEndDate, setTableEndDate] = useState('');
+
+  // Patient payment records keyed by patient_id
+  const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, any>>({});
+  const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
 
   const goToPreviousMonth = () => setSelectedDate(prev => {
     const d = subMonths(prev, 1);
@@ -71,6 +82,26 @@ export default function Financial() {
       if (profileRes.data) setProfile(profileRes.data);
     });
   }, [user]);
+
+  // Load patient payment records for selected month
+  useEffect(() => {
+    if (!user) return;
+    const m = selectedDate.getMonth() + 1;
+    const y = selectedDate.getFullYear();
+    supabase
+      .from('patient_payment_records' as any)
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('month', m)
+      .eq('year', y)
+      .then(({ data }) => {
+        if (data) {
+          const map: Record<string, any> = {};
+          (data as any[]).forEach(r => { map[r.patient_id] = r; });
+          setPatientPaymentRecords(map);
+        }
+      });
+  }, [selectedDate, user]);
 
   const monthlyEvolutions = evolutions.filter(e => {
     const date = new Date(e.date + 'T12:00:00');
@@ -116,8 +147,6 @@ export default function Financial() {
   };
 
   const monthlyPrivateAppointments = getMonthlyAppointments(selectedMonth, selectedYear);
-
-  // Separate: services WITH clinic (linked) vs WITHOUT clinic (standalone particulares)
   const linkedServiceAppointments = monthlyPrivateAppointments.filter(a => a.clinic_id);
   const standaloneServiceAppointments = monthlyPrivateAppointments.filter(a => !a.clinic_id);
 
@@ -125,22 +154,18 @@ export default function Financial() {
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
 
-  // All private appointments revenue (for backward compat in PDF)
   const privateRevenue = monthlyPrivateAppointments
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
 
-  // Revenue split by clinic type
   const propriaClinics = clinics.filter(c => c.type === 'propria' && !c.isArchived);
   const contratanteClinics = clinics.filter(c => c.type !== 'propria' && !c.isArchived);
 
   const revenueByClinicType = (type: 'propria' | 'contratante') => {
     const targetClinics = type === 'propria' ? propriaClinics : contratanteClinics;
     return targetClinics.reduce((sum, clinic) => {
-      // Patients revenue
       const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
       const patientsRevenue = clinicPatients.reduce((s, p) => s + calculatePatientRevenue(p.id), 0);
-      // Services (private_appointments) revenue linked to this clinic
       const clinicServicesRevenue = linkedServiceAppointments
         .filter(a => a.clinic_id === clinic.id && a.status === 'concluído')
         .reduce((s, a) => s + (a.price || 0), 0);
@@ -152,7 +177,6 @@ export default function Financial() {
   const revenueContratante = revenueByClinicType('contratante');
   const totalRevenue = patients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
   const totalLoss = patients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
-  // Linked services revenue (already counted per clinic above, add separately for total)
   const linkedServicesRevenue = linkedServiceAppointments
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
@@ -168,15 +192,51 @@ export default function Financial() {
     return { clinic, patientCount: clinicPatients.length, revenue, loss, sessions, paidAbsences, absences };
   });
 
-  const patientStats = patients.map(patient => {
+  const allPatientStats = patients.map(patient => {
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const revenue = calculatePatientRevenue(patient.id);
     const loss = calculatePatientLoss(patient.id);
     const sessions = presentEvolutions.filter(e => e.patientId === patient.id).length;
     const paidAbsences = paidAbsenceEvolutions.filter(e => e.patientId === patient.id).length;
     const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
-    return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0 };
+    const pr = patientPaymentRecords[patient.id];
+    return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0, pr };
   }).filter(p => p.paymentValue > 0);
+
+  // Apply filters
+  const patientStats = allPatientStats.filter(({ pr, patient }) => {
+    // Status filter
+    if (paymentStatusFilter === 'paid' && !pr?.paid) return false;
+    if (paymentStatusFilter === 'pending' && pr?.paid) return false;
+    // Period filter on payment_date
+    if (tableStartDate && pr?.payment_date && pr.payment_date < tableStartDate) return false;
+    if (tableEndDate && pr?.payment_date && pr.payment_date > tableEndDate) return false;
+    // If filtering by date range and patient has no payment_date, hide when filter is active
+    if ((tableStartDate || tableEndDate) && paymentStatusFilter === 'paid' && !pr?.payment_date) return false;
+    return true;
+  });
+
+  const handleTogglePatientPayment = async (patientId: string, currentPr: any, revenue: number) => {
+    if (!user) return;
+    setSavingPatientPayment(patientId);
+    const m = selectedDate.getMonth() + 1;
+    const y = selectedDate.getFullYear();
+    const newPaid = !currentPr?.paid;
+    const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
+    try {
+      if (currentPr?.id) {
+        await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', currentPr.id);
+        setPatientPaymentRecords(prev => ({ ...prev, [patientId]: { ...currentPr, paid: newPaid, payment_date: newDate } }));
+      } else {
+        const { data } = await supabase.from('patient_payment_records' as any).insert({
+          user_id: user.id, patient_id: patientId, clinic_id: patients.find(p => p.id === patientId)?.clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate
+        }).select().maybeSingle();
+        setPatientPaymentRecords(prev => ({ ...prev, [patientId]: data }));
+      }
+    } finally {
+      setSavingPatientPayment(null);
+    }
+  };
 
   const handleExportPDF = async () => {
     setIsExporting(true);
@@ -193,6 +253,10 @@ export default function Financial() {
       doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
       doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), margin, y);
+      if (paymentStatusFilter !== 'all') {
+        doc.setFontSize(10);
+        doc.text(`Filtro: ${paymentStatusFilter === 'paid' ? 'Apenas Pagos' : 'Apenas Pendentes'}`, margin + 80, y);
+      }
       y += 15;
 
       doc.setFontSize(14);
@@ -254,31 +318,59 @@ export default function Financial() {
         if (y > 200) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
-        doc.text('Detalhamento por Paciente', margin, y);
+        doc.text('Controle de Pagamentos por Paciente', margin, y);
         y += 10;
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
-        doc.text('Paciente', margin, y);
-        doc.text('Clínica', margin + 50, y);
-        doc.text('Tipo', margin + 95, y);
-        doc.text('Sessões', margin + 120, y);
-        doc.text('Valor', pageWidth - margin - 20, y);
+        // Headers with payment columns
+        const col1 = margin, col2 = margin + 42, col3 = margin + 82, col4 = margin + 105, col5 = margin + 127, col6 = pageWidth - margin - 18;
+        doc.text('Paciente', col1, y);
+        doc.text('Clínica', col2, y);
+        doc.text('Tipo', col3, y);
+        doc.text('Sess.', col4, y);
+        doc.text('Status Pgto', col5, y);
+        doc.text('Valor', col6, y, { align: 'right' });
         y += 3;
         doc.setDrawColor(200, 200, 200);
         doc.line(margin, y, pageWidth - margin, y);
         y += 5;
-        doc.setFontSize(9);
-        patientStats.forEach(({ patient, clinic, revenue, sessions, paymentType, paymentValue }) => {
+        doc.setFontSize(8);
+
+        let totalPaid = 0, totalPending = 0;
+        patientStats.forEach(({ patient, clinic, revenue, sessions, paymentType, paymentValue, pr }) => {
           if (y > 275) { doc.addPage(); y = 20; }
           doc.setTextColor(51, 51, 51);
-          doc.text(patient.name.substring(0, 20), margin, y);
+          doc.text(patient.name.substring(0, 18), col1, y);
           doc.setTextColor(80, 80, 80);
-          doc.text((clinic?.name || '').substring(0, 15), margin + 50, y);
-          doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', margin + 95, y);
-          doc.text(sessions.toString(), margin + 125, y);
-          doc.text(`R$ ${revenue.toFixed(2)}`, pageWidth - margin - 20, y);
+          doc.text((clinic?.name || '').substring(0, 14), col2, y);
+          doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', col3, y);
+          doc.text(sessions.toString(), col4, y);
+          // Payment status
+          if (pr?.paid) {
+            doc.setTextColor(34, 139, 34);
+            doc.text(`Pago${pr.payment_date ? ' ' + format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM') : ''}`, col5, y);
+            totalPaid += revenue;
+          } else {
+            doc.setTextColor(200, 100, 0);
+            doc.text('Pendente', col5, y);
+            totalPending += revenue;
+          }
+          doc.setTextColor(51, 51, 51);
+          doc.text(`R$ ${revenue.toFixed(2)}`, col6, y, { align: 'right' });
           y += 6;
         });
+
+        // Summary footer
+        if (y > 270) { doc.addPage(); y = 20; }
+        y += 3;
+        doc.setDrawColor(180, 180, 180);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
+        doc.setFontSize(9);
+        doc.setTextColor(34, 139, 34);
+        doc.text(`✓ Total Pago: R$ ${totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 5;
+        doc.setTextColor(200, 100, 0);
+        doc.text(`⏳ Total Pendente: R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       }
 
       const pageCount = doc.getNumberOfPages();
@@ -487,6 +579,41 @@ export default function Financial() {
       }
       y += 15;
 
+      // Payment status section in invoice
+      const invoicePatientPayments = clinicPatients.map(p => ({
+        patient: p,
+        pr: patientPaymentRecords[p.id],
+        revenue: calculatePatientRevenue(p.id),
+      })).filter(r => r.revenue > 0);
+
+      if (invoicePatientPayments.length > 0) {
+        ensureSpace(20 + invoicePatientPayments.length * 7);
+        doc.setDrawColor(180, 180, 180);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(51, 51, 51);
+        doc.text('STATUS DE PAGAMENTO POR PACIENTE', margin, y); y += 7;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        invoicePatientPayments.forEach(({ patient, pr, revenue }) => {
+          ensureSpace(7);
+          doc.setTextColor(51, 51, 51);
+          doc.text(patient.name.substring(0, 28), margin, y);
+          if (pr?.paid) {
+            doc.setTextColor(34, 139, 34);
+            doc.text(`Pago${pr.payment_date ? ' em ' + format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy') : ''}`, margin + 70, y);
+          } else {
+            doc.setTextColor(200, 100, 0);
+            doc.text('Pendente', margin + 70, y);
+          }
+          doc.setTextColor(80, 80, 80);
+          doc.text(`R$ ${revenue.toFixed(2)}`, pageWidth - margin - 5, y, { align: 'right' });
+          y += 6;
+        });
+      }
+
       ensureSpace(60);
       doc.setDrawColor(180, 180, 180);
       doc.line(margin, y, pageWidth - margin, y);
@@ -532,6 +659,8 @@ export default function Financial() {
   };
 
   const grandTotal = totalRevenue + standaloneRevenue;
+  const paidTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (pr?.paid ? revenue : 0), 0);
+  const pendingTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (!pr?.paid ? revenue : 0), 0);
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
@@ -793,7 +922,7 @@ export default function Financial() {
 
       {/* Payments Table */}
       <div className="bg-card rounded-2xl p-5 sm:p-6 border border-border">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
             💳 Controle de Pagamentos por Paciente
           </h2>
@@ -854,8 +983,71 @@ export default function Financial() {
           </div>
         </div>
 
+        {/* Payment summary mini-cards */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="rounded-xl bg-secondary/40 border border-border/50 p-3 text-center">
+            <p className="text-[10px] text-muted-foreground mb-0.5">Total Previsto</p>
+            <p className="font-bold text-foreground text-sm">R$ {(paidTotal + pendingTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="rounded-xl bg-success/5 border border-success/20 p-3 text-center">
+            <p className="text-[10px] text-success/80 mb-0.5 flex items-center justify-center gap-1"><CheckCircle2 className="w-3 h-3" />Recebido</p>
+            <p className="font-bold text-success text-sm">R$ {paidTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="rounded-xl bg-warning/5 border border-warning/20 p-3 text-center">
+            <p className="text-[10px] text-warning/80 mb-0.5 flex items-center justify-center gap-1"><Clock className="w-3 h-3" />Pendente</p>
+            <p className="font-bold text-warning text-sm">R$ {pendingTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          </div>
+        </div>
+
+        {/* Filters row */}
+        <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-secondary/30 rounded-xl border border-border/50">
+          <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <span className="text-xs text-muted-foreground font-medium">Filtros:</span>
+
+          {/* Status filter */}
+          <div className="flex items-center gap-1 rounded-lg bg-card border border-border p-0.5">
+            {(['all', 'paid', 'pending'] as PaymentStatusFilter[]).map(f => (
+              <button
+                key={f}
+                onClick={() => setPaymentStatusFilter(f)}
+                className={cn(
+                  'text-xs px-2.5 py-1 rounded-md transition-colors',
+                  paymentStatusFilter === f
+                    ? f === 'paid' ? 'bg-success text-white' : f === 'pending' ? 'bg-warning text-white' : 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {f === 'all' ? 'Todos' : f === 'paid' ? '✓ Pagos' : '⏳ Pendentes'}
+              </button>
+            ))}
+          </div>
+
+          {/* Date range filter */}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <label className="text-[10px] text-muted-foreground">Data pgto:</label>
+            <Input
+              type="date"
+              value={tableStartDate}
+              onChange={e => setTableStartDate(e.target.value)}
+              className="h-7 text-xs w-32 px-2"
+              placeholder="De"
+            />
+            <span className="text-muted-foreground text-xs">–</span>
+            <Input
+              type="date"
+              value={tableEndDate}
+              onChange={e => setTableEndDate(e.target.value)}
+              className="h-7 text-xs w-32 px-2"
+              placeholder="Até"
+            />
+            {(tableStartDate || tableEndDate) && (
+              <button onClick={() => { setTableStartDate(''); setTableEndDate(''); }} className="text-xs text-muted-foreground hover:text-foreground px-1.5">✕</button>
+            )}
+          </div>
+        </div>
+
         <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full min-w-[500px]">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b-2 border-border">
                 <th className="text-left py-3 px-3 font-semibold text-foreground text-xs">Paciente</th>
@@ -863,11 +1055,13 @@ export default function Financial() {
                 <th className="text-left py-3 px-3 font-semibold text-foreground text-xs">Tipo</th>
                 <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Sess.</th>
                 <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Faltas</th>
+                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Status Pgto</th>
+                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs hidden md:table-cell">Data Pgto</th>
                 <th className="text-right py-3 px-3 font-semibold text-foreground text-xs">Valor</th>
               </tr>
             </thead>
             <tbody>
-              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue }) => (
+              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr }) => (
                 <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
                   <td className="py-3 px-3 text-foreground text-xs">
                     <span className="truncate block max-w-[100px] sm:max-w-none font-medium">{patient.name}</span>
@@ -893,6 +1087,30 @@ export default function Financial() {
                       </span>
                     ) : <span className="text-muted-foreground">0</span>}
                   </td>
+                  {/* Payment status column */}
+                  <td className="py-3 px-3 text-center">
+                    <button
+                      type="button"
+                      disabled={savingPatientPayment === patient.id}
+                      title={pr?.paid ? 'Marcar como pendente' : 'Marcar como pago'}
+                      onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border transition-colors disabled:opacity-50',
+                        pr?.paid
+                          ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                          : 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/20'
+                      )}
+                    >
+                      {pr?.paid ? <><CheckCircle2 className="w-3 h-3" />Pago</> : <><Clock className="w-3 h-3" />Pendente</>}
+                    </button>
+                  </td>
+                  {/* Payment date column */}
+                  <td className="py-3 px-3 text-center text-xs text-muted-foreground hidden md:table-cell">
+                    {pr?.paid && pr.payment_date
+                      ? <span className="text-success font-medium">{format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy')}</span>
+                      : <span className="text-muted-foreground/50">—</span>
+                    }
+                  </td>
                   <td className="py-3 px-3 text-right">
                     <div className="flex flex-col items-end">
                       <span className={cn('font-bold text-xs', loss > 0 ? 'text-foreground' : 'text-success')}>
@@ -905,7 +1123,11 @@ export default function Financial() {
               ))}
               {patientStats.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum paciente com valor configurado</td>
+                  <td colSpan={8} className="text-center py-10 text-muted-foreground">
+                    {paymentStatusFilter !== 'all' || tableStartDate || tableEndDate
+                      ? 'Nenhum resultado para os filtros aplicados'
+                      : 'Nenhum paciente com valor configurado'}
+                  </td>
                 </tr>
               )}
             </tbody>
