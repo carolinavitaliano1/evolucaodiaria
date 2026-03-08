@@ -258,6 +258,7 @@ export default function Team() {
               <ComplianceDashboard
                 clinicId={selectedClinic.id}
                 organizationId={organizationId}
+                onTodayPendingCount={setComplianceBadge}
               />
             )}
             {activeTab === 'compliance' && !organizationId && (
