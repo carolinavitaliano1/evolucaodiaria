@@ -183,16 +183,18 @@ export default function ClinicDetail() {
   }, [id]);
 
 
-  // Load stamps
+  // Load stamps + therapist profile
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
       if (data) {
         setStamps(data);
-        const defaultStamp = data.find(s => s.is_default);
+        const defaultStamp = data.find((s: any) => s.is_default);
         if (defaultStamp) setBatchGlobalStampId(defaultStamp.id);
       }
     });
+    supabase.from('profiles').select('name, professional_id').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
 
   // Load clinic templates
