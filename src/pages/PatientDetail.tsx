@@ -948,6 +948,8 @@ export default function PatientDetail() {
     setPrLocation(clinic?.address || '');
     // Reset session fields
     setPrSessions('');
+    setPrSelectedSessions([]);
+    setPrSessionMode('select');
     setPrUnitValue(patient.paymentValue ? patient.paymentValue.toFixed(2) : '');
     // Try to fetch last payment record for amount/date
     if (user && patient.id) {
