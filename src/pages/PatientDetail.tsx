@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -211,6 +212,7 @@ export default function PatientDetail() {
   const [prLocalDate, setPrLocalDate] = useState('');
   const [prSelectedSessions, setPrSelectedSessions] = useState<string[]>([]);
   const [prSessionMode, setPrSessionMode] = useState<'manual' | 'select'>('select');
+  const [prUseResponsible, setPrUseResponsible] = useState(false);
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
 
@@ -890,9 +892,11 @@ export default function PatientDetail() {
         return a < 18;
       } catch { return false; }
     })();
-    const payerName = isMinorPR && patient.responsibleName ? patient.responsibleName : patient.name;
-    const payerCpf = isMinorPR
-      ? ((patient as any).responsible_cpf || (patient as any).responsibleCpf || (patient as any).cpf || null)
+    // Use responsible if patient is minor OR therapist manually chose responsible
+    const useResp = prUseResponsible || isMinorPR;
+    const payerName = useResp && patient.responsibleName ? patient.responsibleName : patient.name;
+    const payerCpf = useResp
+      ? ((patient as any).responsible_cpf || (patient as any).responsibleCpf || null)
       : ((patient as any).cpf || null);
 
     return {
@@ -946,6 +950,18 @@ export default function PatientDetail() {
     setPrPeriod(monthName);
     // Pre-fill location from clinic address
     setPrLocation(clinic?.address || '');
+    // Auto-detect minor and set responsible toggle
+    const isMinorAuto = (() => {
+      if (!patient.birthdate) return false;
+      try {
+        const b = new Date(patient.birthdate + 'T12:00:00');
+        let a = now.getFullYear() - b.getFullYear();
+        const m = now.getMonth() - b.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+        return a < 18;
+      } catch { return false; }
+    })();
+    setPrUseResponsible(isMinorAuto);
     // Reset session fields
     setPrSessions('');
     setPrSelectedSessions([]);
@@ -2042,23 +2058,13 @@ export default function PatientDetail() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
 
-            {/* Missing data warnings */}
+            {/* Missing data warnings — uses prUseResponsible to check correct CPF */}
             {(() => {
-              const isMinorW = (() => {
-                if (!patient.birthdate) return false;
-                try {
-                  const b = new Date(patient.birthdate + 'T12:00:00');
-                  let a = new Date().getFullYear() - b.getFullYear();
-                  const m = new Date().getMonth() - b.getMonth();
-                  if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
-                  return a < 18;
-                } catch { return false; }
-              })();
               const missingTherapistCpf = !therapistProfile?.cpf;
-              const missingPayerCpf = isMinorW
+              const missingPayerCpf = prUseResponsible
                 ? !(patient as any).responsible_cpf
                 : !(patient as any).cpf;
-              const payerLabel = isMinorW ? 'CPF do responsável' : 'CPF do paciente';
+              const payerLabel = prUseResponsible ? 'CPF do responsável financeiro' : 'CPF do paciente';
               const missingClinicCnpj = !clinic?.cnpj;
               const missingClinicAddress = !clinic?.address;
               const warnings: { msg: string; link: string; label: string }[] = [];
@@ -2071,18 +2077,53 @@ export default function PatientDetail() {
                 <div className="space-y-1.5">
                   {warnings.map((w, i) => (
                     <div key={i} className="flex items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs">
-                      <span className="flex items-center gap-1.5 text-destructive/80">
-                        <span>⚠</span>
-                        <span>{w.msg}</span>
-                      </span>
-                      <button
-                        onClick={() => { setPaymentReceiptOpen(false); navigate(w.link); }}
-                        className="shrink-0 text-xs font-medium text-primary underline underline-offset-2 hover:no-underline"
-                      >
-                        {w.label}
-                      </button>
+                      <span className="flex items-center gap-1.5 text-destructive/80"><span>⚠</span><span>{w.msg}</span></span>
+                      <button onClick={() => { setPaymentReceiptOpen(false); navigate(w.link); }}
+                        className="shrink-0 text-xs font-medium text-primary underline underline-offset-2 hover:no-underline">{w.label}</button>
                     </div>
                   ))}
+                </div>
+              );
+            })()}
+
+            {/* Payer toggle */}
+            {(() => {
+              const isMinorAuto = (() => {
+                if (!patient.birthdate) return false;
+                try {
+                  const b = new Date(patient.birthdate + 'T12:00:00');
+                  let a = new Date().getFullYear() - b.getFullYear();
+                  const m = new Date().getMonth() - b.getMonth();
+                  if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
+                  return a < 18;
+                } catch { return false; }
+              })();
+              const payerName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
+              const payerCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
+              return (
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Pagador no recibo</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {prUseResponsible
+                          ? <><span className="text-foreground font-medium">{patient.responsibleName || '[Responsável não cadastrado]'}</span>{payerCpfRaw ? ` · CPF: ${payerCpfRaw}` : ' · CPF não cadastrado'}</>
+                          : <><span className="text-foreground font-medium">{patient.name}</span>{payerCpfRaw ? ` · CPF: ${payerCpfRaw}` : ' · CPF não cadastrado'}</>
+                        }
+                      </p>
+                    </div>
+                    <Switch
+                      checked={prUseResponsible}
+                      onCheckedChange={setPrUseResponsible}
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <span className="text-xs text-muted-foreground">
+                      {isMinorAuto
+                        ? '⚠ Paciente menor de idade — responsável selecionado automaticamente'
+                        : 'Usar responsável financeiro no recibo'}
+                    </span>
+                  </label>
                 </div>
               );
             })()}
@@ -2093,18 +2134,8 @@ export default function PatientDetail() {
                 const prStampPreview = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) : stamps.find(s => s.is_default) || stamps[0];
                 const tName = prStampPreview?.name || therapistProfile?.name || '[Terapeuta]';
                 const tCpf = therapistProfile?.cpf ? `, inscrito(a) no CPF/CNPJ sob o número ${therapistProfile.cpf},` : '';
-                const isMinorPR = (() => {
-                  if (!patient.birthdate) return false;
-                  try {
-                    const b = new Date(patient.birthdate + 'T12:00:00');
-                    let a = new Date().getFullYear() - b.getFullYear();
-                    const m = new Date().getMonth() - b.getMonth();
-                    if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
-                    return a < 18;
-                  } catch { return false; }
-                })();
-                const pName = isMinorPR && patient.responsibleName ? patient.responsibleName : patient.name;
-                const pCpfRaw = isMinorPR ? (patient as any).responsible_cpf : (patient as any).cpf;
+                const pName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
+                const pCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
                 const pCpf = pCpfRaw ? `, inscrito(a) no CPF sob o número ${pCpfRaw},` : '';
                 const amtDisplay = prAmount ? `R$ ${parseFloat(prAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ [valor]';
                 const dateDisplay = prPaymentDate ? format(new Date(prPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '___/___/______';
@@ -2115,182 +2146,145 @@ export default function PatientDetail() {
               })()}
             </div>
 
-            {/* Sessions selector / calculator */}
+            {/* Sessions selector — only shows performed (billable) sessions */}
             <div className="border border-border rounded-lg overflow-hidden">
-              {/* Mode tabs */}
               <div className="flex border-b border-border">
-                <button
-                  onClick={() => setPrSessionMode('select')}
+                <button onClick={() => setPrSessionMode('select')}
                   className={cn('flex-1 text-xs py-2 font-medium transition-colors',
-                    prSessionMode === 'select' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}
-                >
+                    prSessionMode === 'select' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}>
                   Selecionar Sessões
                 </button>
-                <button
-                  onClick={() => { setPrSessionMode('manual'); setPrSelectedSessions([]); }}
+                <button onClick={() => { setPrSessionMode('manual'); setPrSelectedSessions([]); }}
                   className={cn('flex-1 text-xs py-2 font-medium transition-colors',
-                    prSessionMode === 'manual' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}
-                >
+                    prSessionMode === 'manual' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}>
                   Digitar Manualmente
                 </button>
               </div>
-
               <div className="p-3 space-y-2">
-                {prSessionMode === 'select' ? (
-                  <>
-                    {/* Session list */}
-                    {evolutions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-2">Nenhuma evolução registrada.</p>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-muted-foreground">
-                            {prSelectedSessions.length > 0
-                              ? `${prSelectedSessions.length} sessão(ões) selecionada(s)`
-                              : 'Selecione as sessões realizadas'}
-                          </span>
-                          <button
-                            onClick={() => {
-                              const presentes = evolutions.filter(e => ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus));
-                              if (prSelectedSessions.length === presentes.length) {
-                                setPrSelectedSessions([]);
-                                setPrAmount('');
-                                setPrPeriod('');
-                                setPrSessions('');
-                              } else {
-                                const ids = presentes.map(e => e.id);
-                                setPrSelectedSessions(ids);
-                                const unit = parseFloat(prUnitValue);
-                                if (!isNaN(unit) && unit > 0) setPrAmount((ids.length * unit).toFixed(2));
-                                setPrSessions(String(ids.length));
-                                if (presentes.length > 0) {
-                                  const sorted = [...presentes].sort((a, b) => a.date.localeCompare(b.date));
-                                  const first = format(new Date(sorted[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-                                  const last = format(new Date(sorted[sorted.length - 1].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-                                  setPrPeriod(first === last ? first : `${first} a ${last}`);
-                                }
-                              }
-                            }}
-                            className="text-xs text-primary underline underline-offset-2"
-                          >
-                            {prSelectedSessions.length === evolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus)).length
-                              ? 'Desmarcar todas' : 'Marcar pagas'}
-                          </button>
-                        </div>
-                        <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                          {[...evolutions].sort((a, b) => b.date.localeCompare(a.date)).map(evo => {
-                            const isPaid = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(evo.attendanceStatus);
-                            const statusLabel: Record<string, string> = {
-                              presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Rem.',
-                              reposicao: 'Reposição', feriado_remunerado: 'Feriado Rem.', feriado_nao_remunerado: 'Feriado'
-                            };
-                            const checked = prSelectedSessions.includes(evo.id);
-                            return (
-                              <label
-                                key={evo.id}
-                                className={cn(
-                                  'flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors text-xs',
-                                  checked ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted/60 border border-transparent',
-                                  !isPaid && 'opacity-50'
-                                )}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={e => {
-                                    const newSelected = e.target.checked
-                                      ? [...prSelectedSessions, evo.id]
-                                      : prSelectedSessions.filter(id => id !== evo.id);
-                                    setPrSelectedSessions(newSelected);
-                                    const unit = parseFloat(prUnitValue);
-                                    if (!isNaN(unit) && unit > 0) setPrAmount((newSelected.length * unit).toFixed(2));
-                                    setPrSessions(String(newSelected.length));
-                                    if (newSelected.length > 0) {
-                                      const selectedEvos = evolutions.filter(ev => newSelected.includes(ev.id));
-                                      const sorted = [...selectedEvos].sort((a, b) => a.date.localeCompare(b.date));
-                                      const first = format(new Date(sorted[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-                                      const last = format(new Date(sorted[sorted.length - 1].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-                                      setPrPeriod(first === last ? first : `${first} a ${last}`);
-                                    } else {
-                                      setPrPeriod('');
-                                    }
-                                  }}
-                                  className="accent-primary"
-                                />
-                                <span className="flex-1 font-medium">
-                                  {format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                                </span>
-                                <span className={cn('text-xs', isPaid ? 'text-success' : 'text-muted-foreground')}>
-                                  {statusLabel[evo.attendanceStatus] || evo.attendanceStatus}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                        <div>
-                          <Label className="text-xs mb-1 block text-muted-foreground">Valor por Sessão (R$)</Label>
-                          <Input
-                            type="number" min="0" step="0.01"
-                            value={prUnitValue}
-                            onChange={e => {
-                              const u = e.target.value;
-                              setPrUnitValue(u);
-                              const unit = parseFloat(u);
-                              if (!isNaN(unit) && unit > 0 && prSelectedSessions.length > 0) {
-                                setPrAmount((prSelectedSessions.length * unit).toFixed(2));
-                              }
-                            }}
-                            placeholder="0,00"
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  /* Manual mode */
+                {prSessionMode === 'select' ? (() => {
+                  // Only billable sessions are selectable
+                  const billable = [...evolutions]
+                    .filter(e => ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus))
+                    .sort((a, b) => b.date.localeCompare(a.date));
+                  const statusLabel: Record<string, string> = {
+                    presente: 'Presente', falta_remunerada: 'Falta Rem.',
+                    reposicao: 'Reposição', feriado_remunerado: 'Feriado Rem.',
+                  };
+                  if (billable.length === 0) return (
+                    <p className="text-xs text-muted-foreground text-center py-2">Nenhuma sessão realizada registrada.</p>
+                  );
+                  const allSelected = prSelectedSessions.length === billable.length && billable.length > 0;
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-muted-foreground">
+                          {prSelectedSessions.length > 0
+                            ? `${prSelectedSessions.length} sessão(ões) selecionada(s)`
+                            : `${billable.length} sessão(ões) realizada(s) disponível(is)`}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (allSelected) {
+                              setPrSelectedSessions([]); setPrAmount(''); setPrPeriod(''); setPrSessions('');
+                            } else {
+                              const ids = billable.map(e => e.id);
+                              setPrSelectedSessions(ids);
+                              const unit = parseFloat(prUnitValue);
+                              if (!isNaN(unit) && unit > 0) setPrAmount((ids.length * unit).toFixed(2));
+                              setPrSessions(String(ids.length));
+                              const sorted = [...billable].sort((a, b) => a.date.localeCompare(b.date));
+                              const first = format(new Date(sorted[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+                              const last = format(new Date(sorted[sorted.length - 1].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+                              setPrPeriod(first === last ? first : `${first} a ${last}`);
+                            }
+                          }}
+                          className="text-xs text-primary underline underline-offset-2"
+                        >
+                          {allSelected ? 'Desmarcar todas' : 'Selecionar todas'}
+                        </button>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                        {billable.map(evo => {
+                          const checked = prSelectedSessions.includes(evo.id);
+                          return (
+                            <label key={evo.id}
+                              className={cn('flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors text-xs border',
+                                checked ? 'bg-primary/10 border-primary/30' : 'border-transparent hover:bg-muted/60')}>
+                              <input type="checkbox" checked={checked} className="accent-primary"
+                                onChange={e => {
+                                  const newSelected = e.target.checked
+                                    ? [...prSelectedSessions, evo.id]
+                                    : prSelectedSessions.filter(id => id !== evo.id);
+                                  setPrSelectedSessions(newSelected);
+                                  const unit = parseFloat(prUnitValue);
+                                  if (!isNaN(unit) && unit > 0) setPrAmount((newSelected.length * unit).toFixed(2));
+                                  setPrSessions(String(newSelected.length));
+                                  if (newSelected.length > 0) {
+                                    const sel = evolutions.filter(ev => newSelected.includes(ev.id));
+                                    const s = [...sel].sort((a, b) => a.date.localeCompare(b.date));
+                                    const first = format(new Date(s[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+                                    const last = format(new Date(s[s.length-1].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+                                    setPrPeriod(first === last ? first : `${first} a ${last}`);
+                                  } else { setPrPeriod(''); }
+                                }}
+                              />
+                              <span className="flex-1 font-medium">{format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                              <span className="text-success text-xs">{statusLabel[evo.attendanceStatus] || evo.attendanceStatus}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block text-muted-foreground">Valor por Sessão (R$)</Label>
+                        <Input type="number" min="0" step="0.01" value={prUnitValue} placeholder="0,00" className="h-8 text-xs"
+                          onChange={e => {
+                            const u = e.target.value; setPrUnitValue(u);
+                            const unit = parseFloat(u);
+                            if (!isNaN(unit) && unit > 0 && prSelectedSessions.length > 0)
+                              setPrAmount((prSelectedSessions.length * unit).toFixed(2));
+                          }} />
+                      </div>
+                    </>
+                  );
+                })() : (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label className="text-xs mb-1 block text-muted-foreground">Nº de Sessões</Label>
-                      <Input
-                        type="number" min="1" step="1"
-                        value={prSessions}
-                        onChange={e => {
-                          const s = e.target.value;
-                          setPrSessions(s);
-                          const sessions = parseFloat(s);
-                          const unit = parseFloat(prUnitValue);
-                          if (!isNaN(sessions) && !isNaN(unit) && sessions > 0 && unit > 0) {
-                            setPrAmount((sessions * unit).toFixed(2));
-                          }
-                        }}
-                        placeholder="Ex: 4"
-                        className="h-9 text-xs"
-                      />
+                      <Input type="number" min="1" step="1" value={prSessions} placeholder="Ex: 4" className="h-9 text-xs"
+                        onChange={e => { const s = e.target.value; setPrSessions(s); const sessions = parseFloat(s); const unit = parseFloat(prUnitValue); if (!isNaN(sessions) && !isNaN(unit) && sessions > 0 && unit > 0) setPrAmount((sessions * unit).toFixed(2)); }} />
                     </div>
                     <div>
                       <Label className="text-xs mb-1 block text-muted-foreground">Valor por Sessão (R$)</Label>
-                      <Input
-                        type="number" min="0" step="0.01"
-                        value={prUnitValue}
-                        onChange={e => {
-                          const u = e.target.value;
-                          setPrUnitValue(u);
-                          const sessions = parseFloat(prSessions);
-                          const unit = parseFloat(u);
-                          if (!isNaN(sessions) && !isNaN(unit) && sessions > 0 && unit > 0) {
-                            setPrAmount((sessions * unit).toFixed(2));
-                          }
-                        }}
-                        placeholder="0,00"
-                        className="h-9 text-xs"
-                      />
+                      <Input type="number" min="0" step="0.01" value={prUnitValue} placeholder="0,00" className="h-9 text-xs"
+                        onChange={e => { const u = e.target.value; setPrUnitValue(u); const sessions = parseFloat(prSessions); const unit = parseFloat(u); if (!isNaN(sessions) && !isNaN(unit) && sessions > 0 && unit > 0) setPrAmount((sessions * unit).toFixed(2)); }} />
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs mb-1 block">Valor Total (R$)</Label>
+                <Input
+                  type="number" step="0.01" min="0"
+                  value={prAmount}
+                  onChange={e => { setPrAmount(e.target.value); setPrSessions(''); }}
+                  placeholder="0,00"
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={prPaymentDate}
+                  onChange={e => setPrPaymentDate(e.target.value)}
+                  className="h-9 text-xs"
+                 />
+              </div>
+            </div>
             {/* Fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
