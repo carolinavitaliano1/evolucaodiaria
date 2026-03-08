@@ -652,6 +652,51 @@ export default function PatientDetail() {
     finally { setIsExportingFiscalPdf(false); }
   };
 
+  const handleSaveFiscalToDocuments = async () => {
+    if (!fiscalStartDate || !fiscalEndDate || !patient || !user) return;
+    if (getFiscalEvolutions().length === 0) { toast.error('Nenhuma sessão no período selecionado.'); return; }
+    setIsSavingFiscalToDocuments(true);
+    try {
+      // Generate PDF blob without downloading
+      const blob = await generateFiscalReceiptPdf(buildFiscalReceiptOpts(), true);
+
+      const safeName = patient.name.replace(/\s+/g, '-').toLowerCase();
+      const safeStart = format(fiscalStartDate, 'yyyy-MM-dd');
+      const safeEnd = format(fiscalEndDate, 'yyyy-MM-dd');
+      const fileName = `recibo-fiscal-${safeName}-${safeStart}_${safeEnd}.pdf`;
+      const filePath = `${user.id}/fiscal/${patient.id}/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(filePath, blob, { contentType: 'application/pdf', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Save record in attachments table
+      const { error: dbError } = await supabase.from('attachments').insert({
+        user_id: user.id,
+        parent_id: patient.id,
+        parent_type: 'patient',
+        name: fileName,
+        file_path: filePath,
+        file_type: 'application/pdf',
+        file_size: blob.size,
+      });
+
+      if (dbError) throw dbError;
+
+      // Refresh patient attachments in the app state
+      await loadAttachmentsForPatient(patient.id);
+      toast.success('Recibo fiscal salvo nos documentos do paciente!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao salvar o recibo nos documentos.');
+    } finally {
+      setIsSavingFiscalToDocuments(false);
+    }
+  };
+
   const handleExportFiscalWord = async () => {
     if (!fiscalStartDate || !fiscalEndDate) return;
     const fiscalEvos = getFiscalEvolutions();
