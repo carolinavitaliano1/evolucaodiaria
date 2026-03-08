@@ -509,6 +509,12 @@ export default function AIReports() {
       clinicCnpj: clinic?.cnpj,
       clinicPhone: clinic?.phone,
       clinicServicesDescription: clinic?.servicesDescription,
+      therapistName: therapistProfile?.name || undefined,
+      therapistProfessionalId: therapistProfile?.professional_id || undefined,
+      therapistCbo: defaultStamp?.cbo || undefined,
+      therapistClinicalArea: defaultStamp?.clinical_area || undefined,
+      therapistStampImage: defaultStamp?.stamp_image || undefined,
+      therapistSignatureImage: defaultStamp?.signature_image || undefined,
     });
   };
 
