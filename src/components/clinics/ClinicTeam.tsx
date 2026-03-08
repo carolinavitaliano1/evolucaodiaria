@@ -544,7 +544,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
         </div>
 
         {canManage && (
-          <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); } }}>
+          <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); setInvitePreset('terapeuta'); } }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2 shrink-0">
                 <UserPlus className="w-4 h-4" />
@@ -562,28 +562,52 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
               </DialogHeader>
               <ScrollArea className="flex-1 overflow-y-auto pr-1">
                 <div className="space-y-5 pt-2 pb-2">
-                  {/* Basic info */}
+                  {/* E-mail */}
+                  <div className="space-y-1.5">
+                    <Label>E-mail do colaborador</Label>
+                    <Input type="email" placeholder="colaborador@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+                  </div>
+
+                  <Separator />
+
+                  {/* Preset role cards */}
                   <div className="space-y-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Identificação</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5 col-span-2">
-                        <Label>E-mail do colaborador</Label>
-                        <Input type="email" placeholder="colaborador@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Cargo inicial</Label>
-                        <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="professional">Profissional / Terapeuta</SelectItem>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Especialidade / Título <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
-                        <Input placeholder="Ex: Fonoaudióloga, Secretária..." value={inviteRoleLabel} onChange={e => setInviteRoleLabel(e.target.value)} />
-                      </div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tipo de Cargo</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PRESET_ROLES.map(preset => {
+                        const Icon = getPresetIcon(preset.icon);
+                        const isSelected = invitePreset === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => setInvitePreset(preset.id)}
+                            className={cn(
+                              'text-left p-3 rounded-lg border-2 transition-all flex flex-col gap-1',
+                              isSelected
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/40 bg-card'
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                'w-7 h-7 rounded-md flex items-center justify-center',
+                                isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                              )}>
+                                <Icon className="w-3.5 h-3.5" />
+                              </div>
+                              <span className={cn('text-sm font-semibold', isSelected ? 'text-primary' : 'text-foreground')}>
+                                {preset.label}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-tight">{preset.description}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Especialidade / Título personalizado <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
+                      <Input placeholder="Ex: Fonoaudióloga, Aux. Administrativo..." value={inviteRoleLabel} onChange={e => setInviteRoleLabel(e.target.value)} />
                     </div>
                   </div>
 
