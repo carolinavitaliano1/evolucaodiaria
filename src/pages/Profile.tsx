@@ -549,6 +549,34 @@ export default function Profile() {
               />
             </div>
           </div>
+
+          {/* Fiscal fields section */}
+          <div className="border-t border-border pt-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-0.5">🧾 Dados para Nota Fiscal / Recibo</p>
+              <p className="text-xs text-muted-foreground">Esses dados são usados automaticamente ao gerar extratos fiscais.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF do Terapeuta</Label>
+                <Input
+                  id="cpf"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cbo">CBO <span className="text-muted-foreground font-normal text-xs">(Classificação Brasileira de Ocupações)</span></Label>
+                <Input
+                  id="cbo"
+                  value={cbo}
+                  onChange={(e) => setCbo(e.target.value)}
+                  placeholder="Ex: 2515-35 (Psicólogo Clínico)"
+                />
+              </div>
+            </div>
+          </div>
           <div className="flex justify-end">
             <Button onClick={saveProfile} disabled={saving}>
               {saving ? 'Salvando...' : 'Salvar Perfil'}
