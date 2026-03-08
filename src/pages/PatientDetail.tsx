@@ -1,8 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
+import { usePatientAssignments } from '@/hooks/usePatientAssignments';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -129,10 +132,18 @@ export default function PatientDetail() {
     addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages, loadEvolutionsForClinic, loadAttachmentsForPatient } = useApp();
   const { user } = useAuth();
   const { customMoods } = useCustomMoods();
+  const { permissions: orgPermissions, isOwner: isOrgOwner } = useOrgPermissions();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
   const { isOrg, members } = useClinicOrg(patient?.clinicId || '');
+  const { assignments: therapistAssignments, allMembers: orgMembers, loading: assignmentsLoading, canManage: canManageAssignments, toggleAssignment, updateScheduleTime } = usePatientAssignments(id || '', patient?.clinicId || '');
+
+  // Whether current user can see clinical content
+  const canSeeClinical = !orgPermissions.includes('patients.own_only') || isOrgOwner ||
+    orgPermissions.includes('evolutions.view');
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [assignmentScheduleTimes, setAssignmentScheduleTimes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!patient?.clinicId) return;
@@ -1387,6 +1398,120 @@ export default function PatientDetail() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Therapist Assignments Card */}
+      {isOrg && (therapistAssignments.length > 0 || canManageAssignments) && (
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-primary" />
+              <h2 className="font-semibold text-foreground text-sm">Terapeutas Responsáveis</h2>
+              {therapistAssignments.length > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary/10 text-primary">
+                  {therapistAssignments.length}
+                </span>
+              )}
+            </div>
+            {canManageAssignments && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={() => setAssignmentDialogOpen(true)}>
+                <Pencil className="w-3 h-3" /> Editar vínculos
+              </Button>
+            )}
+          </div>
+          <div className="p-4">
+            {therapistAssignments.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic text-center py-3">
+                Nenhum terapeuta vinculado a este paciente.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {therapistAssignments.map(t => (
+                  <div key={t.memberId} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-muted/50 border border-border">
+                    <Avatar className="w-8 h-8">
+                      {t.avatarUrl && <AvatarImage src={t.avatarUrl} />}
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
+                        {(t.name || t.email)[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium text-foreground leading-tight">
+                        {t.name || t.email}
+                      </p>
+                      {t.scheduleTime && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {t.scheduleTime}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Assignment Management Dialog */}
+      {canManageAssignments && (
+        <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-primary" />
+                Terapeutas Responsáveis
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Selecione os terapeutas responsáveis por <strong>{patient.name}</strong>.
+            </p>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {orgMembers.map(member => {
+                const isAssigned = therapistAssignments.some(a => a.memberId === member.memberId);
+                const localTime = assignmentScheduleTimes[member.memberId] ?? (isAssigned ? member.scheduleTime || '' : '');
+                return (
+                  <div key={member.memberId} className="space-y-1.5">
+                    <div
+                      className={cn(
+                        'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                        isAssigned ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
+                      )}
+                      onClick={() => toggleAssignment(member, localTime || undefined)}
+                    >
+                      <Avatar className="w-8 h-8">
+                        {member.avatarUrl && <AvatarImage src={member.avatarUrl} />}
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
+                          {(member.name || member.email)[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{member.name || member.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                      </div>
+                      {isAssigned && <UserCheck className="w-4 h-4 text-primary shrink-0" />}
+                    </div>
+                    {isAssigned && (
+                      <div className="pl-3">
+                        <input
+                          type="text"
+                          placeholder="Horário (ex: 14:00)"
+                          defaultValue={member.scheduleTime || ''}
+                          className="w-full text-xs px-2 py-1 rounded border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          onChange={e => setAssignmentScheduleTimes(prev => ({ ...prev, [member.memberId]: e.target.value }))}
+                          onBlur={e => updateScheduleTime(member.memberId, e.target.value)}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => setAssignmentDialogOpen(false)}>Concluir</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Mood Chart */}

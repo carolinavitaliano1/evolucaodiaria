@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2 } from 'lucide-react';
+import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/contexts/AppContext';
@@ -17,6 +17,8 @@ import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
+import { useMyAssignedPatientIds } from '@/hooks/usePatientAssignments';
 
 function calculateAge(birthdate: string | null | undefined): number | null {
   if (!birthdate) return null;
@@ -38,6 +40,9 @@ export default function Patients() {
   const navigate = useNavigate();
   const { patients, clinics, evolutions, setCurrentPatient, getClinicPackages } = useApp();
   const { user } = useAuth();
+  const { permissions: orgPermissions, isOwner: isOrgOwner, isOrgMember } = useOrgPermissions();
+  const { assignedPatientIds, loading: assignmentsLoading } = useMyAssignedPatientIds();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -46,6 +51,10 @@ export default function Patients() {
   const [endDate, setEndDate] = useState<Date>();
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [profile, setProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
+
+  // Permission-based flags
+  const ownOnly = isOrgMember && hasPermission(orgPermissions, 'patients.own_only') && !isOrgOwner;
+  const canSeeClinical = !isOrgMember || isOrgOwner || hasPermission(orgPermissions, 'evolutions.view');
 
   useEffect(() => {
     if (!user) return;
@@ -57,15 +66,23 @@ export default function Patients() {
     });
   }, [user]);
 
+  // Base patient list filtered by own_only permission
+  const visiblePatients = useMemo(() => {
+    if (ownOnly && !assignmentsLoading) {
+      return patients.filter(p => assignedPatientIds.has(p.id));
+    }
+    return patients;
+  }, [patients, ownOnly, assignedPatientIds, assignmentsLoading]);
+
   const filteredPatients = useMemo(() => {
-    if (!searchTerm.trim()) return patients;
+    if (!searchTerm.trim()) return visiblePatients;
     const term = searchTerm.toLowerCase();
-    return patients.filter(p => 
+    return visiblePatients.filter(p =>
       p.name.toLowerCase().includes(term) ||
-      p.clinicalArea?.toLowerCase().includes(term) ||
-      p.diagnosis?.toLowerCase().includes(term)
+      (canSeeClinical && p.clinicalArea?.toLowerCase().includes(term)) ||
+      (canSeeClinical && p.diagnosis?.toLowerCase().includes(term))
     );
-  }, [patients, searchTerm]);
+  }, [visiblePatients, searchTerm, canSeeClinical]);
 
   const handleOpenPatient = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
@@ -578,7 +595,9 @@ export default function Patients() {
             Pacientes
           </h1>
           <p className="text-sm text-muted-foreground">
-            Busque e gerencie todos os seus pacientes
+            {ownOnly
+              ? 'Exibindo apenas seus pacientes vinculados'
+              : 'Busque e gerencie todos os seus pacientes'}
           </p>
         </div>
         <Button onClick={() => navigate('/clinics')} className="gap-2">
@@ -587,13 +606,21 @@ export default function Patients() {
         </Button>
       </div>
 
+      {/* own_only banner */}
+      {ownOnly && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20 text-sm text-primary mb-4">
+          <Lock className="w-3.5 h-3.5 shrink-0" />
+          <span>Você está vendo apenas os pacientes vinculados à sua conta. Contate o administrador para alterar os vínculos.</span>
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Buscar por nome, área clínica ou diagnóstico..."
+          placeholder={canSeeClinical ? 'Buscar por nome, área clínica ou diagnóstico...' : 'Buscar por nome...'}
           className="pl-10"
         />
       </div>
@@ -606,8 +633,8 @@ export default function Patients() {
               <Users className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{patients.length}</p>
-              <p className="text-xs text-muted-foreground">Total de Pacientes</p>
+              <p className="text-2xl font-bold text-foreground">{visiblePatients.length}</p>
+              <p className="text-xs text-muted-foreground">{ownOnly ? 'Meus Pacientes' : 'Total de Pacientes'}</p>
             </div>
           </div>
         </div>
@@ -674,18 +701,26 @@ export default function Patients() {
                         {patient.phone}
                       </span>
                     )}
-                    {patient.clinicalArea && (
+                    {patient.clinicalArea && canSeeClinical && (
                       <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                         {patient.clinicalArea}
                       </span>
                     )}
-                    <span className="bg-secondary px-2 py-0.5 rounded-full">
-                      {patientEvolutions.length} evoluções
-                    </span>
+                    {!canSeeClinical && (
+                      <span className="flex items-center gap-1 text-muted-foreground/60 italic">
+                        <EyeOff className="w-3 h-3" /> Dados clínicos restritos
+                      </span>
+                    )}
+                    {canSeeClinical && (
+                      <span className="bg-secondary px-2 py-0.5 rounded-full">
+                        {patientEvolutions.length} evoluções
+                      </span>
+                    )}
                   </div>
                 </div>
                 
-                {/* Export Buttons */}
+                {/* Export Buttons — only shown to users with clinical access */}
+                {canSeeClinical && (
                 <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
                   <Button
                     variant="outline"
@@ -720,10 +755,11 @@ export default function Patients() {
                       openExportDialog(patient.id, 'financial');
                     }}
                   >
-                    <DollarSign className="w-3.5 h-3.5" />
+                   <DollarSign className="w-3.5 h-3.5" />
                     Financeiro
                   </Button>
                 </div>
+                )}
               </div>
             );
           })}
