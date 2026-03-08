@@ -385,7 +385,7 @@ export default function Clinics() {
           <TabsList className="bg-secondary/50">
             <TabsTrigger value="clinics" className="gap-1.5 text-xs sm:text-sm">
               <Building2 className="w-3.5 h-3.5" />
-              Clínicas
+              Clínicas | Consultórios
             </TabsTrigger>
             <TabsTrigger value="meus-servicos" className="gap-1.5 text-xs sm:text-sm">
               <Briefcase className="w-3.5 h-3.5" />
