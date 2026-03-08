@@ -768,7 +768,7 @@ export default function PatientDetail() {
         ${(fiscalStamp?.name || therapistProfile?.name) ? `<p><strong>Nome:</strong> ${fiscalStamp?.name || therapistProfile?.name}</p>` : ''}
         ${therapistProfile?.professional_id ? `<p><strong>Registro:</strong> ${therapistProfile.professional_id}</p>` : ''}
         ${therapistProfile?.cpf ? `<p><strong>CPF:</strong> ${formatCpf(therapistProfile.cpf)}</p>` : ''}
-        ${therapistProfile?.cbo ? `<p><strong>CBO:</strong> ${therapistProfile.cbo}</p>` : ''}
+        ${(fiscalStamp?.cbo) ? `<p><strong>CBO:</strong> ${fiscalStamp.cbo}</p>` : ''}
         ${fiscalStamp?.clinical_area ? `<p><strong>Área:</strong> ${fiscalStamp.clinical_area}</p>` : ''}
         ${clinic?.name ? `<p><strong>Clínica:</strong> ${clinic.name}</p>` : ''}
         ${clinic?.cnpj ? `<p><strong>CNPJ:</strong> ${formatCpf(clinic.cnpj)}</p>` : ''}
