@@ -247,7 +247,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const totalPaidAbsences = paidAbsenceEvos.length;
   const totalReposicoes = reposicaoEvos.length;
 
-  const patientBreakdown = clinicPatients
+  const allPatientBreakdown = clinicPatients
     .map(patient => ({
       patient,
       revenue: calculatePatientRevenue(patient.id),
@@ -258,6 +258,16 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     }))
     .filter(p => p.revenue > 0 || p.sessions > 0 || p.absences > 0)
     .sort((a, b) => b.revenue - a.revenue);
+
+  const patientBreakdown = allPatientBreakdown.filter(({ patient }) => {
+    const pr = patientPaymentRecords[patient.id];
+    if (paymentFilter === 'paid' && !pr?.paid) return false;
+    if (paymentFilter === 'pending' && pr?.paid) return false;
+    if (filterStartDate && pr?.payment_date && pr.payment_date < filterStartDate) return false;
+    if (filterEndDate && pr?.payment_date && pr.payment_date > filterEndDate) return false;
+    if ((filterStartDate || filterEndDate) && paymentFilter === 'paid' && !pr?.payment_date) return false;
+    return true;
+  });
 
   const statusConfig = {
     'agendado': { label: 'Agendado', icon: Clock, className: 'text-primary bg-primary/10' },

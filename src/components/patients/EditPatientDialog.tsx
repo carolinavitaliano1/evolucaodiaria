@@ -28,9 +28,11 @@ interface EditPatientDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (id: string, updates: Partial<Patient>) => void;
   clinicPackages?: ClinicPackage[];
+  clinicType?: 'propria' | 'terceirizada';
 }
 
-export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicPackages = [] }: EditPatientDialogProps) {
+export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicPackages = [], clinicType }: EditPatientDialogProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     birthdate: '',
@@ -49,7 +51,18 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     paymentType: '' as '' | 'sessao' | 'fixo',
     paymentValue: '',
     packageId: '',
+    paymentDueDay: '',
   });
+
+  // Payment status for current month (propria only)
+  const [currentPaymentRecord, setCurrentPaymentRecord] = useState<any>(null);
+  const [initialPaymentStatus, setInitialPaymentStatus] = useState(false);
+  const [initialPaymentDate, setInitialPaymentDate] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
+
+  const isPropria = clinicType === 'propria';
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     if (open && patient) {
@@ -72,11 +85,56 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         paymentType: (patient.paymentType || '') as '' | 'sessao' | 'fixo',
         paymentValue: patient.paymentValue?.toString() || '',
         packageId: patient.packageId || '',
+        paymentDueDay: p.payment_due_day?.toString() || '',
       });
-    }
-  }, [open, patient]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+      // Load current month payment record for propria
+      if (isPropria && user) {
+        supabase
+          .from('patient_payment_records' as any)
+          .select('*')
+          .eq('patient_id', patient.id)
+          .eq('month', currentMonth)
+          .eq('year', currentYear)
+          .maybeSingle()
+          .then(({ data }) => {
+            setCurrentPaymentRecord(data);
+            setInitialPaymentStatus((data as any)?.paid || false);
+            setInitialPaymentDate((data as any)?.payment_date || '');
+          });
+      }
+    }
+  }, [open, patient, isPropria, user]);
+
+  const handleSavePaymentRecord = async (paid: boolean, paymentDate: string) => {
+    if (!user || !isPropria) return;
+    setSavingPayment(true);
+    try {
+      const revenue = patient.paymentValue || 0;
+      if (currentPaymentRecord?.id) {
+        await supabase.from('patient_payment_records' as any).update({
+          paid,
+          payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+        }).eq('id', currentPaymentRecord.id);
+      } else {
+        const { data } = await supabase.from('patient_payment_records' as any).insert({
+          user_id: user.id,
+          patient_id: patient.id,
+          clinic_id: patient.clinicId,
+          month: currentMonth,
+          year: currentYear,
+          amount: revenue,
+          paid,
+          payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+        }).select().maybeSingle();
+        setCurrentPaymentRecord(data);
+      }
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.birthdate) return;
 
@@ -87,7 +145,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     onSave(patient.id, {
       name: formData.name,
       birthdate: formData.birthdate,
-      ...(formData.cpf && { cpf: formData.cpf } as any),
+      ...(formData.cpf !== undefined && { cpf: formData.cpf } as any),
       phone: formData.phone || undefined,
       clinicalArea: formData.clinicalArea || undefined,
       diagnosis: formData.diagnosis || undefined,
@@ -103,7 +161,16 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       paymentType: formData.paymentType as 'sessao' | 'fixo' | undefined,
       paymentValue: formData.paymentValue ? parseFloat(formData.paymentValue) : undefined,
       packageId: formData.packageId || undefined,
+      ...(formData.paymentDueDay && { payment_due_day: parseInt(formData.paymentDueDay) } as any),
     });
+
+    // Save payment record if propria and status changed
+    if (isPropria) {
+      const wasPaid = currentPaymentRecord?.paid || false;
+      if (initialPaymentStatus !== wasPaid || initialPaymentDate !== (currentPaymentRecord?.payment_date || '')) {
+        // already saved via toggle, no need to re-save
+      }
+    }
 
     toast.success('Paciente atualizado!');
     onOpenChange(false);
