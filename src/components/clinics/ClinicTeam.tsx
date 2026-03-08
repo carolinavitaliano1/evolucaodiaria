@@ -431,8 +431,6 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
     setEditPermissions(
       member.permissions.length > 0
         ? [...member.permissions]
-        : member.role === 'admin'
-        ? [...DEFAULT_ADMIN_PERMISSIONS]
         : [...DEFAULT_THERAPIST_PERMISSIONS]
     );
     setEditRoleLabel(member.role_label || '');
