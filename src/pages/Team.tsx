@@ -239,6 +239,11 @@ export default function Team() {
             >
               <ClipboardCheck className="w-4 h-4" />
               Conformidade
+              {complianceBadge > 0 && (
+                <span className="w-4 h-4 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
+                  {complianceBadge > 9 ? '9+' : complianceBadge}
+                </span>
+              )}
             </button>
           </div>
         )}
