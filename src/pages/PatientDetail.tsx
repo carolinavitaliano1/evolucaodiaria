@@ -494,15 +494,15 @@ export default function PatientDetail() {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('RELATÓRIO MENSAL DE ATENDIMENTO', margin, y);
-      y += 7;
+      y += 6;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...mutedText);
       doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, y);
-      y += 5;
+      y += 4;
       doc.setDrawColor(...borderColor);
       doc.line(margin, y, W - margin, y);
-      y += 8;
+      y += 6;
 
       // ── IDENTIFICAÇÃO ────────────────────────────────────────────
       const idLines: [string, string][] = [];
@@ -526,16 +526,16 @@ export default function PatientDetail() {
         doc.setTextColor(...mutedText);
         const wrapped = doc.splitTextToSize(value, contentW - 52);
         doc.text(wrapped, margin + 52, y);
-        y += wrapped.length > 1 ? wrapped.length * 5 + 1 : 6;
+        y += wrapped.length > 1 ? wrapped.length * 4.5 + 1 : 5;
       });
 
       doc.setDrawColor(...borderColor);
       doc.line(margin, y + 2, W - margin, y + 2);
-      y += 10;
+      y += 7;
 
       // ── 1. RESUMO DE FREQUÊNCIA ──────────────────────────────────
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text('1. RESUMO DE FREQUÊNCIA', margin, y); y += 8;
+      doc.text('1. RESUMO DE FREQUÊNCIA', margin, y); y += 6;
 
       const summaryRows: [string, string][] = [
         ['Total de sessões registradas:', String(monthlyTotal)],
@@ -550,23 +550,23 @@ export default function PatientDetail() {
         doc.text(label, margin + 4, y);
         doc.setFont('helvetica', 'bold');
         doc.text(value, W - margin - 2, y, { align: 'right' });
-        y += 6;
+        y += 5;
       });
-      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+      doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 7;
 
       // ── 2. HUMOR ─────────────────────────────────────────────────
       const moodsWithData = monthlyMoodCounts.filter(m => m.count > 0);
       if (moodsWithData.length > 0) {
         doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-        doc.text('2. HUMOR DO MÊS', margin, y); y += 8;
+        doc.text('2. HUMOR DO MÊS', margin, y); y += 6;
         moodsWithData.forEach(m => {
           doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkText);
           doc.text(`${m.label}:`, margin + 4, y);
           doc.setFont('helvetica', 'bold');
           doc.text(String(m.count), W - margin - 2, y, { align: 'right' });
-          y += 6;
+          y += 5;
         });
-        doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 10;
+        doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 7;
       }
 
       // ── 3. REGISTRO DAS SESSÕES ──────────────────────────────────
@@ -578,30 +578,30 @@ export default function PatientDetail() {
         presente: 'Presente', falta: 'Falta', reposicao: 'Reposição',
       };
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text(`${section3}. REGISTRO DAS SESSÕES (${visibleEvolutions.length})`, margin, y); y += 8;
+      doc.text(`${section3}. REGISTRO DAS SESSÕES (${visibleEvolutions.length})`, margin, y); y += 6;
 
       for (const evo of visibleEvolutions) {
-        if (y > 252) { doc.addPage(); y = margin; }
+        if (y > 260) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = statusLabelMap[evo.attendanceStatus] || evo.attendanceStatus;
         const moodInfo = getMoodInfo(evo.mood, customMoods);
         doc.setDrawColor(...borderColor);
         doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
-        doc.text(dateStr, margin + 2, y + 5);
+        doc.text(dateStr, margin + 2, y + 4);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
-        doc.text(`Status: ${status}`, margin + 32, y + 5);
-        if (moodInfo) doc.text(`Humor: ${moodInfo.label}`, margin + 100, y + 5);
-        y += 9;
+        doc.text(`Status: ${status}`, margin + 32, y + 4);
+        if (moodInfo) doc.text(`Humor: ${moodInfo.label}`, margin + 100, y + 4);
+        y += 7;
         if (evo.text) {
           doc.setTextColor(...darkText); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
           const textLines = doc.splitTextToSize(evo.text, contentW - 4);
           textLines.forEach((line: string) => {
-            if (y > 268) { doc.addPage(); y = margin; }
-            doc.text(line, margin + 2, y); y += 5;
+            if (y > 272) { doc.addPage(); y = margin; }
+            doc.text(line, margin + 2, y); y += 4.5;
           });
-          y += 3;
-        } else { y += 2; }
+          y += 2;
+        } else { y += 1; }
       }
 
       // ── ASSINATURA (sempre presente) ─────────────────────────────
