@@ -16,7 +16,7 @@ import {
   Sparkles, FileText, Send, Loader2, Download, Copy, UserSearch, MessageSquare,
   Save, FolderOpen, Trash2, Bold, Italic, Underline as UnderlineIcon, AlignLeft,
   AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Type, List, Share2, Mail, Link2,
-  MoveLeft, MoveHorizontal, MoveRight
+  MoveLeft, MoveHorizontal, MoveRight, LockKeyhole
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
