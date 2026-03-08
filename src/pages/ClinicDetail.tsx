@@ -1824,16 +1824,25 @@ export default function ClinicDetail() {
         {isPropria && (
           <TabsContent value="services" className="space-y-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-cyan-500" />
+                <Briefcase className="w-5 h-5 text-primary" />
                 Serviços
               </h2>
-              <Button size="sm" className="gap-2"
-                onClick={() => { loadClinicServices(); setServiceDialogOpen(true); }}
-                disabled={isArchived}>
-                <Plus className="w-4 h-4" /> Novo Serviço
-              </Button>
+              <div className="flex items-center gap-2">
+                {clinicServices.length > 0 && (
+                  <Button size="sm" variant="outline" className="gap-2 text-xs"
+                    onClick={handleExportServicesPDF} disabled={isExportingServicesPDF}>
+                    {isExportingServicesPDF ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                    <span className="hidden sm:inline">Exportar PDF</span>
+                  </Button>
+                )}
+                <Button size="sm" className="gap-2"
+                  onClick={() => { loadClinicServices(); setServiceDialogOpen(true); }}
+                  disabled={isArchived}>
+                  <Plus className="w-4 h-4" /> Novo Serviço
+                </Button>
+              </div>
             </div>
 
             {/* Financial summary cards — month */}
@@ -1858,9 +1867,28 @@ export default function ClinicDetail() {
               </div>
             </div>
 
+            {/* Bar chart — last 6 months */}
+            {clinicServices.length > 0 && (
+              <div className="bg-card rounded-xl border border-border p-4">
+                <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Evolução dos últimos 6 meses (R$)</p>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={servicesChartData} barCategoryGap="30%" barGap={4}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v}`} width={55} />
+                    <Tooltip
+                      formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
+                      contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="Agendado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Concluído" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
-              {/* Period */}
               <div className="flex rounded-lg border border-border overflow-hidden text-xs">
                 {([['month', 'Mês atual'], ['all', 'Todos']] as const).map(([val, label]) => (
                   <button key={val} onClick={() => setServicesPeriodFilter(val)}
@@ -1870,7 +1898,6 @@ export default function ClinicDetail() {
                   </button>
                 ))}
               </div>
-              {/* Status */}
               <div className="flex rounded-lg border border-border overflow-hidden text-xs">
                 {([['all', 'Todos'], ['agendado', 'Agendado'], ['concluído', 'Concluído'], ['cancelado', 'Cancelado']] as const).map(([val, label]) => (
                   <button key={val} onClick={() => setServicesStatusFilter(val)}
