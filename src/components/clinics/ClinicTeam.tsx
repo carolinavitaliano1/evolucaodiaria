@@ -777,8 +777,8 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   {/* Status dot */}
                   <span className={cn(
                     'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card',
-                    member.status === 'active' ? 'bg-green-500' :
-                    member.status === 'pending' ? 'bg-yellow-400' : 'bg-muted-foreground'
+                    member.status === 'active' ? 'bg-success' :
+                    member.status === 'pending' ? 'bg-warning' : 'bg-muted-foreground'
                   )} />
                 </div>
 
