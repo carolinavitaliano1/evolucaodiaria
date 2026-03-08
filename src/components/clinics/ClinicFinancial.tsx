@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,7 @@ import { TeamFinancialReport } from './TeamFinancialReport';
 import { format, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -18,6 +19,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { clinics, patients, evolutions, updateClinic } = useApp();
   const { isOrg } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [clinicServices, setClinicServices] = useState<{ price: number; status: string; paid: boolean | null }[]>([]);
 
   const clinic = clinics.find(c => c.id === clinicId);
   const [discountPercent, setDiscountPercent] = useState(clinic?.discountPercentage || 0);
@@ -26,6 +28,15 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   useEffect(() => {
     if (clinic) setDiscountPercent(clinic.discountPercentage || 0);
   }, [clinic?.discountPercentage]);
+
+  // Load private_appointments linked to this clinic
+  useEffect(() => {
+    supabase
+      .from('private_appointments')
+      .select('price, status, paid')
+      .eq('clinic_id', clinicId)
+      .then(({ data }) => { if (data) setClinicServices(data as any[]); });
+  }, [clinicId]);
 
   const saveDiscount = useCallback((value: number) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -81,7 +92,17 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   };
 
   const totalRevenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
-  const netRevenue = totalRevenue * (1 - discountPercent / 100);
+
+  // Services revenue for selected month (concluído status, paid)
+  const servicesMonthRevenue = clinicServices
+    .filter(s => s.status === 'concluído')
+    .reduce((sum, s) => sum + s.price, 0);
+  const servicesMonthPaid = clinicServices
+    .filter(s => s.status === 'concluído' && s.paid)
+    .reduce((sum, s) => sum + s.price, 0);
+
+  const totalRevenueWithServices = totalRevenue + servicesMonthRevenue;
+  const netRevenue = totalRevenueWithServices * (1 - discountPercent / 100);
   const totalSessions = presentEvos.length;
   const totalAbsences = absentEvos.length;
   const totalPaidAbsences = paidAbsenceEvos.length;
@@ -120,8 +141,14 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <DollarSign className="w-6 h-6 text-success mb-2" />
           <p className="text-muted-foreground text-xs">Faturamento Bruto</p>
           <p className="text-xl font-bold text-foreground">
-            R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {totalRevenueWithServices.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
+          {servicesMonthRevenue > 0 && (
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Briefcase className="w-3 h-3" />
+              + R$ {servicesMonthRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} serviços
+            </p>
+          )}
           {discountPercent > 0 && (
             <div className="mt-2 pt-2 border-t border-border">
               <p className="text-muted-foreground text-xs">Valor Líquido ({discountPercent}% desc.)</p>
@@ -209,9 +236,15 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             <div className="flex justify-between items-center pt-3 border-t border-border">
               <p className="font-bold text-foreground">Total Bruto</p>
               <p className="font-bold text-foreground text-lg">
-                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {totalRevenueWithServices.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
+            {servicesMonthRevenue > 0 && (
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <p className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" /> Serviços (concluídos)</p>
+                <p>R$ {servicesMonthRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              </div>
+            )}
             {discountPercent > 0 && (
               <div className="flex justify-between items-center">
                 <p className="font-bold text-success">Valor Líquido ({discountPercent}%)</p>

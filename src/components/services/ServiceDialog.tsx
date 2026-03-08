@@ -41,6 +41,8 @@ const SERVICE_TYPES = [
 
 const INITIAL_CUSTOM_TYPES: string[] = [];
 
+interface PatientOption { id: string; name: string; phone: string | null; responsible_email: string | null; }
+
 interface ServiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -60,6 +62,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   const [newCustomType, setNewCustomType] = useState('');
   const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
   const [propriaClinics, setPropriaClinics] = useState<ClinicOption[]>([]);
+  const [clinicPatients, setClinicPatients] = useState<PatientOption[]>([]);
 
   // Service form states
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -88,6 +91,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
       loadServices();
       loadCustomTypes();
       loadPropriaClinics();
+      if (clinicId) loadClinicPatients(clinicId);
       // Pre-fill form if editing an appointment
       if (editAppointment) {
         setActiveTab('agendar');
@@ -110,6 +114,24 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
       }
     }
   }, [open, editAppointment, clinicId]);
+
+  async function loadClinicPatients(cid: string) {
+    const { data } = await supabase
+      .from('patients')
+      .select('id, name, phone, responsible_email')
+      .eq('clinic_id', cid)
+      .eq('is_archived', false)
+      .order('name');
+    if (data) setClinicPatients(data as PatientOption[]);
+  }
+
+  function handlePatientSelect(patientId: string) {
+    const p = clinicPatients.find(pt => pt.id === patientId);
+    if (!p) return;
+    setClientName(p.name);
+    setClientPhone(p.phone || '');
+    setClientEmail(p.responsible_email || '');
+  }
 
   async function loadPropriaClinics() {
     try {
@@ -382,6 +404,27 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
               <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-sm text-primary">
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
                 <span>{propriaClinics.find(c => c.id === clinicId)?.name ?? 'Clínica vinculada'}</span>
+              </div>
+            )}
+
+            {/* Patient selector — only when coming from a clinic */}
+            {clinicId && clinicPatients.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" />
+                  Paciente cadastrado nesta clínica
+                </Label>
+                <Select onValueChange={handlePatientSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar paciente (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinicPatients.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Preenche os campos abaixo automaticamente</p>
               </div>
             )}
 

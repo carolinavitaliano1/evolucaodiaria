@@ -300,6 +300,8 @@ export default function ClinicDetail() {
   const [editServiceAptOpen, setEditServiceAptOpen] = useState(false);
   const [deleteServiceAptOpen, setDeleteServiceAptOpen] = useState(false);
   const [serviceAptToDelete, setServiceAptToDelete] = useState<ClinicPrivateApt | null>(null);
+  const [servicesStatusFilter, setServicesStatusFilter] = useState<'all' | 'agendado' | 'concluído' | 'cancelado'>('all');
+  const [servicesPeriodFilter, setServicesPeriodFilter] = useState<'month' | 'all'>('month');
 
   const loadClinicServices = async () => {
     if (!id) return;
@@ -341,6 +343,33 @@ export default function ClinicDetail() {
       default: return 'bg-secondary text-secondary-foreground';
     }
   };
+
+  // Filtered services list
+  const filteredClinicServices = useMemo(() => {
+    const now = new Date();
+    return clinicServices.filter(apt => {
+      if (servicesStatusFilter !== 'all' && apt.status !== servicesStatusFilter) return false;
+      if (servicesPeriodFilter === 'month') {
+        const d = new Date(apt.date + 'T00:00:00');
+        if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
+      }
+      return true;
+    });
+  }, [clinicServices, servicesStatusFilter, servicesPeriodFilter]);
+
+  // Services financial summary (current month)
+  const servicesMonthSummary = useMemo(() => {
+    const now = new Date();
+    const thisMonth = clinicServices.filter(a => {
+      const d = new Date(a.date + 'T00:00:00');
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    return {
+      totalAgendado: thisMonth.filter(a => a.status === 'agendado').reduce((s, a) => s + a.price, 0),
+      totalConcluido: thisMonth.filter(a => a.status === 'concluído').reduce((s, a) => s + a.price, 0),
+      totalRecebido: thisMonth.filter(a => a.status === 'concluído' && a.paid).reduce((s, a) => s + a.price, 0),
+    };
+  }, [clinicServices]);
 
   if (!clinic) {
     return (
@@ -1639,23 +1668,67 @@ export default function ClinicDetail() {
           <ClinicReports clinicId={clinic.id} clinicName={clinic.name} clinicAddress={clinic.address || undefined} clinicLetterhead={clinic.letterhead || undefined} clinic={clinic} />
         </TabsContent>
 
+
         {/* Serviços Tab — only for propria clinics */}
         {isPropria && (
           <TabsContent value="services" className="space-y-4">
+            {/* Header */}
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-cyan-500" />
-                Serviços Agendados
+                Serviços
               </h2>
-              <Button
-                size="sm"
-                className="gap-2"
+              <Button size="sm" className="gap-2"
                 onClick={() => { loadClinicServices(); setServiceDialogOpen(true); }}
-                disabled={isArchived}
-              >
-                <Plus className="w-4 h-4" />
-                Novo Serviço
+                disabled={isArchived}>
+                <Plus className="w-4 h-4" /> Novo Serviço
               </Button>
+            </div>
+
+            {/* Financial summary cards — month */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-card rounded-xl border border-border p-3 lg:p-4">
+                <p className="text-xs text-muted-foreground mb-1">Agendado (mês)</p>
+                <p className="text-base lg:text-lg font-bold text-foreground">
+                  R$ {servicesMonthSummary.totalAgendado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-3 lg:p-4">
+                <p className="text-xs text-muted-foreground mb-1">Concluído (mês)</p>
+                <p className="text-base lg:text-lg font-bold text-success">
+                  R$ {servicesMonthSummary.totalConcluido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-3 lg:p-4">
+                <p className="text-xs text-muted-foreground mb-1">Recebido (mês)</p>
+                <p className="text-base lg:text-lg font-bold text-success">
+                  R$ {servicesMonthSummary.totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              {/* Period */}
+              <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+                {([['month', 'Mês atual'], ['all', 'Todos']] as const).map(([val, label]) => (
+                  <button key={val} onClick={() => setServicesPeriodFilter(val)}
+                    className={cn('px-3 py-1.5 font-medium transition-colors',
+                      servicesPeriodFilter === val ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-accent')}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Status */}
+              <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+                {([['all', 'Todos'], ['agendado', 'Agendado'], ['concluído', 'Concluído'], ['cancelado', 'Cancelado']] as const).map(([val, label]) => (
+                  <button key={val} onClick={() => setServicesStatusFilter(val)}
+                    className={cn('px-3 py-1.5 font-medium transition-colors',
+                      servicesStatusFilter === val ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-accent')}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {loadingClinicServices ? (
@@ -1669,9 +1742,13 @@ export default function ClinicDetail() {
                   <Plus className="w-4 h-4" /> Novo Serviço
                 </Button>
               </div>
+            ) : filteredClinicServices.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                Nenhum serviço para os filtros selecionados.
+              </div>
             ) : (
               <div className="space-y-3">
-                {clinicServices.map((apt) => (
+                {filteredClinicServices.map((apt) => (
                   <div key={apt.id} className="bg-card rounded-xl border border-border p-4">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -1759,6 +1836,7 @@ export default function ClinicDetail() {
           </TabsContent>
         )}
       </Tabs>
+
 
 
       {/* Edit Package Dialog */}
