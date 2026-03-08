@@ -38,6 +38,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     birthdate: '',
     cpf: '',
     phone: '',
+    email: '',
     clinicalArea: '',
     diagnosis: '',
     professionals: '',
@@ -72,6 +73,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         birthdate: patient.birthdate || '',
         cpf: p.cpf || '',
         phone: patient.phone || '',
+        email: p.email || '',
         clinicalArea: patient.clinicalArea || '',
         diagnosis: patient.diagnosis || '',
         professionals: patient.professionals || '',
@@ -146,6 +148,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       name: formData.name,
       birthdate: formData.birthdate,
       ...(formData.cpf !== undefined && { cpf: formData.cpf } as any),
+      ...(formData.email !== undefined && { email: formData.email } as any),
       phone: formData.phone || undefined,
       clinicalArea: formData.clinicalArea || undefined,
       diagnosis: formData.diagnosis || undefined,
@@ -218,6 +221,16 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
+          </div>
+
+          <div>
+            <Label>E-mail</Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="email@exemplo.com"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

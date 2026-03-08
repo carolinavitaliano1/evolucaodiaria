@@ -87,7 +87,7 @@ function mapClinic(c: Record<string, unknown>): Clinic {
 function mapPatient(p: Record<string, unknown>): Patient {
   return {
     id: p.id as string, clinicId: p.clinic_id as string, name: p.name as string, birthdate: p.birthdate as string,
-    phone: (p.phone as string) || undefined, clinicalArea: (p.clinical_area as string) || undefined,
+    phone: (p.phone as string) || undefined, email: (p.email as string) || undefined, clinicalArea: (p.clinical_area as string) || undefined,
     diagnosis: (p.diagnosis as string) || undefined, professionals: (p.professionals as string) || undefined,
     observations: (p.observations as string) || undefined, responsibleName: (p.responsible_name as string) || undefined,
     responsibleEmail: (p.responsible_email as string) || undefined,
@@ -482,7 +482,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.from('patients').insert({
         user_id: user.id, clinic_id: patient.clinicId, name: patient.name, birthdate: patient.birthdate,
-        phone: patient.phone || null, clinical_area: patient.clinicalArea || null,
+        phone: patient.phone || null, email: (patient as any).email || null, clinical_area: patient.clinicalArea || null,
         diagnosis: patient.diagnosis || null, professionals: patient.professionals || null,
         observations: patient.observations || null, responsible_name: patient.responsibleName || null,
         responsible_email: patient.responsibleEmail || null, payment_type: patient.paymentType || null,
@@ -505,6 +505,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.birthdate !== undefined) updateData.birthdate = updates.birthdate;
       if (updates.phone !== undefined) updateData.phone = updates.phone || null;
+      if ((updates as any).email !== undefined) updateData.email = (updates as any).email || null;
       if (updates.clinicalArea !== undefined) updateData.clinical_area = updates.clinicalArea || null;
       if (updates.diagnosis !== undefined) updateData.diagnosis = updates.diagnosis || null;
       if (updates.professionals !== undefined) updateData.professionals = updates.professionals || null;

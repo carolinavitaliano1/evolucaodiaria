@@ -39,6 +39,7 @@ export interface Patient {
   name: string;
   birthdate: string;
   phone?: string;
+  email?: string;
   clinicalArea?: string;
   diagnosis?: string;
   professionals?: string;
