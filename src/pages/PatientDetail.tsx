@@ -2061,14 +2061,14 @@ export default function PatientDetail() {
               return (
                 <div className="space-y-1.5">
                   {warnings.map((w, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-amber-500">⚠</span>
-                        <span className="text-amber-700 dark:text-amber-400">{w.msg}</span>
+                    <div key={i} className="flex items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs">
+                      <span className="flex items-center gap-1.5 text-destructive/80">
+                        <span>⚠</span>
+                        <span>{w.msg}</span>
                       </span>
                       <button
                         onClick={() => { setPaymentReceiptOpen(false); navigate(w.link); }}
-                        className="shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline"
+                        className="shrink-0 text-xs font-medium text-primary underline underline-offset-2 hover:no-underline"
                       >
                         {w.label}
                       </button>
