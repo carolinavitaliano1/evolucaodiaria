@@ -67,7 +67,9 @@ function formatCpf(cpf: string): string {
 const LINE_H = 6.5;      // standard line height (mm) — increased to prevent overlap
 const LABEL_W = 50;      // fixed label column width (mm)
 
-export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Promise<void> {
+export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: false): Promise<void>;
+export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: true): Promise<Blob>;
+export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob = false): Promise<void | Blob> {
   const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, therapistCpf, cbo, totalPaid, paymentStatus, paymentDate } = opts;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
