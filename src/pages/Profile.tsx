@@ -687,7 +687,20 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Stamps */}
+      {/* WhatsApp Message Templates */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-[#25D366]" />
+            Mensagens WhatsApp
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MessageTemplatesManager />
+        </CardContent>
+      </Card>
+
+      {/* Stamps section is below */}
       <Card className="glass-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">

@@ -2744,6 +2744,16 @@ export default function PatientDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* WhatsApp Message Modal */}
+      <WhatsAppMessageModal
+        open={whatsappOpen}
+        onClose={() => setWhatsappOpen(false)}
+        patientName={patient.name}
+        patientPhone={patient.phone || ''}
+        date={patient.scheduleTime ? format(new Date(), 'dd/MM/yyyy', { locale: ptBR }) : ''}
+        time={patient.scheduleTime || ''}
+      />
     </div>
   );
 }
