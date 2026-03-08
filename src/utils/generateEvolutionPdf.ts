@@ -559,17 +559,17 @@ async function renderStamp(
   if (!stamp) return startY;
 
   let y = startY;
-  const maxW = 50;
-  const maxH = 28;
+  const maxW = 40;
+  const maxH = 18;
   const sigX = pageWidth - margin - maxW;
 
   // Signature image from stamp (above stamp image)
   if (stamp.signature_image) {
     try {
       const si = await loadImage(stamp.signature_image);
-      let sw = 42;
+      let sw = 36;
       let sh = (si.height / si.width) * sw;
-      if (sh > 18) { sh = 18; sw = (si.width / si.height) * sh; }
+      if (sh > 12) { sh = 12; sw = (si.width / si.height) * sh; }
       pdf.addImage(stamp.signature_image, 'PNG', pageWidth - margin - sw, y, sw, sh);
       y += sh + 2;
     } catch {}
