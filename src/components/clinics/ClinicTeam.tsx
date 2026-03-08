@@ -80,8 +80,8 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-  pending: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
+  active: 'bg-success/10 text-success border-success/30',
+  pending: 'bg-warning/10 text-warning border-warning/30',
   inactive: 'bg-muted text-muted-foreground border-border',
 };
 
@@ -273,37 +273,47 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
 
       if (!assignments?.length) return;
 
-      const late: LateEvolution[] = [];
-
+      // Gather scheduled assignments (check patient weekdays first — no DB call needed)
+      const scheduled: { patientId: string; memberId: string; userId: string; patientName: string; therapistName: string }[] = [];
       for (const a of assignments) {
         const patient = clinicPatients.find(p => p.id === a.patient_id);
         if (!patient) continue;
-
         const isScheduled = patient.weekdays?.some(d =>
           todayWeekday.startsWith(d.toLowerCase().slice(0, 3))
         );
         if (!isScheduled) continue;
-
         const member = members.find(m => m.id === a.member_id);
         if (!member?.user_id) continue;
-
-        const { data: evols } = await supabase
-          .from('evolutions')
-          .select('id')
-          .eq('patient_id', a.patient_id)
-          .eq('user_id', member.user_id)
-          .gte('date', yesterday)
-          .limit(1);
-
-        if (!evols?.length) {
-          late.push({
-            patient_id: a.patient_id,
-            patient_name: patient.name,
-            scheduled_date: today,
-            therapist_name: member.profile?.name || member.email,
-          });
-        }
+        scheduled.push({
+          patientId: a.patient_id,
+          memberId: a.member_id,
+          userId: member.user_id,
+          patientName: patient.name,
+          therapistName: member.profile?.name || member.email,
+        });
       }
+
+      if (!scheduled.length) { setLateEvolutions([]); return; }
+
+      // Single batch query for all evolutions in range
+      const patientIds = [...new Set(scheduled.map(s => s.patientId))];
+      const { data: evols } = await supabase
+        .from('evolutions')
+        .select('patient_id, user_id')
+        .in('patient_id', patientIds)
+        .gte('date', yesterday)
+        .lte('date', today);
+
+      const evolSet = new Set((evols || []).map(e => `${e.patient_id}::${e.user_id}`));
+
+      const late: LateEvolution[] = scheduled
+        .filter(s => !evolSet.has(`${s.patientId}::${s.userId}`))
+        .map(s => ({
+          patient_id: s.patientId,
+          patient_name: s.patientName,
+          scheduled_date: today,
+          therapist_name: s.therapistName,
+        }));
 
       setLateEvolutions(late);
     } catch (err) {
@@ -401,12 +411,11 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
   }
 
   async function handleChangeRole(memberId: string, newRole: 'admin' | 'professional') {
-    const defaultPerms = [...DEFAULT_THERAPIST_PERMISSIONS];
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId);
     if (error) toast.error('Erro ao alterar função');
     else {
       toast.success('Função atualizada');
-      setEditPermissions([...defaultPerms]);
+      // NOTE: caller is responsible for updating editPermissions via preset selection
       loadTeam();
       setManageMember(prev => prev ? { ...prev, role: newRole } : null);
     }
@@ -549,7 +558,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
             <button
               onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
               className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
-                statusFilter === 'active' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400'
+                statusFilter === 'active' ? 'bg-success text-success-foreground border-success' : 'bg-success/10 border-success/30 text-success hover:border-success/60'
               )}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -559,7 +568,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
               <button
                 onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
                 className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors text-xs font-semibold',
-                  statusFilter === 'pending' ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:border-amber-400'
+                  statusFilter === 'pending' ? 'bg-warning text-warning-foreground border-warning' : 'bg-warning/10 border-warning/30 text-warning hover:border-warning/60'
                 )}
               >
                 <Clock className="w-3.5 h-3.5" />
@@ -768,8 +777,8 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   {/* Status dot */}
                   <span className={cn(
                     'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card',
-                    member.status === 'active' ? 'bg-green-500' :
-                    member.status === 'pending' ? 'bg-yellow-400' : 'bg-muted-foreground'
+                    member.status === 'active' ? 'bg-success' :
+                    member.status === 'pending' ? 'bg-warning' : 'bg-muted-foreground'
                   )} />
                 </div>
 
@@ -827,12 +836,12 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
               {/* Role + specialty badges */}
               <div className="flex flex-wrap gap-1.5">
                 {member.role === 'owner' ? (
-                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-amber-300 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-warning/40 text-warning bg-warning/10">
                     <Crown className="w-2.5 h-2.5" />
                     Dono
                   </Badge>
                 ) : member.role === 'admin' ? (
-                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-blue-300 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20">
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-primary/40 text-primary bg-primary/10">
                     <Shield className="w-2.5 h-2.5" />
                     Administrador
                   </Badge>
@@ -872,7 +881,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                   </div>
                 )}
                 {member.status === 'pending' && (
-                  <p className="text-[10px] text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                  <p className="text-[10px] text-warning flex items-center gap-1">
                     <Mail className="w-3 h-3" />
                     Aguardando aceite do convite
                   </p>
@@ -909,7 +918,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20')}
+                      className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-success hover:bg-success/10')}
                       onClick={() => handleToggleMemberStatus(member)}
                     >
                       {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
