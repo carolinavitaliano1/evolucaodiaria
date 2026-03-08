@@ -216,7 +216,7 @@ export default function Team() {
             </div>
             <p className="text-muted-foreground">
               {contratanteClinics.length > 0 && teamClinics.length === 0
-                ? 'Você não possui clínicas próprias cadastradas.'
+                ? 'Você não possui consultórios cadastrados.'
                 : 'Nenhuma clínica encontrada.'}
             </p>
             <Button variant="outline" onClick={() => navigate('/clinics')}>

@@ -1017,7 +1017,7 @@ export default function Financial() {
                       "text-[10px] px-2 py-0.5 rounded-full font-medium",
                       isPropria ? "bg-success/10 text-success" : "bg-blue-500/10 text-blue-500"
                     )}>
-                      {isPropria ? 'Própria' : 'Contratante'}
+                      {isPropria ? 'Consultório' : 'Contratante'}
                     </span>
                     <h3 className="font-semibold text-foreground text-sm truncate">{clinic.name}</h3>
                     {clinic.absencePaymentType === 'never' && (

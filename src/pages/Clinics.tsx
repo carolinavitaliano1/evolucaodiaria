@@ -400,7 +400,7 @@ export default function Clinics() {
                     >
                       <div className="flex items-center gap-2">
                         <RadioGroupItem value="propria" id="propria" />
-                        <Label htmlFor="propria" className="cursor-pointer text-sm">Própria</Label>
+                        <Label htmlFor="propria" className="cursor-pointer text-sm">Consultório</Label>
                       </div>
                       <div className="flex items-center gap-2">
                         <RadioGroupItem value="terceirizada" id="terceirizada" />
