@@ -294,6 +294,8 @@ export default function AIReports() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const isLilas = theme === 'lilas';
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const canUseAI = !isOrgMember || isOwner || hasPermission(permissions, 'ai_reports.use');
 
   const [selectedPatient, setSelectedPatient] = useState('');
   const [selectedClinic, setSelectedClinic] = useState('');
