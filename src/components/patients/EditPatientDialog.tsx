@@ -148,6 +148,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       name: formData.name,
       birthdate: formData.birthdate,
       ...(formData.cpf !== undefined && { cpf: formData.cpf } as any),
+      ...(formData.email !== undefined && { email: formData.email } as any),
       phone: formData.phone || undefined,
       clinicalArea: formData.clinicalArea || undefined,
       diagnosis: formData.diagnosis || undefined,
