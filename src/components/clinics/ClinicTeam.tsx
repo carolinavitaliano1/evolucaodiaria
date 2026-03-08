@@ -836,12 +836,12 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
               {/* Role + specialty badges */}
               <div className="flex flex-wrap gap-1.5">
                 {member.role === 'owner' ? (
-                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-amber-300 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-warning/40 text-warning bg-warning/10">
                     <Crown className="w-2.5 h-2.5" />
                     Dono
                   </Badge>
                 ) : member.role === 'admin' ? (
-                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-blue-300 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20">
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-primary/40 text-primary bg-primary/10">
                     <Shield className="w-2.5 h-2.5" />
                     Administrador
                   </Badge>
