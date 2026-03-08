@@ -226,29 +226,36 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
                           </span>
                         )}
                       </div>
-                      {patient.clinicalArea && (
+                      {canViewContent && patient.clinicalArea && (
                         <p className="text-xs text-muted-foreground mt-0.5">{patient.clinicalArea}</p>
                       )}
-                      {evo.text && (
+                      {canViewContent && evo.text && (
                         <p className="text-sm text-muted-foreground mt-2 line-clamp-3 whitespace-pre-wrap">
                           {evo.text}
                         </p>
                       )}
-                      {evo.templateData && !evo.text && (
+                      {canViewContent && evo.templateData && !evo.text && (
                         <p className="text-xs text-muted-foreground mt-1 italic">Evolução por modelo</p>
+                      )}
+                      {!canViewContent && (
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 italic">
+                          <Lock className="w-3 h-3" /> Conteúdo clínico restrito
+                        </p>
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 flex-shrink-0"
-                    onClick={() => handleExportSingle(evo, patient)}
-                    disabled={isExportingThis}
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    {isExportingThis ? '...' : 'PDF'}
-                  </Button>
+                  {canViewContent && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 flex-shrink-0"
+                      onClick={() => handleExportSingle(evo, patient)}
+                      disabled={isExportingThis}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      {isExportingThis ? '...' : 'PDF'}
+                    </Button>
+                  )}
                 </div>
               </div>
             );
