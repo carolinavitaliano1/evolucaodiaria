@@ -145,6 +145,7 @@ export default function PatientDetail() {
     orgPermissions.includes('evolutions.view');
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignmentScheduleTimes, setAssignmentScheduleTimes] = useState<Record<string, string>>({});
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
 
   useEffect(() => {
     if (!patient?.clinicId) return;
