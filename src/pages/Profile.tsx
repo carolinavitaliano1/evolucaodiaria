@@ -102,7 +102,7 @@ export default function Profile() {
 
       const { data: profileData } = await (supabase
         .from('profiles') as any)
-        .select('id, user_id, name, email, phone, professional_id, cpf, cbo, avatar_url')
+        .select('id, user_id, name, email, phone, professional_id, cpf, avatar_url')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -113,7 +113,6 @@ export default function Profile() {
         setPhone(profileData.phone || '');
         setProfessionalId(profileData.professional_id || '');
         setCpf(profileData.cpf || '');
-        setCbo(profileData.cbo || '');
         setAvatarUrl(profileData.avatar_url);
       }
 
