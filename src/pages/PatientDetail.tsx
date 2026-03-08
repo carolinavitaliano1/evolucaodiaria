@@ -200,6 +200,8 @@ export default function PatientDetail() {
   // Payment receipt state
   const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
   const [prAmount, setPrAmount] = useState('');
+  const [prSessions, setPrSessions] = useState('');
+  const [prUnitValue, setPrUnitValue] = useState('');
   const [prService, setPrService] = useState('');
   const [prPeriod, setPrPeriod] = useState('');
   const [prPaymentMethod, setPrPaymentMethod] = useState('transferência bancária');
