@@ -243,142 +243,301 @@ export default function Financial() {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 20;
-      let y = 20;
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 18;
+      const contentW = pageWidth - margin * 2;
+      let y = 0;
 
-      doc.setFontSize(20);
-      doc.setTextColor(51, 51, 51);
+      // ─── Color palette ───────────────────────────────────────────────
+      const C = {
+        primary:    [79, 56, 140] as [number,number,number],   // deep purple
+        primaryLight:[240, 236, 255] as [number,number,number],
+        accent:     [124, 99, 198] as [number,number,number],
+        dark:       [33, 33, 50] as [number,number,number],
+        mid:        [80, 75, 105] as [number,number,number],
+        muted:      [130, 125, 155] as [number,number,number],
+        light:      [248, 247, 252] as [number,number,number],
+        white:      [255, 255, 255] as [number,number,number],
+        green:      [22, 130, 80] as [number,number,number],
+        greenLight: [220, 245, 235] as [number,number,number],
+        orange:     [195, 90, 20] as [number,number,number],
+        orangeLight:[255, 237, 218] as [number,number,number],
+        red:        [200, 40, 40] as [number,number,number],
+        redLight:   [255, 230, 230] as [number,number,number],
+        border:     [220, 215, 240] as [number,number,number],
+        rowAlt:     [251, 250, 255] as [number,number,number],
+      };
+
+      const setFill  = (c: [number,number,number]) => doc.setFillColor(c[0], c[1], c[2]);
+      const setTxt   = (c: [number,number,number]) => doc.setTextColor(c[0], c[1], c[2]);
+      const setDraw  = (c: [number,number,number]) => doc.setDrawColor(c[0], c[1], c[2]);
+
+      const ensureSpace = (needed: number) => {
+        if (y + needed > pageHeight - 18) { doc.addPage(); addPageHeader(); y = 48; }
+      };
+
+      const addPageHeader = () => {
+        // top bar
+        setFill(C.primary);
+        doc.rect(0, 0, pageWidth, 14, 'F');
+        setTxt(C.white);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('RELATÓRIO FINANCEIRO', margin, 9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), pageWidth - margin, 9, { align: 'right' });
+      };
+
+      const addPageFooter = (page: number, total: number) => {
+        const fy = pageHeight - 8;
+        setDraw(C.border);
+        doc.setLineWidth(0.3);
+        doc.line(margin, fy - 3, pageWidth - margin, fy - 3);
+        setTxt(C.muted);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`, margin, fy);
+        doc.text(`Página ${page} de ${total}`, pageWidth - margin, fy, { align: 'right' });
+      };
+
+      const sectionTitle = (title: string) => {
+        ensureSpace(14);
+        setFill(C.primaryLight);
+        setDraw(C.accent);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(margin, y, contentW, 10, 2, 2, 'FD');
+        setTxt(C.primary);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text(title, margin + 4, y + 6.8);
+        y += 14;
+      };
+
+      // ─── Page 1 header ───────────────────────────────────────────────
+      addPageHeader();
+
+      // ─── Cover title block ───────────────────────────────────────────
+      y = 22;
+      setTxt(C.dark);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
       doc.text('Relatório Financeiro', margin, y);
-      y += 10;
-      doc.setFontSize(12);
-      doc.setTextColor(100, 100, 100);
+      y += 8;
+      setTxt(C.accent);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
       doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), margin, y);
       if (paymentStatusFilter !== 'all') {
-        doc.setFontSize(10);
-        doc.text(`Filtro: ${paymentStatusFilter === 'paid' ? 'Apenas Pagos' : 'Apenas Pendentes'}`, margin + 80, y);
+        setTxt(C.muted);
+        doc.setFontSize(9);
+        doc.text(`Filtro: ${paymentStatusFilter === 'paid' ? 'Apenas Pagos' : 'Apenas Pendentes'}`, margin + 70, y);
       }
-      y += 15;
-
-      doc.setFontSize(14);
-      doc.setTextColor(51, 51, 51);
-      doc.text('Resumo Mensal', margin, y);
+      y += 10;
+      setDraw(C.border);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, pageWidth - margin, y);
       y += 8;
 
-      doc.setFontSize(11);
-      doc.setTextColor(80, 80, 80);
-      doc.text(`Faturamento Total: R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 6;
-      doc.text(`Receita Clínicas Próprias: R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 6;
-      doc.text(`Receita Contratante: R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 6;
-      doc.text(`Serviços Particulares: R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 6;
-      if (totalLoss > 0) {
-        doc.setTextColor(220, 53, 69);
-        doc.text(`Perdas por Faltas: - R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
-        doc.setTextColor(80, 80, 80);
-      }
-      y += 6;
-      doc.text(`Total de Atendimentos: ${presentEvolutions.length}`, margin, y); y += 6;
-      doc.text(`Faltas Remuneradas: ${paidAbsenceEvolutions.length}`, margin, y); y += 6;
-      doc.text(`Faltas: ${absentEvolutions.length}`, margin, y); y += 15;
+      // ─── Summary cards ────────────────────────────────────────────────
+      sectionTitle('RESUMO MENSAL');
 
-      if (clinicStats.length > 0) {
-        doc.setFontSize(14);
-        doc.setTextColor(51, 51, 51);
-        doc.text('Faturamento por Clínica', margin, y);
-        y += 10;
-        doc.setFontSize(10);
-        clinicStats.forEach(({ clinic, patientCount, revenue, loss, sessions, paidAbsences, absences }) => {
-          if (y > 270) { doc.addPage(); y = 20; }
-          doc.setTextColor(51, 51, 51);
-          doc.text(`${clinic.name} (${clinic.type === 'propria' ? 'Própria' : 'Contratante'})`, margin, y);
-          doc.setTextColor(80, 80, 80);
-          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 40, y);
-          y += 5;
-          doc.setFontSize(9);
-          doc.text(`${patientCount} pacientes | ${sessions} sessões | ${paidAbsences} faltas rem. | ${absences} faltas`, margin + 5, y);
-          doc.setFontSize(10);
-          y += 8;
-        });
-        y += 5;
-      }
+      const summaryItems = [
+        { label: 'Faturamento Total',        value: `R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,                   bold: true },
+        { label: 'Receita Clínicas Próprias',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        { label: 'Receita Contratante',      value: `R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        { label: 'Serviços Particulares',    value: `R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        ...(totalLoss > 0 ? [{ label: 'Perdas por Faltas', value: `- R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, loss: true }] : []),
+        { label: 'Total de Atendimentos',    value: `${presentEvolutions.length}` },
+        { label: 'Faltas Remuneradas',       value: `${paidAbsenceEvolutions.length}` },
+        { label: 'Faltas',                   value: `${absentEvolutions.length}` },
+      ];
 
-      if (standaloneRevenue > 0) {
-        if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFontSize(14);
-        doc.setTextColor(51, 51, 51);
-        doc.text('Serviços Particulares (fora de clínica)', margin, y);
-        y += 8;
-        doc.setFontSize(10);
-        doc.setTextColor(80, 80, 80);
-        doc.text(`${standaloneServiceAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos`, margin, y); y += 5;
-        doc.text(`R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
-        y += 15;
-      }
-
-      if (patientStats.length > 0) {
-        if (y > 200) { doc.addPage(); y = 20; }
-        doc.setFontSize(14);
-        doc.setTextColor(51, 51, 51);
-        doc.text('Controle de Pagamentos por Paciente', margin, y);
-        y += 10;
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        // Headers with payment columns
-        const col1 = margin, col2 = margin + 42, col3 = margin + 82, col4 = margin + 105, col5 = margin + 127, col6 = pageWidth - margin - 18;
-        doc.text('Paciente', col1, y);
-        doc.text('Clínica', col2, y);
-        doc.text('Tipo', col3, y);
-        doc.text('Sess.', col4, y);
-        doc.text('Status Pgto', col5, y);
-        doc.text('Valor', col6, y, { align: 'right' });
-        y += 3;
-        doc.setDrawColor(200, 200, 200);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 5;
+      // Two-column grid for summary
+      const colW = (contentW - 4) / 2;
+      summaryItems.forEach((item, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        if (col === 0 && row > 0) ensureSpace(12);
+        const bx = margin + col * (colW + 4);
+        const by = y + row * 12;
+        const isLoss = (item as any).loss;
+        setFill(isLoss ? C.redLight : ((item as any).bold ? C.primaryLight : C.light));
+        setDraw(isLoss ? C.red : C.border);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(bx, by, colW, 10, 1.5, 1.5, 'FD');
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(8);
+        setTxt(isLoss ? C.red : C.mid);
+        doc.text(item.label + ':', bx + 3, by + 4.2);
+        doc.setFont('helvetica', (item as any).bold ? 'bold' : 'normal');
+        setTxt(isLoss ? C.red : ((item as any).bold ? C.primary : C.dark));
+        doc.setFontSize((item as any).bold ? 9 : 8);
+        doc.text(item.value, bx + colW - 3, by + 6.5, { align: 'right' });
+      });
+      y += Math.ceil(summaryItems.length / 2) * 12 + 8;
+
+      // ─── Clinic breakdown ─────────────────────────────────────────────
+      if (clinicStats.length > 0) {
+        sectionTitle('FATURAMENTO POR CLÍNICA');
+
+        clinicStats.forEach(({ clinic, patientCount, revenue, sessions, paidAbsences, absences }, idx) => {
+          ensureSpace(16);
+          const rowColor = idx % 2 === 0 ? C.white : C.rowAlt;
+          setFill(rowColor);
+          setDraw(C.border);
+          doc.setLineWidth(0.2);
+          doc.rect(margin, y, contentW, 14, 'FD');
+
+          // Accent left strip
+          const isContratante = clinic.type !== 'propria';
+          setFill(isContratante ? C.accent : C.primary);
+          doc.rect(margin, y, 3, 14, 'F');
+
+          // Clinic name + type badge
+          setTxt(C.dark);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.text(clinic.name, margin + 6, y + 5.5);
+          // Badge
+          const badge = isContratante ? 'Contratante' : 'Própria';
+          const badgeW = doc.getTextWidth(badge) + 4;
+          setFill(isContratante ? C.accent : C.primary);
+          doc.roundedRect(margin + 6 + doc.getTextWidth(clinic.name) + 3, y + 1.5, badgeW, 5, 1, 1, 'F');
+          setTxt(C.white);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6.5);
+          doc.text(badge, margin + 6 + doc.getTextWidth(clinic.name) + 3 + badgeW / 2, y + 5, { align: 'center' });
+
+          // Stats line
+          setTxt(C.muted);
+          doc.setFontSize(7.5);
+          doc.text(`${patientCount} pacientes  •  ${sessions} sessões  •  ${paidAbsences} faltas rem.  •  ${absences} faltas`, margin + 6, y + 10.5);
+
+          // Revenue
+          setTxt(C.primary);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 7, { align: 'right' });
+          y += 15;
+        });
+        y += 6;
+      }
+
+      // ─── Standalone services ──────────────────────────────────────────
+      if (standaloneRevenue > 0) {
+        sectionTitle('SERVIÇOS PARTICULARES (FORA DE CLÍNICA)');
+        ensureSpace(14);
+        setFill(C.light);
+        setDraw(C.border);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(margin, y, contentW, 12, 2, 2, 'FD');
+        setTxt(C.mid);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`${standaloneServiceAppointments.filter(a => a.status === 'concluído').length} atendimentos concluídos`, margin + 5, y + 7.5);
+        setTxt(C.primary);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text(`R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 5, y + 7.5, { align: 'right' });
+        y += 16;
+      }
+
+      // ─── Patient payments table ────────────────────────────────────────
+      if (patientStats.length > 0) {
+        sectionTitle('CONTROLE DE PAGAMENTOS POR PACIENTE');
+
+        // Table header row
+        ensureSpace(10);
+        setFill(C.primary);
+        doc.rect(margin, y, contentW, 9, 'F');
+        setTxt(C.white);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        const th = { p: margin + 2, c: margin + 55, t: margin + 100, s: margin + 118, st: margin + 132, v: pageWidth - margin - 2 };
+        doc.text('PACIENTE', th.p, y + 5.8);
+        doc.text('CLÍNICA', th.c, y + 5.8);
+        doc.text('TIPO', th.t, y + 5.8);
+        doc.text('SESS.', th.s, y + 5.8);
+        doc.text('STATUS', th.st, y + 5.8);
+        doc.text('VALOR', th.v, y + 5.8, { align: 'right' });
+        y += 10;
 
         let totalPaid = 0, totalPending = 0;
-        patientStats.forEach(({ patient, clinic, revenue, sessions, paymentType, paymentValue, pr }) => {
-          if (y > 275) { doc.addPage(); y = 20; }
-          doc.setTextColor(51, 51, 51);
-          doc.text(patient.name.substring(0, 18), col1, y);
-          doc.setTextColor(80, 80, 80);
-          doc.text((clinic?.name || '').substring(0, 14), col2, y);
-          doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', col3, y);
-          doc.text(sessions.toString(), col4, y);
-          // Payment status
+        patientStats.forEach(({ patient, clinic, revenue, sessions, paymentType, pr }, idx) => {
+          ensureSpace(8);
+          // Alternating row
+          setFill(idx % 2 === 0 ? C.white : C.rowAlt);
+          doc.rect(margin, y, contentW, 7.5, 'F');
+
+          setTxt(C.dark);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.text(patient.name.substring(0, 26), th.p, y + 5);
+          setTxt(C.mid);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          doc.text((clinic?.name || '').substring(0, 18), th.c, y + 5);
+          doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', th.t, y + 5);
+          doc.text(sessions.toString(), th.s, y + 5);
+
           if (pr?.paid) {
-            doc.setTextColor(34, 139, 34);
-            doc.text(`Pago${pr.payment_date ? ' ' + format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM') : ''}`, col5, y);
+            const paidLabel = `Pago${pr.payment_date ? ' ' + format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM') : ''}`;
+            setFill(C.greenLight);
+            doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth(paidLabel) + 4, 6, 1, 1, 'F');
+            setTxt(C.green);
+            doc.setFont('helvetica', 'bold');
+            doc.text(paidLabel, th.st + 1, y + 5);
             totalPaid += revenue;
           } else {
-            doc.setTextColor(200, 100, 0);
-            doc.text('Pendente', col5, y);
+            setFill(C.orangeLight);
+            doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth('Pendente') + 4, 6, 1, 1, 'F');
+            setTxt(C.orange);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Pendente', th.st + 1, y + 5);
             totalPending += revenue;
           }
-          doc.setTextColor(51, 51, 51);
-          doc.text(`R$ ${revenue.toFixed(2)}`, col6, y, { align: 'right' });
-          y += 6;
+
+          setTxt(C.dark);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.text(`R$ ${revenue.toFixed(2)}`, th.v, y + 5, { align: 'right' });
+
+          // Row bottom border
+          setDraw(C.border);
+          doc.setLineWidth(0.1);
+          doc.line(margin, y + 7.5, pageWidth - margin, y + 7.5);
+          y += 7.5;
         });
 
-        // Summary footer
-        if (y > 270) { doc.addPage(); y = 20; }
-        y += 3;
-        doc.setDrawColor(180, 180, 180);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 5;
-        doc.setFontSize(9);
-        doc.setTextColor(34, 139, 34);
-        doc.text(`✓ Total Pago: R$ ${totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 5;
-        doc.setTextColor(200, 100, 0);
-        doc.text(`⏳ Total Pendente: R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+        // Totals footer row
+        ensureSpace(22);
+        y += 4;
+        const footerRowH = 9;
+
+        setFill(C.greenLight);
+        setDraw(C.green);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, y, contentW / 2 - 2, footerRowH, 1.5, 1.5, 'FD');
+        setTxt(C.green);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('Total Pago:', margin + 4, y + 6);
+        doc.text(`R$ ${totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentW / 2 - 5, y + 6, { align: 'right' });
+
+        setFill(C.orangeLight);
+        setDraw(C.orange);
+        doc.roundedRect(margin + contentW / 2 + 2, y, contentW / 2 - 2, footerRowH, 1.5, 1.5, 'FD');
+        setTxt(C.orange);
+        doc.text('Total Pendente:', margin + contentW / 2 + 6, y + 6);
+        doc.text(`R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 6, { align: 'right' });
+        y += footerRowH + 5;
       }
 
+      // ─── Page footers ─────────────────────────────────────────────────
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Página ${i} de ${pageCount}`, pageWidth / 2, 290, { align: 'center' });
+        addPageFooter(i, pageCount);
       }
 
       doc.save(`financeiro-${format(selectedDate, 'yyyy-MM')}.pdf`);
