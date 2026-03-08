@@ -49,6 +49,8 @@ export default function Profile() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [professionalId, setProfessionalId] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [cbo, setCbo] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Stamp form states
