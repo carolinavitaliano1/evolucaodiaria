@@ -31,6 +31,7 @@ import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { generateReportPdf } from '@/utils/generateReportPdf';
 import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
+import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import jsPDF from 'jspdf';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
@@ -196,6 +197,17 @@ export default function PatientDetail() {
   const [fiscalTotalPaidFromApp, setFiscalTotalPaidFromApp] = useState<number | null>(null);
   const [isSavingFiscalToDocuments, setIsSavingFiscalToDocuments] = useState(false);
 
+  // Payment receipt state
+  const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
+  const [prAmount, setPrAmount] = useState('');
+  const [prService, setPrService] = useState('');
+  const [prPeriod, setPrPeriod] = useState('');
+  const [prPaymentMethod, setPrPaymentMethod] = useState('transferência bancária');
+  const [prPaymentDate, setPrPaymentDate] = useState('');
+  const [prStampId, setPrStampId] = useState('');
+  const [isExportingPR, setIsExportingPR] = useState(false);
+  const [isExportingPRWord, setIsExportingPRWord] = useState(false);
+
   // Therapist profile for fiscal receipt
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
 
@@ -248,6 +260,7 @@ export default function PatientDetail() {
         if (defaultStamp) {
           setSelectedStampId(defaultStamp.id);
           setFiscalStampId(defaultStamp.id);
+          setPrStampId(defaultStamp.id);
         }
       }
     });
@@ -858,7 +871,87 @@ export default function PatientDetail() {
     finally { setIsExportingFiscalWord(false); }
   };
 
+  // ── RECIBO DE PAGAMENTO ───────────────────────────────────────────────────
+  const buildPaymentReceiptOpts = () => {
+    const prStamp = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) || null : null;
+    const isMinorPR = (() => {
+      if (!patient.birthdate) return false;
+      try {
+        const b = new Date(patient.birthdate + 'T12:00:00');
+        let a = new Date().getFullYear() - b.getFullYear();
+        const m = new Date().getMonth() - b.getMonth();
+        if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
+        return a < 18;
+      } catch { return false; }
+    })();
+    const payerName = isMinorPR && patient.responsibleName ? patient.responsibleName : patient.name;
+    const payerCpf = isMinorPR
+      ? ((patient as any).responsible_cpf || (patient as any).responsibleCpf || (patient as any).cpf || null)
+      : ((patient as any).cpf || null);
 
+    return {
+      therapistName: prStamp?.name || therapistProfile?.name || '',
+      therapistCpf: therapistProfile?.cpf || null,
+      therapistProfessionalId: therapistProfile?.professional_id || null,
+      therapistCbo: prStamp?.cbo || therapistProfile?.cbo || null,
+      therapistClinicalArea: prStamp?.clinical_area || patient.clinicalArea || null,
+      stamp: prStamp,
+      payerName,
+      payerCpf,
+      amount: prAmount ? parseFloat(prAmount) : 0,
+      serviceName: prService || patient.clinicalArea || 'Atendimento',
+      period: prPeriod,
+      paymentMethod: prPaymentMethod,
+      paymentDate: prPaymentDate,
+    };
+  };
+
+  const handleExportPaymentReceiptPdf = async () => {
+    setIsExportingPR(true);
+    try {
+      await generatePaymentReceiptPdf(buildPaymentReceiptOpts());
+    } catch { toast.error('Erro ao gerar recibo'); }
+    finally { setIsExportingPR(false); }
+  };
+
+  const handleExportPaymentReceiptWord = async () => {
+    setIsExportingPRWord(true);
+    try {
+      await generatePaymentReceiptWord(buildPaymentReceiptOpts());
+    } catch { toast.error('Erro ao gerar recibo Word'); }
+    finally { setIsExportingPRWord(false); }
+  };
+
+  // Helper to open payment receipt dialog and pre-fill data
+  const openPaymentReceiptDialog = async () => {
+    // Pre-fill service from patient
+    setPrService(patient.clinicalArea || stamps.find(s => s.is_default)?.clinical_area || stamps[0]?.clinical_area || '');
+    // Pre-fill period as current month
+    const now = new Date();
+    const monthName = format(now, 'MMMM/yyyy', { locale: ptBR });
+    setPrPeriod(monthName);
+    // Try to fetch last payment record for amount/date
+    if (user && patient.id) {
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      const { data } = await supabase
+        .from('patient_payment_records')
+        .select('amount, payment_date')
+        .eq('patient_id', patient.id)
+        .eq('user_id', user.id)
+        .eq('month', month)
+        .eq('year', year)
+        .maybeSingle();
+      if (data) {
+        if (data.amount > 0) setPrAmount(data.amount.toFixed(2));
+        else if (patient.paymentValue) setPrAmount(patient.paymentValue.toFixed(2));
+        if (data.payment_date) setPrPaymentDate(data.payment_date);
+      } else if (patient.paymentValue) {
+        setPrAmount(patient.paymentValue.toFixed(2));
+      }
+    }
+    setPaymentReceiptOpen(true);
+  };
   // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
   const handleExportFinancialPDF = async () => {
     if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
@@ -1664,6 +1757,15 @@ export default function PatientDetail() {
                     <Receipt className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">Gerar Extrato Fiscal</span>
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5 text-xs h-9 border-success/40 text-success hover:bg-success/5"
+                    onClick={openPaymentReceiptDialog}
+                  >
+                    <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Recibo de Pagamento</span>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1908,6 +2010,150 @@ export default function PatientDetail() {
 
       <EditPatientDialog patient={patient} open={editPatientOpen} onOpenChange={setEditPatientOpen}
         onSave={updatePatient} clinicPackages={clinic ? getClinicPackages(clinic.id) : []} />
+
+      {/* ── PAYMENT RECEIPT DIALOG ───────────────────────────────────────── */}
+      <Dialog open={paymentReceiptOpen} onOpenChange={setPaymentReceiptOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-success" /> Recibo de Pagamento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+
+            {/* Preview text */}
+            <div className="bg-muted/40 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed italic">
+              {(() => {
+                const prStampPreview = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) : stamps.find(s => s.is_default) || stamps[0];
+                const tName = prStampPreview?.name || therapistProfile?.name || '[Terapeuta]';
+                const tCpf = therapistProfile?.cpf ? ` (CPF: ${therapistProfile.cpf})` : '';
+                const isMinorPR = (() => {
+                  if (!patient.birthdate) return false;
+                  try {
+                    const b = new Date(patient.birthdate + 'T12:00:00');
+                    let a = new Date().getFullYear() - b.getFullYear();
+                    const m = new Date().getMonth() - b.getMonth();
+                    if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
+                    return a < 18;
+                  } catch { return false; }
+                })();
+                const pName = isMinorPR && patient.responsibleName ? patient.responsibleName : patient.name;
+                const amtDisplay = prAmount ? `R$ ${parseFloat(prAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ [valor]';
+                const dateDisplay = prPaymentDate ? format(new Date(prPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '___/___/______';
+                return <>
+                  <p>Eu, <strong>{tName}</strong>{tCpf}, declaro para os devidos fins que recebi de <strong>{pName}</strong> a importância de <strong>{amtDisplay}</strong>, referente ao pagamento do serviço de <strong>{prService || '[serviço]'}</strong>, realizado no período de <strong>{prPeriod || '[período]'}</strong>.</p>
+                  <p className="mt-2">A quantia foi paga através de <strong>{prPaymentMethod}</strong> na data de <strong>{dateDisplay}</strong>.</p>
+                </>;
+              })()}
+            </div>
+
+            {/* Fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs mb-1 block">Valor (R$)</Label>
+                <Input
+                  type="number" step="0.01" min="0"
+                  value={prAmount}
+                  onChange={e => setPrAmount(e.target.value)}
+                  placeholder="0,00"
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={prPaymentDate}
+                  onChange={e => setPrPaymentDate(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs mb-1 block">Serviço / Área Clínica</Label>
+              <Input
+                value={prService}
+                onChange={e => setPrService(e.target.value)}
+                placeholder="Ex: Psicologia, Fonoaudiologia..."
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs mb-1 block">Período / Referência</Label>
+              <Input
+                value={prPeriod}
+                onChange={e => setPrPeriod(e.target.value)}
+                placeholder="Ex: março/2026 ou 01/03/2026 a 31/03/2026"
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs mb-1 block">Forma de Pagamento</Label>
+              <Select value={prPaymentMethod} onValueChange={setPrPaymentMethod}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="transferência bancária">Transferência bancária</SelectItem>
+                  <SelectItem value="PIX">PIX</SelectItem>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                  <SelectItem value="cartão de crédito">Cartão de crédito</SelectItem>
+                  <SelectItem value="cartão de débito">Cartão de débito</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {stamps.length > 0 && (
+              <div>
+                <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                  <StampIcon className="w-3.5 h-3.5" /> Carimbo Profissional
+                </Label>
+                <Select value={prStampId} onValueChange={setPrStampId}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Selecione o carimbo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem carimbo</SelectItem>
+                    {stamps.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Export buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button
+                onClick={handleExportPaymentReceiptPdf}
+                disabled={isExportingPR || !prAmount || !prPeriod}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-9"
+              >
+                {isExportingPR ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                Baixar PDF
+              </Button>
+              <Button
+                onClick={handleExportPaymentReceiptWord}
+                disabled={isExportingPRWord || !prAmount || !prPeriod}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-9"
+              >
+                {isExportingPRWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                Word (.docx)
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── FISCAL RECEIPT DIALOG ─────────────────────────────────────────── */}
       <Dialog open={fiscalDialogOpen} onOpenChange={setFiscalDialogOpen}>

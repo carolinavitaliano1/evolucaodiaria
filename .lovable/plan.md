@@ -1,99 +1,73 @@
 
-## What the user wants
+## Como funcionaria um modelo multidisciplinar no app
 
-A new simple **"Recibo de Pagamento"** document (different from the existing detailed "Extrato Fiscal"). It follows this exact template:
-
-> *"Eu, [TERAPEUTA], inscrito no CPF/CNPJ sob o número [CPF], declaro para os devidos fins que recebi de [PACIENTE / RESPONSÁVEL], inscrito no CPF sob o número [CPF PACIENTE], a importância de R$ [VALOR], referente ao pagamento do serviço de [ÁREA/SERVIÇO], realizado em [DATA].*
-> *A quantia foi paga através de [FORMA DE PAGAMENTO] na data de [DATA PAGAMENTO].*
-> *Por ser verdade, firmo o presente recibo."*
-
-All blanks are **auto-filled** from existing profile/patient data. User can edit before exporting as PDF or Word.
+A estrutura atual já é quase toda compatível — clínicas, pacientes, evoluções, templates e carimbos são por usuário. O que falta é suporte para **múltiplos profissionais dentro de uma mesma clínica**, cada um com seu próprio acesso, carimbos e evoluções, mas compartilhando a base de pacientes.
 
 ---
 
-## Plan
+### O que precisaria ser adicionado (sem remover nada)
 
-### 1. New utility — `src/utils/generatePaymentReceiptPdf.ts`
-
-A clean, compact single-page PDF generator:
-
-```text
-┌─────────────────────────────────────────┐
-│  RECIBO DE PAGAMENTO          N° ______  │
-│  ─────────────────────────────────────── │
-│                                           │
-│  Eu, [TERAPEUTA], inscrito no CPF/CNPJ   │
-│  sob o número [CPF_TERAPEUTA], declaro   │
-│  para os devidos fins que recebi de      │
-│  [PACIENTE/RESPONSÁVEL], inscrito no     │
-│  CPF sob o número [CPF_PACIENTE],        │
-│  a importância de R$ [VALOR],            │
-│  referente ao pagamento do serviço de    │
-│  [SERVIÇO], realizado em [PERÍODO].      │
-│                                           │
-│  A quantia foi paga através de           │
-│  [FORMA_PAGAMENTO] na data de            │
-│  [DATA_PAGAMENTO].                       │
-│                                           │
-│  Por ser verdade, firmo o presente       │
-│  recibo.                                 │
-│                                           │
-│  Local e data: _________________________ │
-│                                           │
-│  ___________________________             │
-│  [Nome terapeuta]                        │
-│  [Registro / CBO]                        │
-│  [Carimbo e assinatura]                  │
-└─────────────────────────────────────────┘
+```
+ESTRUTURA ATUAL                    ESTRUTURA MULTIDISCIPLINAR
+─────────────────────────          ─────────────────────────────────
+usuário único → clínica            organização → clínica → membros
+usuário único → pacientes          pacientes compartilhados por clínica
+usuário único → evoluções          evoluções com "autor" (profissional)
 ```
 
-- Accepts `PaymentReceiptOptions` with all pre-filled values
-- Supports `returnBlob` overload for Word export
-- Stamp/signature block stays on same page (height pre-check)
+**1. Organizações / Equipes**
+- Nova tabela `organizations` — uma clínica multidisciplinar seria uma organização
+- Nova tabela `organization_members` — com papéis: `owner`, `admin`, `professional`
+- O dono convida outros usuários via e-mail
 
-Also a `generatePaymentReceiptWord()` using the same HTML-to-DOCX approach already used in the existing fiscal receipt.
+**2. Pacientes compartilhados**
+- Pacientes passariam a ser da organização, não só do usuário
+- Cada profissional vê os pacientes da clínica, não só os seus
+- Permissões por papel: quem pode criar/editar/arquivar
 
-### 2. New dialog state in `src/pages/PatientDetail.tsx`
+**3. Evoluções por profissional**
+- Cada evolução já tem `user_id` — continuaria funcionando como "autor"
+- Na visualização, apareceria o nome do profissional que registrou
+- Carimbo automático do profissional logado
 
-New state variables:
-```typescript
-const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
-const [prAmount, setPrAmount] = useState('');
-const [prService, setPrService] = useState('');    // pre-filled from patient.clinicalArea
-const [prPeriod, setPrPeriod] = useState('');       // e.g. "março/2026" or date range
-const [prPaymentMethod, setPrPaymentMethod] = useState('transferência bancária');
-const [prPaymentDate, setPrPaymentDate] = useState('');
-const [prStampId, setPrStampId] = useState('');
-const [isExportingPR, setIsExportingPR] = useState(false);
-const [isExportingPRWord, setIsExportingPRWord] = useState(false);
-```
+**4. Templates por organização**
+- Templates criados pelo dono ficam disponíveis para toda a equipe
+- Cada profissional ainda pode ter seus próprios templates pessoais
 
-Auto-populated on dialog open:
-- `prAmount` → last `patient_payment_records` entry if exists
-- `prService` → `patient.clinicalArea || stamp.clinical_area`
-- `prPeriod` → current month/year label
-- `prPaymentDate` → last payment record date
+**5. Financeiro separado por profissional**
+- Cada membro vê seus próprios recebimentos
+- O dono/admin vê o consolidado de todos
 
-### 3. Dialog UI
+---
 
-Added inside the existing "Recibo Fiscal (NF)" section as a second button **"Recibo de Pagamento"**, opening a compact dialog:
+### Impacto no que já existe
 
-Fields shown (all editable):
-- **Valor** (pre-filled, R$)  
-- **Descrição do serviço** (pre-filled from clinicalArea)
-- **Período/referência** (text, e.g. "março/2026")
-- **Forma de pagamento** (select: PIX, Transferência, Dinheiro, Cheque, Cartão)
-- **Data do pagamento** (date picker)
-- **Carimbo** (stamp selector, same as other exports)
+| Funcionalidade atual | Impacto |
+|---|---|
+| Clínica própria (terapeuta solo) | Zero — continua igual |
+| Templates de evolução | Zero — apenas compartilhamento opcional |
+| Carimbos pessoais | Zero — cada membro tem os seus |
+| Exportação PDF | Pequena — adicionar nome do profissional no rodapé |
+| Dashboard | Pequena — filtro por membro |
 
-Shows a preview of the filled-in text so user can confirm before downloading.
+O terapeuta solo continua usando o app exatamente como hoje. O modo multidisciplinar seria **opt-in** — ao criar uma clínica, escolheria entre "uso individual" ou "equipe multidisciplinar".
 
-### 4. Export handlers
+---
 
-- `handleExportPaymentReceiptPdf()` — calls new utility, downloads PDF
-- `handleExportPaymentReceiptWord()` — generates DOCX via html-docx-js-typescript
+### Implementação em fases
 
-### Files to edit
+**Fase 1** — Convite e membros
+- Tabelas `organizations` e `organization_members`
+- Fluxo de convite por e-mail
+- Papéis: dono, admin, profissional
 
-- `src/utils/generatePaymentReceiptPdf.ts` — **new file**
-- `src/pages/PatientDetail.tsx` — add state, handlers, dialog, and button
+**Fase 2** — Dados compartilhados
+- Pacientes e evoluções vinculados à organização
+- Filtros por profissional na agenda e evoluções
+
+**Fase 3** — Financeiro consolidado
+- Relatórios por membro e consolidado para o admin
+
+---
+
+Quer que eu implemente isso? Posso começar pela Fase 1 (estrutura de equipe e convites) mantendo tudo que existe intacto para usuários solo.
