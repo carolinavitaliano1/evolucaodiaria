@@ -399,7 +399,7 @@ export const PRESET_ROLES: PresetRole[] = [
   {
     id: 'secretaria',
     label: 'Secretária',
-    description: 'Gestão de agendas e cadastro de pacientes. Sem acesso ao conteúdo clínico.',
+    description: 'Gestão de agendas e cadastro de pacientes. Vê status de evoluções, sem conteúdo clínico.',
     baseRole: 'professional',
     icon: 'calendar',
     permissions: [
@@ -408,6 +408,7 @@ export const PRESET_ROLES: PresetRole[] = [
       'patients.view',
       'patients.create',
       'patients.edit',
+      'evolutions.status_only',
       'calendar.view',
       'calendar.edit',
       'tasks.view',
