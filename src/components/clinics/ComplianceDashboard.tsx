@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,13 +10,14 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertTriangle, CalendarIcon, Search, RefreshCw, MessageCircle,
-  User, ClipboardCheck, CheckCircle2, Clock, BellRing,
+  User, ClipboardCheck, CheckCircle2, Clock, BellRing, FileDown, Bell,
 } from 'lucide-react';
 import { format, subDays, parseISO, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { openWhatsApp } from '@/hooks/useMessageTemplates';
+import jsPDF from 'jspdf';
 
 interface PendingEvolution {
   appointmentId: string;
