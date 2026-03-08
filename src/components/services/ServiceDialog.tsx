@@ -41,6 +41,8 @@ const SERVICE_TYPES = [
 
 const INITIAL_CUSTOM_TYPES: string[] = [];
 
+interface PatientOption { id: string; name: string; phone: string | null; responsible_email: string | null; }
+
 interface ServiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -60,6 +62,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   const [newCustomType, setNewCustomType] = useState('');
   const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
   const [propriaClinics, setPropriaClinics] = useState<ClinicOption[]>([]);
+  const [clinicPatients, setClinicPatients] = useState<PatientOption[]>([]);
 
   // Service form states
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -88,6 +91,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
       loadServices();
       loadCustomTypes();
       loadPropriaClinics();
+      if (clinicId) loadClinicPatients(clinicId);
       // Pre-fill form if editing an appointment
       if (editAppointment) {
         setActiveTab('agendar');
@@ -110,6 +114,24 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
       }
     }
   }, [open, editAppointment, clinicId]);
+
+  async function loadClinicPatients(cid: string) {
+    const { data } = await supabase
+      .from('patients')
+      .select('id, name, phone, responsible_email')
+      .eq('clinic_id', cid)
+      .eq('is_archived', false)
+      .order('name');
+    if (data) setClinicPatients(data as PatientOption[]);
+  }
+
+  function handlePatientSelect(patientId: string) {
+    const p = clinicPatients.find(pt => pt.id === patientId);
+    if (!p) return;
+    setClientName(p.name);
+    setClientPhone(p.phone || '');
+    setClientEmail(p.responsible_email || '');
+  }
 
   async function loadPropriaClinics() {
     try {
