@@ -434,6 +434,78 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           </div>
         )}
       </div>
+
+      {/* Contratante payment record */}
+      {clinic.type === 'terceirizada' && (
+        <div className="bg-card rounded-2xl p-5 border border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle2 className="w-4 h-4 text-primary" />
+            <h3 className="font-bold text-foreground text-sm">Pagamento da Clínica</h3>
+            <span className="ml-auto text-[10px] text-muted-foreground capitalize">{monthName}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Registre se você já recebeu o pagamento desta clínica contratante para este mês.
+          </p>
+
+          <div className="flex flex-col gap-3">
+            {/* Toggle pago/pendente */}
+            <div className="flex items-center justify-between rounded-xl bg-secondary/40 border border-border/60 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {paymentRecord?.paid ? '✅ Pago' : '⏳ Pendente'}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Valor previsto: R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={savingPayment}
+                onClick={() => savePaymentRecord({ paid: !paymentRecord?.paid, payment_date: !paymentRecord?.paid ? new Date().toISOString().split('T')[0] : null })}
+                className={cn(
+                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50',
+                  paymentRecord?.paid ? 'bg-success' : 'bg-input'
+                )}
+              >
+                <span className={cn(
+                  'pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform',
+                  paymentRecord?.paid ? 'translate-x-5' : 'translate-x-0'
+                )} />
+              </button>
+            </div>
+
+            {/* Payment date picker — shown when paid */}
+            {paymentRecord?.paid && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Data do Recebimento</label>
+                <Popover open={paymentDateOpen} onOpenChange={setPaymentDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal text-sm h-9 gap-2", !paymentRecord.payment_date && "text-muted-foreground")}>
+                      <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
+                      {paymentRecord.payment_date
+                        ? format(new Date(paymentRecord.payment_date + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                        : 'Selecionar data'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={paymentRecord.payment_date ? new Date(paymentRecord.payment_date + 'T00:00:00') : undefined}
+                      onSelect={(d) => {
+                        if (d) {
+                          savePaymentRecord({ payment_date: d.toISOString().split('T')[0] });
+                          setPaymentDateOpen(false);
+                        }
+                      }}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 
