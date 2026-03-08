@@ -313,9 +313,9 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
       pdf.setTextColor(25, 25, 25);
       const hLines = pdf.splitTextToSize(headingText, CONTENT_W - 6);
       for (const hl of hLines) {
-        ensureSpace(8);
+        ensureSpace(7);
         pdf.text(hl, MARGIN + 3, y);
-        y += 7;
+        y += 6;
       }
       y += 1;
       setBody();
