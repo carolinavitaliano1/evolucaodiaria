@@ -34,6 +34,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const { patients, evolutions } = useApp();
   const { user } = useAuth();
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { isOrg, members } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -41,6 +42,10 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportingPatientId, setExportingPatientId] = useState<string | null>(null);
   const [filterUserId, setFilterUserId] = useState<string>('all');
+
+  // Status-only: can see if evolution exists but not read its content
+  const canViewContent = !isOrgMember || isOwner || hasPermission(permissions, 'evolutions.view');
+  const canSeeStatus = canViewContent || hasPermission(permissions, 'evolutions.status_only');
 
   useEffect(() => {
     if (!user) return;
