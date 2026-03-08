@@ -1505,6 +1505,51 @@ export default function ClinicDetail() {
                           {clinic.paymentType === 'fixo_diario' && ' por dia'}
                         </p>
                       ) : null}
+
+                      {/* Payment due day */}
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Dia de vencimento</Label>
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={31}
+                              placeholder="Ex: 10"
+                              value={formData.paymentDueDay}
+                              onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">dia</span>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Status inicial</Label>
+                          <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 h-10">
+                            <span className={`text-xs font-medium ${formData.initialPaymentPaid ? 'text-success' : 'text-muted-foreground'}`}>
+                              {formData.initialPaymentPaid ? 'Pago' : 'Pendente'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, initialPaymentPaid: !formData.initialPaymentPaid, initialPaymentDate: !formData.initialPaymentPaid ? new Date().toISOString().split('T')[0] : '' })}
+                              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${formData.initialPaymentPaid ? 'bg-success' : 'bg-input'}`}
+                            >
+                              <span className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform ${formData.initialPaymentPaid ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Payment date — shown when initial payment is set to Pago */}
+                      {formData.initialPaymentPaid && (
+                        <div className="mt-3 space-y-1.5">
+                          <Label className="text-xs">Data do pagamento</Label>
+                          <Input
+                            type="date"
+                            value={formData.initialPaymentDate}
+                            onChange={(e) => setFormData({ ...formData, initialPaymentDate: e.target.value })}
+                          />
+                        </div>
+                      )}
                     </div>
 
 
