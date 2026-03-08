@@ -1498,6 +1498,22 @@ export default function PatientDetail() {
                     <span className="truncate">Financeiro</span>
                   </Button>
                 </div>
+
+                {/* Fiscal Receipt */}
+                <div className="pt-2 border-t border-border/50">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                    <Receipt className="w-3.5 h-3.5" /> Recibo Fiscal (NF)
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5 text-xs h-9 border-primary/40 text-primary hover:bg-primary/5"
+                    onClick={() => setFiscalDialogOpen(true)}
+                  >
+                    <Receipt className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">Gerar Extrato Fiscal</span>
+                  </Button>
+                </div>
               </div>
             </div>
 
