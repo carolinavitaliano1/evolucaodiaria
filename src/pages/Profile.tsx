@@ -100,9 +100,9 @@ export default function Profile() {
     try {
       setLoading(true);
 
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
+      const { data: profileData } = await (supabase
+        .from('profiles') as any)
+        .select('id, user_id, name, email, phone, professional_id, cpf, cbo, avatar_url')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -171,8 +171,8 @@ export default function Profile() {
       setSaving(true);
 
       if (profile) {
-        const { error } = await supabase
-          .from('profiles')
+        const { error } = await (supabase
+          .from('profiles') as any)
           .update({
             name,
             email,
@@ -186,8 +186,8 @@ export default function Profile() {
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('profiles')
+        const { error } = await (supabase
+          .from('profiles') as any)
           .insert({
             user_id: userId,
             name,
