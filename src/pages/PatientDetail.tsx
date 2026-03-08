@@ -204,6 +204,40 @@ export default function PatientDetail() {
       .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
 
+  // Auto-fetch payment record when fiscal period is selected
+  useEffect(() => {
+    if (!fiscalStartDate || !patient?.id || !user) return;
+    const month = fiscalStartDate.getMonth() + 1;
+    const year = fiscalStartDate.getFullYear();
+    supabase
+      .from('patient_payment_records')
+      .select('paid, payment_date, amount')
+      .eq('patient_id', patient.id)
+      .eq('user_id', user.id)
+      .eq('month', month)
+      .eq('year', year)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setFiscalPaymentStatus(data.paid ? 'paid' : 'pending');
+          setFiscalPaymentDate(data.payment_date || '');
+          if (data.amount > 0) {
+            const amountStr = data.amount.toFixed(2);
+            setFiscalTotalPaid(amountStr);
+            setFiscalTotalPaidFromApp(data.amount);
+          } else {
+            setFiscalTotalPaid('');
+            setFiscalTotalPaidFromApp(null);
+          }
+        } else {
+          setFiscalPaymentStatus('pending');
+          setFiscalPaymentDate('');
+          setFiscalTotalPaid('');
+          setFiscalTotalPaidFromApp(null);
+        }
+      });
+  }, [fiscalStartDate, patient?.id, user]);
+
   useEffect(() => {
     if (!user) return;
     supabase.from('stamps').select('*').eq('user_id', user.id).order('created_at').then(({ data }) => {
