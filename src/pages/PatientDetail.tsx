@@ -205,6 +205,7 @@ export default function PatientDetail() {
   const [prPaymentMethod, setPrPaymentMethod] = useState('transferência bancária');
   const [prPaymentDate, setPrPaymentDate] = useState('');
   const [prStampId, setPrStampId] = useState('');
+  const [prLocation, setPrLocation] = useState('');
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
 
