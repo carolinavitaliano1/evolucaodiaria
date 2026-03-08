@@ -278,11 +278,22 @@ Deno.serve(async (req) => {
     let emailSent = false;
     let tempPassword: string | null = null;
 
-    if (userAlreadyExists) {
-      console.log(`Enviando convite via Resend para usuário existente: ${email}`);
-      emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null, patientNames);
-    } else {
-      tempPassword = generateTempPassword(email);
+    tempPassword = generateTempPassword(email);
+
+    if (userAlreadyExists && existingUserId) {
+      // Usuário já existe: reseta a senha para a senha provisória e envia credenciais
+      console.log(`Resetando senha e enviando credenciais para usuário existente: ${email}`);
+      const { error: updateError } = await supabase.auth.admin.updateUserById(existingUserId, {
+        password: tempPassword,
+      });
+      if (updateError) {
+        console.error('Erro ao resetar senha:', updateError.message);
+        // Envia sem mostrar credenciais como fallback
+        emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null, patientNames);
+      } else {
+        emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, tempPassword, patientNames);
+      }
+    } else if (!userAlreadyExists) {
       console.log(`Criando conta para novo usuário: ${email}`);
 
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
@@ -307,7 +318,7 @@ Deno.serve(async (req) => {
           tempPassword = null;
           console.log(`Fallback: convite enviado via inviteUserByEmail para ${email}`);
         } else {
-          emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, null, patientNames);
+          emailSent = await sendInviteEmailWithCredentials(email, inviteUrl, org.name, inviterName, roleLabel, tempPassword, patientNames);
         }
       } else {
         console.log(`Conta criada para ${email}, id: ${newUser.user?.id}`);
