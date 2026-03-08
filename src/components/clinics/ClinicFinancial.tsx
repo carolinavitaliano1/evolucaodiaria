@@ -396,23 +396,65 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <p className="text-center text-muted-foreground py-8 text-sm">Nenhum registro neste mês</p>
         ) : (
           <div className="space-y-2">
-            {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, reposicoes }) => (
-              <div key={patient.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-secondary/40 border border-border/50 gap-2">
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground text-sm truncate">{patient.name}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {sessions} sessões
-                    {reposicoes > 0 && ` (🔄${reposicoes})`}
-                    {paidAbsences > 0 && ` · ${paidAbsences} faltas rem.`}
-                    {absences > 0 && ` · ${absences} faltas`}
-                    {' · '}{patient.paymentType === 'fixo' ? 'Fixo' : 'Por sessão'}
-                  </p>
+            {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, reposicoes }) => {
+              const pr = patientPaymentRecords[patient.id];
+              const anyPatient = patient as any;
+              return (
+                <div key={patient.id} className="flex flex-col gap-2 p-3 rounded-xl bg-secondary/40 border border-border/50">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{patient.name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {sessions} sessões
+                        {reposicoes > 0 && ` (🔄${reposicoes})`}
+                        {paidAbsences > 0 && ` · ${paidAbsences} faltas rem.`}
+                        {absences > 0 && ` · ${absences} faltas`}
+                        {' · '}{patient.paymentType === 'fixo' ? 'Fixo' : 'Por sessão'}
+                        {anyPatient.payment_due_day && ` · Vence dia ${anyPatient.payment_due_day}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <p className="font-bold text-foreground text-sm">
+                        R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={savingPatientPayment === patient.id}
+                        title={pr?.paid ? 'Marcar como pendente' : 'Marcar como pago'}
+                        onClick={async () => {
+                          if (!user) return;
+                          setSavingPatientPayment(patient.id);
+                          const m = selectedDate.getMonth() + 1;
+                          const y = selectedDate.getFullYear();
+                          const newPaid = !pr?.paid;
+                          const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
+                          const existing = pr as any;
+                          if (existing?.id) {
+                            await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', existing.id);
+                          } else {
+                            await supabase.from('patient_payment_records' as any).insert({ user_id: user.id, patient_id: patient.id, clinic_id: clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate });
+                          }
+                          setPatientPaymentRecords(prev => ({ ...prev, [patient.id]: { ...(prev[patient.id] || {}), paid: newPaid, payment_date: newDate, id: existing?.id } as any }));
+                          setSavingPatientPayment(null);
+                        }}
+                        className={cn(
+                          'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50',
+                          pr?.paid ? 'bg-success' : 'bg-input'
+                        )}
+                      >
+                        <span className={cn('pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform', pr?.paid ? 'translate-x-4' : 'translate-x-0')} />
+                      </button>
+                    </div>
+                  </div>
+                  {pr?.paid && pr.payment_date && (
+                    <p className="text-[10px] text-success flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Pago em {format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy')}
+                    </p>
+                  )}
                 </div>
-                <p className="font-bold text-foreground text-sm shrink-0">
-                  R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-            ))}
+              );
+            })}
             <div className="flex justify-between items-center pt-3 border-t border-border">
               <div>
                 <p className="font-bold text-foreground text-sm">Total Pacientes</p>
