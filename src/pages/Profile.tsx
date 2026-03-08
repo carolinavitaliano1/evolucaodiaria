@@ -178,6 +178,8 @@ export default function Profile() {
             email,
             phone,
             professional_id: professionalId,
+            cpf: cpf || null,
+            cbo: cbo || null,
             avatar_url: avatarUrl
           })
           .eq('id', profile.id);
@@ -192,6 +194,8 @@ export default function Profile() {
             email,
             phone,
             professional_id: professionalId,
+            cpf: cpf || null,
+            cbo: cbo || null,
             avatar_url: avatarUrl
           });
 
