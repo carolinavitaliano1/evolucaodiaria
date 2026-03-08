@@ -208,6 +208,7 @@ export default function PatientDetail() {
   const [prPaymentDate, setPrPaymentDate] = useState('');
   const [prStampId, setPrStampId] = useState('');
   const [prLocation, setPrLocation] = useState('');
+  const [prLocalDate, setPrLocalDate] = useState('');
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
 
