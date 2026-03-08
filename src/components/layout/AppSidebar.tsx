@@ -81,10 +81,10 @@ export function AppSidebar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-    <aside className={cn(
-      "hidden lg:flex flex-col w-60 min-h-screen border-r border-border",
-      theme === 'lilas' ? 'sidebar-lilas' : 'bg-card'
-    )}>
+      <aside className={cn(
+        "hidden lg:flex flex-col w-60 min-h-screen border-r border-border",
+        theme === 'lilas' ? 'sidebar-lilas' : 'bg-card'
+      )}>
       {/* Logo */}
       <div className="p-5 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
