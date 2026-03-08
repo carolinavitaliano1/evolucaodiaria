@@ -755,10 +755,11 @@ export default function Patients() {
                       openExportDialog(patient.id, 'financial');
                     }}
                   >
-                    <DollarSign className="w-3.5 h-3.5" />
+                   <DollarSign className="w-3.5 h-3.5" />
                     Financeiro
                   </Button>
                 </div>
+                )}
               </div>
             );
           })}
