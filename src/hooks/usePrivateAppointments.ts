@@ -14,6 +14,7 @@ export interface PrivateAppointment {
   status: string;
   notes?: string;
   paid?: boolean;
+  payment_date?: string | null;
   created_at: string;
 }
 

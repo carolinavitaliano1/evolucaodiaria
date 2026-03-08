@@ -85,6 +85,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   const [appointmentNotes, setAppointmentNotes] = useState('');
   const [appointmentStatus, setAppointmentStatus] = useState('agendado');
   const [appointmentPaid, setAppointmentPaid] = useState(false);
+  const [appointmentPaymentDate, setAppointmentPaymentDate] = useState('');
 
   useEffect(() => {
     if (open) {
