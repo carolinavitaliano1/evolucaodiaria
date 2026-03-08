@@ -53,6 +53,11 @@ interface PrivateAppointment {
   created_at: string;
 }
 
+interface ServiceRecord {
+  id: string; name: string; type: string; description: string | null;
+  duration_minutes: number; price: number; is_active: boolean;
+}
+
 export default function Clinics() {
   const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic } = useApp();
   const { user } = useAuth();
@@ -74,6 +79,29 @@ export default function Clinics() {
   const [appointmentToEdit, setAppointmentToEdit] = useState<PrivateAppointment | null>(null);
   const [deleteAppointmentOpen, setDeleteAppointmentOpen] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<PrivateAppointment | null>(null);
+  const [registeredServices, setRegisteredServices] = useState<ServiceRecord[]>([]);
+  const [deleteServiceOpen, setDeleteServiceOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<ServiceRecord | null>(null);
+
+  const loadRegisteredServices = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('services')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .order('name');
+    setRegisteredServices((data as ServiceRecord[]) || []);
+  };
+
+  const handleDeleteService = async () => {
+    if (!serviceToDelete) return;
+    await supabase.from('services').update({ is_active: false }).eq('id', serviceToDelete.id);
+    toast.success('Serviço removido!');
+    loadRegisteredServices();
+    setDeleteServiceOpen(false);
+    setServiceToDelete(null);
+  };
 
   const handleDeleteAppointment = async () => {
     if (!appointmentToDelete) return;
