@@ -2064,6 +2064,40 @@ export default function ClinicDetail() {
           showFaltaRemunerada={clinic?.paysOnAbsence}
         />
       )}
+
+      {/* Serviços tab — ServiceDialog and dialogs */}
+      {isPropria && (
+        <>
+          <ServiceDialog
+            open={serviceDialogOpen}
+            onOpenChange={(open) => { setServiceDialogOpen(open); if (!open) loadClinicServices(); }}
+            clinicId={clinic.id}
+            onAppointmentSaved={loadClinicServices}
+          />
+          <ServiceDialog
+            open={editServiceAptOpen}
+            onOpenChange={(open) => { setEditServiceAptOpen(open); if (!open) { setEditServiceApt(null); loadClinicServices(); } }}
+            editAppointment={editServiceApt as any}
+            clinicId={clinic.id}
+            onAppointmentSaved={loadClinicServices}
+          />
+          <AlertDialog open={deleteServiceAptOpen} onOpenChange={setDeleteServiceAptOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Apagar agendamento?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja apagar o agendamento de <strong>{serviceAptToDelete?.client_name}</strong>? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={deleteClinicServiceApt} className="bg-destructive hover:bg-destructive/90">Apagar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </div>
   );
 }
+
