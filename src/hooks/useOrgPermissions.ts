@@ -114,6 +114,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     allKeys: [
       'patients.view', 'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
       'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
+      'evolutions.status_only',
     ],
     levels: [
       {
@@ -124,13 +125,24 @@ export const PERMISSION_MODULES: PermissionModule[] = [
         revokes: [
           'patients.view', 'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
           'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
+          'evolutions.status_only',
+        ],
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        description: 'Vê se evoluções foram preenchidas, sem acessar o conteúdo clínico.',
+        grants: ['patients.view', 'evolutions.status_only'],
+        revokes: [
+          'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
+          'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
         ],
       },
       {
         id: 'view',
         label: 'Ver',
         description: 'Visualiza apenas os pacientes e evoluções atribuídos.',
-        grants: ['patients.view', 'patients.own_only', 'evolutions.view', 'evolutions.own_only'],
+        grants: ['patients.view', 'patients.own_only', 'evolutions.view', 'evolutions.own_only', 'evolutions.status_only'],
         revokes: ['patients.create', 'patients.edit', 'patients.delete', 'evolutions.create', 'evolutions.edit', 'evolutions.delete'],
       },
       {
@@ -139,7 +151,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
         description: 'Cria e edita pacientes e evoluções atribuídos.',
         grants: [
           'patients.view', 'patients.own_only', 'patients.create', 'patients.edit',
-          'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit',
+          'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.status_only',
         ],
         revokes: ['patients.delete', 'evolutions.delete'],
       },
@@ -150,7 +162,46 @@ export const PERMISSION_MODULES: PermissionModule[] = [
         grants: [
           'patients.view', 'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
           'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
+          'evolutions.status_only',
         ],
+        revokes: [],
+      },
+    ],
+  },
+
+  // ── Ferramentas de IA ──────────────────────────────────────────────────────
+  {
+    id: 'ai_tools',
+    label: 'Ferramentas de IA',
+    icon: 'report',
+    allKeys: ['ai_reports.use', 'ai_evolutions.use'],
+    levels: [
+      {
+        id: 'none',
+        label: 'Bloqueado',
+        description: 'Sem acesso a nenhuma ferramenta de IA.',
+        grants: [],
+        revokes: ['ai_reports.use', 'ai_evolutions.use'],
+      },
+      {
+        id: 'own',
+        label: 'Evoluções IA',
+        description: 'Pode melhorar e resumir evoluções com IA.',
+        grants: ['ai_evolutions.use'],
+        revokes: ['ai_reports.use'],
+      },
+      {
+        id: 'edit',
+        label: 'Relatórios IA',
+        description: 'Acessa o gerador de relatórios clínicos com IA.',
+        grants: ['ai_reports.use'],
+        revokes: ['ai_evolutions.use'],
+      },
+      {
+        id: 'all',
+        label: 'Todas',
+        description: 'Acesso completo às ferramentas de IA.',
+        grants: ['ai_reports.use', 'ai_evolutions.use'],
         revokes: [],
       },
     ],
