@@ -26,6 +26,9 @@ export interface PaymentReceiptOptions {
   period: string;
   paymentMethod: string;
   paymentDate: string;
+  clinicName?: string | null;
+  clinicAddress?: string | null;
+  clinicCnpj?: string | null;
 }
 
 function formatCpf(cpf: string): string {
@@ -39,7 +42,8 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
 export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, returnBlob?: true): Promise<Blob>;
 export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, returnBlob = false): Promise<void | Blob> {
   const { therapistName, therapistCpf, therapistAddress, therapistProfessionalId, therapistCbo,
-    therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period, paymentMethod, paymentDate } = opts;
+    therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period,
+    paymentMethod, paymentDate, clinicName, clinicAddress, clinicCnpj } = opts;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210, margin = 20, contentW = W - margin * 2;
@@ -51,12 +55,23 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
 
   const drawLine = () => { doc.setDrawColor(...borderColor); doc.line(margin, y, W - margin, y); y += 5; };
 
+  // Header
   doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentColor);
   doc.text('RECIBO DE PAGAMENTO', margin, y);
   const emissao = format(new Date(), 'dd/MM/yyyy', { locale: ptBR });
   doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
   doc.text(`Emissão: ${emissao}`, W - margin, y, { align: 'right' });
   y += 5; drawLine(); y += 4;
+
+  // Clinic block (if available)
+  if (clinicName || clinicAddress || clinicCnpj) {
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentColor);
+    if (clinicName) { doc.text(clinicName, margin, y); y += 5; }
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
+    if (clinicAddress) { doc.splitTextToSize(clinicAddress, contentW).forEach((l: string) => { doc.text(l, margin, y); y += 4.5; }); }
+    if (clinicCnpj) { doc.text(`CNPJ: ${formatCpf(clinicCnpj)}`, margin, y); y += 4.5; }
+    y += 3; drawLine(); y += 4;
+  }
 
   const therapistCpfFmt = therapistCpf ? formatCpf(therapistCpf) : null;
   const payerCpfFmt = payerCpf ? formatCpf(payerCpf) : null;
@@ -123,7 +138,8 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
 
 export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions): Promise<void> {
   const { therapistName, therapistCpf, therapistAddress, therapistProfessionalId, therapistCbo,
-    therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period, paymentMethod, paymentDate } = opts;
+    therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period,
+    paymentMethod, paymentDate, clinicName, clinicAddress, clinicCnpj } = opts;
 
   const fmt = (cpf: string) => {
     const d = cpf.replace(/\D/g, '');
@@ -141,10 +157,19 @@ export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions): P
   const area = stamp?.clinical_area || therapistClinicalArea || '';
   const locationStr = location ? `${location}, ` : '';
 
+  const clinicBlock = (clinicName || clinicAddress || clinicCnpj)
+    ? `<div style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd">
+        ${clinicName ? `<p style="font-weight:bold;color:#1e3a8a;margin:0">${clinicName}</p>` : ''}
+        ${clinicAddress ? `<p style="margin:2px 0;font-size:9pt;color:#555">${clinicAddress}</p>` : ''}
+        ${clinicCnpj ? `<p style="margin:2px 0;font-size:9pt;color:#555">CNPJ: ${fmt(clinicCnpj)}</p>` : ''}
+      </div>`
+    : '';
+
   const html = `<html><body style="font-family:Arial,sans-serif;font-size:12pt;margin:48px;line-height:1.7">
     <h2 style="color:#1e3a8a;margin-bottom:4px">RECIBO DE PAGAMENTO</h2>
     <p style="color:#666;margin-top:0;font-size:9pt">Emissão: ${emissao}</p>
     <hr style="border:1px solid #ddd;margin:16px 0"/>
+    ${clinicBlock}
     <p style="text-align:justify">Eu, <strong>${therapistName}</strong>${cpfPart}${addrPart} declaro para os devidos fins que recebi de <strong>${payerName}</strong>${payerCpfPart} a importância de <strong>R$ ${amountStr}</strong>, referente ao pagamento do serviço de <strong>${serviceName}</strong>, realizado no período de <strong>${period}</strong>.</p>
     <p style="text-align:justify">A quantia foi paga através de <strong>${paymentMethod}</strong> na data de <strong>${payDateStr}</strong>.</p>
     <p>Por ser verdade, firmo o presente recibo.</p>
