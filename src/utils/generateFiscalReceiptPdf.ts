@@ -133,33 +133,44 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions): Prom
   doc.text('TOMADOR DO SERVIÇO', margin, y);
   y += 8;
 
+  // Determine age to decide which CPF goes on the fiscal document
+  const patientAge = (() => {
+    if (!patient.birthdate) return null;
+    try {
+      const b = new Date(patient.birthdate + 'T12:00:00');
+      let a = new Date().getFullYear() - b.getFullYear();
+      const m = new Date().getMonth() - b.getMonth();
+      if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
+      return a;
+    } catch { return null; }
+  })();
+  const isMinor = patientAge !== null && patientAge < 18;
+
   labelValue('Nome:', patient.name);
-  if (patient.cpf) labelValue('CPF/CNPJ:', formatCpf(patient.cpf));
+  // Show patient CPF always (for registration), but note if minor
+  if (patient.cpf) {
+    const cpfLabel = isMinor ? 'CPF do Paciente:' : 'CPF:';
+    labelValue(cpfLabel, formatCpf(patient.cpf));
+  }
   if (patient.birthdate) {
-    const age = (() => {
-      try {
-        const b = new Date(patient.birthdate + 'T12:00:00');
-        let a = new Date().getFullYear() - b.getFullYear();
-        const m = new Date().getMonth() - b.getMonth();
-        if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
-        return a;
-      } catch { return null; }
-    })();
     const bdStr = format(new Date(patient.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-    labelValue('Nascimento:', `${bdStr}${age !== null ? ` (${age} anos)` : ''}`);
+    labelValue('Nascimento:', `${bdStr}${patientAge !== null ? ` (${patientAge} anos)` : ''}`);
   }
   if (patient.phone) labelValue('Telefone:', patient.phone);
 
-  // Responsável (menor de idade)
-  if (patient.responsibleName) {
+  // Responsável Legal — obrigatório para menores, exibido quando informado
+  if (patient.responsibleName || isMinor) {
     y += 3;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...mutedText);
-    doc.text('Responsável Legal:', margin, y);
+    doc.text(isMinor ? 'Responsável Legal (Pagador — menor de idade):' : 'Responsável Legal:', margin, y);
     y += 7;
-    labelValue('Nome:', patient.responsibleName);
-    if (patient.responsible_cpf) labelValue('CPF:', formatCpf(patient.responsible_cpf));
+    if (patient.responsibleName) labelValue('Nome:', patient.responsibleName);
+    if (patient.responsible_cpf) {
+      // For minors, highlight the responsible CPF as the fiscal CPF
+      labelValue(isMinor ? 'CPF (Nota Fiscal):' : 'CPF:', formatCpf(patient.responsible_cpf));
+    }
     if (patient.responsibleEmail) labelValue('E-mail:', patient.responsibleEmail);
   }
 

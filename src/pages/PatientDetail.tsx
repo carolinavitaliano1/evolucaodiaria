@@ -694,16 +694,29 @@ export default function PatientDetail() {
       const patCpf = (patient as any).cpf;
       const respCpf = (patient as any).responsible_cpf || (patient as any).responsibleCpf;
 
+      // Determine if minor to show correct CPF labels
+      const patientAgeWord = (() => {
+        if (!patient.birthdate) return null;
+        try {
+          const b = new Date(patient.birthdate + 'T12:00:00');
+          let a = new Date().getFullYear() - b.getFullYear();
+          const m = new Date().getMonth() - b.getMonth();
+          if (m < 0 || (m === 0 && new Date().getDate() < b.getDate())) a--;
+          return a;
+        } catch { return null; }
+      })();
+      const isMinorWord = patientAgeWord !== null && patientAgeWord < 18;
+
       const html = `<html><body style="font-family:Arial,sans-serif;font-size:11pt;margin:40px">
         <h2 style="color:#1e3a8a;margin-bottom:4px">RECIBO DE ATENDIMENTO</h2>
         <p style="color:#666;margin-top:0">Período: ${periodLabel} &nbsp;·&nbsp; Emissão: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}</p>
         <hr/>
         <h3 style="color:#1e3a8a">TOMADOR DO SERVIÇO</h3>
         <p><strong>Nome:</strong> ${patient.name}</p>
-        ${patCpf ? `<p><strong>CPF/CNPJ:</strong> ${formatCpf(patCpf)}</p>` : ''}
-        ${patient.birthdate ? `<p><strong>Nascimento:</strong> ${format(new Date(patient.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</p>` : ''}
+        ${patCpf ? `<p><strong>${isMinorWord ? 'CPF do Paciente' : 'CPF'}:</strong> ${formatCpf(patCpf)}</p>` : ''}
+        ${patient.birthdate ? `<p><strong>Nascimento:</strong> ${format(new Date(patient.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}${patientAgeWord !== null ? ` (${patientAgeWord} anos)` : ''}</p>` : ''}
         ${patient.phone ? `<p><strong>Telefone:</strong> ${patient.phone}</p>` : ''}
-        ${patient.responsibleName ? `<hr/><h4>Responsável Legal</h4><p><strong>Nome:</strong> ${patient.responsibleName}</p>${respCpf ? `<p><strong>CPF:</strong> ${formatCpf(respCpf)}</p>` : ''}` : ''}
+        ${(patient.responsibleName || isMinorWord) ? `<hr/><h4>Responsável Legal${isMinorWord ? ' (Pagador — menor de idade)' : ''}</h4>${patient.responsibleName ? `<p><strong>Nome:</strong> ${patient.responsibleName}</p>` : ''}${respCpf ? `<p><strong>${isMinorWord ? 'CPF (Nota Fiscal)' : 'CPF'}:</strong> ${formatCpf(respCpf)}</p>` : ''}` : ''}
         <hr/>
         <h3 style="color:#1e3a8a">PRESTADOR DE SERVIÇO</h3>
         ${(fiscalStamp?.name || therapistProfile?.name) ? `<p><strong>Nome:</strong> ${fiscalStamp?.name || therapistProfile?.name}</p>` : ''}
