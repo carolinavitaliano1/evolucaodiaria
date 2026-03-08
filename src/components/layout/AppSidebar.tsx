@@ -231,7 +231,9 @@ export function AppSidebar() {
             Sair
           </span>
         </button>
+        </div>
       </div>
     </aside>
+    </TooltipProvider>
   );
 }
