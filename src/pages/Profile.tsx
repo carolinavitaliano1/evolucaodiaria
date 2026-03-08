@@ -51,12 +51,12 @@ export default function Profile() {
   const [phone, setPhone] = useState('');
   const [professionalId, setProfessionalId] = useState('');
   const [cpf, setCpf] = useState('');
-  const [cbo, setCbo] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Stamp form states
   const [stampName, setStampName] = useState('');
   const [stampArea, setStampArea] = useState('');
+  const [stampCbo, setStampCbo] = useState('');
   const [stampImage, setStampImage] = useState<string | null>(null);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState(false);
