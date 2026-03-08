@@ -1,73 +1,46 @@
 
-## Como funcionaria um modelo multidisciplinar no app
+## Objetivo
+Integrar os "Serviços" (atendimentos particulares via `private_appointments`) às clínicas do tipo "Própria". Hoje, os serviços são globais (sem vínculo com clínica). A integração vai permitir que cada agendamento de serviço seja associado a uma clínica própria específica, e que a aba de detalhes de cada clínica própria exiba e gerencie esses agendamentos.
 
-A estrutura atual já é quase toda compatível — clínicas, pacientes, evoluções, templates e carimbos são por usuário. O que falta é suporte para **múltiplos profissionais dentro de uma mesma clínica**, cada um com seu próprio acesso, carimbos e evoluções, mas compartilhando a base de pacientes.
+## Diagnóstico atual
 
----
+- `private_appointments` não tem coluna `clinic_id` — os serviços são todos "soltos"
+- `ClinicDetail.tsx` não tem aba de Serviços
+- `Clinics.tsx` tem aba "Serviços" global (sem filtro por clínica)
+- O formulário de agendamento em `ServiceDialog.tsx` não pergunta em qual clínica o atendimento ocorre
 
-### O que precisaria ser adicionado (sem remover nada)
+## O que será feito
 
+### 1. Migração de banco de dados
+Adicionar coluna `clinic_id uuid NULLABLE` à tabela `private_appointments`.
+- Nullable para não quebrar registros existentes (que ficam "sem vínculo")
+
+### 2. `ServiceDialog.tsx` — Adicionar seletor de clínica própria
+No formulário "Agendar", adicionar um campo opcional "Local (Clínica Própria)" que lista as clínicas `type = 'propria'` do usuário.
+
+Quando chamado a partir de uma clínica específica (nova prop `clinicId?`), pré-selecionar e ocultar o campo.
+
+### 3. `ClinicDetail.tsx` — Nova aba "Serviços"
+Apenas para clínicas do tipo `propria`, adicionar uma aba "Serviços" (ícone `Briefcase`) na grade de abas.
+
+Conteúdo da aba:
+- Botão "Novo Serviço" que abre o `ServiceDialog` pré-vinculado à clínica
+- Lista de `private_appointments` filtrada por `clinic_id = clinic.id`
+- Mesmas ações da aba global: concluir, cancelar, marcar como pago, editar, apagar
+
+### 4. `Clinics.tsx` — Aba global continua mostrando todos
+A aba "Serviços" da página de Clínicas permanece mostrando todos os serviços (com e sem clínica vinculada), para retrocompatibilidade. Pode mostrar o nome da clínica vinculada como informação extra em cada card.
+
+## Arquivos a modificar
+
+```text
+supabase/migrations/   → ADD COLUMN clinic_id to private_appointments
+src/components/services/ServiceDialog.tsx  → nova prop clinicId, seletor de clínica
+src/pages/ClinicDetail.tsx                 → nova aba "Serviços" para clínicas próprias
+src/pages/Clinics.tsx                      → exibir nome da clínica no card do serviço
 ```
-ESTRUTURA ATUAL                    ESTRUTURA MULTIDISCIPLINAR
-─────────────────────────          ─────────────────────────────────
-usuário único → clínica            organização → clínica → membros
-usuário único → pacientes          pacientes compartilhados por clínica
-usuário único → evoluções          evoluções com "autor" (profissional)
-```
 
-**1. Organizações / Equipes**
-- Nova tabela `organizations` — uma clínica multidisciplinar seria uma organização
-- Nova tabela `organization_members` — com papéis: `owner`, `admin`, `professional`
-- O dono convida outros usuários via e-mail
-
-**2. Pacientes compartilhados**
-- Pacientes passariam a ser da organização, não só do usuário
-- Cada profissional vê os pacientes da clínica, não só os seus
-- Permissões por papel: quem pode criar/editar/arquivar
-
-**3. Evoluções por profissional**
-- Cada evolução já tem `user_id` — continuaria funcionando como "autor"
-- Na visualização, apareceria o nome do profissional que registrou
-- Carimbo automático do profissional logado
-
-**4. Templates por organização**
-- Templates criados pelo dono ficam disponíveis para toda a equipe
-- Cada profissional ainda pode ter seus próprios templates pessoais
-
-**5. Financeiro separado por profissional**
-- Cada membro vê seus próprios recebimentos
-- O dono/admin vê o consolidado de todos
-
----
-
-### Impacto no que já existe
-
-| Funcionalidade atual | Impacto |
-|---|---|
-| Clínica própria (terapeuta solo) | Zero — continua igual |
-| Templates de evolução | Zero — apenas compartilhamento opcional |
-| Carimbos pessoais | Zero — cada membro tem os seus |
-| Exportação PDF | Pequena — adicionar nome do profissional no rodapé |
-| Dashboard | Pequena — filtro por membro |
-
-O terapeuta solo continua usando o app exatamente como hoje. O modo multidisciplinar seria **opt-in** — ao criar uma clínica, escolheria entre "uso individual" ou "equipe multidisciplinar".
-
----
-
-### Implementação em fases
-
-**Fase 1** — Convite e membros
-- Tabelas `organizations` e `organization_members`
-- Fluxo de convite por e-mail
-- Papéis: dono, admin, profissional
-
-**Fase 2** — Dados compartilhados
-- Pacientes e evoluções vinculados à organização
-- Filtros por profissional na agenda e evoluções
-
-**Fase 3** — Financeiro consolidado
-- Relatórios por membro e consolidado para o admin
-
----
-
-Quer que eu implemente isso? Posso começar pela Fase 1 (estrutura de equipe e convites) mantendo tudo que existe intacto para usuários solo.
+## Sem quebras
+- Registros existentes sem `clinic_id` continuam visíveis na aba global
+- Clínicas do tipo "Contratante" não recebem a aba de Serviços
+- O fluxo atual de criar serviço pela aba global continua funcionando
