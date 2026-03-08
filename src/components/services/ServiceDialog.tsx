@@ -108,10 +108,12 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         setAppointmentNotes(editAppointment.notes || '');
         setAppointmentStatus(editAppointment.status);
         setAppointmentPaid(editAppointment.paid || false);
+        setAppointmentPaymentDate(editAppointment.payment_date || '');
       } else {
         setEditingAppointmentId(null);
         setActiveTab(clinicId ? 'agendar' : 'servicos');
         setSelectedClinicId(clinicId || '');
+        setAppointmentPaymentDate('');
       }
     }
   }, [open, editAppointment, clinicId]);
