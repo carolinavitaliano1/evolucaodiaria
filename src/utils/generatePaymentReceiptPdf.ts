@@ -86,9 +86,10 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
 
   // Build the declaration text
   const cpfLabel = therapistCpfFormatted ? `, inscrito(a) no CPF/CNPJ sob o número ${therapistCpfFormatted},` : '';
+  const addressLabel = therapistAddress ? `, residente e domiciliado(a) em ${therapistAddress},` : '';
   const payerCpfLabel = payerCpfFormatted ? `, inscrito(a) no CPF sob o número ${payerCpfFormatted},` : '';
 
-  const paragraph1 = `Eu, ${therapistName}${cpfLabel} declaro para os devidos fins que recebi de ${payerName}${payerCpfLabel} a importância de R$ ${amountStr}, referente ao pagamento do serviço de ${serviceName}, realizado no período de ${period}.`;
+  const paragraph1 = `Eu, ${therapistName}${cpfLabel}${addressLabel} declaro para os devidos fins que recebi de ${payerName}${payerCpfLabel} a importância de R$ ${amountStr}, referente ao pagamento do serviço de ${serviceName}, realizado no período de ${period}.`;
   const paragraph2 = `A quantia foi paga através de ${paymentMethod} na data de ${payDateFormatted}.`;
   const paragraph3 = 'Por ser verdade, firmo o presente recibo.';
 
