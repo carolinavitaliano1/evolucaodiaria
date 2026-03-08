@@ -1,12 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare } from 'lucide-react';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { usePatientAssignments } from '@/hooks/usePatientAssignments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Textarea } from '@/components/ui/textarea';
@@ -144,6 +145,7 @@ export default function PatientDetail() {
     orgPermissions.includes('evolutions.view');
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignmentScheduleTimes, setAssignmentScheduleTimes] = useState<Record<string, string>>({});
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
 
   useEffect(() => {
     if (!patient?.clinicId) return;
@@ -1289,6 +1291,16 @@ export default function PatientDetail() {
 
             {/* Action buttons */}
             <div className="flex items-center gap-1 flex-shrink-0">
+              {patient.phone && (
+                <Button
+                  variant="ghost" size="icon"
+                  className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
+                  onClick={() => setWhatsappOpen(true)}
+                  title="Enviar mensagem via WhatsApp"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
               </Button>
@@ -2732,6 +2744,16 @@ export default function PatientDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* WhatsApp Message Modal */}
+      <WhatsAppMessageModal
+        open={whatsappOpen}
+        onClose={() => setWhatsappOpen(false)}
+        patientName={patient.name}
+        patientPhone={patient.phone || ''}
+        date={patient.scheduleTime ? format(new Date(), 'dd/MM/yyyy', { locale: ptBR }) : ''}
+        time={patient.scheduleTime || ''}
+      />
     </div>
   );
 }

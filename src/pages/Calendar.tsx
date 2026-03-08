@@ -8,8 +8,9 @@ import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Clock, User, Briefcase,
   Calendar, LayoutGrid, Columns, CalendarDays,
-  Pencil, Trash2, X, MapPin,
+  Pencil, Trash2, X, MapPin, MessageSquare,
 } from 'lucide-react';
+import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -77,6 +78,7 @@ export default function CalendarPage() {
     clinicId: '', patientId: '',
     date: format(selectedDate, 'yyyy-MM-dd'), time: '', notes: '',
   });
+  const [whatsappTarget, setWhatsappTarget] = useState<{ name: string; phone: string; date: string; time: string } | null>(null);
 
   const loadCalendarEvents = useCallback(async () => {
     if (!user?.id) return;
@@ -699,11 +701,32 @@ export default function CalendarPage() {
               </Button>
             </div>
           )}
-          {!popupItem.isDraggable && (
-            <p className="text-[11px] text-muted-foreground text-center">Edite pelo perfil do paciente</p>
-          )}
+          {!popupItem.isDraggable && (() => {
+            const rawAppt = popupItem.rawEvent;
+            const patient = rawAppt ? patients.find(p => p.id === rawAppt.patientId) : null;
+            if (patient?.phone) {
+              return (
+                <button
+                  onClick={() => setWhatsappTarget({ name: patient.name, phone: patient.phone!, date: format(new Date(rawAppt.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }), time: rawAppt.time?.slice(0,5) || '' })}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors font-medium"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" /> Enviar WhatsApp
+                </button>
+              );
+            }
+            return <p className="text-[11px] text-muted-foreground text-center">Edite pelo perfil do paciente</p>;
+          })()}
         </div>
       )}
+
+      <WhatsAppMessageModal
+        open={!!whatsappTarget}
+        onClose={() => setWhatsappTarget(null)}
+        patientName={whatsappTarget?.name}
+        patientPhone={whatsappTarget?.phone}
+        date={whatsappTarget?.date}
+        time={whatsappTarget?.time}
+      />
 
       <EventDialog
         open={eventDialogOpen}
