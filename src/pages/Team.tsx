@@ -24,6 +24,7 @@ export default function Team() {
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'team' | 'compliance'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [complianceBadge, setComplianceBadge] = useState(0);
 
   const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
   const hasAccess = isOwnerEmail || isOwner;
