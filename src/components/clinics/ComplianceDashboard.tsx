@@ -310,7 +310,7 @@ export function ComplianceDashboard({ clinicId, organizationId, onTodayPendingCo
     toast.success('PDF exportado!');
   }
 
-
+  const therapistOptions = useMemo(() => {
     const seen = new Set<string>();
     return members.filter(m => {
       if (seen.has(m.userId)) return false;
