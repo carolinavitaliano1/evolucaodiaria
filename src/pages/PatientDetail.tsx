@@ -193,6 +193,7 @@ export default function PatientDetail() {
   const [fiscalPaymentStatus, setFiscalPaymentStatus] = useState<'paid' | 'pending' | 'partial'>('pending');
   const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
   const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
+  const [fiscalTotalPaidFromApp, setFiscalTotalPaidFromApp] = useState<number | null>(null);
 
   // Therapist profile for fiscal receipt
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
@@ -202,6 +203,40 @@ export default function PatientDetail() {
     supabase.from('profiles').select('name, professional_id, phone, email').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
+
+  // Auto-fetch payment record when fiscal period is selected
+  useEffect(() => {
+    if (!fiscalStartDate || !patient?.id || !user) return;
+    const month = fiscalStartDate.getMonth() + 1;
+    const year = fiscalStartDate.getFullYear();
+    supabase
+      .from('patient_payment_records')
+      .select('paid, payment_date, amount')
+      .eq('patient_id', patient.id)
+      .eq('user_id', user.id)
+      .eq('month', month)
+      .eq('year', year)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setFiscalPaymentStatus(data.paid ? 'paid' : 'pending');
+          setFiscalPaymentDate(data.payment_date || '');
+          if (data.amount > 0) {
+            const amountStr = data.amount.toFixed(2);
+            setFiscalTotalPaid(amountStr);
+            setFiscalTotalPaidFromApp(data.amount);
+          } else {
+            setFiscalTotalPaid('');
+            setFiscalTotalPaidFromApp(null);
+          }
+        } else {
+          setFiscalPaymentStatus('pending');
+          setFiscalPaymentDate('');
+          setFiscalTotalPaid('');
+          setFiscalTotalPaidFromApp(null);
+        }
+      });
+  }, [fiscalStartDate, patient?.id, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -1842,14 +1877,17 @@ export default function PatientDetail() {
                 </div>
               )}
               <div>
-                <Label className="text-xs mb-1 block">
-                  Valor Total Pago (opcional — sobrescreve o calculado)
+                <Label className="text-xs mb-1 block flex items-center gap-1.5">
+                  Valor Total Pago
+                  <span className="text-muted-foreground font-normal">
+                    {fiscalTotalPaidFromApp !== null ? '— pré-preenchido do app (editável)' : '— opcional'}
+                  </span>
                 </Label>
                 <Input
                   type="number" step="0.01" min="0"
                   value={fiscalTotalPaid}
                   onChange={e => setFiscalTotalPaid(e.target.value)}
-                  placeholder={`R$ calculado automaticamente`}
+                  placeholder="R$ calculado automaticamente pelas sessões"
                   className="h-9 text-xs"
                 />
               </div>
