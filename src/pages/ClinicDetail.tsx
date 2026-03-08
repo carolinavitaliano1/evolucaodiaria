@@ -309,6 +309,7 @@ export default function ClinicDetail() {
     service_id?: string | null; clinic_id?: string | null; date: string; time: string;
     price: number; status: string; notes?: string | null; paid?: boolean | null;
     payment_date?: string | null; created_at: string;
+    service_name?: string | null;
   }
   const [clinicServices, setClinicServices] = useState<ClinicPrivateApt[]>([]);
   const [loadingClinicServices, setLoadingClinicServices] = useState(false);
@@ -325,11 +326,15 @@ export default function ClinicDetail() {
     setLoadingClinicServices(true);
     const { data } = await supabase
       .from('private_appointments')
-      .select('*')
+      .select('*, services(name)')
       .eq('clinic_id', id)
       .order('date', { ascending: false })
       .order('time', { ascending: true });
-    setClinicServices((data as any[]) || []);
+    const mapped = (data as any[] || []).map((apt: any) => ({
+      ...apt,
+      service_name: apt.services?.name ?? null,
+    }));
+    setClinicServices(mapped);
     setLoadingClinicServices(false);
   };
 
