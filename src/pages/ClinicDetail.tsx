@@ -324,8 +324,12 @@ export default function ClinicDetail() {
     loadClinicServices();
   };
 
-  const toggleClinicServicePaid = async (aptId: string, current: boolean) => {
-    await supabase.from('private_appointments').update({ paid: !current }).eq('id', aptId);
+  const toggleClinicServicePaid = async (aptId: string, current: boolean, paymentDate?: string) => {
+    const newPaid = !current;
+    await supabase.from('private_appointments').update({
+      paid: newPaid,
+      payment_date: newPaid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+    }).eq('id', aptId);
     loadClinicServices();
   };
 
