@@ -125,7 +125,8 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
   const {
     title, content, fileName, clinicName, clinicAddress,
     clinicLetterhead, clinicStamp, clinicEmail, clinicCnpj, clinicPhone,
-    clinicServicesDescription, therapistName, therapistProfessionalId, therapistCbo
+    clinicServicesDescription, therapistName, therapistProfessionalId, therapistCbo,
+    therapistStampImage, therapistSignatureImage, therapistClinicalArea
   } = opts;
 
   const pdf = new jsPDF('p', 'mm', 'a4');
