@@ -187,8 +187,61 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
 }
 
 export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions): Promise<void> {
-  const { therapistName, therapistCpf, therapistProfessionalId, therapistCbo, therapistClinicalArea, stamp,
-    payerName, payerCpf, amount, serviceName, period, paymentMethod, paymentDate } = opts;
+  const { therapistName, therapistCpf, therapistAddress, therapistProfessionalId, therapistCbo, therapistClinicalArea, stamp,
+    payerName, payerCpf, location, amount, serviceName, period, paymentMethod, paymentDate } = opts;
+
+  const formatCpfLocal = (cpf: string) => {
+    const d = cpf.replace(/\D/g, '');
+    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    return cpf;
+  };
+
+  const cpfLabel = therapistCpf ? `, inscrito(a) no CPF/CNPJ sob o número ${formatCpfLocal(therapistCpf)},` : '';
+  const addressLabel = therapistAddress ? `, residente e domiciliado(a) em ${therapistAddress},` : '';
+  const payerCpfLabel = payerCpf ? `, inscrito(a) no CPF sob o número ${formatCpfLocal(payerCpf)},` : '';
+  const amountStr = amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const payDateStr = paymentDate
+    ? format(new Date(paymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+    : '___/___/______';
+  const emissao = format(new Date(), 'dd/MM/yyyy', { locale: ptBR });
+  const area = stamp?.clinical_area || therapistClinicalArea || '';
+  const locationStr = location ? `${location}, ` : '';
+
+  const html = `<html><body style="font-family:Arial,sans-serif;font-size:12pt;margin:48px;line-height:1.7">
+    <h2 style="color:#1e3a8a;margin-bottom:4px">RECIBO DE PAGAMENTO</h2>
+    <p style="color:#666;margin-top:0;font-size:9pt">Emissão: ${emissao}</p>
+    <hr style="border:1px solid #ddd;margin:16px 0"/>
+    <p style="text-align:justify">
+      Eu, <strong>${therapistName}</strong>${cpfLabel}${addressLabel} declaro para os devidos fins que recebi de <strong>${payerName}</strong>${payerCpfLabel} a importância de <strong>R$ ${amountStr}</strong>, referente ao pagamento do serviço de <strong>${serviceName}</strong>, realizado no período de <strong>${period}</strong>.
+    </p>
+    <p style="text-align:justify">
+      A quantia foi paga através de <strong>${paymentMethod}</strong> na data de <strong>${payDateStr}</strong>.
+    </p>
+    <p>Por ser verdade, firmo o presente recibo.</p>
+    <br/>
+    <p>Local e data: ${locationStr}_______________, ____/____/________</p>
+    <br/><br/><br/>
+    <p>___________________________</p>
+    <p><strong>${therapistName}</strong></p>
+    ${area ? `<p>${area}</p>` : ''}
+    ${therapistProfessionalId ? `<p>Registro: ${therapistProfessionalId}</p>` : ''}
+    ${therapistCpf ? `<p>CPF: ${formatCpfLocal(therapistCpf)}</p>` : ''}
+    ${(stamp?.cbo || therapistCbo) ? `<p>CBO: ${stamp?.cbo || therapistCbo}</p>` : ''}
+  </body></html>`;
+
+  const { asBlob } = await import('html-docx-js-typescript');
+  const blob = await asBlob(html) as Blob;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safePayer = payerName.replace(/\s+/g, '-').toLowerCase();
+  const safeDate = paymentDate || format(new Date(), 'yyyy-MM-dd');
+  a.download = `recibo-pagamento-${safePayer}-${safeDate}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success('Recibo Word gerado com sucesso!');
+}
 
   const formatCpfLocal = (cpf: string) => {
     const d = cpf.replace(/\D/g, '');
