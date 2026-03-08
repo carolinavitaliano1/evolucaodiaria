@@ -891,9 +891,11 @@ export default function PatientDetail() {
         return a < 18;
       } catch { return false; }
     })();
-    const payerName = isMinorPR && patient.responsibleName ? patient.responsibleName : patient.name;
-    const payerCpf = isMinorPR
-      ? ((patient as any).responsible_cpf || (patient as any).responsibleCpf || (patient as any).cpf || null)
+    // Use responsible if patient is minor OR therapist manually chose responsible
+    const useResp = prUseResponsible || isMinorPR;
+    const payerName = useResp && patient.responsibleName ? patient.responsibleName : patient.name;
+    const payerCpf = useResp
+      ? ((patient as any).responsible_cpf || (patient as any).responsibleCpf || null)
       : ((patient as any).cpf || null);
 
     return {
