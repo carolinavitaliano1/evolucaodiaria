@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,9 +13,10 @@ import {
   TEMPLATE_CATEGORIES,
   DEFAULT_TEMPLATES,
 } from '@/hooks/useMessageTemplates';
-import { toast } from 'sonner';
 import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 import { WhatsAppBroadcastModal } from '@/components/whatsapp/WhatsAppBroadcastModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Patient {
   id: string;
@@ -36,6 +37,14 @@ interface WhatsAppSendPanelProps {
 
 export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAppSendPanelProps) {
   const { templates, loading } = useMessageTemplates();
+  const { user } = useAuth();
+  const [therapistName, setTherapistName] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
+  }, [user]);
 
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -43,7 +52,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
   const [step, setStep] = useState<'patients' | 'template'>('patients');
   const [recipientPicker, setRecipientPicker] = useState<{
     patient: Patient;
-    template: typeof displayTemplates[0];
+    message: string;
   } | null>(null);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastPatients, setBroadcastPatients] = useState<Patient[]>([]);
@@ -88,18 +97,22 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
     setSelectedIds(new Set());
   }
 
-  function sendToNumber(p: Patient, num: string, template: typeof displayTemplates[0]) {
-    const msg = resolveTemplate(template.content, {
+  function buildMsg(p: Patient, template: typeof displayTemplates[0]) {
+    return resolveTemplate(template.content, {
       nome_paciente:     p.name,
       telefone_paciente: p.phone    || '',
       email_paciente:    p.email    || '',
       data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
       responsavel:       p.responsible_name || '',
+      nome_terapeuta:    therapistName,
       nome_clinica:      clinic?.name    || '',
       endereco_clinica:  clinic?.address || '',
       telefone_clinica:  clinic?.phone   || '',
     });
-    openWhatsApp(num, msg);
+  }
+
+  function sendToNumber(p: Patient, num: string, template: typeof displayTemplates[0]) {
+    openWhatsApp(num, buildMsg(p, template));
   }
 
   function handleSend() {
@@ -112,7 +125,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
       const hasPatientNum = !!(p.whatsapp || p.phone);
       const hasResponsible = !!p.responsible_whatsapp;
       if (hasPatientNum && hasResponsible) {
-        setRecipientPicker({ patient: p, template: selectedTemplate });
+        setRecipientPicker({ patient: p, message: buildMsg(p, selectedTemplate) });
         return;
       }
       const num = p.whatsapp || p.phone!;
@@ -363,6 +376,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
           patientPhone={recipientPicker.patient.phone}
           responsibleName={recipientPicker.patient.responsible_name}
           responsibleWhatsapp={recipientPicker.patient.responsible_whatsapp!}
+          message={recipientPicker.message}
         />
       )}
 
@@ -381,6 +395,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
           patients={broadcastPatients}
           template={broadcastTemplate}
           clinic={clinic}
+          therapistName={therapistName}
         />
       )}
     </div>

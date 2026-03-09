@@ -31,9 +31,10 @@ interface Props {
   patients: BroadcastPatient[];
   template: BroadcastTemplate;
   clinic?: { name?: string; address?: string; phone?: string };
+  therapistName?: string;
 }
 
-export function WhatsAppBroadcastModal({ open, onClose, patients, template, clinic }: Props) {
+export function WhatsAppBroadcastModal({ open, onClose, patients, template, clinic, therapistName = '' }: Props) {
   const [current, setCurrent] = useState(0);
   const [sent, setSent] = useState<Set<number>>(new Set());
   const [recipientChoice, setRecipientChoice] = useState<'patient' | 'responsible' | null>(null);
@@ -53,6 +54,7 @@ export function WhatsAppBroadcastModal({ open, onClose, patients, template, clin
       email_paciente:    p.email    || '',
       data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
       responsavel:       p.responsible_name || '',
+      nome_terapeuta:    therapistName,
       nome_clinica:      clinic?.name    || '',
       endereco_clinica:  clinic?.address || '',
       telefone_clinica:  clinic?.phone   || '',
