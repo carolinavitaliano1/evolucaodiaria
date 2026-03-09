@@ -2587,26 +2587,37 @@ export default function PatientDetail() {
             )}
 
             {/* Export buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={handleExportPaymentReceiptPdf}
+                  disabled={isExportingPR || !prAmount || !prPeriod}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-9"
+                >
+                  {isExportingPR ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Baixar PDF
+                </Button>
+                <Button
+                  onClick={handleExportPaymentReceiptWord}
+                  disabled={isExportingPRWord || !prAmount || !prPeriod}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-9"
+                >
+                  {isExportingPRWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                  Word (.docx)
+                </Button>
+              </div>
               <Button
-                onClick={handleExportPaymentReceiptPdf}
-                disabled={isExportingPR || !prAmount || !prPeriod}
-                variant="outline"
+                onClick={handleSavePaymentReceiptToDocuments}
+                disabled={isSavingPRToDocuments || !prAmount || !prPeriod}
                 size="sm"
-                className="gap-1.5 text-xs h-9"
+                className="w-full gap-1.5 text-xs h-9"
               >
-                {isExportingPR ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                Baixar PDF
-              </Button>
-              <Button
-                onClick={handleExportPaymentReceiptWord}
-                disabled={isExportingPRWord || !prAmount || !prPeriod}
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs h-9"
-              >
-                {isExportingPRWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                Word (.docx)
+                {isSavingPRToDocuments ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+                {isSavingPRToDocuments ? 'Salvando...' : 'Salvar nos Documentos do Paciente'}
               </Button>
             </div>
           </div>
