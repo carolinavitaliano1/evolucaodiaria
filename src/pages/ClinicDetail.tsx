@@ -159,6 +159,13 @@ export default function ClinicDetail() {
   const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
+  const [whatsAppRecipient, setWhatsAppRecipient] = useState<{
+    patientName: string;
+    patientWhatsapp?: string | null;
+    patientPhone?: string | null;
+    responsibleName?: string | null;
+    responsibleWhatsapp: string;
+  } | null>(null);
   const [editClinicOpen, setEditClinicOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [patientToEdit, setPatientToEdit] = useState<typeof patients[0] | null>(null);
