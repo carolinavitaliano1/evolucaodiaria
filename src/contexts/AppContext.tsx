@@ -826,11 +826,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteAttachment = useCallback(async (id: string) => {
     if (!user) return;
     try {
+      // Find the attachment to also delete from storage
+      const att = state.attachments.find(a => a.id === id);
       const { error } = await supabase.from('attachments').delete().eq('id', id);
       if (error) throw error;
+      // Also delete file from storage bucket (best-effort)
+      if (att?.data && !att.data.startsWith('http')) {
+        await supabase.storage.from('attachments').remove([att.data]);
+      }
       setState(prev => ({ ...prev, attachments: prev.attachments.filter(a => a.id !== id) }));
     } catch (error) { console.error(error); toast.error('Erro ao excluir anexo'); }
-  }, [user]);
+  }, [user, state.attachments]);
 
   const addPayment = useCallback((payment: Omit<Payment, 'id' | 'createdAt'>) => {
     const newPayment: Payment = { ...payment, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
