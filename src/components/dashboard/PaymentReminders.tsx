@@ -53,25 +53,24 @@ export function PaymentReminders() {
   const reminders: ReminderItem[] = patients
     .filter(p => {
       if (p.isArchived) return false;
-      if (!p.paymentDueDay) return false;
+      const dueDay = (p as any).paymentDueDay ?? (p as any).payment_due_day;
+      if (!dueDay) return false;
       if (paidPatientIds.has(p.id)) return false;
       if (dismissed.has(p.id)) return false;
-      const dueDay = p.paymentDueDay;
-      // How many days until due this month
       const daysUntil = dueDay - todayDay;
-      // Show if due within 3 days (including today) or overdue up to 7 days
       return daysUntil >= -7 && daysUntil <= 3;
     })
     .map(p => {
+      const dueDay: number = (p as any).paymentDueDay ?? (p as any).payment_due_day;
       const clinic = clinics.find(c => c.id === p.clinicId);
       const phone = (p as any).whatsapp || (p as any).phone || (p as any).responsible_whatsapp || null;
       return {
         patientId: p.id,
         patientName: p.name,
         phone,
-        dueDay: p.paymentDueDay!,
-        daysUntilDue: p.paymentDueDay! - todayDay,
-        amount: p.paymentValue || 0,
+        dueDay,
+        daysUntilDue: dueDay - todayDay,
+        amount: (p as any).paymentValue ?? (p as any).payment_value ?? 0,
         clinicName: clinic?.name || '',
       };
     })
