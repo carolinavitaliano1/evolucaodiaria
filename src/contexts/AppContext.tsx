@@ -564,6 +564,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.observations !== undefined) updateData.observations = updates.observations || null;
       if (updates.responsibleName !== undefined) updateData.responsible_name = updates.responsibleName || null;
       if (updates.responsibleEmail !== undefined) updateData.responsible_email = updates.responsibleEmail || null;
+      if (updates.responsibleWhatsapp !== undefined) updateData.responsible_whatsapp = updates.responsibleWhatsapp || null;
       if (updates.paymentType !== undefined) updateData.payment_type = updates.paymentType || null;
       if (updates.paymentValue !== undefined) updateData.payment_value = updates.paymentValue || null;
       if (updates.contractStartDate !== undefined) updateData.contract_start_date = updates.contractStartDate || null;
