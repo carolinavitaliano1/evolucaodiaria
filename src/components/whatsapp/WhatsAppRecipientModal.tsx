@@ -10,12 +10,15 @@ interface WhatsAppRecipientModalProps {
   patientPhone?: string | null;
   responsibleName?: string | null;
   responsibleWhatsapp: string;
+  /** If provided, the pre-filled message will be sent along with the wa.me link */
+  message?: string;
 }
 
-function openWa(number: string) {
+function openWa(number: string, message?: string) {
   const cleaned = number.replace(/\D/g, '');
   const full = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-  window.open(`https://wa.me/${full}`, '_blank');
+  const encoded = message ? `?text=${encodeURIComponent(message)}` : '';
+  window.open(`https://wa.me/${full}${encoded}`, '_blank');
 }
 
 export function WhatsAppRecipientModal({
@@ -26,6 +29,7 @@ export function WhatsAppRecipientModal({
   patientPhone,
   responsibleName,
   responsibleWhatsapp,
+  message,
 }: WhatsAppRecipientModalProps) {
   const patientNumber = patientWhatsapp || patientPhone;
 
@@ -46,7 +50,7 @@ export function WhatsAppRecipientModal({
         <div className="flex flex-col gap-2 pt-1">
           {patientNumber && (
             <button
-              onClick={() => { openWa(patientNumber); onClose(); }}
+              onClick={() => { openWa(patientNumber, message); onClose(); }}
               className="flex items-center gap-3 rounded-xl border border-border bg-card hover:bg-accent/60 transition-colors p-4 text-left group"
             >
               <div className="w-9 h-9 rounded-full bg-[#25D366]/15 flex items-center justify-center shrink-0 group-hover:bg-[#25D366]/25 transition-colors">
@@ -62,7 +66,7 @@ export function WhatsAppRecipientModal({
           )}
 
           <button
-            onClick={() => { openWa(responsibleWhatsapp); onClose(); }}
+            onClick={() => { openWa(responsibleWhatsapp, message); onClose(); }}
             className="flex items-center gap-3 rounded-xl border border-border bg-card hover:bg-accent/60 transition-colors p-4 text-left group"
           >
             <div className="w-9 h-9 rounded-full bg-[#25D366]/15 flex items-center justify-center shrink-0 group-hover:bg-[#25D366]/25 transition-colors">
