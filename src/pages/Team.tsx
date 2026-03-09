@@ -25,6 +25,8 @@ export default function Team() {
   const [activeTab, setActiveTab] = useState<'team' | 'compliance'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [complianceBadge, setComplianceBadge] = useState(0);
+  // Map of clinicId → organizationId for all propria clinics (to detect which already has a team)
+  const [clinicOrgMap, setClinicOrgMap] = useState<Record<string, string | null>>({});
 
   const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
   const hasAccess = isOwnerEmail || isOwner;
@@ -33,22 +35,33 @@ export default function Team() {
   const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'propria');
   const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
 
+  // Clinic that already has an active team (organization)
+  const activeTeamClinicId = Object.entries(clinicOrgMap).find(([, orgId]) => !!orgId)?.[0] ?? null;
+
   useEffect(() => {
-    if (!selectedClinicId && teamClinics.length > 0) {
-      setSelectedClinicId(teamClinics[0].id);
-    }
-  }, [teamClinics]);
+    if (teamClinics.length === 0) return;
+    // Load org ids for all propria clinics so we can highlight which one has the team benefit active
+    supabase
+      .from('clinics')
+      .select('id, organization_id')
+      .in('id', teamClinics.map(c => c.id))
+      .then(({ data }) => {
+        const map: Record<string, string | null> = {};
+        (data || []).forEach(c => { map[c.id] = c.organization_id ?? null; });
+        setClinicOrgMap(map);
+        // Auto-select: prefer the one with team active, otherwise first
+        const withTeam = (data || []).find(c => !!c.organization_id);
+        const defaultId = withTeam?.id ?? teamClinics[0].id;
+        setSelectedClinicId(prev => prev ?? defaultId);
+      });
+  }, [teamClinics.length]);
 
   // Load org id whenever the selected clinic changes
   useEffect(() => {
     if (!selectedClinicId) return;
-    supabase
-      .from('clinics')
-      .select('organization_id')
-      .eq('id', selectedClinicId)
-      .single()
-      .then(({ data }) => setOrganizationId(data?.organization_id ?? null));
-  }, [selectedClinicId]);
+    const orgId = clinicOrgMap[selectedClinicId];
+    setOrganizationId(orgId ?? null);
+  }, [selectedClinicId, clinicOrgMap]);
 
   const selectedClinic = teamClinics.find(c => c.id === selectedClinicId);
 
