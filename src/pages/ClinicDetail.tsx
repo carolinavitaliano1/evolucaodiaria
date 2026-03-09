@@ -38,6 +38,7 @@ import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
 import { MessageTemplatesManager } from '@/components/whatsapp/MessageTemplatesManager';
 import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
 import { WhatsAppSendPanel } from '@/components/whatsapp/WhatsAppSendPanel';
+import { WhatsAppTabContent } from '@/components/whatsapp/WhatsAppTabContent';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -1667,13 +1668,7 @@ export default function ClinicDetail() {
 
         {/* WhatsApp Tab */}
         <TabsContent value="whatsapp">
-          <div className="bg-card rounded-xl border border-border p-4 lg:p-6 space-y-6">
-            {/* Send to patients panel */}
-            <WhatsAppSendPanel patients={clinicPatients.map(p => ({ id: p.id, name: p.name, phone: p.phone }))} />
-            <div className="border-t border-border pt-6">
-              <MessageTemplatesManager />
-            </div>
-          </div>
+          <WhatsAppTabContent clinicPatients={clinicPatients} />
         </TabsContent>
 
         {/* Evolutions merged tab with sub-tabs (state-based) */}
