@@ -203,25 +203,61 @@ export default function Team() {
         )}
 
         {/* Clinic selector */}
-        {teamClinics.length > 1 && (
+        {teamClinics.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Selecionar Clínica</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              {teamClinics.length > 1 ? 'Selecionar Clínica' : 'Clínica'}
+            </p>
+
+            {/* Warning: only 1 clinic can use team benefit */}
+            {teamClinics.length > 1 && !activeTeamClinicId && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/5 border border-primary/20 mb-3">
+                <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <p className="text-sm text-foreground">
+                  O benefício de equipe pode ser ativado em <strong>apenas uma clínica</strong>. Selecione abaixo qual consultório usará este recurso.
+                </p>
+              </div>
+            )}
+            {teamClinics.length > 1 && activeTeamClinicId && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 mb-3">
+                <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-sm text-foreground">
+                  O benefício de equipe está ativo em <strong>{teamClinics.find(c => c.id === activeTeamClinicId)?.name}</strong>. Para usar em outra clínica, remova a equipe desta primeiro.
+                </p>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
-              {teamClinics.map(clinic => (
-                <button
-                  key={clinic.id}
-                  onClick={() => setSelectedClinicId(clinic.id)}
-                  className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors',
-                    selectedClinicId === clinic.id
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card text-foreground border-border hover:border-primary/40 hover:bg-primary/5'
-                  )}
-                >
-                  <Building2 className="w-3.5 h-3.5" />
-                  {clinic.name}
-                </button>
-              ))}
+              {teamClinics.map(clinic => {
+                const hasTeam = !!clinicOrgMap[clinic.id];
+                const isActive = selectedClinicId === clinic.id;
+                // Disable selection of other clinics if this one already has a team (and it's not the active one)
+                const isBlocked = !hasTeam && !!activeTeamClinicId && clinic.id !== activeTeamClinicId;
+                return (
+                  <button
+                    key={clinic.id}
+                    onClick={() => !isBlocked && setSelectedClinicId(clinic.id)}
+                    disabled={isBlocked}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : isBlocked
+                        ? 'opacity-40 cursor-not-allowed bg-muted border-border text-muted-foreground'
+                        : 'bg-card text-foreground border-border hover:border-primary/40 hover:bg-primary/5'
+                    )}
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    {clinic.name}
+                    {hasTeam && (
+                      <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+                        <UsersRound className="w-2.5 h-2.5" />
+                        Equipe ativa
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
