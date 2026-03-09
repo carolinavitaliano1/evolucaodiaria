@@ -50,12 +50,12 @@ export interface FiscalReceiptOptions {
 }
 
 const STATUS_LABELS: Record<string, { label: string; billable: boolean }> = {
-  presente:               { label: 'Presente',            billable: true },
-  reposicao:              { label: 'Reposição',           billable: true },
-  falta_remunerada:       { label: 'Falta Remunerada',    billable: true },
-  feriado_remunerado:     { label: 'Feriado Remunerado',  billable: true },
-  falta:                  { label: 'Falta',               billable: false },
-  feriado_nao_remunerado: { label: 'Feriado',             billable: false },
+  presente:               { label: 'Presente',           billable: true },
+  reposicao:              { label: 'Reposição',          billable: true },
+  falta_remunerada:       { label: 'Falta Remunerada',   billable: true },
+  feriado_remunerado:     { label: 'Feriado Remunerado', billable: true },
+  falta:                  { label: 'Falta',              billable: false },
+  feriado_nao_remunerado: { label: 'Feriado',            billable: false },
 };
 
 function formatCpf(cpf: string): string {
@@ -65,9 +65,6 @@ function formatCpf(cpf: string): string {
   return cpf;
 }
 
-const LINE_H = 5.5;      // standard line height (mm)
-const LABEL_W = 50;      // fixed label column width (mm)
-
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: false): Promise<void>;
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: true): Promise<Blob>;
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob = false): Promise<void | Blob> {
@@ -75,68 +72,73 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
-  const margin = 20;
+  const margin = 18;
   const contentW = W - margin * 2;
-  const darkText: [number, number, number] = [25, 25, 35];
-  const mutedText: [number, number, number] = [100, 100, 115];
+
+  const darkText:    [number, number, number] = [20, 20, 30];
+  const mutedText:   [number, number, number] = [110, 110, 125];
   const borderColor: [number, number, number] = [210, 210, 220];
-  const accentColor: [number, number, number] = [40, 60, 120];
-  const successColor: [number, number, number] = [34, 139, 34];
-  const warningColor: [number, number, number] = [180, 100, 0];
+  const accentColor: [number, number, number] = [35, 55, 115];
+  const successColor:[number, number, number] = [30, 130, 30];
+  const warningColor:[number, number, number] = [175, 95, 0];
+
+  const LH  = 4.8;   // normal line height
+  const LHS = 4.2;   // small line height
+  const LABEL_W = 46;
 
   let y = margin;
 
   const ensureSpace = (needed: number) => {
-    if (y + needed > 279) { doc.addPage(); y = margin; }
+    if (y + needed > 276) { doc.addPage(); y = margin; }
   };
 
-  const drawLine = () => {
+  const drawDivider = (gapBefore = 3, gapAfter = 4) => {
+    y += gapBefore;
     doc.setDrawColor(...borderColor);
     doc.line(margin, y, W - margin, y);
-    y += 5;
+    y += gapAfter;
   };
 
-  // Render a label:value row where label is bold left and value is normal, wrapping properly
-  const labelValue = (label: string, value: string) => {
-    ensureSpace(7);
-    doc.setFontSize(9.5);
+  const sectionTitle = (text: string) => {
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...darkText);
-    doc.text(label, margin, y);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...mutedText);
-    const maxValueW = contentW - LABEL_W;
-    const wrapped = doc.splitTextToSize(value, maxValueW);
-    doc.text(wrapped, margin + LABEL_W, y);
-
-    // Advance by however many lines the value takes
-    y += Math.max(1, wrapped.length) * LINE_H + 0.5;
+    doc.setTextColor(...accentColor);
+    doc.text(text, margin, y);
+    y += LH + 1;
   };
 
-  // ── CABEÇALHO ────────────────────────────────────────────────────────────
-  doc.setFontSize(14);
+  // label:value in two columns
+  const lv = (label: string, value: string) => {
+    ensureSpace(LH + 1);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...mutedText);
+    doc.text(label, margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...darkText);
+    const maxW = contentW - LABEL_W;
+    const lines = doc.splitTextToSize(value, maxW);
+    doc.text(lines, margin + LABEL_W, y);
+    y += Math.max(1, lines.length) * LH;
+  };
+
+  // ─── CABEÇALHO ──────────────────────────────────────────────────────────
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...accentColor);
-  doc.text('RECIBO DE ATENDIMENTO', margin, y);
-  y += 6;
+  doc.text('EXTRATO FINANCEIRO', margin, y);
 
-  doc.setFontSize(9);
+  const periodLabel = `${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`;
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
-  const periodLabel = `${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`;
-  doc.text(`Período: ${periodLabel}   ·   Emissão: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, margin, y);
-  y += 4;
-  drawLine();
+  doc.text(`Período: ${periodLabel}   ·   Emissão: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, margin, y + 5);
+  y += 10;
+  drawDivider(0, 4);
 
-  // ── DADOS DO PACIENTE / TOMADOR DO SERVIÇO ─────────────────────────────
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...accentColor);
-  doc.text('TOMADOR DO SERVIÇO', margin, y);
-  y += 6;
+  // ─── TOMADOR DO SERVIÇO ─────────────────────────────────────────────────
+  sectionTitle('TOMADOR DO SERVIÇO');
 
-  // Determine age to decide which CPF goes on the fiscal document
   const patientAge = (() => {
     if (!patient.birthdate) return null;
     try {
@@ -149,279 +151,250 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   })();
   const isMinor = patientAge !== null && patientAge < 18;
 
-  labelValue('Nome:', patient.name);
-  // Show patient CPF always (for registration), but note if minor
-  if (patient.cpf) {
-    const cpfLabel = isMinor ? 'CPF do Paciente:' : 'CPF:';
-    labelValue(cpfLabel, formatCpf(patient.cpf));
-  }
+  lv('Nome:', patient.name);
+  if (patient.cpf) lv(isMinor ? 'CPF do Paciente:' : 'CPF:', formatCpf(patient.cpf));
   if (patient.birthdate) {
     const bdStr = format(new Date(patient.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-    labelValue('Nascimento:', `${bdStr}${patientAge !== null ? ` (${patientAge} anos)` : ''}`);
+    lv('Nascimento:', `${bdStr}${patientAge !== null ? ` (${patientAge} anos)` : ''}`);
   }
-  if (patient.phone) labelValue('Telefone:', patient.phone);
+  if (patient.phone) lv('Telefone:', patient.phone);
 
-  // Responsável Legal — obrigatório para menores, exibido quando informado
   if (patient.responsibleName || isMinor) {
-    y += 2;
-    doc.setFontSize(9);
+    y += 1;
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...mutedText);
     doc.text(isMinor ? 'Responsável Legal (Pagador — menor de idade):' : 'Responsável Legal:', margin, y);
-    y += 5;
-    if (patient.responsibleName) labelValue('Nome:', patient.responsibleName);
-    if (patient.responsible_cpf) {
-      labelValue(isMinor ? 'CPF (Nota Fiscal):' : 'CPF:', formatCpf(patient.responsible_cpf));
-    }
-    if (patient.responsibleEmail) labelValue('E-mail:', patient.responsibleEmail);
+    y += LHS + 1;
+    if (patient.responsibleName) lv('Nome:', patient.responsibleName);
+    if (patient.responsible_cpf) lv(isMinor ? 'CPF (NF):' : 'CPF:', formatCpf(patient.responsible_cpf));
+    if (patient.responsibleEmail) lv('E-mail:', patient.responsibleEmail);
   }
 
-  y += 2;
-  drawLine();
+  drawDivider(2, 4);
 
-  // ── DADOS DO PRESTADOR DE SERVIÇO ─────────────────────────────────────
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...accentColor);
-  doc.text('PRESTADOR DE SERVIÇO', margin, y);
-  y += 6;
+  // ─── PRESTADOR DE SERVIÇO ───────────────────────────────────────────────
+  sectionTitle('PRESTADOR DE SERVIÇO');
 
-  if (therapistName) labelValue('Nome:', therapistName);
-  if (professionalId) labelValue('Registro:', professionalId);
-  if (therapistCpf) labelValue('CPF:', formatCpf(therapistCpf));
-  if (cbo) labelValue('CBO:', cbo);
-  if (stamp?.clinical_area) labelValue('Área:', stamp.clinical_area);
-  if (clinic?.name) labelValue('Clínica:', clinic.name);
-  if (clinic?.cnpj) labelValue('CNPJ:', formatCpf(clinic.cnpj));
-  if (clinic?.address) labelValue('Endereço:', clinic.address);
-  if (clinic?.phone) labelValue('Telefone:', clinic.phone);
-  if (clinic?.email) labelValue('E-mail:', clinic.email);
+  if (therapistName)        lv('Nome:', therapistName);
+  if (professionalId)       lv('Registro:', professionalId);
+  if (therapistCpf)         lv('CPF:', formatCpf(therapistCpf));
+  if (cbo)                  lv('CBO:', cbo);
+  if (stamp?.clinical_area) lv('Área:', stamp.clinical_area);
+  if (clinic?.name)         lv('Clínica:', clinic.name);
+  if (clinic?.cnpj)         lv('CNPJ:', formatCpf(clinic.cnpj));
+  if (clinic?.address)      lv('Endereço:', clinic.address);
+  if (clinic?.phone)        lv('Telefone:', clinic.phone);
+  if (clinic?.email)        lv('E-mail:', clinic.email);
 
-  y += 2;
-  drawLine();
+  drawDivider(2, 4);
 
-  // ── DETALHAMENTO DAS SESSÕES ───────────────────────────────────────────
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...accentColor);
-  doc.text(`DETALHAMENTO DAS SESSÕES (${evolutions.length})`, margin, y);
-  y += 7;
+  // ─── DETALHAMENTO DAS SESSÕES ───────────────────────────────────────────
+  const areaLabel   = patient.clinicalArea || stamp?.clinical_area || 'Atendimento';
+  const areaDisplay = areaLabel.length > 28 ? areaLabel.substring(0, 27) + '…' : areaLabel;
+  const paymentValue = patient.paymentValue || 0;
 
-  // Table header
-  const c1 = margin, c2 = margin + 32, c3 = margin + 92, c4 = W - margin - 5;
-  doc.setFontSize(9);
+  sectionTitle(`DETALHAMENTO DAS SESSÕES (${evolutions.length})`);
+
+  // table columns
+  const c1 = margin, c2 = margin + 28, c3 = margin + 88, c4 = W - margin - 4;
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...mutedText);
-  doc.text('Data', c1, y);
-  doc.text('Área Clínica / Serviço', c2, y);
-  doc.text('Status', c3, y);
-  doc.text('Valor', c4, y, { align: 'right' });
-  y += 3;
+  doc.text('Data',                  c1, y);
+  doc.text('Área / Serviço',        c2, y);
+  doc.text('Status',                c3, y);
+  doc.text('Valor',                 c4, y, { align: 'right' });
+  y += 2.5;
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, W - margin, y);
-  y += 5;
+  y += 4;
 
   let sessionTotal = 0;
   let sessionCount = 0;
 
-  const paymentValue = patient.paymentValue || 0;
-  const areaLabel = patient.clinicalArea || stamp?.clinical_area || 'Atendimento';
-  const areaDisplay = areaLabel.length > 26 ? areaLabel.substring(0, 25) + '…' : areaLabel;
-
   doc.setFont('helvetica', 'normal');
   for (const evo of evolutions) {
-    ensureSpace(7);
+    ensureSpace(LH + 1);
     const st = STATUS_LABELS[evo.attendanceStatus] ?? { label: evo.attendanceStatus, billable: false };
     const sessionValue = st.billable && patient.paymentType !== 'fixo' ? paymentValue : 0;
     const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
 
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setTextColor(...darkText);
     doc.text(dateStr, c1, y);
     doc.text(areaDisplay, c2, y);
-
-    if (st.billable) doc.setTextColor(...darkText);
-    else doc.setTextColor(...mutedText);
+    doc.setTextColor(st.billable ? darkText[0] : mutedText[0], st.billable ? darkText[1] : mutedText[1], st.billable ? darkText[2] : mutedText[2]);
     doc.text(st.label, c3, y);
-
-    doc.setTextColor(
-      sessionValue > 0 ? darkText[0] : mutedText[0],
-      sessionValue > 0 ? darkText[1] : mutedText[1],
-      sessionValue > 0 ? darkText[2] : mutedText[2],
-    );
+    doc.setTextColor(sessionValue > 0 ? darkText[0] : mutedText[0], sessionValue > 0 ? darkText[1] : mutedText[1], sessionValue > 0 ? darkText[2] : mutedText[2]);
     doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '—', c4, y, { align: 'right' });
-    y += 6;
+    y += LH + 0.5;
 
     if (st.billable) { sessionTotal += sessionValue; sessionCount++; }
   }
 
-  // Fixed monthly patients
   if (patient.paymentType === 'fixo' && paymentValue > 0) {
-    const billableCount = evolutions.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
-    sessionTotal = paymentValue;
-    sessionCount = billableCount;
+    sessionTotal  = paymentValue;
+    sessionCount  = evolutions.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
   }
 
-  // ── RESUMO FINANCEIRO ─────────────────────────────────────────────────
-  ensureSpace(45);
-  y += 2;
-  doc.setDrawColor(...borderColor);
-  doc.line(margin, y, W - margin, y);
-  y += 5;
+  // ─── RESUMO FINANCEIRO ──────────────────────────────────────────────────
+  ensureSpace(38);
+  drawDivider(2, 4);
+  sectionTitle('RESUMO FINANCEIRO');
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...accentColor);
-  doc.text('RESUMO FINANCEIRO', margin, y);
-  y += 6;
-
-  const summaryRows: [string, string][] = [];
-  if (patient.paymentType === 'fixo') {
-    summaryRows.push(['Modalidade de Pagamento:', 'Mensalidade fixa']);
-    summaryRows.push(['Sessões realizadas no período:', String(sessionCount)]);
-    summaryRows.push(['Valor da mensalidade:', `R$ ${paymentValue.toFixed(2)}`]);
-  } else {
-    summaryRows.push(['Modalidade de Pagamento:', 'Por sessão']);
-    summaryRows.push(['Sessões cobráveis:', String(sessionCount)]);
-    summaryRows.push(['Valor por sessão:', `R$ ${paymentValue.toFixed(2)}`]);
-  }
+  const summaryRows: [string, string][] = patient.paymentType === 'fixo'
+    ? [
+        ['Modalidade:', 'Mensalidade fixa'],
+        ['Sessões realizadas:', String(sessionCount)],
+        ['Valor da mensalidade:', `R$ ${paymentValue.toFixed(2)}`],
+      ]
+    : [
+        ['Modalidade:', 'Por sessão'],
+        ['Sessões cobráveis:', String(sessionCount)],
+        ['Valor por sessão:', `R$ ${paymentValue.toFixed(2)}`],
+      ];
 
   const displayTotal = totalPaid !== undefined ? totalPaid : sessionTotal;
   summaryRows.push(['TOTAL DO PERÍODO:', `R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
 
   summaryRows.forEach(([label, value], i) => {
-    ensureSpace(7);
+    ensureSpace(LH + 1);
     const isTotal = i === summaryRows.length - 1;
-    doc.setFontSize(isTotal ? 10.5 : 9.5);
+    doc.setFontSize(isTotal ? 9.5 : 8.5);
     doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
     doc.setTextColor(...(isTotal ? darkText : mutedText));
-    doc.text(label, margin + 4, y);
+    doc.text(label, margin + 2, y);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...(isTotal ? accentColor : darkText));
     doc.text(value, W - margin - 2, y, { align: 'right' });
-    y += isTotal ? 7 : 5.5;
+    y += isTotal ? LH + 1.5 : LH;
   });
 
-  // Payment status badge
-  ensureSpace(12);
-  y += 2;
-  const statusText = paymentStatus === 'paid' ? 'PAGO'
-    : paymentStatus === 'partial' ? 'PARCIALMENTE PAGO'
-    : 'PENDENTE';
+  // payment status
+  ensureSpace(10);
+  y += 1;
+  const statusText  = paymentStatus === 'paid' ? 'PAGO' : paymentStatus === 'partial' ? 'PARCIALMENTE PAGO' : 'PENDENTE';
   const statusColor: [number, number, number] = paymentStatus === 'paid' ? successColor : warningColor;
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...statusColor);
-  doc.text(`Status: ${statusText}`, margin + 4, y);
+  doc.text(`Status: ${statusText}`, margin + 2, y);
   if (paymentDate && paymentStatus === 'paid') {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...mutedText);
-    const labelW = doc.getTextWidth(`Status: ${statusText}`);
-    doc.text(`   ·   Recebido em: ${format(new Date(paymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`, margin + 4 + labelW, y);
+    const lw = doc.getTextWidth(`Status: ${statusText}`);
+    doc.text(`   ·   Recebido em: ${format(new Date(paymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`, margin + 2 + lw, y);
   }
-  y += 7;
+  y += LH;
 
-  drawLine();
-
-  // ── DECLARAÇÃO ────────────────────────────────────────────────────────
-  doc.setFontSize(9);
+  // ─── DECLARAÇÃO ─────────────────────────────────────────────────────────
+  drawDivider(3, 4);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
   const declaration = `Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.`;
-  const declLines = doc.splitTextToSize(declaration, contentW);
-  const declH = declLines.length * 5 + 5;
+  const declLines   = doc.splitTextToSize(declaration, contentW);
+  const declH       = declLines.length * LH + 2;
   ensureSpace(declH);
-  declLines.forEach((line: string) => { doc.text(line, margin, y); y += 5; });
-  y += 6;
+  declLines.forEach((line: string) => { doc.text(line, margin, y); y += LH; });
 
-  // ── BLOCO DE ASSINATURA ───────────────────────────────────────────────
-  // Pre-load images to calculate real sizes
+  // ─── BLOCO DE ASSINATURA ─────────────────────────────────────────────────
+  // Layout: [sig_img] + linha + nome + credenciais (coluna esquerda)
+  //         carimbo à DIREITA, alinhado verticalmente ao centro do bloco
+
   type ImgInfo = { src: string; w: number; h: number } | null;
   let sigInfo: ImgInfo = null;
-  let stInfo: ImgInfo = null;
+  let stInfo:  ImgInfo = null;
 
   if (stamp?.signature_image) {
     try {
       const el = document.createElement('img');
-      el.src = stamp.signature_image;
+      el.src   = stamp.signature_image;
       await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
-      // Max width 60mm, max height 20mm
-      let sw = 60; let sh = (el.height / el.width) * sw;
-      if (sh > 20) { sh = 20; sw = (el.width / el.height) * sh; }
+      let sw = 50, sh = (el.height / el.width) * sw;
+      if (sh > 16) { sh = 16; sw = (el.width / el.height) * sh; }
       sigInfo = { src: stamp.signature_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
   if (stamp?.stamp_image) {
     try {
       const el = document.createElement('img');
-      el.src = stamp.stamp_image;
+      el.src   = stamp.stamp_image;
       await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
-      // Max width 65mm, max height 30mm — carimbo maior e proporcional
-      let sw = 65; let sh = (el.height / el.width) * sw;
-      if (sh > 30) { sh = 30; sw = (el.width / el.height) * sh; }
+      // Stamp: max 55×28mm — significativamente maior que antes
+      let sw = 55, sh = (el.height / el.width) * sw;
+      if (sh > 28) { sh = 28; sw = (el.width / el.height) * sh; }
       stInfo = { src: stamp.stamp_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
 
-  const textRows = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
-  const blockH = (sigInfo ? sigInfo.h + 4 : 0) + (stInfo ? stInfo.h + 6 : 0) + 6 + textRows * 5.5;
-  ensureSpace(blockH + 10);
+  const credRows  = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
+  const leftH     = (sigInfo ? sigInfo.h + 3 : 0) + 4 + credRows * LHS;   // sig + line gap + text
+  const rightH    = stInfo ? stInfo.h : 0;
+  const blockH    = Math.max(leftH, rightH) + 6;
 
-  // Signature image above the line
-  if (sigInfo) {
-    doc.addImage(sigInfo.src, 'PNG', margin, y, sigInfo.w, sigInfo.h, undefined, 'FAST');
-    y += sigInfo.h + 4;
-  }
-
-  // Horizontal line
-  doc.setDrawColor(...borderColor);
-  doc.line(margin, y, margin + contentW * 0.60, y);
+  ensureSpace(blockH + 4);
   y += 5;
 
-  // Therapist name
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...darkText);
-  doc.text(therapistName || '________________________________', margin, y);
-  y += 5.5;
+  const blockStartY = y;
+  const rightColX   = W - margin - (stInfo?.w ?? 0);
 
-  // Credentials below name
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...mutedText);
-  if (stamp?.clinical_area) { doc.text(stamp.clinical_area, margin, y); y += 5; }
-  if (professionalId) { doc.text(`Registro: ${professionalId}`, margin, y); y += 5; }
-  if (therapistCpf) { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, y); y += 5; }
-  if (cbo) { doc.text(`CBO: ${cbo}`, margin, y); y += 5; }
+  // — left column: signature image + line + name + credentials —
+  let ly = blockStartY;
 
-  // Stamp image below credentials with good spacing
-  if (stInfo) {
-    y += 6;
-    doc.addImage(stInfo.src, 'PNG', margin, y, stInfo.w, stInfo.h, undefined, 'FAST');
-    y += stInfo.h + 4;
+  if (sigInfo) {
+    doc.addImage(sigInfo.src, 'PNG', margin, ly, sigInfo.w, sigInfo.h, undefined, 'FAST');
+    ly += sigInfo.h + 2;
   }
 
-  // ── RODAPÉ ───────────────────────────────────────────────────────────
+  // signature line (60% of content width, left column)
+  const lineEndX = margin + contentW * 0.58;
+  doc.setDrawColor(...borderColor);
+  doc.line(margin, ly, lineEndX, ly);
+  ly += 4;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...darkText);
+  doc.text(therapistName || '________________________________', margin, ly);
+  ly += LHS + 1;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...mutedText);
+  if (stamp?.clinical_area) { doc.text(stamp.clinical_area,           margin, ly); ly += LHS; }
+  if (professionalId)        { doc.text(`Registro: ${professionalId}`, margin, ly); ly += LHS; }
+  if (therapistCpf)          { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, ly); ly += LHS; }
+  if (cbo)                   { doc.text(`CBO: ${cbo}`,                 margin, ly); ly += LHS; }
+
+  // — right column: stamp image, vertically centred with the left block —
+  if (stInfo) {
+    const rightY = blockStartY + Math.max(0, (blockH - stInfo.h) / 2 - 4);
+    doc.addImage(stInfo.src, 'PNG', rightColX, rightY, stInfo.w, stInfo.h, undefined, 'FAST');
+  }
+
+  y = Math.max(ly, blockStartY + blockH);
+
+  // ─── RODAPÉ ─────────────────────────────────────────────────────────────
   const pageCount = (doc as any).internal.getNumberOfPages();
   for (let p = 1; p <= pageCount; p++) {
     doc.setPage(p);
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...mutedText);
     doc.text(
-      `${patient.name}  ·  Recibo de Atendimento  ·  ${periodLabel}  ·  Emitido em ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}  ·  Pág. ${p}/${pageCount}`,
+      `${patient.name}  ·  Extrato Financeiro  ·  ${periodLabel}  ·  Emitido em ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}  ·  Pág. ${p}/${pageCount}`,
       W / 2, 291, { align: 'center' }
     );
   }
 
-  const safeName = patient.name.replace(/\s+/g, '-').toLowerCase();
+  const safeName  = patient.name.replace(/\s+/g, '-').toLowerCase();
   const safeStart = format(startDate, 'yyyy-MM-dd');
-  const safeEnd = format(endDate, 'yyyy-MM-dd');
+  const safeEnd   = format(endDate,   'yyyy-MM-dd');
 
-  if (returnBlob) {
-    return doc.output('blob') as Blob;
-  }
+  if (returnBlob) return doc.output('blob') as Blob;
 
-  doc.save(`recibo-fiscal-${safeName}-${safeStart}_${safeEnd}.pdf`);
-  toast.success('Recibo fiscal gerado com sucesso!');
+  doc.save(`extrato-financeiro-${safeName}-${safeStart}_${safeEnd}.pdf`);
+  toast.success('Extrato financeiro gerado com sucesso!');
 }
