@@ -175,6 +175,7 @@ export default function ClinicDetail() {
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [batchSearch, setBatchSearch] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
+  const [evolutionsSubTab, setEvolutionsSubTab] = useState<'evolutions' | 'batch' | 'templates'>('evolutions');
   const [batchSelectedTemplateId, setBatchSelectedTemplateId] = useState<string>('none');
   const [batchTemplateFormValues, setBatchTemplateFormValues] = useState<Record<string, any>>({});
   const { user } = useAuth();
@@ -970,11 +971,9 @@ export default function ClinicDetail() {
             { value: 'patients', icon: <Users className="w-5 h-5" />, label: 'Pacientes', color: 'text-violet-500' },
             { value: 'financial', icon: <DollarSign className="w-5 h-5" />, label: 'Financeiro', color: 'text-success' },
             { value: 'notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notas', color: 'text-yellow-500' },
-            { value: 'batch', icon: <FileText className="w-5 h-5" />, label: 'Lote', color: 'text-orange-500' },
+            { value: 'evolutions', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
             { value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' },
-            { value: 'evolutions-day', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
-            { value: 'templates', icon: <LayoutTemplate className="w-5 h-5" />, label: 'Modelos', color: 'text-indigo-500' },
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
             ...(isPropria ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
           ].map(tab => (
@@ -1093,8 +1092,7 @@ export default function ClinicDetail() {
           </div>
         </TabsContent>
 
-        {/* Batch Evolution Tab */}
-        <TabsContent value="batch" className="space-y-4">
+        {evolutionsSubTab === 'batch' && <div className="space-y-4">
           <div className="bg-card rounded-2xl p-6 border border-border">
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
@@ -1969,7 +1967,7 @@ export default function ClinicDetail() {
               </div>
             )}
           </div>
-        </TabsContent>
+        </div>}
 
         {/* Financial Tab */}
         <TabsContent value="financial">
@@ -1986,8 +1984,8 @@ export default function ClinicDetail() {
           <ClinicNotes clinicId={clinic.id} />
         </TabsContent>
 
-        {/* Templates Tab */}
-        <TabsContent value="templates">
+        {/* Templates (nested) */}
+        <TabsContent value="evolutions-templates">
           <EvolutionTemplates clinicId={clinic.id} />
         </TabsContent>
 
@@ -2002,9 +2000,29 @@ export default function ClinicDetail() {
           </div>
         </TabsContent>
 
-        {/* Evolutions Day Tab */}
-        <TabsContent value="evolutions-day">
-          <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />
+        {/* Evolutions merged tab with sub-tabs (state-based) */}
+        <TabsContent value="evolutions">
+          {/* Sub-nav */}
+          <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit mb-4">
+            {([
+              { value: 'evolutions', label: 'Evoluções do Dia', icon: <TrendingUp className="w-3.5 h-3.5" /> },
+              { value: 'batch', label: 'Lote', icon: <FileText className="w-3.5 h-3.5" /> },
+              { value: 'templates', label: 'Modelos', icon: <LayoutTemplate className="w-3.5 h-3.5" /> },
+            ] as const).map(sub => (
+              <button
+                key={sub.value}
+                onClick={() => setEvolutionsSubTab(sub.value)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                  evolutionsSubTab === sub.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {sub.icon}{sub.label}
+              </button>
+            ))}
+          </div>
+          {evolutionsSubTab === 'evolutions' && <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />}
+          {evolutionsSubTab === 'templates' && <EvolutionTemplates clinicId={clinic.id} />}
         </TabsContent>
 
         {/* Reports Tab */}
