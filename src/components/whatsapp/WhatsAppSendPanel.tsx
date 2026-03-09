@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MessageSquare, Search, Send, Users, Phone, ChevronRight, X, Plus, Pencil } from 'lucide-react';
+import { MessageSquare, Search, Send, Users, Phone, ChevronRight, X, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useMessageTemplates,
@@ -15,6 +15,7 @@ import {
 } from '@/hooks/useMessageTemplates';
 import { toast } from 'sonner';
 import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
+import { WhatsAppBroadcastModal } from '@/components/whatsapp/WhatsAppBroadcastModal';
 
 interface Patient {
   id: string;
