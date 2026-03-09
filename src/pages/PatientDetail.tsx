@@ -925,44 +925,6 @@ export default function PatientDetail() {
     finally { setIsExportingPRWord(false); }
   };
 
-  const handleSavePaymentReceiptToDocuments = async () => {
-    if (!patient || !user || !prAmount || !prPeriod) return;
-    setIsSavingPRToDocuments(true);
-    try {
-      const blob = await generatePaymentReceiptPdf(buildPaymentReceiptOpts(), true);
-
-      const safeName = patient.name.replace(/\s+/g, '-').toLowerCase();
-      const safeDate = prPaymentDate || format(new Date(), 'yyyy-MM-dd');
-      const fileName = `recibo-pagamento-${safeName}-${safeDate}.pdf`;
-      const filePath = `${user.id}/payment-receipt/${patient.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('attachments')
-        .upload(filePath, blob, { contentType: 'application/pdf', upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { error: dbError } = await supabase.from('attachments').insert({
-        user_id: user.id,
-        parent_id: patient.id,
-        parent_type: 'patient',
-        name: fileName,
-        file_path: filePath,
-        file_type: 'application/pdf',
-        file_size: blob.size,
-      });
-
-      if (dbError) throw dbError;
-
-      await loadAttachmentsForPatient(patient.id);
-      toast.success('Recibo de pagamento salvo nos documentos do paciente!');
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao salvar o recibo nos documentos.');
-    } finally {
-      setIsSavingPRToDocuments(false);
-    }
-  };
 
   // Helper to open payment receipt dialog and pre-fill data
   const openPaymentReceiptDialog = async () => {
