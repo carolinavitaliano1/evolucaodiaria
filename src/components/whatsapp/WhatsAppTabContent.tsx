@@ -52,9 +52,9 @@ export function WhatsAppTabContent({ clinicPatients }: WhatsAppTabContentProps) 
             id:               p.id,
             name:             p.name,
             phone:            p.phone,
-            email:            (p as any).email,
-            birthdate:        (p as any).birthdate,
-            responsible_name: (p as any).responsibleName || (p as any).responsible_name,
+            email:            p.email,
+            birthdate:        p.birthdate,
+            responsible_name: p.responsibleName,
           }))}
           onGoToTemplates={() => setSubTab('templates')}
         />
