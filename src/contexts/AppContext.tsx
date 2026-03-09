@@ -164,6 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadingAllEvolutionsRef = useRef(false);
 
   // === PHASE 1: Fast initial load — only clinics, patients, tasks, packages ===
+  // For org members (collaborators), we scope the data to their org's clinic only.
   const loadInitialData = useCallback(async () => {
     if (!user) {
       setState(prev => ({
@@ -178,11 +179,62 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setState(prev => ({ ...prev, isLoading: true }));
     try {
+      // Check if this user is a non-owner org member (collaborator)
+      const { data: memberData } = await supabase
+        .from('organization_members')
+        .select('organization_id, role')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      let orgClinicIds: string[] | null = null;
+
+      if (memberData) {
+        // Check if they are the org owner
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('owner_id')
+          .eq('id', memberData.organization_id)
+          .maybeSingle();
+
+        const isOwner = orgData?.owner_id === user.id;
+
+        if (!isOwner) {
+          // Collaborator: only load clinics linked to their org
+          const { data: orgClinics } = await supabase
+            .from('clinics')
+            .select('id')
+            .eq('organization_id', memberData.organization_id);
+          orgClinicIds = (orgClinics || []).map(c => c.id);
+        }
+      }
+
+      // Build queries — collaborators are scoped to their org's clinics
+      let clinicsQuery = supabase.from('clinics').select('*').order('created_at', { ascending: false });
+      let patientsQuery = supabase.from('patients').select('*').order('created_at', { ascending: false });
+      let packagesQuery = supabase.from('clinic_packages').select('*').order('created_at', { ascending: false });
+
+      if (orgClinicIds !== null) {
+        if (orgClinicIds.length === 0) {
+          // Member of org but no clinics found — show empty
+          setState(prev => ({
+            ...prev, clinics: [], patients: [], tasks: [], clinicPackages: [], isLoading: false,
+            loadedEvolutionsForClinics: new Set(),
+            loadedAppointmentsForClinics: new Set(),
+            loadedAttachmentsForPatients: new Set(),
+          }));
+          return;
+        }
+        clinicsQuery = clinicsQuery.in('id', orgClinicIds);
+        patientsQuery = patientsQuery.in('clinic_id', orgClinicIds);
+        packagesQuery = packagesQuery.in('clinic_id', orgClinicIds);
+      }
+
       const [clinicsRes, patientsRes, tasksRes, packagesRes] = await Promise.all([
-        supabase.from('clinics').select('*').order('created_at', { ascending: false }),
-        supabase.from('patients').select('*').order('created_at', { ascending: false }),
+        clinicsQuery,
+        patientsQuery,
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-        supabase.from('clinic_packages').select('*').order('created_at', { ascending: false }),
+        packagesQuery,
       ]);
 
       const clinics = (clinicsRes.data || []).map(c => mapClinic(c as Record<string, unknown>));
@@ -314,11 +366,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadingAttachmentsRef.current.add(patientId);
     try {
       // Load attachments for the patient itself and all their evolutions
-      const { data, error } = await supabase
-        .from('attachments').select('*')
-        .or(`parent_id.eq.${patientId},and(parent_type.eq.evolution,parent_id.in.(select id from evolutions where patient_id='${patientId}'))`);
-
-      // Simpler: load patient attachments + separately load evolution attachments
       const { data: patientAtts } = await supabase
         .from('attachments').select('*')
         .eq('parent_id', patientId).eq('parent_type', 'patient');
