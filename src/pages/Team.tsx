@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -9,13 +9,30 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import {
   Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock, Info,
-  ClipboardCheck, UsersIcon, CheckCircle2, ChevronRight,
+  ClipboardCheck, CheckCircle2, ChevronRight, Activity, CalendarDays,
+  UserCircle, FileText, AlertCircle,
 } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+
+interface ActivityEntry {
+  id: string;
+  created_at: string;
+  date: string;
+  attendance_status: string;
+  patient_name: string | null;
+  member_name: string | null;
+  member_email: string;
+  member_role: string;
+  member_role_label: string | null;
+}
 
 const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
 
