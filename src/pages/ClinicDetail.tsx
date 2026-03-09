@@ -40,6 +40,7 @@ import { MessageTemplatesManager } from '@/components/whatsapp/MessageTemplatesM
 import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
 import { WhatsAppSendPanel } from '@/components/whatsapp/WhatsAppSendPanel';
 import { WhatsAppTabContent } from '@/components/whatsapp/WhatsAppTabContent';
+import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -158,6 +159,13 @@ export default function ClinicDetail() {
   const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
+  const [whatsAppRecipient, setWhatsAppRecipient] = useState<{
+    patientName: string;
+    patientWhatsapp?: string | null;
+    patientPhone?: string | null;
+    responsibleName?: string | null;
+    responsibleWhatsapp: string;
+  } | null>(null);
   const [editClinicOpen, setEditClinicOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [patientToEdit, setPatientToEdit] = useState<typeof patients[0] | null>(null);
@@ -1475,36 +1483,33 @@ export default function ClinicDetail() {
                       </div>
                     )}
 
-                    {(patient.whatsapp || patient.phone) && (
+                    {(patient.whatsapp || patient.phone || patient.responsibleWhatsapp) && (
                       <div className="mt-2 pt-2 border-t border-border flex justify-end gap-2">
-                        {patient.whatsapp && (
-                          <button
-                            title={`WhatsApp: ${patient.whatsapp}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const cleaned = patient.whatsapp!.replace(/\D/g, '');
+                        <button
+                          title="WhatsApp"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const hasPatientNum = !!(patient.whatsapp || patient.phone);
+                            const hasResponsible = !!patient.responsibleWhatsapp;
+                            if (hasPatientNum && hasResponsible) {
+                              setWhatsAppRecipient({
+                                patientName: patient.name,
+                                patientWhatsapp: patient.whatsapp,
+                                patientPhone: patient.phone,
+                                responsibleName: patient.responsibleName,
+                                responsibleWhatsapp: patient.responsibleWhatsapp!,
+                              });
+                            } else {
+                              const num = patient.whatsapp || patient.phone!;
+                              const cleaned = num.replace(/\D/g, '');
                               const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
                               window.open(`https://wa.me/${number}`, '_blank');
-                            }}
-                            className="text-[#25D366]/70 hover:text-[#25D366] transition-colors"
-                          >
-                            <WhatsAppIcon className="w-4 h-4" />
-                          </button>
-                        )}
-                        {!patient.whatsapp && patient.phone && (
-                          <button
-                            title={`WhatsApp: ${patient.phone}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const cleaned = patient.phone!.replace(/\D/g, '');
-                              const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-                              window.open(`https://wa.me/${number}`, '_blank');
-                            }}
-                            className="text-[#25D366]/60 hover:text-[#25D366] transition-colors"
-                          >
-                            <WhatsAppIcon className="w-4 h-4" />
-                          </button>
-                        )}
+                            }
+                          }}
+                          className="text-[#25D366]/70 hover:text-[#25D366] transition-colors"
+                        >
+                          <WhatsAppIcon className="w-4 h-4" />
+                        </button>
                       </div>
                     )}
                   </div>
@@ -2534,7 +2539,21 @@ export default function ClinicDetail() {
           patientPhone={whatsAppPatient.phone}
         />
       )}
+
+      {/* WhatsApp Recipient Picker */}
+      {whatsAppRecipient && (
+        <WhatsAppRecipientModal
+          open={!!whatsAppRecipient}
+          onClose={() => setWhatsAppRecipient(null)}
+          patientName={whatsAppRecipient.patientName}
+          patientWhatsapp={whatsAppRecipient.patientWhatsapp}
+          patientPhone={whatsAppRecipient.patientPhone}
+          responsibleName={whatsAppRecipient.responsibleName}
+          responsibleWhatsapp={whatsAppRecipient.responsibleWhatsapp}
+        />
+      )}
     </div>
   );
 }
+
 

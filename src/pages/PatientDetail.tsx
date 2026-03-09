@@ -9,6 +9,7 @@ import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
+import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Textarea } from '@/components/ui/textarea';
@@ -147,6 +148,7 @@ export default function PatientDetail() {
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignmentScheduleTimes, setAssignmentScheduleTimes] = useState<Record<string, string>>({});
   const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [whatsAppRecipientOpen, setWhatsAppRecipientOpen] = useState(false);
 
   useEffect(() => {
     if (!patient?.clinicId) return;
@@ -1293,37 +1295,29 @@ export default function PatientDetail() {
             {/* Action buttons */}
             <div className="flex items-center gap-1 flex-shrink-0">
               {(patient.whatsapp || patient.responsibleWhatsapp || patient.phone) && (
-                <>
-                  {(patient.whatsapp || patient.phone) && (
-                    <Button
-                      variant="ghost" size="icon"
-                      className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
-                      onClick={() => {
-                        const num = patient.whatsapp || patient.phone!;
-                        const cleaned = num.replace(/\D/g, '');
-                        const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-                        window.open(`https://wa.me/${number}`, '_blank');
-                      }}
-                      title={patient.whatsapp ? `WhatsApp Paciente: ${patient.whatsapp}` : `WhatsApp: ${patient.phone}`}
-                    >
-                      <WhatsAppIcon className="w-4 h-4" />
-                    </Button>
-                  )}
-                  {patient.responsibleWhatsapp && (
-                    <Button
-                      variant="ghost" size="icon"
-                      className="h-8 w-8 text-[#25D366]/70 hover:bg-[#25D366]/10"
-                      onClick={() => {
-                        const cleaned = patient.responsibleWhatsapp!.replace(/\D/g, '');
-                        const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-                        window.open(`https://wa.me/${number}`, '_blank');
-                      }}
-                      title={`WhatsApp Responsável: ${patient.responsibleWhatsapp}`}
-                    >
-                      <WhatsAppIcon className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </>
+                <Button
+                  variant="ghost" size="icon"
+                  className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
+                  onClick={() => {
+                    const hasPatientNum = !!(patient.whatsapp || patient.phone);
+                    const hasResponsible = !!patient.responsibleWhatsapp;
+                    if (hasPatientNum && hasResponsible) {
+                      setWhatsAppRecipientOpen(true);
+                    } else if (hasPatientNum) {
+                      const num = patient.whatsapp || patient.phone!;
+                      const cleaned = num.replace(/\D/g, '');
+                      const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                      window.open(`https://wa.me/${number}`, '_blank');
+                    } else if (hasResponsible) {
+                      const cleaned = patient.responsibleWhatsapp!.replace(/\D/g, '');
+                      const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                      window.open(`https://wa.me/${number}`, '_blank');
+                    }
+                  }}
+                  title="WhatsApp"
+                >
+                  <WhatsAppIcon className="w-4 h-4" />
+                </Button>
               )}
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
@@ -2777,6 +2771,17 @@ export default function PatientDetail() {
         patientPhone={patient.phone || ''}
         date={patient.scheduleTime ? format(new Date(), 'dd/MM/yyyy', { locale: ptBR }) : ''}
         time={patient.scheduleTime || ''}
+      />
+
+      {/* WhatsApp Recipient Picker */}
+      <WhatsAppRecipientModal
+        open={whatsAppRecipientOpen}
+        onClose={() => setWhatsAppRecipientOpen(false)}
+        patientName={patient.name}
+        patientWhatsapp={patient.whatsapp}
+        patientPhone={patient.phone}
+        responsibleName={patient.responsibleName}
+        responsibleWhatsapp={patient.responsibleWhatsapp!}
       />
     </div>
   );

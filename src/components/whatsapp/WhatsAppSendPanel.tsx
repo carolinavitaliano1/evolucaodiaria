@@ -14,14 +14,17 @@ import {
   DEFAULT_TEMPLATES,
 } from '@/hooks/useMessageTemplates';
 import { toast } from 'sonner';
+import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 
 interface Patient {
   id: string;
   name: string;
   phone?: string | null;
+  whatsapp?: string | null;
+  responsible_name?: string | null;
+  responsible_whatsapp?: string | null;
   email?: string | null;
   birthdate?: string | null;
-  responsible_name?: string | null;
 }
 
 interface WhatsAppSendPanelProps {
@@ -37,10 +40,14 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [step, setStep] = useState<'patients' | 'template'>('patients');
+  const [recipientPicker, setRecipientPicker] = useState<{
+    patient: Patient;
+    template: typeof displayTemplates[0];
+  } | null>(null);
 
-  // Only patients with a phone number
+  // Only patients with a phone or whatsapp number
   const eligible = useMemo(
-    () => patients.filter(p => p.phone?.trim()),
+    () => patients.filter(p => p.whatsapp?.trim() || p.phone?.trim()),
     [patients]
   );
 
@@ -77,6 +84,20 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
     setSelectedIds(new Set());
   }
 
+  function sendToNumber(p: Patient, num: string, template: typeof displayTemplates[0]) {
+    const msg = resolveTemplate(template.content, {
+      nome_paciente:     p.name,
+      telefone_paciente: p.phone    || '',
+      email_paciente:    p.email    || '',
+      data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+      responsavel:       p.responsible_name || '',
+      nome_clinica:      clinic?.name    || '',
+      endereco_clinica:  clinic?.address || '',
+      telefone_clinica:  clinic?.phone   || '',
+    });
+    openWhatsApp(num, msg);
+  }
+
   function handleSend() {
     if (!selectedTemplate) return;
     const selected = eligible.filter(p => selectedIds.has(p.id));
@@ -84,31 +105,19 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
 
     if (selected.length === 1) {
       const p = selected[0];
-      const msg = resolveTemplate(selectedTemplate.content, {
-        nome_paciente:     p.name,
-        telefone_paciente: p.phone    || '',
-        email_paciente:    p.email    || '',
-        data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
-        responsavel:       p.responsible_name || '',
-        nome_clinica:      clinic?.name    || '',
-        endereco_clinica:  clinic?.address || '',
-        telefone_clinica:  clinic?.phone   || '',
-      });
-      openWhatsApp(p.phone!, msg);
+      const hasPatientNum = !!(p.whatsapp || p.phone);
+      const hasResponsible = !!p.responsible_whatsapp;
+      if (hasPatientNum && hasResponsible) {
+        setRecipientPicker({ patient: p, template: selectedTemplate });
+        return;
+      }
+      const num = p.whatsapp || p.phone!;
+      sendToNumber(p, num, selectedTemplate);
     } else {
       selected.forEach((p, idx) => {
         setTimeout(() => {
-          const msg = resolveTemplate(selectedTemplate.content, {
-            nome_paciente:     p.name,
-            telefone_paciente: p.phone    || '',
-            email_paciente:    p.email    || '',
-            data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
-            responsavel:       p.responsible_name || '',
-            nome_clinica:      clinic?.name    || '',
-            endereco_clinica:  clinic?.address || '',
-            telefone_clinica:  clinic?.phone   || '',
-          });
-          openWhatsApp(p.phone!, msg);
+          const num = p.whatsapp || p.phone!;
+          sendToNumber(p, num, selectedTemplate);
         }, idx * 600);
       });
       toast.info(`Abrindo WhatsApp para ${selected.length} pacientes...`);
@@ -337,6 +346,24 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
             </div>
           )}
         </>
+      )}
+
+      {/* Recipient picker when patient has two numbers */}
+      {recipientPicker && (
+        <WhatsAppRecipientModal
+          open={!!recipientPicker}
+          onClose={() => {
+            setRecipientPicker(null);
+            setSelectedIds(new Set());
+            setSelectedTemplateId(null);
+            setStep('patients');
+          }}
+          patientName={recipientPicker.patient.name}
+          patientWhatsapp={recipientPicker.patient.whatsapp}
+          patientPhone={recipientPicker.patient.phone}
+          responsibleName={recipientPicker.patient.responsible_name}
+          responsibleWhatsapp={recipientPicker.patient.responsible_whatsapp!}
+        />
       )}
     </div>
   );
