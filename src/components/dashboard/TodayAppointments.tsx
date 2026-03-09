@@ -34,6 +34,7 @@ export function TodayAppointments() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
+  const [therapistName, setTherapistName] = useState('');
 
   const todayStr = toLocalDateString(new Date());
   const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
@@ -42,6 +43,8 @@ export function TodayAppointments() {
     if (!user) return;
     supabase.from('services').select('id, name').eq('user_id', user.id).eq('is_active', true)
       .then(({ data }) => { if (data) setServices(data); });
+    supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
   }, [user]);
 
   // Patients with recurring weekly schedule for today
