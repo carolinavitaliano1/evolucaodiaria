@@ -315,8 +315,8 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       const el = document.createElement('img');
       el.src   = stamp.signature_image;
       await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
-      let sw = 44, sh = (el.height / el.width) * sw;
-      if (sh > 14) { sh = 14; sw = (el.width / el.height) * sh; }
+      let sw = 36, sh = (el.height / el.width) * sw;
+      if (sh > 11) { sh = 11; sw = (el.width / el.height) * sh; }
       sigInfo = { src: stamp.signature_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
@@ -325,21 +325,21 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       const el = document.createElement('img');
       el.src   = stamp.stamp_image;
       await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
-      let sw = 42, sh = (el.height / el.width) * sw;
-      if (sh > 20) { sh = 20; sw = (el.width / el.height) * sh; }
+      let sw = 36, sh = (el.height / el.width) * sw;
+      if (sh > 16) { sh = 16; sw = (el.width / el.height) * sh; }
       stInfo = { src: stamp.stamp_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
 
-  // Altura total do bloco: carimbo + rubrica (sem gap entre eles) + linha + credenciais
-  const stampH     = stInfo  ? stInfo.h  + 1 : 0;
-  const sigH       = sigInfo ? sigInfo.h + 1 : 0;
+  // Altura total do bloco: carimbo + rubrica (sem gap) + linha + credenciais
+  const stampH     = stInfo  ? stInfo.h  : 0;
+  const sigH       = sigInfo ? sigInfo.h : 0;
   const aboveLineH = stampH + sigH;
   const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
-  const blockH     = aboveLineH + 2 + 4 + credRows * LHS + 4;
+  const blockH     = aboveLineH + 1 + 4 + credRows * LHS + 2;
 
-  ensureSpace(blockH + 8);
-  y += 4;
+  ensureSpace(blockH + 4);
+  y += 3;
 
   // 1. Carimbo — topo do bloco, esquerda
   if (stInfo) {
