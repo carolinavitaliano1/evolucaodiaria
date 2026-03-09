@@ -344,17 +344,17 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   // 1. Carimbo — topo do bloco, esquerda
   if (stInfo) {
     doc.addImage(stInfo.src, 'PNG', margin, y, stInfo.w, stInfo.h, undefined, 'FAST');
-    y += stInfo.h + 1;
+    y += stInfo.h;
   }
 
-  // 2. Rubrica — imediatamente abaixo do carimbo, sem gap
+  // 2. Rubrica — colada ao carimbo, sem gap
   if (sigInfo) {
     doc.addImage(sigInfo.src, 'PNG', margin, y, sigInfo.w, sigInfo.h, undefined, 'FAST');
-    y += sigInfo.h + 1;
+    y += sigInfo.h;
   }
 
-  // 3. Linha de assinatura
-  const lineY = y + 1;
+  // 3. Linha de assinatura — imediatamente abaixo da rubrica
+  const lineY = y;
   doc.setDrawColor(...borderColor);
   doc.line(margin, lineY, margin + contentW * 0.62, lineY);
   y = lineY + 4;
