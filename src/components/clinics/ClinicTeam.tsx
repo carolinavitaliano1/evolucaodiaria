@@ -336,6 +336,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         permissions: Object.fromEntries(ALL_PERMISSIONS.map(p => [p, true])),
       });
       toast.success('Equipe criada!');
+      onTeamCreated?.();
       loadTeam();
     } catch { toast.error('Erro ao criar equipe'); }
     finally { setCreating(false); }
