@@ -4,11 +4,7 @@ import { cn } from '@/lib/utils';
 import { WhatsAppSendPanel } from './WhatsAppSendPanel';
 import { MessageTemplatesManager } from './MessageTemplatesManager';
 
-interface Patient {
-  id: string;
-  name: string;
-  phone?: string | null;
-}
+import { Patient } from '@/types';
 
 interface WhatsAppTabContentProps {
   clinicPatients: Patient[];
@@ -48,7 +44,14 @@ export function WhatsAppTabContent({ clinicPatients }: WhatsAppTabContentProps) 
       {/* Send sub-tab */}
       {subTab === 'send' && (
         <WhatsAppSendPanel
-          patients={clinicPatients.map(p => ({ id: p.id, name: p.name, phone: p.phone }))}
+          patients={clinicPatients.map(p => ({
+            id:               p.id,
+            name:             p.name,
+            phone:            p.phone,
+            email:            p.email,
+            birthdate:        p.birthdate,
+            responsible_name: p.responsibleName,
+          }))}
           onGoToTemplates={() => setSubTab('templates')}
         />
       )}

@@ -19,6 +19,9 @@ interface Patient {
   id: string;
   name: string;
   phone?: string | null;
+  email?: string | null;
+  birthdate?: string | null;
+  responsible_name?: string | null;
 }
 
 interface WhatsAppSendPanelProps {
@@ -80,12 +83,24 @@ export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPan
 
     if (selected.length === 1) {
       const p = selected[0];
-      const msg = resolveTemplate(selectedTemplate.content, { nome_paciente: p.name });
+      const msg = resolveTemplate(selectedTemplate.content, {
+        nome_paciente:     p.name,
+        telefone_paciente: p.phone    || '',
+        email_paciente:    p.email    || '',
+        data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+        responsavel:       p.responsible_name || '',
+      });
       openWhatsApp(p.phone!, msg);
     } else {
       selected.forEach((p, idx) => {
         setTimeout(() => {
-          const msg = resolveTemplate(selectedTemplate.content, { nome_paciente: p.name });
+          const msg = resolveTemplate(selectedTemplate.content, {
+            nome_paciente:     p.name,
+            telefone_paciente: p.phone    || '',
+            email_paciente:    p.email    || '',
+            data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+            responsavel:       p.responsible_name || '',
+          });
           openWhatsApp(p.phone!, msg);
         }, idx * 600);
       });
@@ -285,9 +300,16 @@ export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPan
                 {selectedTemplate && selectedIds.size > 0 && (
                   <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                     <span className="font-medium text-foreground">Prévia: </span>
-                    {resolveTemplate(selectedTemplate.content, {
-                      nome_paciente: eligible.find(p => selectedIds.has(p.id))?.name ?? 'Paciente',
-                    }).slice(0, 100)}
+                    {(() => {
+                      const p = eligible.find(pt => selectedIds.has(pt.id));
+                      return resolveTemplate(selectedTemplate.content, {
+                        nome_paciente:     p?.name             || 'Paciente',
+                        telefone_paciente: p?.phone            || '',
+                        email_paciente:    p?.email            || '',
+                        data_nascimento:   p?.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+                        responsavel:       p?.responsible_name || '',
+                      }).slice(0, 100);
+                    })()}
                     {resolveTemplate(selectedTemplate.content, {}).length > 100 ? '…' : ''}
                   </div>
                 )}
