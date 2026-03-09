@@ -1153,80 +1153,139 @@ export default function ClinicDetail() {
                       />
                     </div>
 
+                     <div className="grid grid-cols-2 gap-3">
+                       <div>
+                         <Label>Telefone</Label>
+                         <Input
+                           value={formData.phone}
+                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                           placeholder="(00) 00000-0000"
+                         />
+                       </div>
+                       <div>
+                         <Label>CPF do Paciente <span className="text-muted-foreground font-normal text-xs">(para cadastro)</span></Label>
+                         <Input
+                           value={formData.cpf}
+                           onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                           placeholder="000.000.000-00"
+                         />
+                       </div>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-3">
+                       <div>
+                         <Label className="flex items-center gap-1.5">
+                           <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
+                           WhatsApp do Paciente
+                         </Label>
+                         <Input
+                           value={formData.whatsapp}
+                           onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                           placeholder="(11) 99999-9999"
+                         />
+                       </div>
+                       <div>
+                         <Label>E-mail do Paciente</Label>
+                         <Input
+                           type="email"
+                           value={formData.email}
+                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                           placeholder="email@exemplo.com"
+                         />
+                       </div>
+                     </div>
+
                      <div>
-                      <Label>Telefone</Label>
-                      <Input
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="(00) 00000-0000"
-                      />
-                    </div>
+                       <Label>Área Clínica</Label>
+                       <Input
+                         value={formData.clinicalArea}
+                         onChange={(e) => setFormData({ ...formData, clinicalArea: e.target.value })}
+                         placeholder="Ex: Psicologia Clínica"
+                       />
+                     </div>
 
-                    <div>
-                      <Label>CPF do Paciente <span className="text-muted-foreground font-normal text-xs">(para fins de cadastro)</span></Label>
-                      <Input
-                        value={formData.cpf}
-                        onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                        placeholder="000.000.000-00"
-                      />
-                    </div>
+                     <div>
+                       <Label>Profissionais</Label>
+                       <Input
+                         value={formData.professionals}
+                         onChange={(e) => setFormData({ ...formData, professionals: e.target.value })}
+                         placeholder="Ex: Dr. João"
+                       />
+                     </div>
 
-                    <div>
-                      <Label>Área Clínica</Label>
-                      <Input
-                        value={formData.clinicalArea}
-                        onChange={(e) => setFormData({ ...formData, clinicalArea: e.target.value })}
-                        placeholder="Ex: Psicologia Clínica"
-                      />
-                    </div>
+                     <div>
+                       <Label>Hipótese Diagnóstica (CID/DSM)</Label>
+                       <Input
+                         value={formData.diagnosis}
+                         onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
+                         placeholder="Ex: F84 - TEA"
+                       />
+                     </div>
 
-                    <div>
-                      <Label>Hipótese Diagnóstica (CID/DSM)</Label>
-                      <Input
-                        value={formData.diagnosis}
-                        onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-                        placeholder="Ex: F84 - TEA"
-                      />
-                    </div>
+                     <div>
+                       <Label>Observações</Label>
+                       <Textarea
+                         value={formData.observations}
+                         onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
+                         placeholder="Queixa inicial, histórico..."
+                       />
+                     </div>
 
-                    <div>
-                      <Label>Observações</Label>
-                      <Textarea
-                        value={formData.observations}
-                        onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                        placeholder="Queixa inicial, histórico..."
-                      />
-                    </div>
+                     <div className="border-t pt-4 space-y-3">
+                       <p className="font-semibold">📅 Contrato</p>
+                       <div>
+                         <Label className="text-xs">Data de Início do Contrato</Label>
+                         <Input
+                           type="date"
+                           value={formData.contractStartDate}
+                           onChange={(e) => setFormData({ ...formData, contractStartDate: e.target.value })}
+                         />
+                       </div>
+                     </div>
 
-                    <div className="border-t pt-4 space-y-3">
-                      <p className="font-semibold">👤 Responsável Legal <span className="text-muted-foreground font-normal text-sm">(obrigatório para menores de 18 anos)</span></p>
-                      <p className="text-xs text-muted-foreground -mt-1">O CPF do responsável será usado na nota fiscal quando o paciente for menor de idade.</p>
-                      <div>
-                        <Label>Nome do Responsável</Label>
-                        <Input
-                          value={formData.responsibleName}
-                          onChange={(e) => setFormData({ ...formData, responsibleName: e.target.value })}
-                          placeholder="Ex: Maria Silva"
-                        />
-                      </div>
-                      <div>
-                        <Label>CPF do Responsável <span className="text-muted-foreground font-normal text-xs">(para nota fiscal)</span></Label>
-                        <Input
-                          value={formData.responsible_cpf}
-                          onChange={(e) => setFormData({ ...formData, responsible_cpf: e.target.value })}
-                          placeholder="000.000.000-00"
-                        />
-                      </div>
-                      <div>
-                        <Label>E-mail do Responsável</Label>
-                        <Input
-                          type="email"
-                          value={formData.responsibleEmail}
-                          onChange={(e) => setFormData({ ...formData, responsibleEmail: e.target.value })}
-                          placeholder="email@exemplo.com"
-                        />
-                      </div>
-                    </div>
+                     <div className="border-t pt-4 space-y-3">
+                       <p className="font-semibold">👤 Responsável Legal <span className="text-muted-foreground font-normal text-sm">(obrigatório para menores de 18 anos)</span></p>
+                       <p className="text-xs text-muted-foreground -mt-1">O CPF do responsável será usado na nota fiscal quando o paciente for menor de idade.</p>
+                       <div className="grid grid-cols-2 gap-3">
+                         <div>
+                           <Label className="text-xs">Nome do Responsável</Label>
+                           <Input
+                             value={formData.responsibleName}
+                             onChange={(e) => setFormData({ ...formData, responsibleName: e.target.value })}
+                             placeholder="Ex: Maria Silva"
+                           />
+                         </div>
+                         <div>
+                           <Label className="text-xs">CPF do Responsável <span className="text-muted-foreground font-normal text-xs">(nota fiscal)</span></Label>
+                           <Input
+                             value={formData.responsible_cpf}
+                             onChange={(e) => setFormData({ ...formData, responsible_cpf: e.target.value })}
+                             placeholder="000.000.000-00"
+                           />
+                         </div>
+                       </div>
+                       <div>
+                         <Label className="text-xs">E-mail do Responsável</Label>
+                         <Input
+                           type="email"
+                           value={formData.responsibleEmail}
+                           onChange={(e) => setFormData({ ...formData, responsibleEmail: e.target.value })}
+                           placeholder="email@exemplo.com"
+                         />
+                       </div>
+                       <div>
+                         <Label className="text-xs flex items-center gap-1.5">
+                           <WhatsAppIcon className="w-3 h-3 text-[#25D366]" />
+                           WhatsApp do Responsável
+                         </Label>
+                         <Input
+                           value={formData.responsibleWhatsapp}
+                           onChange={(e) => setFormData({ ...formData, responsibleWhatsapp: e.target.value })}
+                           placeholder="(11) 99999-9999"
+                         />
+                       </div>
+                     </div>
+
 
                     {/* Package selection and payment info */}
                     <div className="border-t pt-4">
