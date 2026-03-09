@@ -22,10 +22,23 @@ export const TEMPLATE_CATEGORIES = [
 ];
 
 export const TEMPLATE_VARIABLES = [
-  { tag: '{{nome_paciente}}',   label: 'Nome do Paciente' },
-  { tag: '{{data_consulta}}',   label: 'Data da Consulta' },
-  { tag: '{{horario}}',         label: 'Horário' },
-  { tag: '{{nome_terapeuta}}',  label: 'Nome do Terapeuta' },
+  // Paciente
+  { tag: '{{nome_paciente}}',        label: 'Nome do Paciente',         group: 'Paciente' },
+  { tag: '{{telefone_paciente}}',    label: 'Telefone do Paciente',     group: 'Paciente' },
+  { tag: '{{email_paciente}}',       label: 'E-mail do Paciente',       group: 'Paciente' },
+  { tag: '{{data_nascimento}}',      label: 'Data de Nascimento',       group: 'Paciente' },
+  { tag: '{{responsavel}}',          label: 'Nome do Responsável',      group: 'Paciente' },
+  // Consulta
+  { tag: '{{data_consulta}}',        label: 'Data da Consulta',         group: 'Consulta' },
+  { tag: '{{horario}}',              label: 'Horário',                  group: 'Consulta' },
+  { tag: '{{dia_semana}}',           label: 'Dia da Semana',            group: 'Consulta' },
+  { tag: '{{valor_sessao}}',         label: 'Valor da Sessão',          group: 'Consulta' },
+  { tag: '{{valor_em_aberto}}',      label: 'Valor em Aberto',          group: 'Consulta' },
+  // Profissional / Clínica
+  { tag: '{{nome_terapeuta}}',       label: 'Nome do Terapeuta',        group: 'Profissional' },
+  { tag: '{{nome_clinica}}',         label: 'Nome da Clínica',          group: 'Profissional' },
+  { tag: '{{endereco_clinica}}',     label: 'Endereço da Clínica',      group: 'Profissional' },
+  { tag: '{{telefone_clinica}}',     label: 'Telefone da Clínica',      group: 'Profissional' },
 ];
 
 /** Default templates shown when user has none (copies seeded with null user_id are filtered) */
