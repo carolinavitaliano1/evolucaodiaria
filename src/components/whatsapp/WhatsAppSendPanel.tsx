@@ -376,6 +376,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
           patientPhone={recipientPicker.patient.phone}
           responsibleName={recipientPicker.patient.responsible_name}
           responsibleWhatsapp={recipientPicker.patient.responsible_whatsapp!}
+          message={recipientPicker.message}
         />
       )}
 
@@ -394,6 +395,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
           patients={broadcastPatients}
           template={broadcastTemplate}
           clinic={clinic}
+          therapistName={therapistName}
         />
       )}
     </div>
