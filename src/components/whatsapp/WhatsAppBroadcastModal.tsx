@@ -31,6 +31,7 @@ interface Props {
   patients: BroadcastPatient[];
   template: BroadcastTemplate;
   clinic?: { name?: string; address?: string; phone?: string };
+  therapistName?: string;
 }
 
 export function WhatsAppBroadcastModal({ open, onClose, patients, template, clinic }: Props) {
