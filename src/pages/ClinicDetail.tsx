@@ -2565,6 +2565,16 @@ export default function ClinicDetail() {
           </AlertDialog>
         </>
       )}
+
+      {/* WhatsApp Message Modal */}
+      {whatsAppPatient && (
+        <WhatsAppMessageModal
+          open={!!whatsAppPatient}
+          onClose={() => setWhatsAppPatient(null)}
+          patientName={whatsAppPatient.name}
+          patientPhone={whatsAppPatient.phone}
+        />
+      )}
     </div>
   );
 }
