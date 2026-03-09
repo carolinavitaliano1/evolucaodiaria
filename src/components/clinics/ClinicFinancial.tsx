@@ -508,6 +508,22 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                       <p className="font-bold text-foreground text-sm">
                         R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
+                      {/* WhatsApp reminder for pending payments */}
+                      {clinic.type === 'propria' && !pr?.paid && (
+                        <QuickWhatsAppButton
+                          phone={(patient as any).whatsapp || (patient as any).phone || (patient as any).responsible_whatsapp}
+                          tooltip="Enviar lembrete de pagamento via WhatsApp"
+                          message={resolveTemplate(
+                            'Olá, {{nome_paciente}}! 😊 Passando para lembrar sobre o pagamento de R$ {{valor_sessao}} referente ao mês de {{data_consulta}}. Qualquer dúvida, estou à disposição. — {{nome_terapeuta}}',
+                            {
+                              nome_paciente: patient.name,
+                              valor_sessao: revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+                              data_consulta: format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR }),
+                              nome_terapeuta: therapistName,
+                            }
+                          )}
+                        />
+                      )}
                       {clinic.type === 'propria' && (
                         <button
                           type="button"
