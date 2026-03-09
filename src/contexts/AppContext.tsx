@@ -558,6 +558,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.phone !== undefined) updateData.phone = updates.phone || null;
       if (updates.whatsapp !== undefined) updateData.whatsapp = updates.whatsapp || null;
       if ((updates as any).email !== undefined) updateData.email = (updates as any).email || null;
+      if ((updates as any).cpf !== undefined) updateData.cpf = (updates as any).cpf || null;
       if (updates.clinicalArea !== undefined) updateData.clinical_area = updates.clinicalArea || null;
       if (updates.diagnosis !== undefined) updateData.diagnosis = updates.diagnosis || null;
       if (updates.professionals !== undefined) updateData.professionals = updates.professionals || null;
@@ -565,8 +566,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.responsibleName !== undefined) updateData.responsible_name = updates.responsibleName || null;
       if (updates.responsibleEmail !== undefined) updateData.responsible_email = updates.responsibleEmail || null;
       if (updates.responsibleWhatsapp !== undefined) updateData.responsible_whatsapp = updates.responsibleWhatsapp || null;
+      if ((updates as any).responsible_cpf !== undefined) updateData.responsible_cpf = (updates as any).responsible_cpf || null;
+      if ((updates as any).responsible_is_financial !== undefined) updateData.responsible_is_financial = (updates as any).responsible_is_financial;
+      if ((updates as any).financial_responsible_name !== undefined) updateData.financial_responsible_name = (updates as any).financial_responsible_name || null;
+      if ((updates as any).financial_responsible_cpf !== undefined) updateData.financial_responsible_cpf = (updates as any).financial_responsible_cpf || null;
+      if ((updates as any).financial_responsible_whatsapp !== undefined) updateData.financial_responsible_whatsapp = (updates as any).financial_responsible_whatsapp || null;
       if (updates.paymentType !== undefined) updateData.payment_type = updates.paymentType || null;
       if (updates.paymentValue !== undefined) updateData.payment_value = updates.paymentValue || null;
+      if ((updates as any).payment_due_day !== undefined) updateData.payment_due_day = (updates as any).payment_due_day || null;
       if (updates.contractStartDate !== undefined) updateData.contract_start_date = updates.contractStartDate || null;
       if (updates.weekdays !== undefined) updateData.weekdays = updates.weekdays || null;
       if (updates.scheduleTime !== undefined) updateData.schedule_time = updates.scheduleTime || null;
