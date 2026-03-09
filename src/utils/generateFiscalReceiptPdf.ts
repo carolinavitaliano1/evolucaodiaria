@@ -331,31 +331,38 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     } catch { /* skip */ }
   }
 
-  // Carimbo + rubrica + 3mm de gap antes da linha + credenciais
+  // Carimbo + rubrica sobrepostos à linha + credenciais
   const stampH     = stInfo  ? stInfo.h  : 0;
   const sigH       = sigInfo ? sigInfo.h : 0;
-  const aboveLineH = stampH + sigH;
+  // Sobreposição: linha desenhada 5mm antes do fim das imagens
+  const overlapMm  = 5;
+  const aboveLineH = stampH + sigH - overlapMm;
   const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
-  const blockH     = aboveLineH + 4 + credRows * LHS + 2;
+  const blockH     = stampH + sigH + 4 + credRows * LHS + 2;
 
   ensureSpace(blockH + 5);
   y += 4;
 
-  // 1. Carimbo — topo do bloco, esquerda
+  // 3. Linha de assinatura — desenhada PRIMEIRO (vai ficar atrás das imagens)
+  const lineY = y + aboveLineH;
+  doc.setDrawColor(...borderColor);
+  doc.line(margin, lineY, margin + contentW * 0.62, lineY);
+
+  // 1. Carimbo — topo do bloco, esquerda (sobre a linha)
   if (stInfo) {
     doc.addImage(stInfo.src, 'PNG', margin, y, stInfo.w, stInfo.h, undefined, 'FAST');
     y += stInfo.h;
   }
 
-  // 2. Rubrica — logo abaixo do carimbo, sem gap
+  // 2. Rubrica — logo abaixo do carimbo, sobrepõe a linha (efeito carimbo físico)
   if (sigInfo) {
     doc.addImage(sigInfo.src, 'PNG', margin, y, sigInfo.w, sigInfo.h, undefined, 'FAST');
     y += sigInfo.h;
   }
 
-  // 3. Linha de assinatura — colada à rubrica
-  doc.setDrawColor(...borderColor);
-  doc.line(margin, y, margin + contentW * 0.62, y);
+  // Avançar y apenas o delta restante após a linha
+  const drawnUpTo = (stInfo ? stInfo.h : 0) + (sigInfo ? sigInfo.h : 0);
+  y = (y - drawnUpTo) + aboveLineH;
   y += 4;
 
   // 4. Nome e credenciais
