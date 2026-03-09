@@ -172,6 +172,10 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       responsibleEmail: formData.responsibleEmail || undefined,
       responsibleWhatsapp: formData.responsibleWhatsapp || undefined,
       ...(formData.responsibleCpf && { responsible_cpf: formData.responsibleCpf } as any),
+      responsible_is_financial: formData.responsibleIsFinancial,
+      financial_responsible_name: formData.financialResponsibleName || null,
+      financial_responsible_cpf: formData.financialResponsibleCpf || null,
+      financial_responsible_whatsapp: formData.financialResponsibleWhatsapp || null,
       contractStartDate: formData.contractStartDate || undefined,
       weekdays: formData.weekdays,
       scheduleTime: firstDayTime || undefined,
@@ -180,7 +184,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       paymentValue: formData.paymentValue ? parseFloat(formData.paymentValue) : undefined,
       packageId: formData.packageId || undefined,
       ...(formData.paymentDueDay && { payment_due_day: parseInt(formData.paymentDueDay) } as any),
-    });
+    } as any);
 
     // Save payment record if propria and status changed
     if (isPropria) {
