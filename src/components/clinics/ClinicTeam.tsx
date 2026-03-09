@@ -908,16 +908,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                     variant="outline"
                     size="sm"
                     className="flex-1 h-7 text-[11px] gap-1 px-2"
-                    onClick={() => openManageModal(member)}
-                  >
-                    <Settings className="w-3 h-3" />
-                    Permissões
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 h-7 text-[11px] gap-1 px-2"
-                    onClick={() => navigate('/calendar')}
+                    onClick={e => { e.stopPropagation(); navigate('/calendar'); }}
                   >
                     <CalendarDays className="w-3 h-3" />
                     Ver Agenda
@@ -927,7 +918,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                       variant="outline"
                       size="sm"
                       className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-success hover:bg-success/10')}
-                      onClick={() => handleToggleMemberStatus(member)}
+                      onClick={e => { e.stopPropagation(); handleToggleMemberStatus(member); }}
+                      title={member.status === 'active' ? 'Suspender acesso' : 'Reativar acesso'}
                     >
                       {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
                     </Button>
@@ -1134,23 +1126,12 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                 </div>
               </ScrollArea>
 
-              <div className="flex items-center justify-between pt-3 border-t mt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive gap-1.5"
-                  onClick={() => setRemoveMemberId(manageMember.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Remover da equipe
+              <div className="flex justify-end gap-2 pt-3 border-t mt-3">
+                <Button variant="outline" onClick={() => setManageMember(null)}>Cancelar</Button>
+                <Button onClick={saveAssignments} disabled={savingAssign} className="gap-2">
+                  {savingAssign && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Salvar
                 </Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setManageMember(null)}>Cancelar</Button>
-                  <Button onClick={saveAssignments} disabled={savingAssign} className="gap-2">
-                    {savingAssign && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    Salvar
-                  </Button>
-                </div>
               </div>
             </>
           )}
