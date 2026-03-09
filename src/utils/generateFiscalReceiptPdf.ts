@@ -344,13 +344,13 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   // 1. Carimbo — topo do bloco, esquerda
   if (stInfo) {
     doc.addImage(stInfo.src, 'PNG', margin, y, stInfo.w, stInfo.h, undefined, 'FAST');
-    y += stInfo.h + 0.5;
+    y += stInfo.h + 2;
   }
 
   // 2. Rubrica — logo abaixo do carimbo, esquerda
   if (sigInfo) {
     doc.addImage(sigInfo.src, 'PNG', margin, y, sigInfo.w, sigInfo.h, undefined, 'FAST');
-    y += sigInfo.h + 0.5;
+    y += sigInfo.h + 2;
   }
 
   // 3. Linha de assinatura
