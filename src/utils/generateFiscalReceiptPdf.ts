@@ -300,8 +300,11 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   declLines.forEach((line: string) => { doc.text(line, margin, y); y += LH; });
 
   // ─── BLOCO DE ASSINATURA ─────────────────────────────────────────────────
-  // Layout: [sig_img] + linha + nome + credenciais (coluna esquerda)
-  //         carimbo à DIREITA, alinhado verticalmente ao centro do bloco
+  // Layout (coluna esquerda):
+  //   1. Carimbo (stamp) — acima da rubrica
+  //   2. Rubrica (assinatura) — imediatamente abaixo do carimbo, acima da linha
+  //   3. Linha de assinatura
+  //   4. Nome + credenciais
 
   type ImgInfo = { src: string; w: number; h: number } | null;
   let sigInfo: ImgInfo = null;
@@ -322,58 +325,56 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       const el = document.createElement('img');
       el.src   = stamp.stamp_image;
       await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
-      // Stamp: max 55×28mm — significativamente maior que antes
       let sw = 55, sh = (el.height / el.width) * sw;
       if (sh > 28) { sh = 28; sw = (el.width / el.height) * sh; }
       stInfo = { src: stamp.stamp_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
 
-  // Altura acima da linha: máximo entre rubrica e carimbo
-  const aboveLineH = Math.max(sigInfo ? sigInfo.h : 0, stInfo ? stInfo.h : 0);
-  const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
-  const blockH     = aboveLineH + 3 + 4 + credRows * LHS + 4; // imgs + gap + line gap + creds + padding
+  // Altura total acima da linha: carimbo + gap + rubrica (ambos na coluna esquerda)
+  const stampH  = stInfo  ? stInfo.h  + 2 : 0;  // carimbo + pequeno gap
+  const sigH    = sigInfo ? sigInfo.h + 2 : 0;  // rubrica + pequeno gap
+  const aboveLineH = stampH + sigH;
+  const credRows = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
+  const blockH   = aboveLineH + 3 + 4 + credRows * LHS + 4;
 
   ensureSpace(blockH + 6);
   y += 5;
 
-  const imgRowY  = y;                              // topo das imagens (rubrica e carimbo)
-  const lineY    = imgRowY + aboveLineH + 3;       // linha de assinatura
-  const textY    = lineY + 4;                      // início do nome e credenciais
-
-  // Rubrica (assinatura) — alinhada à base da linha, lado esquerdo
-  if (sigInfo) {
-    const sigY = lineY - sigInfo.h;
-    doc.addImage(sigInfo.src, 'PNG', margin, sigY, sigInfo.w, sigInfo.h, undefined, 'FAST');
-  }
-
-  // Carimbo — acima da linha, lado direito
+  // 1. Carimbo — topo do bloco, esquerda
   if (stInfo) {
-    const stX = W - margin - stInfo.w;
-    const stY = lineY - stInfo.h;
-    doc.addImage(stInfo.src, 'PNG', stX, stY, stInfo.w, stInfo.h, undefined, 'FAST');
+    doc.addImage(stInfo.src, 'PNG', margin, y, stInfo.w, stInfo.h, undefined, 'FAST');
+    y += stInfo.h + 2;
   }
 
-  // Linha de assinatura (da margem esquerda até ~62% da largura)
+  // 2. Rubrica — logo abaixo do carimbo, esquerda
+  if (sigInfo) {
+    doc.addImage(sigInfo.src, 'PNG', margin, y, sigInfo.w, sigInfo.h, undefined, 'FAST');
+    y += sigInfo.h + 2;
+  }
+
+  // 3. Linha de assinatura
+  const lineY = y + 1;
   doc.setDrawColor(...borderColor);
   doc.line(margin, lineY, margin + contentW * 0.62, lineY);
+  y = lineY + 4;
 
-  let ly = textY;
+  // 4. Nome e credenciais
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...darkText);
-  doc.text(therapistName || '________________________________', margin, ly);
-  ly += LHS + 1;
+  doc.text(therapistName || '________________________________', margin, y);
+  y += LHS + 1;
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
-  if (stamp?.clinical_area) { doc.text(stamp.clinical_area,               margin, ly); ly += LHS; }
-  if (professionalId)        { doc.text(`Registro: ${professionalId}`,     margin, ly); ly += LHS; }
-  if (therapistCpf)          { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, ly); ly += LHS; }
-  if (cbo)                   { doc.text(`CBO: ${cbo}`,                     margin, ly); ly += LHS; }
+  if (stamp?.clinical_area) { doc.text(stamp.clinical_area,               margin, y); y += LHS; }
+  if (professionalId)        { doc.text(`Registro: ${professionalId}`,     margin, y); y += LHS; }
+  if (therapistCpf)          { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, y); y += LHS; }
+  if (cbo)                   { doc.text(`CBO: ${cbo}`,                     margin, y); y += LHS; }
 
-  y = ly + 4;
+  y += 4;
 
   // ─── RODAPÉ ─────────────────────────────────────────────────────────────
   const pageCount = (doc as any).internal.getNumberOfPages();
