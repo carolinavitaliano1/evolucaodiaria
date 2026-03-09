@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toLocalDateString } from '@/lib/utils';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import { ServiceDialog } from '@/components/services/ServiceDialog';
@@ -36,6 +36,7 @@ import { ClinicNotes } from '@/components/clinics/ClinicNotes';
 import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
 import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
 import { MessageTemplatesManager } from '@/components/whatsapp/MessageTemplatesManager';
+import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -153,6 +154,7 @@ export default function ClinicDetail() {
   const navigate = useNavigate();
   const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
   const [editClinicOpen, setEditClinicOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [patientToEdit, setPatientToEdit] = useState<typeof patients[0] | null>(null);
@@ -1791,6 +1793,23 @@ export default function ClinicDetail() {
                         </span>
                       </div>
                     )}
+
+                    {patient.phone && (
+                      <div className="mt-2 pt-2 border-t border-border">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full h-8 gap-1.5 text-xs text-[#25D366] hover:text-[#1ebe57] hover:bg-[#25D366]/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setWhatsAppPatient({ name: patient.name, phone: patient.phone! });
+                          }}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          Enviar WhatsApp
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2545,6 +2564,16 @@ export default function ClinicDetail() {
             </AlertDialogContent>
           </AlertDialog>
         </>
+      )}
+
+      {/* WhatsApp Message Modal */}
+      {whatsAppPatient && (
+        <WhatsAppMessageModal
+          open={!!whatsAppPatient}
+          onClose={() => setWhatsAppPatient(null)}
+          patientName={whatsAppPatient.name}
+          patientPhone={whatsAppPatient.phone}
+        />
       )}
     </div>
   );
