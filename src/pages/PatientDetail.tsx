@@ -2621,8 +2621,7 @@ export default function PatientDetail() {
             )}
 
             {/* Stamp selector */}
-            {stamps.length > 0 && (
-              <div>
+            <div>
                 <Label className="text-xs flex items-center gap-1.5 mb-1.5">
                   <StampIcon className="w-3.5 h-3.5" /> Carimbo Profissional
                 </Label>
