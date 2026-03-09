@@ -2307,11 +2307,15 @@ export default function PatientDetail() {
             {/* Preview text */}
             <div className="bg-muted/40 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed italic">
               {(() => {
+                const pp = patient as any;
                 const prStampPreview = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) : stamps.find(s => s.is_default) || stamps[0];
                 const tName = prStampPreview?.name || therapistProfile?.name || '[Terapeuta]';
                 const tCpf = therapistProfile?.cpf ? `, inscrito(a) no CPF/CNPJ sob o número ${therapistProfile.cpf},` : '';
-                const pName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
-                const pCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
+                const hasSepFin = prUseResponsible && patient.responsibleName && pp.responsible_is_financial === false && pp.financial_responsible_name;
+                const pName = hasSepFin ? pp.financial_responsible_name
+                  : prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
+                const pCpfRaw = hasSepFin ? pp.financial_responsible_cpf
+                  : prUseResponsible ? pp.responsible_cpf : pp.cpf;
                 const pCpf = pCpfRaw ? `, inscrito(a) no CPF sob o número ${pCpfRaw},` : '';
                 const amtDisplay = prAmount ? `R$ ${parseFloat(prAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ [valor]';
                 const dateDisplay = prPaymentDate ? format(new Date(prPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '___/___/______';
