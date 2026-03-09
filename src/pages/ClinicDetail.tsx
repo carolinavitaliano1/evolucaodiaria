@@ -1670,7 +1670,10 @@ export default function ClinicDetail() {
 
         {/* WhatsApp Tab */}
         <TabsContent value="whatsapp">
-          <WhatsAppTabContent clinicPatients={clinicPatients} />
+          <WhatsAppTabContent
+            clinicPatients={clinicPatients}
+            clinic={{ name: clinic.name, address: clinic.address, phone: clinic.phone }}
+          />
         </TabsContent>
 
         {/* Evolutions merged tab with sub-tabs (state-based) */}

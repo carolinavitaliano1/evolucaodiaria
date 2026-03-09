@@ -315,6 +315,9 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
                         email_paciente:    p?.email            || '',
                         data_nascimento:   p?.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
                         responsavel:       p?.responsible_name || '',
+                        nome_clinica:      clinic?.name    || '',
+                        endereco_clinica:  clinic?.address || '',
+                        telefone_clinica:  clinic?.phone   || '',
                       }).slice(0, 100);
                     })()}
                     {resolveTemplate(selectedTemplate.content, {}).length > 100 ? '…' : ''}
