@@ -309,10 +309,14 @@ export default function PatientDetail() {
       });
   }, [user, patient?.clinicId]);
 
-  const patientDocsAsUploadedFiles: UploadedFile[] = useMemo(() => patientAttachments.map(a => ({
-    id: a.id, name: a.name, filePath: a.data, fileType: a.type,
-    url: a.data.startsWith('http') ? a.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${a.data}`,
-  })), [patientAttachments]);
+  const patientDocsAsUploadedFiles: UploadedFile[] = useMemo(() => patientAttachments.map(a => {
+    let url = a.data;
+    if (!a.data.startsWith('http')) {
+      const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(a.data);
+      url = urlData.publicUrl;
+    }
+    return { id: a.id, name: a.name, filePath: a.data, fileType: a.type, url };
+  }), [patientAttachments]);
 
   // All-time summaries (computed before early return so hooks order is stable)
   const totalPresent = patientEvolutions.filter(e => e.attendanceStatus === 'presente').length;
@@ -1789,7 +1793,7 @@ export default function PatientDetail() {
                             </p>
                             <div className="flex flex-wrap gap-2">
                               {evo.attachments.map((att) => {
-                                const fileUrl = att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`;
+                                const fileUrl = att.data.startsWith('http') ? att.data : supabase.storage.from('attachments').getPublicUrl(att.data).data.publicUrl;
                                 const isImage = att.type.startsWith('image/');
                                 return (
                                   <div key={att.id} className="flex flex-col gap-1">
@@ -2080,7 +2084,7 @@ export default function PatientDetail() {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {evoAttachments.map(att => {
-                      const fileUrl = att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`;
+                      const fileUrl = att.data.startsWith('http') ? att.data : supabase.storage.from('attachments').getPublicUrl(att.data).data.publicUrl;
                       return (
                         <a key={att.id} href={fileUrl} target="_blank" rel="noopener noreferrer" download={att.name}
                           className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border hover:border-primary/50 transition-colors">
