@@ -163,6 +163,41 @@ export function TodayAppointments() {
                     {hasEvolution && (
                       <span className="text-xs bg-success/10 text-success px-1.5 py-0.5 rounded-full">✓</span>
                     )}
+                    {/* WhatsApp quick confirmation for regular patients */}
+                    {!item.isPrivate && (
+                      <QuickWhatsAppButton
+                        phone={(() => {
+                          const p = patients.find(pt => pt.id === item.patientId);
+                          return p?.whatsapp || p?.phone || p?.responsibleWhatsapp || null;
+                        })()}
+                        size="xs"
+                        tooltip="Confirmar sessão via WhatsApp"
+                        message={resolveTemplate(
+                          'Olá, {{nome_paciente}}! 😊 Passando para confirmar sua sessão hoje às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
+                          {
+                            nome_paciente: item.name,
+                            horario: item.time.slice(0, 5),
+                            nome_terapeuta: therapistName,
+                          }
+                        )}
+                      />
+                    )}
+                    {/* WhatsApp for private appointments */}
+                    {item.isPrivate && item.privateAppointment?.client_phone && (
+                      <QuickWhatsAppButton
+                        phone={item.privateAppointment.client_phone}
+                        size="xs"
+                        tooltip="Confirmar sessão via WhatsApp"
+                        message={resolveTemplate(
+                          'Olá, {{nome_paciente}}! 😊 Passando para confirmar seu atendimento hoje às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
+                          {
+                            nome_paciente: item.name,
+                            horario: item.time.slice(0, 5),
+                            nome_terapeuta: therapistName,
+                          }
+                        )}
+                      />
+                    )}
                     {item.isPrivate && item.privateAppointment && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
