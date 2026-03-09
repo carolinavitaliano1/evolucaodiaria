@@ -42,6 +42,7 @@ import { WhatsAppSendPanel } from '@/components/whatsapp/WhatsAppSendPanel';
 import { WhatsAppTabContent } from '@/components/whatsapp/WhatsAppTabContent';
 import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
+import { QuickWhatsAppModal } from '@/components/whatsapp/QuickWhatsAppModal';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
