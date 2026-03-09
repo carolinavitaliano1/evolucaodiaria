@@ -1,22 +1,28 @@
 import { useState } from 'react';
-import { MessageSquare, Send, LayoutTemplate } from 'lucide-react';
+import { Send, LayoutTemplate } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WhatsAppSendPanel } from './WhatsAppSendPanel';
 import { MessageTemplatesManager } from './MessageTemplatesManager';
-
 import { Patient } from '@/types';
+
+interface ClinicInfo {
+  name?: string;
+  address?: string;
+  phone?: string;
+}
 
 interface WhatsAppTabContentProps {
   clinicPatients: Patient[];
+  clinic?: ClinicInfo;
 }
 
 type SubTab = 'send' | 'templates';
 
-export function WhatsAppTabContent({ clinicPatients }: WhatsAppTabContentProps) {
+export function WhatsAppTabContent({ clinicPatients, clinic }: WhatsAppTabContentProps) {
   const [subTab, setSubTab] = useState<SubTab>('send');
 
   const subTabs: { value: SubTab; label: string; icon: React.ReactNode }[] = [
-    { value: 'send', label: 'Enviar', icon: <Send className="w-3.5 h-3.5" /> },
+    { value: 'send',      label: 'Enviar',  icon: <Send          className="w-3.5 h-3.5" /> },
     { value: 'templates', label: 'Modelos', icon: <LayoutTemplate className="w-3.5 h-3.5" /> },
   ];
 
@@ -52,6 +58,7 @@ export function WhatsAppTabContent({ clinicPatients }: WhatsAppTabContentProps) 
             birthdate:        p.birthdate,
             responsible_name: p.responsibleName,
           }))}
+          clinic={clinic}
           onGoToTemplates={() => setSubTab('templates')}
         />
       )}

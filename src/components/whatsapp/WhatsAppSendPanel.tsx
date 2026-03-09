@@ -26,10 +26,11 @@ interface Patient {
 
 interface WhatsAppSendPanelProps {
   patients: Patient[];
+  clinic?: { name?: string; address?: string; phone?: string };
   onGoToTemplates?: () => void;
 }
 
-export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPanelProps) {
+export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAppSendPanelProps) {
   const { templates, loading } = useMessageTemplates();
 
   const [search, setSearch] = useState('');
@@ -89,6 +90,9 @@ export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPan
         email_paciente:    p.email    || '',
         data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
         responsavel:       p.responsible_name || '',
+        nome_clinica:      clinic?.name    || '',
+        endereco_clinica:  clinic?.address || '',
+        telefone_clinica:  clinic?.phone   || '',
       });
       openWhatsApp(p.phone!, msg);
     } else {
@@ -100,6 +104,9 @@ export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPan
             email_paciente:    p.email    || '',
             data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
             responsavel:       p.responsible_name || '',
+            nome_clinica:      clinic?.name    || '',
+            endereco_clinica:  clinic?.address || '',
+            telefone_clinica:  clinic?.phone   || '',
           });
           openWhatsApp(p.phone!, msg);
         }, idx * 600);
@@ -308,6 +315,9 @@ export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPan
                         email_paciente:    p?.email            || '',
                         data_nascimento:   p?.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
                         responsavel:       p?.responsible_name || '',
+                        nome_clinica:      clinic?.name    || '',
+                        endereco_clinica:  clinic?.address || '',
+                        telefone_clinica:  clinic?.phone   || '',
                       }).slice(0, 100);
                     })()}
                     {resolveTemplate(selectedTemplate.content, {}).length > 100 ? '…' : ''}
