@@ -4,11 +4,7 @@ import { cn } from '@/lib/utils';
 import { WhatsAppSendPanel } from './WhatsAppSendPanel';
 import { MessageTemplatesManager } from './MessageTemplatesManager';
 
-interface Patient {
-  id: string;
-  name: string;
-  phone?: string | null;
-}
+import { Patient } from '@/types';
 
 interface WhatsAppTabContentProps {
   clinicPatients: Patient[];
