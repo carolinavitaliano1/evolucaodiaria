@@ -2772,6 +2772,17 @@ export default function PatientDetail() {
         date={patient.scheduleTime ? format(new Date(), 'dd/MM/yyyy', { locale: ptBR }) : ''}
         time={patient.scheduleTime || ''}
       />
+
+      {/* WhatsApp Recipient Picker */}
+      <WhatsAppRecipientModal
+        open={whatsAppRecipientOpen}
+        onClose={() => setWhatsAppRecipientOpen(false)}
+        patientName={patient.name}
+        patientWhatsapp={patient.whatsapp}
+        patientPhone={patient.phone}
+        responsibleName={patient.responsibleName}
+        responsibleWhatsapp={patient.responsibleWhatsapp!}
+      />
     </div>
   );
 }
