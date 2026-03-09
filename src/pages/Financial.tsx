@@ -1393,20 +1393,16 @@ export default function Financial() {
                   </td>
                   {/* Payment status column */}
                   <td className="py-3 px-3 text-center">
-                    <button
-                      type="button"
-                      disabled={savingPatientPayment === patient.id}
-                      title={pr?.paid ? 'Marcar como pendente' : 'Marcar como pago'}
-                      onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
+                    <span
                       className={cn(
-                        'inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border transition-colors disabled:opacity-50',
+                        'inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border',
                         pr?.paid
-                          ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
-                          : 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/20'
+                          ? 'bg-success/10 text-success border-success/30'
+                          : 'bg-warning/10 text-warning border-warning/30'
                       )}
                     >
                       {pr?.paid ? <><CheckCircle2 className="w-3 h-3" />Pago</> : <><Clock className="w-3 h-3" />Pendente</>}
-                    </button>
+                    </span>
                   </td>
                   {/* Payment date column */}
                   <td className="py-3 px-3 text-center text-xs text-muted-foreground hidden md:table-cell">
