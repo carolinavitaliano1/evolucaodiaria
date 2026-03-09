@@ -87,10 +87,12 @@ function mapClinic(c: Record<string, unknown>): Clinic {
 function mapPatient(p: Record<string, unknown>): Patient {
   return {
     id: p.id as string, clinicId: p.clinic_id as string, name: p.name as string, birthdate: p.birthdate as string,
-    phone: (p.phone as string) || undefined, email: (p.email as string) || undefined, clinicalArea: (p.clinical_area as string) || undefined,
+    phone: (p.phone as string) || undefined, whatsapp: (p.whatsapp as string) || undefined,
+    email: (p.email as string) || undefined, clinicalArea: (p.clinical_area as string) || undefined,
     diagnosis: (p.diagnosis as string) || undefined, professionals: (p.professionals as string) || undefined,
     observations: (p.observations as string) || undefined, responsibleName: (p.responsible_name as string) || undefined,
     responsibleEmail: (p.responsible_email as string) || undefined,
+    responsibleWhatsapp: (p.responsible_whatsapp as string) || undefined,
     paymentType: p.payment_type as 'sessao' | 'fixo' | undefined,
     paymentValue: p.payment_value ? Number(p.payment_value) : undefined,
     contractStartDate: (p.contract_start_date as string) || undefined,
