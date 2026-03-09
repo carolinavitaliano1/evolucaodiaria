@@ -2622,9 +2622,10 @@ export default function PatientDetail() {
 
             {/* Stamp selector */}
             <div>
-                <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                  <StampIcon className="w-3.5 h-3.5" /> Carimbo Profissional
-                </Label>
+              <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                <StampIcon className="w-3.5 h-3.5" /> Carimbo Profissional
+              </Label>
+              {stamps.length > 0 ? (
                 <Select value={fiscalStampId} onValueChange={setFiscalStampId}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Selecione o carimbo" />
@@ -2638,8 +2639,10 @@ export default function PatientDetail() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Nenhum carimbo cadastrado. Adicione um em Perfil.</p>
+              )}
+            </div>
 
             {/* Payment info */}
             <div className="space-y-3 bg-muted/30 rounded-lg p-3">
