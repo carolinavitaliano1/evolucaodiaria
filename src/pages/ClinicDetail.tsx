@@ -36,6 +36,7 @@ import { ClinicNotes } from '@/components/clinics/ClinicNotes';
 import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
 import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
 import { MessageTemplatesManager } from '@/components/whatsapp/MessageTemplatesManager';
+import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
