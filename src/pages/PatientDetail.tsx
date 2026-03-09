@@ -1295,8 +1295,12 @@ export default function PatientDetail() {
                 <Button
                   variant="ghost" size="icon"
                   className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
-                  onClick={() => setWhatsappOpen(true)}
-                  title="Enviar mensagem via WhatsApp"
+                  onClick={() => {
+                    const cleaned = patient.phone!.replace(/\D/g, '');
+                    const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                    window.open(`https://wa.me/${number}`, '_blank');
+                  }}
+                  title="Abrir WhatsApp"
                 >
                   <MessageSquare className="w-4 h-4" />
                 </Button>
