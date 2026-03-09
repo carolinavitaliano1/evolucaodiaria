@@ -12,6 +12,7 @@ import { Patient, ClinicPackage } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
