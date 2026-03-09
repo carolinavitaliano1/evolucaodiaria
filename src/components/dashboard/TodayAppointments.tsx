@@ -11,6 +11,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { PrivateAppointment } from '@/hooks/usePrivateAppointments';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
+import { resolveTemplate } from '@/hooks/useMessageTemplates';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type ScheduleItem = {
   id: string;
