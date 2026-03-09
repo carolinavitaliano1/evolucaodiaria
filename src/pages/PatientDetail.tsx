@@ -966,7 +966,7 @@ export default function PatientDetail() {
     setPrPeriod(monthName);
     // Pre-fill location from clinic address
     setPrLocation(clinic?.address || '');
-    // Auto-detect minor and set responsible toggle
+    // Auto-detect: use responsible if patient is minor OR has a responsible registered
     const isMinorAuto = (() => {
       if (!patient.birthdate) return false;
       try {
@@ -977,7 +977,8 @@ export default function PatientDetail() {
         return a < 18;
       } catch { return false; }
     })();
-    setPrUseResponsible(isMinorAuto);
+    const hasResponsible = !!(patient.responsibleName);
+    setPrUseResponsible(isMinorAuto || hasResponsible);
     // Reset session fields
     setPrSessions('');
     setPrSelectedSessions([]);
@@ -2253,6 +2254,7 @@ export default function PatientDetail() {
                   return a < 18;
                 } catch { return false; }
               })();
+              const hasResponsibleAuto = !!(patient.responsibleName);
               const payerName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
               const payerCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
               return (
@@ -2276,7 +2278,9 @@ export default function PatientDetail() {
                     <span className="text-xs text-muted-foreground">
                       {isMinorAuto
                         ? '⚠ Paciente menor de idade — responsável selecionado automaticamente'
-                        : 'Usar responsável financeiro no recibo'}
+                        : hasResponsibleAuto
+                          ? '⚠ Paciente com responsável cadastrado — responsável selecionado automaticamente'
+                          : 'Usar responsável financeiro no recibo'}
                     </span>
                   </label>
                 </div>
