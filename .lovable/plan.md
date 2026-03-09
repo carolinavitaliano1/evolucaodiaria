@@ -1,44 +1,73 @@
 
+## Como funcionaria um modelo multidisciplinar no app
 
-## Final Plan
-
-### What changes
-
-**1. `src/pages/Team.tsx` — Redesign the flow**
-
-Two states:
-
-**State A — No active team:**
-- Clean page with a centered card: "Ativar Gestão de Equipe para uma clínica"
-- Button "Selecionar Clínica" opens a `Dialog` listing all `propria` clinics as selectable cards
-- On confirm → creates a new org + links to selected clinic (same logic as `createOrganization` in `ClinicTeam.tsx`) → navigates into team view
-
-**State B — Active team exists:**
-- Page shows team panel directly (no selector clutter)
-- Header shows: `[UsersRound icon] Gestão de Equipe — [Clinic Name]` + small `"Trocar clínica"` button (only if multiple propria clinics exist)
-- Clicking "Trocar clínica" opens an `AlertDialog` listing other clinics to pick from
-- On confirm: **nullifies** `organization_id` on the current clinic AND **creates a new org** for the new clinic (old org stays orphaned/archived by losing its clinic link). The new clinic starts fresh with just the owner as member.
-
-**2. `src/pages/ClinicDetail.tsx` — Add WhatsApp tab**
-
-- Add `{ value: 'whatsapp', icon: <MessageSquare />, label: 'WhatsApp', color: 'text-green-500' }` to the tabs array (line ~973)
-- Add `<TabsContent value="whatsapp">` rendering `<MessageTemplatesManager />`
-- Import `MessageSquare` from lucide (already imported elsewhere) and `MessageTemplatesManager`
-
-**3. `src/pages/Profile.tsx` — Remove WhatsApp section**
-
-- Remove `MessageTemplatesManager` import
-- Remove the WhatsApp card section (the Card that wraps `<MessageTemplatesManager />`)
+A estrutura atual já é quase toda compatível — clínicas, pacientes, evoluções, templates e carimbos são por usuário. O que falta é suporte para **múltiplos profissionais dentro de uma mesma clínica**, cada um com seu próprio acesso, carimbos e evoluções, mas compartilhando a base de pacientes.
 
 ---
 
-### Files
+### O que precisaria ser adicionado (sem remover nada)
 
-```text
-src/pages/Team.tsx            — redesign flow (modal-first activation, swap with new org)
-src/pages/ClinicDetail.tsx    — add WhatsApp tab
-src/pages/Profile.tsx         — remove WhatsApp card
+```
+ESTRUTURA ATUAL                    ESTRUTURA MULTIDISCIPLINAR
+─────────────────────────          ─────────────────────────────────
+usuário único → clínica            organização → clínica → membros
+usuário único → pacientes          pacientes compartilhados por clínica
+usuário único → evoluções          evoluções com "autor" (profissional)
 ```
 
-No DB migrations. No new components. Logic already exists.
+**1. Organizações / Equipes**
+- Nova tabela `organizations` — uma clínica multidisciplinar seria uma organização
+- Nova tabela `organization_members` — com papéis: `owner`, `admin`, `professional`
+- O dono convida outros usuários via e-mail
 
+**2. Pacientes compartilhados**
+- Pacientes passariam a ser da organização, não só do usuário
+- Cada profissional vê os pacientes da clínica, não só os seus
+- Permissões por papel: quem pode criar/editar/arquivar
+
+**3. Evoluções por profissional**
+- Cada evolução já tem `user_id` — continuaria funcionando como "autor"
+- Na visualização, apareceria o nome do profissional que registrou
+- Carimbo automático do profissional logado
+
+**4. Templates por organização**
+- Templates criados pelo dono ficam disponíveis para toda a equipe
+- Cada profissional ainda pode ter seus próprios templates pessoais
+
+**5. Financeiro separado por profissional**
+- Cada membro vê seus próprios recebimentos
+- O dono/admin vê o consolidado de todos
+
+---
+
+### Impacto no que já existe
+
+| Funcionalidade atual | Impacto |
+|---|---|
+| Clínica própria (terapeuta solo) | Zero — continua igual |
+| Templates de evolução | Zero — apenas compartilhamento opcional |
+| Carimbos pessoais | Zero — cada membro tem os seus |
+| Exportação PDF | Pequena — adicionar nome do profissional no rodapé |
+| Dashboard | Pequena — filtro por membro |
+
+O terapeuta solo continua usando o app exatamente como hoje. O modo multidisciplinar seria **opt-in** — ao criar uma clínica, escolheria entre "uso individual" ou "equipe multidisciplinar".
+
+---
+
+### Implementação em fases
+
+**Fase 1** — Convite e membros
+- Tabelas `organizations` e `organization_members`
+- Fluxo de convite por e-mail
+- Papéis: dono, admin, profissional
+
+**Fase 2** — Dados compartilhados
+- Pacientes e evoluções vinculados à organização
+- Filtros por profissional na agenda e evoluções
+
+**Fase 3** — Financeiro consolidado
+- Relatórios por membro e consolidado para o admin
+
+---
+
+Quer que eu implemente isso? Posso começar pela Fase 1 (estrutura de equipe e convites) mantendo tudo que existe intacto para usuários solo.

@@ -7,10 +7,11 @@ import { ComplianceDashboard } from '@/components/clinics/ComplianceDashboard';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import {
   Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock, Info,
-  ClipboardCheck, UsersIcon, ArrowRight, CheckCircle2,
+  ClipboardCheck, UsersIcon, CheckCircle2, ChevronRight,
 } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,17 +24,23 @@ export default function Team() {
   const { clinics } = useApp();
   const navigate = useNavigate();
   const { isOwner, loading: permLoading } = useOrgPermissions();
-  const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<'team' | 'compliance'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [complianceBadge, setComplianceBadge] = useState(0);
-  // clinicId → organizationId (null = no team)
   const [clinicOrgMap, setClinicOrgMap] = useState<Record<string, string | null>>({});
   const [loadingMap, setLoadingMap] = useState(true);
 
-  // Confirm move dialog
-  const [confirmMove, setConfirmMove] = useState<{ fromId: string; toId: string } | null>(null);
-  const [moving, setMoving] = useState(false);
+  // Activation modal (State A)
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const [activatingClinicId, setActivatingClinicId] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
+
+  // Swap clinic dialog (State B → choose new clinic)
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false);
+  const [swapTargetClinicId, setSwapTargetClinicId] = useState<string | null>(null);
+  const [confirmSwapOpen, setConfirmSwapOpen] = useState(false);
+  const [swapping, setSwapping] = useState(false);
 
   const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
   const hasAccess = isOwnerEmail || isOwner;
@@ -41,8 +48,9 @@ export default function Team() {
   const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'propria');
   const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
 
-  // Which clinic currently holds the team benefit
+  // The one clinic that currently holds the team benefit
   const activeTeamClinicId = Object.entries(clinicOrgMap).find(([, orgId]) => !!orgId)?.[0] ?? null;
+  const activeClinic = teamClinics.find(c => c.id === activeTeamClinicId) ?? null;
 
   const reloadOrgMap = async () => {
     if (teamClinics.length === 0) { setLoadingMap(false); return; }
@@ -54,10 +62,8 @@ export default function Team() {
     const map: Record<string, string | null> = {};
     (data || []).forEach(c => { map[c.id] = c.organization_id ?? null; });
     setClinicOrgMap(map);
-    // Auto-select: prefer the one with team, otherwise first
     const withTeam = (data || []).find(c => !!c.organization_id);
-    const defaultId = withTeam?.id ?? teamClinics[0].id;
-    setSelectedClinicId(prev => prev ?? defaultId);
+    if (withTeam) setOrganizationId(withTeam.organization_id);
     setLoadingMap(false);
   };
 
@@ -66,50 +72,60 @@ export default function Team() {
     reloadOrgMap();
   }, [teamClinics.length]);
 
-  // Sync orgId for the selected clinic
-  useEffect(() => {
-    if (!selectedClinicId) return;
-    setOrganizationId(clinicOrgMap[selectedClinicId] ?? null);
-  }, [selectedClinicId, clinicOrgMap]);
-
-  // Handle switching team to a different clinic
-  const handleClinicSelect = (clinicId: string) => {
-    if (clinicId === selectedClinicId) return;
-    // If there's an active team in a DIFFERENT clinic → ask for confirmation to move
-    if (activeTeamClinicId && activeTeamClinicId !== clinicId) {
-      setConfirmMove({ fromId: activeTeamClinicId, toId: clinicId });
-    } else {
-      setSelectedClinicId(clinicId);
-    }
-  };
-
-  // Move team benefit from one clinic to another
-  const moveTeamBenefit = async (fromClinicId: string, toClinicId: string) => {
-    setMoving(true);
+  // State A: Activate team on selected clinic (create new org)
+  const handleActivate = async () => {
+    if (!activatingClinicId || !user) return;
+    setActivating(true);
     try {
-      // Get the org id from the source clinic
-      const orgId = clinicOrgMap[fromClinicId];
-      if (!orgId) throw new Error('Organização não encontrada');
-
-      // Move: detach from old clinic, attach to new one
-      await supabase.from('clinics').update({ organization_id: null }).eq('id', fromClinicId);
-      await supabase.from('clinics').update({ organization_id: orgId }).eq('id', toClinicId);
-
-      // Update local map
-      setClinicOrgMap(prev => ({ ...prev, [fromClinicId]: null, [toClinicId]: orgId }));
-      setSelectedClinicId(toClinicId);
-      setOrganizationId(orgId);
-      toast.success(`Benefício de equipe movido para "${teamClinics.find(c => c.id === toClinicId)?.name}"`);
+      const clinic = teamClinics.find(c => c.id === activatingClinicId);
+      const { data: org, error: orgErr } = await supabase
+        .from('organizations')
+        .insert({ name: clinic?.name ?? 'Minha Clínica', owner_id: user.id })
+        .select('id')
+        .single();
+      if (orgErr) throw orgErr;
+      await supabase.from('clinics').update({ organization_id: org.id }).eq('id', activatingClinicId);
+      toast.success(`Gestão de equipe ativada em "${clinic?.name}"!`);
+      setActivateDialogOpen(false);
+      await reloadOrgMap();
     } catch (err) {
-      toast.error('Erro ao mover benefício de equipe');
+      toast.error('Erro ao ativar gestão de equipe');
       console.error(err);
     } finally {
-      setMoving(false);
-      setConfirmMove(null);
+      setActivating(false);
     }
   };
 
-  const selectedClinic = teamClinics.find(c => c.id === selectedClinicId);
+  // State B: Swap — old team stays orphaned, new org for new clinic
+  const handleSwap = async () => {
+    if (!swapTargetClinicId || !activeTeamClinicId || !user) return;
+    setSwapping(true);
+    try {
+      // Detach old clinic (org becomes orphaned/archived)
+      await supabase.from('clinics').update({ organization_id: null }).eq('id', activeTeamClinicId);
+
+      // Create a NEW org for the new clinic (fresh start)
+      const newClinic = teamClinics.find(c => c.id === swapTargetClinicId);
+      const { data: newOrg, error: orgErr } = await supabase
+        .from('organizations')
+        .insert({ name: newClinic?.name ?? 'Minha Clínica', owner_id: user.id })
+        .select('id')
+        .single();
+      if (orgErr) throw orgErr;
+      await supabase.from('clinics').update({ organization_id: newOrg.id }).eq('id', swapTargetClinicId);
+
+      toast.success(`Equipe ativada em "${newClinic?.name}". A equipe anterior foi arquivada.`);
+      setConfirmSwapOpen(false);
+      setSwapDialogOpen(false);
+      setSwapTargetClinicId(null);
+      await reloadOrgMap();
+    } catch (err) {
+      toast.error('Erro ao trocar consultório da equipe');
+      console.error(err);
+    } finally {
+      setSwapping(false);
+    }
+  };
 
   if (permLoading || loadingMap) {
     return (
@@ -187,9 +203,125 @@ export default function Team() {
     );
   }
 
-  const fromClinic = confirmMove ? teamClinics.find(c => c.id === confirmMove.fromId) : null;
-  const toClinic = confirmMove ? teamClinics.find(c => c.id === confirmMove.toId) : null;
+  // ── STATE A: No team active yet ──────────────────────────────────
+  if (!activeTeamClinicId) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border">
+          <div className="max-w-5xl mx-auto px-4 lg:px-6 py-4 flex items-center gap-4">
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-4 h-4" />Voltar
+            </Button>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <UsersRound className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="font-bold text-foreground text-lg leading-none">Gestão de Equipe</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Permissões, convites e controle de acesso</p>
+              </div>
+            </div>
+            <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+              <Sparkles className="w-3 h-3" />Plano Clínica
+            </span>
+          </div>
+        </div>
 
+        {/* Empty state */}
+        <div className="flex-1 flex items-center justify-center px-4 py-16">
+          <div className="max-w-sm w-full text-center space-y-6">
+            <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto">
+              <UsersRound className="w-12 h-12 text-primary/60" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold text-foreground">Ativar Gestão de Equipe</h2>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Selecione o consultório onde a equipe será gerenciada. O benefício pode ser usado em <strong>um consultório por vez</strong>.
+              </p>
+            </div>
+
+            {teamClinics.length === 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Você não possui consultórios cadastrados.</p>
+                <Button variant="outline" onClick={() => navigate('/clinics')}>
+                  Cadastrar Consultório
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={() => {
+                  setActivatingClinicId(teamClinics.length === 1 ? teamClinics[0].id : null);
+                  setActivateDialogOpen(true);
+                }}
+                className="gap-2 w-full"
+              >
+                <Building2 className="w-4 h-4" />
+                Selecionar Consultório
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Activation modal */}
+        <Dialog open={activateDialogOpen} onOpenChange={open => { if (!activating) setActivateDialogOpen(open); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UsersRound className="w-5 h-5 text-primary" />
+                Selecionar Consultório para a Equipe
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Escolha qual consultório usará a Gestão de Equipe. Você poderá trocar depois, mas os dados da equipe não serão transferidos.
+              </p>
+              <div className="space-y-2">
+                {teamClinics.map(clinic => (
+                  <button
+                    key={clinic.id}
+                    onClick={() => setActivatingClinicId(clinic.id)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all',
+                      activatingClinicId === clinic.id
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-card hover:border-primary/40 hover:bg-accent'
+                    )}
+                  >
+                    <div className={cn(
+                      'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                      activatingClinicId === clinic.id ? 'bg-primary/20' : 'bg-muted'
+                    )}>
+                      {activatingClinicId === clinic.id
+                        ? <CheckCircle2 className="w-4 h-4 text-primary" />
+                        : <Building2 className="w-4 h-4 text-muted-foreground" />
+                      }
+                    </div>
+                    <span className="font-medium text-sm">{clinic.name}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" className="flex-1" onClick={() => setActivateDialogOpen(false)} disabled={activating}>
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  disabled={!activatingClinicId || activating}
+                  onClick={handleActivate}
+                >
+                  {activating ? <Loader2 className="w-4 h-4 animate-spin" /> : <UsersRound className="w-4 h-4" />}
+                  Ativar Equipe
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // ── STATE B: Team is active ──────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -198,23 +330,38 @@ export default function Team() {
           <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4" />Voltar
           </Button>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <UsersRound className="w-5 h-5 text-primary" />
             </div>
-            <div>
-              <h1 className="font-bold text-foreground text-lg leading-none">Gestão de Equipe</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Permissões, convites e controle de acesso</p>
+            <div className="min-w-0">
+              <h1 className="font-bold text-foreground text-lg leading-none truncate">Gestão de Equipe</h1>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                <p className="text-xs text-muted-foreground truncate">{activeClinic?.name}</p>
+              </div>
             </div>
           </div>
-          <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
-            <Sparkles className="w-3 h-3" />Plano Clínica
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            {teamClinics.length > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setSwapDialogOpen(true)}
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+                Trocar consultório
+              </Button>
+            )}
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+              <Sparkles className="w-3 h-3" />Plano Clínica
+            </span>
+          </div>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 lg:px-6 py-6 space-y-6">
-
         {/* Contratante notice */}
         {contratanteClinics.length > 0 && (
           <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl bg-warning/10 border border-warning/30">
@@ -228,171 +375,138 @@ export default function Team() {
           </div>
         )}
 
-        {/* Clinic selector — always shown when there are propria clinics */}
-        {teamClinics.length > 0 && (
-          <div>
-            {teamClinics.length > 1 && (
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Selecionar Clínica para Equipe
-              </p>
-            )}
-
-            {/* Info: benefit scoped to 1 clinic */}
-            {teamClinics.length > 1 && (
-              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/5 border border-primary/20 mb-4">
-                <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <p className="text-sm text-foreground">
-                  O benefício de equipe é ativo em <strong>apenas uma clínica</strong> por vez.
-                  {activeTeamClinicId
-                    ? ' Clique em outra clínica para mover o benefício.'
-                    : ' Selecione abaixo qual clínica usará este recurso.'}
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3">
-              {teamClinics.map(clinic => {
-                const hasTeam = !!clinicOrgMap[clinic.id];
-                const isSelected = selectedClinicId === clinic.id;
-
-                return (
-                  <button
-                    key={clinic.id}
-                    onClick={() => handleClinicSelect(clinic.id)}
-                    className={cn(
-                      'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all',
-                      isSelected && hasTeam
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                        : isSelected && !hasTeam
-                        ? 'bg-primary/10 text-primary border-primary/40'
-                        : hasTeam
-                        ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
-                        : 'bg-card text-foreground border-border hover:border-primary/40 hover:bg-primary/5'
-                    )}
-                  >
-                    {hasTeam
-                      ? <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      : <Building2 className="w-4 h-4 shrink-0" />
-                    }
-                    <span>{clinic.name}</span>
-                    {hasTeam && !isSelected && (
-                      <span className="ml-1 text-[10px] font-semibold opacity-80">Equipe ativa</span>
-                    )}
-                    {hasTeam && isSelected && (
-                      <span className="ml-1 text-[10px] font-semibold opacity-90">Ativa aqui</span>
-                    )}
-                    {!hasTeam && activeTeamClinicId && isSelected && (
-                      <span className="ml-1 text-[10px] text-primary/70">Clique para mover</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Tab switcher */}
-        {selectedClinic && (
-          <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
-            <button
-              onClick={() => setActiveTab('team')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                activeTab === 'team' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <UsersIcon className="w-4 h-4" />Equipe
-            </button>
-            <button
-              onClick={() => setActiveTab('compliance')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                activeTab === 'compliance' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <ClipboardCheck className="w-4 h-4" />Conformidade
-              {complianceBadge > 0 && (
-                <span className="w-4 h-4 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
-                  {complianceBadge > 9 ? '9+' : complianceBadge}
-                </span>
-              )}
-            </button>
-          </div>
-        )}
+        <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab('team')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              activeTab === 'team' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <UsersIcon className="w-4 h-4" />Equipe
+          </button>
+          <button
+            onClick={() => setActiveTab('compliance')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              activeTab === 'compliance' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <ClipboardCheck className="w-4 h-4" />Conformidade
+            {complianceBadge > 0 && (
+              <span className="w-4 h-4 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
+                {complianceBadge > 9 ? '9+' : complianceBadge}
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* Content */}
-        {selectedClinic ? (
-          <div className="bg-card rounded-2xl border border-border p-5 lg:p-6">
-            {activeTab === 'team' && (
-              <ClinicTeam
-                clinicId={selectedClinic.id}
-                clinicName={selectedClinic.name}
-                onTeamCreated={reloadOrgMap}
-              />
-            )}
-            {activeTab === 'compliance' && organizationId && (
-              <ComplianceDashboard
-                clinicId={selectedClinic.id}
-                organizationId={organizationId}
-                onTodayPendingCount={setComplianceBadge}
-              />
-            )}
-            {activeTab === 'compliance' && !organizationId && (
-              <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                <ClipboardCheck className="w-10 h-10 text-muted-foreground" />
-                <p className="text-muted-foreground text-sm">
-                  Ative a gestão de equipe primeiro para usar o painel de conformidade.
-                </p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-              <Users className="w-8 h-8 text-muted-foreground" />
+        <div className="bg-card rounded-2xl border border-border p-5 lg:p-6">
+          {activeTab === 'team' && (
+            <ClinicTeam
+              clinicId={activeTeamClinicId}
+              clinicName={activeClinic?.name}
+              onTeamCreated={reloadOrgMap}
+            />
+          )}
+          {activeTab === 'compliance' && organizationId && (
+            <ComplianceDashboard
+              clinicId={activeTeamClinicId}
+              organizationId={organizationId}
+              onTodayPendingCount={setComplianceBadge}
+            />
+          )}
+          {activeTab === 'compliance' && !organizationId && (
+            <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+              <ClipboardCheck className="w-10 h-10 text-muted-foreground" />
+              <p className="text-muted-foreground text-sm">Carregando dados de conformidade...</p>
             </div>
-            <p className="text-muted-foreground">
-              {contratanteClinics.length > 0 && teamClinics.length === 0
-                ? 'Você não possui consultórios cadastrados.'
-                : 'Nenhuma clínica encontrada.'}
-            </p>
-            <Button variant="outline" onClick={() => navigate('/clinics')}>Ir para Clínicas</Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Confirm move dialog */}
-      <AlertDialog open={!!confirmMove} onOpenChange={open => !open && setConfirmMove(null)}>
+      {/* Swap Clinic Dialog */}
+      <Dialog open={swapDialogOpen} onOpenChange={open => { if (!swapping) setSwapDialogOpen(open); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
+              Trocar Consultório da Equipe
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20">
+              <Info className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-foreground leading-relaxed">
+                Ao trocar de consultório, a equipe atual (membros, convites e permissões) será <strong>arquivada</strong> e o novo consultório começará do zero.
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">Selecione o consultório que passará a usar a Gestão de Equipe:</p>
+            <div className="space-y-2">
+              {teamClinics.filter(c => c.id !== activeTeamClinicId).map(clinic => (
+                <button
+                  key={clinic.id}
+                  onClick={() => setSwapTargetClinicId(clinic.id)}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all',
+                    swapTargetClinicId === clinic.id
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/40 hover:bg-accent'
+                  )}
+                >
+                  <div className={cn(
+                    'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                    swapTargetClinicId === clinic.id ? 'bg-primary/20' : 'bg-muted'
+                  )}>
+                    {swapTargetClinicId === clinic.id
+                      ? <CheckCircle2 className="w-4 h-4 text-primary" />
+                      : <Building2 className="w-4 h-4 text-muted-foreground" />
+                    }
+                  </div>
+                  <span className="font-medium text-sm text-foreground">{clinic.name}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => { setSwapDialogOpen(false); setSwapTargetClinicId(null); }}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 gap-2"
+                disabled={!swapTargetClinicId}
+                onClick={() => setConfirmSwapOpen(true)}
+              >
+                <ChevronRight className="w-4 h-4" />
+                Continuar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Final confirm swap */}
+      <AlertDialog open={confirmSwapOpen} onOpenChange={open => { if (!swapping) setConfirmSwapOpen(open); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mover benefício de equipe?</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar troca de consultório?</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p>Você está movendo o benefício de equipe de:</p>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium text-foreground truncate">{fromClinic?.name}</span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Building2 className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-sm font-semibold text-primary truncate">{toClinic?.name}</span>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  A equipe (membros, permissões e vínculos de pacientes) permanece intacta — apenas o consultório associado muda. Os colaboradores continuarão com acesso.
-                </p>
+              <div className="space-y-2">
+                <p>A equipe atual em <strong>{activeClinic?.name}</strong> será <strong>arquivada</strong> e não poderá ser recuperada.</p>
+                <p>O consultório <strong>{teamClinics.find(c => c.id === swapTargetClinicId)?.name}</strong> começará com uma equipe nova.</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={moving}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={swapping}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={moving}
-              onClick={() => confirmMove && moveTeamBenefit(confirmMove.fromId, confirmMove.toId)}
+              disabled={swapping}
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={handleSwap}
             >
-              {moving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Movendo...</> : 'Confirmar Mudança'}
+              {swapping ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Trocando...</> : 'Confirmar Troca'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

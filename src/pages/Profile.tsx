@@ -7,8 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff, MessageSquare } from 'lucide-react';
-import { MessageTemplatesManager } from '@/components/whatsapp/MessageTemplatesManager';
+import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
   interface Profile {
@@ -684,19 +683,6 @@ export default function Profile() {
               )}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* WhatsApp Message Templates */}
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-[#25D366]" />
-            Mensagens WhatsApp
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MessageTemplatesManager />
         </CardContent>
       </Card>
 
