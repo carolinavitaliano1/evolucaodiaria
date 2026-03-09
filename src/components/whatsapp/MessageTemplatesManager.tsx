@@ -232,10 +232,20 @@ export function MessageTemplatesManager() {
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Pré-visualização (com dados de exemplo)</p>
                 <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">
                   {content
-                    .replace(/\{\{nome_paciente\}\}/g, 'Maria Silva')
-                    .replace(/\{\{data_consulta\}\}/g, '12/03/2025')
-                    .replace(/\{\{horario\}\}/g, '14:00')
-                    .replace(/\{\{nome_terapeuta\}\}/g, 'Dr. João')}
+                    .replace(/\{\{nome_paciente\}\}/g,     'Maria Silva')
+                    .replace(/\{\{telefone_paciente\}\}/g, '(11) 99999-1234')
+                    .replace(/\{\{email_paciente\}\}/g,    'maria@email.com')
+                    .replace(/\{\{data_nascimento\}\}/g,   '15/04/1990')
+                    .replace(/\{\{responsavel\}\}/g,       'Ana Silva')
+                    .replace(/\{\{data_consulta\}\}/g,     '12/03/2025')
+                    .replace(/\{\{horario\}\}/g,           '14:00')
+                    .replace(/\{\{dia_semana\}\}/g,        'Quarta-feira')
+                    .replace(/\{\{valor_sessao\}\}/g,      'R$ 150,00')
+                    .replace(/\{\{valor_em_aberto\}\}/g,   'R$ 300,00')
+                    .replace(/\{\{nome_terapeuta\}\}/g,    'Dr. João')
+                    .replace(/\{\{nome_clinica\}\}/g,      'Clínica Bem Estar')
+                    .replace(/\{\{endereco_clinica\}\}/g,  'Rua das Flores, 123')
+                    .replace(/\{\{telefone_clinica\}\}/g,  '(11) 3333-4444')}
                 </p>
               </div>
             )}
