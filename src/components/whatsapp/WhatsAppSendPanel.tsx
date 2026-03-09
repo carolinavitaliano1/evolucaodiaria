@@ -117,16 +117,15 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
       }
       const num = p.whatsapp || p.phone!;
       sendToNumber(p, num, selectedTemplate);
+      setSelectedIds(new Set());
+      setSelectedTemplateId(null);
+      setStep('patients');
     } else {
-      // Open broadcast modal for multiple patients
+      // Open broadcast modal — state is reset when modal closes
       setBroadcastPatients(selected);
       setBroadcastTemplate(selectedTemplate);
       setBroadcastOpen(true);
     }
-
-    setSelectedIds(new Set());
-    setSelectedTemplateId(null);
-    setStep('patients');
   }
 
   if (loading) return null;
