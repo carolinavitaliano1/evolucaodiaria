@@ -2084,7 +2084,7 @@ export default function PatientDetail() {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {evoAttachments.map(att => {
-                      const fileUrl = att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`;
+                      const fileUrl = att.data.startsWith('http') ? att.data : supabase.storage.from('attachments').getPublicUrl(att.data).data.publicUrl;
                       return (
                         <a key={att.id} href={fileUrl} target="_blank" rel="noopener noreferrer" download={att.name}
                           className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border hover:border-primary/50 transition-colors">
