@@ -334,7 +334,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   // Carimbo + rubrica + 3mm de gap antes da linha + credenciais
   const stampH     = stInfo  ? stInfo.h  : 0;
   const sigH       = sigInfo ? sigInfo.h : 0;
-  const aboveLineH = stampH + sigH + 7; // 7mm de respiro antes da linha
+  const aboveLineH = stampH + sigH + 1;
   const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
   const blockH     = aboveLineH + 4 + credRows * LHS + 2;
 
@@ -353,8 +353,8 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     y += sigInfo.h;
   }
 
-  // 3. Linha de assinatura — 7mm abaixo da rubrica
-  y += 7;
+  // 3. Linha de assinatura — 1mm abaixo da rubrica
+  y += 1;
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, margin + contentW * 0.62, y);
   y += 4;
