@@ -1664,10 +1664,6 @@ export default function ClinicDetail() {
           <ClinicNotes clinicId={clinic.id} />
         </TabsContent>
 
-        {/* Templates (nested) */}
-        <TabsContent value="evolutions-templates">
-          <EvolutionTemplates clinicId={clinic.id} />
-        </TabsContent>
 
         {/* WhatsApp Tab */}
         <TabsContent value="whatsapp">
