@@ -2254,6 +2254,7 @@ export default function PatientDetail() {
                   return a < 18;
                 } catch { return false; }
               })();
+              const hasResponsibleAuto = !!(patient.responsibleName);
               const payerName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
               const payerCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
               return (
