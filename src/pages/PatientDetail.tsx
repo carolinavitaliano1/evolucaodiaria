@@ -898,6 +898,7 @@ export default function PatientDetail() {
   // ── RECIBO DE PAGAMENTO ───────────────────────────────────────────────────
   const buildPaymentReceiptOpts = () => {
     const prStamp = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) || null : null;
+    const p = patient as any;
     const isMinorPR = (() => {
       if (!patient.birthdate) return false;
       try {
@@ -910,10 +911,21 @@ export default function PatientDetail() {
     })();
     // Use responsible if patient is minor OR therapist manually chose responsible
     const useResp = prUseResponsible || isMinorPR;
-    const payerName = useResp && patient.responsibleName ? patient.responsibleName : patient.name;
-    const payerCpf = useResp
-      ? ((patient as any).responsible_cpf || (patient as any).responsibleCpf || null)
-      : ((patient as any).cpf || null);
+
+    // Determine payer: if there's a separate financial responsible, use them; otherwise use the legal responsible or patient
+    const hasFinancialResp = useResp && patient.responsibleName && p.responsible_is_financial === false && p.financial_responsible_name;
+    let payerName: string;
+    let payerCpf: string | null;
+    if (hasFinancialResp) {
+      payerName = p.financial_responsible_name;
+      payerCpf = p.financial_responsible_cpf || null;
+    } else if (useResp && patient.responsibleName) {
+      payerName = patient.responsibleName;
+      payerCpf = p.responsible_cpf || null;
+    } else {
+      payerName = patient.name;
+      payerCpf = p.cpf || null;
+    }
 
     return {
       therapistName: prStamp?.name || therapistProfile?.name || '',
