@@ -2277,7 +2277,9 @@ export default function PatientDetail() {
                     <span className="text-xs text-muted-foreground">
                       {isMinorAuto
                         ? '⚠ Paciente menor de idade — responsável selecionado automaticamente'
-                        : 'Usar responsável financeiro no recibo'}
+                        : hasResponsibleAuto
+                          ? '⚠ Paciente com responsável cadastrado — responsável selecionado automaticamente'
+                          : 'Usar responsável financeiro no recibo'}
                     </span>
                   </label>
                 </div>
