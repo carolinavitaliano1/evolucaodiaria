@@ -845,6 +845,9 @@ export type Database = {
           created_at: string
           diagnosis: string | null
           email: string | null
+          financial_responsible_cpf: string | null
+          financial_responsible_name: string | null
+          financial_responsible_whatsapp: string | null
           id: string
           is_archived: boolean | null
           name: string
@@ -857,6 +860,7 @@ export type Database = {
           professionals: string | null
           responsible_cpf: string | null
           responsible_email: string | null
+          responsible_is_financial: boolean | null
           responsible_name: string | null
           responsible_whatsapp: string | null
           schedule_by_day: Json | null
@@ -876,6 +880,9 @@ export type Database = {
           created_at?: string
           diagnosis?: string | null
           email?: string | null
+          financial_responsible_cpf?: string | null
+          financial_responsible_name?: string | null
+          financial_responsible_whatsapp?: string | null
           id?: string
           is_archived?: boolean | null
           name: string
@@ -888,6 +895,7 @@ export type Database = {
           professionals?: string | null
           responsible_cpf?: string | null
           responsible_email?: string | null
+          responsible_is_financial?: boolean | null
           responsible_name?: string | null
           responsible_whatsapp?: string | null
           schedule_by_day?: Json | null
@@ -907,6 +915,9 @@ export type Database = {
           created_at?: string
           diagnosis?: string | null
           email?: string | null
+          financial_responsible_cpf?: string | null
+          financial_responsible_name?: string | null
+          financial_responsible_whatsapp?: string | null
           id?: string
           is_archived?: boolean | null
           name?: string
@@ -919,6 +930,7 @@ export type Database = {
           professionals?: string | null
           responsible_cpf?: string | null
           responsible_email?: string | null
+          responsible_is_financial?: boolean | null
           responsible_name?: string | null
           responsible_whatsapp?: string | null
           schedule_by_day?: Json | null
