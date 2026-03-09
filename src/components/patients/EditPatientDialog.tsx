@@ -301,8 +301,8 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
           </div>
 
           <div className="border-t pt-4">
-            <Label className="text-sm font-medium">Responsável</Label>
-            <p className="text-xs text-muted-foreground mb-2">Preencha se o paciente for menor de 18 anos ou tiver representante legal.</p>
+            <Label className="text-sm font-medium">Responsável Legal</Label>
+            <p className="text-xs text-muted-foreground mb-3">Preencha se o paciente for menor de 18 anos ou tiver representante legal.</p>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -342,6 +342,64 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                   placeholder="(11) 99999-9999"
                 />
               </div>
+
+              {/* Financial responsible toggle */}
+              {formData.responsibleName && (
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Responsável financeiro</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formData.responsibleIsFinancial
+                          ? 'O responsável legal acima é também o responsável financeiro'
+                          : 'Há um responsável financeiro diferente do responsável legal'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.responsibleIsFinancial}
+                      onCheckedChange={(v) => setFormData({ ...formData, responsibleIsFinancial: v, financialResponsibleName: '', financialResponsibleCpf: '', financialResponsibleWhatsapp: '' })}
+                    />
+                  </div>
+
+                  {!formData.responsibleIsFinancial && (
+                    <div className="space-y-2 pt-1 border-t border-border">
+                      <p className="text-xs font-medium text-foreground">Dados do Responsável Financeiro</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Nome *</Label>
+                          <Input
+                            value={formData.financialResponsibleName}
+                            onChange={(e) => setFormData({ ...formData, financialResponsibleName: e.target.value })}
+                            placeholder="Nome completo"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">CPF</Label>
+                          <Input
+                            value={formData.financialResponsibleCpf}
+                            onChange={(e) => setFormData({ ...formData, financialResponsibleCpf: e.target.value })}
+                            placeholder="000.000.000-00"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5">
+                          <WhatsAppIcon className="w-3 h-3 text-[#25D366]" />
+                          WhatsApp
+                        </Label>
+                        <Input
+                          value={formData.financialResponsibleWhatsapp}
+                          onChange={(e) => setFormData({ ...formData, financialResponsibleWhatsapp: e.target.value })}
+                          placeholder="(11) 99999-9999"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
