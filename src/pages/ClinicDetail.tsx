@@ -1984,8 +1984,8 @@ export default function ClinicDetail() {
           <ClinicNotes clinicId={clinic.id} />
         </TabsContent>
 
-        {/* Templates Tab */}
-        <TabsContent value="templates">
+        {/* Templates (nested) */}
+        <TabsContent value="evolutions-templates">
           <EvolutionTemplates clinicId={clinic.id} />
         </TabsContent>
 
