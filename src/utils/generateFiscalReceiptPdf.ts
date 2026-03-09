@@ -164,7 +164,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...mutedText);
-    doc.text(isMinor ? 'Responsável Legal (Pagador — menor de idade):' : 'Responsável Legal:', margin, y);
+    doc.text('Responsável Legal:', margin, y);
     y += LHS + 1;
     if (patient.responsibleName) lv('Nome:', patient.responsibleName);
     if (patient.responsible_cpf) lv(isMinor ? 'CPF (NF):' : 'CPF:', formatCpf(patient.responsible_cpf));
