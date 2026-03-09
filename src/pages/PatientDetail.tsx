@@ -2319,7 +2319,7 @@ export default function PatientDetail() {
                 {prSessionMode === 'select' ? (() => {
                   // Only billable sessions of THIS patient are selectable
                   const billable = [...evolutions]
-                    .filter(e => e.patientId === patientId && ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus))
+                    .filter(e => e.patientId === patient.id && ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus))
                     .sort((a, b) => b.date.localeCompare(a.date));
                   const statusLabel: Record<string, string> = {
                     presente: 'Presente', falta_remunerada: 'Falta Rem.',
