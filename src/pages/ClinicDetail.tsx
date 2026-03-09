@@ -2635,8 +2635,28 @@ export default function ClinicDetail() {
           responsibleWhatsapp={whatsAppRecipient.responsibleWhatsapp}
         />
       )}
+
+      {/* Quick WhatsApp Modal — patients tab */}
+      {quickWaPatient && (
+        <QuickWhatsAppModal
+          open={!!quickWaPatient}
+          onClose={() => setQuickWaPatient(null)}
+          phone={quickWaPatient.whatsapp || quickWaPatient.phone}
+          patientName={quickWaPatient.name}
+          vars={{
+            nome_paciente: quickWaPatient.name,
+            nome_clinica: quickWaPatient.clinicName,
+            nome_terapeuta: therapistProfile?.name || '',
+            valor_sessao: quickWaPatient.paymentValue
+              ? quickWaPatient.paymentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+              : '',
+          }}
+        />
+      )}
     </div>
   );
 }
+
+
 
 
