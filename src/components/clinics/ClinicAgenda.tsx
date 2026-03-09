@@ -24,6 +24,13 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const navigate = useNavigate();
   const [viewDate, setViewDate] = useState(new Date());
   const [filterUserId, setFilterUserId] = useState<string>('all');
+  const [therapistName, setTherapistName] = useState<string>('');
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
+  }, [user]);
 
   const clinicPatients = patients.filter(p => p.clinicId === clinicId && !p.isArchived);
 
