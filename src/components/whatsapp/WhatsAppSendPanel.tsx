@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MessageSquare, Search, Send, Users, Phone, ChevronRight, X, Plus, Pencil } from 'lucide-react';
+import { MessageSquare, Search, Send, Users, Phone, ChevronRight, X, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useMessageTemplates,
@@ -15,6 +15,7 @@ import {
 } from '@/hooks/useMessageTemplates';
 import { toast } from 'sonner';
 import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
+import { WhatsAppBroadcastModal } from '@/components/whatsapp/WhatsAppBroadcastModal';
 
 interface Patient {
   id: string;
@@ -44,6 +45,9 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
     patient: Patient;
     template: typeof displayTemplates[0];
   } | null>(null);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastPatients, setBroadcastPatients] = useState<Patient[]>([]);
+  const [broadcastTemplate, setBroadcastTemplate] = useState<typeof displayTemplates[0] | null>(null);
 
   // Only patients with a phone or whatsapp number
   const eligible = useMemo(
@@ -113,19 +117,15 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
       }
       const num = p.whatsapp || p.phone!;
       sendToNumber(p, num, selectedTemplate);
+      setSelectedIds(new Set());
+      setSelectedTemplateId(null);
+      setStep('patients');
     } else {
-      selected.forEach((p, idx) => {
-        setTimeout(() => {
-          const num = p.whatsapp || p.phone!;
-          sendToNumber(p, num, selectedTemplate);
-        }, idx * 600);
-      });
-      toast.info(`Abrindo WhatsApp para ${selected.length} pacientes...`);
+      // Open broadcast modal — state is reset when modal closes
+      setBroadcastPatients(selected);
+      setBroadcastTemplate(selectedTemplate);
+      setBroadcastOpen(true);
     }
-
-    setSelectedIds(new Set());
-    setSelectedTemplateId(null);
-    setStep('patients');
   }
 
   if (loading) return null;
@@ -348,7 +348,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
         </>
       )}
 
-      {/* Recipient picker when patient has two numbers */}
+      {/* Recipient picker — single patient with two numbers */}
       {recipientPicker && (
         <WhatsAppRecipientModal
           open={!!recipientPicker}
@@ -363,6 +363,24 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
           patientPhone={recipientPicker.patient.phone}
           responsibleName={recipientPicker.patient.responsible_name}
           responsibleWhatsapp={recipientPicker.patient.responsible_whatsapp!}
+        />
+      )}
+
+      {/* Broadcast modal — multiple patients */}
+      {broadcastOpen && broadcastTemplate && (
+        <WhatsAppBroadcastModal
+          open={broadcastOpen}
+          onClose={() => {
+            setBroadcastOpen(false);
+            setBroadcastPatients([]);
+            setBroadcastTemplate(null);
+            setSelectedIds(new Set());
+            setSelectedTemplateId(null);
+            setStep('patients');
+          }}
+          patients={broadcastPatients}
+          template={broadcastTemplate}
+          clinic={clinic}
         />
       )}
     </div>
