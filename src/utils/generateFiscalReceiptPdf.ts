@@ -315,8 +315,8 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       const el = document.createElement('img');
       el.src   = stamp.signature_image;
       await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
-      let sw = 36, sh = (el.height / el.width) * sw;
-      if (sh > 11) { sh = 11; sw = (el.width / el.height) * sh; }
+      let sw = 38, sh = (el.height / el.width) * sw;
+      if (sh > 13) { sh = 13; sw = (el.width / el.height) * sh; }
       sigInfo = { src: stamp.signature_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
@@ -325,21 +325,21 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       const el = document.createElement('img');
       el.src   = stamp.stamp_image;
       await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
-      let sw = 36, sh = (el.height / el.width) * sw;
-      if (sh > 16) { sh = 16; sw = (el.width / el.height) * sh; }
+      let sw = 38, sh = (el.height / el.width) * sw;
+      if (sh > 18) { sh = 18; sw = (el.width / el.height) * sh; }
       stInfo = { src: stamp.stamp_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
 
-  // Altura total do bloco: carimbo + rubrica (sem gap) + linha + credenciais
+  // Carimbo + rubrica + 3mm de gap antes da linha + credenciais
   const stampH     = stInfo  ? stInfo.h  : 0;
   const sigH       = sigInfo ? sigInfo.h : 0;
-  const aboveLineH = stampH + sigH;
+  const aboveLineH = stampH + sigH + 3; // 3mm de respiro antes da linha
   const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
-  const blockH     = aboveLineH + 1 + 4 + credRows * LHS + 2;
+  const blockH     = aboveLineH + 4 + credRows * LHS + 2;
 
-  ensureSpace(blockH + 4);
-  y += 3;
+  ensureSpace(blockH + 5);
+  y += 4;
 
   // 1. Carimbo — topo do bloco, esquerda
   if (stInfo) {
@@ -347,17 +347,17 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     y += stInfo.h;
   }
 
-  // 2. Rubrica — colada ao carimbo, sem gap
+  // 2. Rubrica — logo abaixo do carimbo, sem gap
   if (sigInfo) {
     doc.addImage(sigInfo.src, 'PNG', margin, y, sigInfo.w, sigInfo.h, undefined, 'FAST');
     y += sigInfo.h;
   }
 
-  // 3. Linha de assinatura — imediatamente abaixo da rubrica
-  const lineY = y;
+  // 3. Linha de assinatura — 3mm abaixo da rubrica (respiro visual)
+  y += 3;
   doc.setDrawColor(...borderColor);
-  doc.line(margin, lineY, margin + contentW * 0.62, lineY);
-  y = lineY + 4;
+  doc.line(margin, y, margin + contentW * 0.62, y);
+  y += 4;
 
   // 4. Nome e credenciais
   doc.setFontSize(9);
