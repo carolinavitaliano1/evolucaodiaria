@@ -40,10 +40,14 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [step, setStep] = useState<'patients' | 'template'>('patients');
+  const [recipientPicker, setRecipientPicker] = useState<{
+    patient: Patient;
+    template: typeof displayTemplates[0];
+  } | null>(null);
 
-  // Only patients with a phone number
+  // Only patients with a phone or whatsapp number
   const eligible = useMemo(
-    () => patients.filter(p => p.phone?.trim()),
+    () => patients.filter(p => p.whatsapp?.trim() || p.phone?.trim()),
     [patients]
   );
 
