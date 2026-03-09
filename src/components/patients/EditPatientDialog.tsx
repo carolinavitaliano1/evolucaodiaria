@@ -49,6 +49,10 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     responsibleEmail: '',
     responsibleWhatsapp: '',
     responsibleCpf: '',
+    responsibleIsFinancial: true,
+    financialResponsibleName: '',
+    financialResponsibleCpf: '',
+    financialResponsibleWhatsapp: '',
     contractStartDate: '',
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
@@ -86,6 +90,10 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         responsibleEmail: patient.responsibleEmail || '',
         responsibleWhatsapp: patient.responsibleWhatsapp || '',
         responsibleCpf: p.responsible_cpf || '',
+        responsibleIsFinancial: p.responsible_is_financial !== false,
+        financialResponsibleName: p.financial_responsible_name || '',
+        financialResponsibleCpf: p.financial_responsible_cpf || '',
+        financialResponsibleWhatsapp: p.financial_responsible_whatsapp || '',
         contractStartDate: patient.contractStartDate || '',
         weekdays: patient.weekdays || [],
         scheduleByDay: (patient.scheduleByDay || {}) as { [day: string]: { start: string; end: string } },
@@ -164,6 +172,10 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       responsibleEmail: formData.responsibleEmail || undefined,
       responsibleWhatsapp: formData.responsibleWhatsapp || undefined,
       ...(formData.responsibleCpf && { responsible_cpf: formData.responsibleCpf } as any),
+      responsible_is_financial: formData.responsibleIsFinancial,
+      financial_responsible_name: formData.financialResponsibleName || null,
+      financial_responsible_cpf: formData.financialResponsibleCpf || null,
+      financial_responsible_whatsapp: formData.financialResponsibleWhatsapp || null,
       contractStartDate: formData.contractStartDate || undefined,
       weekdays: formData.weekdays,
       scheduleTime: firstDayTime || undefined,
@@ -172,7 +184,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       paymentValue: formData.paymentValue ? parseFloat(formData.paymentValue) : undefined,
       packageId: formData.packageId || undefined,
       ...(formData.paymentDueDay && { payment_due_day: parseInt(formData.paymentDueDay) } as any),
-    });
+    } as any);
 
     // Save payment record if propria and status changed
     if (isPropria) {
@@ -289,8 +301,8 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
           </div>
 
           <div className="border-t pt-4">
-            <Label className="text-sm font-medium">Responsável</Label>
-            <p className="text-xs text-muted-foreground mb-2">Preencha se o paciente for menor de 18 anos ou tiver representante legal.</p>
+            <Label className="text-sm font-medium">Responsável Legal</Label>
+            <p className="text-xs text-muted-foreground mb-3">Preencha se o paciente for menor de 18 anos ou tiver representante legal.</p>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -330,6 +342,64 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                   placeholder="(11) 99999-9999"
                 />
               </div>
+
+              {/* Financial responsible toggle */}
+              {formData.responsibleName && (
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Responsável financeiro</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formData.responsibleIsFinancial
+                          ? 'O responsável legal acima é também o responsável financeiro'
+                          : 'Há um responsável financeiro diferente do responsável legal'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.responsibleIsFinancial}
+                      onCheckedChange={(v) => setFormData({ ...formData, responsibleIsFinancial: v, financialResponsibleName: '', financialResponsibleCpf: '', financialResponsibleWhatsapp: '' })}
+                    />
+                  </div>
+
+                  {!formData.responsibleIsFinancial && (
+                    <div className="space-y-2 pt-1 border-t border-border">
+                      <p className="text-xs font-medium text-foreground">Dados do Responsável Financeiro</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Nome *</Label>
+                          <Input
+                            value={formData.financialResponsibleName}
+                            onChange={(e) => setFormData({ ...formData, financialResponsibleName: e.target.value })}
+                            placeholder="Nome completo"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">CPF</Label>
+                          <Input
+                            value={formData.financialResponsibleCpf}
+                            onChange={(e) => setFormData({ ...formData, financialResponsibleCpf: e.target.value })}
+                            placeholder="000.000.000-00"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5">
+                          <WhatsAppIcon className="w-3 h-3 text-[#25D366]" />
+                          WhatsApp
+                        </Label>
+                        <Input
+                          value={formData.financialResponsibleWhatsapp}
+                          onChange={(e) => setFormData({ ...formData, financialResponsibleWhatsapp: e.target.value })}
+                          placeholder="(11) 99999-9999"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

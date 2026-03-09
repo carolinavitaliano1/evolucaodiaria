@@ -898,6 +898,7 @@ export default function PatientDetail() {
   // ── RECIBO DE PAGAMENTO ───────────────────────────────────────────────────
   const buildPaymentReceiptOpts = () => {
     const prStamp = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) || null : null;
+    const p = patient as any;
     const isMinorPR = (() => {
       if (!patient.birthdate) return false;
       try {
@@ -910,10 +911,21 @@ export default function PatientDetail() {
     })();
     // Use responsible if patient is minor OR therapist manually chose responsible
     const useResp = prUseResponsible || isMinorPR;
-    const payerName = useResp && patient.responsibleName ? patient.responsibleName : patient.name;
-    const payerCpf = useResp
-      ? ((patient as any).responsible_cpf || (patient as any).responsibleCpf || null)
-      : ((patient as any).cpf || null);
+
+    // Determine payer: if there's a separate financial responsible, use them; otherwise use the legal responsible or patient
+    const hasFinancialResp = useResp && patient.responsibleName && p.responsible_is_financial === false && p.financial_responsible_name;
+    let payerName: string;
+    let payerCpf: string | null;
+    if (hasFinancialResp) {
+      payerName = p.financial_responsible_name;
+      payerCpf = p.financial_responsible_cpf || null;
+    } else if (useResp && patient.responsibleName) {
+      payerName = patient.responsibleName;
+      payerCpf = p.responsible_cpf || null;
+    } else {
+      payerName = patient.name;
+      payerCpf = p.cpf || null;
+    }
 
     return {
       therapistName: prStamp?.name || therapistProfile?.name || '',
@@ -2244,6 +2256,7 @@ export default function PatientDetail() {
 
             {/* Payer toggle */}
             {(() => {
+              const pp = patient as any;
               const isMinorAuto = (() => {
                 if (!patient.birthdate) return false;
                 try {
@@ -2255,18 +2268,24 @@ export default function PatientDetail() {
                 } catch { return false; }
               })();
               const hasResponsibleAuto = !!(patient.responsibleName);
-              const payerName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
-              const payerCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
+              const hasSeparateFinancial = prUseResponsible && patient.responsibleName && pp.responsible_is_financial === false && pp.financial_responsible_name;
+              const displayName = hasSeparateFinancial
+                ? pp.financial_responsible_name
+                : prUseResponsible && patient.responsibleName
+                  ? patient.responsibleName
+                  : patient.name;
+              const displayCpf = hasSeparateFinancial
+                ? pp.financial_responsible_cpf
+                : prUseResponsible ? pp.responsible_cpf : pp.cpf;
               return (
                 <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-medium text-foreground">Pagador no recibo</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {prUseResponsible
-                          ? <><span className="text-foreground font-medium">{patient.responsibleName || '[Responsável não cadastrado]'}</span>{payerCpfRaw ? ` · CPF: ${payerCpfRaw}` : ' · CPF não cadastrado'}</>
-                          : <><span className="text-foreground font-medium">{patient.name}</span>{payerCpfRaw ? ` · CPF: ${payerCpfRaw}` : ' · CPF não cadastrado'}</>
-                        }
+                        <span className="text-foreground font-medium">{displayName}</span>
+                        {displayCpf ? ` · CPF: ${displayCpf}` : ' · CPF não cadastrado'}
+                        {hasSeparateFinancial && <span className="ml-1 text-primary">(resp. financeiro)</span>}
                       </p>
                     </div>
                     <Switch
@@ -2274,15 +2293,13 @@ export default function PatientDetail() {
                       onCheckedChange={setPrUseResponsible}
                     />
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <span className="text-xs text-muted-foreground">
-                      {isMinorAuto
-                        ? '⚠ Paciente menor de idade — responsável selecionado automaticamente'
-                        : hasResponsibleAuto
-                          ? '⚠ Paciente com responsável cadastrado — responsável selecionado automaticamente'
-                          : 'Usar responsável financeiro no recibo'}
-                    </span>
-                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {isMinorAuto
+                      ? '⚠ Paciente menor de idade — responsável selecionado automaticamente'
+                      : hasResponsibleAuto
+                        ? '⚠ Paciente com responsável cadastrado — responsável selecionado automaticamente'
+                        : 'Usar responsável no recibo'}
+                  </p>
                 </div>
               );
             })()}
@@ -2290,11 +2307,15 @@ export default function PatientDetail() {
             {/* Preview text */}
             <div className="bg-muted/40 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed italic">
               {(() => {
+                const pp = patient as any;
                 const prStampPreview = prStampId && prStampId !== 'none' ? stamps.find(s => s.id === prStampId) : stamps.find(s => s.is_default) || stamps[0];
                 const tName = prStampPreview?.name || therapistProfile?.name || '[Terapeuta]';
                 const tCpf = therapistProfile?.cpf ? `, inscrito(a) no CPF/CNPJ sob o número ${therapistProfile.cpf},` : '';
-                const pName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
-                const pCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
+                const hasSepFin = prUseResponsible && patient.responsibleName && pp.responsible_is_financial === false && pp.financial_responsible_name;
+                const pName = hasSepFin ? pp.financial_responsible_name
+                  : prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
+                const pCpfRaw = hasSepFin ? pp.financial_responsible_cpf
+                  : prUseResponsible ? pp.responsible_cpf : pp.cpf;
                 const pCpf = pCpfRaw ? `, inscrito(a) no CPF sob o número ${pCpfRaw},` : '';
                 const amtDisplay = prAmount ? `R$ ${parseFloat(prAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ [valor]';
                 const dateDisplay = prPaymentDate ? format(new Date(prPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '___/___/______';
