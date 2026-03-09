@@ -212,7 +212,6 @@ export default function PatientDetail() {
   const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
   const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
   const [fiscalTotalPaidFromApp, setFiscalTotalPaidFromApp] = useState<number | null>(null);
-  const [isSavingFiscalToDocuments, setIsSavingFiscalToDocuments] = useState(false);
 
   // Payment receipt state
   const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
@@ -231,7 +230,6 @@ export default function PatientDetail() {
   const [prUseResponsible, setPrUseResponsible] = useState(false);
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
-  const [isSavingPRToDocuments, setIsSavingPRToDocuments] = useState(false);
 
   // Therapist profile for fiscal receipt
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
