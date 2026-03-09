@@ -26,10 +26,11 @@ interface Patient {
 
 interface WhatsAppSendPanelProps {
   patients: Patient[];
+  clinic?: { name?: string; address?: string; phone?: string };
   onGoToTemplates?: () => void;
 }
 
-export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPanelProps) {
+export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAppSendPanelProps) {
   const { templates, loading } = useMessageTemplates();
 
   const [search, setSearch] = useState('');
