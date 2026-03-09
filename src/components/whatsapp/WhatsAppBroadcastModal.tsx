@@ -34,7 +34,7 @@ interface Props {
   therapistName?: string;
 }
 
-export function WhatsAppBroadcastModal({ open, onClose, patients, template, clinic }: Props) {
+export function WhatsAppBroadcastModal({ open, onClose, patients, template, clinic, therapistName = '' }: Props) {
   const [current, setCurrent] = useState(0);
   const [sent, setSent] = useState<Set<number>>(new Set());
   const [recipientChoice, setRecipientChoice] = useState<'patient' | 'responsible' | null>(null);
