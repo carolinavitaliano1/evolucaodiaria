@@ -2317,9 +2317,9 @@ export default function PatientDetail() {
               </div>
               <div className="p-3 space-y-2">
                 {prSessionMode === 'select' ? (() => {
-                  // Only billable sessions of THIS patient are selectable
-                  const billable = [...evolutions]
-                    .filter(e => e.patientId === patient.id && ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus))
+                  // Only billable sessions of THIS patient (deduped via patientEvolutions)
+                  const billable = [...patientEvolutions]
+                    .filter(e => ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus))
                     .sort((a, b) => b.date.localeCompare(a.date));
                   const statusLabel: Record<string, string> = {
                     presente: 'Presente', falta_remunerada: 'Falta Rem.',
@@ -2418,28 +2418,6 @@ export default function PatientDetail() {
               </div>
             </div>
 
-            {/* Fields */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs mb-1 block">Valor Total (R$)</Label>
-                <Input
-                  type="number" step="0.01" min="0"
-                  value={prAmount}
-                  onChange={e => { setPrAmount(e.target.value); setPrSessions(''); }}
-                  placeholder="0,00"
-                  className="h-9 text-xs"
-                />
-              </div>
-              <div>
-                <Label className="text-xs mb-1 block">Data do Pagamento</Label>
-                <Input
-                  type="date"
-                  value={prPaymentDate}
-                  onChange={e => setPrPaymentDate(e.target.value)}
-                  className="h-9 text-xs"
-                 />
-              </div>
-            </div>
             {/* Fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
