@@ -531,10 +531,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.from('patients').insert({
         user_id: user.id, clinic_id: patient.clinicId, name: patient.name, birthdate: patient.birthdate,
-        phone: patient.phone || null, email: (patient as any).email || null, clinical_area: patient.clinicalArea || null,
+        phone: patient.phone || null, whatsapp: (patient as any).whatsapp || null,
+        email: (patient as any).email || null, clinical_area: patient.clinicalArea || null,
         diagnosis: patient.diagnosis || null, professionals: patient.professionals || null,
         observations: patient.observations || null, responsible_name: patient.responsibleName || null,
-        responsible_email: patient.responsibleEmail || null, payment_type: patient.paymentType || null,
+        responsible_email: patient.responsibleEmail || null, responsible_whatsapp: (patient as any).responsibleWhatsapp || null,
+        payment_type: patient.paymentType || null,
         payment_value: patient.paymentValue || null, contract_start_date: patient.contractStartDate || null,
         weekdays: patient.weekdays || null, schedule_time: patient.scheduleTime || null,
         schedule_by_day: patient.scheduleByDay || null, package_id: patient.packageId || null,
