@@ -11,8 +11,10 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireSubscription = false }: ProtectedRouteProps) {
   const { user, loading, sessionReady } = useAuth();
-  const { subscribed, loading: subLoading } = useSubscription();
   const { isOrgMember, loading: orgLoading } = useOrgMembership();
+  // Only check subscription if we already know the user is NOT an org member,
+  // to avoid the subscription edge-function call for invited collaborators.
+  const { subscribed, loading: subLoading } = useSubscription();
 
   // Wait until auth session is restored
   if (!sessionReady || loading) {
@@ -28,9 +30,9 @@ export function ProtectedRoute({ children, requireSubscription = false }: Protec
   }
 
   if (requireSubscription) {
-    // CRITICAL: Must wait for BOTH checks before deciding to redirect.
-    // If we act while orgLoading=true we'd incorrectly send therapists to /pricing.
-    if (subLoading || orgLoading) {
+    // CRITICAL: Always wait for org membership check first.
+    // If orgLoading is still true we must not redirect yet.
+    if (orgLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -38,12 +40,26 @@ export function ProtectedRoute({ children, requireSubscription = false }: Protec
       );
     }
 
-    // Org members (invited professionals) bypass the subscription wall —
-    // they are guests of the paying account owner.
-    if (!subscribed && !isOrgMember) {
+    // Org members (invited professionals) bypass the subscription wall entirely —
+    // they are guests of the paying account owner and must never see /pricing.
+    if (isOrgMember) {
+      return <>{children}</>;
+    }
+
+    // Not an org member: now wait for subscription check
+    if (subLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (!subscribed) {
       return <Navigate to="/pricing" replace />;
     }
   }
 
   return <>{children}</>;
 }
+
