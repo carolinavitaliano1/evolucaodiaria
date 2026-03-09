@@ -972,6 +972,7 @@ export default function ClinicDetail() {
             { value: 'evolutions-day', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'templates', icon: <LayoutTemplate className="w-5 h-5" />, label: 'Modelos', color: 'text-indigo-500' },
+            { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
             ...(isPropria ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
           ].map(tab => (
             <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
