@@ -71,6 +71,7 @@ interface LateEvolution {
 interface ClinicTeamProps {
   clinicId: string;
   clinicName: string;
+  onTeamCreated?: () => void;
 }
 
 const ROLE_LABELS: Record<string, string> = {
