@@ -966,7 +966,7 @@ export default function PatientDetail() {
     setPrPeriod(monthName);
     // Pre-fill location from clinic address
     setPrLocation(clinic?.address || '');
-    // Auto-detect minor and set responsible toggle
+    // Auto-detect: use responsible if patient is minor OR has a responsible registered
     const isMinorAuto = (() => {
       if (!patient.birthdate) return false;
       try {
@@ -977,7 +977,8 @@ export default function PatientDetail() {
         return a < 18;
       } catch { return false; }
     })();
-    setPrUseResponsible(isMinorAuto);
+    const hasResponsible = !!(patient.responsibleName);
+    setPrUseResponsible(isMinorAuto || hasResponsible);
     // Reset session fields
     setPrSessions('');
     setPrSelectedSessions([]);
