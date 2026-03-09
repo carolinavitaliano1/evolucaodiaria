@@ -128,7 +128,7 @@ function getPresetIcon(icon: string) {
   return User;
 }
 
-export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
+export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamProps) {
   const { user } = useAuth();
   const { patients } = useApp();
   const navigate = useNavigate();
