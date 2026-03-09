@@ -54,6 +54,7 @@ export function WhatsAppBroadcastModal({ open, onClose, patients, template, clin
       email_paciente:    p.email    || '',
       data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
       responsavel:       p.responsible_name || '',
+      nome_terapeuta:    therapistName,
       nome_clinica:      clinic?.name    || '',
       endereco_clinica:  clinic?.address || '',
       telefone_clinica:  clinic?.phone   || '',
