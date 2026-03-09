@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,9 +13,10 @@ import {
   TEMPLATE_CATEGORIES,
   DEFAULT_TEMPLATES,
 } from '@/hooks/useMessageTemplates';
-import { toast } from 'sonner';
 import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 import { WhatsAppBroadcastModal } from '@/components/whatsapp/WhatsAppBroadcastModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Patient {
   id: string;
@@ -36,6 +37,14 @@ interface WhatsAppSendPanelProps {
 
 export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAppSendPanelProps) {
   const { templates, loading } = useMessageTemplates();
+  const { user } = useAuth();
+  const [therapistName, setTherapistName] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
+  }, [user]);
 
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -43,7 +52,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
   const [step, setStep] = useState<'patients' | 'template'>('patients');
   const [recipientPicker, setRecipientPicker] = useState<{
     patient: Patient;
-    template: typeof displayTemplates[0];
+    message: string;
   } | null>(null);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastPatients, setBroadcastPatients] = useState<Patient[]>([]);
