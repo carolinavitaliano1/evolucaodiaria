@@ -1971,6 +1971,13 @@ export default function ClinicDetail() {
           <EvolutionTemplates clinicId={clinic.id} />
         </TabsContent>
 
+        {/* WhatsApp Tab */}
+        <TabsContent value="whatsapp">
+          <div className="bg-card rounded-xl border border-border p-4 lg:p-6">
+            <MessageTemplatesManager />
+          </div>
+        </TabsContent>
+
         {/* Evolutions Day Tab */}
         <TabsContent value="evolutions-day">
           <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />
