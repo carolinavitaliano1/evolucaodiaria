@@ -401,7 +401,7 @@ export default function Team() {
               activeTab === 'team' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <UsersIcon className="w-4 h-4" />Equipe
+            <UsersRound className="w-4 h-4" />Equipe
           </button>
           <button
             onClick={() => setActiveTab('compliance')}
