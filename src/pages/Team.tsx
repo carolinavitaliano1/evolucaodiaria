@@ -86,6 +86,75 @@ export default function Team() {
     setLoadingMap(false);
   };
 
+  const loadActivity = useCallback(async (orgId: string, clinicId: string) => {
+    setLoadingActivity(true);
+    try {
+      // Get active members of this org
+      const { data: members } = await supabase
+        .from('organization_members')
+        .select('user_id, email, role, role_label')
+        .eq('organization_id', orgId)
+        .eq('status', 'active');
+
+      if (!members || members.length === 0) { setActivityEntries([]); return; }
+
+      // Get member profiles for names
+      const memberUserIds = members.map(m => m.user_id).filter(Boolean) as string[];
+      const { data: profiles } = memberUserIds.length > 0
+        ? await supabase.from('profiles').select('user_id, name').in('user_id', memberUserIds)
+        : { data: [] };
+
+      // Get recent evolutions in this clinic by org members
+      const { data: evolutions } = await supabase
+        .from('evolutions')
+        .select('id, created_at, date, attendance_status, patient_id, user_id')
+        .eq('clinic_id', clinicId)
+        .in('user_id', memberUserIds)
+        .order('created_at', { ascending: false })
+        .limit(60);
+
+      if (!evolutions || evolutions.length === 0) { setActivityEntries([]); return; }
+
+      // Get patient names
+      const patientIds = [...new Set(evolutions.map(e => e.patient_id))];
+      const { data: patientData } = await supabase
+        .from('patients')
+        .select('id, name')
+        .in('id', patientIds);
+
+      const patientMap = Object.fromEntries((patientData || []).map(p => [p.id, p.name]));
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p.name]));
+      const memberMap = Object.fromEntries(members.map(m => [m.user_id, m]));
+
+      const entries: ActivityEntry[] = evolutions.map(ev => {
+        const member = memberMap[ev.user_id];
+        return {
+          id: ev.id,
+          created_at: ev.created_at,
+          date: ev.date,
+          attendance_status: ev.attendance_status,
+          patient_name: patientMap[ev.patient_id] ?? null,
+          member_name: profileMap[ev.user_id] ?? null,
+          member_email: member?.email ?? '',
+          member_role: member?.role ?? 'professional',
+          member_role_label: member?.role_label ?? null,
+        };
+      });
+
+      setActivityEntries(entries);
+    } catch (err) {
+      console.error('loadActivity error', err);
+    } finally {
+      setLoadingActivity(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'activity' && organizationId && activeTeamClinicId) {
+      loadActivity(organizationId, activeTeamClinicId);
+    }
+  }, [activeTab, organizationId, activeTeamClinicId]);
+
   useEffect(() => {
     if (teamClinics.length === 0) { setLoadingMap(false); return; }
     reloadOrgMap();
