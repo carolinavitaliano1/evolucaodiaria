@@ -184,7 +184,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                       )}
                     </div>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-2">
                     {evo ? (
                       <span className={cn("text-xs font-medium", statusLabel(evo.attendanceStatus).cls)}>
                         {statusLabel(evo.attendanceStatus).label}
@@ -192,6 +192,19 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                     ) : (
                       <span className="text-xs text-muted-foreground">⏳ Aguardando</span>
                     )}
+                    <QuickWhatsAppButton
+                      phone={patient.whatsapp || patient.phone || patient.responsibleWhatsapp}
+                      tooltip="Confirmar sessão via WhatsApp"
+                      message={resolveTemplate(
+                        'Olá, {{nome_paciente}}! 😊 Passando para confirmar sua sessão hoje, {{data_consulta}} às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
+                        {
+                          nome_paciente: patient.name,
+                          data_consulta: format(viewDate, "dd/MM", { locale: ptBR }),
+                          horario: patient.scheduleTime || timeDisplay,
+                          nome_terapeuta: therapistName,
+                        }
+                      )}
+                    />
                   </div>
                 </div>
               );
