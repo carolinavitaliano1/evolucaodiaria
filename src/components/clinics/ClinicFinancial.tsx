@@ -50,6 +50,13 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
+  const [therapistName, setTherapistName] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
+  }, [user]);
 
   // Filters
   type PaymentFilter = 'all' | 'paid' | 'pending';
