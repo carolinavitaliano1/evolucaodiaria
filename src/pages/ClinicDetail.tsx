@@ -1992,8 +1992,12 @@ export default function ClinicDetail() {
 
         {/* WhatsApp Tab */}
         <TabsContent value="whatsapp">
-          <div className="bg-card rounded-xl border border-border p-4 lg:p-6">
-            <MessageTemplatesManager />
+          <div className="bg-card rounded-xl border border-border p-4 lg:p-6 space-y-6">
+            {/* Send to patients panel */}
+            <WhatsAppSendPanel patients={clinicPatients.map(p => ({ id: p.id, name: p.name, phone: p.phone }))} />
+            <div className="border-t border-border pt-6">
+              <MessageTemplatesManager />
+            </div>
           </div>
         </TabsContent>
 
