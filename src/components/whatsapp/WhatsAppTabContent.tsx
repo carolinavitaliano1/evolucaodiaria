@@ -49,12 +49,13 @@ export function WhatsAppTabContent({ clinicPatients }: WhatsAppTabContentProps) 
       {subTab === 'send' && (
         <WhatsAppSendPanel
           patients={clinicPatients.map(p => ({ id: p.id, name: p.name, phone: p.phone }))}
+          onGoToTemplates={() => setSubTab('templates')}
         />
       )}
 
       {/* Templates sub-tab */}
       {subTab === 'templates' && (
-        <div className="bg-card rounded-xl border border-border p-4 lg:p-6 overflow-y-auto max-h-[calc(100vh-16rem)]">
+        <div className="bg-card rounded-xl border border-border p-4 lg:p-6">
           <MessageTemplatesManager />
         </div>
       )}
