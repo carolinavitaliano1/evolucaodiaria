@@ -1574,29 +1574,24 @@ export default function ClinicDetail() {
                     {(patient.whatsapp || patient.phone || patient.responsibleWhatsapp) && (
                       <div className="mt-2 pt-2 border-t border-border flex justify-end gap-2">
                         <button
-                          title="WhatsApp"
+                          title="Enviar mensagem via WhatsApp"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const hasPatientNum = !!(patient.whatsapp || patient.phone);
-                            const hasResponsible = !!patient.responsibleWhatsapp;
-                            if (hasPatientNum && hasResponsible) {
-                              setWhatsAppRecipient({
-                                patientName: patient.name,
-                                patientWhatsapp: patient.whatsapp,
-                                patientPhone: patient.phone,
-                                responsibleName: patient.responsibleName,
-                                responsibleWhatsapp: patient.responsibleWhatsapp!,
-                              });
-                            } else {
-                              const num = patient.whatsapp || patient.phone!;
-                              const cleaned = num.replace(/\D/g, '');
-                              const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-                              window.open(`https://wa.me/${number}`, '_blank');
-                            }
+                            const phone = patient.whatsapp || patient.phone || patient.responsibleWhatsapp || null;
+                            setQuickWaPatient({
+                              id: patient.id,
+                              name: patient.name,
+                              phone,
+                              whatsapp: patient.whatsapp || null,
+                              responsibleWhatsapp: patient.responsibleWhatsapp || null,
+                              paymentValue: patient.paymentValue,
+                              clinicName: clinic?.name,
+                            });
                           }}
-                          className="text-[#25D366]/70 hover:text-[#25D366] transition-colors"
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[#25D366] transition-colors px-2 py-1 rounded-lg hover:bg-[#25D366]/10"
                         >
                           <WhatsAppIcon className="w-4 h-4" />
+                          <span>Enviar mensagem</span>
                         </button>
                       </div>
                     )}
