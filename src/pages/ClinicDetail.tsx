@@ -1475,20 +1475,36 @@ export default function ClinicDetail() {
                       </div>
                     )}
 
-                    {patient.phone && (
-                      <div className="mt-2 pt-2 border-t border-border flex justify-end">
-                        <button
-                          title="Abrir WhatsApp"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const cleaned = patient.phone!.replace(/\D/g, '');
-                            const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-                            window.open(`https://wa.me/${number}`, '_blank');
-                          }}
-                          className="text-[#25D366]/60 hover:text-[#25D366] transition-colors"
-                        >
-                          <WhatsAppIcon className="w-4 h-4" />
-                        </button>
+                    {(patient.whatsapp || patient.phone) && (
+                      <div className="mt-2 pt-2 border-t border-border flex justify-end gap-2">
+                        {patient.whatsapp && (
+                          <button
+                            title={`WhatsApp: ${patient.whatsapp}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const cleaned = patient.whatsapp!.replace(/\D/g, '');
+                              const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                              window.open(`https://wa.me/${number}`, '_blank');
+                            }}
+                            className="text-[#25D366]/70 hover:text-[#25D366] transition-colors"
+                          >
+                            <WhatsAppIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!patient.whatsapp && patient.phone && (
+                          <button
+                            title={`WhatsApp: ${patient.phone}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const cleaned = patient.phone!.replace(/\D/g, '');
+                              const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                              window.open(`https://wa.me/${number}`, '_blank');
+                            }}
+                            className="text-[#25D366]/60 hover:text-[#25D366] transition-colors"
+                          >
+                            <WhatsAppIcon className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

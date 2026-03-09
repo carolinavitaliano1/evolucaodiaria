@@ -87,10 +87,12 @@ function mapClinic(c: Record<string, unknown>): Clinic {
 function mapPatient(p: Record<string, unknown>): Patient {
   return {
     id: p.id as string, clinicId: p.clinic_id as string, name: p.name as string, birthdate: p.birthdate as string,
-    phone: (p.phone as string) || undefined, email: (p.email as string) || undefined, clinicalArea: (p.clinical_area as string) || undefined,
+    phone: (p.phone as string) || undefined, whatsapp: (p.whatsapp as string) || undefined,
+    email: (p.email as string) || undefined, clinicalArea: (p.clinical_area as string) || undefined,
     diagnosis: (p.diagnosis as string) || undefined, professionals: (p.professionals as string) || undefined,
     observations: (p.observations as string) || undefined, responsibleName: (p.responsible_name as string) || undefined,
     responsibleEmail: (p.responsible_email as string) || undefined,
+    responsibleWhatsapp: (p.responsible_whatsapp as string) || undefined,
     paymentType: p.payment_type as 'sessao' | 'fixo' | undefined,
     paymentValue: p.payment_value ? Number(p.payment_value) : undefined,
     contractStartDate: (p.contract_start_date as string) || undefined,
@@ -529,10 +531,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.from('patients').insert({
         user_id: user.id, clinic_id: patient.clinicId, name: patient.name, birthdate: patient.birthdate,
-        phone: patient.phone || null, email: (patient as any).email || null, clinical_area: patient.clinicalArea || null,
+        phone: patient.phone || null, whatsapp: (patient as any).whatsapp || null,
+        email: (patient as any).email || null, clinical_area: patient.clinicalArea || null,
         diagnosis: patient.diagnosis || null, professionals: patient.professionals || null,
         observations: patient.observations || null, responsible_name: patient.responsibleName || null,
-        responsible_email: patient.responsibleEmail || null, payment_type: patient.paymentType || null,
+        responsible_email: patient.responsibleEmail || null, responsible_whatsapp: (patient as any).responsibleWhatsapp || null,
+        payment_type: patient.paymentType || null,
         payment_value: patient.paymentValue || null, contract_start_date: patient.contractStartDate || null,
         weekdays: patient.weekdays || null, schedule_time: patient.scheduleTime || null,
         schedule_by_day: patient.scheduleByDay || null, package_id: patient.packageId || null,
@@ -552,6 +556,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.birthdate !== undefined) updateData.birthdate = updates.birthdate;
       if (updates.phone !== undefined) updateData.phone = updates.phone || null;
+      if (updates.whatsapp !== undefined) updateData.whatsapp = updates.whatsapp || null;
       if ((updates as any).email !== undefined) updateData.email = (updates as any).email || null;
       if (updates.clinicalArea !== undefined) updateData.clinical_area = updates.clinicalArea || null;
       if (updates.diagnosis !== undefined) updateData.diagnosis = updates.diagnosis || null;
@@ -559,6 +564,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.observations !== undefined) updateData.observations = updates.observations || null;
       if (updates.responsibleName !== undefined) updateData.responsible_name = updates.responsibleName || null;
       if (updates.responsibleEmail !== undefined) updateData.responsible_email = updates.responsibleEmail || null;
+      if (updates.responsibleWhatsapp !== undefined) updateData.responsible_whatsapp = updates.responsibleWhatsapp || null;
       if (updates.paymentType !== undefined) updateData.payment_type = updates.paymentType || null;
       if (updates.paymentValue !== undefined) updateData.payment_value = updates.paymentValue || null;
       if (updates.contractStartDate !== undefined) updateData.contract_start_date = updates.contractStartDate || null;

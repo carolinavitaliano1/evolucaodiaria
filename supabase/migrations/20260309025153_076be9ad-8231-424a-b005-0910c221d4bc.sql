@@ -1,0 +1,1 @@
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS whatsapp TEXT, ADD COLUMN IF NOT EXISTS responsible_whatsapp TEXT;

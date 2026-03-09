@@ -1292,19 +1292,38 @@ export default function PatientDetail() {
 
             {/* Action buttons */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {patient.phone && (
-                <Button
-                  variant="ghost" size="icon"
-                  className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
-                  onClick={() => {
-                    const cleaned = patient.phone!.replace(/\D/g, '');
-                    const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-                    window.open(`https://wa.me/${number}`, '_blank');
-                  }}
-                  title="Abrir WhatsApp"
-                >
-                  <WhatsAppIcon className="w-4 h-4" />
-                </Button>
+              {(patient.whatsapp || patient.responsibleWhatsapp || patient.phone) && (
+                <>
+                  {(patient.whatsapp || patient.phone) && (
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
+                      onClick={() => {
+                        const num = patient.whatsapp || patient.phone!;
+                        const cleaned = num.replace(/\D/g, '');
+                        const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                        window.open(`https://wa.me/${number}`, '_blank');
+                      }}
+                      title={patient.whatsapp ? `WhatsApp Paciente: ${patient.whatsapp}` : `WhatsApp: ${patient.phone}`}
+                    >
+                      <WhatsAppIcon className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {patient.responsibleWhatsapp && (
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-8 w-8 text-[#25D366]/70 hover:bg-[#25D366]/10"
+                      onClick={() => {
+                        const cleaned = patient.responsibleWhatsapp!.replace(/\D/g, '');
+                        const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                        window.open(`https://wa.me/${number}`, '_blank');
+                      }}
+                      title={`WhatsApp Responsável: ${patient.responsibleWhatsapp}`}
+                    >
+                      <WhatsAppIcon className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </>
               )}
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />

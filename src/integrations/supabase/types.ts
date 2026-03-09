@@ -858,11 +858,13 @@ export type Database = {
           responsible_cpf: string | null
           responsible_email: string | null
           responsible_name: string | null
+          responsible_whatsapp: string | null
           schedule_by_day: Json | null
           schedule_time: string | null
           updated_at: string
           user_id: string
           weekdays: string[] | null
+          whatsapp: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -887,11 +889,13 @@ export type Database = {
           responsible_cpf?: string | null
           responsible_email?: string | null
           responsible_name?: string | null
+          responsible_whatsapp?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
           updated_at?: string
           user_id: string
           weekdays?: string[] | null
+          whatsapp?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -916,11 +920,13 @@ export type Database = {
           responsible_cpf?: string | null
           responsible_email?: string | null
           responsible_name?: string | null
+          responsible_whatsapp?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
           updated_at?: string
           user_id?: string
           weekdays?: string[] | null
+          whatsapp?: string | null
         }
         Relationships: [
           {

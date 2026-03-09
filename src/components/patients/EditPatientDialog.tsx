@@ -12,6 +12,7 @@ import { Patient, ClinicPackage } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -38,6 +39,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     birthdate: '',
     cpf: '',
     phone: '',
+    whatsapp: '',
     email: '',
     clinicalArea: '',
     diagnosis: '',
@@ -45,6 +47,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     observations: '',
     responsibleName: '',
     responsibleEmail: '',
+    responsibleWhatsapp: '',
     responsibleCpf: '',
     contractStartDate: '',
     weekdays: [] as string[],
@@ -73,6 +76,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         birthdate: patient.birthdate || '',
         cpf: p.cpf || '',
         phone: patient.phone || '',
+        whatsapp: patient.whatsapp || '',
         email: p.email || '',
         clinicalArea: patient.clinicalArea || '',
         diagnosis: patient.diagnosis || '',
@@ -80,6 +84,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         observations: patient.observations || '',
         responsibleName: patient.responsibleName || '',
         responsibleEmail: patient.responsibleEmail || '',
+        responsibleWhatsapp: patient.responsibleWhatsapp || '',
         responsibleCpf: p.responsible_cpf || '',
         contractStartDate: patient.contractStartDate || '',
         weekdays: patient.weekdays || [],
@@ -150,12 +155,14 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       ...(formData.cpf !== undefined && { cpf: formData.cpf } as any),
       ...(formData.email !== undefined && { email: formData.email } as any),
       phone: formData.phone || undefined,
+      whatsapp: formData.whatsapp || undefined,
       clinicalArea: formData.clinicalArea || undefined,
       diagnosis: formData.diagnosis || undefined,
       professionals: formData.professionals || undefined,
       observations: formData.observations || undefined,
       responsibleName: formData.responsibleName || undefined,
       responsibleEmail: formData.responsibleEmail || undefined,
+      responsibleWhatsapp: formData.responsibleWhatsapp || undefined,
       ...(formData.responsibleCpf && { responsible_cpf: formData.responsibleCpf } as any),
       contractStartDate: formData.contractStartDate || undefined,
       weekdays: formData.weekdays,
@@ -223,14 +230,27 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             </div>
           </div>
 
-          <div>
-            <Label>E-mail</Label>
-            <Input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="email@exemplo.com"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="flex items-center gap-1.5">
+                <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
+                WhatsApp do Paciente
+              </Label>
+              <Input
+                value={formData.whatsapp}
+                onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div>
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="email@exemplo.com"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -297,6 +317,17 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                   value={formData.responsibleEmail}
                   onChange={(e) => setFormData({ ...formData, responsibleEmail: e.target.value })}
                   placeholder="email@exemplo.com"
+                />
+              </div>
+              <div>
+                <Label className="text-xs flex items-center gap-1.5">
+                  <WhatsAppIcon className="w-3 h-3 text-[#25D366]" />
+                  WhatsApp do Responsável
+                </Label>
+                <Input
+                  value={formData.responsibleWhatsapp}
+                  onChange={(e) => setFormData({ ...formData, responsibleWhatsapp: e.target.value })}
+                  placeholder="(11) 99999-9999"
                 />
               </div>
             </div>

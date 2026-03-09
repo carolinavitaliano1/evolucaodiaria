@@ -39,6 +39,7 @@ export interface Patient {
   name: string;
   birthdate: string;
   phone?: string;
+  whatsapp?: string;
   email?: string;
   clinicalArea?: string;
   diagnosis?: string;
@@ -46,6 +47,7 @@ export interface Patient {
   observations?: string;
   responsibleName?: string;
   responsibleEmail?: string;
+  responsibleWhatsapp?: string;
   paymentType?: 'sessao' | 'fixo';
   paymentValue?: number;
   contractStartDate?: string;
