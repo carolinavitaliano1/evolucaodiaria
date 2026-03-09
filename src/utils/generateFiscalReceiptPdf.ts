@@ -334,7 +334,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   // Carimbo + rubrica + 3mm de gap antes da linha + credenciais
   const stampH     = stInfo  ? stInfo.h  : 0;
   const sigH       = sigInfo ? sigInfo.h : 0;
-  const aboveLineH = stampH + sigH + 1;
+  const aboveLineH = stampH + sigH;
   const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
   const blockH     = aboveLineH + 4 + credRows * LHS + 2;
 
