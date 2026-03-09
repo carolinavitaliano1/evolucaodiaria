@@ -97,18 +97,22 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
     setSelectedIds(new Set());
   }
 
-  function sendToNumber(p: Patient, num: string, template: typeof displayTemplates[0]) {
-    const msg = resolveTemplate(template.content, {
+  function buildMsg(p: Patient, template: typeof displayTemplates[0]) {
+    return resolveTemplate(template.content, {
       nome_paciente:     p.name,
       telefone_paciente: p.phone    || '',
       email_paciente:    p.email    || '',
       data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
       responsavel:       p.responsible_name || '',
+      nome_terapeuta:    therapistName,
       nome_clinica:      clinic?.name    || '',
       endereco_clinica:  clinic?.address || '',
       telefone_clinica:  clinic?.phone   || '',
     });
-    openWhatsApp(num, msg);
+  }
+
+  function sendToNumber(p: Patient, num: string, template: typeof displayTemplates[0]) {
+    openWhatsApp(num, buildMsg(p, template));
   }
 
   function handleSend() {
@@ -121,7 +125,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
       const hasPatientNum = !!(p.whatsapp || p.phone);
       const hasResponsible = !!p.responsible_whatsapp;
       if (hasPatientNum && hasResponsible) {
-        setRecipientPicker({ patient: p, template: selectedTemplate });
+        setRecipientPicker({ patient: p, message: buildMsg(p, selectedTemplate) });
         return;
       }
       const num = p.whatsapp || p.phone!;
