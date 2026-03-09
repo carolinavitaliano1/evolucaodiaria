@@ -197,14 +197,15 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
               <ScrollArea className="max-h-52">
                 <div className="divide-y divide-border">
                   {filtered.map(patient => (
-                    <label
+                    <div
                       key={patient.id}
+                      onClick={() => togglePatient(patient.id)}
                       className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
                     >
                       <Checkbox
                         checked={selectedIds.has(patient.id)}
                         onCheckedChange={() => togglePatient(patient.id)}
-                        className="shrink-0"
+                        className="shrink-0 pointer-events-none"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{patient.name}</p>
