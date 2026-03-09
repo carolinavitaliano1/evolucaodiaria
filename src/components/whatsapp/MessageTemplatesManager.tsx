@@ -100,18 +100,23 @@ export function MessageTemplatesManager() {
         </div>
       </div>
 
-      {/* Variables legend */}
-      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+      {/* Variables legend grouped */}
+      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2.5">
         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
           <Sparkles className="w-3 h-3" /> Variáveis disponíveis
         </p>
-        <div className="flex flex-wrap gap-1.5">
-          {TEMPLATE_VARIABLES.map(v => (
-            <span key={v.tag} className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-              {v.tag} <span className="text-muted-foreground font-sans">— {v.label}</span>
-            </span>
-          ))}
-        </div>
+        {(['Paciente', 'Consulta', 'Profissional'] as const).map(group => (
+          <div key={group}>
+            <p className="text-[10px] font-semibold text-muted-foreground mb-1">{group}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TEMPLATE_VARIABLES.filter(v => v.group === group).map(v => (
+                <span key={v.tag} className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {v.tag} <span className="text-muted-foreground font-sans">— {v.label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Templates list */}
@@ -227,10 +232,20 @@ export function MessageTemplatesManager() {
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Pré-visualização (com dados de exemplo)</p>
                 <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">
                   {content
-                    .replace(/\{\{nome_paciente\}\}/g, 'Maria Silva')
-                    .replace(/\{\{data_consulta\}\}/g, '12/03/2025')
-                    .replace(/\{\{horario\}\}/g, '14:00')
-                    .replace(/\{\{nome_terapeuta\}\}/g, 'Dr. João')}
+                    .replace(/\{\{nome_paciente\}\}/g,     'Maria Silva')
+                    .replace(/\{\{telefone_paciente\}\}/g, '(11) 99999-1234')
+                    .replace(/\{\{email_paciente\}\}/g,    'maria@email.com')
+                    .replace(/\{\{data_nascimento\}\}/g,   '15/04/1990')
+                    .replace(/\{\{responsavel\}\}/g,       'Ana Silva')
+                    .replace(/\{\{data_consulta\}\}/g,     '12/03/2025')
+                    .replace(/\{\{horario\}\}/g,           '14:00')
+                    .replace(/\{\{dia_semana\}\}/g,        'Quarta-feira')
+                    .replace(/\{\{valor_sessao\}\}/g,      'R$ 150,00')
+                    .replace(/\{\{valor_em_aberto\}\}/g,   'R$ 300,00')
+                    .replace(/\{\{nome_terapeuta\}\}/g,    'Dr. João')
+                    .replace(/\{\{nome_clinica\}\}/g,      'Clínica Bem Estar')
+                    .replace(/\{\{endereco_clinica\}\}/g,  'Rua das Flores, 123')
+                    .replace(/\{\{telefone_clinica\}\}/g,  '(11) 3333-4444')}
                 </p>
               </div>
             )}
