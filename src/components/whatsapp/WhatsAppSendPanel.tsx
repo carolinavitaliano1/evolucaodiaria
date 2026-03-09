@@ -83,12 +83,24 @@ export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPan
 
     if (selected.length === 1) {
       const p = selected[0];
-      const msg = resolveTemplate(selectedTemplate.content, { nome_paciente: p.name });
+      const msg = resolveTemplate(selectedTemplate.content, {
+        nome_paciente:     p.name,
+        telefone_paciente: p.phone    || '',
+        email_paciente:    p.email    || '',
+        data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+        responsavel:       p.responsible_name || '',
+      });
       openWhatsApp(p.phone!, msg);
     } else {
       selected.forEach((p, idx) => {
         setTimeout(() => {
-          const msg = resolveTemplate(selectedTemplate.content, { nome_paciente: p.name });
+          const msg = resolveTemplate(selectedTemplate.content, {
+            nome_paciente:     p.name,
+            telefone_paciente: p.phone    || '',
+            email_paciente:    p.email    || '',
+            data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+            responsavel:       p.responsible_name || '',
+          });
           openWhatsApp(p.phone!, msg);
         }, idx * 600);
       });
