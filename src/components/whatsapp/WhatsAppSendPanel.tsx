@@ -213,7 +213,7 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
                           <Phone className="w-2.5 h-2.5" />{patient.phone}
                         </p>
                       </div>
-                    </label>
+                    </div>
                   ))}
                   {filtered.length === 0 && (
                     <p className="text-center text-xs text-muted-foreground py-6">Nenhum paciente encontrado.</p>
