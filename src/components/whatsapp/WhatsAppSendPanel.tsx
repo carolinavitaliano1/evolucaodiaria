@@ -19,6 +19,9 @@ interface Patient {
   id: string;
   name: string;
   phone?: string | null;
+  email?: string | null;
+  birthdate?: string | null;
+  responsible_name?: string | null;
 }
 
 interface WhatsAppSendPanelProps {
