@@ -1793,6 +1793,23 @@ export default function ClinicDetail() {
                         </span>
                       </div>
                     )}
+
+                    {patient.phone && (
+                      <div className="mt-2 pt-2 border-t border-border">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full h-8 gap-1.5 text-xs text-[#25D366] hover:text-[#1ebe57] hover:bg-[#25D366]/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setWhatsAppPatient({ name: patient.name, phone: patient.phone! });
+                          }}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          Enviar WhatsApp
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
