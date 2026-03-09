@@ -231,6 +231,7 @@ export default function PatientDetail() {
   const [prUseResponsible, setPrUseResponsible] = useState(false);
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
+  const [isSavingPRToDocuments, setIsSavingPRToDocuments] = useState(false);
 
   // Therapist profile for fiscal receipt
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
@@ -966,6 +967,45 @@ export default function PatientDetail() {
       await generatePaymentReceiptWord(buildPaymentReceiptOpts());
     } catch { toast.error('Erro ao gerar recibo Word'); }
     finally { setIsExportingPRWord(false); }
+  };
+
+  const handleSavePaymentReceiptToDocuments = async () => {
+    if (!patient || !user || !prAmount || !prPeriod) return;
+    setIsSavingPRToDocuments(true);
+    try {
+      const blob = await generatePaymentReceiptPdf(buildPaymentReceiptOpts(), true);
+
+      const safeName = patient.name.replace(/\s+/g, '-').toLowerCase();
+      const safeDate = prPaymentDate || format(new Date(), 'yyyy-MM-dd');
+      const fileName = `recibo-pagamento-${safeName}-${safeDate}.pdf`;
+      const filePath = `${user.id}/payment-receipt/${patient.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(filePath, blob, { contentType: 'application/pdf', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase.from('attachments').insert({
+        user_id: user.id,
+        parent_id: patient.id,
+        parent_type: 'patient',
+        name: fileName,
+        file_path: filePath,
+        file_type: 'application/pdf',
+        file_size: blob.size,
+      });
+
+      if (dbError) throw dbError;
+
+      await loadAttachmentsForPatient(patient.id);
+      toast.success('Recibo de pagamento salvo nos documentos do paciente!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao salvar o recibo nos documentos.');
+    } finally {
+      setIsSavingPRToDocuments(false);
+    }
   };
 
   // Helper to open payment receipt dialog and pre-fill data
@@ -2547,26 +2587,37 @@ export default function PatientDetail() {
             )}
 
             {/* Export buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={handleExportPaymentReceiptPdf}
+                  disabled={isExportingPR || !prAmount || !prPeriod}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-9"
+                >
+                  {isExportingPR ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Baixar PDF
+                </Button>
+                <Button
+                  onClick={handleExportPaymentReceiptWord}
+                  disabled={isExportingPRWord || !prAmount || !prPeriod}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs h-9"
+                >
+                  {isExportingPRWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                  Word (.docx)
+                </Button>
+              </div>
               <Button
-                onClick={handleExportPaymentReceiptPdf}
-                disabled={isExportingPR || !prAmount || !prPeriod}
-                variant="outline"
+                onClick={handleSavePaymentReceiptToDocuments}
+                disabled={isSavingPRToDocuments || !prAmount || !prPeriod}
                 size="sm"
-                className="gap-1.5 text-xs h-9"
+                className="w-full gap-1.5 text-xs h-9"
               >
-                {isExportingPR ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                Baixar PDF
-              </Button>
-              <Button
-                onClick={handleExportPaymentReceiptWord}
-                disabled={isExportingPRWord || !prAmount || !prPeriod}
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs h-9"
-              >
-                {isExportingPRWord ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                Word (.docx)
+                {isSavingPRToDocuments ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+                {isSavingPRToDocuments ? 'Salvando...' : 'Salvar nos Documentos do Paciente'}
               </Button>
             </div>
           </div>

@@ -35,10 +35,10 @@ export default function Auth() {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setShowNewPassword(true);
-      }
+    // Listen only for PASSWORD_RECOVERY event to show the new-password form
+    // (AuthContext already handles all other auth state changes)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setShowNewPassword(true);
     });
     return () => subscription.unsubscribe();
   }, []);

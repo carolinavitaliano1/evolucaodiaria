@@ -72,13 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    // Create profile after successful signup
+    // Create profile after successful signup (upsert on user_id to avoid duplicates)
     if (!error && data.user) {
       await supabase.from('profiles').upsert({
         user_id: data.user.id,
         email: email,
         name: name || email.split('@')[0],
-      });
+      }, { onConflict: 'user_id' });
     }
 
     return { error: error as Error | null };
