@@ -335,7 +335,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   const stampH     = stInfo  ? stInfo.h  : 0;
   const sigH       = sigInfo ? sigInfo.h : 0;
   // Sobreposição: linha desenhada 5mm antes do fim das imagens
-  const overlapMm  = 5;
+  const overlapMm  = 8;
   const aboveLineH = stampH + sigH - overlapMm;
   const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
   const blockH     = stampH + sigH + 4 + credRows * LHS + 2;
