@@ -113,21 +113,40 @@ export function useMessageTemplates() {
   return { templates, loading, createTemplate, updateTemplate, deleteTemplate, seedDefaults, refresh: load };
 }
 
+export interface TemplateVars {
+  nome_paciente?: string;
+  telefone_paciente?: string;
+  email_paciente?: string;
+  data_nascimento?: string;
+  responsavel?: string;
+  data_consulta?: string;
+  horario?: string;
+  dia_semana?: string;
+  valor_sessao?: string;
+  valor_em_aberto?: string;
+  nome_terapeuta?: string;
+  nome_clinica?: string;
+  endereco_clinica?: string;
+  telefone_clinica?: string;
+}
+
 /** Replace template variables with actual values */
-export function resolveTemplate(
-  content: string,
-  vars: {
-    nome_paciente?: string;
-    data_consulta?: string;
-    horario?: string;
-    nome_terapeuta?: string;
-  }
-): string {
+export function resolveTemplate(content: string, vars: TemplateVars): string {
   return content
-    .replace(/\{\{nome_paciente\}\}/g, vars.nome_paciente || '')
-    .replace(/\{\{data_consulta\}\}/g, vars.data_consulta || '')
-    .replace(/\{\{horario\}\}/g, vars.horario || '')
-    .replace(/\{\{nome_terapeuta\}\}/g, vars.nome_terapeuta || '');
+    .replace(/\{\{nome_paciente\}\}/g,      vars.nome_paciente      || '')
+    .replace(/\{\{telefone_paciente\}\}/g,  vars.telefone_paciente  || '')
+    .replace(/\{\{email_paciente\}\}/g,     vars.email_paciente     || '')
+    .replace(/\{\{data_nascimento\}\}/g,    vars.data_nascimento    || '')
+    .replace(/\{\{responsavel\}\}/g,        vars.responsavel        || '')
+    .replace(/\{\{data_consulta\}\}/g,      vars.data_consulta      || '')
+    .replace(/\{\{horario\}\}/g,            vars.horario            || '')
+    .replace(/\{\{dia_semana\}\}/g,         vars.dia_semana         || '')
+    .replace(/\{\{valor_sessao\}\}/g,       vars.valor_sessao       || '')
+    .replace(/\{\{valor_em_aberto\}\}/g,    vars.valor_em_aberto    || '')
+    .replace(/\{\{nome_terapeuta\}\}/g,     vars.nome_terapeuta     || '')
+    .replace(/\{\{nome_clinica\}\}/g,       vars.nome_clinica       || '')
+    .replace(/\{\{endereco_clinica\}\}/g,   vars.endereco_clinica   || '')
+    .replace(/\{\{telefone_clinica\}\}/g,   vars.telefone_clinica   || '');
 }
 
 /** Open WhatsApp with a pre-filled message */
