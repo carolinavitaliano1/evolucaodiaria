@@ -158,7 +158,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       {
         id: 'delete',
         label: 'Excluir',
-        description: 'Criar, editar e excluir registros dos pacientes atribuídos.',
+        description: 'Criar, editar e excluir registros dos pacientes vinculados a este profissional.',
         grants: [
           'patients.view', 'patients.own_only', 'patients.create', 'patients.edit', 'patients.delete',
           'evolutions.view', 'evolutions.own_only', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',
