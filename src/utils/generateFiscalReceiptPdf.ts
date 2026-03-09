@@ -329,31 +329,36 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     } catch { /* skip */ }
   }
 
-  const credRows  = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
-  const leftH     = (sigInfo ? sigInfo.h + 3 : 0) + 4 + credRows * LHS;   // sig + line gap + text
-  const rightH    = stInfo ? stInfo.h : 0;
-  const blockH    = Math.max(leftH, rightH) + 6;
+  // Altura acima da linha: máximo entre rubrica e carimbo
+  const aboveLineH = Math.max(sigInfo ? sigInfo.h : 0, stInfo ? stInfo.h : 0);
+  const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
+  const blockH     = aboveLineH + 3 + 4 + credRows * LHS + 4; // imgs + gap + line gap + creds + padding
 
-  ensureSpace(blockH + 4);
+  ensureSpace(blockH + 6);
   y += 5;
 
-  const blockStartY = y;
-  const rightColX   = W - margin - (stInfo?.w ?? 0);
+  const imgRowY  = y;                              // topo das imagens (rubrica e carimbo)
+  const lineY    = imgRowY + aboveLineH + 3;       // linha de assinatura
+  const textY    = lineY + 4;                      // início do nome e credenciais
 
-  // — left column: signature image + line + name + credentials —
-  let ly = blockStartY;
-
+  // Rubrica (assinatura) — alinhada à base da linha, lado esquerdo
   if (sigInfo) {
-    doc.addImage(sigInfo.src, 'PNG', margin, ly, sigInfo.w, sigInfo.h, undefined, 'FAST');
-    ly += sigInfo.h + 2;
+    const sigY = lineY - sigInfo.h;
+    doc.addImage(sigInfo.src, 'PNG', margin, sigY, sigInfo.w, sigInfo.h, undefined, 'FAST');
   }
 
-  // signature line (60% of content width, left column)
-  const lineEndX = margin + contentW * 0.58;
-  doc.setDrawColor(...borderColor);
-  doc.line(margin, ly, lineEndX, ly);
-  ly += 4;
+  // Carimbo — acima da linha, lado direito
+  if (stInfo) {
+    const stX = W - margin - stInfo.w;
+    const stY = lineY - stInfo.h;
+    doc.addImage(stInfo.src, 'PNG', stX, stY, stInfo.w, stInfo.h, undefined, 'FAST');
+  }
 
+  // Linha de assinatura (da margem esquerda até ~62% da largura)
+  doc.setDrawColor(...borderColor);
+  doc.line(margin, lineY, margin + contentW * 0.62, lineY);
+
+  let ly = textY;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...darkText);
@@ -363,18 +368,12 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
-  if (stamp?.clinical_area) { doc.text(stamp.clinical_area,           margin, ly); ly += LHS; }
-  if (professionalId)        { doc.text(`Registro: ${professionalId}`, margin, ly); ly += LHS; }
+  if (stamp?.clinical_area) { doc.text(stamp.clinical_area,               margin, ly); ly += LHS; }
+  if (professionalId)        { doc.text(`Registro: ${professionalId}`,     margin, ly); ly += LHS; }
   if (therapistCpf)          { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, ly); ly += LHS; }
-  if (cbo)                   { doc.text(`CBO: ${cbo}`,                 margin, ly); ly += LHS; }
+  if (cbo)                   { doc.text(`CBO: ${cbo}`,                     margin, ly); ly += LHS; }
 
-  // — right column: stamp image, vertically centred with the left block —
-  if (stInfo) {
-    const rightY = blockStartY + Math.max(0, (blockH - stInfo.h) / 2 - 4);
-    doc.addImage(stInfo.src, 'PNG', rightColX, rightY, stInfo.w, stInfo.h, undefined, 'FAST');
-  }
-
-  y = Math.max(ly, blockStartY + blockH);
+  y = ly + 4;
 
   // ─── RODAPÉ ─────────────────────────────────────────────────────────────
   const pageCount = (doc as any).internal.getNumberOfPages();
