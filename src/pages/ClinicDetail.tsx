@@ -42,6 +42,7 @@ import { WhatsAppSendPanel } from '@/components/whatsapp/WhatsAppSendPanel';
 import { WhatsAppTabContent } from '@/components/whatsapp/WhatsAppTabContent';
 import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
+import { QuickWhatsAppModal } from '@/components/whatsapp/QuickWhatsAppModal';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
@@ -161,6 +162,7 @@ export default function ClinicDetail() {
   const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
+  const [quickWaPatient, setQuickWaPatient] = useState<{ id: string; name: string; phone: string | null; whatsapp: string | null; responsibleWhatsapp?: string | null; paymentValue?: number | null; clinicName?: string } | null>(null);
   const [whatsAppRecipient, setWhatsAppRecipient] = useState<{
     patientName: string;
     patientWhatsapp?: string | null;
@@ -1572,29 +1574,24 @@ export default function ClinicDetail() {
                     {(patient.whatsapp || patient.phone || patient.responsibleWhatsapp) && (
                       <div className="mt-2 pt-2 border-t border-border flex justify-end gap-2">
                         <button
-                          title="WhatsApp"
+                          title="Enviar mensagem via WhatsApp"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const hasPatientNum = !!(patient.whatsapp || patient.phone);
-                            const hasResponsible = !!patient.responsibleWhatsapp;
-                            if (hasPatientNum && hasResponsible) {
-                              setWhatsAppRecipient({
-                                patientName: patient.name,
-                                patientWhatsapp: patient.whatsapp,
-                                patientPhone: patient.phone,
-                                responsibleName: patient.responsibleName,
-                                responsibleWhatsapp: patient.responsibleWhatsapp!,
-                              });
-                            } else {
-                              const num = patient.whatsapp || patient.phone!;
-                              const cleaned = num.replace(/\D/g, '');
-                              const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-                              window.open(`https://wa.me/${number}`, '_blank');
-                            }
+                            const phone = patient.whatsapp || patient.phone || patient.responsibleWhatsapp || null;
+                            setQuickWaPatient({
+                              id: patient.id,
+                              name: patient.name,
+                              phone,
+                              whatsapp: patient.whatsapp || null,
+                              responsibleWhatsapp: patient.responsibleWhatsapp || null,
+                              paymentValue: patient.paymentValue,
+                              clinicName: clinic?.name,
+                            });
                           }}
-                          className="text-[#25D366]/70 hover:text-[#25D366] transition-colors"
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[#25D366] transition-colors px-2 py-1 rounded-lg hover:bg-[#25D366]/10"
                         >
                           <WhatsAppIcon className="w-4 h-4" />
+                          <span>Enviar mensagem</span>
                         </button>
                       </div>
                     )}
@@ -2638,8 +2635,28 @@ export default function ClinicDetail() {
           responsibleWhatsapp={whatsAppRecipient.responsibleWhatsapp}
         />
       )}
+
+      {/* Quick WhatsApp Modal — patients tab */}
+      {quickWaPatient && (
+        <QuickWhatsAppModal
+          open={!!quickWaPatient}
+          onClose={() => setQuickWaPatient(null)}
+          phone={quickWaPatient.whatsapp || quickWaPatient.phone}
+          patientName={quickWaPatient.name}
+          vars={{
+            nome_paciente: quickWaPatient.name,
+            nome_clinica: quickWaPatient.clinicName,
+            nome_terapeuta: therapistProfile?.name || '',
+            valor_sessao: quickWaPatient.paymentValue
+              ? quickWaPatient.paymentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+              : '',
+          }}
+        />
+      )}
     </div>
   );
 }
+
+
 
 
