@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toLocalDateString } from '@/lib/utils';
 import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import { ServiceDialog } from '@/components/services/ServiceDialog';
@@ -1475,21 +1476,19 @@ export default function ClinicDetail() {
                     )}
 
                     {patient.phone && (
-                      <div className="mt-2 pt-2 border-t border-border">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full h-8 gap-1.5 text-xs text-[#25D366] hover:text-[#1ebe57] hover:bg-[#25D366]/10"
+                      <div className="mt-2 pt-2 border-t border-border flex justify-end">
+                        <button
+                          title="Abrir WhatsApp"
                           onClick={(e) => {
                             e.stopPropagation();
                             const cleaned = patient.phone!.replace(/\D/g, '');
                             const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
                             window.open(`https://wa.me/${number}`, '_blank');
                           }}
+                          className="text-[#25D366]/60 hover:text-[#25D366] transition-colors"
                         >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          Enviar WhatsApp
-                        </Button>
+                          <WhatsAppIcon className="w-4 h-4" />
+                        </button>
                       </div>
                     )}
                   </div>

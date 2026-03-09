@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { usePatientAssignments } from '@/hooks/usePatientAssignments';
@@ -1302,7 +1303,7 @@ export default function PatientDetail() {
                   }}
                   title="Abrir WhatsApp"
                 >
-                  <MessageSquare className="w-4 h-4" />
+                  <WhatsAppIcon className="w-4 h-4" />
                 </Button>
               )}
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
