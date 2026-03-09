@@ -45,6 +45,9 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
     patient: Patient;
     template: typeof displayTemplates[0];
   } | null>(null);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastPatients, setBroadcastPatients] = useState<Patient[]>([]);
+  const [broadcastTemplate, setBroadcastTemplate] = useState<typeof displayTemplates[0] | null>(null);
 
   // Only patients with a phone or whatsapp number
   const eligible = useMemo(
