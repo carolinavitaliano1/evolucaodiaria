@@ -14,14 +14,17 @@ import {
   DEFAULT_TEMPLATES,
 } from '@/hooks/useMessageTemplates';
 import { toast } from 'sonner';
+import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 
 interface Patient {
   id: string;
   name: string;
   phone?: string | null;
+  whatsapp?: string | null;
+  responsible_name?: string | null;
+  responsible_whatsapp?: string | null;
   email?: string | null;
   birthdate?: string | null;
-  responsible_name?: string | null;
 }
 
 interface WhatsAppSendPanelProps {
