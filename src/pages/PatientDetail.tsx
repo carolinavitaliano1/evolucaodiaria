@@ -2661,11 +2661,10 @@ export default function PatientDetail() {
                   ))}
                 </div>
               </div>
-              {fiscalPaymentStatus === 'paid' && (
-                <div>
-                  <Label className="text-xs mb-1 block">Data do Recebimento</Label>
-                  <Input type="date" value={fiscalPaymentDate} onChange={e => setFiscalPaymentDate(e.target.value)} className="h-9 text-xs" />
-                </div>
+              {fiscalPaymentStatus === 'paid' && fiscalPaymentDate && (
+                <p className="text-xs text-muted-foreground">
+                  Recebido em: <span className="font-medium text-foreground">{format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</span> <span className="text-muted-foreground/60">(registrado no financeiro)</span>
+                </p>
               )}
               <div>
                 <Label className="text-xs mb-1 block flex items-center gap-1.5">
