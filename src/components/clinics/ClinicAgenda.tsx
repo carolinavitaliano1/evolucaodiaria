@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,6 +9,9 @@ import { format, addDays, subDays, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
+import { resolveTemplate } from '@/hooks/useMessageTemplates';
 
 interface ClinicAgendaProps {
   clinicId: string;
@@ -21,6 +24,13 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const navigate = useNavigate();
   const [viewDate, setViewDate] = useState(new Date());
   const [filterUserId, setFilterUserId] = useState<string>('all');
+  const [therapistName, setTherapistName] = useState<string>('');
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
+  }, [user]);
 
   const clinicPatients = patients.filter(p => p.clinicId === clinicId && !p.isArchived);
 
@@ -174,7 +184,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                       )}
                     </div>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-2">
                     {evo ? (
                       <span className={cn("text-xs font-medium", statusLabel(evo.attendanceStatus).cls)}>
                         {statusLabel(evo.attendanceStatus).label}
@@ -182,6 +192,19 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                     ) : (
                       <span className="text-xs text-muted-foreground">⏳ Aguardando</span>
                     )}
+                    <QuickWhatsAppButton
+                      phone={patient.whatsapp || patient.phone || patient.responsibleWhatsapp}
+                      tooltip="Confirmar sessão via WhatsApp"
+                      message={resolveTemplate(
+                        'Olá, {{nome_paciente}}! 😊 Passando para confirmar sua sessão hoje, {{data_consulta}} às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
+                        {
+                          nome_paciente: patient.name,
+                          data_consulta: format(viewDate, "dd/MM", { locale: ptBR }),
+                          horario: patient.scheduleTime || timeDisplay,
+                          nome_terapeuta: therapistName,
+                        }
+                      )}
+                    />
                   </div>
                 </div>
               );

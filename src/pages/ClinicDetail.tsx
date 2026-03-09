@@ -41,6 +41,8 @@ import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal
 import { WhatsAppSendPanel } from '@/components/whatsapp/WhatsAppSendPanel';
 import { WhatsAppTabContent } from '@/components/whatsapp/WhatsAppTabContent';
 import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
+import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
+import { resolveTemplate } from '@/hooks/useMessageTemplates';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -1104,6 +1106,20 @@ export default function ClinicDetail() {
                         </>
                       ) : (
                         <span className="text-xs text-muted-foreground">⏳ Aguardando</span>
+                      )}
+                      {!isArchived && (
+                        <QuickWhatsAppButton
+                          phone={patient.whatsapp || patient.phone || patient.responsibleWhatsapp}
+                          tooltip="Confirmar sessão via WhatsApp"
+                          message={resolveTemplate(
+                            'Olá, {{nome_paciente}}! 😊 Passando para confirmar sua sessão hoje às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
+                            {
+                              nome_paciente: patient.name,
+                              horario: time,
+                              nome_terapeuta: therapistProfile?.name || '',
+                            }
+                          )}
+                        />
                       )}
                     </div>
                   </div>
