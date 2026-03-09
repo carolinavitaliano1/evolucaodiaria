@@ -9,6 +9,7 @@ import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
+import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientModal';
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Textarea } from '@/components/ui/textarea';
