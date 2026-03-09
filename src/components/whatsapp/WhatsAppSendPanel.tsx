@@ -4,8 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { MessageSquare, Search, Send, Users, Phone, ChevronRight, X } from 'lucide-react';
+import { MessageSquare, Search, Send, Users, Phone, ChevronRight, X, Plus, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useMessageTemplates,
@@ -24,9 +23,10 @@ interface Patient {
 
 interface WhatsAppSendPanelProps {
   patients: Patient[];
+  onGoToTemplates?: () => void;
 }
 
-export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
+export function WhatsAppSendPanel({ patients, onGoToTemplates }: WhatsAppSendPanelProps) {
   const { templates, loading } = useMessageTemplates();
 
   const [search, setSearch] = useState('');
@@ -83,7 +83,6 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
       const msg = resolveTemplate(selectedTemplate.content, { nome_paciente: p.name });
       openWhatsApp(p.phone!, msg);
     } else {
-      // Queue: open one by one with a small delay (browsers may block multiple tabs)
       selected.forEach((p, idx) => {
         setTimeout(() => {
           const msg = resolveTemplate(selectedTemplate.content, { nome_paciente: p.name });
@@ -93,7 +92,6 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
       toast.info(`Abrindo WhatsApp para ${selected.length} pacientes...`);
     }
 
-    // Reset
     setSelectedIds(new Set());
     setSelectedTemplateId(null);
     setStep('patients');
@@ -102,9 +100,9 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
   if (loading) return null;
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden">
+    <div className="border border-border rounded-xl bg-card">
       {/* Header */}
-      <div className="bg-[#25D366]/10 border-b border-border px-4 py-3 flex items-center justify-between">
+      <div className="bg-[#25D366]/10 border-b border-border px-4 py-3 flex items-center justify-between rounded-t-xl">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#25D366]/20 flex items-center justify-center">
             <MessageSquare className="w-3.5 h-3.5 text-[#25D366]" />
@@ -194,7 +192,7 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
                   </div>
                 </div>
               </div>
-              <ScrollArea className="max-h-52">
+              <ScrollArea className="h-52">
                 <div className="divide-y divide-border">
                   {filtered.map(patient => (
                     <div
@@ -204,7 +202,6 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
                     >
                       <Checkbox
                         checked={selectedIds.has(patient.id)}
-                        onCheckedChange={() => togglePatient(patient.id)}
                         className="shrink-0 pointer-events-none"
                       />
                       <div className="flex-1 min-w-0">
@@ -236,8 +233,22 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
           {/* Step: Template selection */}
           {step === 'template' && (
             <div>
-              <ScrollArea className="max-h-56">
-                <div className="divide-y divide-border">
+              {/* Header with manage button */}
+              <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Escolha um modelo</p>
+                {onGoToTemplates && (
+                  <button
+                    onClick={onGoToTemplates}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Criar / Editar modelos
+                  </button>
+                )}
+              </div>
+
+              <ScrollArea className="h-60">
+                <div className="divide-y divide-border px-0">
                   {displayTemplates.map(t => {
                     const cat = getCategoryInfo(t.category);
                     const isSelected = selectedTemplateId === t.id;
@@ -269,14 +280,15 @@ export function WhatsAppSendPanel({ patients }: WhatsAppSendPanelProps) {
                   })}
                 </div>
               </ScrollArea>
+
               <div className="p-3 border-t border-border space-y-2">
                 {selectedTemplate && selectedIds.size > 0 && (
                   <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                     <span className="font-medium text-foreground">Prévia: </span>
                     {resolveTemplate(selectedTemplate.content, {
                       nome_paciente: eligible.find(p => selectedIds.has(p.id))?.name ?? 'Paciente',
-                    }).slice(0, 80)}
-                    {resolveTemplate(selectedTemplate.content, {}).length > 80 ? '…' : ''}
+                    }).slice(0, 100)}
+                    {resolveTemplate(selectedTemplate.content, {}).length > 100 ? '…' : ''}
                   </div>
                 )}
                 <Button
