@@ -59,21 +59,11 @@ export function QuickWhatsAppModal({
     setEditing(true);
   }
 
-  /** Open WhatsApp via anchor click — not blocked by popup blockers */
-  function handleSend() {
-    if (!phone || !message.trim()) return;
-    const cleaned = phone.replace(/\D/g, '');
-    const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-    const url = `https://wa.me/${number}?text=${encodeURIComponent(message.trim())}`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    onClose();
-  }
+  const cleaned = phone ? phone.replace(/\D/g, '') : '';
+  const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+  const waUrl = phone && message.trim()
+    ? `https://wa.me/${number}?text=${encodeURIComponent(message.trim())}`
+    : undefined;
 
   const getCatInfo = (cat: string) =>
     TEMPLATE_CATEGORIES.find(c => c.id === cat) ?? { label: cat, emoji: '💬' };
