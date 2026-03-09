@@ -1092,8 +1092,8 @@ export default function ClinicDetail() {
           </div>
         </TabsContent>
 
-        {/* Batch Evolution (nested) */}
-        <TabsContent value="evolutions-batch" className="space-y-4">
+        {/* Batch Evolution (inside evolutions tab) */}
+        {evolutionsSubTab === 'batch' && <div className="space-y-4">
           <div className="bg-card rounded-2xl p-6 border border-border">
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
