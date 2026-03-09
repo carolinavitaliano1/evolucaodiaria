@@ -118,13 +118,10 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
       const num = p.whatsapp || p.phone!;
       sendToNumber(p, num, selectedTemplate);
     } else {
-      selected.forEach((p, idx) => {
-        setTimeout(() => {
-          const num = p.whatsapp || p.phone!;
-          sendToNumber(p, num, selectedTemplate);
-        }, idx * 600);
-      });
-      toast.info(`Abrindo WhatsApp para ${selected.length} pacientes...`);
+      // Open broadcast modal for multiple patients
+      setBroadcastPatients(selected);
+      setBroadcastTemplate(selectedTemplate);
+      setBroadcastOpen(true);
     }
 
     setSelectedIds(new Set());
