@@ -2437,28 +2437,6 @@ export default function PatientDetail() {
                   value={prPaymentDate}
                   onChange={e => setPrPaymentDate(e.target.value)}
                   className="h-9 text-xs"
-                 />
-              </div>
-            </div>
-            {/* Fields */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs mb-1 block">Valor Total (R$)</Label>
-                <Input
-                  type="number" step="0.01" min="0"
-                  value={prAmount}
-                  onChange={e => { setPrAmount(e.target.value); setPrSessions(''); }}
-                  placeholder="0,00"
-                  className="h-9 text-xs"
-                />
-              </div>
-              <div>
-                <Label className="text-xs mb-1 block">Data do Pagamento</Label>
-                <Input
-                  type="date"
-                  value={prPaymentDate}
-                  onChange={e => setPrPaymentDate(e.target.value)}
-                  className="h-9 text-xs"
                 />
               </div>
             </div>
