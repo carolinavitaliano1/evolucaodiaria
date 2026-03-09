@@ -175,7 +175,7 @@ export default function ClinicDetail() {
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [batchSearch, setBatchSearch] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
-  const [evolutionsSubTab, setEvolutionsSubTab] = useState<'day' | 'batch' | 'templates'>('day');
+  const [evolutionsSubTab, setEvolutionsSubTab] = useState<'evolutions' | 'batch' | 'templates'>('evolutions');
   const [batchSelectedTemplateId, setBatchSelectedTemplateId] = useState<string>('none');
   const [batchTemplateFormValues, setBatchTemplateFormValues] = useState<Record<string, any>>({});
   const { user } = useAuth();
