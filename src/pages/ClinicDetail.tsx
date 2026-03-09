@@ -2000,9 +2000,42 @@ export default function ClinicDetail() {
           </div>
         </TabsContent>
 
-        {/* Evolutions Day Tab */}
-        <TabsContent value="evolutions-day">
-          <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />
+        {/* Evolutions merged tab with sub-tabs */}
+        <TabsContent value="evolutions">
+          <Tabs defaultValue="evolutions-day" className="space-y-0">
+            {/* Sub-tab bar */}
+            <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit mb-4">
+              {[
+                { value: 'evolutions-day', label: 'Evoluções do Dia', icon: <TrendingUp className="w-3.5 h-3.5" /> },
+                { value: 'evolutions-batch', label: 'Lote', icon: <FileText className="w-3.5 h-3.5" /> },
+                { value: 'evolutions-templates', label: 'Modelos', icon: <LayoutTemplate className="w-3.5 h-3.5" /> },
+              ].map(sub => (
+                <TabsList key={sub.value} className="p-0 h-auto bg-transparent">
+                  <TabsTrigger
+                    value={sub.value}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+                  >
+                    {sub.icon}
+                    {sub.label}
+                  </TabsTrigger>
+                </TabsList>
+              ))}
+            </div>
+            <TabsContent value="evolutions-day">
+              <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />
+            </TabsContent>
+            <TabsContent value="evolutions-batch" className="space-y-4">
+              <div className="bg-card rounded-2xl p-6 border border-border">
+                <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Evolução em Lote
+                </h2>
+              </div>
+            </TabsContent>
+            <TabsContent value="evolutions-templates">
+              <EvolutionTemplates clinicId={clinic.id} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Reports Tab */}
