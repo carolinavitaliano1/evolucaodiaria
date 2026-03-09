@@ -169,7 +169,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       {
         id: 'all',
         label: 'Acesso Total',
-        description: 'Acesso irrestrito a todos os pacientes e evoluções da clínica.',
+        description: 'Criar, editar, excluir e ver todos os pacientes e evoluções da clínica (sem restrição de vínculo).',
         grants: [
           'patients.view', 'patients.create', 'patients.edit', 'patients.delete',
           'evolutions.view', 'evolutions.create', 'evolutions.edit', 'evolutions.delete',

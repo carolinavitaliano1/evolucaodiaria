@@ -1126,23 +1126,12 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                 </div>
               </ScrollArea>
 
-              <div className="flex items-center justify-between pt-3 border-t mt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive gap-1.5"
-                  onClick={() => setRemoveMemberId(manageMember.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Remover da equipe
+              <div className="flex justify-end gap-2 pt-3 border-t mt-3">
+                <Button variant="outline" onClick={() => setManageMember(null)}>Cancelar</Button>
+                <Button onClick={saveAssignments} disabled={savingAssign} className="gap-2">
+                  {savingAssign && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Salvar
                 </Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setManageMember(null)}>Cancelar</Button>
-                  <Button onClick={saveAssignments} disabled={savingAssign} className="gap-2">
-                    {savingAssign && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    Salvar
-                  </Button>
-                </div>
               </div>
             </>
           )}
