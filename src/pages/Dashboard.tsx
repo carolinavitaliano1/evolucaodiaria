@@ -6,6 +6,7 @@ import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
 import { TaskList } from '@/components/dashboard/TaskList';
 import { BirthdayCard } from '@/components/dashboard/BirthdayCard';
 import { TodayAppointments } from '@/components/dashboard/TodayAppointments';
+import { PaymentReminders } from '@/components/dashboard/PaymentReminders';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { MuralNoticesBell } from '@/components/dashboard/MuralNoticesBell';
 import { InternalAlertsBell } from '@/components/dashboard/InternalAlertsBell';
