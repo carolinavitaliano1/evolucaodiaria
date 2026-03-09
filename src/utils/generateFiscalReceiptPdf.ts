@@ -353,8 +353,8 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     y += sigInfo.h;
   }
 
-  // 3. Linha de assinatura — 3mm abaixo da rubrica (respiro visual)
-  y += 3;
+  // 3. Linha de assinatura — 7mm abaixo da rubrica
+  y += 7;
   doc.setDrawColor(...borderColor);
   doc.line(margin, y, margin + contentW * 0.62, y);
   y += 4;
