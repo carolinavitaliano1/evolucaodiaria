@@ -319,6 +319,17 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                   placeholder="email@exemplo.com"
                 />
               </div>
+              <div>
+                <Label className="text-xs flex items-center gap-1.5">
+                  <WhatsAppIcon className="w-3 h-3 text-[#25D366]" />
+                  WhatsApp do Responsável
+                </Label>
+                <Input
+                  value={formData.responsibleWhatsapp}
+                  onChange={(e) => setFormData({ ...formData, responsibleWhatsapp: e.target.value })}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
             </div>
           </div>
 
