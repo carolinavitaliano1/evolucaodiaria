@@ -323,76 +323,69 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
 
   drawLine();
 
-  // ── DECLARAÇÃO / ASSINATURA ───────────────────────────────────────────
-  // Pre-load stamp images to measure actual heights before deciding layout
-  let sigImgH = 0, stImgH = 0;
-  if (stamp?.signature_image) {
-    try {
-      const si = document.createElement('img');
-      si.src = stamp.signature_image;
-      await new Promise<void>(r => { si.onload = () => r(); si.onerror = () => r(); });
-      let sw = 45; let sh = (si.height / si.width) * sw;
-      if (sh > 12) { sh = 12; }
-      sigImgH = sh + 2;
-    } catch { /* skip */ }
-  }
-  if (stamp?.stamp_image) {
-    try {
-      const sti = document.createElement('img');
-      sti.src = stamp.stamp_image;
-      await new Promise<void>(r => { sti.onload = () => r(); sti.onerror = () => r(); });
-      let sw = 40; let sh = (sti.height / sti.width) * sw;
-      if (sh > 18) { sh = 18; }
-      stImgH = sh + 3;
-    } catch { /* skip */ }
-  }
-  const textRows = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
-  const sigBlockH = sigImgH + stImgH + 5 + 5 + textRows * 5; // line + name + fields
-
-  // Declaration text
+  // ── DECLARAÇÃO ────────────────────────────────────────────────────────
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...mutedText);
   const declaration = `Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.`;
   const declLines = doc.splitTextToSize(declaration, contentW);
   const declH = declLines.length * 5 + 5;
-
-  // If declaration + signature block won't fit on current page, just continue — never jump to new page
-  // (the document should be compact enough to fit on one page)
+  ensureSpace(declH);
   declLines.forEach((line: string) => { doc.text(line, margin, y); y += 5; });
-  y += 4;
+  y += 6;
 
-  // Signature block — placed right after declaration, no page break
+  // ── BLOCO DE ASSINATURA ───────────────────────────────────────────────
+  // Pre-load images to calculate real sizes
+  type ImgInfo = { src: string; w: number; h: number } | null;
+  let sigInfo: ImgInfo = null;
+  let stInfo: ImgInfo = null;
+
   if (stamp?.signature_image) {
     try {
-      const imgEl = document.createElement('img');
-      imgEl.src = stamp.signature_image;
-      await new Promise<void>(r => { imgEl.onload = () => r(); imgEl.onerror = () => r(); });
-      let sw = 45; let sh = (imgEl.height / imgEl.width) * sw;
-      if (sh > 12) { sh = 12; sw = (imgEl.width / imgEl.height) * sh; }
-      doc.addImage(stamp.signature_image, 'PNG', margin, y, sw, sh, undefined, 'FAST');
-      y += sh + 2;
+      const el = document.createElement('img');
+      el.src = stamp.signature_image;
+      await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
+      // Max width 60mm, max height 20mm
+      let sw = 60; let sh = (el.height / el.width) * sw;
+      if (sh > 20) { sh = 20; sw = (el.width / el.height) * sh; }
+      sigInfo = { src: stamp.signature_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
   if (stamp?.stamp_image) {
     try {
-      const imgEl2 = document.createElement('img');
-      imgEl2.src = stamp.stamp_image;
-      await new Promise<void>(r => { imgEl2.onload = () => r(); imgEl2.onerror = () => r(); });
-      let sw = 40; let sh = (imgEl2.height / imgEl2.width) * sw;
-      if (sh > 18) { sh = 18; sw = (imgEl2.width / imgEl2.height) * sh; }
-      doc.addImage(stamp.stamp_image, 'PNG', margin, y, sw, sh, undefined, 'FAST');
-      y += sh + 3;
+      const el = document.createElement('img');
+      el.src = stamp.stamp_image;
+      await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
+      // Max width 65mm, max height 30mm — carimbo maior e proporcional
+      let sw = 65; let sh = (el.height / el.width) * sw;
+      if (sh > 30) { sh = 30; sw = (el.width / el.height) * sh; }
+      stInfo = { src: stamp.stamp_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
+
+  const textRows = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
+  const blockH = (sigInfo ? sigInfo.h + 4 : 0) + (stInfo ? stInfo.h + 6 : 0) + 6 + textRows * 5.5;
+  ensureSpace(blockH + 10);
+
+  // Signature image above the line
+  if (sigInfo) {
+    doc.addImage(sigInfo.src, 'PNG', margin, y, sigInfo.w, sigInfo.h, undefined, 'FAST');
+    y += sigInfo.h + 4;
+  }
+
+  // Horizontal line
   doc.setDrawColor(...borderColor);
-  doc.line(margin, y, margin + contentW * 0.55, y);
+  doc.line(margin, y, margin + contentW * 0.60, y);
   y += 5;
-  doc.setFontSize(9.5);
+
+  // Therapist name
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...darkText);
   doc.text(therapistName || '________________________________', margin, y);
-  y += 5;
+  y += 5.5;
+
+  // Credentials below name
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(...mutedText);
@@ -400,6 +393,13 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   if (professionalId) { doc.text(`Registro: ${professionalId}`, margin, y); y += 5; }
   if (therapistCpf) { doc.text(`CPF: ${formatCpf(therapistCpf)}`, margin, y); y += 5; }
   if (cbo) { doc.text(`CBO: ${cbo}`, margin, y); y += 5; }
+
+  // Stamp image below credentials with good spacing
+  if (stInfo) {
+    y += 6;
+    doc.addImage(stInfo.src, 'PNG', margin, y, stInfo.w, stInfo.h, undefined, 'FAST');
+    y += stInfo.h + 4;
+  }
 
   // ── RODAPÉ ───────────────────────────────────────────────────────────
   const pageCount = (doc as any).internal.getNumberOfPages();
