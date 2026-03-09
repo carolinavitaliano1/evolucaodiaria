@@ -88,19 +88,27 @@ function mapPatient(p: Record<string, unknown>): Patient {
   return {
     id: p.id as string, clinicId: p.clinic_id as string, name: p.name as string, birthdate: p.birthdate as string,
     phone: (p.phone as string) || undefined, whatsapp: (p.whatsapp as string) || undefined,
-    email: (p.email as string) || undefined, clinicalArea: (p.clinical_area as string) || undefined,
+    email: (p.email as string) || undefined,
+    ...(p.cpf !== undefined && p.cpf !== null ? { cpf: p.cpf as string } : {}),
+    clinicalArea: (p.clinical_area as string) || undefined,
     diagnosis: (p.diagnosis as string) || undefined, professionals: (p.professionals as string) || undefined,
     observations: (p.observations as string) || undefined, responsibleName: (p.responsible_name as string) || undefined,
     responsibleEmail: (p.responsible_email as string) || undefined,
     responsibleWhatsapp: (p.responsible_whatsapp as string) || undefined,
+    ...(p.responsible_cpf !== undefined && p.responsible_cpf !== null ? { responsible_cpf: p.responsible_cpf as string } : {}),
+    responsible_is_financial: p.responsible_is_financial !== false,
+    ...(p.financial_responsible_name ? { financial_responsible_name: p.financial_responsible_name as string } : {}),
+    ...(p.financial_responsible_cpf ? { financial_responsible_cpf: p.financial_responsible_cpf as string } : {}),
+    ...(p.financial_responsible_whatsapp ? { financial_responsible_whatsapp: p.financial_responsible_whatsapp as string } : {}),
     paymentType: p.payment_type as 'sessao' | 'fixo' | undefined,
     paymentValue: p.payment_value ? Number(p.payment_value) : undefined,
+    ...(p.payment_due_day !== undefined && p.payment_due_day !== null ? { payment_due_day: Number(p.payment_due_day) } : {}),
     contractStartDate: (p.contract_start_date as string) || undefined,
     weekdays: (p.weekdays as string[]) || undefined, scheduleTime: (p.schedule_time as string) || undefined,
     scheduleByDay: p.schedule_by_day as ScheduleByDay | undefined,
     packageId: (p.package_id as string) || undefined, isArchived: (p.is_archived as boolean) || false,
     avatarUrl: (p.avatar_url as string) || undefined, createdAt: p.created_at as string,
-  };
+  } as any;
 }
 
 function mapEvolution(e: Record<string, unknown>): Evolution {
