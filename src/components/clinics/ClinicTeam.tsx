@@ -908,16 +908,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                     variant="outline"
                     size="sm"
                     className="flex-1 h-7 text-[11px] gap-1 px-2"
-                    onClick={() => openManageModal(member)}
-                  >
-                    <Settings className="w-3 h-3" />
-                    Permissões
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 h-7 text-[11px] gap-1 px-2"
-                    onClick={() => navigate('/calendar')}
+                    onClick={e => { e.stopPropagation(); navigate('/calendar'); }}
                   >
                     <CalendarDays className="w-3 h-3" />
                     Ver Agenda
@@ -927,7 +918,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                       variant="outline"
                       size="sm"
                       className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-success hover:bg-success/10')}
-                      onClick={() => handleToggleMemberStatus(member)}
+                      onClick={e => { e.stopPropagation(); handleToggleMemberStatus(member); }}
+                      title={member.status === 'active' ? 'Suspender acesso' : 'Reativar acesso'}
                     >
                       {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
                     </Button>
