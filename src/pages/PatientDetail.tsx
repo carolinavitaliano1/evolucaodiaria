@@ -148,6 +148,7 @@ export default function PatientDetail() {
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignmentScheduleTimes, setAssignmentScheduleTimes] = useState<Record<string, string>>({});
   const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [whatsAppRecipientOpen, setWhatsAppRecipientOpen] = useState(false);
 
   useEffect(() => {
     if (!patient?.clinicId) return;
