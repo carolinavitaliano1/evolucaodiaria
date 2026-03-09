@@ -1793,7 +1793,7 @@ export default function PatientDetail() {
                             </p>
                             <div className="flex flex-wrap gap-2">
                               {evo.attachments.map((att) => {
-                                const fileUrl = att.data.startsWith('http') ? att.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${att.data}`;
+                                const fileUrl = att.data.startsWith('http') ? att.data : supabase.storage.from('attachments').getPublicUrl(att.data).data.publicUrl;
                                 const isImage = att.type.startsWith('image/');
                                 return (
                                   <div key={att.id} className="flex flex-col gap-1">
