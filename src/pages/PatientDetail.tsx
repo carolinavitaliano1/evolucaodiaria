@@ -2256,6 +2256,7 @@ export default function PatientDetail() {
 
             {/* Payer toggle */}
             {(() => {
+              const pp = patient as any;
               const isMinorAuto = (() => {
                 if (!patient.birthdate) return false;
                 try {
@@ -2267,18 +2268,24 @@ export default function PatientDetail() {
                 } catch { return false; }
               })();
               const hasResponsibleAuto = !!(patient.responsibleName);
-              const payerName = prUseResponsible && patient.responsibleName ? patient.responsibleName : patient.name;
-              const payerCpfRaw = prUseResponsible ? (patient as any).responsible_cpf : (patient as any).cpf;
+              const hasSeparateFinancial = prUseResponsible && patient.responsibleName && pp.responsible_is_financial === false && pp.financial_responsible_name;
+              const displayName = hasSeparateFinancial
+                ? pp.financial_responsible_name
+                : prUseResponsible && patient.responsibleName
+                  ? patient.responsibleName
+                  : patient.name;
+              const displayCpf = hasSeparateFinancial
+                ? pp.financial_responsible_cpf
+                : prUseResponsible ? pp.responsible_cpf : pp.cpf;
               return (
                 <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-medium text-foreground">Pagador no recibo</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {prUseResponsible
-                          ? <><span className="text-foreground font-medium">{patient.responsibleName || '[Responsável não cadastrado]'}</span>{payerCpfRaw ? ` · CPF: ${payerCpfRaw}` : ' · CPF não cadastrado'}</>
-                          : <><span className="text-foreground font-medium">{patient.name}</span>{payerCpfRaw ? ` · CPF: ${payerCpfRaw}` : ' · CPF não cadastrado'}</>
-                        }
+                        <span className="text-foreground font-medium">{displayName}</span>
+                        {displayCpf ? ` · CPF: ${displayCpf}` : ' · CPF não cadastrado'}
+                        {hasSeparateFinancial && <span className="ml-1 text-primary">(resp. financeiro)</span>}
                       </p>
                     </div>
                     <Switch
@@ -2286,15 +2293,13 @@ export default function PatientDetail() {
                       onCheckedChange={setPrUseResponsible}
                     />
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <span className="text-xs text-muted-foreground">
-                      {isMinorAuto
-                        ? '⚠ Paciente menor de idade — responsável selecionado automaticamente'
-                        : hasResponsibleAuto
-                          ? '⚠ Paciente com responsável cadastrado — responsável selecionado automaticamente'
-                          : 'Usar responsável financeiro no recibo'}
-                    </span>
-                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {isMinorAuto
+                      ? '⚠ Paciente menor de idade — responsável selecionado automaticamente'
+                      : hasResponsibleAuto
+                        ? '⚠ Paciente com responsável cadastrado — responsável selecionado automaticamente'
+                        : 'Usar responsável no recibo'}
+                  </p>
                 </div>
               );
             })()}
