@@ -189,6 +189,25 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
     if (organization && canManage) loadLateEvolutions();
   }, [organization, canManage]);
 
+  // Realtime: auto-refresh when a member accepts invite or status changes
+  useEffect(() => {
+    if (!organization) return;
+    const channel = supabase
+      .channel(`org-members-${organization.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'organization_members',
+          filter: `organization_id=eq.${organization.id}`,
+        },
+        () => { loadTeam(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [organization?.id]);
+
   useEffect(() => {
     const preset = PRESET_ROLES.find(p => p.id === invitePreset);
     if (preset) {
