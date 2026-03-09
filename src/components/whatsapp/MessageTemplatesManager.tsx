@@ -100,18 +100,23 @@ export function MessageTemplatesManager() {
         </div>
       </div>
 
-      {/* Variables legend */}
-      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+      {/* Variables legend grouped */}
+      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2.5">
         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
           <Sparkles className="w-3 h-3" /> Variáveis disponíveis
         </p>
-        <div className="flex flex-wrap gap-1.5">
-          {TEMPLATE_VARIABLES.map(v => (
-            <span key={v.tag} className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-              {v.tag} <span className="text-muted-foreground font-sans">— {v.label}</span>
-            </span>
-          ))}
-        </div>
+        {(['Paciente', 'Consulta', 'Profissional'] as const).map(group => (
+          <div key={group}>
+            <p className="text-[10px] font-semibold text-muted-foreground mb-1">{group}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TEMPLATE_VARIABLES.filter(v => v.group === group).map(v => (
+                <span key={v.tag} className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {v.tag} <span className="text-muted-foreground font-sans">— {v.label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Templates list */}
