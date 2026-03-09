@@ -84,6 +84,20 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
     setSelectedIds(new Set());
   }
 
+  function sendToNumber(p: Patient, num: string, template: typeof displayTemplates[0]) {
+    const msg = resolveTemplate(template.content, {
+      nome_paciente:     p.name,
+      telefone_paciente: p.phone    || '',
+      email_paciente:    p.email    || '',
+      data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+      responsavel:       p.responsible_name || '',
+      nome_clinica:      clinic?.name    || '',
+      endereco_clinica:  clinic?.address || '',
+      telefone_clinica:  clinic?.phone   || '',
+    });
+    openWhatsApp(num, msg);
+  }
+
   function handleSend() {
     if (!selectedTemplate) return;
     const selected = eligible.filter(p => selectedIds.has(p.id));
@@ -91,31 +105,19 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
 
     if (selected.length === 1) {
       const p = selected[0];
-      const msg = resolveTemplate(selectedTemplate.content, {
-        nome_paciente:     p.name,
-        telefone_paciente: p.phone    || '',
-        email_paciente:    p.email    || '',
-        data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
-        responsavel:       p.responsible_name || '',
-        nome_clinica:      clinic?.name    || '',
-        endereco_clinica:  clinic?.address || '',
-        telefone_clinica:  clinic?.phone   || '',
-      });
-      openWhatsApp(p.phone!, msg);
+      const hasPatientNum = !!(p.whatsapp || p.phone);
+      const hasResponsible = !!p.responsible_whatsapp;
+      if (hasPatientNum && hasResponsible) {
+        setRecipientPicker({ patient: p, template: selectedTemplate });
+        return;
+      }
+      const num = p.whatsapp || p.phone!;
+      sendToNumber(p, num, selectedTemplate);
     } else {
       selected.forEach((p, idx) => {
         setTimeout(() => {
-          const msg = resolveTemplate(selectedTemplate.content, {
-            nome_paciente:     p.name,
-            telefone_paciente: p.phone    || '',
-            email_paciente:    p.email    || '',
-            data_nascimento:   p.birthdate ? new Date(p.birthdate + 'T12:00:00').toLocaleDateString('pt-BR') : '',
-            responsavel:       p.responsible_name || '',
-            nome_clinica:      clinic?.name    || '',
-            endereco_clinica:  clinic?.address || '',
-            telefone_clinica:  clinic?.phone   || '',
-          });
-          openWhatsApp(p.phone!, msg);
+          const num = p.whatsapp || p.phone!;
+          sendToNumber(p, num, selectedTemplate);
         }, idx * 600);
       });
       toast.info(`Abrindo WhatsApp para ${selected.length} pacientes...`);
