@@ -488,6 +488,15 @@ export default function Team() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab('activity')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              activeTab === 'activity' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Activity className="w-4 h-4" />Atividade
+          </button>
         </div>
 
         {/* Content */}
