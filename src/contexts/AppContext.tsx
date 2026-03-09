@@ -247,10 +247,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         packagesQuery,
       ]);
 
-      const clinics = (clinicsRes.data || []).map(c => mapClinic(c as Record<string, unknown>));
-      const patients = (patientsRes.data || []).map(p => mapPatient(p as Record<string, unknown>));
+      const clinicsRaw = (clinicsRes.data || []).map(c => mapClinic(c as Record<string, unknown>));
+      const patientsRaw = (patientsRes.data || []).map(p => mapPatient(p as Record<string, unknown>));
       const tasks = (tasksRes.data || []).map(t => mapTask(t as Record<string, unknown>));
       const clinicPackages = (packagesRes.data || []).map(p => mapPackage(p as Record<string, unknown>));
+
+      // Deduplicate by id to prevent ghost birthday/duplicate entries on fast re-renders
+      const seenClinics = new Set<string>();
+      const clinics = clinicsRaw.filter(c => { if (seenClinics.has(c.id)) return false; seenClinics.add(c.id); return true; });
+      const seenPatients = new Set<string>();
+      const patients = patientsRaw.filter(p => { if (seenPatients.has(p.id)) return false; seenPatients.add(p.id); return true; });
 
       setState(prev => ({
         ...prev, clinics, patients, tasks, clinicPackages, isLoading: false,
