@@ -7,12 +7,14 @@ import { ComplianceDashboard } from '@/components/clinics/ComplianceDashboard';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import {
   Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock, Info,
-  ClipboardCheck, UsersIcon
+  ClipboardCheck, UsersIcon, ArrowRight, CheckCircle2,
 } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
 
@@ -25,47 +27,91 @@ export default function Team() {
   const [activeTab, setActiveTab] = useState<'team' | 'compliance'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [complianceBadge, setComplianceBadge] = useState(0);
-  // Map of clinicId → organizationId for all propria clinics (to detect which already has a team)
+  // clinicId → organizationId (null = no team)
   const [clinicOrgMap, setClinicOrgMap] = useState<Record<string, string | null>>({});
+  const [loadingMap, setLoadingMap] = useState(true);
+
+  // Confirm move dialog
+  const [confirmMove, setConfirmMove] = useState<{ fromId: string; toId: string } | null>(null);
+  const [moving, setMoving] = useState(false);
 
   const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
   const hasAccess = isOwnerEmail || isOwner;
 
-  // Only "própria" clinics support team management
   const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'propria');
   const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
 
-  // Clinic that already has an active team (organization)
+  // Which clinic currently holds the team benefit
   const activeTeamClinicId = Object.entries(clinicOrgMap).find(([, orgId]) => !!orgId)?.[0] ?? null;
 
-  useEffect(() => {
-    if (teamClinics.length === 0) return;
-    // Load org ids for all propria clinics so we can highlight which one has the team benefit active
-    supabase
+  const reloadOrgMap = async () => {
+    if (teamClinics.length === 0) { setLoadingMap(false); return; }
+    setLoadingMap(true);
+    const { data } = await supabase
       .from('clinics')
       .select('id, organization_id')
-      .in('id', teamClinics.map(c => c.id))
-      .then(({ data }) => {
-        const map: Record<string, string | null> = {};
-        (data || []).forEach(c => { map[c.id] = c.organization_id ?? null; });
-        setClinicOrgMap(map);
-        // Auto-select: prefer the one with team active, otherwise first
-        const withTeam = (data || []).find(c => !!c.organization_id);
-        const defaultId = withTeam?.id ?? teamClinics[0].id;
-        setSelectedClinicId(prev => prev ?? defaultId);
-      });
+      .in('id', teamClinics.map(c => c.id));
+    const map: Record<string, string | null> = {};
+    (data || []).forEach(c => { map[c.id] = c.organization_id ?? null; });
+    setClinicOrgMap(map);
+    // Auto-select: prefer the one with team, otherwise first
+    const withTeam = (data || []).find(c => !!c.organization_id);
+    const defaultId = withTeam?.id ?? teamClinics[0].id;
+    setSelectedClinicId(prev => prev ?? defaultId);
+    setLoadingMap(false);
+  };
+
+  useEffect(() => {
+    if (teamClinics.length === 0) { setLoadingMap(false); return; }
+    reloadOrgMap();
   }, [teamClinics.length]);
 
-  // Load org id whenever the selected clinic changes
+  // Sync orgId for the selected clinic
   useEffect(() => {
     if (!selectedClinicId) return;
-    const orgId = clinicOrgMap[selectedClinicId];
-    setOrganizationId(orgId ?? null);
+    setOrganizationId(clinicOrgMap[selectedClinicId] ?? null);
   }, [selectedClinicId, clinicOrgMap]);
+
+  // Handle switching team to a different clinic
+  const handleClinicSelect = (clinicId: string) => {
+    if (clinicId === selectedClinicId) return;
+    // If there's an active team in a DIFFERENT clinic → ask for confirmation to move
+    if (activeTeamClinicId && activeTeamClinicId !== clinicId) {
+      setConfirmMove({ fromId: activeTeamClinicId, toId: clinicId });
+    } else {
+      setSelectedClinicId(clinicId);
+    }
+  };
+
+  // Move team benefit from one clinic to another
+  const moveTeamBenefit = async (fromClinicId: string, toClinicId: string) => {
+    setMoving(true);
+    try {
+      // Get the org id from the source clinic
+      const orgId = clinicOrgMap[fromClinicId];
+      if (!orgId) throw new Error('Organização não encontrada');
+
+      // Move: detach from old clinic, attach to new one
+      await supabase.from('clinics').update({ organization_id: null }).eq('id', fromClinicId);
+      await supabase.from('clinics').update({ organization_id: orgId }).eq('id', toClinicId);
+
+      // Update local map
+      setClinicOrgMap(prev => ({ ...prev, [fromClinicId]: null, [toClinicId]: orgId }));
+      setSelectedClinicId(toClinicId);
+      setOrganizationId(orgId);
+      toast.success(`Benefício de equipe movido para "${teamClinics.find(c => c.id === toClinicId)?.name}"`);
+    } catch (err) {
+      toast.error('Erro ao mover benefício de equipe');
+      console.error(err);
+    } finally {
+      setMoving(false);
+      setConfirmMove(null);
+    }
+  };
 
   const selectedClinic = teamClinics.find(c => c.id === selectedClinicId);
 
-  if (permLoading) {
+  if (permLoading || loadingMap) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -73,21 +119,14 @@ export default function Team() {
     );
   }
 
-  // --- Em breve screen for users without access ---
+  // --- Em breve screen ---
   if (!hasAccess) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {/* Header */}
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border">
           <div className="max-w-5xl mx-auto px-4 lg:px-6 py-4 flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-muted-foreground hover:text-foreground"
-              onClick={() => navigate(-1)}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Voltar
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-4 h-4" />Voltar
             </Button>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -100,8 +139,6 @@ export default function Team() {
             </div>
           </div>
         </div>
-
-        {/* Coming soon content */}
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="max-w-md w-full text-center space-y-8">
             <div className="flex justify-center">
@@ -116,8 +153,7 @@ export default function Team() {
             </div>
             <div className="flex justify-center">
               <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold border border-primary/20">
-                <Clock className="w-4 h-4" />
-                Em breve
+                <Clock className="w-4 h-4" />Em breve
               </span>
             </div>
             <div className="space-y-3">
@@ -142,34 +178,25 @@ export default function Team() {
                 </div>
               ))}
             </div>
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Este plano estará disponível em breve. Fique atento às novidades!
-              </p>
-              <Button variant="outline" onClick={() => navigate('/pricing')} className="w-full">
-                Ver Planos Individuais Disponíveis
-              </Button>
-            </div>
+            <Button variant="outline" onClick={() => navigate('/pricing')} className="w-full">
+              Ver Planos Individuais Disponíveis
+            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  // --- Full Team Management for owner ---
+  const fromClinic = confirmMove ? teamClinics.find(c => c.id === confirmMove.fromId) : null;
+  const toClinic = confirmMove ? teamClinics.find(c => c.id === confirmMove.toId) : null;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-5xl mx-auto px-4 lg:px-6 py-4 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-muted-foreground hover:text-foreground"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar
+          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4" />Voltar
           </Button>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -181,79 +208,81 @@ export default function Team() {
             </div>
           </div>
           <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
-            <Sparkles className="w-3 h-3" />
-            Plano Clínica
+            <Sparkles className="w-3 h-3" />Plano Clínica
           </span>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 lg:px-6 py-6 space-y-6">
 
-        {/* Notice: Contratante clinics not supported */}
+        {/* Contratante notice */}
         {contratanteClinics.length > 0 && (
           <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl bg-warning/10 border border-warning/30">
             <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
             <div className="text-sm">
               <p className="font-semibold text-warning">Gestão de equipe disponível apenas para consultórios</p>
               <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                As clínicas <strong className="text-foreground">{contratanteClinics.map(c => c.name).join(', ')}</strong> são do tipo <strong className="text-foreground">Contratante</strong> — locais onde você trabalha mas não é o responsável.
+                As clínicas <strong className="text-foreground">{contratanteClinics.map(c => c.name).join(', ')}</strong> são do tipo <strong className="text-foreground">Contratante</strong>.
               </p>
             </div>
           </div>
         )}
 
-        {/* Clinic selector */}
+        {/* Clinic selector — always shown when there are propria clinics */}
         {teamClinics.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-              {teamClinics.length > 1 ? 'Selecionar Clínica' : 'Clínica'}
-            </p>
+            {teamClinics.length > 1 && (
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Selecionar Clínica para Equipe
+              </p>
+            )}
 
-            {/* Warning: only 1 clinic can use team benefit */}
-            {teamClinics.length > 1 && !activeTeamClinicId && (
-              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/5 border border-primary/20 mb-3">
+            {/* Info: benefit scoped to 1 clinic */}
+            {teamClinics.length > 1 && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/5 border border-primary/20 mb-4">
                 <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-foreground">
-                  O benefício de equipe pode ser ativado em <strong>apenas uma clínica</strong>. Selecione abaixo qual consultório usará este recurso.
-                </p>
-              </div>
-            )}
-            {teamClinics.length > 1 && activeTeamClinicId && (
-              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 mb-3">
-                <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                <p className="text-sm text-foreground">
-                  O benefício de equipe está ativo em <strong>{teamClinics.find(c => c.id === activeTeamClinicId)?.name}</strong>. Para usar em outra clínica, remova a equipe desta primeiro.
+                  O benefício de equipe é ativo em <strong>apenas uma clínica</strong> por vez.
+                  {activeTeamClinicId
+                    ? ' Clique em outra clínica para mover o benefício.'
+                    : ' Selecione abaixo qual clínica usará este recurso.'}
                 </p>
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {teamClinics.map(clinic => {
                 const hasTeam = !!clinicOrgMap[clinic.id];
-                const isActive = selectedClinicId === clinic.id;
-                // Disable selection of other clinics if this one already has a team (and it's not the active one)
-                const isBlocked = !hasTeam && !!activeTeamClinicId && clinic.id !== activeTeamClinicId;
+                const isSelected = selectedClinicId === clinic.id;
+
                 return (
                   <button
                     key={clinic.id}
-                    onClick={() => !isBlocked && setSelectedClinicId(clinic.id)}
-                    disabled={isBlocked}
+                    onClick={() => handleClinicSelect(clinic.id)}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : isBlocked
-                        ? 'opacity-40 cursor-not-allowed bg-muted border-border text-muted-foreground'
+                      'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all',
+                      isSelected && hasTeam
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : isSelected && !hasTeam
+                        ? 'bg-primary/10 text-primary border-primary/40'
+                        : hasTeam
+                        ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
                         : 'bg-card text-foreground border-border hover:border-primary/40 hover:bg-primary/5'
                     )}
                   >
-                    <Building2 className="w-3.5 h-3.5" />
-                    {clinic.name}
-                    {hasTeam && (
-                      <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
-                        <UsersRound className="w-2.5 h-2.5" />
-                        Equipe ativa
-                      </span>
+                    {hasTeam
+                      ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      : <Building2 className="w-4 h-4 shrink-0" />
+                    }
+                    <span>{clinic.name}</span>
+                    {hasTeam && !isSelected && (
+                      <span className="ml-1 text-[10px] font-semibold opacity-80">Equipe ativa</span>
+                    )}
+                    {hasTeam && isSelected && (
+                      <span className="ml-1 text-[10px] font-semibold opacity-90">Ativa aqui</span>
+                    )}
+                    {!hasTeam && activeTeamClinicId && isSelected && (
+                      <span className="ml-1 text-[10px] text-primary/70">Clique para mover</span>
                     )}
                   </button>
                 );
@@ -269,25 +298,19 @@ export default function Team() {
               onClick={() => setActiveTab('team')}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                activeTab === 'team'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                activeTab === 'team' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <UsersIcon className="w-4 h-4" />
-              Equipe
+              <UsersIcon className="w-4 h-4" />Equipe
             </button>
             <button
               onClick={() => setActiveTab('compliance')}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                activeTab === 'compliance'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                activeTab === 'compliance' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <ClipboardCheck className="w-4 h-4" />
-              Conformidade
+              <ClipboardCheck className="w-4 h-4" />Conformidade
               {complianceBadge > 0 && (
                 <span className="w-4 h-4 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
                   {complianceBadge > 9 ? '9+' : complianceBadge}
@@ -301,7 +324,11 @@ export default function Team() {
         {selectedClinic ? (
           <div className="bg-card rounded-2xl border border-border p-5 lg:p-6">
             {activeTab === 'team' && (
-              <ClinicTeam clinicId={selectedClinic.id} clinicName={selectedClinic.name} />
+              <ClinicTeam
+                clinicId={selectedClinic.id}
+                clinicName={selectedClinic.name}
+                onTeamCreated={reloadOrgMap}
+              />
             )}
             {activeTab === 'compliance' && organizationId && (
               <ComplianceDashboard
@@ -329,12 +356,47 @@ export default function Team() {
                 ? 'Você não possui consultórios cadastrados.'
                 : 'Nenhuma clínica encontrada.'}
             </p>
-            <Button variant="outline" onClick={() => navigate('/clinics')}>
-              Ir para Clínicas
-            </Button>
+            <Button variant="outline" onClick={() => navigate('/clinics')}>Ir para Clínicas</Button>
           </div>
         )}
       </div>
+
+      {/* Confirm move dialog */}
+      <AlertDialog open={!!confirmMove} onOpenChange={open => !open && setConfirmMove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mover benefício de equipe?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Você está movendo o benefício de equipe de:</p>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm font-medium text-foreground truncate">{fromClinic?.name}</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Building2 className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-sm font-semibold text-primary truncate">{toClinic?.name}</span>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  A equipe (membros, permissões e vínculos de pacientes) permanece intacta — apenas o consultório associado muda. Os colaboradores continuarão com acesso.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={moving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={moving}
+              onClick={() => confirmMove && moveTeamBenefit(confirmMove.fromId, confirmMove.toId)}
+            >
+              {moving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Movendo...</> : 'Confirmar Mudança'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

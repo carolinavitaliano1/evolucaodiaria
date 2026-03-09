@@ -71,6 +71,7 @@ interface LateEvolution {
 interface ClinicTeamProps {
   clinicId: string;
   clinicName: string;
+  onTeamCreated?: () => void;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -127,7 +128,7 @@ function getPresetIcon(icon: string) {
   return User;
 }
 
-export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
+export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamProps) {
   const { user } = useAuth();
   const { patients } = useApp();
   const navigate = useNavigate();
@@ -335,6 +336,7 @@ export function ClinicTeam({ clinicId, clinicName }: ClinicTeamProps) {
         permissions: Object.fromEntries(ALL_PERMISSIONS.map(p => [p, true])),
       });
       toast.success('Equipe criada!');
+      onTeamCreated?.();
       loadTeam();
     } catch { toast.error('Erro ao criar equipe'); }
     finally { setCreating(false); }
