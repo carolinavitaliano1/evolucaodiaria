@@ -1647,7 +1647,7 @@ export default function ClinicDetail() {
               </div>
             )}
           </div>
-        </div>}
+        </TabsContent>
 
         {/* Financial Tab */}
         <TabsContent value="financial">
