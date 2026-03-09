@@ -309,10 +309,14 @@ export default function PatientDetail() {
       });
   }, [user, patient?.clinicId]);
 
-  const patientDocsAsUploadedFiles: UploadedFile[] = useMemo(() => patientAttachments.map(a => ({
-    id: a.id, name: a.name, filePath: a.data, fileType: a.type,
-    url: a.data.startsWith('http') ? a.data : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/attachments/${a.data}`,
-  })), [patientAttachments]);
+  const patientDocsAsUploadedFiles: UploadedFile[] = useMemo(() => patientAttachments.map(a => {
+    let url = a.data;
+    if (!a.data.startsWith('http')) {
+      const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(a.data);
+      url = urlData.publicUrl;
+    }
+    return { id: a.id, name: a.name, filePath: a.data, fileType: a.type, url };
+  }), [patientAttachments]);
 
   // All-time summaries (computed before early return so hooks order is stable)
   const totalPresent = patientEvolutions.filter(e => e.attendanceStatus === 'presente').length;
