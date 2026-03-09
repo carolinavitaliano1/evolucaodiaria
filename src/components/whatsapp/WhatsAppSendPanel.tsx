@@ -349,7 +349,7 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
         </>
       )}
 
-      {/* Recipient picker when patient has two numbers */}
+      {/* Recipient picker — single patient with two numbers */}
       {recipientPicker && (
         <WhatsAppRecipientModal
           open={!!recipientPicker}
@@ -364,6 +364,24 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
           patientPhone={recipientPicker.patient.phone}
           responsibleName={recipientPicker.patient.responsible_name}
           responsibleWhatsapp={recipientPicker.patient.responsible_whatsapp!}
+        />
+      )}
+
+      {/* Broadcast modal — multiple patients */}
+      {broadcastOpen && broadcastTemplate && (
+        <WhatsAppBroadcastModal
+          open={broadcastOpen}
+          onClose={() => {
+            setBroadcastOpen(false);
+            setBroadcastPatients([]);
+            setBroadcastTemplate(null);
+            setSelectedIds(new Set());
+            setSelectedTemplateId(null);
+            setStep('patients');
+          }}
+          patients={broadcastPatients}
+          template={broadcastTemplate}
+          clinic={clinic}
         />
       )}
     </div>
