@@ -1092,326 +1092,6 @@ export default function ClinicDetail() {
           </div>
         </TabsContent>
 
-        {evolutionsSubTab === 'batch' && <div className="space-y-4">
-          <div className="bg-card rounded-2xl p-6 border border-border">
-            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              Evolução Rápida em Lote
-            </h2>
-            <p className="text-muted-foreground text-sm mb-6">
-              Aplique a mesma evolução para múltiplos pacientes do dia de uma só vez.
-            </p>
-
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <Label className="text-base font-medium">Selecione os pacientes:</Label>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:flex-initial">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar paciente..."
-                      value={batchSearch}
-                      onChange={(e) => setBatchSearch(e.target.value)}
-                      className="pl-9 h-9 w-full sm:w-[220px]"
-                    />
-                  </div>
-                  <Button variant="outline" size="sm" onClick={selectAllPatients}>
-                    Selecionar todos
-                  </Button>
-                </div>
-              </div>
-
-              {clinicPatients.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhum paciente cadastrado nesta clínica
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {clinicPatients.filter(p => !batchSearch || p.name.toLowerCase().includes(batchSearch.toLowerCase())).map((patient) => {
-                    const hasEvolution = !!getPatientBatchDateEvolution(patient.id);
-                    const isSelected = selectedPatients.includes(patient.id);
-                    const status = batchAttendanceStatus[patient.id] || 'presente';
-                    return (
-                      <div
-                        key={patient.id}
-                        className={cn(
-                          "flex flex-col gap-2 p-3 rounded-xl border transition-colors",
-                          hasEvolution 
-                            ? "bg-muted/50 border-muted opacity-60"
-                            : isSelected
-                              ? "bg-primary/10 border-primary"
-                              : "bg-secondary/50 border-border hover:border-primary/50"
-                        )}
-                      >
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => !hasEvolution && togglePatientSelection(patient.id)}
-                            disabled={hasEvolution}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">{patient.name}</p>
-                            <p className="text-xs text-muted-foreground">{patient.scheduleTime || '--:--'} • {patient.clinicalArea || 'Sem área'}</p>
-                          </div>
-                          {hasEvolution && (
-                            <span className="text-xs bg-success/20 text-success px-2 py-1 rounded-full">
-                              Feito
-                            </span>
-                          )}
-                        </label>
-                        {isSelected && !hasEvolution && (
-                          <div className="flex items-center gap-2 pl-7 flex-wrap">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={status === 'presente' ? 'default' : 'outline'}
-                              className={cn("h-7 text-xs gap-1", status === 'presente' && "bg-success hover:bg-success/90 text-success-foreground")}
-                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'presente' }))}
-                            >
-                              <Check className="w-3 h-3" /> Presente
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={status === 'falta' ? 'default' : 'outline'}
-                              className={cn("h-7 text-xs gap-1", status === 'falta' && "bg-destructive hover:bg-destructive/90 text-destructive-foreground")}
-                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'falta' }))}
-                            >
-                              <X className="w-3 h-3" /> Falta
-                            </Button>
-                            {clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false) && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={status === 'falta_remunerada' ? 'default' : 'outline'}
-                                className={cn("h-7 text-xs gap-1", status === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground")}
-                                onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'falta_remunerada' }))}
-                              >
-                                <DollarSign className="w-3 h-3" /> Falta Rem.
-                              </Button>
-                            )}
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={status === 'reposicao' ? 'default' : 'outline'}
-                              className={cn("h-7 text-xs gap-1", status === 'reposicao' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
-                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'reposicao' }))}
-                            >
-                              🔄 Repos.
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={status === 'feriado_remunerado' ? 'default' : 'outline'}
-                              className={cn("h-7 text-xs gap-1", status === 'feriado_remunerado' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
-                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'feriado_remunerado' }))}
-                            >
-                              🎉 Fer. Rem.
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={status === 'feriado_nao_remunerado' ? 'default' : 'outline'}
-                              className={cn("h-7 text-xs gap-1", status === 'feriado_nao_remunerado' && "bg-muted hover:bg-muted/80 text-muted-foreground")}
-                              onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [patient.id]: 'feriado_nao_remunerado' }))}
-                            >
-                              📅 Feriado
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="pt-4 border-t border-border space-y-4">
-                {/* Date Picker */}
-                <div>
-                  <Label className="flex items-center gap-2 mb-2">
-                    <CalendarIcon className="w-4 h-4" /> Data da Evolução
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full sm:w-[280px] justify-start text-left font-normal", !batchDate && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(batchDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={batchDate}
-                        onSelect={(d) => d && setBatchDate(d)}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Stamp Selection */}
-                <div>
-                  <Label className="flex items-center gap-2 mb-2">
-                    <StampIcon className="w-4 h-4" /> Carimbo
-                  </Label>
-                  <div className="flex items-center gap-4 mb-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="stampMode" checked={batchStampMode === 'same'} onChange={() => setBatchStampMode('same')} className="accent-primary" />
-                      <span className="text-sm">Mesmo para todos</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="stampMode" checked={batchStampMode === 'individual'} onChange={() => setBatchStampMode('individual')} className="accent-primary" />
-                      <span className="text-sm">Individual por paciente</span>
-                    </label>
-                  </div>
-
-                  {batchStampMode === 'same' ? (
-                    <Select value={batchGlobalStampId} onValueChange={setBatchGlobalStampId}>
-                      <SelectTrigger className="w-full sm:w-[280px]">
-                        <SelectValue placeholder="Selecione um carimbo (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sem carimbo</SelectItem>
-                        {stamps.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    selectedPatients.length > 0 ? (
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {selectedPatients.map(pid => {
-                          const patient = clinicPatients.find(p => p.id === pid);
-                          if (!patient) return null;
-                          return (
-                            <div key={pid} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50">
-                              <span className="text-sm font-medium min-w-[120px] truncate">{patient.name}</span>
-                              <Select value={batchIndividualStamps[pid] || 'none'} onValueChange={(v) => setBatchIndividualStamps(prev => ({ ...prev, [pid]: v }))}>
-                                <SelectTrigger className="flex-1">
-                                  <SelectValue placeholder="Carimbo" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Sem carimbo</SelectItem>
-                                  {stamps.map(s => (
-                                    <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Selecione pacientes primeiro para atribuir carimbos individuais.</p>
-                    )
-                  )}
-                </div>
-
-                {/* Template Selector */}
-                {clinicTemplates.length > 0 && (
-                  <div>
-                    <Label>Modelo de Evolução</Label>
-                    <Select value={batchSelectedTemplateId} onValueChange={v => { setBatchSelectedTemplateId(v); setBatchTemplateFormValues({}); }}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Sem modelo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sem modelo (texto livre)</SelectItem>
-                        {clinicTemplates.map(t => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Template Form */}
-                {batchSelectedTemplateId !== 'none' && (() => {
-                  const tpl = clinicTemplates.find(t => t.id === batchSelectedTemplateId);
-                  return tpl ? (
-                    <TemplateForm
-                      template={tpl}
-                      values={batchTemplateFormValues}
-                      onChange={setBatchTemplateFormValues}
-                      showAiImprove
-                      isImprovingText={isImprovingBatchText}
-                      onImproveText={async (textToImprove) => {
-                        setIsImprovingBatchText(true);
-                        try {
-                          const { data, error } = await supabase.functions.invoke('improve-evolution', {
-                            body: { text: textToImprove },
-                          });
-                          if (error) throw error;
-                          return data?.improved || textToImprove;
-                        } catch (e) {
-                          toast.error('Erro ao melhorar texto');
-                          return textToImprove;
-                        } finally {
-                          setIsImprovingBatchText(false);
-                        }
-                      }}
-                    />
-                  ) : null;
-                })()}
-
-                {/* Evolution Text (only when no template) */}
-                {batchSelectedTemplateId === 'none' && (
-                  <div>
-                    <Label className="mb-2 block">Texto da Evolução</Label>
-                    <Textarea
-                      value={batchEvolutionText}
-                      onChange={(e) => setBatchEvolutionText(e.target.value)}
-                      placeholder="Digite a evolução que será aplicada a todos os pacientes selecionados..."
-                      className="min-h-[120px]"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 gap-2"
-                      disabled={!batchEvolutionText.trim() || isImprovingBatchText}
-                      onClick={async () => {
-                        setIsImprovingBatchText(true);
-                        try {
-                          const { data, error } = await supabase.functions.invoke('improve-evolution', {
-                            body: { text: batchEvolutionText },
-                          });
-                          if (error) throw error;
-                          if (data?.improved) {
-                            setBatchEvolutionText(data.improved);
-                            toast.success('Texto melhorado com IA!');
-                          }
-                        } catch (e) {
-                          toast.error('Erro ao melhorar texto');
-                        } finally {
-                          setIsImprovingBatchText(false);
-                        }
-                      }}
-                    >
-                      {isImprovingBatchText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                      Melhorar com IA
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-sm text-muted-foreground">
-                  {selectedPatients.length} paciente(s) selecionado(s)
-                </p>
-                <Button 
-                  className="gradient-primary gap-2"
-                  onClick={handleBatchEvolution}
-                  disabled={isArchived || selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim())}
-                >
-                  <FileText className="w-4 h-4" />
-                  Aplicar Evolução
-                </Button>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
 
         {/* Patients Tab */}
         <TabsContent value="patients">
@@ -1967,7 +1647,7 @@ export default function ClinicDetail() {
               </div>
             )}
           </div>
-        </div>}
+        </TabsContent>
 
         {/* Financial Tab */}
         <TabsContent value="financial">
@@ -1984,10 +1664,6 @@ export default function ClinicDetail() {
           <ClinicNotes clinicId={clinic.id} />
         </TabsContent>
 
-        {/* Templates (nested) */}
-        <TabsContent value="evolutions-templates">
-          <EvolutionTemplates clinicId={clinic.id} />
-        </TabsContent>
 
         {/* WhatsApp Tab */}
         <TabsContent value="whatsapp">
@@ -2022,6 +1698,251 @@ export default function ClinicDetail() {
             ))}
           </div>
           {evolutionsSubTab === 'evolutions' && <ClinicEvolutionsTab clinicId={clinic.id} clinic={clinic} />}
+          {evolutionsSubTab === 'batch' && (
+            <div className="space-y-4">
+              <div className="bg-card rounded-2xl p-6 border border-border">
+                <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Evolução Rápida em Lote
+                </h2>
+                <p className="text-muted-foreground text-sm mb-6">
+                  Aplique a mesma evolução para múltiplos pacientes do dia de uma só vez.
+                </p>
+
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <Label className="text-base font-medium">Selecione os pacientes:</Label>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <div className="relative flex-1 sm:flex-initial">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar paciente..."
+                          value={batchSearch}
+                          onChange={(e) => setBatchSearch(e.target.value)}
+                          className="pl-9 h-9 w-full sm:w-[220px]"
+                        />
+                      </div>
+                      <Button variant="outline" size="sm" onClick={selectAllPatients}>
+                        Selecionar todos
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Batch date picker */}
+                  <div className="flex items-center gap-3">
+                    <Label className="text-sm font-medium shrink-0">Data:</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <CalendarIcon className="w-4 h-4" />
+                          {format(batchDate, "dd/MM/yyyy")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={batchDate}
+                          onSelect={(d) => d && setBatchDate(d)}
+                          locale={ptBR}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* Patient list */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[320px] overflow-y-auto pr-1">
+                    {clinicPatients
+                      .filter(p => p.name.toLowerCase().includes(batchSearch.toLowerCase()))
+                      .map((patient) => {
+                        const existingEvo = getPatientBatchDateEvolution(patient.id);
+                        const isSelected = selectedPatients.includes(patient.id);
+                        return (
+                          <div
+                            key={patient.id}
+                            onClick={() => !existingEvo && !isArchived && togglePatientSelection(patient.id)}
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                              existingEvo
+                                ? "opacity-50 cursor-not-allowed bg-muted border-border"
+                                : isSelected
+                                  ? "bg-primary/10 border-primary/40"
+                                  : "bg-card border-border hover:bg-accent"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0",
+                              isSelected ? "bg-primary border-primary" : "border-muted-foreground"
+                            )}>
+                              {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{patient.name}</p>
+                              {existingEvo && (
+                                <p className="text-xs text-muted-foreground">Já registrado</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                    })}
+                  </div>
+
+                  {/* Stamp mode */}
+                  {stamps.length > 1 && (
+                    <div className="flex items-center gap-3 pt-2">
+                      <Label className="text-sm font-medium shrink-0">Carimbo:</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          variant={batchStampMode === 'same' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setBatchStampMode('same')}
+                        >
+                          Mesmo para todos
+                        </Button>
+                        <Button
+                          variant={batchStampMode === 'individual' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setBatchStampMode('individual')}
+                        >
+                          Individual
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {batchStampMode === 'same' && stamps.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Carimbo global:</Label>
+                      <Select value={batchGlobalStampId} onValueChange={setBatchGlobalStampId}>
+                        <SelectTrigger className="w-full sm:w-[280px]">
+                          <SelectValue placeholder="Selecionar carimbo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sem carimbo</SelectItem>
+                          {stamps.map(s => (
+                            <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Template selector */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Modelo de evolução (opcional):</Label>
+                    <Select value={batchSelectedTemplateId} onValueChange={(v) => { setBatchSelectedTemplateId(v); setBatchTemplateFormValues({}); }}>
+                      <SelectTrigger className="w-full sm:w-[280px]">
+                        <SelectValue placeholder="Selecionar modelo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem modelo (texto livre)</SelectItem>
+                        {clinicTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {batchSelectedTemplateId !== 'none' && (() => {
+                    const tmpl = clinicTemplates.find(t => t.id === batchSelectedTemplateId);
+                    if (!tmpl) return null;
+                    const fields = tmpl.fields as any[];
+                    return (
+                      <div className="space-y-3 p-4 rounded-xl bg-secondary/50 border border-border">
+                        {fields.map((field: any) => (
+                          <div key={field.id}>
+                            <Label className="text-sm mb-1 block">{field.label}{field.required && ' *'}</Label>
+                            {field.type === 'select' ? (
+                              <Select
+                                value={batchTemplateFormValues[field.id] || ''}
+                                onValueChange={(v) => setBatchTemplateFormValues(prev => ({ ...prev, [field.id]: v }))}
+                              >
+                                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                                <SelectContent>
+                                  {(field.options || []).map((opt: string) => (
+                                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : field.type === 'textarea' ? (
+                              <Textarea
+                                value={batchTemplateFormValues[field.id] || ''}
+                                onChange={(e) => setBatchTemplateFormValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                placeholder={field.placeholder || ''}
+                                rows={3}
+                              />
+                            ) : (
+                              <Input
+                                value={batchTemplateFormValues[field.id] || ''}
+                                onChange={(e) => setBatchTemplateFormValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                placeholder={field.placeholder || ''}
+                                type={field.type === 'number' ? 'number' : 'text'}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {batchSelectedTemplateId === 'none' && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-medium">Texto da evolução:</Label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 h-7 text-xs"
+                          disabled={!batchEvolutionText.trim() || isImprovingBatchText}
+                          onClick={async () => {
+                            if (!batchEvolutionText.trim()) return;
+                            setIsImprovingBatchText(true);
+                            try {
+                              const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                                body: { text: batchEvolutionText },
+                              });
+                              if (error) throw error;
+                              if (data?.improved) {
+                                setBatchEvolutionText(data.improved);
+                                toast.success('Texto melhorado com IA!');
+                              }
+                            } catch (e) {
+                              toast.error('Erro ao melhorar texto');
+                            } finally {
+                              setIsImprovingBatchText(false);
+                            }
+                          }}
+                        >
+                          {isImprovingBatchText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                          Melhorar com IA
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={batchEvolutionText}
+                        onChange={(e) => setBatchEvolutionText(e.target.value)}
+                        placeholder="Descreva a evolução para todos os pacientes selecionados..."
+                        rows={4}
+                        disabled={isArchived}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-4">
+                    <p className="text-sm text-muted-foreground">
+                      {selectedPatients.length} paciente(s) selecionado(s)
+                    </p>
+                    <Button
+                      className="gradient-primary gap-2"
+                      onClick={handleBatchEvolution}
+                      disabled={isArchived || selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim())}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Aplicar Evolução
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {evolutionsSubTab === 'templates' && <EvolutionTemplates clinicId={clinic.id} />}
         </TabsContent>
 
