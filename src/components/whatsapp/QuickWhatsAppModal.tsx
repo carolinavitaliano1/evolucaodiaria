@@ -188,7 +188,7 @@ export function QuickWhatsAppModal({
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={onClose}
+              onClick={() => setTimeout(onClose, 300)}
               className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: '#25D366' }}
             >
