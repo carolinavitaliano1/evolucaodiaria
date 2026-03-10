@@ -204,8 +204,10 @@ export default function PatientDetail() {
   // Payment record state (for Financial tab)
   const [paymentRecord, setPaymentRecord] = useState<{ id?: string; paid: boolean; payment_date: string | null; amount: number } | null>(null);
   const [savingPaymentRecord, setSavingPaymentRecord] = useState(false);
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
+  const [financialMonth, setFinancialMonth] = useState(new Date());
+  const [financialStampId, setFinancialStampId] = useState<string>('');
+  const currentMonth = financialMonth.getMonth() + 1;
+  const currentYear = financialMonth.getFullYear();
 
   // Fiscal receipt state
   const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
@@ -404,6 +406,7 @@ export default function PatientDetail() {
       };
     });
 
+
   // Monthly report data
   const monthlyEvolutions = useMemo(() => {
     const start = startOfMonth(reportMonth);
@@ -426,6 +429,26 @@ export default function PatientDetail() {
   const monthlyMoodCounts = allMoodOptions.map(m => ({
     ...m, count: monthlyEvolutions.filter(e => e.mood === m.value).length,
   }));
+
+  // Financial tab data (uses financialMonth, independent from reportMonth)
+  const financialEvolutions = useMemo(() => {
+    const start = startOfMonth(financialMonth);
+    const end = endOfMonth(financialMonth);
+    return patientEvolutions.filter(e => {
+      const d = new Date(e.date + 'T12:00:00');
+      return d >= start && d <= end;
+    }).sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime());
+  }, [patientEvolutions, financialMonth]);
+
+  const finPresent = financialEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+  const finReposicao = financialEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+  const finAbsent = financialEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+  const finPaidAbsent = financialEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+  const finFeriadoRem = financialEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
+  const finTotal = financialEvolutions.length;
+  const finRevenue = (finPresent + finReposicao + finPaidAbsent + finFeriadoRem) * ((patient?.paymentValue) || 0);
+  const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
+
 
   if (!patient) {
     return (
@@ -1032,13 +1055,13 @@ export default function PatientDetail() {
   };
   // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
   const handleExportFinancialPDF = async () => {
-    if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
+    if (financialEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
     setIsExportingFinancial(true);
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const base = buildPdfBase(doc);
       const { W, margin, contentW, darkText, mutedText, borderColor, accentDark } = base;
-      const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
+      const monthLabel = format(financialMonth, 'MMMM yyyy', { locale: ptBR });
       const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
       let y = margin;
 
@@ -1072,14 +1095,14 @@ export default function PatientDetail() {
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
       doc.text('1. RESUMO FINANCEIRO', margin, y); y += 6;
 
-      const paidSessions = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
+      const paidSessions = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
       const finRows: [string, string][] = [
-        ['Sessões realizadas (presença + reposição):', String(monthlyPresent + monthlyReposicao)],
-        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
-        ['Feriados remunerados:', String(monthlyFeriadoRem)],
+        ['Sessões realizadas (presença + reposição):', String(finPresent + finReposicao)],
+        ['Faltas remuneradas:', String(finPaidAbsent)],
+        ['Feriados remunerados:', String(finFeriadoRem)],
         ['Total de sessões cobradas:', String(paidSessions)],
         ['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
-        ['TOTAL FATURADO NO MÊS:', `R$ ${monthlyRevenue.toFixed(2)}`],
+        ['TOTAL FATURADO NO MÊS:', `R$ ${finRevenue.toFixed(2)}`],
       ];
       finRows.forEach(([label, value], i) => {
         const isBold = i === finRows.length - 1;
@@ -1097,14 +1120,14 @@ export default function PatientDetail() {
       doc.text('2. DETALHAMENTO DE FREQUÊNCIA', margin, y); y += 6;
 
       const freqRows: [string, string][] = [
-        ['Total de sessões registradas:', String(monthlyTotal)],
-        ['Presenças:', String(monthlyPresent)],
-        ['Reposições:', String(monthlyReposicao)],
-        ['Faltas:', String(monthlyAbsent)],
-        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
-        ['Feriados remunerados:', String(monthlyFeriadoRem)],
-        ['Feriados não remunerados:', String(monthlyFeriadoNaoRem)],
-        ['Taxa de frequência (presença/total):', `${monthlyAttendanceRate}%`],
+        ['Total de sessões registradas:', String(finTotal)],
+        ['Presenças:', String(finPresent)],
+        ['Reposições:', String(finReposicao)],
+        ['Faltas:', String(finAbsent)],
+        ['Faltas remuneradas:', String(finPaidAbsent)],
+        ['Feriados remunerados:', String(finFeriadoRem)],
+        ['Feriados não remunerados:', String(financialEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length)],
+        ['Taxa de frequência (presença/total):', `${finAttendanceRate}%`],
       ];
       freqRows.forEach(([label, value]) => {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkText);
@@ -1123,9 +1146,9 @@ export default function PatientDetail() {
       };
       const paidStatuses = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'];
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y); y += 6;
+      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${financialEvolutions.length})`, margin, y); y += 6;
 
-      for (const evo of monthlyEvolutions) {
+      for (const evo of financialEvolutions) {
         if (y > 260) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
@@ -1143,8 +1166,8 @@ export default function PatientDetail() {
       }
 
       // ── ASSINATURA ───────────────────────────────────────────────
-      const chosenStamp = selectedStampId && selectedStampId !== 'none'
-        ? stamps.find(s => s.id === selectedStampId)
+      const chosenStamp = financialStampId && financialStampId !== 'none'
+        ? stamps.find(s => s.id === financialStampId)
         : stamps.find(s => s.is_default);
       y = await addSignatureBlock(doc, y, base, chosenStamp ?? null, true);
 
@@ -1158,7 +1181,7 @@ export default function PatientDetail() {
           W / 2, 291, { align: 'center' }
         );
       }
-      doc.save(`relatorio-financeiro-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(reportMonth, 'yyyy-MM')}.pdf`);
+      doc.save(`relatorio-financeiro-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(financialMonth, 'yyyy-MM')}.pdf`);
       toast.success('Relatório financeiro gerado!');
     } catch (err) { console.error(err); toast.error('Erro ao gerar PDF financeiro'); }
     finally { setIsExportingFinancial(false); }
@@ -2198,10 +2221,30 @@ export default function PatientDetail() {
 
         {/* Financial Tab */}
         <TabsContent value="financial" className="space-y-4">
+          {/* Month navigator */}
+          <div className="bg-card rounded-xl px-4 py-3 shadow-sm border border-border flex items-center justify-between">
+            <button
+              onClick={() => setFinancialMonth(m => subMonths(m, 1))}
+              className="p-1.5 rounded-lg hover:bg-secondary/60 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <span className="text-sm font-semibold text-foreground capitalize">
+              {format(financialMonth, 'MMMM yyyy', { locale: ptBR })}
+            </span>
+            <button
+              onClick={() => setFinancialMonth(m => addMonths(m, 1))}
+              className="p-1.5 rounded-lg hover:bg-secondary/60 transition-colors disabled:opacity-40"
+              disabled={financialMonth.getFullYear() > new Date().getFullYear() || (financialMonth.getFullYear() === new Date().getFullYear() && financialMonth.getMonth() >= new Date().getMonth())}
+            >
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
           {/* Monthly payment status */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
-              <DollarSign className="w-4 h-4 text-success" /> Pagamento — {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              <DollarSign className="w-4 h-4 text-success" /> Pagamento — <span className="capitalize">{format(financialMonth, 'MMMM yyyy', { locale: ptBR })}</span>
             </h2>
 
             <div className="flex items-center justify-between rounded-xl bg-secondary/40 border border-border/60 px-4 py-3 mb-4">
@@ -2248,12 +2291,38 @@ export default function PatientDetail() {
 
           {/* Document generators */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
-            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
-              <Receipt className="w-4 h-4 text-primary" /> Documentos Financeiros
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+                <Receipt className="w-4 h-4 text-primary" /> Documentos Financeiros
+              </h2>
+            </div>
+            {/* Stamp selector for documents */}
+            {stamps.length > 0 && (
+              <div className="mb-4">
+                <Label className="text-xs mb-1.5 block text-muted-foreground flex items-center gap-1.5">
+                  <StampIcon className="w-3.5 h-3.5" /> Carimbo nos documentos
+                </Label>
+                <Select value={financialStampId} onValueChange={setFinancialStampId}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Sem carimbo (linha em branco)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem carimbo (linha em branco)</SelectItem>
+                    {stamps.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
-                onClick={() => setPaymentReceiptOpen(true)}
+                onClick={() => {
+                  if (financialStampId && financialStampId !== 'none') setPrStampId(financialStampId);
+                  setPaymentReceiptOpen(true);
+                }}
                 className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
               >
                 <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
@@ -2266,7 +2335,10 @@ export default function PatientDetail() {
               </button>
 
               <button
-                onClick={() => setFiscalDialogOpen(true)}
+                onClick={() => {
+                  if (financialStampId && financialStampId !== 'none') setFiscalStampId(financialStampId);
+                  setFiscalDialogOpen(true);
+                }}
                 className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -2300,28 +2372,33 @@ export default function PatientDetail() {
           {/* Monthly summary */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-accent" /> Resumo do Mês Atual
+              <Calendar className="w-4 h-4 text-accent" /> Resumo — <span className="capitalize">{format(financialMonth, 'MMMM yyyy', { locale: ptBR })}</span>
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-lg bg-secondary/40 p-3 text-center">
-                <p className="text-xl font-bold text-foreground">{monthlyPresent + monthlyReposicao}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Sessões</p>
+            {finTotal === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma evolução neste mês.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{finPresent + finReposicao}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sessões</p>
+                </div>
+                <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                  <p className="text-xl font-bold text-destructive">{finAbsent}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Faltas</p>
+                </div>
+                <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                  <p className="text-xl font-bold text-success">{finAttendanceRate}%</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Frequência</p>
+                </div>
+                <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                  <p className="text-xl font-bold text-success">R$ {finRevenue.toFixed(0)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Receita</p>
+                </div>
               </div>
-              <div className="rounded-lg bg-secondary/40 p-3 text-center">
-                <p className="text-xl font-bold text-destructive">{monthlyAbsent}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Faltas</p>
-              </div>
-              <div className="rounded-lg bg-secondary/40 p-3 text-center">
-                <p className="text-xl font-bold text-success">{monthlyAttendanceRate}%</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Frequência</p>
-              </div>
-              <div className="rounded-lg bg-secondary/40 p-3 text-center">
-                <p className="text-xl font-bold text-success">R$ {monthlyRevenue.toFixed(0)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Receita</p>
-              </div>
-            </div>
+            )}
           </div>
         </TabsContent>
+
 
       </Tabs>
 
