@@ -68,9 +68,11 @@ export function QuickWhatsAppModal({
 
   function handleSend() {
     if (!waUrl) return;
-    // Call window.open synchronously inside the click handler so the browser
-    // recognises it as a user-initiated navigation (no popup blocker).
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    // Try to open in a new tab (synchronous user gesture — not blocked in production).
+    // In sandboxed iframes (e.g. Lovable preview) window.open returns null;
+    // fall back to navigating the current window so the link always works.
+    const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
+    if (!win) window.location.href = waUrl;
     onClose();
   }
 
