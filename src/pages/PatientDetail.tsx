@@ -1120,14 +1120,14 @@ export default function PatientDetail() {
       doc.text('2. DETALHAMENTO DE FREQUÊNCIA', margin, y); y += 6;
 
       const freqRows: [string, string][] = [
-        ['Total de sessões registradas:', String(monthlyTotal)],
-        ['Presenças:', String(monthlyPresent)],
-        ['Reposições:', String(monthlyReposicao)],
-        ['Faltas:', String(monthlyAbsent)],
-        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
-        ['Feriados remunerados:', String(monthlyFeriadoRem)],
-        ['Feriados não remunerados:', String(monthlyFeriadoNaoRem)],
-        ['Taxa de frequência (presença/total):', `${monthlyAttendanceRate}%`],
+        ['Total de sessões registradas:', String(finTotal)],
+        ['Presenças:', String(finPresent)],
+        ['Reposições:', String(finReposicao)],
+        ['Faltas:', String(finAbsent)],
+        ['Faltas remuneradas:', String(finPaidAbsent)],
+        ['Feriados remunerados:', String(finFeriadoRem)],
+        ['Feriados não remunerados:', String(financialEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length)],
+        ['Taxa de frequência (presença/total):', `${finAttendanceRate}%`],
       ];
       freqRows.forEach(([label, value]) => {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkText);
