@@ -2221,10 +2221,30 @@ export default function PatientDetail() {
 
         {/* Financial Tab */}
         <TabsContent value="financial" className="space-y-4">
+          {/* Month navigator */}
+          <div className="bg-card rounded-xl px-4 py-3 shadow-sm border border-border flex items-center justify-between">
+            <button
+              onClick={() => setFinancialMonth(m => subMonths(m, 1))}
+              className="p-1.5 rounded-lg hover:bg-secondary/60 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <span className="text-sm font-semibold text-foreground capitalize">
+              {format(financialMonth, 'MMMM yyyy', { locale: ptBR })}
+            </span>
+            <button
+              onClick={() => setFinancialMonth(m => addMonths(m, 1))}
+              className="p-1.5 rounded-lg hover:bg-secondary/60 transition-colors disabled:opacity-40"
+              disabled={financialMonth.getFullYear() > new Date().getFullYear() || (financialMonth.getFullYear() === new Date().getFullYear() && financialMonth.getMonth() >= new Date().getMonth())}
+            >
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
           {/* Monthly payment status */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
-              <DollarSign className="w-4 h-4 text-success" /> Pagamento — {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              <DollarSign className="w-4 h-4 text-success" /> Pagamento — <span className="capitalize">{format(financialMonth, 'MMMM yyyy', { locale: ptBR })}</span>
             </h2>
 
             <div className="flex items-center justify-between rounded-xl bg-secondary/40 border border-border/60 px-4 py-3 mb-4">
@@ -2271,9 +2291,32 @@ export default function PatientDetail() {
 
           {/* Document generators */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
-            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
-              <Receipt className="w-4 h-4 text-primary" /> Documentos Financeiros
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+                <Receipt className="w-4 h-4 text-primary" /> Documentos Financeiros
+              </h2>
+            </div>
+            {/* Stamp selector for documents */}
+            {stamps.length > 0 && (
+              <div className="mb-4">
+                <Label className="text-xs mb-1.5 block text-muted-foreground flex items-center gap-1.5">
+                  <StampIcon className="w-3.5 h-3.5" /> Carimbo nos documentos
+                </Label>
+                <Select value={financialStampId} onValueChange={setFinancialStampId}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Sem carimbo (linha em branco)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem carimbo (linha em branco)</SelectItem>
+                    {stamps.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 onClick={() => setPaymentReceiptOpen(true)}
@@ -2323,28 +2366,33 @@ export default function PatientDetail() {
           {/* Monthly summary */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-accent" /> Resumo do Mês Atual
+              <Calendar className="w-4 h-4 text-accent" /> Resumo — <span className="capitalize">{format(financialMonth, 'MMMM yyyy', { locale: ptBR })}</span>
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-lg bg-secondary/40 p-3 text-center">
-                <p className="text-xl font-bold text-foreground">{monthlyPresent + monthlyReposicao}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Sessões</p>
+            {finTotal === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma evolução neste mês.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{finPresent + finReposicao}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sessões</p>
+                </div>
+                <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                  <p className="text-xl font-bold text-destructive">{finAbsent}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Faltas</p>
+                </div>
+                <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                  <p className="text-xl font-bold text-success">{finAttendanceRate}%</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Frequência</p>
+                </div>
+                <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                  <p className="text-xl font-bold text-success">R$ {finRevenue.toFixed(0)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Receita</p>
+                </div>
               </div>
-              <div className="rounded-lg bg-secondary/40 p-3 text-center">
-                <p className="text-xl font-bold text-destructive">{monthlyAbsent}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Faltas</p>
-              </div>
-              <div className="rounded-lg bg-secondary/40 p-3 text-center">
-                <p className="text-xl font-bold text-success">{monthlyAttendanceRate}%</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Frequência</p>
-              </div>
-              <div className="rounded-lg bg-secondary/40 p-3 text-center">
-                <p className="text-xl font-bold text-success">R$ {monthlyRevenue.toFixed(0)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Receita</p>
-              </div>
-            </div>
+            )}
           </div>
         </TabsContent>
+
 
       </Tabs>
 
