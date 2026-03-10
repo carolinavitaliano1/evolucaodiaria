@@ -201,6 +201,12 @@ export default function PatientDetail() {
   const [isExportingMonthly, setIsExportingMonthly] = useState(false);
   const [isExportingFinancial, setIsExportingFinancial] = useState(false);
 
+  // Payment record state (for Financial tab)
+  const [paymentRecord, setPaymentRecord] = useState<{ id?: string; paid: boolean; payment_date: string | null; amount: number } | null>(null);
+  const [savingPaymentRecord, setSavingPaymentRecord] = useState(false);
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
   // Fiscal receipt state
   const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
   const [fiscalStartDate, setFiscalStartDate] = useState<Date>();
