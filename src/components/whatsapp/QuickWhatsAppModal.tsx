@@ -68,11 +68,6 @@ export function QuickWhatsAppModal({
 
   function handleSend() {
     if (!waUrl) return;
-    // Try to open in a new tab (synchronous user gesture — not blocked in production).
-    // In sandboxed iframes (e.g. Lovable preview) window.open returns null;
-    // fall back to navigating the current window so the link always works.
-    const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
-    if (!win) window.location.href = waUrl;
     onClose();
   }
 
@@ -194,19 +189,27 @@ export function QuickWhatsAppModal({
         {/* Footer */}
         <div className="px-5 py-3 border-t border-border shrink-0 flex gap-2 justify-end">
           <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
-          <button
-            type="button"
-            disabled={!waUrl}
-            onClick={handleSend}
-            className={cn(
-              'inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white transition-opacity',
-              waUrl ? 'hover:opacity-90 cursor-pointer' : 'opacity-40 cursor-not-allowed'
-            )}
-            style={{ backgroundColor: '#25D366' }}
-          >
-            <Send className="w-3.5 h-3.5" />
-            Abrir no WhatsApp
-          </button>
+          {waUrl ? (
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#25D366' }}
+            >
+              <Send className="w-3.5 h-3.5" />
+              Abrir no WhatsApp
+            </a>
+          ) : (
+            <span
+              className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white opacity-40 cursor-not-allowed"
+              style={{ backgroundColor: '#25D366' }}
+            >
+              <Send className="w-3.5 h-3.5" />
+              Abrir no WhatsApp
+            </span>
+          )}
         </div>
       </DialogContent>
     </Dialog>
