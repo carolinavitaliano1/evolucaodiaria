@@ -1095,14 +1095,14 @@ export default function PatientDetail() {
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
       doc.text('1. RESUMO FINANCEIRO', margin, y); y += 6;
 
-      const paidSessions = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
+      const paidSessions = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
       const finRows: [string, string][] = [
-        ['Sessões realizadas (presença + reposição):', String(monthlyPresent + monthlyReposicao)],
-        ['Faltas remuneradas:', String(monthlyPaidAbsent)],
-        ['Feriados remunerados:', String(monthlyFeriadoRem)],
+        ['Sessões realizadas (presença + reposição):', String(finPresent + finReposicao)],
+        ['Faltas remuneradas:', String(finPaidAbsent)],
+        ['Feriados remunerados:', String(finFeriadoRem)],
         ['Total de sessões cobradas:', String(paidSessions)],
         ['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
-        ['TOTAL FATURADO NO MÊS:', `R$ ${monthlyRevenue.toFixed(2)}`],
+        ['TOTAL FATURADO NO MÊS:', `R$ ${finRevenue.toFixed(2)}`],
       ];
       finRows.forEach(([label, value], i) => {
         const isBold = i === finRows.length - 1;
