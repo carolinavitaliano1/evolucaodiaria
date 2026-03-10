@@ -216,7 +216,7 @@ export default function PatientDetail() {
   const [fiscalStampId, setFiscalStampId] = useState<string>('');
   const [isExportingFiscalPdf, setIsExportingFiscalPdf] = useState(false);
   const [isExportingFiscalWord, setIsExportingFiscalWord] = useState(false);
-  const [fiscalPaymentStatus, setFiscalPaymentStatus] = useState<'paid' | 'pending' | 'partial'>('pending');
+  const [fiscalPaymentStatus, setFiscalPaymentStatus] = useState<'paid' | 'pending' | 'total'>('pending');
   const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
   const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
   const [fiscalTotalPaidFromApp, setFiscalTotalPaidFromApp] = useState<number | null>(null);
@@ -858,7 +858,7 @@ export default function PatientDetail() {
         sessionCount = fiscalEvos.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
       }
       const displayTotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : sessionTotal;
-      const payStatusLabel = fiscalPaymentStatus === 'paid' ? 'PAGO' : fiscalPaymentStatus === 'partial' ? 'PARCIALMENTE PAGO' : 'PENDENTE';
+      const payStatusLabel = fiscalPaymentStatus === 'paid' ? 'PAGO' : fiscalPaymentStatus === 'total' ? 'TOTAL (PAGO + PENDENTE)' : 'PENDENTE';
       const patCpf = (patient as any).cpf;
       const respCpf = (patient as any).responsible_cpf || (patient as any).responsibleCpf;
 
@@ -2844,15 +2844,15 @@ export default function PatientDetail() {
               <div>
                 <Label className="text-xs mb-1.5 block">Status</Label>
                 <div className="flex gap-2">
-                  {(['pending', 'paid', 'partial'] as const).map(s => (
+                  {(['pending', 'paid', 'total'] as const).map(s => (
                     <button key={s} onClick={() => setFiscalPaymentStatus(s)}
                       className={cn('flex-1 text-xs py-1.5 rounded-lg border font-medium transition-colors',
                         fiscalPaymentStatus === s
                           ? s === 'paid' ? 'bg-success/10 border-success text-success'
-                            : s === 'partial' ? 'bg-warning/10 border-warning text-warning'
+                            : s === 'total' ? 'bg-primary/10 border-primary text-primary'
                             : 'bg-muted border-border text-foreground'
                           : 'border-border text-muted-foreground hover:border-foreground/30')}>
-                      {s === 'paid' ? '✓ Pago' : s === 'partial' ? '~ Parcial' : '⏳ Pendente'}
+                      {s === 'paid' ? '✓ Pago' : s === 'total' ? '∑ Total' : '⏳ Pendente'}
                     </button>
                   ))}
                 </div>
