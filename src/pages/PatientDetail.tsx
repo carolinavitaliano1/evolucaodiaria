@@ -1964,7 +1964,7 @@ export default function PatientDetail() {
                 </div>
 
                 {/* Export buttons */}
-                <div className="flex">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     onClick={handleExportMonthlyPDF}
                     disabled={isExportingMonthly || monthlyEvolutions.length === 0}
@@ -1973,7 +1973,16 @@ export default function PatientDetail() {
                     size="sm"
                   >
                     {isExportingMonthly ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
-                    <span className="truncate">Baixar Relatório de Atendimento</span>
+                    <span className="truncate">Atendimento</span>
+                  </Button>
+                  <Button
+                    onClick={handleExportFinancialPDF}
+                    disabled={isExportingFinancial || monthlyEvolutions.length === 0}
+                    className="gap-1.5 text-xs h-9 w-full"
+                    size="sm"
+                  >
+                    {isExportingFinancial ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
+                    <span className="truncate">Financeiro</span>
                   </Button>
                 </div>
 
