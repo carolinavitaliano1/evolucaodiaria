@@ -1964,7 +1964,7 @@ export default function PatientDetail() {
                 </div>
 
                 {/* Export buttons */}
-                <div className="flex">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     onClick={handleExportMonthlyPDF}
                     disabled={isExportingMonthly || monthlyEvolutions.length === 0}
@@ -1973,7 +1973,16 @@ export default function PatientDetail() {
                     size="sm"
                   >
                     {isExportingMonthly ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
-                    <span className="truncate">Baixar Relatório de Atendimento</span>
+                    <span className="truncate">Atendimento</span>
+                  </Button>
+                  <Button
+                    onClick={handleExportFinancialPDF}
+                    disabled={isExportingFinancial || monthlyEvolutions.length === 0}
+                    className="gap-1.5 text-xs h-9 w-full"
+                    size="sm"
+                  >
+                    {isExportingFinancial ? <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" /> : <Download className="w-3.5 h-3.5 flex-shrink-0" />}
+                    <span className="truncate">Financeiro</span>
                   </Button>
                 </div>
 
@@ -2325,6 +2334,21 @@ export default function PatientDetail() {
                 </div>
               </button>
 
+              <button
+                onClick={() => {
+                  if (financialStampId && financialStampId !== 'none') setFiscalStampId(financialStampId);
+                  setFiscalDialogOpen(true);
+                }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Receipt className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Extrato Fiscal</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sessões por período</p>
+                </div>
+              </button>
 
               <button
                 onClick={() => handleExportFinancialPDF()}
