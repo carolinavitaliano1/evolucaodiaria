@@ -216,7 +216,7 @@ export default function PatientDetail() {
   const [fiscalStampId, setFiscalStampId] = useState<string>('');
   const [isExportingFiscalPdf, setIsExportingFiscalPdf] = useState(false);
   const [isExportingFiscalWord, setIsExportingFiscalWord] = useState(false);
-  const [fiscalPaymentStatus, setFiscalPaymentStatus] = useState<'paid' | 'pending' | 'partial'>('pending');
+  const [fiscalPaymentStatus, setFiscalPaymentStatus] = useState<'paid' | 'pending' | 'total'>('pending');
   const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
   const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
   const [fiscalTotalPaidFromApp, setFiscalTotalPaidFromApp] = useState<number | null>(null);
