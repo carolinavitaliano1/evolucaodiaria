@@ -1146,9 +1146,9 @@ export default function PatientDetail() {
       };
       const paidStatuses = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'];
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${monthlyEvolutions.length})`, margin, y); y += 6;
+      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${financialEvolutions.length})`, margin, y); y += 6;
 
-      for (const evo of monthlyEvolutions) {
+      for (const evo of financialEvolutions) {
         if (y > 260) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
