@@ -1361,6 +1361,11 @@ export default function ClinicDetail() {
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">dia</span>
                           </div>
+                          {formData.paymentDueDay && (
+                            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              🔔 Aviso automático 3 dias antes no dashboard
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">Status inicial</Label>
