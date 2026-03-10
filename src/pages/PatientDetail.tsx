@@ -246,6 +246,52 @@ export default function PatientDetail() {
       .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
 
+  // Load payment record for current month (Financial tab)
+  useEffect(() => {
+    if (!patient?.id || !user) return;
+    supabase
+      .from('patient_payment_records')
+      .select('id, paid, payment_date, amount')
+      .eq('patient_id', patient.id)
+      .eq('user_id', user.id)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .maybeSingle()
+      .then(({ data }) => {
+        setPaymentRecord(data ? { id: data.id, paid: data.paid, payment_date: data.payment_date, amount: data.amount } : null);
+      });
+  }, [patient?.id, user, currentMonth, currentYear]);
+
+  const handleSavePaymentRecord = async (paid: boolean, paymentDate: string | null) => {
+    if (!user || !patient) return;
+    setSavingPaymentRecord(true);
+    try {
+      const amount = patient.paymentValue || 0;
+      if (paymentRecord?.id) {
+        await supabase.from('patient_payment_records').update({
+          paid,
+          payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+        }).eq('id', paymentRecord.id);
+        setPaymentRecord(prev => prev ? { ...prev, paid, payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null } : prev);
+      } else {
+        const { data } = await supabase.from('patient_payment_records').insert({
+          user_id: user.id,
+          patient_id: patient.id,
+          clinic_id: patient.clinicId,
+          month: currentMonth,
+          year: currentYear,
+          amount,
+          paid,
+          payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+        }).select('id, paid, payment_date, amount').maybeSingle();
+        if (data) setPaymentRecord({ id: data.id, paid: data.paid, payment_date: data.payment_date, amount: data.amount });
+      }
+    } finally {
+      setSavingPaymentRecord(false);
+    }
+  };
+
+
   // Auto-fetch payment record when fiscal period is selected
   useEffect(() => {
     if (!fiscalStartDate || !patient?.id || !user) return;
