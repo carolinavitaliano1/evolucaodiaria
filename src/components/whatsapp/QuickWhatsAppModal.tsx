@@ -187,29 +187,37 @@ export function QuickWhatsAppModal({
         </div>
 
         {/* Footer */}
+        {!phone && (
+          <div className="px-5 pb-2 shrink-0">
+            <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+              ⚠️ Este paciente não tem número de telefone/WhatsApp cadastrado.
+            </p>
+          </div>
+        )}
         <div className="px-5 py-3 border-t border-border shrink-0 flex gap-2 justify-end">
           <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
-          {waUrl ? (
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={onClose}
-              className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#25D366' }}
-            >
-              <Send className="w-3.5 h-3.5" />
-              Abrir no WhatsApp
-            </a>
-          ) : (
-            <span
-              className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white opacity-40 cursor-not-allowed"
-              style={{ backgroundColor: '#25D366' }}
-            >
-              <Send className="w-3.5 h-3.5" />
-              Abrir no WhatsApp
-            </span>
-          )}
+          <button
+            type="button"
+            disabled={!waUrl}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!waUrl) return;
+              // Open in new tab using a temporary anchor — bypasses popup blockers
+              const a = document.createElement('a');
+              a.href = waUrl;
+              a.target = '_blank';
+              a.rel = 'noopener noreferrer';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              onClose();
+            }}
+            className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ backgroundColor: '#25D366' }}
+          >
+            <Send className="w-3.5 h-3.5" />
+            Abrir no WhatsApp
+          </button>
         </div>
       </DialogContent>
     </Dialog>
