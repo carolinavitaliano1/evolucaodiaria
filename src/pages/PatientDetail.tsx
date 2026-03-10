@@ -2319,7 +2319,10 @@ export default function PatientDetail() {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
-                onClick={() => setPaymentReceiptOpen(true)}
+                onClick={() => {
+                  if (financialStampId && financialStampId !== 'none') setPrStampId(financialStampId);
+                  setPaymentReceiptOpen(true);
+                }}
                 className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
               >
                 <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
@@ -2332,7 +2335,10 @@ export default function PatientDetail() {
               </button>
 
               <button
-                onClick={() => setFiscalDialogOpen(true)}
+                onClick={() => {
+                  if (financialStampId && financialStampId !== 'none') setFiscalStampId(financialStampId);
+                  setFiscalDialogOpen(true);
+                }}
                 className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
