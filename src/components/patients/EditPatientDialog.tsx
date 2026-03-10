@@ -556,19 +556,24 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                 </div>
               </div>
 
-              {isPropria && (
-                <div>
-                  <Label className="text-xs">Dia de Vencimento</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={31}
-                    placeholder="Ex: 10"
-                    value={formData.paymentDueDay}
-                    onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
-                  />
-                </div>
-              )}
+              <div>
+                <Label className="text-xs flex items-center gap-1">
+                  Dia de Vencimento
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  placeholder="Ex: 10"
+                  value={formData.paymentDueDay}
+                  onChange={(e) => setFormData({ ...formData, paymentDueDay: e.target.value })}
+                />
+                {formData.paymentDueDay && (
+                  <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                    🔔 O dashboard avisará 3 dias antes com botão de WhatsApp
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
