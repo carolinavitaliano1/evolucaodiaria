@@ -858,7 +858,7 @@ export default function PatientDetail() {
         sessionCount = fiscalEvos.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
       }
       const displayTotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : sessionTotal;
-      const payStatusLabel = fiscalPaymentStatus === 'paid' ? 'PAGO' : fiscalPaymentStatus === 'partial' ? 'PARCIALMENTE PAGO' : 'PENDENTE';
+      const payStatusLabel = fiscalPaymentStatus === 'paid' ? 'PAGO' : fiscalPaymentStatus === 'total' ? 'TOTAL (PAGO + PENDENTE)' : 'PENDENTE';
       const patCpf = (patient as any).cpf;
       const respCpf = (patient as any).responsible_cpf || (patient as any).responsibleCpf;
 
