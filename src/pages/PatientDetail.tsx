@@ -2219,6 +2219,134 @@ export default function PatientDetail() {
             )}
           </div>
         </TabsContent>
+
+        {/* Financial Tab */}
+        <TabsContent value="financial" className="space-y-4">
+          {/* Monthly payment status */}
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <DollarSign className="w-4 h-4 text-success" /> Pagamento — {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </h2>
+
+            <div className="flex items-center justify-between rounded-xl bg-secondary/40 border border-border/60 px-4 py-3 mb-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {paymentRecord?.paid ? '✅ Pago' : '⏳ Pendente'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {patient.paymentValue
+                    ? `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? ' por sessão' : '/mês'}`
+                    : 'Valor não configurado'}
+                </p>
+              </div>
+              <Switch
+                checked={paymentRecord?.paid || false}
+                disabled={savingPaymentRecord}
+                onCheckedChange={async (checked) => {
+                  const dateVal = checked ? new Date().toISOString().split('T')[0] : null;
+                  await handleSavePaymentRecord(checked, dateVal);
+                }}
+              />
+            </div>
+
+            {paymentRecord?.paid && (
+              <div className="mb-4">
+                <Label className="text-xs mb-1.5 block">Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={paymentRecord.payment_date || ''}
+                  onChange={async (e) => {
+                    await handleSavePaymentRecord(true, e.target.value);
+                  }}
+                  className="h-9 text-xs max-w-xs"
+                />
+              </div>
+            )}
+
+            {(patient as any).payment_due_day && (
+              <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 mb-1">
+                🗓 Vencimento: dia <strong>{(patient as any).payment_due_day}</strong> de cada mês
+              </p>
+            )}
+          </div>
+
+          {/* Document generators */}
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <Receipt className="w-4 h-4 text-primary" /> Documentos Financeiros
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                onClick={() => setPaymentReceiptOpen(true)}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
+                  <FileText className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Recibo de Pagamento</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">PDF ou Word com assinatura</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setFiscalDialogOpen(true)}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Receipt className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Extrato Fiscal</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sessões por período</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleExportFinancialPDF()}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-colors">
+                  {isExportingFinancial ? (
+                    <Loader2 className="w-5 h-5 text-warning animate-spin" />
+                  ) : (
+                    <BarChart3 className="w-5 h-5 text-warning" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Relatório Financeiro</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">PDF com histórico completo</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Monthly summary */}
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-accent" /> Resumo do Mês Atual
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                <p className="text-xl font-bold text-foreground">{monthlyPresent + monthlyReposicao}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Sessões</p>
+              </div>
+              <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                <p className="text-xl font-bold text-destructive">{monthlyAbsent}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Faltas</p>
+              </div>
+              <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                <p className="text-xl font-bold text-success">{monthlyAttendanceRate}%</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Frequência</p>
+              </div>
+              <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                <p className="text-xl font-bold text-success">R$ {monthlyRevenue.toFixed(0)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Receita</p>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
       </Tabs>
 
       {editingEvolution && (
