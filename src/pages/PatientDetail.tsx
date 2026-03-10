@@ -1166,8 +1166,8 @@ export default function PatientDetail() {
       }
 
       // ── ASSINATURA ───────────────────────────────────────────────
-      const chosenStamp = selectedStampId && selectedStampId !== 'none'
-        ? stamps.find(s => s.id === selectedStampId)
+      const chosenStamp = financialStampId && financialStampId !== 'none'
+        ? stamps.find(s => s.id === financialStampId)
         : stamps.find(s => s.is_default);
       y = await addSignatureBlock(doc, y, base, chosenStamp ?? null, true);
 
@@ -1181,7 +1181,7 @@ export default function PatientDetail() {
           W / 2, 291, { align: 'center' }
         );
       }
-      doc.save(`relatorio-financeiro-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(reportMonth, 'yyyy-MM')}.pdf`);
+      doc.save(`relatorio-financeiro-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(financialMonth, 'yyyy-MM')}.pdf`);
       toast.success('Relatório financeiro gerado!');
     } catch (err) { console.error(err); toast.error('Erro ao gerar PDF financeiro'); }
     finally { setIsExportingFinancial(false); }
