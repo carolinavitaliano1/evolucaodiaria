@@ -1055,13 +1055,13 @@ export default function PatientDetail() {
   };
   // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
   const handleExportFinancialPDF = async () => {
-    if (monthlyEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
+    if (financialEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
     setIsExportingFinancial(true);
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const base = buildPdfBase(doc);
       const { W, margin, contentW, darkText, mutedText, borderColor, accentDark } = base;
-      const monthLabel = format(reportMonth, 'MMMM yyyy', { locale: ptBR });
+      const monthLabel = format(financialMonth, 'MMMM yyyy', { locale: ptBR });
       const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
       let y = margin;
 
