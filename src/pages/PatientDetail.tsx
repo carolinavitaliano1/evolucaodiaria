@@ -406,6 +406,7 @@ export default function PatientDetail() {
       };
     });
 
+
   // Monthly report data
   const monthlyEvolutions = useMemo(() => {
     const start = startOfMonth(reportMonth);
@@ -428,6 +429,26 @@ export default function PatientDetail() {
   const monthlyMoodCounts = allMoodOptions.map(m => ({
     ...m, count: monthlyEvolutions.filter(e => e.mood === m.value).length,
   }));
+
+  // Financial tab data (uses financialMonth, independent from reportMonth)
+  const financialEvolutions = useMemo(() => {
+    const start = startOfMonth(financialMonth);
+    const end = endOfMonth(financialMonth);
+    return patientEvolutions.filter(e => {
+      const d = new Date(e.date + 'T12:00:00');
+      return d >= start && d <= end;
+    }).sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime());
+  }, [patientEvolutions, financialMonth]);
+
+  const finPresent = financialEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+  const finReposicao = financialEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+  const finAbsent = financialEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+  const finPaidAbsent = financialEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+  const finFeriadoRem = financialEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
+  const finTotal = financialEvolutions.length;
+  const finRevenue = (finPresent + finReposicao + finPaidAbsent + finFeriadoRem) * ((patient?.paymentValue) || 0);
+  const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
+
 
   if (!patient) {
     return (
