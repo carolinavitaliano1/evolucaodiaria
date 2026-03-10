@@ -2334,6 +2334,21 @@ export default function PatientDetail() {
                 </div>
               </button>
 
+              <button
+                onClick={() => {
+                  if (financialStampId && financialStampId !== 'none') setFiscalStampId(financialStampId);
+                  setFiscalDialogOpen(true);
+                }}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Receipt className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Extrato Fiscal</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sessões por período</p>
+                </div>
+              </button>
 
               <button
                 onClick={() => handleExportFinancialPDF()}
