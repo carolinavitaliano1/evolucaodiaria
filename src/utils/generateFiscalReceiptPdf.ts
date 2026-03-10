@@ -300,11 +300,11 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   declLines.forEach((line: string) => { doc.text(line, margin, y); y += LH; });
 
   // ─── BLOCO DE ASSINATURA ─────────────────────────────────────────────────
-  // Layout (coluna esquerda):
-  //   1. Carimbo (stamp) — acima da rubrica
-  //   2. Rubrica (assinatura) — imediatamente abaixo do carimbo, acima da linha
-  //   3. Linha de assinatura
-  //   4. Nome + credenciais
+  // Layout correto (coluna esquerda):
+  //   1. Carimbo (stamp_image) — opcional, acima da rubrica
+  //   2. Rubrica (signature_image) — sobrepõe a linha de assinatura
+  //   3. Linha de assinatura — desenhada antes das imagens (fica atrás)
+  //   4. Nome + credenciais — abaixo da linha, limpos
 
   type ImgInfo = { src: string; w: number; h: number } | null;
   let sigInfo: ImgInfo = null;
@@ -316,7 +316,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       el.src   = stamp.signature_image;
       await new Promise<void>(r => { el.onload = () => r(); el.onerror = () => r(); });
       let sw = 38, sh = (el.height / el.width) * sw;
-      if (sh > 13) { sh = 13; sw = (el.width / el.height) * sh; }
+      if (sh > 14) { sh = 14; sw = (el.width / el.height) * sh; }
       sigInfo = { src: stamp.signature_image, w: sw, h: sh };
     } catch { /* skip */ }
   }
@@ -331,41 +331,36 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     } catch { /* skip */ }
   }
 
-  // Carimbo + rubrica sobrepostos à linha + credenciais
-  const stampH     = stInfo  ? stInfo.h  : 0;
-  const sigH       = sigInfo ? sigInfo.h : 0;
-  // Sobreposição: linha desenhada 5mm antes do fim das imagens
-  const overlapMm  = 12;
-  const aboveLineH = stampH + sigH - overlapMm;
-  const credRows   = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
-  const blockH     = stampH + sigH + 4 + credRows * LHS + 2;
+  const stampH = stInfo  ? stInfo.h  : 0;
+  const sigH   = sigInfo ? sigInfo.h : 0;
+  const credRows = 1 + (stamp?.clinical_area ? 1 : 0) + (professionalId ? 1 : 0) + (therapistCpf ? 1 : 0) + (cbo ? 1 : 0);
+  const blockH   = stampH + sigH + 4 + credRows * LHS + 4;
 
   ensureSpace(blockH + 5);
   y += 4;
 
-  // 3. Linha de assinatura — desenhada PRIMEIRO (vai ficar atrás das imagens)
-  const lineY = y + aboveLineH;
+  const blockStartY = y;
+
+  // 1. Carimbo — acima da rubrica
+  if (stInfo) {
+    doc.addImage(stInfo.src, 'PNG', margin, blockStartY, stInfo.w, stInfo.h, undefined, 'FAST');
+  }
+
+  // Linha de assinatura — desenhada ANTES da rubrica (fica atrás)
+  const lineY = blockStartY + stampH + sigH - 4;
   doc.setDrawColor(...borderColor);
   doc.line(margin, lineY, margin + contentW * 0.62, lineY);
 
-  // 1. Carimbo — topo do bloco, esquerda (sobre a linha)
-  if (stInfo) {
-    doc.addImage(stInfo.src, 'PNG', margin, y, stInfo.w, stInfo.h, undefined, 'FAST');
-    y += stInfo.h;
-  }
-
-  // 2. Rubrica — logo abaixo do carimbo, sobrepõe a linha (efeito carimbo físico)
+  // 2. Rubrica — posicionada logo acima da linha (sobrepõe a linha)
   if (sigInfo) {
-    doc.addImage(sigInfo.src, 'PNG', margin, y, sigInfo.w, sigInfo.h, undefined, 'FAST');
-    y += sigInfo.h;
+    const sigY = lineY - sigH + 4;
+    doc.addImage(sigInfo.src, 'PNG', margin, sigY, sigInfo.w, sigInfo.h, undefined, 'FAST');
   }
 
-  // Avançar y apenas o delta restante após a linha
-  const drawnUpTo = (stInfo ? stInfo.h : 0) + (sigInfo ? sigInfo.h : 0);
-  y = (y - drawnUpTo) + aboveLineH;
-  y += 4;
+  // Avançar y para após a linha
+  y = lineY + 5;
 
-  // 4. Nome e credenciais
+  // 4. Nome e credenciais — abaixo da linha, sem sobreposição
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...darkText);
