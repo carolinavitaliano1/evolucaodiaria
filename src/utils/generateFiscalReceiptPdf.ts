@@ -274,8 +274,8 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   // payment status
   ensureSpace(10);
   y += 1;
-  const statusText  = paymentStatus === 'paid' ? 'PAGO' : paymentStatus === 'partial' ? 'PARCIALMENTE PAGO' : 'PENDENTE';
-  const statusColor: [number, number, number] = paymentStatus === 'paid' ? successColor : warningColor;
+  const statusText  = paymentStatus === 'paid' ? 'PAGO' : paymentStatus === 'total' ? 'TOTAL (PAGO + PENDENTE)' : 'PENDENTE';
+  const statusColor: [number, number, number] = paymentStatus === 'paid' ? successColor : paymentStatus === 'total' ? accentColor : warningColor;
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...statusColor);
