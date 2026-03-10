@@ -32,30 +32,6 @@ export function QuickWhatsAppModal({
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
 
-  // Stores the WhatsApp URL to open AFTER the dialog has fully closed
-  const pendingUrlRef = useRef<string | null>(null);
-
-  // When open transitions false → open: dispatch the pending navigation
-  // This runs after React has removed the Dialog from the DOM, so no
-  // popup-blocker / Radix intercept issue.
-  const prevOpenRef = useRef(open);
-  useEffect(() => {
-    const wasOpen = prevOpenRef.current;
-    prevOpenRef.current = open;
-
-    if (wasOpen && !open && pendingUrlRef.current) {
-      const url = pendingUrlRef.current;
-      pendingUrlRef.current = null;
-      // Create a real anchor outside any React tree and click it
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  }, [open]);
 
   // Reset on open + pre-select first template
   useEffect(() => {
