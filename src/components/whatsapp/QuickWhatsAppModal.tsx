@@ -68,8 +68,10 @@ export function QuickWhatsAppModal({
 
   function handleSend() {
     if (!waUrl) return;
-    pendingUrlRef.current = waUrl;
-    onClose(); // close dialog first; useEffect above will open the URL after unmount
+    // Call window.open synchronously inside the click handler so the browser
+    // recognises it as a user-initiated navigation (no popup blocker).
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    onClose();
   }
 
   const getCatInfo = (cat: string) =>
