@@ -1594,12 +1594,15 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="evolutions" className="space-y-4">
-        <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:inline-grid gap-0">
+        <TabsList className="w-full sm:w-auto grid grid-cols-5 sm:inline-grid gap-0">
           <TabsTrigger value="evolutions" className="gap-1.5 text-xs sm:text-sm">
             <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evoluções</span><span className="sm:hidden">Evol.</span>
           </TabsTrigger>
           <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm">
             <BarChart3 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Relatório Mensal</span><span className="sm:hidden">Relat.</span>
+          </TabsTrigger>
+          <TabsTrigger value="financial" className="gap-1.5 text-xs sm:text-sm">
+            <DollarSign className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Financeiro</span><span className="sm:hidden">Fin.</span>
           </TabsTrigger>
           <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm">
             <Paperclip className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Documentos</span><span className="sm:hidden">Docs</span>
