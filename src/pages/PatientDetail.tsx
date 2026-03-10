@@ -201,6 +201,12 @@ export default function PatientDetail() {
   const [isExportingMonthly, setIsExportingMonthly] = useState(false);
   const [isExportingFinancial, setIsExportingFinancial] = useState(false);
 
+  // Payment record state (for Financial tab)
+  const [paymentRecord, setPaymentRecord] = useState<{ id?: string; paid: boolean; payment_date: string | null; amount: number } | null>(null);
+  const [savingPaymentRecord, setSavingPaymentRecord] = useState(false);
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
   // Fiscal receipt state
   const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
   const [fiscalStartDate, setFiscalStartDate] = useState<Date>();
@@ -239,6 +245,52 @@ export default function PatientDetail() {
     supabase.from('profiles').select('name, professional_id, cpf, cbo').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
+
+  // Load payment record for current month (Financial tab)
+  useEffect(() => {
+    if (!patient?.id || !user) return;
+    supabase
+      .from('patient_payment_records')
+      .select('id, paid, payment_date, amount')
+      .eq('patient_id', patient.id)
+      .eq('user_id', user.id)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .maybeSingle()
+      .then(({ data }) => {
+        setPaymentRecord(data ? { id: data.id, paid: data.paid, payment_date: data.payment_date, amount: data.amount } : null);
+      });
+  }, [patient?.id, user, currentMonth, currentYear]);
+
+  const handleSavePaymentRecord = async (paid: boolean, paymentDate: string | null) => {
+    if (!user || !patient) return;
+    setSavingPaymentRecord(true);
+    try {
+      const amount = patient.paymentValue || 0;
+      if (paymentRecord?.id) {
+        await supabase.from('patient_payment_records').update({
+          paid,
+          payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+        }).eq('id', paymentRecord.id);
+        setPaymentRecord(prev => prev ? { ...prev, paid, payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null } : prev);
+      } else {
+        const { data } = await supabase.from('patient_payment_records').insert({
+          user_id: user.id,
+          patient_id: patient.id,
+          clinic_id: patient.clinicId,
+          month: currentMonth,
+          year: currentYear,
+          amount,
+          paid,
+          payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+        }).select('id, paid, payment_date, amount').maybeSingle();
+        if (data) setPaymentRecord({ id: data.id, paid: data.paid, payment_date: data.payment_date, amount: data.amount });
+      }
+    } finally {
+      setSavingPaymentRecord(false);
+    }
+  };
+
 
   // Auto-fetch payment record when fiscal period is selected
   useEffect(() => {
@@ -1542,12 +1594,15 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="evolutions" className="space-y-4">
-        <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:inline-grid gap-0">
+        <TabsList className="w-full sm:w-auto grid grid-cols-5 sm:inline-grid gap-0">
           <TabsTrigger value="evolutions" className="gap-1.5 text-xs sm:text-sm">
             <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evoluções</span><span className="sm:hidden">Evol.</span>
           </TabsTrigger>
           <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm">
             <BarChart3 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Relatório Mensal</span><span className="sm:hidden">Relat.</span>
+          </TabsTrigger>
+          <TabsTrigger value="financial" className="gap-1.5 text-xs sm:text-sm">
+            <DollarSign className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Financeiro</span><span className="sm:hidden">Fin.</span>
           </TabsTrigger>
           <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm">
             <Paperclip className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Documentos</span><span className="sm:hidden">Docs</span>
@@ -2164,6 +2219,134 @@ export default function PatientDetail() {
             )}
           </div>
         </TabsContent>
+
+        {/* Financial Tab */}
+        <TabsContent value="financial" className="space-y-4">
+          {/* Monthly payment status */}
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <DollarSign className="w-4 h-4 text-success" /> Pagamento — {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </h2>
+
+            <div className="flex items-center justify-between rounded-xl bg-secondary/40 border border-border/60 px-4 py-3 mb-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {paymentRecord?.paid ? '✅ Pago' : '⏳ Pendente'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {patient.paymentValue
+                    ? `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? ' por sessão' : '/mês'}`
+                    : 'Valor não configurado'}
+                </p>
+              </div>
+              <Switch
+                checked={paymentRecord?.paid || false}
+                disabled={savingPaymentRecord}
+                onCheckedChange={async (checked) => {
+                  const dateVal = checked ? new Date().toISOString().split('T')[0] : null;
+                  await handleSavePaymentRecord(checked, dateVal);
+                }}
+              />
+            </div>
+
+            {paymentRecord?.paid && (
+              <div className="mb-4">
+                <Label className="text-xs mb-1.5 block">Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={paymentRecord.payment_date || ''}
+                  onChange={async (e) => {
+                    await handleSavePaymentRecord(true, e.target.value);
+                  }}
+                  className="h-9 text-xs max-w-xs"
+                />
+              </div>
+            )}
+
+            {(patient as any).payment_due_day && (
+              <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 mb-1">
+                🗓 Vencimento: dia <strong>{(patient as any).payment_due_day}</strong> de cada mês
+              </p>
+            )}
+          </div>
+
+          {/* Document generators */}
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <Receipt className="w-4 h-4 text-primary" /> Documentos Financeiros
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                onClick={() => setPaymentReceiptOpen(true)}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
+                  <FileText className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Recibo de Pagamento</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">PDF ou Word com assinatura</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setFiscalDialogOpen(true)}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Receipt className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Extrato Fiscal</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sessões por período</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleExportFinancialPDF()}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-colors">
+                  {isExportingFinancial ? (
+                    <Loader2 className="w-5 h-5 text-warning animate-spin" />
+                  ) : (
+                    <BarChart3 className="w-5 h-5 text-warning" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Relatório Financeiro</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">PDF com histórico completo</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Monthly summary */}
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-accent" /> Resumo do Mês Atual
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                <p className="text-xl font-bold text-foreground">{monthlyPresent + monthlyReposicao}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Sessões</p>
+              </div>
+              <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                <p className="text-xl font-bold text-destructive">{monthlyAbsent}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Faltas</p>
+              </div>
+              <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                <p className="text-xl font-bold text-success">{monthlyAttendanceRate}%</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Frequência</p>
+              </div>
+              <div className="rounded-lg bg-secondary/40 p-3 text-center">
+                <p className="text-xl font-bold text-success">R$ {monthlyRevenue.toFixed(0)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Receita</p>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
       </Tabs>
 
       {editingEvolution && (
