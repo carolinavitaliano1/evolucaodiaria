@@ -149,11 +149,19 @@ export function resolveTemplate(content: string, vars: TemplateVars): string {
     .replace(/\{\{telefone_clinica\}\}/g,   vars.telefone_clinica   || '');
 }
 
-/** Open WhatsApp with a pre-filled message */
+/** Open WhatsApp with a pre-filled message.
+ *  Uses a real <a> element appended to the body so popup blockers
+ *  treat it as a genuine user-initiated navigation. */
 export function openWhatsApp(phone: string, message: string) {
   const cleaned = phone.replace(/\D/g, '');
   // If no country code, assume Brazil (+55)
   const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
-  const encoded = encodeURIComponent(message);
-  window.open(`https://wa.me/${number}?text=${encoded}`, '_blank');
+  const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }

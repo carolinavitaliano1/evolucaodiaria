@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +32,31 @@ export function QuickWhatsAppModal({
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
 
+  // Stores the WhatsApp URL to open AFTER the dialog has fully closed
+  const pendingUrlRef = useRef<string | null>(null);
+
+  // When open transitions false → open: dispatch the pending navigation
+  // This runs after React has removed the Dialog from the DOM, so no
+  // popup-blocker / Radix intercept issue.
+  const prevOpenRef = useRef(open);
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+
+    if (wasOpen && !open && pendingUrlRef.current) {
+      const url = pendingUrlRef.current;
+      pendingUrlRef.current = null;
+      // Create a real anchor outside any React tree and click it
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  }, [open]);
+
   // Reset on open + pre-select first template
   useEffect(() => {
     if (!open) return;
@@ -64,6 +89,12 @@ export function QuickWhatsAppModal({
   const waUrl = phone && message.trim()
     ? `https://wa.me/${number}?text=${encodeURIComponent(message.trim())}`
     : undefined;
+
+  function handleSend() {
+    if (!waUrl) return;
+    pendingUrlRef.current = waUrl;
+    onClose(); // close dialog first; useEffect above will open the URL after unmount
+  }
 
   const getCatInfo = (cat: string) =>
     TEMPLATE_CATEGORIES.find(c => c.id === cat) ?? { label: cat, emoji: '💬' };
@@ -183,24 +214,19 @@ export function QuickWhatsAppModal({
         {/* Footer */}
         <div className="px-5 py-3 border-t border-border shrink-0 flex gap-2 justify-end">
           <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
-          {waUrl ? (
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setTimeout(onClose, 300)}
-              className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#25D366' }}
-            >
-              <Send className="w-3.5 h-3.5" />
-              Abrir no WhatsApp
-            </a>
-          ) : (
-            <span className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white opacity-40 cursor-not-allowed" style={{ backgroundColor: '#25D366' }}>
-              <Send className="w-3.5 h-3.5" />
-              Abrir no WhatsApp
-            </span>
-          )}
+          <button
+            type="button"
+            disabled={!waUrl}
+            onClick={handleSend}
+            className={cn(
+              'inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-white transition-opacity',
+              waUrl ? 'hover:opacity-90 cursor-pointer' : 'opacity-40 cursor-not-allowed'
+            )}
+            style={{ backgroundColor: '#25D366' }}
+          >
+            <Send className="w-3.5 h-3.5" />
+            Abrir no WhatsApp
+          </button>
         </div>
       </DialogContent>
     </Dialog>
