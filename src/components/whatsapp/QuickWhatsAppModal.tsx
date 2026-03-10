@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,30 +32,6 @@ export function QuickWhatsAppModal({
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
 
-  // Stores the WhatsApp URL to open AFTER the dialog has fully closed
-  const pendingUrlRef = useRef<string | null>(null);
-
-  // When open transitions false → open: dispatch the pending navigation
-  // This runs after React has removed the Dialog from the DOM, so no
-  // popup-blocker / Radix intercept issue.
-  const prevOpenRef = useRef(open);
-  useEffect(() => {
-    const wasOpen = prevOpenRef.current;
-    prevOpenRef.current = open;
-
-    if (wasOpen && !open && pendingUrlRef.current) {
-      const url = pendingUrlRef.current;
-      pendingUrlRef.current = null;
-      // Create a real anchor outside any React tree and click it
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  }, [open]);
 
   // Reset on open + pre-select first template
   useEffect(() => {
@@ -92,8 +68,10 @@ export function QuickWhatsAppModal({
 
   function handleSend() {
     if (!waUrl) return;
-    pendingUrlRef.current = waUrl;
-    onClose(); // close dialog first; useEffect above will open the URL after unmount
+    // Call window.open synchronously inside the click handler so the browser
+    // recognises it as a user-initiated navigation (no popup blocker).
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    onClose();
   }
 
   const getCatInfo = (cat: string) =>
