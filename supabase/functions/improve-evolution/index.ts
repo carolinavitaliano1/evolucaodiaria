@@ -43,8 +43,8 @@ REGRAS ABSOLUTAS:
           { role: "system", content: systemPrompt },
           { role: "user", content: `Melhore o seguinte texto de evolução clínica:\n\n${trimmedText}` },
         ],
-        temperature: 0.4,
-        max_tokens: 1500,
+        temperature: 0.3,
+        max_tokens: 800,
       }),
     });
 
