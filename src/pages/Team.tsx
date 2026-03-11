@@ -649,6 +649,14 @@ export default function Team() {
               )}
             </div>
           )}
+
+          {/* Financial Dashboard */}
+          {activeTab === 'financial' && activeTeamClinicId && (
+            <TeamFinancialDashboard
+              clinicId={activeTeamClinicId}
+              organizationId={organizationId}
+            />
+          )}
         </div>
       </div>
 
