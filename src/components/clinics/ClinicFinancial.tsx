@@ -668,8 +668,6 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   );
 
   // =================== DIAS ESPECÍFICOS ===================
-  const clinicPatients = patients.filter(p => p.clinicId === clinicId);
-
   const selectedDaysStr = specificDays.map(d => format(d, 'yyyy-MM-dd'));
 
   const dayEvolutions = evolutions.filter(e => {
