@@ -100,7 +100,7 @@ export function MissingEvolutionsAlert() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
-              <p className="text-xs text-muted-foreground">Sessão às {s.time.slice(0, 5)} · sem evolução</p>
+              <p className="text-xs text-muted-foreground">Sessão às {s.startTime.slice(0, 5)} · sem evolução</p>
             </div>
             <ArrowRight className="w-4 h-4 text-warning opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
           </button>
