@@ -577,6 +577,23 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                   </p>
                 )}
               </div>
+
+              <div>
+                <Label className="text-xs flex items-center gap-1">
+                  Chave PIX / Dados de pagamento (visível no portal do paciente)
+                </Label>
+                <Textarea
+                  placeholder="Ex: PIX: 11999998888 (CPF) — Banco Nubank&#10;Ou TED: Ag 0001 / CC 123456-7"
+                  value={formData.paymentInfo}
+                  onChange={(e) => setFormData({ ...formData, paymentInfo: e.target.value })}
+                  className="resize-none text-sm min-h-[72px]"
+                />
+                {formData.paymentInfo && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    📲 O paciente verá esses dados no app para efetuar o pagamento
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
