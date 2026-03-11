@@ -973,16 +973,24 @@ export default function Financial() {
   };
 
   const grandTotal = totalRevenue + standaloneRevenue;
-  // Include clinic-level payments (contratante clinics) in paidTotal
+
+  // Paid total for patients in PROPRIA clinics (tracked individually)
+  const propriaPatientIds = new Set(
+    patients.filter(p => propriaClinics.some(c => c.id === p.clinicId)).map(p => p.id)
+  );
+  const paidPatientTotal = allPatientStats
+    .filter(({ patient }) => propriaPatientIds.has(patient.id))
+    .reduce((sum, { pr, revenue, paymentValue }) =>
+      sum + (pr?.paid ? (pr.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
+
+  // Paid total for CONTRATANTE clinics (tracked at clinic level)
   const clinicPaidTotal = contratanteClinics.reduce((sum, clinic) => {
     const cr = clinicPaymentRecords[clinic.id];
     if (!cr?.paid) return sum;
-    // Use saved amount; fallback to calculated revenue for that clinic
     const clinicRevenue = clinicStats.find(s => s.clinic.id === clinic.id)?.revenue ?? 0;
     return sum + (cr.amount > 0 ? cr.amount : clinicRevenue);
   }, 0);
-  // Patient-level paid total (for non-contratante patients)
-  const paidPatientTotal = allPatientStats.reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
+
   const paidTotal = paidPatientTotal + clinicPaidTotal;
   const pendingTotal = Math.max(0, grandTotal - paidTotal);
 
