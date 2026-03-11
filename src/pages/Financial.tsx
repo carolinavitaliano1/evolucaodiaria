@@ -572,7 +572,9 @@ export default function Financial() {
       }
 
       // ─── Patient payments table ────────────────────────────────────────
-      if (patientStats.length > 0) {
+      // Only include patients with at least some billable activity in the month
+      const pdfPatientStats = patientStats.filter(({ revenue }) => revenue > 0);
+      if (pdfPatientStats.length > 0) {
         sectionTitle('CONTROLE DE PAGAMENTOS POR PACIENTE');
 
         // Table header row — Clínica removed (now shown as group header)
@@ -591,7 +593,7 @@ export default function Financial() {
         y += 10;
 
         // Group patientStats by clinic
-        const grouped = patientStats.reduce((acc, stat) => {
+        const grouped = pdfPatientStats.reduce((acc, stat) => {
           const key = stat.clinic?.id || 'sem-clinica';
           if (!acc[key]) acc[key] = { clinic: stat.clinic, items: [] };
           acc[key].items.push(stat);
