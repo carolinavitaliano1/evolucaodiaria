@@ -2511,6 +2511,116 @@ export default function PatientDetail() {
           </div>
         </TabsContent>
 
+        {/* Notes Tab */}
+        <TabsContent value="notes">
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+                <PenLine className="w-4 h-4 text-primary" /> Anotações Privadas
+                <span className="text-xs font-normal text-muted-foreground ml-1">— visíveis apenas para você</span>
+              </h2>
+              {!isAddingNote && (
+                <Button size="sm" onClick={() => setIsAddingNote(true)} className="gap-1.5 h-8 text-xs">
+                  <Plus className="w-3.5 h-3.5" /> Nova Nota
+                </Button>
+              )}
+            </div>
+
+            {/* New note form */}
+            {isAddingNote && (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+                <Input
+                  placeholder="Título (opcional)"
+                  value={newNoteTitle}
+                  onChange={e => setNewNoteTitle(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <Textarea
+                  placeholder="Escreva sua anotação privada aqui..."
+                  value={newNoteContent}
+                  onChange={e => setNewNoteContent(e.target.value)}
+                  className="text-sm min-h-[100px] resize-none"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setIsAddingNote(false); setNewNoteTitle(''); setNewNoteContent(''); }}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleAddNote} disabled={!newNoteContent.trim() || isSavingNote}>
+                    {isSavingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Notes list */}
+            {patientNotes.length === 0 && !isAddingNote ? (
+              <div className="text-center py-10">
+                <div className="text-5xl mb-3">📝</div>
+                <p className="text-muted-foreground text-sm">Nenhuma anotação ainda.</p>
+                <p className="text-muted-foreground text-xs mt-1">Clique em "Nova Nota" para adicionar.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {patientNotes.map(note => (
+                  <div key={note.id} className="rounded-xl border border-border bg-secondary/30 p-4 space-y-2 group">
+                    {editingNoteId === note.id ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editingNoteTitle}
+                          onChange={e => setEditingNoteTitle(e.target.value)}
+                          placeholder="Título (opcional)"
+                          className="h-8 text-sm"
+                        />
+                        <Textarea
+                          value={editingNoteContent}
+                          onChange={e => setEditingNoteContent(e.target.value)}
+                          className="text-sm min-h-[80px] resize-none"
+                          autoFocus
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingNoteId(null)}>
+                            Cancelar
+                          </Button>
+                          <Button size="sm" className="h-7 text-xs gap-1" onClick={handleSaveEditNote} disabled={isSavingNote}>
+                            {isSavingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                            Salvar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            {note.title && note.title !== 'Sem título' && (
+                              <p className="text-sm font-semibold text-foreground truncate">{note.title}</p>
+                            )}
+                            <p className="text-sm text-foreground/80 whitespace-pre-wrap mt-0.5">{note.content}</p>
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => { setEditingNoteId(note.id); setEditingNoteTitle(note.title === 'Sem título' ? '' : note.title); setEditingNoteContent(note.content); }}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteNote(note.id)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(note.updated_at), "dd 'de' MMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
 
       </Tabs>
 
