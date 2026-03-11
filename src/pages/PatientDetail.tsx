@@ -2828,34 +2828,21 @@ export default function PatientDetail() {
           <div className="space-y-4 pt-2">
             {/* Period mode toggle */}
             {(() => {
-              const [fiscalPeriodMode, setFiscalPeriodMode] = useState<'month' | 'custom'>('month');
-              const [fiscalMonthYear, setFiscalMonthYear] = useState<{ month: number; year: number }>(() => {
-                const now = new Date();
-                return { month: now.getMonth(), year: now.getFullYear() };
-              });
-
-              const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+              const MONTHS_PT   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
               const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
               const applyMonth = (month: number, year: number) => {
-                const start = startOfMonth(new Date(year, month, 1));
-                const end = endOfMonth(new Date(year, month, 1));
-                setFiscalStartDate(start);
-                setFiscalEndDate(end);
+                setFiscalStartDate(startOfMonth(new Date(year, month, 1)));
+                setFiscalEndDate(endOfMonth(new Date(year, month, 1)));
               };
-
               const handleMonthSelect = (month: number) => {
-                const newSel = { month, year: fiscalMonthYear.year };
-                setFiscalMonthYear(newSel);
-                applyMonth(month, newSel.year);
+                setFiscalMonthYear(prev => ({ ...prev, month }));
+                applyMonth(month, fiscalMonthYear.year);
               };
-
               const handleYearChange = (delta: number) => {
                 const newYear = fiscalMonthYear.year + delta;
                 setFiscalMonthYear(prev => ({ ...prev, year: newYear }));
                 applyMonth(fiscalMonthYear.month, newYear);
               };
-
               return (
                 <div className="space-y-3">
                   {/* Toggle */}
@@ -2888,29 +2875,22 @@ export default function PatientDetail() {
                           <ChevronRight className="w-4 h-4 text-muted-foreground" />
                         </button>
                       </div>
-                      {/* Month grid */}
+                      {/* Month chips */}
                       <div className="grid grid-cols-4 gap-1.5">
                         {MONTHS_PT.map((m, i) => {
-                          const isSelected = fiscalMonthYear.month === i &&
-                            fiscalStartDate?.getMonth() === i &&
-                            fiscalStartDate?.getFullYear() === fiscalMonthYear.year;
+                          const isSelected = fiscalStartDate?.getMonth() === i && fiscalStartDate?.getFullYear() === fiscalMonthYear.year;
                           return (
-                            <button
-                              key={m}
-                              onClick={() => handleMonthSelect(i)}
-                              className={cn(
-                                'text-xs py-2 rounded-lg border font-medium transition-colors',
+                            <button key={m} onClick={() => handleMonthSelect(i)}
+                              className={cn('text-xs py-2 rounded-lg border font-medium transition-colors',
                                 isSelected
                                   ? 'bg-primary text-primary-foreground border-primary'
-                                  : 'border-border text-foreground hover:bg-muted/60 hover:border-primary/40'
-                              )}
-                            >
+                                  : 'border-border text-foreground hover:bg-muted/60 hover:border-primary/40')}>
                               {m}
                             </button>
                           );
                         })}
                       </div>
-                      {fiscalStartDate && fiscalEndDate && fiscalPeriodMode === 'month' && (
+                      {fiscalStartDate && fiscalEndDate && (
                         <p className="text-xs text-muted-foreground text-center">
                           {MONTHS_FULL[fiscalStartDate.getMonth()]} {fiscalStartDate.getFullYear()}
                           {' · '}
@@ -2919,7 +2899,6 @@ export default function PatientDetail() {
                       )}
                     </div>
                   ) : (
-                    /* Custom date range */
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Data Início</Label>
