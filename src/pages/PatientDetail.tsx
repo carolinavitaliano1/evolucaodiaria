@@ -309,18 +309,22 @@ export default function PatientDetail() {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          setFiscalPaymentStatus(data.paid ? 'paid' : 'pending');
+          // Only auto-set status if user hasn't manually chosen 'total'
+          if (fiscalPaymentStatus !== 'total') {
+            setFiscalPaymentStatus(data.paid ? 'paid' : 'pending');
+          }
           setFiscalPaymentDate(data.payment_date || '');
           if (data.amount > 0) {
-            const amountStr = data.amount.toFixed(2);
-            setFiscalTotalPaid(amountStr);
+            setFiscalTotalPaid(data.amount.toFixed(2));
             setFiscalTotalPaidFromApp(data.amount);
           } else {
             setFiscalTotalPaid('');
             setFiscalTotalPaidFromApp(null);
           }
         } else {
-          setFiscalPaymentStatus('pending');
+          if (fiscalPaymentStatus !== 'total') {
+            setFiscalPaymentStatus('pending');
+          }
           setFiscalPaymentDate('');
           setFiscalTotalPaid('');
           setFiscalTotalPaidFromApp(null);
@@ -802,7 +806,23 @@ export default function PatientDetail() {
       professionalId: therapistProfile?.professional_id || undefined,
       therapistCpf: therapistProfile?.cpf || undefined,
       cbo: fiscalStamp?.cbo || undefined,
-      totalPaid: fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : undefined,
+      totalPaid: (() => {
+        const evos = getFiscalEvolutions();
+        const paymentValue = patient?.paymentValue || 0;
+        const STATUS_BILLABLE: Record<string, boolean> = {
+          presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
+          falta: false, feriado_nao_remunerado: false,
+        };
+        const billableCount = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false).length;
+        const calculatedTotal = patient?.paymentType === 'fixo'
+          ? paymentValue
+          : billableCount * paymentValue;
+        if (fiscalPaymentStatus === 'paid') {
+          return fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : calculatedTotal;
+        }
+        // For pending and total, always use calculated total from evolutions
+        return calculatedTotal;
+      })(),
       paymentStatus: fiscalPaymentStatus,
       paymentDate: fiscalPaymentDate || null,
     };
