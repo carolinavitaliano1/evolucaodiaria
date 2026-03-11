@@ -575,73 +575,105 @@ export default function Financial() {
       if (patientStats.length > 0) {
         sectionTitle('CONTROLE DE PAGAMENTOS POR PACIENTE');
 
-        // Table header row
+        // Table header row — Clínica removed (now shown as group header)
         ensureSpace(10);
         setFill(C.primary);
         doc.rect(margin, y, contentW, 9, 'F');
         setTxt(C.white);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.5);
-        const th = { p: margin + 2, c: margin + 55, t: margin + 100, s: margin + 118, st: margin + 132, v: pageWidth - margin - 2 };
+        const th = { p: margin + 2, t: margin + 90, s: margin + 112, st: margin + 130, v: pageWidth - margin - 2 };
         doc.text('PACIENTE', th.p, y + 5.8);
-        doc.text('CLÍNICA', th.c, y + 5.8);
         doc.text('TIPO', th.t, y + 5.8);
         doc.text('SESS.', th.s, y + 5.8);
         doc.text('STATUS', th.st, y + 5.8);
         doc.text('VALOR', th.v, y + 5.8, { align: 'right' });
         y += 10;
 
+        // Group patientStats by clinic
+        const grouped = patientStats.reduce((acc, stat) => {
+          const key = stat.clinic?.id || 'sem-clinica';
+          if (!acc[key]) acc[key] = { clinic: stat.clinic, items: [] };
+          acc[key].items.push(stat);
+          return acc;
+        }, {} as Record<string, { clinic: any; items: typeof patientStats }>);
+
         let totalPaid = 0, totalPending = 0;
-        patientStats.forEach(({ patient, clinic, revenue, sessions, paymentType, pr }, idx) => {
-          ensureSpace(8);
-          // For contratante clinics, payment is tracked at clinic level
-          const isContratante = clinic?.type !== 'propria';
-          const clinicPr = isContratante ? clinicPaymentRecords[clinic?.id || ''] : null;
-          const effectivePaid = isContratante ? !!clinicPr?.paid : !!pr?.paid;
-          const effectiveDate = isContratante ? clinicPr?.payment_date : pr?.payment_date;
+        let rowIdx = 0;
 
-          // Alternating row
-          setFill(idx % 2 === 0 ? C.white : C.rowAlt);
-          doc.rect(margin, y, contentW, 7.5, 'F');
-
-          setTxt(C.dark);
+        Object.values(grouped).forEach(({ clinic: grpClinic, items }) => {
+          // Clinic group header
+          ensureSpace(14);
+          const isContratanteGrp = grpClinic?.type !== 'propria';
+          setFill(isContratanteGrp ? C.primaryLight : [235, 245, 255] as [number,number,number]);
+          setDraw(isContratanteGrp ? C.accent : C.primary);
+          doc.setLineWidth(0.3);
+          doc.rect(margin, y, contentW, 8, 'FD');
+          setFill(isContratanteGrp ? C.accent : C.primary);
+          doc.rect(margin, y, 3, 8, 'F');
+          setTxt(isContratanteGrp ? C.accent : C.primary);
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(7.5);
-          doc.text(patient.name.substring(0, 26), th.p, y + 5);
-          setTxt(C.mid);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7);
-          doc.text((clinic?.name || '').substring(0, 18), th.c, y + 5);
-          doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', th.t, y + 5);
-          doc.text(sessions.toString(), th.s, y + 5);
+          doc.setFontSize(8);
+          doc.text((grpClinic?.name || 'Sem Clínica').toUpperCase(), margin + 6, y + 5.5);
+          const badge = isContratanteGrp ? 'Contratante' : 'Consultório';
+          doc.setFontSize(6.5);
+          const bw = doc.getTextWidth(badge) + 6;
+          const bx = margin + 6 + doc.getTextWidth((grpClinic?.name || 'Sem Clínica').toUpperCase()) + 5;
+          setFill(isContratanteGrp ? C.accent : C.primary);
+          doc.roundedRect(bx, y + 1.5, bw, 5, 1, 1, 'F');
+          setTxt(C.white);
+          doc.text(badge, bx + bw / 2, y + 5, { align: 'center' });
+          y += 9;
 
-          if (effectivePaid) {
-            const paidLabel = `Pago${effectiveDate ? ' ' + format(new Date(effectiveDate + 'T00:00:00'), 'dd/MM') : ''}`;
-            setFill(C.greenLight);
-            doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth(paidLabel) + 4, 6, 1, 1, 'F');
-            setTxt(C.green);
+          items.forEach(({ patient, clinic, revenue, sessions, paymentType, pr }) => {
+            ensureSpace(8);
+            const isContratante = clinic?.type !== 'propria';
+            const clinicPr = isContratante ? clinicPaymentRecords[clinic?.id || ''] : null;
+            const effectivePaid = isContratante ? !!clinicPr?.paid : !!pr?.paid;
+            const effectiveDate = isContratante ? clinicPr?.payment_date : pr?.payment_date;
+
+            setFill(rowIdx % 2 === 0 ? C.white : C.rowAlt);
+            doc.rect(margin, y, contentW, 7.5, 'F');
+
+            setTxt(C.dark);
             doc.setFont('helvetica', 'bold');
-            doc.text(paidLabel, th.st + 1, y + 5);
-            totalPaid += revenue;
-          } else {
-            setFill(C.orangeLight);
-            doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth('Pendente') + 4, 6, 1, 1, 'F');
-            setTxt(C.orange);
+            doc.setFontSize(7.5);
+            doc.text(patient.name.substring(0, 30), th.p, y + 5);
+            setTxt(C.mid);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', th.t, y + 5);
+            doc.text(sessions.toString(), th.s, y + 5);
+
+            if (effectivePaid) {
+              const paidLabel = `Pago${effectiveDate ? ' ' + format(new Date(effectiveDate + 'T00:00:00'), 'dd/MM') : ''}`;
+              setFill(C.greenLight);
+              doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth(paidLabel) + 4, 6, 1, 1, 'F');
+              setTxt(C.green);
+              doc.setFont('helvetica', 'bold');
+              doc.text(paidLabel, th.st + 1, y + 5);
+              totalPaid += revenue;
+            } else {
+              setFill(C.orangeLight);
+              doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth('Pendente') + 4, 6, 1, 1, 'F');
+              setTxt(C.orange);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Pendente', th.st + 1, y + 5);
+              totalPending += revenue;
+            }
+
+            setTxt(C.dark);
             doc.setFont('helvetica', 'bold');
-            doc.text('Pendente', th.st + 1, y + 5);
-            totalPending += revenue;
-          }
+            doc.setFontSize(7.5);
+            doc.text(`R$ ${revenue.toFixed(2)}`, th.v, y + 5, { align: 'right' });
 
-          setTxt(C.dark);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(7.5);
-          doc.text(`R$ ${revenue.toFixed(2)}`, th.v, y + 5, { align: 'right' });
-
-          // Row bottom border
-          setDraw(C.border);
-          doc.setLineWidth(0.1);
-          doc.line(margin, y + 7.5, pageWidth - margin, y + 7.5);
-          y += 7.5;
+            setDraw(C.border);
+            doc.setLineWidth(0.1);
+            doc.line(margin, y + 7.5, pageWidth - margin, y + 7.5);
+            y += 7.5;
+            rowIdx++;
+          });
+          y += 3; // space between clinic groups
         });
 
         // Totals footer row
