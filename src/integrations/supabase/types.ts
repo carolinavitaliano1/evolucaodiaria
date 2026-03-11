@@ -774,6 +774,66 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_intake_forms: {
+        Row: {
+          address: string | null
+          birthdate: string | null
+          cpf: string | null
+          created_at: string
+          emergency_contact: string | null
+          full_name: string | null
+          health_info: string | null
+          id: string
+          observations: string | null
+          patient_id: string
+          phone: string | null
+          responsible_cpf: string | null
+          responsible_name: string | null
+          responsible_phone: string | null
+          submitted_at: string | null
+          therapist_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          birthdate?: string | null
+          cpf?: string | null
+          created_at?: string
+          emergency_contact?: string | null
+          full_name?: string | null
+          health_info?: string | null
+          id?: string
+          observations?: string | null
+          patient_id: string
+          phone?: string | null
+          responsible_cpf?: string | null
+          responsible_name?: string | null
+          responsible_phone?: string | null
+          submitted_at?: string | null
+          therapist_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          birthdate?: string | null
+          cpf?: string | null
+          created_at?: string
+          emergency_contact?: string | null
+          full_name?: string | null
+          health_info?: string | null
+          id?: string
+          observations?: string | null
+          patient_id?: string
+          phone?: string | null
+          responsible_cpf?: string | null
+          responsible_name?: string | null
+          responsible_phone?: string | null
+          submitted_at?: string | null
+          therapist_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       patient_payment_records: {
         Row: {
           amount: number
@@ -833,6 +893,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      patient_portal_accounts: {
+        Row: {
+          created_at: string
+          id: string
+          invite_expires_at: string | null
+          invite_sent_at: string | null
+          invite_token: string | null
+          patient_email: string
+          patient_id: string
+          status: string
+          therapist_user_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_expires_at?: string | null
+          invite_sent_at?: string | null
+          invite_token?: string | null
+          patient_email: string
+          patient_id: string
+          status?: string
+          therapist_user_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_expires_at?: string | null
+          invite_sent_at?: string | null
+          invite_token?: string | null
+          patient_email?: string
+          patient_id?: string
+          status?: string
+          therapist_user_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       patients: {
         Row: {
@@ -956,6 +1058,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      portal_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          message_type: string
+          patient_id: string
+          read_by_patient: boolean
+          read_by_therapist: boolean
+          sender_type: string
+          therapist_user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          patient_id: string
+          read_by_patient?: boolean
+          read_by_therapist?: boolean
+          sender_type?: string
+          therapist_user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          patient_id?: string
+          read_by_patient?: boolean
+          read_by_therapist?: boolean
+          sender_type?: string
+          therapist_user_id?: string
+        }
+        Relationships: []
       }
       private_appointments: {
         Row: {
@@ -1400,6 +1538,10 @@ export type Database = {
       }
       is_org_owner: {
         Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_portal_patient: {
+        Args: { _patient_id: string; _user_id: string }
         Returns: boolean
       }
       is_support_admin: { Args: { _user_id: string }; Returns: boolean }

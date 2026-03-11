@@ -1,4 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
+// @ts-ignore
+import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
@@ -1751,7 +1753,7 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="evolutions" className="space-y-4">
-        <TabsList className="w-full sm:w-auto grid grid-cols-6 sm:inline-grid gap-0">
+        <TabsList className="w-full sm:w-auto grid grid-cols-7 sm:inline-grid gap-0">
           <TabsTrigger value="evolutions" className="gap-1.5 text-xs sm:text-sm">
             <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evoluções</span><span className="sm:hidden">Evol.</span>
           </TabsTrigger>
@@ -1769,6 +1771,9 @@ export default function PatientDetail() {
           </TabsTrigger>
           <TabsTrigger value="notes" className="gap-1.5 text-xs sm:text-sm">
             <PenLine className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Notas</span><span className="sm:hidden">Notas</span>
+          </TabsTrigger>
+          <TabsTrigger value="portal" className="gap-1.5 text-xs sm:text-sm">
+            <MessageSquare className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Portal</span><span className="sm:hidden">Portal</span>
           </TabsTrigger>
         </TabsList>
 
