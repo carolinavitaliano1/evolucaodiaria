@@ -70,7 +70,7 @@ function formatCpf(cpf: string): string {
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: false): Promise<void>;
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: true): Promise<Blob>;
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob = false): Promise<void | Blob> {
-  const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, therapistCpf, cbo, totalPaid, paymentStatus, paymentDate } = opts;
+  const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, therapistCpf, cbo, totalPaid, paidSubtotal, pendingSubtotal, paymentStatus, paymentDate } = opts;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
