@@ -2820,37 +2820,134 @@ export default function PatientDetail() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            {/* Period */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Data Início</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1 text-xs h-9", !fiscalStartDate && "text-muted-foreground")}>
-                      <CalendarRange className="mr-2 h-3.5 w-3.5" />
-                      {fiscalStartDate ? format(fiscalStartDate, "dd/MM/yyyy") : "Selecione"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent mode="single" selected={fiscalStartDate} onSelect={setFiscalStartDate} initialFocus className="p-3 pointer-events-auto" />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Label className="text-xs">Data Fim</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1 text-xs h-9", !fiscalEndDate && "text-muted-foreground")}>
-                      <CalendarRange className="mr-2 h-3.5 w-3.5" />
-                      {fiscalEndDate ? format(fiscalEndDate, "dd/MM/yyyy") : "Selecione"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent mode="single" selected={fiscalEndDate} onSelect={setFiscalEndDate} initialFocus className="p-3 pointer-events-auto" />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
+            {/* Period mode toggle */}
+            {(() => {
+              const [fiscalPeriodMode, setFiscalPeriodMode] = useState<'month' | 'custom'>('month');
+              const [fiscalMonthYear, setFiscalMonthYear] = useState<{ month: number; year: number }>(() => {
+                const now = new Date();
+                return { month: now.getMonth(), year: now.getFullYear() };
+              });
+
+              const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+              const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+              const applyMonth = (month: number, year: number) => {
+                const start = startOfMonth(new Date(year, month, 1));
+                const end = endOfMonth(new Date(year, month, 1));
+                setFiscalStartDate(start);
+                setFiscalEndDate(end);
+              };
+
+              const handleMonthSelect = (month: number) => {
+                const newSel = { month, year: fiscalMonthYear.year };
+                setFiscalMonthYear(newSel);
+                applyMonth(month, newSel.year);
+              };
+
+              const handleYearChange = (delta: number) => {
+                const newYear = fiscalMonthYear.year + delta;
+                setFiscalMonthYear(prev => ({ ...prev, year: newYear }));
+                applyMonth(fiscalMonthYear.month, newYear);
+              };
+
+              return (
+                <div className="space-y-3">
+                  {/* Toggle */}
+                  <div className="flex rounded-lg border border-border overflow-hidden">
+                    <button
+                      onClick={() => setFiscalPeriodMode('month')}
+                      className={cn('flex-1 text-xs py-1.5 font-medium transition-colors',
+                        fiscalPeriodMode === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50')}
+                    >
+                      📅 Mês Completo
+                    </button>
+                    <button
+                      onClick={() => setFiscalPeriodMode('custom')}
+                      className={cn('flex-1 text-xs py-1.5 font-medium transition-colors',
+                        fiscalPeriodMode === 'custom' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50')}
+                    >
+                      🗓 Período Livre
+                    </button>
+                  </div>
+
+                  {fiscalPeriodMode === 'month' ? (
+                    <div className="space-y-2">
+                      {/* Year navigator */}
+                      <div className="flex items-center justify-between px-1">
+                        <button onClick={() => handleYearChange(-1)} className="p-1 rounded hover:bg-muted transition-colors">
+                          <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                        <span className="text-sm font-semibold">{fiscalMonthYear.year}</span>
+                        <button onClick={() => handleYearChange(1)} className="p-1 rounded hover:bg-muted transition-colors">
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </div>
+                      {/* Month grid */}
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {MONTHS_PT.map((m, i) => {
+                          const isSelected = fiscalMonthYear.month === i &&
+                            fiscalStartDate?.getMonth() === i &&
+                            fiscalStartDate?.getFullYear() === fiscalMonthYear.year;
+                          return (
+                            <button
+                              key={m}
+                              onClick={() => handleMonthSelect(i)}
+                              className={cn(
+                                'text-xs py-2 rounded-lg border font-medium transition-colors',
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'border-border text-foreground hover:bg-muted/60 hover:border-primary/40'
+                              )}
+                            >
+                              {m}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {fiscalStartDate && fiscalEndDate && fiscalPeriodMode === 'month' && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          {MONTHS_FULL[fiscalStartDate.getMonth()]} {fiscalStartDate.getFullYear()}
+                          {' · '}
+                          {format(fiscalStartDate, 'dd/MM')} a {format(fiscalEndDate, 'dd/MM/yyyy')}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    /* Custom date range */
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Data Início</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1 text-xs h-9", !fiscalStartDate && "text-muted-foreground")}>
+                              <CalendarRange className="mr-2 h-3.5 w-3.5" />
+                              {fiscalStartDate ? format(fiscalStartDate, "dd/MM/yyyy") : "Selecione"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent mode="single" selected={fiscalStartDate} onSelect={setFiscalStartDate} initialFocus className="p-3 pointer-events-auto" />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Data Fim</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1 text-xs h-9", !fiscalEndDate && "text-muted-foreground")}>
+                              <CalendarRange className="mr-2 h-3.5 w-3.5" />
+                              {fiscalEndDate ? format(fiscalEndDate, "dd/MM/yyyy") : "Selecione"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent mode="single" selected={fiscalEndDate} onSelect={setFiscalEndDate} initialFocus className="p-3 pointer-events-auto" />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {fiscalStartDate && fiscalEndDate && (
               <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
