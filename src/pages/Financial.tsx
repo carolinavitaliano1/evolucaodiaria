@@ -94,8 +94,7 @@ export default function Financial() {
       .eq('user_id', user.id)
       .eq('month', m)
       .eq('year', y)
-      .then(({ data, error }) => {
-        console.log('[Financial] payment records loaded:', { month: m, year: y, count: data?.length, error, records: data });
+      .then(({ data }) => {
         if (data) {
           const map: Record<string, any> = {};
           (data as any[]).forEach(r => { map[r.patient_id] = r; });
@@ -224,15 +223,25 @@ export default function Financial() {
     const y = selectedDate.getFullYear();
     const newPaid = !currentPr?.paid;
     const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
+    const patient = patients.find(p => p.id === patientId);
     try {
       if (currentPr?.id) {
         await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', currentPr.id);
         setPatientPaymentRecords(prev => ({ ...prev, [patientId]: { ...currentPr, paid: newPaid, payment_date: newDate } }));
       } else {
-        const { data } = await supabase.from('patient_payment_records' as any).insert({
-          user_id: user.id, patient_id: patientId, clinic_id: patients.find(p => p.id === patientId)?.clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate
-        }).select().maybeSingle();
-        setPatientPaymentRecords(prev => ({ ...prev, [patientId]: data }));
+        const newRecord = {
+          user_id: user.id,
+          patient_id: patientId,
+          clinic_id: patient?.clinicId,
+          month: m,
+          year: y,
+          amount: revenue || (patient?.paymentValue ?? 0),
+          paid: newPaid,
+          payment_date: newDate,
+        };
+        const { data } = await supabase.from('patient_payment_records' as any).insert(newRecord).select().maybeSingle();
+        // Use returned data if available, otherwise construct from local values
+        setPatientPaymentRecords(prev => ({ ...prev, [patientId]: data ?? { ...newRecord, id: crypto.randomUUID() } }));
       }
     } finally {
       setSavingPatientPayment(null);
@@ -960,7 +969,6 @@ export default function Financial() {
   };
 
   const grandTotal = totalRevenue + standaloneRevenue;
-  console.log('[Financial] allPatientStats sample:', allPatientStats.slice(0,3).map(s => ({ name: s.patient.name, revenue: s.revenue, prPaid: s.pr?.paid, prAmount: s.pr?.amount, paymentValue: s.paymentValue })));
   const paidTotal = allPatientStats.reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
   const pendingTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (!pr?.paid ? revenue : 0), 0);
 
@@ -1393,18 +1401,24 @@ export default function Financial() {
                       </span>
                     ) : <span className="text-muted-foreground">0</span>}
                   </td>
-                  {/* Payment status column */}
+                  {/* Payment status column — clickable toggle */}
                   <td className="py-3 px-3 text-center">
-                    <span
+                    <button
+                      onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
+                      disabled={savingPatientPayment === patient.id}
                       className={cn(
-                        'inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border',
+                        'inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border transition-all hover:opacity-80 active:scale-95 cursor-pointer',
                         pr?.paid
-                          ? 'bg-success/10 text-success border-success/30'
-                          : 'bg-warning/10 text-warning border-warning/30'
+                          ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                          : 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/20'
                       )}
                     >
-                      {pr?.paid ? <><CheckCircle2 className="w-3 h-3" />Pago</> : <><Clock className="w-3 h-3" />Pendente</>}
-                    </span>
+                      {savingPatientPayment === patient.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : pr?.paid
+                          ? <><CheckCircle2 className="w-3 h-3" />Pago</>
+                          : <><Clock className="w-3 h-3" />Pendente</>}
+                    </button>
                   </td>
                   {/* Payment date column */}
                   <td className="py-3 px-3 text-center text-xs text-muted-foreground hidden md:table-cell">
