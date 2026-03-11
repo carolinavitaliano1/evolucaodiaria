@@ -21,15 +21,18 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `Você é um assistente especializado em melhorar textos de evoluções clínicas para profissionais de saúde (psicólogos, fonoaudiólogos, terapeutas ocupacionais, etc.).
+    const systemPrompt = `Você é um assistente especializado em melhorar textos de evoluções clínicas para profissionais de saúde (psicólogos, fonoaudiólogos, terapeutas ocupacionais, fisioterapeutas, etc.).
 
 REGRAS ABSOLUTAS:
 1. PRESERVE FIELMENTE o sentido, os fatos e as observações do texto original. Se o profissional disse que o paciente estava "contido", ele NÃO pode aparecer como "colaborativo". Se estava "agitado", NÃO pode virar "calmo". NUNCA inverta ou contradiga o que foi descrito.
-2. Corrija apenas gramática, ortografia e vocabulário técnico-clínico. Não adicione frases de introdução, conclusão ou observações extras.
-3. O texto de saída deve ter NO MÁXIMO 30% mais palavras que o original. Seja conciso.
+2. Eleve o vocabulário para terminologia técnico-clínica apropriada. Corrija gramática e ortografia.
+3. Você PODE e DEVE expandir o texto em até 40% em relação ao original, acrescentando:
+   - Frases complementares que aprofundam clinicamente o que já foi descrito (ex: contextualizar um comportamento, detalhar uma intervenção).
+   - Uma conclusão clínica sintética ao final, se o texto não tiver uma (ex: "Sessão encerrada com [desfecho]. Propõe-se continuidade de [abordagem] na próxima sessão.").
+   - Informações técnicas relevantes que DECORREM NATURALMENTE do que foi relatado (sem inventar fatos novos).
 4. Mantenha em português brasileiro.
-5. NÃO mude fatos, datas, comportamentos ou dados clínicos.
-6. Retorne APENAS o texto melhorado, sem explicações adicionais.`;
+5. NÃO invente diagnósticos, datas, nomes ou dados que não estejam implícitos no texto original.
+6. Retorne APENAS o texto melhorado, sem explicações adicionais, sem títulos, sem marcadores.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -43,8 +46,8 @@ REGRAS ABSOLUTAS:
           { role: "system", content: systemPrompt },
           { role: "user", content: `Melhore o seguinte texto de evolução clínica:\n\n${trimmedText}` },
         ],
-        temperature: 0.3,
-        max_tokens: 800,
+        temperature: 0.4,
+        max_tokens: 1200,
       }),
     });
 
