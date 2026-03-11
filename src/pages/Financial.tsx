@@ -976,11 +976,15 @@ export default function Financial() {
   // Include clinic-level payments (contratante clinics) in paidTotal
   const clinicPaidTotal = contratanteClinics.reduce((sum, clinic) => {
     const cr = clinicPaymentRecords[clinic.id];
-    return sum + (cr?.paid ? (cr?.amount > 0 ? cr.amount : revenueByClinicType('contratante') / Math.max(contratanteClinics.length, 1)) : 0);
+    if (!cr?.paid) return sum;
+    // Use saved amount; fallback to calculated revenue for that clinic
+    const clinicRevenue = clinicStats.find(s => s.clinic.id === clinic.id)?.revenue ?? 0;
+    return sum + (cr.amount > 0 ? cr.amount : clinicRevenue);
   }, 0);
-  const paidPatientTotal = allPatientStats.filter(s => s.clinic?.type !== 'terceirizada').reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
+  // Patient-level paid total (for non-contratante patients)
+  const paidPatientTotal = allPatientStats.reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
   const paidTotal = paidPatientTotal + clinicPaidTotal;
-  const pendingTotal = grandTotal - paidTotal;
+  const pendingTotal = Math.max(0, grandTotal - paidTotal);
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
