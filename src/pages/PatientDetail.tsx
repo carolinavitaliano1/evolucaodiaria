@@ -1308,14 +1308,15 @@ export default function PatientDetail() {
         .map(f => {
           const val = templateFormValues[f.id];
           if (val === undefined || val === '' || val === false) return null;
-          if (f.type === 'checkbox' && val === true) return `✅ ${f.label}`;
-          return `${f.label}: ${val}`;
+          if (f.type === 'checkbox' && val === true) return `✅ **${f.label}**`;
+          return `**${f.label}**: ${val}`;
         })
         .filter(Boolean);
       if (templateLines.length > 0) {
         const templateSection = templateLines.join('\n');
         fullText = fullText ? `${templateSection}\n\n---\n\n${fullText}` : templateSection;
       }
+
     }
 
     addEvolution({
