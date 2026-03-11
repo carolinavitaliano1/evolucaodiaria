@@ -756,14 +756,20 @@ export default function Financial() {
 
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      // Columns: Data | Paciente | Frequência | Status Pgto | Tipo Pgto | Valor
-      const col1 = margin, col2 = margin + 25, col3 = margin + 80, col4 = margin + 118, col5 = margin + 148, col6 = pageWidth - margin - 20;
+      // Columns spread across 174mm usable width:
+      // Data(18) | Paciente(46) | Frequência(96) | Status Pgto(133) | Tipo(163) | Valor(right)
+      const col1 = margin;        // 18 — Data
+      const col2 = margin + 28;   // 46 — Paciente
+      const col3 = margin + 78;   // 96 — Frequência
+      const col4 = margin + 115;  // 133 — Status Pgto
+      const col5 = margin + 148;  // 163 — Tipo
+      const col6 = pageWidth - margin; // 192 — Valor (right-aligned)
       doc.text('Data', col1, y);
       doc.text('Paciente', col2, y);
       doc.text('Frequência', col3, y);
       doc.text('Status Pgto', col4, y);
       doc.text('Tipo', col5, y);
-      doc.text('Valor', col6, y);
+      doc.text('Valor', col6, y, { align: 'right' });
       y += 3;
       doc.setDrawColor(200, 200, 200);
       doc.line(margin, y, pageWidth - margin, y);
@@ -832,7 +838,7 @@ export default function Financial() {
 
         doc.setTextColor(80, 80, 80);
         doc.text(patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão', col5, y);
-        doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col6, y);
+        doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col6, y, { align: 'right' });
         y += 6;
       });
 
@@ -855,7 +861,7 @@ export default function Financial() {
         }
         doc.setTextColor(80, 80, 80);
         doc.text('Fixo', col5, y);
-        doc.text(`R$ ${patient.paymentValue!.toFixed(2)}`, col6, y);
+        doc.text(`R$ ${patient.paymentValue!.toFixed(2)}`, col6, y, { align: 'right' });
         totalInvoiceValue += patient.paymentValue!;
         y += 6;
       });
@@ -893,41 +899,6 @@ export default function Financial() {
         doc.text(`VALOR LÍQUIDO: R$ ${netValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
       }
       y += 15;
-
-      // Payment status section in invoice
-      const invoicePatientPayments = clinicPatients.map(p => ({
-        patient: p,
-        pr: patientPaymentRecords[p.id],
-        revenue: calculatePatientRevenue(p.id),
-      })).filter(r => r.revenue > 0);
-
-      if (invoicePatientPayments.length > 0) {
-        ensureSpace(20 + invoicePatientPayments.length * 7);
-        doc.setDrawColor(180, 180, 180);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 6;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(51, 51, 51);
-        doc.text('STATUS DE PAGAMENTO POR PACIENTE', margin, y); y += 7;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        invoicePatientPayments.forEach(({ patient, pr, revenue }) => {
-          ensureSpace(7);
-          doc.setTextColor(51, 51, 51);
-          doc.text(patient.name.substring(0, 28), margin, y);
-          if (pr?.paid) {
-            doc.setTextColor(34, 139, 34);
-            doc.text(`Pago${pr.payment_date ? ' em ' + format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy') : ''}`, margin + 70, y);
-          } else {
-            doc.setTextColor(200, 100, 0);
-            doc.text('Pendente', margin + 70, y);
-          }
-          doc.setTextColor(80, 80, 80);
-          doc.text(`R$ ${revenue.toFixed(2)}`, pageWidth - margin - 5, y, { align: 'right' });
-          y += 6;
-        });
-      }
 
       ensureSpace(60);
       doc.setDrawColor(180, 180, 180);
