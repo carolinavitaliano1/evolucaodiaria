@@ -510,7 +510,7 @@ export default function Team() {
         </div>
 
         {/* Content */}
-        <div className="bg-card rounded-2xl border border-border p-5 lg:p-6">
+        <div className={cn('bg-card rounded-2xl border border-border', activeTab === 'financial' ? 'p-5 lg:p-6' : 'p-5 lg:p-6')}>
           {activeTab === 'team' && (
             <ClinicTeam
               clinicId={activeTeamClinicId}
