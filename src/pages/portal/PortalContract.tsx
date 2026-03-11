@@ -19,8 +19,13 @@ interface Contract {
   status: string;
 }
 
-async function generateContractPDF(contract: Contract, patientName: string) {
-  // Build a full HTML document for rendering
+interface IntakeData {
+  responsible_name: string | null;
+  responsible_cpf: string | null;
+  submitted_at: string | null;
+}
+
+async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;';
   wrapper.innerHTML = `
@@ -28,7 +33,8 @@ async function generateContractPDF(contract: Contract, patientName: string) {
       ${contract.template_html}
     </div>
     <div style="margin-top:40px;border-top:1px solid #ccc;padding-top:24px;">
-      <p style="font-size:11px;color:#555;margin-bottom:8px;">Assinatura digital do paciente:</p>
+      <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital${signerName ? ` de ${signerName}` : ''}:</p>
+      ${signerCpf ? `<p style="font-size:10px;color:#777;margin-bottom:8px;">CPF: ${signerCpf}</p>` : ''}
       <img src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura" />
       <p style="font-size:10px;color:#888;margin-top:8px;">
         Assinado em ${format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
@@ -55,7 +61,7 @@ async function generateContractPDF(contract: Contract, patientName: string) {
       yOffset += pageHeight;
     }
 
-    pdf.save(`contrato-${patientName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+    pdf.save(`contrato-${signerName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   } catch (e) {
     document.body.removeChild(wrapper);
     throw e;
@@ -65,6 +71,7 @@ async function generateContractPDF(contract: Contract, patientName: string) {
 export default function PortalContract() {
   const { portalAccount, patient } = usePortal();
   const [contract, setContract] = useState<Contract | null>(null);
+  const [intakeData, setIntakeData] = useState<IntakeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -73,17 +80,29 @@ export default function PortalContract() {
 
   useEffect(() => {
     if (!portalAccount) return;
-    supabase
-      .from('patient_contracts')
-      .select('*')
-      .eq('patient_id', portalAccount.patient_id)
-      .in('status', ['sent', 'signed'])
-      .maybeSingle()
-      .then(({ data }) => {
-        setContract(data as Contract | null);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase
+        .from('patient_contracts')
+        .select('*')
+        .eq('patient_id', portalAccount.patient_id)
+        .in('status', ['sent', 'signed'])
+        .maybeSingle(),
+      supabase
+        .from('patient_intake_forms')
+        .select('responsible_name, responsible_cpf, submitted_at')
+        .eq('patient_id', portalAccount.patient_id)
+        .maybeSingle(),
+    ]).then(([{ data: c }, { data: intake }]) => {
+      setContract(c as Contract | null);
+      setIntakeData(intake as IntakeData | null);
+      setLoading(false);
+    });
   }, [portalAccount]);
+
+  // Determine signer: if minor (has responsible_name), use responsible data
+  const isMinor = !!intakeData?.responsible_name;
+  const signerName = isMinor ? (intakeData?.responsible_name || patient?.name || 'paciente') : (patient?.name || 'paciente');
+  const signerCpf = isMinor ? (intakeData?.responsible_cpf || null) : null;
 
   const handleSign = async () => {
     if (!contract || !signatureData) return;
@@ -113,7 +132,7 @@ export default function PortalContract() {
     if (!contract || !contract.signature_data) return;
     setDownloading(true);
     try {
-      await generateContractPDF(contract, patient?.name || 'paciente');
+      await generateContractPDF(contract, signerName, signerCpf);
       toast.success('PDF gerado com sucesso!');
     } catch (err: any) {
       toast.error('Erro ao gerar PDF');
@@ -149,9 +168,16 @@ export default function PortalContract() {
                 <span>Assinado em {format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 bg-warning/10 text-warning border border-warning/20 rounded-xl px-4 py-3 text-sm">
-                <PenLine className="w-4 h-4 flex-shrink-0" />
-                <span>Aguardando sua assinatura</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 bg-warning/10 text-warning border border-warning/20 rounded-xl px-4 py-3 text-sm">
+                  <PenLine className="w-4 h-4 flex-shrink-0" />
+                  <span>Aguardando assinatura</span>
+                </div>
+                {isMinor && (
+                  <div className="flex items-center gap-2 bg-primary/5 text-primary border border-primary/15 rounded-xl px-4 py-3 text-xs">
+                    <span>👤 Menor de idade — assinatura pelo responsável: <strong>{intakeData?.responsible_name}</strong></span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -166,7 +192,10 @@ export default function PortalContract() {
             {/* Signature section */}
             {contract.status === 'signed' && contract.signature_data && (
               <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-                <p className="text-xs text-muted-foreground mb-2">Sua assinatura:</p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Assinatura de <strong>{signerName}</strong>:</p>
+                  {signerCpf && <p className="text-xs text-muted-foreground">CPF: {signerCpf}</p>}
+                </div>
                 <img src={contract.signature_data} alt="Assinatura" className="max-h-20 border border-border rounded" />
                 <Button
                   className="w-full gap-2"
@@ -186,7 +215,9 @@ export default function PortalContract() {
             {contract.status === 'sent' && (
               signatureMode ? (
                 <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-                  <p className="text-sm font-medium text-foreground">Assine abaixo:</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {isMinor ? `Assinatura do responsável (${signerName}):` : 'Assine abaixo:'}
+                  </p>
                   <SignaturePad
                     value={signatureData}
                     onChange={setSignatureData}
@@ -205,7 +236,7 @@ export default function PortalContract() {
               ) : (
                 <Button className="w-full gap-2" onClick={() => setSignatureMode(true)}>
                   <PenLine className="w-4 h-4" />
-                  Assinar contrato
+                  {isMinor ? `Assinar como responsável (${signerName})` : 'Assinar contrato'}
                 </Button>
               )
             )}

@@ -2,7 +2,7 @@ import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
-import { Loader2, FileText } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -48,7 +48,7 @@ export default function PortalEvolutions() {
     <PortalLayout>
       <div className="space-y-5">
         <div>
-          <h1 className="text-lg font-bold text-foreground">Minhas Evoluções</h1>
+          <h1 className="text-lg font-bold text-foreground">Feedbacks da Sessão</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Registros compartilhados pelo seu terapeuta</p>
         </div>
 
@@ -58,9 +58,9 @@ export default function PortalEvolutions() {
           </div>
         ) : evolutions.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border p-8 text-center">
-            <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
             <p className="font-semibold text-sm text-foreground">Nenhum registro disponível</p>
-            <p className="text-xs text-muted-foreground mt-1">Seu terapeuta ainda não compartilhou nenhuma evolução.</p>
+            <p className="text-xs text-muted-foreground mt-1">Seu terapeuta ainda não compartilhou nenhum feedback.</p>
           </div>
         ) : (
           <div className="space-y-3">
