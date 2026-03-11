@@ -14,8 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock, Info,
   ClipboardCheck, CheckCircle2, ChevronRight, Activity, CalendarDays,
-  UserCircle, FileText, AlertCircle,
+  UserCircle, FileText, AlertCircle, DollarSign,
 } from 'lucide-react';
+import { TeamFinancialDashboard } from '@/components/clinics/TeamFinancialDashboard';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
@@ -42,7 +43,7 @@ export default function Team() {
   const navigate = useNavigate();
   const { isOwner, loading: permLoading } = useOrgPermissions();
 
-  const [activeTab, setActiveTab] = useState<'team' | 'compliance' | 'activity'>('team');
+  const [activeTab, setActiveTab] = useState<'team' | 'compliance' | 'activity' | 'financial'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [complianceBadge, setComplianceBadge] = useState(0);
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
@@ -497,10 +498,19 @@ export default function Team() {
           >
             <Activity className="w-4 h-4" />Atividade
           </button>
+          <button
+            onClick={() => setActiveTab('financial')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              activeTab === 'financial' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <DollarSign className="w-4 h-4" />Financeiro
+          </button>
         </div>
 
         {/* Content */}
-        <div className="bg-card rounded-2xl border border-border p-5 lg:p-6">
+        <div className={cn('bg-card rounded-2xl border border-border', activeTab === 'financial' ? 'p-5 lg:p-6' : 'p-5 lg:p-6')}>
           {activeTab === 'team' && (
             <ClinicTeam
               clinicId={activeTeamClinicId}
@@ -638,6 +648,14 @@ export default function Team() {
                 </ScrollArea>
               )}
             </div>
+          )}
+
+          {/* Financial Dashboard */}
+          {activeTab === 'financial' && activeTeamClinicId && (
+            <TeamFinancialDashboard
+              clinicId={activeTeamClinicId}
+              organizationId={organizationId}
+            />
           )}
         </div>
       </div>
