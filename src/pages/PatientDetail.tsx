@@ -309,18 +309,22 @@ export default function PatientDetail() {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          setFiscalPaymentStatus(data.paid ? 'paid' : 'pending');
+          // Only auto-set status if user hasn't manually chosen 'total'
+          if (fiscalPaymentStatus !== 'total') {
+            setFiscalPaymentStatus(data.paid ? 'paid' : 'pending');
+          }
           setFiscalPaymentDate(data.payment_date || '');
           if (data.amount > 0) {
-            const amountStr = data.amount.toFixed(2);
-            setFiscalTotalPaid(amountStr);
+            setFiscalTotalPaid(data.amount.toFixed(2));
             setFiscalTotalPaidFromApp(data.amount);
           } else {
             setFiscalTotalPaid('');
             setFiscalTotalPaidFromApp(null);
           }
         } else {
-          setFiscalPaymentStatus('pending');
+          if (fiscalPaymentStatus !== 'total') {
+            setFiscalPaymentStatus('pending');
+          }
           setFiscalPaymentDate('');
           setFiscalTotalPaid('');
           setFiscalTotalPaidFromApp(null);
