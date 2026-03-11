@@ -756,12 +756,14 @@ export default function Financial() {
 
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      const col1 = margin, col2 = margin + 25, col3 = margin + 80, col4 = margin + 115, col5 = pageWidth - margin - 25;
+      // Columns: Data | Paciente | Frequência | Status Pgto | Tipo Pgto | Valor
+      const col1 = margin, col2 = margin + 25, col3 = margin + 80, col4 = margin + 118, col5 = margin + 148, col6 = pageWidth - margin - 20;
       doc.text('Data', col1, y);
       doc.text('Paciente', col2, y);
-      doc.text('Status', col3, y);
-      doc.text('Tipo Pgto', col4, y);
-      doc.text('Valor', col5, y);
+      doc.text('Frequência', col3, y);
+      doc.text('Status Pgto', col4, y);
+      doc.text('Tipo', col5, y);
+      doc.text('Valor', col6, y);
       y += 3;
       doc.setDrawColor(200, 200, 200);
       doc.line(margin, y, pageWidth - margin, y);
@@ -776,7 +778,7 @@ export default function Financial() {
         const patient = clinicPatients.find(p => p.id === evo.patientId);
         if (!patient) return;
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy');
-        const patientName = patient.name.substring(0, 22);
+        const patientName = patient.name.substring(0, 20);
         let statusLabel = '';
         let sessionValue = 0;
 
@@ -803,32 +805,57 @@ export default function Financial() {
           }
         }
 
+        // Payment status for this patient
+        const pr = patientPaymentRecords[patient.id];
+        const isPaid = pr?.paid;
+
         totalInvoiceValue += sessionValue;
         doc.setTextColor(51, 51, 51);
         doc.text(dateStr, col1, y);
         doc.text(patientName, col2, y);
+
+        // Frequência column (colored)
         if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao' || evo.attendanceStatus === 'feriado_remunerado') doc.setTextColor(34, 139, 34);
         else if (evo.attendanceStatus === 'falta_remunerada') doc.setTextColor(200, 150, 0);
         else if (evo.attendanceStatus === 'feriado_nao_remunerado') doc.setTextColor(100, 100, 100);
         else doc.setTextColor(220, 53, 69);
         doc.text(statusLabel, col3, y);
+
+        // Status Pgto column
+        if (isPaid) {
+          doc.setTextColor(34, 139, 34);
+          doc.text('Pago', col4, y);
+        } else {
+          doc.setTextColor(200, 100, 0);
+          doc.text('Pendente', col4, y);
+        }
+
         doc.setTextColor(80, 80, 80);
-        doc.text(patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão', col4, y);
-        doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col5, y);
+        doc.text(patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão', col5, y);
+        doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col6, y);
         y += 6;
       });
 
       const fixedPatients = clinicPatients.filter(p => p.paymentType === 'fixo' && p.paymentValue);
       fixedPatients.forEach(patient => {
         ensureSpace(8);
+        const pr = patientPaymentRecords[patient.id];
+        const isPaid = pr?.paid;
         doc.setTextColor(51, 51, 51);
         doc.text('-', col1, y);
-        doc.text(patient.name.substring(0, 22), col2, y);
+        doc.text(patient.name.substring(0, 20), col2, y);
         doc.setTextColor(100, 100, 200);
         doc.text('Fixo Mensal', col3, y);
+        if (isPaid) {
+          doc.setTextColor(34, 139, 34);
+          doc.text('Pago', col4, y);
+        } else {
+          doc.setTextColor(200, 100, 0);
+          doc.text('Pendente', col4, y);
+        }
         doc.setTextColor(80, 80, 80);
-        doc.text('Fixo', col4, y);
-        doc.text(`R$ ${patient.paymentValue!.toFixed(2)}`, col5, y);
+        doc.text('Fixo', col5, y);
+        doc.text(`R$ ${patient.paymentValue!.toFixed(2)}`, col6, y);
         totalInvoiceValue += patient.paymentValue!;
         y += 6;
       });
