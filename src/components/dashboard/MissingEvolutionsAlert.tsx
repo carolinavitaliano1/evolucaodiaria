@@ -62,7 +62,7 @@ export function MissingEvolutionsAlert() {
   if (missing.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-warning/40 bg-warning/8 p-4 space-y-3">
+    <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <div className="w-7 h-7 rounded-full bg-warning/20 flex items-center justify-center flex-shrink-0">
           <AlertTriangle className="w-4 h-4 text-warning" />
