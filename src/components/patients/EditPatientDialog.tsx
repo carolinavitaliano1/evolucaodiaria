@@ -102,6 +102,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         paymentValue: patient.paymentValue?.toString() || '',
         packageId: patient.packageId || '',
         paymentDueDay: p.payment_due_day?.toString() || '',
+        paymentInfo: p.payment_info || '',
       });
 
       // Load current month payment record for propria
