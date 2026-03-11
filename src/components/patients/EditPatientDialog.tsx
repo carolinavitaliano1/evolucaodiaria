@@ -60,6 +60,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     paymentValue: '',
     packageId: '',
     paymentDueDay: '',
+    paymentInfo: '',
   });
 
   // Payment status for current month (propria only)
