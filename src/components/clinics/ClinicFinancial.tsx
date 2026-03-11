@@ -53,6 +53,10 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
 
+  // Dias específicos state
+  const [specificDays, setSpecificDays] = useState<Date[]>([]);
+  const [isExportingDays, setIsExportingDays] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
