@@ -43,7 +43,7 @@ export default function Team() {
   const navigate = useNavigate();
   const { isOwner, loading: permLoading } = useOrgPermissions();
 
-  const [activeTab, setActiveTab] = useState<'team' | 'compliance' | 'activity'>('team');
+  const [activeTab, setActiveTab] = useState<'team' | 'compliance' | 'activity' | 'financial'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [complianceBadge, setComplianceBadge] = useState(0);
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
