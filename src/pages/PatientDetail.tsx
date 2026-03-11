@@ -806,7 +806,23 @@ export default function PatientDetail() {
       professionalId: therapistProfile?.professional_id || undefined,
       therapistCpf: therapistProfile?.cpf || undefined,
       cbo: fiscalStamp?.cbo || undefined,
-      totalPaid: fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : undefined,
+      totalPaid: (() => {
+        const evos = getFiscalEvolutions();
+        const paymentValue = patient?.paymentValue || 0;
+        const STATUS_BILLABLE: Record<string, boolean> = {
+          presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
+          falta: false, feriado_nao_remunerado: false,
+        };
+        const billableCount = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false).length;
+        const calculatedTotal = patient?.paymentType === 'fixo'
+          ? paymentValue
+          : billableCount * paymentValue;
+        if (fiscalPaymentStatus === 'paid') {
+          return fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : calculatedTotal;
+        }
+        // For pending and total, always use calculated total from evolutions
+        return calculatedTotal;
+      })(),
       paymentStatus: fiscalPaymentStatus,
       paymentDate: fiscalPaymentDate || null,
     };
