@@ -45,6 +45,8 @@ export interface FiscalReceiptOptions {
   therapistCpf?: string;
   cbo?: string;
   totalPaid?: number;
+  paidSubtotal?: number;
+  pendingSubtotal?: number;
   paymentStatus?: 'paid' | 'pending' | 'total';
   paymentDate?: string | null;
 }
