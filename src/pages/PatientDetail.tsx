@@ -762,14 +762,50 @@ export default function PatientDetail() {
   // ── RECIBO FISCAL helpers ────────────────────────────────────────────────
   const getFiscalEvolutions = () => {
     if (!fiscalStartDate || !fiscalEndDate) return [];
+    // Normalize dates to midnight for correct inclusive range comparison
+    const start = new Date(fiscalStartDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(fiscalEndDate);
+    end.setHours(23, 59, 59, 999);
     return patientEvolutions.filter(evo => {
       const d = new Date(evo.date + 'T12:00:00');
-      return d >= fiscalStartDate && d <= fiscalEndDate;
+      return d >= start && d <= end;
     }).sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime());
   };
 
   const buildFiscalReceiptOpts = () => {
     const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
+    const evos = getFiscalEvolutions();
+    const paymentValue = patient?.paymentValue || 0;
+    const STATUS_BILLABLE: Record<string, boolean> = {
+      presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
+      falta: false, feriado_nao_remunerado: false,
+    };
+    const billableEvos = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false);
+    const billableCount = billableEvos.length;
+    const calculatedTotal = patient?.paymentType === 'fixo'
+      ? paymentValue
+      : billableCount * paymentValue;
+
+    // For "total" mode: calculate paid sessions (those whose month/year has paid=true)
+    // We use the paid amount from the record if available, otherwise calculate from sessions
+    let totalPaidValue: number;
+    let paidSubtotal: number | undefined;
+    let pendingSubtotal: number | undefined;
+
+    if (fiscalPaymentStatus === 'paid') {
+      totalPaidValue = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : calculatedTotal;
+    } else if (fiscalPaymentStatus === 'total') {
+      // Split evolutions by month and check which months are paid
+      // Use the fiscalTotalPaid as paid amount if available
+      totalPaidValue = calculatedTotal;
+      paidSubtotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : 0;
+      pendingSubtotal = calculatedTotal - (paidSubtotal || 0);
+      if (pendingSubtotal < 0) pendingSubtotal = 0;
+    } else {
+      totalPaidValue = calculatedTotal;
+    }
+
     return {
       patient: {
         id: patient.id,
@@ -791,7 +827,7 @@ export default function PatientDetail() {
         email: clinic.email || undefined,
         phone: clinic.phone || undefined,
       } : undefined,
-      evolutions: getFiscalEvolutions().map(e => ({
+      evolutions: evos.map(e => ({
         id: e.id, date: e.date, attendanceStatus: e.attendanceStatus, text: e.text,
       })),
       startDate: fiscalStartDate!,
@@ -806,23 +842,9 @@ export default function PatientDetail() {
       professionalId: therapistProfile?.professional_id || undefined,
       therapistCpf: therapistProfile?.cpf || undefined,
       cbo: fiscalStamp?.cbo || undefined,
-      totalPaid: (() => {
-        const evos = getFiscalEvolutions();
-        const paymentValue = patient?.paymentValue || 0;
-        const STATUS_BILLABLE: Record<string, boolean> = {
-          presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
-          falta: false, feriado_nao_remunerado: false,
-        };
-        const billableCount = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false).length;
-        const calculatedTotal = patient?.paymentType === 'fixo'
-          ? paymentValue
-          : billableCount * paymentValue;
-        if (fiscalPaymentStatus === 'paid') {
-          return fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : calculatedTotal;
-        }
-        // For pending and total, always use calculated total from evolutions
-        return calculatedTotal;
-      })(),
+      totalPaid: totalPaidValue,
+      paidSubtotal,
+      pendingSubtotal,
       paymentStatus: fiscalPaymentStatus,
       paymentDate: fiscalPaymentDate || null,
     };
