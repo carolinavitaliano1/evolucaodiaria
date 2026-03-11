@@ -575,16 +575,15 @@ export default function Financial() {
       if (patientStats.length > 0) {
         sectionTitle('CONTROLE DE PAGAMENTOS POR PACIENTE');
 
-        // Table header row
+        // Table header row — Clínica removed (now shown as group header)
         ensureSpace(10);
         setFill(C.primary);
         doc.rect(margin, y, contentW, 9, 'F');
         setTxt(C.white);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.5);
-        const th = { p: margin + 2, c: margin + 55, t: margin + 100, s: margin + 118, st: margin + 132, v: pageWidth - margin - 2 };
+        const th = { p: margin + 2, t: margin + 90, s: margin + 112, st: margin + 130, v: pageWidth - margin - 2 };
         doc.text('PACIENTE', th.p, y + 5.8);
-        doc.text('CLÍNICA', th.c, y + 5.8);
         doc.text('TIPO', th.t, y + 5.8);
         doc.text('SESS.', th.s, y + 5.8);
         doc.text('STATUS', th.st, y + 5.8);
