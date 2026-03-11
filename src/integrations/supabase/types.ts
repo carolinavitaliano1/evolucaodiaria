@@ -478,6 +478,7 @@ export type Database = {
           id: string
           mood: string | null
           patient_id: string
+          portal_visible: boolean
           signature: string | null
           stamp_id: string | null
           template_data: Json | null
@@ -495,6 +496,7 @@ export type Database = {
           id?: string
           mood?: string | null
           patient_id: string
+          portal_visible?: boolean
           signature?: string | null
           stamp_id?: string | null
           template_data?: Json | null
@@ -512,6 +514,7 @@ export type Database = {
           id?: string
           mood?: string | null
           patient_id?: string
+          portal_visible?: boolean
           signature?: string | null
           stamp_id?: string | null
           template_data?: Json | null
@@ -770,6 +773,42 @@ export type Database = {
           id?: string
           name?: string
           owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      patient_contracts: {
+        Row: {
+          created_at: string
+          id: string
+          patient_id: string
+          signature_data: string | null
+          signed_at: string | null
+          status: string
+          template_html: string
+          therapist_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          patient_id: string
+          signature_data?: string | null
+          signed_at?: string | null
+          status?: string
+          template_html?: string
+          therapist_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          patient_id?: string
+          signature_data?: string | null
+          signed_at?: string | null
+          status?: string
+          template_html?: string
+          therapist_user_id?: string
           updated_at?: string
         }
         Relationships: []
@@ -1061,6 +1100,8 @@ export type Database = {
       }
       portal_messages: {
         Row: {
+          appointment_date: string | null
+          appointment_time: string | null
           content: string
           created_at: string
           id: string
@@ -1072,6 +1113,8 @@ export type Database = {
           therapist_user_id: string
         }
         Insert: {
+          appointment_date?: string | null
+          appointment_time?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -1083,6 +1126,8 @@ export type Database = {
           therapist_user_id: string
         }
         Update: {
+          appointment_date?: string | null
+          appointment_time?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -1092,6 +1137,39 @@ export type Database = {
           read_by_therapist?: boolean
           sender_type?: string
           therapist_user_id?: string
+        }
+        Relationships: []
+      }
+      portal_notices: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          patient_id: string
+          read_by_patient: boolean
+          therapist_user_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          patient_id: string
+          read_by_patient?: boolean
+          therapist_user_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          patient_id?: string
+          read_by_patient?: boolean
+          therapist_user_id?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }

@@ -2651,6 +2651,14 @@ export default function PatientDetail() {
           </div>
         </TabsContent>
 
+        {/* Portal Tab */}
+        <TabsContent value="portal">
+          <PortalTab
+            patientId={patient.id}
+            patientEmail={patient.email}
+            patientName={patient.name}
+          />
+        </TabsContent>
 
       </Tabs>
 

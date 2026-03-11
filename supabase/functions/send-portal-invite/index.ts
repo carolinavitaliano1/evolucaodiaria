@@ -82,7 +82,10 @@ serve(async (req) => {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 32px; border-radius: 12px;">
             <div style="text-align: center; margin-bottom: 32px;">
-              <h1 style="color: #4f46e5; font-size: 24px; margin: 0;">Portal do Paciente</h1>
+              <div style="width: 56px; height: 56px; background: #4f46e5; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                <span style="color: white; font-weight: bold; font-size: 18px;">ED</span>
+              </div>
+              <h1 style="color: #4f46e5; font-size: 22px; margin: 0;">Portal do Paciente</h1>
               <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Evolução Diária</p>
             </div>
             <p style="color: #111827; font-size: 16px;">Olá, <strong>${patient.name}</strong>! 👋</p>
@@ -92,7 +95,8 @@ serve(async (req) => {
             <ul style="color: #374151; font-size: 15px; line-height: 2;">
               <li>📋 Preencher sua ficha de cadastro</li>
               <li>💬 Trocar mensagens com seu terapeuta</li>
-              <li>📅 Ver informações e lembretes das suas sessões</li>
+              <li>📝 Receber tarefas e feedback das sessões</li>
+              <li>📅 Acompanhar suas informações de acompanhamento</li>
             </ul>
             <div style="text-align: center; margin: 32px 0;">
               <a href="${portalUrl}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">

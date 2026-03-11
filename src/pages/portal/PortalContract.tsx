@@ -1,0 +1,145 @@
+import { PortalLayout } from '@/components/portal/PortalLayout';
+import { usePortal } from '@/contexts/PortalContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useRef } from 'react';
+import { Loader2, FileText, CheckCircle2, PenLine } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { SignaturePad } from '@/components/ui/signature-pad';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+interface Contract {
+  id: string;
+  template_html: string;
+  signed_at: string | null;
+  signature_data: string | null;
+  status: string;
+}
+
+export default function PortalContract() {
+  const { portalAccount } = usePortal();
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [signing, setSigning] = useState(false);
+  const [signatureMode, setSignatureMode] = useState(false);
+  const [signatureData, setSignatureData] = useState('');
+
+  useEffect(() => {
+    if (!portalAccount) return;
+    supabase
+      .from('patient_contracts')
+      .select('*')
+      .eq('patient_id', portalAccount.patient_id)
+      .in('status', ['sent', 'signed'])
+      .maybeSingle()
+      .then(({ data }) => {
+        setContract(data as Contract | null);
+        setLoading(false);
+      });
+  }, [portalAccount]);
+
+  const handleSign = async () => {
+    if (!contract || !signatureData) return;
+    setSigning(true);
+    try {
+      const { error } = await supabase
+        .from('patient_contracts')
+        .update({
+          signature_data: signatureData,
+          signed_at: new Date().toISOString(),
+          status: 'signed',
+        })
+        .eq('id', contract.id);
+      if (error) throw error;
+      toast.success('Contrato assinado com sucesso! ✅');
+      setContract(c => c ? { ...c, status: 'signed', signed_at: new Date().toISOString(), signature_data: signatureData } : c);
+      setSignatureMode(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao assinar');
+    } finally {
+      setSigning(false);
+    }
+  };
+
+  return (
+    <PortalLayout>
+      <div className="space-y-5">
+        <div>
+          <h1 className="text-lg font-bold text-foreground">Contrato</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Contrato terapêutico</p>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : !contract ? (
+          <div className="bg-card rounded-2xl border border-border p-8 text-center">
+            <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="font-semibold text-sm text-foreground">Nenhum contrato disponível</p>
+            <p className="text-xs text-muted-foreground mt-1">Seu terapeuta ainda não enviou o contrato.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Status */}
+            {contract.status === 'signed' ? (
+              <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span>Assinado em {format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 bg-warning/10 text-warning border border-warning/20 rounded-xl px-4 py-3 text-sm">
+                <PenLine className="w-4 h-4 flex-shrink-0" />
+                <span>Aguardando sua assinatura</span>
+              </div>
+            )}
+
+            {/* Contract content */}
+            <div className="bg-card rounded-2xl border border-border p-4 overflow-auto max-h-[50vh]">
+              <div
+                className="prose prose-sm max-w-none text-foreground text-sm leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: contract.template_html }}
+              />
+            </div>
+
+            {/* Signature section */}
+            {contract.status === 'signed' && contract.signature_data && (
+              <div className="bg-card rounded-2xl border border-border p-4">
+                <p className="text-xs text-muted-foreground mb-2">Sua assinatura:</p>
+                <img src={contract.signature_data} alt="Assinatura" className="max-h-20 border border-border rounded" />
+              </div>
+            )}
+
+            {contract.status === 'sent' && (
+              signatureMode ? (
+                <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Assine abaixo:</p>
+                  <SignaturePad
+                    value={signatureData}
+                    onChange={setSignatureData}
+                    className="w-full h-32 border border-border rounded-xl bg-background"
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setSignatureMode(false)} className="flex-1 text-xs">
+                      Cancelar
+                    </Button>
+                    <Button size="sm" onClick={handleSign} disabled={!signatureData || signing} className="flex-1 text-xs">
+                      {signing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                      Confirmar assinatura
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button className="w-full gap-2" onClick={() => setSignatureMode(true)}>
+                  <PenLine className="w-4 h-4" />
+                  Assinar contrato
+                </Button>
+              )
+            )}
+          </div>
+        )}
+      </div>
+    </PortalLayout>
+  );
+}

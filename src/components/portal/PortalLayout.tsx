@@ -1,19 +1,34 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, MessageSquare, FileText, LogOut } from 'lucide-react';
+import { Home, MessageSquare, FileText, LogOut, Bell, DollarSign, BookOpen, FilePenLine } from 'lucide-react';
 import { usePortal } from '@/contexts/PortalContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/portal/home', icon: Home, label: 'Início' },
-  { to: '/portal/mensagens', icon: MessageSquare, label: 'Mensagens' },
-  { to: '/portal/ficha', icon: FileText, label: 'Minha Ficha' },
+  { to: '/portal/mensagens', icon: MessageSquare, label: 'Chat' },
+  { to: '/portal/avisos', icon: Bell, label: 'Avisos' },
+  { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro' },
+  { to: '/portal/ficha', icon: FileText, label: 'Ficha' },
 ];
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
-  const { patient, unreadCount } = usePortal();
+  const { patient, unreadCount, portalAccount } = usePortal();
   const { signOut } = useAuth();
   const location = useLocation();
+  const [unreadNotices, setUnreadNotices] = useState(0);
+
+  useEffect(() => {
+    if (!portalAccount) return;
+    supabase
+      .from('portal_notices')
+      .select('id', { count: 'exact' })
+      .eq('patient_id', portalAccount.patient_id)
+      .eq('read_by_patient', false)
+      .then(({ count }) => setUnreadNotices(count || 0));
+  }, [portalAccount, location.pathname]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex flex-col">
@@ -49,13 +64,16 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         <div className="max-w-lg mx-auto flex items-center justify-around h-16 px-2">
           {navItems.map(({ to, icon: Icon, label }) => {
             const active = location.pathname === to;
-            const badge = to === '/portal/mensagens' && unreadCount > 0 ? unreadCount : 0;
+            const badge =
+              to === '/portal/mensagens' && unreadCount > 0 ? unreadCount
+              : to === '/portal/avisos' && unreadNotices > 0 ? unreadNotices
+              : 0;
             return (
               <NavLink
                 key={to}
                 to={to}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-all relative',
+                  'flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all relative',
                   active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
