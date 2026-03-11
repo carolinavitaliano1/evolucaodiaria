@@ -46,6 +46,30 @@ const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   score: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 3, 2, 2, 2, 3][i] ?? 5,
 }));
 
+// Renders text with **bold** markdown support for evolution template titles
+function EvolutionText({ text, className }: { text: string; className?: string }) {
+  const lines = text.split('\n');
+  return (
+    <p className={className}>
+      {lines.map((line, li) => {
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <span key={li}>
+            {parts.map((part, i) =>
+              part.startsWith('**') && part.endsWith('**')
+                ? <strong key={i}>{part.slice(2, -2)}</strong>
+                : <span key={i}>{part}</span>
+            )}
+            {li < lines.length - 1 && <br />}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+
+
 function getMoodInfo(mood?: string, customMoods?: { id: string; emoji: string; label: string; score: number }[]) {
   const found = MOOD_OPTIONS.find(m => m.value === mood);
   if (found) return found;
