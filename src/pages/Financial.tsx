@@ -50,6 +50,8 @@ export default function Financial() {
   // Patient payment records keyed by patient_id
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, any>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
+  // Clinic-level payment records for contratante clinics keyed by clinic_id
+  const [clinicPaymentRecords, setClinicPaymentRecords] = useState<Record<string, any>>({});
 
   const goToPreviousMonth = () => setSelectedDate(prev => {
     const d = subMonths(prev, 1);
@@ -83,24 +85,26 @@ export default function Financial() {
     });
   }, [user]);
 
-  // Load patient payment records for selected month
+  // Load patient payment records AND clinic payment records for selected month
   useEffect(() => {
     if (!user) return;
     const m = selectedDate.getMonth() + 1;
     const y = selectedDate.getFullYear();
-    supabase
-      .from('patient_payment_records' as any)
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('month', m)
-      .eq('year', y)
-      .then(({ data }) => {
-        if (data) {
-          const map: Record<string, any> = {};
-          (data as any[]).forEach(r => { map[r.patient_id] = r; });
-          setPatientPaymentRecords(map);
-        }
-      });
+    Promise.all([
+      supabase.from('patient_payment_records' as any).select('*').eq('user_id', user.id).eq('month', m).eq('year', y),
+      supabase.from('clinic_payment_records' as any).select('*').eq('user_id', user.id).eq('month', m).eq('year', y),
+    ]).then(([patientRes, clinicRes]) => {
+      if (patientRes.data) {
+        const map: Record<string, any> = {};
+        (patientRes.data as any[]).forEach(r => { map[r.patient_id] = r; });
+        setPatientPaymentRecords(map);
+      }
+      if (clinicRes.data) {
+        const map: Record<string, any> = {};
+        (clinicRes.data as any[]).forEach(r => { map[r.clinic_id] = r; });
+        setClinicPaymentRecords(map);
+      }
+    });
   }, [selectedDate, user]);
 
   const monthlyEvolutions = evolutions.filter(e => {
@@ -969,8 +973,18 @@ export default function Financial() {
   };
 
   const grandTotal = totalRevenue + standaloneRevenue;
-  const paidTotal = allPatientStats.reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
-  const pendingTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (!pr?.paid ? revenue : 0), 0);
+  // Include clinic-level payments (contratante clinics) in paidTotal
+  const clinicPaidTotal = contratanteClinics.reduce((sum, clinic) => {
+    const cr = clinicPaymentRecords[clinic.id];
+    if (!cr?.paid) return sum;
+    // Use saved amount; fallback to calculated revenue for that clinic
+    const clinicRevenue = clinicStats.find(s => s.clinic.id === clinic.id)?.revenue ?? 0;
+    return sum + (cr.amount > 0 ? cr.amount : clinicRevenue);
+  }, 0);
+  // Patient-level paid total (for non-contratante patients)
+  const paidPatientTotal = allPatientStats.reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
+  const paidTotal = paidPatientTotal + clinicPaidTotal;
+  const pendingTotal = Math.max(0, grandTotal - paidTotal);
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
