@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Loader2, Eye, EyeOff, FileText } from 'lucide-react';
+import { Loader2, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -58,8 +56,8 @@ export function SharedEvolutionsManager({ patientId }: SharedEvolutionsManagerPr
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-          <FileText className="w-4 h-4 text-primary" />
-          Evoluções compartilhadas
+          <MessageSquare className="w-4 h-4 text-primary" />
+          Feedbacks da sessão
         </h3>
         <span className="text-xs text-muted-foreground">{visibleCount} visíveis no portal</span>
       </div>
@@ -97,7 +95,7 @@ export function SharedEvolutionsManager({ patientId }: SharedEvolutionsManagerPr
         </div>
       )}
       <p className="text-[10px] text-muted-foreground">
-        Ative o toggle para compartilhar a evolução no portal do paciente. Apenas o texto é exibido — campos internos não são mostrados.
+        Ative o toggle para compartilhar o feedback no portal do paciente. Apenas o texto é exibido — campos internos não são mostrados.
       </p>
     </div>
   );

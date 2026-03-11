@@ -229,8 +229,8 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
             </TabsTrigger>
             <TabsTrigger value="evolutions" className="text-xs gap-1">
               <Eye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Evoluções</span>
-              <span className="sm:hidden">Evol.</span>
+              <span className="hidden sm:inline">Feedbacks</span>
+              <span className="sm:hidden">Feed.</span>
             </TabsTrigger>
           </TabsList>
 

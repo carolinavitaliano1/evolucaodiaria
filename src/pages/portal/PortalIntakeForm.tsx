@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface IntakeForm {
   full_name: string;
@@ -21,13 +22,22 @@ interface IntakeForm {
   emergency_contact: string;
   health_info: string;
   observations: string;
+  payment_due_day: string; // stored as string for input, converted to int on save
 }
 
 const empty: IntakeForm = {
   full_name: '', cpf: '', birthdate: '', phone: '', address: '',
   responsible_name: '', responsible_cpf: '', responsible_phone: '',
   emergency_contact: '', health_info: '', observations: '',
+  payment_due_day: '',
 };
+
+const PAYMENT_DAY_OPTIONS = [
+  { label: 'Dia 5', value: '5' },
+  { label: 'Dia 10', value: '10' },
+  { label: 'Dia 15', value: '15' },
+  { label: 'Dia 20', value: '20' },
+];
 
 export default function PortalIntakeForm() {
   const { portalAccount } = usePortal();
@@ -35,6 +45,7 @@ export default function PortalIntakeForm() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [customDay, setCustomDay] = useState(false);
 
   useEffect(() => {
     if (!portalAccount) return;
@@ -45,6 +56,9 @@ export default function PortalIntakeForm() {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
+          const dayVal = (data as any).payment_due_day ? String((data as any).payment_due_day) : '';
+          const isPreset = PAYMENT_DAY_OPTIONS.some(o => o.value === dayVal);
+          setCustomDay(!!dayVal && !isPreset);
           setForm({
             full_name: data.full_name || '',
             cpf: data.cpf || '',
@@ -57,6 +71,7 @@ export default function PortalIntakeForm() {
             emergency_contact: data.emergency_contact || '',
             health_info: data.health_info || '',
             observations: data.observations || '',
+            payment_due_day: dayVal,
           });
           if (data.submitted_at) setSubmitted(true);
         }
@@ -71,20 +86,23 @@ export default function PortalIntakeForm() {
     if (!portalAccount) return;
     setSaving(true);
     try {
-      const payload = {
+      const paymentDueDay = form.payment_due_day ? parseInt(form.payment_due_day, 10) : null;
+      const payload: Record<string, any> = {
         patient_id: portalAccount.patient_id,
         therapist_user_id: portalAccount.therapist_user_id,
         ...form,
         birthdate: form.birthdate || null,
-        submitted_at: submit ? new Date().toISOString() : undefined,
+        payment_due_day: paymentDueDay,
         updated_at: new Date().toISOString(),
       };
+      if (submit) payload.submitted_at = new Date().toISOString();
+
       const { error } = await supabase
         .from('patient_intake_forms')
         .upsert(payload, { onConflict: 'patient_id' });
       if (error) throw error;
 
-      // On submit: sync key fields back to the patient record
+      // On submit: sync ALL key fields back to the patient record
       if (submit) {
         const patientUpdate: Record<string, any> = {};
         if (form.phone) patientUpdate.phone = form.phone;
@@ -94,6 +112,7 @@ export default function PortalIntakeForm() {
         if (form.responsible_cpf) patientUpdate.responsible_cpf = form.responsible_cpf;
         if (form.responsible_phone) patientUpdate.responsible_whatsapp = form.responsible_phone;
         if (form.observations) patientUpdate.observations = form.observations;
+        if (paymentDueDay) patientUpdate.payment_due_day = paymentDueDay;
 
         if (Object.keys(patientUpdate).length > 0) {
           await supabase
@@ -191,6 +210,55 @@ export default function PortalIntakeForm() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Payment due day */}
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Melhor dia para pagamento</h2>
+          <p className="text-xs text-muted-foreground">Informe o dia do mês que prefere realizar o pagamento</p>
+          <div className="grid grid-cols-4 gap-2">
+            {PAYMENT_DAY_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { setCustomDay(false); setForm(f => ({ ...f, payment_due_day: opt.value })); }}
+                className={cn(
+                  'rounded-xl border py-2 text-sm font-semibold transition-colors',
+                  form.payment_due_day === opt.value && !customDay
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-muted/50 border-border text-foreground hover:bg-muted'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => { setCustomDay(true); setForm(f => ({ ...f, payment_due_day: '' })); }}
+            className={cn(
+              'w-full rounded-xl border py-2 text-sm font-medium transition-colors',
+              customDay
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-muted/50 border-border text-foreground hover:bg-muted'
+            )}
+          >
+            Outro dia
+          </button>
+          {customDay && (
+            <div>
+              <Label className="text-xs">Dia personalizado (1-31)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={31}
+                value={form.payment_due_day}
+                onChange={set('payment_due_day')}
+                placeholder="Ex: 25"
+                className="mt-1"
+              />
+            </div>
+          )}
         </div>
 
         {/* Health info */}
