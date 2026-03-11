@@ -757,12 +757,12 @@ export default function Financial() {
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
       // Columns spread across 174mm usable width:
-      // Data(18) | Paciente(46) | Frequência(96) | Status Pgto(133) | Tipo(163) | Valor(right)
+      // Data(18) | Paciente(46) | Frequência(91) | Status Pgto(130) | Tipo(158) | Valor(192 right)
       const col1 = margin;        // 18 — Data
       const col2 = margin + 28;   // 46 — Paciente
-      const col3 = margin + 78;   // 96 — Frequência
-      const col4 = margin + 115;  // 133 — Status Pgto
-      const col5 = margin + 148;  // 163 — Tipo
+      const col3 = margin + 73;   // 91 — Frequência
+      const col4 = margin + 112;  // 130 — Status Pgto
+      const col5 = margin + 140;  // 158 — Tipo
       const col6 = pageWidth - margin; // 192 — Valor (right-aligned)
       doc.text('Data', col1, y);
       doc.text('Paciente', col2, y);
