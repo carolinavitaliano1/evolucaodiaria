@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase, CheckCircle2, Clock, XCircle, CalendarIcon } from 'lucide-react';
+import { DollarSign, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase, CheckCircle2, Clock, XCircle, CalendarIcon, FileDown, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApp } from '@/contexts/AppContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { TeamFinancialReport } from './TeamFinancialReport';
-import { format, subMonths, addMonths } from 'date-fns';
+import { format, subMonths, addMonths, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
+import jsPDF from 'jspdf';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -51,6 +52,10 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
+
+  // Dias específicos state
+  const [specificDays, setSpecificDays] = useState<Date[]>([]);
+  const [isExportingDays, setIsExportingDays] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -662,6 +667,426 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     </div>
   );
 
+  // =================== DIAS ESPECÍFICOS ===================
+  const selectedDaysStr = specificDays.map(d => format(d, 'yyyy-MM-dd'));
+
+  const dayEvolutions = evolutions.filter(e => {
+    if (!clinicPatients.some(p => p.id === e.patientId)) return false;
+    return selectedDaysStr.includes(e.date);
+  });
+
+  const dayPresentEvos = dayEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
+  const dayAbsentEvos = dayEvolutions.filter(e => e.attendanceStatus === 'falta');
+  const dayPaidAbsenceEvos = dayEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
+  const dayFeriadoRemEvos = dayEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado');
+
+  const calculateDayPatientRevenue = (patientId: string) => {
+    const patient = clinicPatients.find(p => p.id === patientId);
+    if (!patient || !patient.paymentValue) return 0;
+    if (patient.paymentType === 'fixo') {
+      // For fixed, prorate by days selected that fall in patient's scheduled days
+      const hasEvo = dayEvolutions.some(e => e.patientId === patientId);
+      return hasEvo ? patient.paymentValue : 0;
+    }
+    const presentCount = dayPresentEvos.filter(e => e.patientId === patientId).length;
+    const paidAbsenceCount = dayPaidAbsenceEvos.filter(e => e.patientId === patientId).length;
+    const feriadoRemCount = dayFeriadoRemEvos.filter(e => e.patientId === patientId).length;
+    let paidRegularAbsences = 0;
+    const regularAbsences = dayAbsentEvos.filter(e => e.patientId === patientId);
+    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
+    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+  };
+
+  const dayServicesFiltered = clinicServices.filter(s => selectedDaysStr.includes(s.date));
+  const dayServicesConcluded = dayServicesFiltered.filter(s => s.status === 'concluído');
+  const dayServicesRevenue = dayServicesConcluded.reduce((sum, s) => sum + s.price, 0);
+
+  const dayPatientBreakdown = clinicPatients
+    .map(patient => ({
+      patient,
+      revenue: calculateDayPatientRevenue(patient.id),
+      sessions: dayPresentEvos.filter(e => e.patientId === patient.id).length,
+      absences: dayAbsentEvos.filter(e => e.patientId === patient.id).length,
+      paidAbsences: dayPaidAbsenceEvos.filter(e => e.patientId === patient.id).length,
+      evosInDays: dayEvolutions.filter(e => e.patientId === patient.id),
+    }))
+    .filter(p => p.evosInDays.length > 0 || p.sessions > 0)
+    .sort((a, b) => b.revenue - a.revenue);
+
+  const dayTotalRevenue = dayPatientBreakdown.reduce((sum, p) => sum + p.revenue, 0) + dayServicesRevenue;
+
+  // Group evolutions by day for display
+  const evosByDay = selectedDaysStr.reduce<Record<string, typeof dayEvolutions>>((acc, d) => {
+    acc[d] = dayEvolutions.filter(e => e.date === d);
+    return acc;
+  }, {});
+
+  const handleExportDaysPDF = async () => {
+    setIsExportingDays(true);
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pw = 210;
+      const margin = 14;
+      const contentW = pw - margin * 2;
+      let y = margin;
+
+      const fmt = (n: number) => `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+      // Header
+      doc.setFillColor(99, 102, 241);
+      doc.rect(0, 0, pw, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(clinic?.name || 'Clínica', margin, 12);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const daysLabel = specificDays.length === 1
+        ? format(specificDays[0], "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+        : `${specificDays.length} dias selecionados`;
+      doc.text(`Relatório por Dias Específicos — ${daysLabel}`, margin, 20);
+      if (therapistName) doc.text(therapistName, pw - margin, 20, { align: 'right' });
+      y = 36;
+
+      // Summary
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumo do Período', margin, y);
+      y += 6;
+
+      const cards = [
+        { label: 'Faturamento Total', value: fmt(dayTotalRevenue) },
+        { label: 'Sessões Realizadas', value: String(dayPresentEvos.length) },
+        { label: 'Faltas Remuneradas', value: String(dayPaidAbsenceEvos.length) },
+        { label: 'Faltas', value: String(dayAbsentEvos.length) },
+      ];
+      const cw = contentW / 4;
+      cards.forEach((card, i) => {
+        const cx = margin + i * cw;
+        doc.setFillColor(245, 245, 255);
+        doc.roundedRect(cx, y, cw - 2, 18, 3, 3, 'F');
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 120);
+        doc.text(card.label, cx + (cw - 2) / 2, y + 6, { align: 'center' });
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 30, 30);
+        doc.text(card.value, cx + (cw - 2) / 2, y + 13, { align: 'center' });
+      });
+      y += 24;
+
+      // Days list
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 30, 30);
+      doc.text('Dias Selecionados', margin, y);
+      y += 5;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      selectedDaysStr.forEach(dayStr => {
+        const dayEvos = evosByDay[dayStr] || [];
+        const dayLabel = format(new Date(dayStr + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR });
+        if (y > 260) { doc.addPage(); y = margin; }
+        doc.setFillColor(237, 233, 254);
+        doc.rect(margin, y, contentW, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(99, 102, 241);
+        doc.text(dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), margin + 2, y + 5);
+        const dayTotal = dayEvos.reduce((sum, e) => {
+          const p = clinicPatients.find(pt => pt.id === e.patientId);
+          if (!p || !p.paymentValue) return sum;
+          if (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'falta_remunerada' || e.attendanceStatus === 'feriado_remunerado') return sum + p.paymentValue;
+          if (e.attendanceStatus === 'falta' && absenceType === 'always') return sum + p.paymentValue;
+          return sum;
+        }, 0);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 30, 30);
+        doc.text(fmt(dayTotal), pw - margin, y + 5, { align: 'right' });
+        y += 9;
+        if (dayEvos.length === 0) {
+          doc.setTextColor(150, 150, 150);
+          doc.text('Sem evoluções registradas', margin + 4, y + 3);
+          y += 7;
+        } else {
+          dayEvos.forEach(e => {
+            const p = clinicPatients.find(pt => pt.id === e.patientId);
+            if (!p) return;
+            if (y > 268) { doc.addPage(); y = margin; }
+            const statusMap: Record<string, string> = { presente: 'Presente', falta: 'Falta', reposicao: 'Reposição', falta_remunerada: 'Falta Rem.', feriado_remunerado: 'Feriado Rem.' };
+            doc.setTextColor(50, 50, 50);
+            doc.text(`• ${p.name}`, margin + 4, y + 3);
+            doc.setTextColor(120, 120, 120);
+            doc.text(statusMap[e.attendanceStatus] || e.attendanceStatus, margin + 70, y + 3);
+            const val = calculateDayPatientRevenue(p.id);
+            doc.setTextColor(30, 30, 30);
+            if (val > 0) doc.text(fmt(val / (dayPatientBreakdown.find(x => x.patient.id === p.id)?.sessions || 1 )), pw - margin, y + 3, { align: 'right' });
+            y += 6;
+          });
+        }
+        y += 2;
+      });
+
+      // Patient breakdown table
+      if (dayPatientBreakdown.length > 0) {
+        if (y > 220) { doc.addPage(); y = margin; }
+        y += 4;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 30, 30);
+        doc.text('Detalhamento por Paciente', margin, y);
+        y += 5;
+        // Header row
+        doc.setFillColor(99, 102, 241);
+        doc.rect(margin, y, contentW, 7, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.text('Paciente', margin + 2, y + 5);
+        doc.text('Sessões', margin + 80, y + 5);
+        doc.text('Faltas', margin + 110, y + 5);
+        doc.text('Valor', pw - margin, y + 5, { align: 'right' });
+        y += 8;
+        dayPatientBreakdown.forEach((item, idx) => {
+          if (y > 268) { doc.addPage(); y = margin; }
+          doc.setFillColor(idx % 2 === 0 ? 248 : 255, idx % 2 === 0 ? 248 : 255, idx % 2 === 0 ? 255 : 255);
+          doc.rect(margin, y, contentW, 7, 'F');
+          doc.setTextColor(30, 30, 30);
+          doc.setFont('helvetica', 'normal');
+          doc.text(item.patient.name.substring(0, 35), margin + 2, y + 5);
+          doc.text(String(item.sessions), margin + 83, y + 5);
+          doc.text(String(item.absences), margin + 113, y + 5);
+          doc.setFont('helvetica', 'bold');
+          doc.text(fmt(item.revenue), pw - margin, y + 5, { align: 'right' });
+          y += 7;
+        });
+        // Total row
+        doc.setFillColor(237, 233, 254);
+        doc.rect(margin, y, contentW, 8, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(99, 102, 241);
+        doc.text('TOTAL', margin + 2, y + 6);
+        doc.text(fmt(dayTotalRevenue), pw - margin, y + 6, { align: 'right' });
+      }
+
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setTextColor(170, 170, 170);
+        doc.setFontSize(7);
+        doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")} — ${i}/${pageCount}`, pw / 2, 292, { align: 'center' });
+      }
+
+      const safeName = (clinic?.name || 'clinica').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      const dayTag = specificDays.length === 1
+        ? format(specificDays[0], 'dd-MM-yyyy')
+        : `${specificDays.length}-dias`;
+      doc.save(`financeiro-${safeName}-${dayTag}.pdf`);
+    } finally {
+      setIsExportingDays(false);
+    }
+  };
+
+  const DaysView = (
+    <div className="space-y-5">
+      {/* Calendar */}
+      <div className="bg-card rounded-2xl p-4 border border-border">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <h3 className="font-bold text-foreground text-sm">Selecionar Dias</h3>
+          </div>
+          {specificDays.length > 0 && (
+            <button
+              onClick={() => setSpecificDays([])}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Limpar ({specificDays.length})
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Clique em um ou mais dias para ver o rendimento específico.
+        </p>
+        <Calendar
+          mode="multiple"
+          selected={specificDays}
+          onSelect={(days) => setSpecificDays(days || [])}
+          className="p-0 pointer-events-auto w-full"
+          classNames={{ months: 'w-full', month: 'w-full', table: 'w-full', head_cell: 'w-full', cell: 'w-full', day: 'w-full h-9' }}
+        />
+      </div>
+
+      {specificDays.length === 0 ? (
+        <div className="text-center text-muted-foreground py-12 text-sm">
+          <CalendarDays className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>Selecione dias no calendário acima</p>
+          <p className="text-xs mt-1">Você pode selecionar múltiplos dias</p>
+        </div>
+      ) : (
+        <>
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-card rounded-2xl p-4 border border-border col-span-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground text-xs mb-0.5">Faturamento do Período</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {`R$ ${dayTotalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {specificDays.length === 1
+                      ? format(specificDays[0], "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                      : `${specificDays.length} dias selecionados`}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleExportDaysPDF}
+                  disabled={isExportingDays}
+                  className="gap-1.5 shrink-0"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  {isExportingDays ? 'Gerando...' : 'Exportar PDF'}
+                </Button>
+              </div>
+            </div>
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+                <TrendingUp className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <p className="text-muted-foreground text-xs">Sessões</p>
+              <p className="text-xl font-bold text-foreground">{dayPresentEvos.length}</p>
+            </div>
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <div className="w-7 h-7 rounded-xl bg-destructive/10 flex items-center justify-center mb-2">
+                <TrendingDown className="w-3.5 h-3.5 text-destructive" />
+              </div>
+              <p className="text-muted-foreground text-xs">Faltas</p>
+              <p className="text-xl font-bold text-foreground">{dayAbsentEvos.length}</p>
+            </div>
+          </div>
+
+          {/* Per-day breakdown */}
+          <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
+            <h3 className="font-bold text-foreground text-sm">Por Dia</h3>
+            {[...specificDays].sort((a, b) => a.getTime() - b.getTime()).map(day => {
+              const dayStr = format(day, 'yyyy-MM-dd');
+              const dayEvosForDay = evosByDay[dayStr] || [];
+              const dayServicesForDay = clinicServices.filter(s => s.date === dayStr && s.status === 'concluído');
+              const daySvcRevenue = dayServicesForDay.reduce((sum, s) => sum + s.price, 0);
+              const dayPatRevenue = dayEvosForDay.reduce((sum, e) => {
+                const p = clinicPatients.find(pt => pt.id === e.patientId);
+                if (!p || !p.paymentValue) return sum;
+                if (p.paymentType === 'fixo') return sum;
+                if (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'falta_remunerada' || e.attendanceStatus === 'feriado_remunerado') return sum + p.paymentValue;
+                if (e.attendanceStatus === 'falta' && absenceType === 'always') return sum + p.paymentValue;
+                return sum;
+              }, 0);
+              const dayTotal = dayPatRevenue + daySvcRevenue;
+              const presentOnDay = dayEvosForDay.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
+              const absentOnDay = dayEvosForDay.filter(e => e.attendanceStatus === 'falta').length;
+              const dayLabel = format(day, "EEE, dd 'de' MMM", { locale: ptBR });
+
+              return (
+                <div key={dayStr} className="rounded-xl bg-secondary/40 border border-border/50 overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2.5 bg-primary/5">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground capitalize">{dayLabel}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {presentOnDay} sessões{absentOnDay > 0 ? ` · ${absentOnDay} faltas` : ''}
+                        {dayServicesForDay.length > 0 ? ` · ${dayServicesForDay.length} serviços` : ''}
+                      </p>
+                    </div>
+                    <p className="font-bold text-primary text-sm">
+                      {`R$ ${dayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                    </p>
+                  </div>
+                  {dayEvosForDay.length > 0 && (
+                    <div className="px-3 py-2 space-y-1">
+                      {dayEvosForDay.map(e => {
+                        const p = clinicPatients.find(pt => pt.id === e.patientId);
+                        if (!p) return null;
+                        const statusMap: Record<string, { label: string; color: string }> = {
+                          presente: { label: 'Presente', color: 'text-success' },
+                          falta: { label: 'Falta', color: 'text-destructive' },
+                          reposicao: { label: 'Reposição', color: 'text-primary' },
+                          falta_remunerada: { label: 'Falta Rem.', color: 'text-warning' },
+                          feriado_remunerado: { label: 'Feriado Rem.', color: 'text-primary' },
+                        };
+                        const st = statusMap[e.attendanceStatus] || { label: e.attendanceStatus, color: 'text-muted-foreground' };
+                        return (
+                          <div key={e.id} className="flex items-center justify-between text-xs">
+                            <span className="text-foreground truncate max-w-[140px]">{p.name}</span>
+                            <span className={cn('text-[10px] font-medium', st.color)}>{st.label}</span>
+                          </div>
+                        );
+                      })}
+                      {dayServicesForDay.map(s => (
+                        <div key={s.id} className="flex items-center justify-between text-xs">
+                          <span className="text-foreground truncate max-w-[140px]">{s.client_name} <span className="text-muted-foreground">({s.service_name || 'Serviço'})</span></span>
+                          <span className="text-[10px] font-medium text-success">{`R$ ${s.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {dayEvosForDay.length === 0 && dayServicesForDay.length === 0 && (
+                    <p className="text-xs text-muted-foreground px-3 py-2">Sem registros neste dia</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Patient breakdown */}
+          {dayPatientBreakdown.length > 0 && (
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <h3 className="font-bold text-foreground text-sm mb-3">Por Paciente</h3>
+              <div className="space-y-2">
+                {dayPatientBreakdown.map(({ patient, revenue, sessions, absences }) => (
+                  <div key={patient.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/50">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{patient.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{sessions} sessões{absences > 0 ? ` · ${absences} faltas` : ''}</p>
+                    </div>
+                    <p className="font-bold text-foreground text-sm">
+                      {`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                    </p>
+                  </div>
+                ))}
+                <div className="flex justify-between items-center pt-2 border-t border-border">
+                  <p className="font-bold text-foreground text-sm">Total</p>
+                  <p className="font-bold text-foreground text-base">
+                    {`R$ ${dayTotalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  const FinancialWithDays = (
+    <Tabs defaultValue="mensal" className="space-y-4">
+      <TabsList className="h-auto p-0.5 gap-0.5">
+        <TabsTrigger value="mensal" className="text-xs px-3 py-1.5 gap-1">
+          <DollarSign className="w-3 h-3" />
+          Mensal
+        </TabsTrigger>
+        <TabsTrigger value="dias" className="text-xs px-3 py-1.5 gap-1">
+          <CalendarDays className="w-3 h-3" />
+          Dias Específicos
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="mensal">{SoloView}</TabsContent>
+      <TabsContent value="dias">{DaysView}</TabsContent>
+    </Tabs>
+  );
+
   if (isOrg) {
     return (
       <Tabs defaultValue="meu" className="space-y-4">
@@ -675,7 +1100,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             Equipe
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="meu">{SoloView}</TabsContent>
+        <TabsContent value="meu">{FinancialWithDays}</TabsContent>
         <TabsContent value="equipe">
           <TeamFinancialReport clinicId={clinicId} />
         </TabsContent>
@@ -683,5 +1108,5 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     );
   }
 
-  return SoloView;
+  return FinancialWithDays;
 }
