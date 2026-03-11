@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface PortalAccount {
   id: string;
@@ -18,6 +18,9 @@ export interface PortalPatient {
   email: string | null;
   phone: string | null;
   whatsapp: string | null;
+  payment_due_day: number | null;
+  payment_value: number | null;
+  payment_type: string | null;
 }
 
 export interface PortalMessage {
@@ -53,9 +56,11 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
   const [patient, setPatient] = useState<PortalPatient | null>(null);
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const portalAccountRef = useRef<PortalAccount | null>(null);
 
   const loadMessages = useCallback(async (patientId?: string) => {
-    const pid = patientId || portalAccount?.patient_id;
+    const pid = patientId || portalAccountRef.current?.patient_id;
     if (!pid) return;
     const { data } = await supabase
       .from('portal_messages')
@@ -63,7 +68,35 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
       .eq('patient_id', pid)
       .order('created_at', { ascending: true });
     if (data) setMessages(data as PortalMessage[]);
-  }, [portalAccount?.patient_id]);
+  }, []);
+
+  const setupRealtime = useCallback((patientId: string) => {
+    // Clean up previous channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    const channelName = `portal-messages-${patientId}-${user?.id}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'portal_messages',
+          filter: `patient_id=eq.${patientId}`,
+        },
+        () => {
+          // Reload messages when any change happens
+          loadMessages(patientId);
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+  }, [user?.id, loadMessages]);
 
   const loadPortalData = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -78,50 +111,65 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
 
       if (account) {
         setPortalAccount(account as PortalAccount);
-        const { data: patientData } = await supabase
-          .from('patients')
-          .select('id, name, clinic_id, email, phone, whatsapp')
-          .eq('id', account.patient_id)
-          .single();
-        if (patientData) setPatient(patientData as PortalPatient);
+        portalAccountRef.current = account as PortalAccount;
 
-        // Load messages
-        const { data: msgs } = await supabase
-          .from('portal_messages')
-          .select('*')
-          .eq('patient_id', account.patient_id)
-          .order('created_at', { ascending: true });
+        const [{ data: patientData }, { data: msgs }] = await Promise.all([
+          supabase
+            .from('patients')
+            .select('id, name, clinic_id, email, phone, whatsapp, payment_due_day, payment_value, payment_type')
+            .eq('id', account.patient_id)
+            .single(),
+          supabase
+            .from('portal_messages')
+            .select('*')
+            .eq('patient_id', account.patient_id)
+            .order('created_at', { ascending: true }),
+        ]);
+
+        if (patientData) setPatient(patientData as PortalPatient);
         if (msgs) setMessages(msgs as PortalMessage[]);
+
+        // Setup realtime subscription
+        setupRealtime(account.patient_id);
+      } else {
+        setPortalAccount(null);
+        portalAccountRef.current = null;
       }
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, setupRealtime]);
 
   useEffect(() => {
     loadPortalData();
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
   }, [loadPortalData]);
 
   const sendMessage = async (content: string, type = 'message') => {
-    if (!portalAccount) return;
+    if (!portalAccountRef.current) return;
     await supabase.from('portal_messages').insert({
-      patient_id: portalAccount.patient_id,
-      therapist_user_id: portalAccount.therapist_user_id,
+      patient_id: portalAccountRef.current.patient_id,
+      therapist_user_id: portalAccountRef.current.therapist_user_id,
       sender_type: 'patient',
       content,
       message_type: type,
       read_by_patient: true,
       read_by_therapist: false,
     });
-    await loadMessages();
+    // Realtime will trigger loadMessages automatically
   };
 
   const markMessagesAsRead = async () => {
-    if (!portalAccount) return;
+    if (!portalAccountRef.current) return;
     await supabase
       .from('portal_messages')
       .update({ read_by_patient: true })
-      .eq('patient_id', portalAccount.patient_id)
+      .eq('patient_id', portalAccountRef.current.patient_id)
       .eq('sender_type', 'therapist')
       .eq('read_by_patient', false);
     await loadMessages();
