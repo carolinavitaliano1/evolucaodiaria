@@ -1726,7 +1726,7 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="evolutions" className="space-y-4">
-        <TabsList className="w-full sm:w-auto grid grid-cols-5 sm:inline-grid gap-0">
+        <TabsList className="w-full sm:w-auto grid grid-cols-6 sm:inline-grid gap-0">
           <TabsTrigger value="evolutions" className="gap-1.5 text-xs sm:text-sm">
             <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evoluções</span><span className="sm:hidden">Evol.</span>
           </TabsTrigger>
@@ -1741,6 +1741,9 @@ export default function PatientDetail() {
           </TabsTrigger>
           <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm">
             <ListTodo className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tasks</span>
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="gap-1.5 text-xs sm:text-sm">
+            <PenLine className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Notas</span><span className="sm:hidden">Notas</span>
           </TabsTrigger>
         </TabsList>
 
