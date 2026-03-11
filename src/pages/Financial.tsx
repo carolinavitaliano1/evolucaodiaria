@@ -900,41 +900,6 @@ export default function Financial() {
       }
       y += 15;
 
-      // Payment status section in invoice
-      const invoicePatientPayments = clinicPatients.map(p => ({
-        patient: p,
-        pr: patientPaymentRecords[p.id],
-        revenue: calculatePatientRevenue(p.id),
-      })).filter(r => r.revenue > 0);
-
-      if (invoicePatientPayments.length > 0) {
-        ensureSpace(20 + invoicePatientPayments.length * 7);
-        doc.setDrawColor(180, 180, 180);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 6;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(51, 51, 51);
-        doc.text('STATUS DE PAGAMENTO POR PACIENTE', margin, y); y += 7;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        invoicePatientPayments.forEach(({ patient, pr, revenue }) => {
-          ensureSpace(7);
-          doc.setTextColor(51, 51, 51);
-          doc.text(patient.name.substring(0, 28), margin, y);
-          if (pr?.paid) {
-            doc.setTextColor(34, 139, 34);
-            doc.text(`Pago${pr.payment_date ? ' em ' + format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy') : ''}`, margin + 70, y);
-          } else {
-            doc.setTextColor(200, 100, 0);
-            doc.text('Pendente', margin + 70, y);
-          }
-          doc.setTextColor(80, 80, 80);
-          doc.text(`R$ ${revenue.toFixed(2)}`, pageWidth - margin - 5, y, { align: 'right' });
-          y += 6;
-        });
-      }
-
       ensureSpace(60);
       doc.setDrawColor(180, 180, 180);
       doc.line(margin, y, pageWidth - margin, y);
