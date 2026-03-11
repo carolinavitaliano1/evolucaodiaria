@@ -27,17 +27,23 @@ export function MissingEvolutionsAlert() {
     return h * 60 + (m || 0);
   };
 
+  // Default session duration in minutes (used when no end time is defined)
+  const DEFAULT_SESSION_DURATION = 50;
+
   // Build list of today's scheduled patients with their session time
-  const scheduledToday: { patientId: string; name: string; time: string; avatarUrl?: string | null }[] = [];
+  const scheduledToday: { patientId: string; name: string; startTime: string; endMin: number; avatarUrl?: string | null }[] = [];
 
   // 1. Recurring weekly patients
   patients.forEach(p => {
     if (p.isArchived) return;
-    const schedByDay = p.scheduleByDay as Record<string, { start?: string }> | null;
+    const schedByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
     const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
     if (!scheduledDays.includes(todayWeekday)) return;
-    const time = schedByDay?.[todayWeekday]?.start || p.scheduleTime || '';
-    scheduledToday.push({ patientId: p.id, name: p.name, time, avatarUrl: p.avatarUrl });
+    const startTime = schedByDay?.[todayWeekday]?.start || p.scheduleTime || '';
+    if (!startTime || startTime === '00:00') return;
+    const endStr = schedByDay?.[todayWeekday]?.end;
+    const endMin = endStr ? toMin(endStr) : toMin(startTime) + DEFAULT_SESSION_DURATION;
+    scheduledToday.push({ patientId: p.id, name: p.name, startTime, endMin, avatarUrl: p.avatarUrl });
   });
 
   // 2. One-off appointments (avoid duplicates)
@@ -47,14 +53,15 @@ export function MissingEvolutionsAlert() {
     .forEach(a => {
       const patient = patients.find(p => p.id === a.patientId);
       if (!patient || patient.isArchived) return;
-      scheduledToday.push({ patientId: patient.id, name: patient.name, time: a.time || '', avatarUrl: patient.avatarUrl });
+      const startTime = a.time || '';
+      if (!startTime || startTime === '00:00') return;
+      const endMin = toMin(startTime) + DEFAULT_SESSION_DURATION;
+      scheduledToday.push({ patientId: patient.id, name: patient.name, startTime, endMin, avatarUrl: patient.avatarUrl });
     });
 
-  // Filter: session time has passed AND no evolution recorded today
+  // Filter: session has ENDED (nowMinutes > endMin) AND no evolution recorded today
   const missing = scheduledToday.filter(s => {
-    if (!s.time || s.time === '00:00') return false;
-    const sessionMin = toMin(s.time);
-    if (nowMinutes <= sessionMin) return false; // session hasn't started yet
+    if (nowMinutes <= s.endMin) return false; // session hasn't ended yet
     const hasEvo = evolutions.some(e => e.patientId === s.patientId && e.date === todayStr);
     return !hasEvo;
   });
@@ -93,7 +100,7 @@ export function MissingEvolutionsAlert() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
-              <p className="text-xs text-muted-foreground">Sessão às {s.time.slice(0, 5)} · sem evolução</p>
+              <p className="text-xs text-muted-foreground">Sessão às {s.startTime.slice(0, 5)} · sem evolução</p>
             </div>
             <ArrowRight className="w-4 h-4 text-warning opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
           </button>
