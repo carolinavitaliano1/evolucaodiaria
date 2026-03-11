@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Send, Loader2, Mail, RefreshCw, CheckCircle2, Clock, MessageSquare, FileText, Bell, FilePenLine, Eye } from 'lucide-react';
+import { Send, Loader2, Mail, RefreshCw, CheckCircle2, Clock, MessageSquare, FileText, Bell, FilePenLine, Eye, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
