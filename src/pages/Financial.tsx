@@ -594,6 +594,12 @@ export default function Financial() {
         let totalPaid = 0, totalPending = 0;
         patientStats.forEach(({ patient, clinic, revenue, sessions, paymentType, pr }, idx) => {
           ensureSpace(8);
+          // For contratante clinics, payment is tracked at clinic level
+          const isContratante = clinic?.type !== 'propria';
+          const clinicPr = isContratante ? clinicPaymentRecords[clinic?.id || ''] : null;
+          const effectivePaid = isContratante ? !!clinicPr?.paid : !!pr?.paid;
+          const effectiveDate = isContratante ? clinicPr?.payment_date : pr?.payment_date;
+
           // Alternating row
           setFill(idx % 2 === 0 ? C.white : C.rowAlt);
           doc.rect(margin, y, contentW, 7.5, 'F');
@@ -609,8 +615,8 @@ export default function Financial() {
           doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', th.t, y + 5);
           doc.text(sessions.toString(), th.s, y + 5);
 
-          if (pr?.paid) {
-            const paidLabel = `Pago${pr.payment_date ? ' ' + format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM') : ''}`;
+          if (effectivePaid) {
+            const paidLabel = `Pago${effectiveDate ? ' ' + format(new Date(effectiveDate + 'T00:00:00'), 'dd/MM') : ''}`;
             setFill(C.greenLight);
             doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth(paidLabel) + 4, 6, 1, 1, 'F');
             setTxt(C.green);
