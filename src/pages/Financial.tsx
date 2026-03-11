@@ -94,7 +94,8 @@ export default function Financial() {
       .eq('user_id', user.id)
       .eq('month', m)
       .eq('year', y)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        console.log('[Financial] payment records loaded:', { month: m, year: y, count: data?.length, error, records: data });
         if (data) {
           const map: Record<string, any> = {};
           (data as any[]).forEach(r => { map[r.patient_id] = r; });
@@ -959,7 +960,8 @@ export default function Financial() {
   };
 
   const grandTotal = totalRevenue + standaloneRevenue;
-  const paidTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : revenue) : 0), 0);
+  console.log('[Financial] allPatientStats sample:', allPatientStats.slice(0,3).map(s => ({ name: s.patient.name, revenue: s.revenue, prPaid: s.pr?.paid, prAmount: s.pr?.amount, paymentValue: s.paymentValue })));
+  const paidTotal = allPatientStats.reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
   const pendingTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (!pr?.paid ? revenue : 0), 0);
 
   return (
