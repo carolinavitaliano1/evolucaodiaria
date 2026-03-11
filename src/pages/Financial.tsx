@@ -973,8 +973,14 @@ export default function Financial() {
   };
 
   const grandTotal = totalRevenue + standaloneRevenue;
-  const paidTotal = allPatientStats.reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
-  const pendingTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (!pr?.paid ? revenue : 0), 0);
+  // Include clinic-level payments (contratante clinics) in paidTotal
+  const clinicPaidTotal = contratanteClinics.reduce((sum, clinic) => {
+    const cr = clinicPaymentRecords[clinic.id];
+    return sum + (cr?.paid ? (cr?.amount > 0 ? cr.amount : revenueByClinicType('contratante') / Math.max(contratanteClinics.length, 1)) : 0);
+  }, 0);
+  const paidPatientTotal = allPatientStats.filter(s => s.clinic?.type !== 'terceirizada').reduce((sum, { pr, revenue, paymentValue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : (revenue > 0 ? revenue : paymentValue)) : 0), 0);
+  const paidTotal = paidPatientTotal + clinicPaidTotal;
+  const pendingTotal = grandTotal - paidTotal;
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
