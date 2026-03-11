@@ -186,6 +186,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       paymentValue: formData.paymentValue ? parseFloat(formData.paymentValue) : undefined,
       packageId: formData.packageId || undefined,
       ...(formData.paymentDueDay && { payment_due_day: parseInt(formData.paymentDueDay) } as any),
+      payment_info: formData.paymentInfo || null,
     } as any);
 
     // Save payment record if propria and status changed
