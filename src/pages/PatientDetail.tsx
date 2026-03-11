@@ -209,6 +209,16 @@ export default function PatientDetail() {
   const currentMonth = financialMonth.getMonth() + 1;
   const currentYear = financialMonth.getFullYear();
 
+  // Patient notes state
+  const [patientNotes, setPatientNotes] = useState<{ id: string; title: string; content: string; created_at: string; updated_at: string }[]>([]);
+  const [newNoteTitle, setNewNoteTitle] = useState('');
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteTitle, setEditingNoteTitle] = useState('');
+  const [editingNoteContent, setEditingNoteContent] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
   // Fiscal receipt state
   const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
   const [fiscalStartDate, setFiscalStartDate] = useState<Date>();
