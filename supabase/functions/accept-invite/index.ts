@@ -17,18 +17,18 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // Validate the user JWT using the service role client
     const anonClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData } = await anonClient.auth.getClaims(token);
-    if (!claimsData?.claims) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-    // Need full user object to get email for validation
     const { data: { user }, error: authError } = await anonClient.auth.getUser();
-    if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    if (authError || !user) {
+      console.error('Auth error:', authError?.message);
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    }
 
     const { member_id } = await req.json();
     if (!member_id) return new Response(JSON.stringify({ error: 'member_id é obrigatório' }), { status: 400, headers: corsHeaders });
@@ -41,12 +41,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Convite não encontrado' }), { status: 404, headers: corsHeaders });
     }
 
-    if (member.email !== user.email) {
+    if (member.email.toLowerCase() !== user.email!.toLowerCase()) {
       return new Response(JSON.stringify({ error: 'Este convite não pertence ao seu e-mail' }), { status: 403, headers: corsHeaders });
     }
 
     if (member.status !== 'pending') {
-      return new Response(JSON.stringify({ error: 'Este convite já foi utilizado' }), { status: 409, headers: corsHeaders });
+      // Already accepted — just return success with org info
+      const { data: org } = await supabase.from('organizations').select('id, name').eq('id', member.organization_id).single();
+      return new Response(JSON.stringify({
+        success: true,
+        organization: org,
+        role: member.role,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Ativar o membro
