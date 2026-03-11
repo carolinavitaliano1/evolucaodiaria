@@ -10,6 +10,7 @@ import { PaymentReminders } from '@/components/dashboard/PaymentReminders';
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { MuralNoticesBell } from '@/components/dashboard/MuralNoticesBell';
 import { InternalAlertsBell } from '@/components/dashboard/InternalAlertsBell';
+import { MissingEvolutionsAlert } from '@/components/dashboard/MissingEvolutionsAlert';
 import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -175,6 +176,7 @@ export default function Dashboard() {
         {/* Right Column - Appointments + Tasks + Notifications */}
         <div className="lg:col-span-8 space-y-5">
           <PaymentReminders />
+          <MissingEvolutionsAlert />
           <TodayAppointments />
           <TaskList />
           <NotificationSettings />
