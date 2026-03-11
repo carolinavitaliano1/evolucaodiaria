@@ -1,4 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
+// @ts-ignore
+import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
