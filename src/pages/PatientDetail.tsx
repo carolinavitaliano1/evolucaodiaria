@@ -1999,7 +1999,7 @@ export default function PatientDetail() {
                             </Button>
                           </div>
                         </div>
-                        {evo.text && <p className="text-foreground text-sm whitespace-pre-wrap">{evo.text}</p>}
+                        {evo.text && <EvolutionText text={evo.text} className="text-foreground text-sm whitespace-pre-wrap" />}
 
                         {evo.attachments && evo.attachments.length > 0 && (
                           <div className="mt-3 space-y-2">
