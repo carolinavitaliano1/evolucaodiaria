@@ -14,8 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   Users, Building2, ArrowLeft, UsersRound, Lock, Sparkles, Clock, Info,
   ClipboardCheck, CheckCircle2, ChevronRight, Activity, CalendarDays,
-  UserCircle, FileText, AlertCircle,
+  UserCircle, FileText, AlertCircle, DollarSign,
 } from 'lucide-react';
+import { TeamFinancialDashboard } from '@/components/clinics/TeamFinancialDashboard';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
