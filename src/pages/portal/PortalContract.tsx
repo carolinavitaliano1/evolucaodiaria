@@ -1,13 +1,15 @@
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect, useRef } from 'react';
-import { Loader2, FileText, CheckCircle2, PenLine } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2, FileText, CheckCircle2, PenLine, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { SignaturePad } from '@/components/ui/signature-pad';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface Contract {
   id: string;
@@ -17,11 +19,55 @@ interface Contract {
   status: string;
 }
 
+async function generateContractPDF(contract: Contract, patientName: string) {
+  // Build a full HTML document for rendering
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;';
+  wrapper.innerHTML = `
+    <div style="margin-bottom:32px;">
+      ${contract.template_html}
+    </div>
+    <div style="margin-top:40px;border-top:1px solid #ccc;padding-top:24px;">
+      <p style="font-size:11px;color:#555;margin-bottom:8px;">Assinatura digital do paciente:</p>
+      <img src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura" />
+      <p style="font-size:10px;color:#888;margin-top:8px;">
+        Assinado em ${format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+      </p>
+    </div>
+  `;
+
+  document.body.appendChild(wrapper);
+  try {
+    const canvas = await html2canvas(wrapper, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
+    document.body.removeChild(wrapper);
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let yOffset = 0;
+    while (yOffset < imgHeight) {
+      if (yOffset > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, -yOffset, imgWidth, imgHeight);
+      yOffset += pageHeight;
+    }
+
+    pdf.save(`contrato-${patientName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+  } catch (e) {
+    document.body.removeChild(wrapper);
+    throw e;
+  }
+}
+
 export default function PortalContract() {
-  const { portalAccount } = usePortal();
+  const { portalAccount, patient } = usePortal();
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [signatureMode, setSignatureMode] = useState(false);
   const [signatureData, setSignatureData] = useState('');
 
@@ -53,12 +99,26 @@ export default function PortalContract() {
         .eq('id', contract.id);
       if (error) throw error;
       toast.success('Contrato assinado com sucesso! ✅');
-      setContract(c => c ? { ...c, status: 'signed', signed_at: new Date().toISOString(), signature_data: signatureData } : c);
+      const updated = { ...contract, status: 'signed', signed_at: new Date().toISOString(), signature_data: signatureData };
+      setContract(updated);
       setSignatureMode(false);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao assinar');
     } finally {
       setSigning(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!contract || !contract.signature_data) return;
+    setDownloading(true);
+    try {
+      await generateContractPDF(contract, patient?.name || 'paciente');
+      toast.success('PDF gerado com sucesso!');
+    } catch (err: any) {
+      toast.error('Erro ao gerar PDF');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -105,9 +165,21 @@ export default function PortalContract() {
 
             {/* Signature section */}
             {contract.status === 'signed' && contract.signature_data && (
-              <div className="bg-card rounded-2xl border border-border p-4">
+              <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
                 <p className="text-xs text-muted-foreground mb-2">Sua assinatura:</p>
                 <img src={contract.signature_data} alt="Assinatura" className="max-h-20 border border-border rounded" />
+                <Button
+                  className="w-full gap-2"
+                  variant="outline"
+                  onClick={handleDownloadPDF}
+                  disabled={downloading}
+                >
+                  {downloading
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Download className="w-4 h-4" />
+                  }
+                  Baixar contrato assinado (PDF)
+                </Button>
               </div>
             )}
 
