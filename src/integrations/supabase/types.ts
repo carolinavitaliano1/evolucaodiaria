@@ -825,6 +825,7 @@ export type Database = {
           id: string
           observations: string | null
           patient_id: string
+          payment_due_day: number | null
           phone: string | null
           responsible_cpf: string | null
           responsible_name: string | null
@@ -844,6 +845,7 @@ export type Database = {
           id?: string
           observations?: string | null
           patient_id: string
+          payment_due_day?: number | null
           phone?: string | null
           responsible_cpf?: string | null
           responsible_name?: string | null
@@ -863,6 +865,7 @@ export type Database = {
           id?: string
           observations?: string | null
           patient_id?: string
+          payment_due_day?: number | null
           phone?: string | null
           responsible_cpf?: string | null
           responsible_name?: string | null
