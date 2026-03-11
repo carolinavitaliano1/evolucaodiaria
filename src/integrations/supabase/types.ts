@@ -995,6 +995,7 @@ export type Database = {
           observations: string | null
           package_id: string | null
           payment_due_day: number | null
+          payment_info: string | null
           payment_type: string | null
           payment_value: number | null
           phone: string | null
@@ -1030,6 +1031,7 @@ export type Database = {
           observations?: string | null
           package_id?: string | null
           payment_due_day?: number | null
+          payment_info?: string | null
           payment_type?: string | null
           payment_value?: number | null
           phone?: string | null
@@ -1065,6 +1067,7 @@ export type Database = {
           observations?: string | null
           package_id?: string | null
           payment_due_day?: number | null
+          payment_info?: string | null
           payment_type?: string | null
           payment_value?: number | null
           phone?: string | null

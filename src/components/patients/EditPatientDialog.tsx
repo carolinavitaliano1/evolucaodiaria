@@ -60,6 +60,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     paymentValue: '',
     packageId: '',
     paymentDueDay: '',
+    paymentInfo: '',
   });
 
   // Payment status for current month (propria only)
@@ -101,6 +102,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         paymentValue: patient.paymentValue?.toString() || '',
         packageId: patient.packageId || '',
         paymentDueDay: p.payment_due_day?.toString() || '',
+        paymentInfo: p.payment_info || '',
       });
 
       // Load current month payment record for propria
@@ -184,6 +186,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       paymentValue: formData.paymentValue ? parseFloat(formData.paymentValue) : undefined,
       packageId: formData.packageId || undefined,
       ...(formData.paymentDueDay && { payment_due_day: parseInt(formData.paymentDueDay) } as any),
+      payment_info: formData.paymentInfo || null,
     } as any);
 
     // Save payment record if propria and status changed
@@ -571,6 +574,23 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                 {formData.paymentDueDay && (
                   <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
                     🔔 O dashboard avisará 3 dias antes com botão de WhatsApp
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label className="text-xs flex items-center gap-1">
+                  Chave PIX / Dados de pagamento (visível no portal do paciente)
+                </Label>
+                <Textarea
+                  placeholder="Ex: PIX: 11999998888 (CPF) — Banco Nubank&#10;Ou TED: Ag 0001 / CC 123456-7"
+                  value={formData.paymentInfo}
+                  onChange={(e) => setFormData({ ...formData, paymentInfo: e.target.value })}
+                  className="resize-none text-sm min-h-[72px]"
+                />
+                {formData.paymentInfo && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    📲 O paciente verá esses dados no app para efetuar o pagamento
                   </p>
                 )}
               </div>

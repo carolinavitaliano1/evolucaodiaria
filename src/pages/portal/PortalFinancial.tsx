@@ -1,11 +1,15 @@
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect } from 'react';
-import { Loader2, DollarSign, CheckCircle2, Clock, Receipt } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import {
+  Loader2, DollarSign, CheckCircle2, Clock, Receipt,
+  Copy, AlertCircle, Bell, Paperclip, Send, X, ChevronDown, ChevronUp,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, differenceInDays, setDate, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -21,32 +25,62 @@ interface PaymentRecord {
 
 const MONTH_NAMES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
+function getDueDateAlert(paymentDueDay: number | null): { type: 'today' | 'soon' | 'overdue' | null; daysLeft: number } {
+  if (!paymentDueDay) return { type: null, daysLeft: 0 };
+  const today = startOfDay(new Date());
+  const dueDate = startOfDay(setDate(new Date(), paymentDueDay));
+  const diff = differenceInDays(dueDate, today);
+
+  if (diff === 0) return { type: 'today', daysLeft: 0 };
+  if (diff > 0 && diff <= 3) return { type: 'soon', daysLeft: diff };
+  if (diff < 0) return { type: 'overdue', daysLeft: Math.abs(diff) };
+  return { type: null, daysLeft: diff };
+}
+
 export default function PortalFinancial() {
-  const { portalAccount } = usePortal();
+  const { portalAccount, patient, sendMessage } = usePortal();
   const [records, setRecords] = useState<PaymentRecord[]>([]);
+  const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<string | null>(null);
+  const [showReceiptUpload, setShowReceiptUpload] = useState(false);
+  const [receiptText, setReceiptText] = useState('');
+  const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!portalAccount) return;
-    supabase
-      .from('patient_payment_records')
-      .select('*')
-      .eq('patient_id', portalAccount.patient_id)
-      .order('year', { ascending: false })
-      .order('month', { ascending: false })
-      .limit(12)
-      .then(({ data }) => {
-        setRecords((data || []) as PaymentRecord[]);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase
+        .from('patient_payment_records')
+        .select('*')
+        .eq('patient_id', portalAccount.patient_id)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false })
+        .limit(12),
+      supabase
+        .from('patients')
+        .select('payment_info')
+        .eq('id', portalAccount.patient_id)
+        .single(),
+    ]).then(([{ data: recs }, { data: pat }]) => {
+      setRecords((recs || []) as PaymentRecord[]);
+      setPaymentInfo((pat as any)?.payment_info || null);
+      setLoading(false);
+    });
   }, [portalAccount]);
+
+  const handleCopyPaymentInfo = () => {
+    if (!paymentInfo) return;
+    navigator.clipboard.writeText(paymentInfo);
+    toast.success('Copiado! 📋');
+  };
 
   const handleRequestReceipt = async (record: PaymentRecord) => {
     if (!portalAccount) return;
     setRequesting(record.id);
     try {
-      // Send a message to the therapist requesting receipt
       const { error } = await supabase.from('portal_messages').insert({
         patient_id: portalAccount.patient_id,
         therapist_user_id: portalAccount.therapist_user_id,
@@ -57,7 +91,7 @@ export default function PortalFinancial() {
         read_by_therapist: false,
       });
       if (error) throw error;
-      toast.success('Solicitação de recibo enviada! Seu terapeuta receberá a notificação.');
+      toast.success('Solicitação de recibo enviada! ✉️');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao solicitar recibo');
     } finally {
@@ -65,15 +99,34 @@ export default function PortalFinancial() {
     }
   };
 
+  const handleSendReceipt = async () => {
+    if (!portalAccount || !receiptText.trim()) return;
+    setSendingReceipt(true);
+    try {
+      await sendMessage(`🧾 Comprovante de pagamento enviado:\n\n${receiptText.trim()}`, 'message');
+      toast.success('Comprovante enviado ao terapeuta! ✅');
+      setReceiptText('');
+      setShowReceiptUpload(false);
+    } catch (err: any) {
+      toast.error('Erro ao enviar comprovante');
+    } finally {
+      setSendingReceipt(false);
+    }
+  };
+
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const currentRecord = records.find(r => r.month === currentMonth && r.year === currentYear);
   const totalPaid = records.filter(r => r.paid).reduce((s, r) => s + Number(r.amount), 0);
   const totalPending = records.filter(r => !r.paid).reduce((s, r) => s + Number(r.amount), 0);
+  const dueDateAlert = getDueDateAlert(patient?.payment_due_day || null);
 
   return (
     <PortalLayout>
       <div className="space-y-5">
         <div>
           <h1 className="text-lg font-bold text-foreground">Financeiro</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Resumo dos seus pagamentos</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Acompanhe seus pagamentos</p>
         </div>
 
         {loading ? (
@@ -82,6 +135,130 @@ export default function PortalFinancial() {
           </div>
         ) : (
           <>
+            {/* Due date alert */}
+            {dueDateAlert.type && !currentRecord?.paid && (
+              <div className={cn(
+                'rounded-2xl border px-4 py-3 flex items-start gap-3',
+                dueDateAlert.type === 'today' && 'bg-destructive/10 border-destructive/20 text-destructive',
+                dueDateAlert.type === 'soon' && 'bg-warning/10 border-warning/20 text-warning',
+                dueDateAlert.type === 'overdue' && 'bg-destructive/10 border-destructive/20 text-destructive',
+              )}>
+                <Bell className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">
+                    {dueDateAlert.type === 'today' && '⚠️ Vencimento hoje!'}
+                    {dueDateAlert.type === 'soon' && `⏰ Vence em ${dueDateAlert.daysLeft} dia${dueDateAlert.daysLeft > 1 ? 's' : ''}!`}
+                    {dueDateAlert.type === 'overdue' && `❗ Pagamento em atraso há ${dueDateAlert.daysLeft} dia${dueDateAlert.daysLeft > 1 ? 's' : ''}`}
+                  </p>
+                  <p className="text-xs mt-0.5 opacity-80">
+                    Dia {patient?.payment_due_day} de cada mês
+                    {patient?.payment_value ? ` — R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}` : ''}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Payment method card */}
+            {paymentInfo && (
+              <div className="bg-card rounded-2xl border border-border overflow-hidden">
+                <button
+                  className="w-full flex items-center justify-between px-4 py-3 text-left"
+                  onClick={() => setShowPaymentInfo(v => !v)}
+                >
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">Dados para pagamento</span>
+                  </div>
+                  {showPaymentInfo ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </button>
+                {showPaymentInfo && (
+                  <div className="px-4 pb-4 space-y-3">
+                    <div className="bg-muted rounded-xl p-3">
+                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{paymentInfo}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 text-xs"
+                      onClick={handleCopyPaymentInfo}
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copiar dados de pagamento
+                    </Button>
+                    {/* Send receipt */}
+                    {!showReceiptUpload ? (
+                      <Button
+                        size="sm"
+                        className="w-full gap-2 text-xs"
+                        onClick={() => setShowReceiptUpload(true)}
+                      >
+                        <Paperclip className="w-3.5 h-3.5" />
+                        Enviar comprovante ao terapeuta
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-foreground">Cole o número do comprovante ou descreva:</p>
+                          <button onClick={() => setShowReceiptUpload(false)}>
+                            <X className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                        </div>
+                        <Textarea
+                          value={receiptText}
+                          onChange={e => setReceiptText(e.target.value)}
+                          placeholder="Ex: Pix enviado às 14:32 — Cód. E00000000..."
+                          className="resize-none text-sm min-h-[70px]"
+                        />
+                        <Button
+                          size="sm"
+                          className="w-full gap-2 text-xs"
+                          disabled={!receiptText.trim() || sendingReceipt}
+                          onClick={handleSendReceipt}
+                        >
+                          {sendingReceipt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                          Enviar comprovante
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* No payment info but has due date — show reminder to send receipt */}
+            {!paymentInfo && patient?.payment_due_day && (
+              <div className="bg-card rounded-2xl border border-border p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Paperclip className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Enviar comprovante</p>
+                </div>
+                {!showReceiptUpload ? (
+                  <Button size="sm" className="w-full gap-2 text-xs" onClick={() => setShowReceiptUpload(true)}>
+                    <Paperclip className="w-3.5 h-3.5" />
+                    Enviar comprovante ao terapeuta
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={receiptText}
+                      onChange={e => setReceiptText(e.target.value)}
+                      placeholder="Descreva ou cole o código do comprovante..."
+                      className="resize-none text-sm min-h-[70px]"
+                    />
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setShowReceiptUpload(false)}>
+                        Cancelar
+                      </Button>
+                      <Button size="sm" className="flex-1 gap-1.5 text-xs" disabled={!receiptText.trim() || sendingReceipt} onClick={handleSendReceipt}>
+                        {sendingReceipt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                        Enviar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Summary cards */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-success/10 rounded-2xl border border-success/20 p-4">
