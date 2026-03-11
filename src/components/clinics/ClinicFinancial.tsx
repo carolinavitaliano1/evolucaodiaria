@@ -208,6 +208,8 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const selectedYear = selectedDate.getFullYear();
   const monthName = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
 
+  const clinicPatients = patients.filter(p => p.clinicId === clinicId);
+
   const monthlyEvolutions = evolutions.filter(e => {
     if (!clinicPatients.some(p => p.id === e.patientId)) return false;
     const date = new Date(e.date + 'T12:00:00');
