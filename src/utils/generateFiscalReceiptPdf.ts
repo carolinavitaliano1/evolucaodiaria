@@ -45,6 +45,8 @@ export interface FiscalReceiptOptions {
   therapistCpf?: string;
   cbo?: string;
   totalPaid?: number;
+  paidSubtotal?: number;
+  pendingSubtotal?: number;
   paymentStatus?: 'paid' | 'pending' | 'total';
   paymentDate?: string | null;
 }
@@ -68,7 +70,7 @@ function formatCpf(cpf: string): string {
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: false): Promise<void>;
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: true): Promise<Blob>;
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob = false): Promise<void | Blob> {
-  const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, therapistCpf, cbo, totalPaid, paymentStatus, paymentDate } = opts;
+  const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, therapistCpf, cbo, totalPaid, paidSubtotal, pendingSubtotal, paymentStatus, paymentDate } = opts;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
@@ -256,17 +258,35 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       ];
 
   const displayTotal = totalPaid !== undefined ? totalPaid : sessionTotal;
+
+  // For "total" status: add paid and pending subtotals before grand total
+  if (paymentStatus === 'total') {
+    const paid    = paidSubtotal    ?? 0;
+    const pending = pendingSubtotal ?? Math.max(0, displayTotal - paid);
+    summaryRows.push(['Subtotal Pago:', `R$ ${paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+    summaryRows.push(['Subtotal Pendente:', `R$ ${pending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+  }
+
   summaryRows.push(['TOTAL DO PERÍODO:', `R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
 
   summaryRows.forEach(([label, value], i) => {
     ensureSpace(LH + 1);
     const isTotal = i === summaryRows.length - 1;
+    const isPaidSub    = label === 'Subtotal Pago:';
+    const isPendingSub = label === 'Subtotal Pendente:';
     doc.setFontSize(isTotal ? 9.5 : 8.5);
     doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
     doc.setTextColor(...(isTotal ? darkText : mutedText));
     doc.text(label, margin + 2, y);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...(isTotal ? accentColor : darkText));
+    const valueColor: [number, number, number] = isTotal
+      ? accentColor
+      : isPaidSub
+        ? successColor
+        : isPendingSub
+          ? warningColor
+          : darkText;
+    doc.setTextColor(...valueColor);
     doc.text(value, W - margin - 2, y, { align: 'right' });
     y += isTotal ? LH + 1.5 : LH;
   });
