@@ -220,6 +220,12 @@ export default function PatientDetail() {
   const [fiscalPaymentDate, setFiscalPaymentDate] = useState<string>('');
   const [fiscalTotalPaid, setFiscalTotalPaid] = useState<string>('');
   const [fiscalTotalPaidFromApp, setFiscalTotalPaidFromApp] = useState<number | null>(null);
+  const [fiscalPeriodMode, setFiscalPeriodMode] = useState<'month' | 'custom'>('month');
+  const [fiscalMonthYear, setFiscalMonthYear] = useState<{ month: number; year: number }>(() => {
+    const now = new Date();
+    return { month: now.getMonth(), year: now.getFullYear() };
+  });
+
 
   // Payment receipt state
   const [paymentReceiptOpen, setPaymentReceiptOpen] = useState(false);
