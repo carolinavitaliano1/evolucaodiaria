@@ -209,6 +209,16 @@ export default function PatientDetail() {
   const currentMonth = financialMonth.getMonth() + 1;
   const currentYear = financialMonth.getFullYear();
 
+  // Patient notes state
+  const [patientNotes, setPatientNotes] = useState<{ id: string; title: string; content: string; created_at: string; updated_at: string }[]>([]);
+  const [newNoteTitle, setNewNoteTitle] = useState('');
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteTitle, setEditingNoteTitle] = useState('');
+  const [editingNoteContent, setEditingNoteContent] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
   // Fiscal receipt state
   const [fiscalDialogOpen, setFiscalDialogOpen] = useState(false);
   const [fiscalStartDate, setFiscalStartDate] = useState<Date>();
@@ -352,6 +362,57 @@ export default function PatientDetail() {
       }
     });
   }, [user]);
+
+  // Load patient private notes
+  useEffect(() => {
+    if (!patient?.id || !user) return;
+    supabase.from('saved_reports')
+      .select('id, title, content, created_at, updated_at')
+      .eq('patient_id', patient.id)
+      .eq('user_id', user.id)
+      .eq('mode', 'patient_note')
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => { if (data) setPatientNotes(data); });
+  }, [patient?.id, user]);
+
+  const handleAddNote = async () => {
+    if (!newNoteContent.trim() || !patient?.id || !user) return;
+    setIsSavingNote(true);
+    const { data, error } = await supabase.from('saved_reports').insert({
+      user_id: user.id,
+      patient_id: patient.id,
+      title: newNoteTitle.trim() || 'Sem título',
+      content: newNoteContent.trim(),
+      mode: 'patient_note',
+    }).select().single();
+    if (!error && data) {
+      setPatientNotes(prev => [data, ...prev]);
+      setNewNoteTitle('');
+      setNewNoteContent('');
+      setIsAddingNote(false);
+    }
+    setIsSavingNote(false);
+  };
+
+  const handleSaveEditNote = async () => {
+    if (!editingNoteId) return;
+    setIsSavingNote(true);
+    const { data, error } = await supabase.from('saved_reports')
+      .update({ title: editingNoteTitle.trim() || 'Sem título', content: editingNoteContent.trim(), updated_at: new Date().toISOString() })
+      .eq('id', editingNoteId).select().single();
+    if (!error && data) {
+      setPatientNotes(prev => prev.map(n => n.id === editingNoteId ? data : n));
+      setEditingNoteId(null);
+    }
+    setIsSavingNote(false);
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    await supabase.from('saved_reports').delete().eq('id', id);
+    setPatientNotes(prev => prev.filter(n => n.id !== id));
+  };
+
+
 
   useEffect(() => {
     if (!user || !patient?.clinicId) return;
@@ -1665,7 +1726,7 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="evolutions" className="space-y-4">
-        <TabsList className="w-full sm:w-auto grid grid-cols-5 sm:inline-grid gap-0">
+        <TabsList className="w-full sm:w-auto grid grid-cols-6 sm:inline-grid gap-0">
           <TabsTrigger value="evolutions" className="gap-1.5 text-xs sm:text-sm">
             <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evoluções</span><span className="sm:hidden">Evol.</span>
           </TabsTrigger>
@@ -1680,6 +1741,9 @@ export default function PatientDetail() {
           </TabsTrigger>
           <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm">
             <ListTodo className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tasks</span>
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="gap-1.5 text-xs sm:text-sm">
+            <PenLine className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Notas</span><span className="sm:hidden">Notas</span>
           </TabsTrigger>
         </TabsList>
 
@@ -2442,6 +2506,116 @@ export default function PatientDetail() {
                   <p className="text-xl font-bold text-success">R$ {finRevenue.toFixed(0)}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Receita</p>
                 </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Notes Tab */}
+        <TabsContent value="notes">
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm">
+                <PenLine className="w-4 h-4 text-primary" /> Anotações Privadas
+                <span className="text-xs font-normal text-muted-foreground ml-1">— visíveis apenas para você</span>
+              </h2>
+              {!isAddingNote && (
+                <Button size="sm" onClick={() => setIsAddingNote(true)} className="gap-1.5 h-8 text-xs">
+                  <Plus className="w-3.5 h-3.5" /> Nova Nota
+                </Button>
+              )}
+            </div>
+
+            {/* New note form */}
+            {isAddingNote && (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+                <Input
+                  placeholder="Título (opcional)"
+                  value={newNoteTitle}
+                  onChange={e => setNewNoteTitle(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <Textarea
+                  placeholder="Escreva sua anotação privada aqui..."
+                  value={newNoteContent}
+                  onChange={e => setNewNoteContent(e.target.value)}
+                  className="text-sm min-h-[100px] resize-none"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setIsAddingNote(false); setNewNoteTitle(''); setNewNoteContent(''); }}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleAddNote} disabled={!newNoteContent.trim() || isSavingNote}>
+                    {isSavingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Notes list */}
+            {patientNotes.length === 0 && !isAddingNote ? (
+              <div className="text-center py-10">
+                <div className="text-5xl mb-3">📝</div>
+                <p className="text-muted-foreground text-sm">Nenhuma anotação ainda.</p>
+                <p className="text-muted-foreground text-xs mt-1">Clique em "Nova Nota" para adicionar.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {patientNotes.map(note => (
+                  <div key={note.id} className="rounded-xl border border-border bg-secondary/30 p-4 space-y-2 group">
+                    {editingNoteId === note.id ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editingNoteTitle}
+                          onChange={e => setEditingNoteTitle(e.target.value)}
+                          placeholder="Título (opcional)"
+                          className="h-8 text-sm"
+                        />
+                        <Textarea
+                          value={editingNoteContent}
+                          onChange={e => setEditingNoteContent(e.target.value)}
+                          className="text-sm min-h-[80px] resize-none"
+                          autoFocus
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingNoteId(null)}>
+                            Cancelar
+                          </Button>
+                          <Button size="sm" className="h-7 text-xs gap-1" onClick={handleSaveEditNote} disabled={isSavingNote}>
+                            {isSavingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                            Salvar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            {note.title && note.title !== 'Sem título' && (
+                              <p className="text-sm font-semibold text-foreground truncate">{note.title}</p>
+                            )}
+                            <p className="text-sm text-foreground/80 whitespace-pre-wrap mt-0.5">{note.content}</p>
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => { setEditingNoteId(note.id); setEditingNoteTitle(note.title === 'Sem título' ? '' : note.title); setEditingNoteContent(note.content); }}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteNote(note.id)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(note.updated_at), "dd 'de' MMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
