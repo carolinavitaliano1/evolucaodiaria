@@ -17,3 +17,7 @@ project_id = "uhhpnjyceobdcxqviouy"
     verify_jwt = false
   [functions.accept-invite]
     verify_jwt = false
+  [functions.send-portal-invite]
+    verify_jwt = false
+  [functions.activate-portal-account]
+    verify_jwt = false
