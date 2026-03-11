@@ -363,6 +363,57 @@ export default function PatientDetail() {
     });
   }, [user]);
 
+  // Load patient private notes
+  useEffect(() => {
+    if (!patient?.id || !user) return;
+    supabase.from('saved_reports')
+      .select('id, title, content, created_at, updated_at')
+      .eq('patient_id', patient.id)
+      .eq('user_id', user.id)
+      .eq('mode', 'patient_note')
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => { if (data) setPatientNotes(data); });
+  }, [patient?.id, user]);
+
+  const handleAddNote = async () => {
+    if (!newNoteContent.trim() || !patient?.id || !user) return;
+    setIsSavingNote(true);
+    const { data, error } = await supabase.from('saved_reports').insert({
+      user_id: user.id,
+      patient_id: patient.id,
+      title: newNoteTitle.trim() || 'Sem título',
+      content: newNoteContent.trim(),
+      mode: 'patient_note',
+    }).select().single();
+    if (!error && data) {
+      setPatientNotes(prev => [data, ...prev]);
+      setNewNoteTitle('');
+      setNewNoteContent('');
+      setIsAddingNote(false);
+    }
+    setIsSavingNote(false);
+  };
+
+  const handleSaveEditNote = async () => {
+    if (!editingNoteId) return;
+    setIsSavingNote(true);
+    const { data, error } = await supabase.from('saved_reports')
+      .update({ title: editingNoteTitle.trim() || 'Sem título', content: editingNoteContent.trim(), updated_at: new Date().toISOString() })
+      .eq('id', editingNoteId).select().single();
+    if (!error && data) {
+      setPatientNotes(prev => prev.map(n => n.id === editingNoteId ? data : n));
+      setEditingNoteId(null);
+    }
+    setIsSavingNote(false);
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    await supabase.from('saved_reports').delete().eq('id', id);
+    setPatientNotes(prev => prev.filter(n => n.id !== id));
+  };
+
+
+
   useEffect(() => {
     if (!user || !patient?.clinicId) return;
     supabase.from('evolution_templates').select('*')
