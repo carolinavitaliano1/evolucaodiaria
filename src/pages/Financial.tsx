@@ -223,15 +223,25 @@ export default function Financial() {
     const y = selectedDate.getFullYear();
     const newPaid = !currentPr?.paid;
     const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
+    const patient = patients.find(p => p.id === patientId);
     try {
       if (currentPr?.id) {
         await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', currentPr.id);
         setPatientPaymentRecords(prev => ({ ...prev, [patientId]: { ...currentPr, paid: newPaid, payment_date: newDate } }));
       } else {
-        const { data } = await supabase.from('patient_payment_records' as any).insert({
-          user_id: user.id, patient_id: patientId, clinic_id: patients.find(p => p.id === patientId)?.clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate
-        }).select().maybeSingle();
-        setPatientPaymentRecords(prev => ({ ...prev, [patientId]: data }));
+        const newRecord = {
+          user_id: user.id,
+          patient_id: patientId,
+          clinic_id: patient?.clinicId,
+          month: m,
+          year: y,
+          amount: revenue || (patient?.paymentValue ?? 0),
+          paid: newPaid,
+          payment_date: newDate,
+        };
+        const { data } = await supabase.from('patient_payment_records' as any).insert(newRecord).select().maybeSingle();
+        // Use returned data if available, otherwise construct from local values
+        setPatientPaymentRecords(prev => ({ ...prev, [patientId]: data ?? { ...newRecord, id: crypto.randomUUID() } }));
       }
     } finally {
       setSavingPatientPayment(null);
