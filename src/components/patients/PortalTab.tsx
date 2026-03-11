@@ -67,7 +67,36 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
     setLoading(false);
   };
 
+  // Load data on mount
   useEffect(() => { loadData(); }, [patientId]);
+
+  // Realtime: auto-refresh messages when patient sends a new one
+  useEffect(() => {
+    const channel = supabase
+      .channel(`portal-messages-therapist-${patientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'portal_messages',
+          filter: `patient_id=eq.${patientId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as PortalMessage;
+          // Only add if it's from the patient (therapist messages are added optimistically)
+          if (newMsg.sender_type === 'patient') {
+            setMessages(prev => {
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [newMsg, ...prev];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [patientId]);
 
   const handleSendInvite = async () => {
     if (!patientEmail) { toast.error('Adicione um e-mail ao paciente antes de ativar o portal'); return; }
@@ -88,7 +117,7 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
     if (!newMessage.trim() || !portalAccount) return;
     setSending(true);
     try {
-      const { error } = await supabase.from('portal_messages').insert({
+      const { data, error } = await supabase.from('portal_messages').insert({
         patient_id: patientId,
         therapist_user_id: user!.id,
         sender_type: 'therapist',
@@ -96,11 +125,12 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
         message_type: messageType,
         read_by_patient: false,
         read_by_therapist: true,
-      });
+      }).select().single();
       if (error) throw error;
       setNewMessage('');
+      // Add optimistically
+      if (data) setMessages(prev => [data as PortalMessage, ...prev]);
       toast.success('Mensagem enviada!');
-      await loadData();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao enviar mensagem');
     } finally {
@@ -211,6 +241,7 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
               <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-3 py-2 text-xs">
                 <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
                 <span>Ficha preenchida em {format(new Date(intakeForm.submitted_at), "d 'de' MMMM", { locale: ptBR })}</span>
+                {intakeForm.full_name && <span className="text-success/70 ml-auto">{intakeForm.full_name}</span>}
               </div>
             )}
 
@@ -260,6 +291,9 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
                             {msg.message_type === 'tarefa' ? '📋 Tarefa' : '✨ Feedback'}
                           </Badge>
+                        )}
+                        {msg.sender_type === 'patient' && !msg.read_by_therapist && (
+                          <Badge className="text-[9px] px-1 py-0 h-3.5 bg-destructive">Nova</Badge>
                         )}
                         <span className="text-[10px] text-muted-foreground ml-auto">
                           {format(new Date(msg.created_at), "d MMM 'às' HH:mm", { locale: ptBR })}

@@ -83,9 +83,27 @@ export default function PortalIntakeForm() {
         .from('patient_intake_forms')
         .upsert(payload, { onConflict: 'patient_id' });
       if (error) throw error;
+
+      // On submit: sync key fields back to the patient record
       if (submit) {
+        const patientUpdate: Record<string, any> = {};
+        if (form.phone) patientUpdate.phone = form.phone;
+        if (form.cpf) patientUpdate.cpf = form.cpf;
+        if (form.birthdate) patientUpdate.birthdate = form.birthdate;
+        if (form.responsible_name) patientUpdate.responsible_name = form.responsible_name;
+        if (form.responsible_cpf) patientUpdate.responsible_cpf = form.responsible_cpf;
+        if (form.responsible_phone) patientUpdate.responsible_whatsapp = form.responsible_phone;
+        if (form.observations) patientUpdate.observations = form.observations;
+
+        if (Object.keys(patientUpdate).length > 0) {
+          await supabase
+            .from('patients')
+            .update(patientUpdate)
+            .eq('id', portalAccount.patient_id);
+        }
+
         setSubmitted(true);
-        toast.success('Ficha enviada com sucesso! ✅');
+        toast.success('Ficha enviada ao terapeuta! ✅');
       } else {
         toast.success('Rascunho salvo');
       }
