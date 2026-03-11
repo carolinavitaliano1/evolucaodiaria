@@ -959,7 +959,7 @@ export default function Financial() {
   };
 
   const grandTotal = totalRevenue + standaloneRevenue;
-  const paidTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (pr?.paid ? revenue : 0), 0);
+  const paidTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (pr?.paid ? (pr?.amount > 0 ? pr.amount : revenue) : 0), 0);
   const pendingTotal = allPatientStats.reduce((sum, { pr, revenue }) => sum + (!pr?.paid ? revenue : 0), 0);
 
   return (
