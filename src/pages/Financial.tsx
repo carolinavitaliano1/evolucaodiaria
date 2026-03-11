@@ -85,24 +85,26 @@ export default function Financial() {
     });
   }, [user]);
 
-  // Load patient payment records for selected month
+  // Load patient payment records AND clinic payment records for selected month
   useEffect(() => {
     if (!user) return;
     const m = selectedDate.getMonth() + 1;
     const y = selectedDate.getFullYear();
-    supabase
-      .from('patient_payment_records' as any)
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('month', m)
-      .eq('year', y)
-      .then(({ data }) => {
-        if (data) {
-          const map: Record<string, any> = {};
-          (data as any[]).forEach(r => { map[r.patient_id] = r; });
-          setPatientPaymentRecords(map);
-        }
-      });
+    Promise.all([
+      supabase.from('patient_payment_records' as any).select('*').eq('user_id', user.id).eq('month', m).eq('year', y),
+      supabase.from('clinic_payment_records' as any).select('*').eq('user_id', user.id).eq('month', m).eq('year', y),
+    ]).then(([patientRes, clinicRes]) => {
+      if (patientRes.data) {
+        const map: Record<string, any> = {};
+        (patientRes.data as any[]).forEach(r => { map[r.patient_id] = r; });
+        setPatientPaymentRecords(map);
+      }
+      if (clinicRes.data) {
+        const map: Record<string, any> = {};
+        (clinicRes.data as any[]).forEach(r => { map[r.clinic_id] = r; });
+        setClinicPaymentRecords(map);
+      }
+    });
   }, [selectedDate, user]);
 
   const monthlyEvolutions = evolutions.filter(e => {
