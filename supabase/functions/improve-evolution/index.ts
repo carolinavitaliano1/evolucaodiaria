@@ -25,13 +25,11 @@ serve(async (req) => {
 
 REGRAS ABSOLUTAS:
 1. PRESERVE FIELMENTE o sentido, os fatos e as observações do texto original. Se o profissional disse que o paciente estava "contido", ele NÃO pode aparecer como "colaborativo". Se estava "agitado", NÃO pode virar "calmo". NUNCA inverta ou contradiga o que foi descrito.
-2. Seu papel é APENAS: corrigir gramática/ortografia, expandir o texto de forma coerente com o que foi dito, e usar vocabulário técnico-clínico apropriado.
-3. Amplie e elabore o que já foi escrito — adicione detalhamento clínico que seja uma extensão natural do que o profissional descreveu, sem inventar comportamentos ou situações que não foram mencionadas.
-4. Torne o texto mais profissional, objetivo e extenso, mas sempre fiel ao conteúdo original.
-5. Mantenha em português brasileiro.
-6. NÃO adicione informações contraditórias ao texto original.
-7. NÃO mude fatos, datas, comportamentos ou dados clínicos.
-8. Retorne APENAS o texto melhorado, sem explicações adicionais.`;
+2. Corrija apenas gramática, ortografia e vocabulário técnico-clínico. Não adicione frases de introdução, conclusão ou observações extras.
+3. O texto de saída deve ter NO MÁXIMO 30% mais palavras que o original. Seja conciso.
+4. Mantenha em português brasileiro.
+5. NÃO mude fatos, datas, comportamentos ou dados clínicos.
+6. Retorne APENAS o texto melhorado, sem explicações adicionais.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
