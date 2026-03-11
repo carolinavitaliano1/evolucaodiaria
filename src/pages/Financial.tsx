@@ -838,7 +838,7 @@ export default function Financial() {
 
         doc.setTextColor(80, 80, 80);
         doc.text(patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão', col5, y);
-        doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col6, y);
+        doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col6, y, { align: 'right' });
         y += 6;
       });
 
@@ -861,7 +861,7 @@ export default function Financial() {
         }
         doc.setTextColor(80, 80, 80);
         doc.text('Fixo', col5, y);
-        doc.text(`R$ ${patient.paymentValue!.toFixed(2)}`, col6, y);
+        doc.text(`R$ ${patient.paymentValue!.toFixed(2)}`, col6, y, { align: 'right' });
         totalInvoiceValue += patient.paymentValue!;
         y += 6;
       });
