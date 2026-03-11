@@ -145,14 +145,27 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
               <p className="text-xs text-muted-foreground mt-0.5">Portal não ativado para este paciente</p>
             )}
           </div>
-          <Button
-            size="sm" variant={portalAccount ? 'outline' : 'default'}
-            onClick={handleSendInvite} disabled={inviting}
-            className="gap-1.5 text-xs h-8"
-          >
-            {inviting ? <Loader2 className="w-3 h-3 animate-spin" /> : portalAccount ? <RefreshCw className="w-3 h-3" /> : <Mail className="w-3 h-3" />}
-            {portalAccount ? 'Reenviar convite' : 'Ativar portal'}
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm" variant={portalAccount ? 'outline' : 'default'}
+              onClick={handleSendInvite} disabled={inviting}
+              className="gap-1.5 text-xs h-8"
+            >
+              {inviting ? <Loader2 className="w-3 h-3 animate-spin" /> : portalAccount ? <RefreshCw className="w-3 h-3" /> : <Mail className="w-3 h-3" />}
+              {portalAccount ? 'Reenviar convite' : 'Ativar portal'}
+            </Button>
+            {portalAccount?.status === 'active' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="gap-1.5 text-xs h-8 text-muted-foreground"
+                onClick={() => window.open('/portal/home', '_blank')}
+              >
+                <ExternalLink className="w-3 h-3" />
+                Ver portal
+              </Button>
+            )}
+          </div>
         </div>
         {!patientEmail && (
           <p className="text-xs text-warning mt-2 flex items-center gap-1">
