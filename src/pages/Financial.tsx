@@ -50,6 +50,8 @@ export default function Financial() {
   // Patient payment records keyed by patient_id
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, any>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
+  // Clinic-level payment records for contratante clinics keyed by clinic_id
+  const [clinicPaymentRecords, setClinicPaymentRecords] = useState<Record<string, any>>({});
 
   const goToPreviousMonth = () => setSelectedDate(prev => {
     const d = subMonths(prev, 1);
