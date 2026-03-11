@@ -498,6 +498,15 @@ export default function Team() {
           >
             <Activity className="w-4 h-4" />Atividade
           </button>
+          <button
+            onClick={() => setActiveTab('financial')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              activeTab === 'financial' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <DollarSign className="w-4 h-4" />Financeiro
+          </button>
         </div>
 
         {/* Content */}
