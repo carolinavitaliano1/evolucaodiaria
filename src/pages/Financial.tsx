@@ -1393,18 +1393,24 @@ export default function Financial() {
                       </span>
                     ) : <span className="text-muted-foreground">0</span>}
                   </td>
-                  {/* Payment status column */}
+                  {/* Payment status column — clickable toggle */}
                   <td className="py-3 px-3 text-center">
-                    <span
+                    <button
+                      onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
+                      disabled={savingPatientPayment === patient.id}
                       className={cn(
-                        'inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border',
+                        'inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border transition-all hover:opacity-80 active:scale-95 cursor-pointer',
                         pr?.paid
-                          ? 'bg-success/10 text-success border-success/30'
-                          : 'bg-warning/10 text-warning border-warning/30'
+                          ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                          : 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/20'
                       )}
                     >
-                      {pr?.paid ? <><CheckCircle2 className="w-3 h-3" />Pago</> : <><Clock className="w-3 h-3" />Pendente</>}
-                    </span>
+                      {savingPatientPayment === patient.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : pr?.paid
+                          ? <><CheckCircle2 className="w-3 h-3" />Pago</>
+                          : <><Clock className="w-3 h-3" />Pendente</>}
+                    </button>
                   </td>
                   {/* Payment date column */}
                   <td className="py-3 px-3 text-center text-xs text-muted-foreground hidden md:table-cell">
