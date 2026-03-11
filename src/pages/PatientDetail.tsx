@@ -46,6 +46,30 @@ const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   score: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 3, 2, 2, 2, 3][i] ?? 5,
 }));
 
+// Renders text with **bold** markdown support for evolution template titles
+function EvolutionText({ text, className }: { text: string; className?: string }) {
+  const lines = text.split('\n');
+  return (
+    <p className={className}>
+      {lines.map((line, li) => {
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <span key={li}>
+            {parts.map((part, i) =>
+              part.startsWith('**') && part.endsWith('**')
+                ? <strong key={i}>{part.slice(2, -2)}</strong>
+                : <span key={i}>{part}</span>
+            )}
+            {li < lines.length - 1 && <br />}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+
+
 function getMoodInfo(mood?: string, customMoods?: { id: string; emoji: string; label: string; score: number }[]) {
   const found = MOOD_OPTIONS.find(m => m.value === mood);
   if (found) return found;
@@ -1308,14 +1332,15 @@ export default function PatientDetail() {
         .map(f => {
           const val = templateFormValues[f.id];
           if (val === undefined || val === '' || val === false) return null;
-          if (f.type === 'checkbox' && val === true) return `✅ ${f.label}`;
-          return `${f.label}: ${val}`;
+          if (f.type === 'checkbox' && val === true) return `✅ **${f.label}**`;
+          return `**${f.label}**: ${val}`;
         })
         .filter(Boolean);
       if (templateLines.length > 0) {
         const templateSection = templateLines.join('\n');
         fullText = fullText ? `${templateSection}\n\n---\n\n${fullText}` : templateSection;
       }
+
     }
 
     addEvolution({
@@ -1974,7 +1999,7 @@ export default function PatientDetail() {
                             </Button>
                           </div>
                         </div>
-                        {evo.text && <p className="text-foreground text-sm whitespace-pre-wrap">{evo.text}</p>}
+                        {evo.text && <EvolutionText text={evo.text} className="text-foreground text-sm whitespace-pre-wrap" />}
 
                         {evo.attachments && evo.attachments.length > 0 && (
                           <div className="mt-3 space-y-2">
