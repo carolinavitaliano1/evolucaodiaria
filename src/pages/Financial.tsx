@@ -94,7 +94,8 @@ export default function Financial() {
       .eq('user_id', user.id)
       .eq('month', m)
       .eq('year', y)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        console.log('[Financial] payment records loaded:', { month: m, year: y, count: data?.length, error, records: data });
         if (data) {
           const map: Record<string, any> = {};
           (data as any[]).forEach(r => { map[r.patient_id] = r; });
