@@ -61,6 +61,8 @@ interface AppContextType extends AppState {
   loadAttachmentsForPatient: (patientId: string) => Promise<void>;
   loadAllEvolutions: () => Promise<void>;
   refreshData: () => Promise<void>;
+  // Sync-only: adds an already-inserted patient record to local state (no DB call)
+  addPatientToState: (raw: Record<string, unknown>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
