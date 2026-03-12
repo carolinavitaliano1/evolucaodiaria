@@ -777,6 +777,35 @@ function AddAccessDialog({
                 <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
               </div>
             </div>
+            {/* Quick-fill suggestions */}
+            {(patientEmail || responsibleEmail) && (
+              <div className="flex flex-wrap gap-2">
+                <p className="text-[10px] text-muted-foreground w-full">Usar e-mail do cadastro:</p>
+                {patientEmail && (
+                  <button
+                    type="button"
+                    onClick={() => setEmail(patientEmail)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-muted/40 hover:bg-muted text-[11px] font-medium text-foreground transition-colors"
+                  >
+                    <UserCircle className="w-3 h-3 text-primary" />
+                    Paciente — {patientEmail}
+                  </button>
+                )}
+                {responsibleEmail && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail(responsibleEmail);
+                      if (responsibleName) setAccessLabel(responsibleName);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-muted/40 hover:bg-muted text-[11px] font-medium text-foreground transition-colors"
+                  >
+                    <Users className="w-3 h-3 text-success" />
+                    Responsável — {responsibleEmail}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Step 3: Conditional specific fields */}
