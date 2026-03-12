@@ -1294,6 +1294,7 @@ export type Database = {
           responsible_whatsapp: string | null
           schedule_by_day: Json | null
           schedule_time: string | null
+          show_payment_in_portal: boolean
           status: string
           updated_at: string
           user_id: string
@@ -1332,6 +1333,7 @@ export type Database = {
           responsible_whatsapp?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
+          show_payment_in_portal?: boolean
           status?: string
           updated_at?: string
           user_id: string
@@ -1370,6 +1372,7 @@ export type Database = {
           responsible_whatsapp?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
+          show_payment_in_portal?: boolean
           status?: string
           updated_at?: string
           user_id?: string
