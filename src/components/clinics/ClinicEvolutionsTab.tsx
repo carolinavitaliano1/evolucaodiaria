@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle, Lock } from 'lucide-react';
+import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle, Lock, Sparkles } from 'lucide-react';
+import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
