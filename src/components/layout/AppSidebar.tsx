@@ -126,7 +126,7 @@ export function AppSidebar() {
         {navItemsWithAccess.map(({ to, icon: Icon, label, badge, locked }) => {
           const isActive = !locked && (location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to)));
-          const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : 0;
+          const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : badge === 'pending' ? pendingCount : 0;
           const showBadge = badgeCount > 0 && !locked;
           
           return (
