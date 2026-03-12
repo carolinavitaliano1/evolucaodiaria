@@ -94,6 +94,50 @@ export default function Patients() {
     );
   }, [visiblePatients, searchTerm, canSeeClinical]);
 
+  // Quick registration handler
+  const handleQuickReg = async () => {
+    if (!user || !quickRegName.trim() || !quickRegClinicId) return;
+    setQuickRegSaving(true);
+    try {
+      const clinic = clinics.find(c => c.id === quickRegClinicId);
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
+          user_id: user.id,
+          clinic_id: quickRegClinicId,
+          name: quickRegName.trim(),
+          birthdate: '2000-01-01', // placeholder, to be filled by patient
+          responsible_whatsapp: quickRegWhatsapp || null,
+          status: 'rascunho',
+        } as any)
+        .select('id, intake_token')
+        .single();
+      if (error) throw error;
+      const token = (data as any).intake_token;
+      const appUrl = window.location.origin;
+      const link = `${appUrl}/cadastro-paciente/${token}`;
+      setQuickRegToken(token);
+      setQuickRegLink(link);
+      toast.success('Paciente criado! Compartilhe o link abaixo.');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar paciente');
+    } finally {
+      setQuickRegSaving(false);
+    }
+  };
+
+  const handleSendViaWhatsApp = () => {
+    if (!quickRegWhatsapp || !quickRegLink) return;
+    const num = quickRegWhatsapp.replace(/\D/g, '');
+    const phone = num.startsWith('55') ? num : `55${num}`;
+    const msg = encodeURIComponent(`Olá, ${quickRegName}! Por favor, preencha a ficha da clínica clicando aqui: ${quickRegLink}`);
+    const el = document.createElement('a');
+    el.href = `https://wa.me/${phone}?text=${msg}`;
+    el.target = '_blank';
+    el.rel = 'noopener noreferrer';
+    el.click();
+  };
+
   const handleOpenPatient = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
     if (patient) {
