@@ -136,6 +136,26 @@ export default function Profile() {
       if (stampsData) {
         setStamps(stampsData);
       }
+
+      // Load own clinics with payment data (only 'propria' type)
+      const { data: clinicsData } = await supabase
+        .from('clinics')
+        .select('id, name, type, payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
+        .eq('user_id', userId)
+        .eq('type', 'propria')
+        .eq('is_archived', false)
+        .order('created_at', { ascending: true });
+
+      if (clinicsData && clinicsData.length > 0) {
+        const typed = clinicsData as typeof ownedClinics;
+        setOwnedClinics(typed);
+        const first = typed[0];
+        setSelectedClinicId(first.id);
+        setPixKey(first.payment_pix_key || '');
+        setPixName(first.payment_pix_name || '');
+        setBankDetails(first.payment_bank_details || '');
+        setShowPaymentInPortal(first.show_payment_in_portal ?? false);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
       toast.error('Erro ao carregar perfil');
