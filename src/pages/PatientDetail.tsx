@@ -1435,6 +1435,14 @@ export default function PatientDetail() {
                 {patient.isArchived && (
                   <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">Arquivado</span>
                 )}
+                {(patient as any).status === 'pendente_revisao' && (
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Pendente de Revisão
+                  </span>
+                )}
+                {(patient as any).status === 'rascunho' && (
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-muted text-muted-foreground">Rascunho</span>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2 mb-3">
