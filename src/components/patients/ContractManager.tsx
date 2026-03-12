@@ -301,9 +301,11 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     if (!signingContractId || !therapistSigData) return;
     setSavingSig(true);
     try {
+      const stamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
       const { error } = await supabase.from('patient_contracts').update({
         therapist_signature_data: therapistSigData,
         therapist_signed_at: new Date().toISOString(),
+        // store stamp image in a JSON metadata field if you have one, else just embed in signature_data
       } as any).eq('id', signingContractId);
       if (error) throw error;
       setContracts(prev => prev.map(c =>
