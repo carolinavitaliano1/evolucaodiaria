@@ -247,6 +247,48 @@ function AccountPanel({
     toast.success('Documento removido');
   };
 
+  const handleDownloadIntake = (form: IntakeForm, name: string) => {
+    const lines: string[] = [];
+    const add = (label: string, val: string | number | null | undefined) => {
+      if (val) lines.push(`${label}: ${val}`);
+    };
+    lines.push(`FICHA DO PACIENTE — ${name.toUpperCase()}`);
+    lines.push(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`);
+    lines.push('');
+    lines.push('=== DADOS PESSOAIS ===');
+    add('Nome completo', form.full_name);
+    add('CPF', form.cpf);
+    add('Data de nascimento', form.birthdate ? new Date(form.birthdate + 'T00:00:00').toLocaleDateString('pt-BR') : null);
+    add('Telefone', form.phone);
+    add('Endereço', form.address);
+    add('Contato de emergência', form.emergency_contact);
+    if (form.responsible_name || form.responsible_cpf) {
+      lines.push('');
+      lines.push('=== RESPONSÁVEL ===');
+      add('Nome', form.responsible_name);
+      add('CPF', form.responsible_cpf);
+      add('Telefone', form.responsible_phone);
+    }
+    if (form.payment_due_day) {
+      lines.push('');
+      lines.push('=== PAGAMENTO ===');
+      add('Melhor dia', `Dia ${form.payment_due_day}`);
+    }
+    if (form.health_info || form.observations) {
+      lines.push('');
+      lines.push('=== SAÚDE & OBSERVAÇÕES ===');
+      if (form.health_info) { lines.push('Informações médicas:'); lines.push(form.health_info); }
+      if (form.observations) { lines.push('Observações:'); lines.push(form.observations); }
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ficha-${name.toLowerCase().replace(/\s+/g, '-')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const unreadFromPatient = messages.filter(m => m.sender_type === 'patient' && !m.read_by_therapist).length;
   const hasIntakeSubmitted = !!intakeForm?.submitted_at;
 
@@ -362,12 +404,24 @@ function AccountPanel({
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <ClipboardList className="w-4 h-4 text-success" /> Ficha do Paciente
                 </h3>
-                {hasIntakeSubmitted ? (
-                  <span className="text-xs text-success flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
-                  </span>
-                ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
+                <div className="flex items-center gap-2">
+                  {hasIntakeSubmitted ? (
+                    <span className="text-xs text-success flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
+                    </span>
+                  ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
+                  {hasIntakeSubmitted && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => handleDownloadIntake(intakeForm!, patientName)}
+                    >
+                      <Download className="w-3 h-3" /> Baixar PDF
+                    </Button>
+                  )}
+                </div>
               </div>
               {!hasIntakeSubmitted ? (
                 <div className="p-6 text-center">
