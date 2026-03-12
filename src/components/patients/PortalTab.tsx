@@ -626,17 +626,19 @@ const PROFILE_TYPES = [
 
 // ─── Add Access Dialog ────────────────────────────────────────────────────────
 function AddAccessDialog({
-  open, onClose, patientId, patientEmail, patientName, onAdded,
+  open, onClose, patientId, patientEmail, patientName, responsibleEmail, responsibleName, onAdded,
 }: {
   open: boolean;
   onClose: () => void;
   patientId: string;
   patientEmail?: string | null;
   patientName: string;
+  responsibleEmail?: string | null;
+  responsibleName?: string | null;
   onAdded: () => void;
 }) {
   const { user } = useAuth();
-  const [email, setEmail] = useState(patientEmail || '');
+  const [email, setEmail] = useState('');
   const [accessType, setAccessType] = useState('responsible');
   const [accessLabel, setAccessLabel] = useState('');
   const [permissions, setPermissions] = useState({ ...DEFAULT_PERMISSIONS });
