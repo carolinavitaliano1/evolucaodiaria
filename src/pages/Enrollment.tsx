@@ -1,28 +1,30 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { CheckCircle2, Loader2, Building2, AlertTriangle, Home, X } from 'lucide-react';
+import {
+  CheckCircle2, Loader2, Building2, AlertTriangle, UserPlus, Eye, EyeOff,
+} from 'lucide-react';
 
 export default function Enrollment() {
   const { clinicId } = useParams<{ clinicId: string }>();
+  const navigate = useNavigate();
   const [clinic, setClinic] = useState<{ name: string; address: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [form, setForm] = useState({
+    email: '',
+    password: '',
     name: '',
     birthdate: '',
-    responsible_name: '',
     whatsapp: '',
-    email: '',
-    reason: '',
   });
 
   useEffect(() => {
@@ -42,16 +44,53 @@ export default function Enrollment() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.birthdate) {
-      toast.error('Nome e data de nascimento são obrigatórios');
+    if (!form.name.trim() || !form.birthdate || !form.email || !form.password) {
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
+    if (form.password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const { error } = await supabase.functions.invoke('submit-enrollment', {
-        body: { clinic_id: clinicId, ...form },
+      // PASSO A: Criar conta de autenticação
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: { name: form.name },
+          emailRedirectTo: `${window.location.origin}/portal/auth`,
+        },
       });
-      if (error) throw error;
+
+      if (signUpError) {
+        if (signUpError.message.includes('already registered') || signUpError.message.includes('already been registered')) {
+          toast.error('Este e-mail já possui uma conta. Acesse o portal para entrar.');
+        } else {
+          throw signUpError;
+        }
+        setSubmitting(false);
+        return;
+      }
+
+      const userId = authData.user?.id;
+      if (!userId) throw new Error('Erro ao criar conta. Tente novamente.');
+
+      // PASSO B: Inserir paciente com status Pendente
+      const { error: insertError } = await supabase.from('patients').insert({
+        user_id: userId,
+        clinic_id: clinicId!,
+        name: form.name,
+        birthdate: form.birthdate,
+        whatsapp: form.whatsapp || null,
+        email: form.email,
+        status: 'pendente',
+      });
+
+      if (insertError) throw insertError;
+
       setSubmitted(true);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao enviar. Tente novamente.');
@@ -63,7 +102,7 @@ export default function Enrollment() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 w-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -71,51 +110,39 @@ export default function Enrollment() {
   if (notFound) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
-        <AlertTriangle className="w-12 h-12 text-warning mb-4" />
+        <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
         <h1 className="text-xl font-bold text-foreground mb-2">Link inválido</h1>
-        <p className="text-muted-foreground">Este link de matrícula não existe ou foi desativado.</p>
+        <p className="text-muted-foreground">Este link de cadastro não existe ou foi desativado.</p>
       </div>
     );
   }
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-success/5 to-background p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 to-background p-6 text-center">
         <div className="max-w-sm w-full">
-          {/* Animated check */}
-          <div className="w-24 h-24 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-6 animate-[scale-in_0.4s_ease-out]">
-            <CheckCircle2 className="w-12 h-12 text-success" />
+          <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-12 h-12 text-primary" />
           </div>
 
           <h1 className="text-2xl font-bold text-foreground mb-3">
-            Ficha enviada com sucesso! 🎉
+            Cadastro realizado com sucesso! 🎉
           </h1>
 
-          <p className="text-muted-foreground leading-relaxed mb-2">
-            A equipe de <strong className="text-foreground">{clinic?.name}</strong> já foi notificada e entrará em contato em breve para confirmar os horários e detalhes do atendimento.
+          <p className="text-muted-foreground leading-relaxed mb-6">
+            A clínica <strong className="text-foreground">{clinic?.name}</strong> analisará sua ficha e em breve seu portal estará totalmente liberado. Fique de olho no e-mail e WhatsApp informados. 📱
           </p>
 
-          <p className="text-sm text-muted-foreground mb-8">
-            Fique de olho no WhatsApp e e-mail que você informou. 📱
+          <p className="text-xs text-muted-foreground mb-6">
+            Você receberá um e-mail de confirmação. Após a ativação, acesse o portal com o e-mail e senha que você cadastrou.
           </p>
 
-          <div className="space-y-3">
-            <Button
-              className="w-full gap-2"
-              variant="outline"
-              onClick={() => { setSubmitted(false); setForm({ name: '', birthdate: '', responsible_name: '', whatsapp: '', email: '', reason: '' }); }}
-            >
-              <X className="w-4 h-4" />
-              Preencher outra ficha
-            </Button>
-            <Button
-              className="w-full gap-2 gradient-primary"
-              onClick={() => window.close()}
-            >
-              <Home className="w-4 h-4" />
-              Fechar página
-            </Button>
-          </div>
+          <Button
+            className="w-full"
+            onClick={() => navigate('/portal/auth')}
+          >
+            Ir para o Portal do Paciente
+          </Button>
 
           <p className="text-xs text-muted-foreground mt-6">
             Seus dados são tratados com total sigilo e privacidade. 🔒
@@ -138,88 +165,107 @@ export default function Enrollment() {
             <p className="text-sm text-muted-foreground mt-1">{clinic.address}</p>
           )}
           <p className="text-muted-foreground mt-3 text-sm">
-            Preencha a ficha abaixo para iniciar o processo de matrícula.
+            Bem-vindo! Crie seu acesso para preencher a ficha de matrícula.
           </p>
         </div>
 
         {/* Form */}
         <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-5">Ficha de Matrícula</h2>
+          <div className="flex items-center gap-2 mb-5">
+            <UserPlus className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Criar Conta e Enviar Ficha</h2>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Nome Completo do Paciente *</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Ex: João Pedro Silva"
-                required
-              />
+            {/* Auth section */}
+            <div className="rounded-xl bg-secondary/40 p-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dados de Acesso</p>
+
+              <div>
+                <Label htmlFor="email">E-mail *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="email@exemplo.com"
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password">Senha *</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                    className="pr-10"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Use este e-mail e senha para acessar o portal depois.</p>
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="birthdate">Data de Nascimento *</Label>
-              <Input
-                id="birthdate"
-                type="date"
-                value={form.birthdate}
-                onChange={(e) => setForm({ ...form, birthdate: e.target.value })}
-                required
-              />
-            </div>
+            {/* Patient data section */}
+            <div className="rounded-xl bg-secondary/40 p-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dados do Paciente</p>
 
-            <div>
-              <Label htmlFor="responsible_name">Nome do Responsável</Label>
-              <Input
-                id="responsible_name"
-                value={form.responsible_name}
-                onChange={(e) => setForm({ ...form, responsible_name: e.target.value })}
-                placeholder="Ex: Maria Silva (mãe)"
-              />
-            </div>
+              <div>
+                <Label htmlFor="name">Nome Completo do Paciente *</Label>
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Ex: João Pedro Silva"
+                  required
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="whatsapp">WhatsApp para Contato</Label>
-              <Input
-                id="whatsapp"
-                value={form.whatsapp}
-                onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
-                placeholder="(11) 99999-9999"
-                type="tel"
-              />
-            </div>
+              <div>
+                <Label htmlFor="birthdate">Data de Nascimento *</Label>
+                <Input
+                  id="birthdate"
+                  type="date"
+                  value={form.birthdate}
+                  onChange={(e) => setForm({ ...form, birthdate: e.target.value })}
+                  required
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="email@exemplo.com"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="reason">Motivo da Consulta / O que você busca?</Label>
-              <Textarea
-                id="reason"
-                value={form.reason}
-                onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                placeholder="Descreva brevemente o que motivou buscar atendimento..."
-                rows={3}
-              />
+              <div>
+                <Label htmlFor="whatsapp">WhatsApp para Contato</Label>
+                <Input
+                  id="whatsapp"
+                  value={form.whatsapp}
+                  onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                  placeholder="(11) 99999-9999"
+                  type="tel"
+                />
+              </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full gradient-primary"
+              className="w-full"
               disabled={submitting}
             >
               {submitting ? (
-                <><Loader2 className="w-4 h-4 animate-spin mr-2" />Enviando...</>
+                <><Loader2 className="w-4 h-4 animate-spin mr-2" />Criando conta...</>
               ) : (
-                'Enviar Ficha de Matrícula'
+                'Criar Conta e Enviar Ficha'
               )}
             </Button>
           </form>
