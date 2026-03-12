@@ -251,12 +251,16 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           payment_amount: number | null
+          payment_bank_details: string | null
+          payment_pix_key: string | null
+          payment_pix_name: string | null
           payment_type: string | null
           pays_on_absence: boolean
           phone: string | null
           schedule_by_day: Json | null
           schedule_time: string | null
           services_description: string | null
+          show_payment_in_portal: boolean
           stamp: string | null
           type: string
           updated_at: string
@@ -277,12 +281,16 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           payment_amount?: number | null
+          payment_bank_details?: string | null
+          payment_pix_key?: string | null
+          payment_pix_name?: string | null
           payment_type?: string | null
           pays_on_absence?: boolean
           phone?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
           services_description?: string | null
+          show_payment_in_portal?: boolean
           stamp?: string | null
           type?: string
           updated_at?: string
@@ -303,12 +311,16 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           payment_amount?: number | null
+          payment_bank_details?: string | null
+          payment_pix_key?: string | null
+          payment_pix_name?: string | null
           payment_type?: string | null
           pays_on_absence?: boolean
           phone?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
           services_description?: string | null
+          show_payment_in_portal?: boolean
           stamp?: string | null
           type?: string
           updated_at?: string
