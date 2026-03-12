@@ -98,20 +98,12 @@ export default function Enrollment() {
     }
     setSubmitting(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { data, error } = await supabase.functions.invoke('submit-enrollment', {
+        body: { clinic_id: clinicId, ...form },
+      });
 
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/submit-enrollment`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': anonKey },
-          body: JSON.stringify({ clinic_id: clinicId, ...form }),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao enviar ficha');
+      if (error) throw new Error(error.message || 'Erro ao enviar ficha');
+      if (data?.error) throw new Error(data.error);
       setSubmitted(true);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao enviar. Tente novamente.');
