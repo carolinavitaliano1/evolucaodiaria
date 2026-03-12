@@ -2696,6 +2696,8 @@ export default function PatientDetail() {
             patientId={patient.id}
             patientEmail={patient.email}
             patientName={patient.name}
+            responsibleEmail={patient.responsibleEmail}
+            responsibleName={patient.responsibleName}
           />
         </TabsContent>
 

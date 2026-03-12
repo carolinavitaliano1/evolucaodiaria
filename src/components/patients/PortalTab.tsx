@@ -26,6 +26,8 @@ interface PortalTabProps {
   patientId: string;
   patientEmail?: string | null;
   patientName: string;
+  responsibleEmail?: string | null;
+  responsibleName?: string | null;
 }
 
 interface PortalAccount {
@@ -624,17 +626,19 @@ const PROFILE_TYPES = [
 
 // ─── Add Access Dialog ────────────────────────────────────────────────────────
 function AddAccessDialog({
-  open, onClose, patientId, patientEmail, patientName, onAdded,
+  open, onClose, patientId, patientEmail, patientName, responsibleEmail, responsibleName, onAdded,
 }: {
   open: boolean;
   onClose: () => void;
   patientId: string;
   patientEmail?: string | null;
   patientName: string;
+  responsibleEmail?: string | null;
+  responsibleName?: string | null;
   onAdded: () => void;
 }) {
   const { user } = useAuth();
-  const [email, setEmail] = useState(patientEmail || '');
+  const [email, setEmail] = useState('');
   const [accessType, setAccessType] = useState('responsible');
   const [accessLabel, setAccessLabel] = useState('');
   const [permissions, setPermissions] = useState({ ...DEFAULT_PERMISSIONS });
@@ -773,6 +777,35 @@ function AddAccessDialog({
                 <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
               </div>
             </div>
+            {/* Quick-fill suggestions */}
+            {(patientEmail || responsibleEmail) && (
+              <div className="flex flex-wrap gap-2">
+                <p className="text-[10px] text-muted-foreground w-full">Usar e-mail do cadastro:</p>
+                {patientEmail && (
+                  <button
+                    type="button"
+                    onClick={() => setEmail(patientEmail)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-muted/40 hover:bg-muted text-[11px] font-medium text-foreground transition-colors"
+                  >
+                    <UserCircle className="w-3 h-3 text-primary" />
+                    Paciente — {patientEmail}
+                  </button>
+                )}
+                {responsibleEmail && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail(responsibleEmail);
+                      if (responsibleName) setAccessLabel(responsibleName);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-muted/40 hover:bg-muted text-[11px] font-medium text-foreground transition-colors"
+                  >
+                    <Users className="w-3 h-3 text-success" />
+                    Responsável — {responsibleEmail}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Step 3: Conditional specific fields */}
@@ -901,7 +934,7 @@ function AddAccessDialog({
 }
 
 // ─── Main PortalTab ───────────────────────────────────────────────────────────
-export function PortalTab({ patientId, patientEmail, patientName }: PortalTabProps) {
+export function PortalTab({ patientId, patientEmail, patientName, responsibleEmail, responsibleName }: PortalTabProps) {
   const { user } = useAuth();
   const [accounts, setAccounts] = useState<PortalAccount[]>([]);
   const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
@@ -1174,6 +1207,8 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
         patientId={patientId}
         patientEmail={patientEmail}
         patientName={patientName}
+        responsibleEmail={responsibleEmail}
+        responsibleName={responsibleName}
         onAdded={loadData}
       />
 
