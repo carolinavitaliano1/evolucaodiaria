@@ -1514,6 +1514,13 @@ export default function PatientDetail() {
                   <WhatsAppIcon className="w-4 h-4" />
                 </Button>
               )}
+              {(patient as any).status === 'pendente_revisao' && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs text-success border-success/30 hover:bg-success/5"
+                  onClick={async () => { await supabase.from('patients').update({ status: 'ativo' } as any).eq('id', patient.id); updatePatient(patient.id, {} as any); toast.success('Paciente ativado!'); }}
+                  title="Ativar paciente">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Ativar
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
               </Button>
