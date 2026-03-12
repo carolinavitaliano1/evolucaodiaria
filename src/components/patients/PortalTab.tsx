@@ -26,6 +26,8 @@ interface PortalTabProps {
   patientId: string;
   patientEmail?: string | null;
   patientName: string;
+  responsibleEmail?: string | null;
+  responsibleName?: string | null;
 }
 
 interface PortalAccount {
