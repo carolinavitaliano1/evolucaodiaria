@@ -565,6 +565,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao adicionar paciente'); }
   }, [user]);
 
+  // Sync an already-inserted patient DB row into local state (no DB call)
+  const addPatientToState = useCallback((raw: Record<string, unknown>) => {
+    const newPatient = mapPatient(raw);
+    setState(prev => ({ ...prev, patients: [newPatient, ...prev.patients] }));
+  }, []);
+
   const updatePatient = useCallback(async (id: string, updates: Partial<Patient>) => {
     if (!user) return;
     try {
