@@ -103,6 +103,7 @@ function mapPatient(p: Record<string, unknown>): Patient {
     paymentType: p.payment_type as 'sessao' | 'fixo' | undefined,
     paymentValue: p.payment_value ? Number(p.payment_value) : undefined,
     ...(p.payment_due_day !== undefined && p.payment_due_day !== null ? { payment_due_day: Number(p.payment_due_day) } : {}),
+    ...(p.payment_info ? { payment_info: p.payment_info as string } : {}),
     contractStartDate: (p.contract_start_date as string) || undefined,
     weekdays: (p.weekdays as string[]) || undefined, scheduleTime: (p.schedule_time as string) || undefined,
     scheduleByDay: p.schedule_by_day as ScheduleByDay | undefined,
