@@ -16,10 +16,18 @@ interface PendingPatient {
   id: string;
   name: string;
   birthdate: string;
-  responsible_name: string | null;
-  responsible_whatsapp: string | null;
+  cpf: string | null;
+  phone: string | null;
   whatsapp: string | null;
   email: string | null;
+  responsible_name: string | null;
+  responsible_cpf: string | null;
+  responsible_whatsapp: string | null;
+  responsible_email: string | null;
+  responsible_is_financial: boolean | null;
+  financial_responsible_name: string | null;
+  financial_responsible_cpf: string | null;
+  financial_responsible_whatsapp: string | null;
   observations: string | null;
   created_at: string;
 }
