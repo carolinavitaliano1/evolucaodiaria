@@ -281,5 +281,31 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
         </div>
       )}
     </div>
+
+    {/* Feedback IA — individual card */}
+    {feedbackItem && (
+      <FeedbackIAModal
+        open={!!feedbackItem}
+        onOpenChange={(v) => !v && setFeedbackItem(null)}
+        evolutions={[feedbackItem.evolution]}
+        patientId={feedbackItem.patient.id}
+        patientName={feedbackItem.patient.name}
+        patientWhatsapp={feedbackItem.patient.whatsapp}
+        responsibleWhatsapp={feedbackItem.patient.responsibleWhatsapp}
+        clinicalArea={feedbackItem.patient.clinicalArea}
+        isBulk={false}
+      />
+    )}
+
+    {/* Feedback IA — todas as evoluções do dia em lote */}
+    <FeedbackIAModal
+      open={feedbackDayOpen}
+      onOpenChange={setFeedbackDayOpen}
+      evolutions={evolutionsByPatient.map(({ evo }) => evo)}
+      patientId={evolutionsByPatient[0]?.patient?.id || ''}
+      patientName={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.name || '') : `${evolutionsByPatient.length} pacientes`}
+      clinicalArea={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.clinicalArea || null) : null}
+      isBulk={true}
+    />
   );
 }
