@@ -510,12 +510,50 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                     <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <PenLine className="w-3.5 h-3.5 text-primary" /> Sua assinatura (terapeuta)
                     </p>
-                    <SignaturePad
-                      value={therapistSigData}
-                      onChange={setTherapistSigData}
-                      className="w-full h-28 border border-border rounded-xl bg-background"
-                    />
-                    <div className="flex gap-2">
+
+                    {/* Signature pad */}
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Assinatura</Label>
+                      <SignaturePad
+                        value={therapistSigData}
+                        onChange={setTherapistSigData}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Stamp selector */}
+                    {stamps.length > 0 && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] text-muted-foreground flex items-center gap-1">
+                          <Stamp className="w-3 h-3" /> Carimbo (opcional)
+                        </Label>
+                        <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Selecionar carimbo..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum carimbo</SelectItem>
+                            {stamps.map(s => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name} — {s.clinical_area}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {/* Stamp preview */}
+                        {selectedStampId !== 'none' && (() => {
+                          const stamp = stamps.find(s => s.id === selectedStampId);
+                          return stamp?.stamp_image ? (
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-background border border-border">
+                              <img src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain" />
+                              <span className="text-[10px] text-muted-foreground">{stamp.name}</span>
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
                       <Button variant="outline" size="sm" className="flex-1 text-xs"
                         onClick={() => { setSigningContractId(null); setTherapistSigData(''); }}>
                         Cancelar
