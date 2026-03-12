@@ -858,23 +858,60 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
   const [deleteConfirm, setDeleteConfirm] = useState<PortalAccount | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Per-patient payment visibility
+  const [showPaymentInPortal, setShowPaymentInPortal] = useState(false);
+  const [clinicHasPaymentData, setClinicHasPaymentData] = useState(false);
+  const [savingPaymentToggle, setSavingPaymentToggle] = useState(false);
+
   const loadData = async () => {
     setLoading(true);
-    const [{ data: accs }, { data: form }] = await Promise.all([
+    const [{ data: accs }, { data: form }, { data: patientData }] = await Promise.all([
       supabase.from('patient_portal_accounts').select('*')
         .eq('patient_id', patientId)
         .order('created_at', { ascending: true }),
       supabase.from('patient_intake_forms').select('*').eq('patient_id', patientId).maybeSingle(),
+      supabase.from('patients').select('show_payment_in_portal, clinic_id').eq('id', patientId).single(),
     ]);
     const list = (accs || []) as PortalAccount[];
     setAccounts(list);
     setIntakeForm(form as IntakeForm | null);
+    if (patientData) {
+      setShowPaymentInPortal((patientData as any).show_payment_in_portal ?? false);
+      // Check if the clinic has payment data configured and enabled
+      if ((patientData as any).clinic_id) {
+        const { data: clinicData } = await supabase
+          .from('clinics')
+          .select('show_payment_in_portal, payment_pix_key, payment_pix_name')
+          .eq('id', (patientData as any).clinic_id)
+          .single();
+        const hasData = !!(clinicData?.payment_pix_key || clinicData?.payment_pix_name);
+        setClinicHasPaymentData(hasData && !!(clinicData?.show_payment_in_portal));
+      }
+    }
     // Auto-expand first active or first account
     if (list.length > 0 && !expandedAccount) {
       const active = list.find(a => a.status === 'active') || list[0];
       setExpandedAccount(active.id);
     }
     setLoading(false);
+  };
+
+  const handleSavePaymentToggle = async (value: boolean) => {
+    setShowPaymentInPortal(value);
+    setSavingPaymentToggle(true);
+    try {
+      const { error } = await supabase
+        .from('patients')
+        .update({ show_payment_in_portal: value } as any)
+        .eq('id', patientId);
+      if (error) throw error;
+      toast.success(value ? 'Dados de pagamento visíveis no portal ✅' : 'Dados de pagamento ocultados no portal');
+    } catch {
+      toast.error('Erro ao salvar configuração');
+      setShowPaymentInPortal(!value); // revert
+    } finally {
+      setSavingPaymentToggle(false);
+    }
   };
 
   useEffect(() => { loadData(); }, [patientId]);
@@ -968,6 +1005,36 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
           ⚠️ Paciente sem e-mail. Adicione um e-mail para enviar convites.
         </p>
       )}
+
+      {/* Per-patient payment data visibility toggle */}
+      <div className={cn(
+        'rounded-xl border p-4 flex items-center justify-between gap-3',
+        clinicHasPaymentData
+          ? 'bg-success/5 border-success/20'
+          : 'bg-muted/30 border-border'
+      )}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className={cn(
+            'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+            clinicHasPaymentData ? 'bg-success/15' : 'bg-muted'
+          )}>
+            <CreditCard className={cn('w-4 h-4', clinicHasPaymentData ? 'text-success' : 'text-muted-foreground')} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">Dados de Pagamento no Portal</p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-tight">
+              {clinicHasPaymentData
+                ? 'Exibir chave PIX e dados bancários do consultório na aba Financeiro deste paciente'
+                : 'Configure os dados de recebimento no Perfil para ativar esta opção'}
+            </p>
+          </div>
+        </div>
+        <Switch
+          checked={showPaymentInPortal}
+          onCheckedChange={handleSavePaymentToggle}
+          disabled={!clinicHasPaymentData || savingPaymentToggle}
+        />
+      </div>
 
       {accounts.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center">

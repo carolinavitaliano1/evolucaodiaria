@@ -69,14 +69,15 @@ export default function PortalFinancial() {
         .limit(12),
       supabase
         .from('patients')
-        .select('payment_info, clinic_id')
+        .select('payment_info, clinic_id, show_payment_in_portal')
         .eq('id', portalAccount.patient_id)
         .single(),
     ]).then(async ([{ data: recs }, { data: pat }]) => {
       setRecords((recs || []) as PaymentRecord[]);
       setPaymentInfo((pat as any)?.payment_info || null);
-      // Load clinic payment data if clinic_id exists
-      if ((pat as any)?.clinic_id) {
+      // Load clinic payment data only if patient-level toggle is also on
+      const patientShowPayment = (pat as any)?.show_payment_in_portal ?? false;
+      if (patientShowPayment && (pat as any)?.clinic_id) {
         const { data: clinicData } = await supabase
           .from('clinics')
           .select('payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
