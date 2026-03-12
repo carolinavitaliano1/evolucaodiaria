@@ -51,6 +51,7 @@ export function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const { unreadCount: noticesCount } = useUnreadNotices();
   const { unreadCount: supportCount } = useUnreadSupportCount();
+  const { count: pendingCount } = usePendingEnrollments();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
 
