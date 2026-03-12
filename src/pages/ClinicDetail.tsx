@@ -579,15 +579,18 @@ export default function ClinicDetail() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.birthdate) return;
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
+    try {
     const firstDayTime = formData.weekdays.length > 0 
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
     const selectedPkg = formData.packageId ? clinicPackages.find(p => p.id === formData.packageId) : null;
 
-    // Save patient with payment_due_day via direct supabase call
-    const { data: newPatient } = await supabase
+    // Single insert — do NOT call addPatient() which would cause a second insert
+    const { data: newPatient, error: insertError } = await supabase
       .from('patients')
       .insert({
         clinic_id: clinic.id,
@@ -618,28 +621,39 @@ export default function ClinicDetail() {
       .select()
       .single();
 
-    // Also add to context so UI updates
-    addPatient({
-      clinicId: clinic.id,
-      name: formData.name,
-      birthdate: formData.birthdate,
-      phone: formData.phone,
-      whatsapp: formData.whatsapp,
-      clinicalArea: formData.clinicalArea,
-      diagnosis: formData.diagnosis,
-      professionals: formData.professionals,
-      observations: formData.observations,
-      responsibleName: formData.responsibleName,
-      responsibleEmail: formData.responsibleEmail,
-      responsibleWhatsapp: formData.responsibleWhatsapp,
-      paymentType: clinic.paymentType === 'sessao' ? 'sessao' : clinic.paymentType === 'fixo_mensal' ? 'fixo' : 'sessao',
-      paymentValue: selectedPkg ? selectedPkg.price : clinic.paymentAmount,
-      contractStartDate: formData.contractStartDate,
-      weekdays: formData.weekdays,
-      scheduleTime: firstDayTime,
-      scheduleByDay: formData.scheduleByDay,
-      packageId: formData.packageId || undefined,
-    });
+    if (insertError) throw insertError;
+
+    // Update context state directly from the returned record (no second insert)
+    if (newPatient) {
+      const mapped = {
+        id: newPatient.id,
+        clinicId: newPatient.clinic_id,
+        name: newPatient.name,
+        birthdate: newPatient.birthdate,
+        phone: newPatient.phone || undefined,
+        whatsapp: newPatient.whatsapp || undefined,
+        email: newPatient.email || undefined,
+        clinicalArea: newPatient.clinical_area || undefined,
+        diagnosis: newPatient.diagnosis || undefined,
+        professionals: newPatient.professionals || undefined,
+        observations: newPatient.observations || undefined,
+        responsibleName: newPatient.responsible_name || undefined,
+        responsibleEmail: newPatient.responsible_email || undefined,
+        responsibleWhatsapp: newPatient.responsible_whatsapp || undefined,
+        paymentType: newPatient.payment_type || undefined,
+        paymentValue: newPatient.payment_value || undefined,
+        contractStartDate: newPatient.contract_start_date || undefined,
+        weekdays: newPatient.weekdays || undefined,
+        scheduleTime: newPatient.schedule_time || undefined,
+        scheduleByDay: newPatient.schedule_by_day || undefined,
+        packageId: newPatient.package_id || undefined,
+        isArchived: false,
+        status: newPatient.status || 'ativo',
+        createdAt: newPatient.created_at,
+      } as any;
+      // Prepend to patients list in context without triggering another DB call
+      setState((prev: any) => ({ ...prev, patients: [mapped, ...prev.patients] }));
+    }
 
     // If initial payment status was set, create payment record
     if (newPatient && (formData.initialPaymentPaid || formData.paymentDueDay) && user) {
