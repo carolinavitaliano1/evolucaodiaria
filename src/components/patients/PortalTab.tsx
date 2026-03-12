@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -251,272 +250,285 @@ function AccountPanel({
   const unreadFromPatient = messages.filter(m => m.sender_type === 'patient' && !m.read_by_therapist).length;
   const hasIntakeSubmitted = !!intakeForm?.submitted_at;
 
-  // Build tabs based on permissions
-  const tabs = [
-    perms.messages && { id: 'messages', icon: MessageSquare, label: 'Msgs', badge: unreadFromPatient },
-    perms.intake && { id: 'intake', icon: ClipboardList, label: 'Ficha', dot: hasIntakeSubmitted },
-    perms.contract && { id: 'contract', icon: FilePenLine, label: 'Contr.' },
-    perms.notices && { id: 'notices', icon: Bell, label: 'Avisos' },
-    perms.feedbacks && { id: 'feedbacks', icon: Eye, label: 'Feed.' },
-    perms.documents && { id: 'documents', icon: FileUp, label: 'Docs' },
-  ].filter(Boolean) as { id: string; icon: React.ElementType; label: string; badge?: number; dot?: boolean }[];
+  // Quick Actions config
+  const actions = [
+    perms.messages && { id: 'messages', icon: MessageSquare, label: 'Mensagens', color: 'text-primary', bg: 'bg-primary/10 hover:bg-primary/20', badge: unreadFromPatient },
+    perms.intake && { id: 'intake', icon: ClipboardList, label: 'Ficha Clínica', color: 'text-success', bg: 'bg-success/10 hover:bg-success/20', dot: hasIntakeSubmitted },
+    perms.contract && { id: 'contract', icon: FilePenLine, label: 'Contratos', color: 'text-warning', bg: 'bg-warning/10 hover:bg-warning/20' },
+    perms.notices && { id: 'notices', icon: Bell, label: 'Avisos', color: 'text-destructive', bg: 'bg-destructive/10 hover:bg-destructive/20' },
+    perms.feedbacks && { id: 'feedbacks', icon: Eye, label: 'Linha do Tempo', color: 'text-accent-foreground', bg: 'bg-accent/30 hover:bg-accent/50' },
+    perms.documents && { id: 'documents', icon: FileUp, label: 'Documentos', color: 'text-muted-foreground', bg: 'bg-muted/50 hover:bg-muted' },
+  ].filter(Boolean) as { id: string; icon: React.ElementType; label: string; color: string; bg: string; badge?: number; dot?: boolean }[];
 
-  const defaultTab = tabs[0]?.id || 'messages';
+  const [activeSection, setActiveSection] = useState<string | null>(actions[0]?.id || null);
+
+  const handleActionClick = (id: string) => {
+    setActiveSection(prev => prev === id ? null : id);
+  };
 
   return (
-    <Tabs defaultValue={defaultTab} className="space-y-3">
-      <TabsList className={cn('w-full h-9', `grid grid-cols-${Math.min(tabs.length, 6)}`)}>
-        {tabs.map(tab => (
-          <TabsTrigger key={tab.id} value={tab.id} className="text-xs relative gap-1">
-            <tab.icon className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-[11px]">{tab.label}</span>
-            {tab.badge && tab.badge > 0 ? (
-              <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
-                {tab.badge}
+    <div className="space-y-4">
+      {/* Quick Actions Grid */}
+      <div className={cn('grid gap-3', actions.length <= 3 ? 'grid-cols-3' : actions.length <= 4 ? 'grid-cols-4' : 'grid-cols-3 sm:grid-cols-6')}>
+        {actions.map(action => (
+          <button
+            key={action.id}
+            onClick={() => handleActionClick(action.id)}
+            className={cn(
+              'relative flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-150 text-center group',
+              activeSection === action.id
+                ? cn('border-primary/40 shadow-sm', action.bg)
+                : 'border-border bg-card hover:border-primary/20',
+              activeSection === action.id ? '' : 'hover:bg-muted/30'
+            )}
+          >
+            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors', action.bg)}>
+              <action.icon className={cn('w-4 h-4', action.color)} />
+            </div>
+            <span className={cn('text-[11px] font-medium leading-tight', activeSection === action.id ? action.color : 'text-muted-foreground group-hover:text-foreground')}>
+              {action.label}
+            </span>
+            {action.badge && action.badge > 0 ? (
+              <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+                {action.badge}
               </span>
             ) : null}
-            {tab.dot ? <span className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full" /> : null}
-          </TabsTrigger>
+            {action.dot ? <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-success rounded-full border-2 border-card" /> : null}
+          </button>
         ))}
-      </TabsList>
+      </div>
 
-      {/* Messages */}
-      {perms.messages && (
-        <TabsContent value="messages" className="mt-0">
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h3 className="font-semibold text-sm flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-primary" /> Mensagens
-              </h3>
-              <span className="text-xs text-muted-foreground">{messages.length} msgs</span>
-            </div>
-            <div className="p-4 border-b border-border space-y-2">
-              <Select value={messageType} onValueChange={setMessageType}>
-                <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="message">💬 Mensagem</SelectItem>
-                  <SelectItem value="tarefa">📋 Tarefa para casa</SelectItem>
-                  <SelectItem value="feedback">✨ Feedback de sessão</SelectItem>
-                </SelectContent>
-              </Select>
-              <Textarea value={newMessage} onChange={e => setNewMessage(e.target.value)}
-                placeholder={`Mensagem para ${account.access_label || patientName}...`}
-                className="resize-none text-sm min-h-[80px]" />
-              <Button size="sm" onClick={handleSendMessage} disabled={!newMessage.trim() || sending} className="gap-1.5">
-                {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Enviar
-              </Button>
-            </div>
-            <div className="divide-y divide-border max-h-56 overflow-y-auto">
-              {messages.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-6">Nenhuma mensagem ainda.</p>
-              ) : messages.map(msg => (
-                <div key={msg.id} className={cn('px-4 py-3', msg.sender_type === 'patient' && 'bg-muted/30')}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={cn('text-[10px] font-semibold uppercase tracking-wide',
-                      msg.sender_type === 'therapist' ? 'text-primary' : 'text-muted-foreground')}>
-                      {msg.sender_type === 'therapist' ? '👨‍⚕️ Você' : `👤 ${account.access_label || patientName}`}
-                    </span>
-                    {msg.message_type !== 'message' && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                        {msg.message_type === 'tarefa' ? '📋 Tarefa' : '✨ Feedback'}
-                      </Badge>
-                    )}
-                    {msg.sender_type === 'patient' && !msg.read_by_therapist && (
-                      <Badge className="text-[9px] px-1 py-0 h-3.5 bg-destructive">Nova</Badge>
-                    )}
-                    <span className="text-[10px] text-muted-foreground ml-auto">
-                      {format(new Date(msg.created_at), "d MMM 'às' HH:mm", { locale: ptBR })}
-                    </span>
-                  </div>
-                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </TabsContent>
-      )}
-
-      {/* Intake */}
-      {perms.intake && (
-        <TabsContent value="intake" className="mt-0">
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h3 className="font-semibold text-sm flex items-center gap-2">
-                <ClipboardList className="w-4 h-4 text-primary" /> Ficha do Paciente
-              </h3>
-              {hasIntakeSubmitted ? (
-                <span className="text-xs text-success flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
-                </span>
-              ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
-            </div>
-            {!hasIntakeSubmitted ? (
-              <div className="p-6 text-center">
-                <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  {!intakeForm ? 'Ficha ainda não preenchida.' : 'Paciente ainda não enviou a ficha.'}
-                </p>
+      {/* Section Content */}
+      {activeSection && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          {/* Messages */}
+          {activeSection === 'messages' && perms.messages && (
+            <div>
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/20">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" /> Mensagens
+                </h3>
+                <span className="text-xs text-muted-foreground">{messages.length} msgs</span>
               </div>
-            ) : (
-              <div className="p-4 space-y-5">
-                <div className="space-y-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5" /> Dados Pessoais
-                  </h4>
-                  <div className="grid grid-cols-1 gap-3 pl-1">
-                    <IntakeField label="Nome completo" value={intakeForm.full_name} />
-                    <div className="grid grid-cols-2 gap-3">
-                      <IntakeField label="CPF" value={intakeForm.cpf} />
-                      <IntakeField label="Data de nascimento" value={intakeForm.birthdate ? format(new Date(intakeForm.birthdate + 'T00:00:00'), 'dd/MM/yyyy') : null} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <IntakeField label="Telefone" value={intakeForm.phone} />
-                      <IntakeField label="Contato de emergência" value={intakeForm.emergency_contact} />
-                    </div>
-                    <IntakeField label="Endereço" value={intakeForm.address} />
-                  </div>
-                </div>
-                {(intakeForm.responsible_name || intakeForm.responsible_cpf) && (
-                  <div className="space-y-3 pt-3 border-t border-border">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" /> Responsável
-                    </h4>
-                    <div className="grid grid-cols-1 gap-3 pl-1">
-                      <IntakeField label="Nome" value={intakeForm.responsible_name} />
-                      <div className="grid grid-cols-2 gap-3">
-                        <IntakeField label="CPF" value={intakeForm.responsible_cpf} />
-                        <IntakeField label="Telefone" value={intakeForm.responsible_phone} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {intakeForm.payment_due_day && (
-                  <div className="space-y-3 pt-3 border-t border-border">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <CreditCard className="w-3.5 h-3.5" /> Pagamento
-                    </h4>
-                    <div className="pl-1"><IntakeField label="Melhor dia" value={`Dia ${intakeForm.payment_due_day}`} /></div>
-                  </div>
-                )}
-                {(intakeForm.health_info || intakeForm.observations) && (
-                  <div className="space-y-3 pt-3 border-t border-border">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <Heart className="w-3.5 h-3.5" /> Saúde & Observações
-                    </h4>
-                    <div className="space-y-3 pl-1">
-                      {intakeForm.health_info && (
-                        <div className="space-y-0.5">
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Informações médicas</p>
-                          <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.health_info}</p>
-                        </div>
+              <div className="p-4 border-b border-border space-y-2">
+                <Select value={messageType} onValueChange={setMessageType}>
+                  <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="message">💬 Mensagem</SelectItem>
+                    <SelectItem value="tarefa">📋 Tarefa para casa</SelectItem>
+                    <SelectItem value="feedback">✨ Feedback de sessão</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Textarea value={newMessage} onChange={e => setNewMessage(e.target.value)}
+                  placeholder={`Mensagem para ${account.access_label || patientName}...`}
+                  className="resize-none text-sm min-h-[80px]" />
+                <Button size="sm" onClick={handleSendMessage} disabled={!newMessage.trim() || sending} className="gap-1.5">
+                  {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Enviar
+                </Button>
+              </div>
+              <div className="divide-y divide-border max-h-56 overflow-y-auto">
+                {messages.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">Nenhuma mensagem ainda.</p>
+                ) : messages.map(msg => (
+                  <div key={msg.id} className={cn('px-4 py-3', msg.sender_type === 'patient' && 'bg-muted/30')}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={cn('text-[10px] font-semibold uppercase tracking-wide',
+                        msg.sender_type === 'therapist' ? 'text-primary' : 'text-muted-foreground')}>
+                        {msg.sender_type === 'therapist' ? '👨‍⚕️ Você' : `👤 ${account.access_label || patientName}`}
+                      </span>
+                      {msg.message_type !== 'message' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                          {msg.message_type === 'tarefa' ? '📋 Tarefa' : '✨ Feedback'}
+                        </Badge>
                       )}
-                      {intakeForm.observations && (
-                        <div className="space-y-0.5">
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Observações</p>
-                          <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.observations}</p>
-                        </div>
+                      {msg.sender_type === 'patient' && !msg.read_by_therapist && (
+                        <Badge className="text-[9px] px-1 py-0 h-3.5 bg-destructive">Nova</Badge>
                       )}
+                      <span className="text-[10px] text-muted-foreground ml-auto">
+                        {format(new Date(msg.created_at), "d MMM 'às' HH:mm", { locale: ptBR })}
+                      </span>
                     </div>
+                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                   </div>
-                )}
+                ))}
               </div>
-            )}
-          </div>
-        </TabsContent>
-      )}
-
-      {/* Contract */}
-      {perms.contract && (
-        <TabsContent value="contract" className="mt-0">
-          <ContractManager patientId={patientId} patientName={patientName} />
-        </TabsContent>
-      )}
-
-      {/* Notices */}
-      {perms.notices && (
-        <TabsContent value="notices" className="mt-0">
-          <div className="bg-card rounded-xl border border-border p-4">
-            <PortalNoticesManager patientId={patientId} patientName={patientName} />
-          </div>
-        </TabsContent>
-      )}
-
-      {/* Feedbacks */}
-      {perms.feedbacks && (
-        <TabsContent value="feedbacks" className="mt-0">
-          <div className="bg-card rounded-xl border border-border p-4">
-            <SharedEvolutionsManager patientId={patientId} />
-          </div>
-        </TabsContent>
-      )}
-
-      {/* Documents */}
-      {perms.documents && (
-        <TabsContent value="documents" className="mt-0">
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h3 className="font-semibold text-sm flex items-center gap-2">
-                <FileUp className="w-4 h-4 text-primary" /> Documentos
-              </h3>
-              <span className="text-xs text-muted-foreground">{documents.length} arquivo(s)</span>
             </div>
-            <div className="p-4 space-y-3">
-              <p className="text-xs text-muted-foreground">Envie documentos e relatórios para este acesso. Apenas esta pessoa verá esses arquivos.</p>
-              <div className="space-y-2">
-                <Input
-                  placeholder="Descrição opcional (ex: Relatório de progresso)"
-                  value={docDescription}
-                  onChange={e => setDocDescription(e.target.value)}
-                  className="text-sm h-8"
-                />
-                <div className="flex items-center gap-2">
-                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleUploadDoc}
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xls,.xlsx" />
-                  <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingDoc} className="gap-1.5 text-xs">
-                    {uploadingDoc ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileUp className="w-3 h-3" />}
-                    {uploadingDoc ? 'Enviando...' : 'Selecionar arquivo'}
-                  </Button>
-                </div>
-              </div>
+          )}
 
-              {documents.length > 0 ? (
-                <div className="space-y-2 mt-2">
-                  {documents.map(doc => (
-                    <div key={doc.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{doc.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {doc.description && <p className="text-xs text-muted-foreground truncate">{doc.description}</p>}
-                          <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
-                            {doc.uploaded_by_type === 'portal' ? '👤 Paciente' : '👨‍⚕️ Terapeuta'} •{' '}
-                            {format(new Date(doc.created_at), "d/MM/yy", { locale: ptBR })}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDownloadDoc(doc)}>
-                          <Download className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteDoc(doc)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+          {/* Intake */}
+          {activeSection === 'intake' && perms.intake && (
+            <div>
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/20">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-success" /> Ficha do Paciente
+                </h3>
+                {hasIntakeSubmitted ? (
+                  <span className="text-xs text-success flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
+                  </span>
+                ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
+              </div>
+              {!hasIntakeSubmitted ? (
+                <div className="p-6 text-center">
+                  <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {!intakeForm ? 'Ficha ainda não preenchida.' : 'Paciente ainda não enviou a ficha.'}
+                  </p>
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <FileUp className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">Nenhum documento enviado ainda.</p>
+                <div className="p-4 space-y-5">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5" /> Dados Pessoais
+                    </h4>
+                    <div className="grid grid-cols-1 gap-3 pl-1">
+                      <IntakeField label="Nome completo" value={intakeForm.full_name} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <IntakeField label="CPF" value={intakeForm.cpf} />
+                        <IntakeField label="Data de nascimento" value={intakeForm.birthdate ? format(new Date(intakeForm.birthdate + 'T00:00:00'), 'dd/MM/yyyy') : null} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <IntakeField label="Telefone" value={intakeForm.phone} />
+                        <IntakeField label="Contato de emergência" value={intakeForm.emergency_contact} />
+                      </div>
+                      <IntakeField label="Endereço" value={intakeForm.address} />
+                    </div>
+                  </div>
+                  {(intakeForm.responsible_name || intakeForm.responsible_cpf) && (
+                    <div className="space-y-3 pt-3 border-t border-border">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5" /> Responsável
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3 pl-1">
+                        <IntakeField label="Nome" value={intakeForm.responsible_name} />
+                        <div className="grid grid-cols-2 gap-3">
+                          <IntakeField label="CPF" value={intakeForm.responsible_cpf} />
+                          <IntakeField label="Telefone" value={intakeForm.responsible_phone} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {intakeForm.payment_due_day && (
+                    <div className="space-y-3 pt-3 border-t border-border">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                        <CreditCard className="w-3.5 h-3.5" /> Pagamento
+                      </h4>
+                      <div className="pl-1"><IntakeField label="Melhor dia" value={`Dia ${intakeForm.payment_due_day}`} /></div>
+                    </div>
+                  )}
+                  {(intakeForm.health_info || intakeForm.observations) && (
+                    <div className="space-y-3 pt-3 border-t border-border">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                        <Heart className="w-3.5 h-3.5" /> Saúde & Observações
+                      </h4>
+                      <div className="space-y-3 pl-1">
+                        {intakeForm.health_info && (
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Informações médicas</p>
+                            <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.health_info}</p>
+                          </div>
+                        )}
+                        {intakeForm.observations && (
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Observações</p>
+                            <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.observations}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-        </TabsContent>
+          )}
+
+          {/* Contract */}
+          {activeSection === 'contract' && perms.contract && (
+            <div className="p-4">
+              <ContractManager patientId={patientId} patientName={patientName} />
+            </div>
+          )}
+
+          {/* Notices */}
+          {activeSection === 'notices' && perms.notices && (
+            <div className="p-4">
+              <PortalNoticesManager patientId={patientId} patientName={patientName} />
+            </div>
+          )}
+
+          {/* Feedbacks / Timeline */}
+          {activeSection === 'feedbacks' && perms.feedbacks && (
+            <div className="p-4">
+              <SharedEvolutionsManager patientId={patientId} />
+            </div>
+          )}
+
+          {/* Documents */}
+          {activeSection === 'documents' && perms.documents && (
+            <div>
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/20">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <FileUp className="w-4 h-4 text-primary" /> Documentos
+                </h3>
+                <span className="text-xs text-muted-foreground">{documents.length} arquivo(s)</span>
+              </div>
+              <div className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">Envie documentos e relatórios para este acesso. Apenas esta pessoa verá esses arquivos.</p>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Descrição opcional (ex: Relatório de progresso)"
+                    value={docDescription}
+                    onChange={e => setDocDescription(e.target.value)}
+                    className="text-sm h-8"
+                  />
+                  <div className="flex items-center gap-2">
+                    <input ref={fileInputRef} type="file" className="hidden" onChange={handleUploadDoc}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xls,.xlsx" />
+                    <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingDoc} className="gap-1.5 text-xs">
+                      {uploadingDoc ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileUp className="w-3 h-3" />}
+                      {uploadingDoc ? 'Enviando...' : 'Selecionar arquivo'}
+                    </Button>
+                  </div>
+                </div>
+                {documents.length > 0 ? (
+                  <div className="space-y-2 mt-2">
+                    {documents.map(doc => (
+                      <div key={doc.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {doc.description && <p className="text-xs text-muted-foreground truncate">{doc.description}</p>}
+                            <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
+                              {doc.uploaded_by_type === 'portal' ? '👤 Paciente' : '👨‍⚕️ Terapeuta'} •{' '}
+                              {format(new Date(doc.created_at), "d/MM/yy", { locale: ptBR })}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDownloadDoc(doc)}>
+                            <Download className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteDoc(doc)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <FileUp className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">Nenhum documento enviado ainda.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       )}
-    </Tabs>
+    </div>
   );
 }
 

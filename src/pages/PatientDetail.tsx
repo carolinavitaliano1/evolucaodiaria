@@ -1752,30 +1752,30 @@ export default function PatientDetail() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="evolutions" className="space-y-4">
-        <TabsList className="w-full sm:w-auto grid grid-cols-7 sm:inline-grid gap-0">
-          <TabsTrigger value="evolutions" className="gap-1.5 text-xs sm:text-sm">
-            <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evoluções</span><span className="sm:hidden">Evol.</span>
-          </TabsTrigger>
-          <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm">
-            <BarChart3 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Relatório Mensal</span><span className="sm:hidden">Relat.</span>
-          </TabsTrigger>
-          <TabsTrigger value="financial" className="gap-1.5 text-xs sm:text-sm">
-            <DollarSign className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Financeiro</span><span className="sm:hidden">Fin.</span>
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm">
-            <Paperclip className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Documentos</span><span className="sm:hidden">Docs</span>
-          </TabsTrigger>
-          <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm">
-            <ListTodo className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tasks</span>
-          </TabsTrigger>
-          <TabsTrigger value="notes" className="gap-1.5 text-xs sm:text-sm">
-            <PenLine className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Notas</span><span className="sm:hidden">Notas</span>
-          </TabsTrigger>
-          <TabsTrigger value="portal" className="gap-1.5 text-xs sm:text-sm">
-            <MessageSquare className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Portal</span><span className="sm:hidden">Portal</span>
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="evolutions" className="space-y-5">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-1.5">
+          <TabsList className="w-full bg-transparent h-auto flex flex-wrap gap-1 p-0">
+            {[
+              { value: 'evolutions', icon: FileText, label: 'Evoluções', shortLabel: 'Evol.' },
+              { value: 'reports', icon: BarChart3, label: 'Rel. Mensal', shortLabel: 'Relat.' },
+              { value: 'financial', icon: DollarSign, label: 'Financeiro', shortLabel: 'Fin.' },
+              { value: 'documents', icon: Paperclip, label: 'Documentos', shortLabel: 'Docs' },
+              { value: 'tasks', icon: ListTodo, label: 'Tarefas', shortLabel: 'Tasks' },
+              { value: 'notes', icon: PenLine, label: 'Notas', shortLabel: 'Notas' },
+              { value: 'portal', icon: MessageSquare, label: 'Portal', shortLabel: 'Portal' },
+            ].map(({ value, icon: Icon, label, shortLabel }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="flex-1 min-w-[80px] gap-1.5 text-xs font-medium rounded-xl px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground transition-all"
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden">{shortLabel}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
