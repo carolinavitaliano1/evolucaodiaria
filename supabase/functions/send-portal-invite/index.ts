@@ -68,6 +68,17 @@ serve(async (req) => {
     const therapistName = profile?.name || 'Seu terapeuta';
     const portalUrl = `https://evolucaodiaria.app.br/portal/auth?token=${inviteToken}`;
 
+    // Customize email based on access type
+    const accessTypeLabels: Record<string, string> = {
+      patient: 'Portal do Paciente',
+      responsible: 'Portal do Responsável',
+      school: 'Portal de Acompanhamento Escolar',
+      clinic: 'Portal de Acompanhamento Clínico',
+      other: 'Portal de Acompanhamento',
+    };
+    const portalTitle = accessTypeLabels[access_type || 'patient'] || 'Portal do Paciente';
+    const recipientLabel = access_label ? `${access_label}` : patient.name;
+
     // Send invite email via Resend
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) throw new Error('RESEND_API_KEY not configured');
