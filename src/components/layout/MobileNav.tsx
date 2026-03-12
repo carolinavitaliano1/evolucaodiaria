@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
+import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { 
@@ -29,7 +30,7 @@ import { ThemeToggle } from './ThemeToggle';
 const mainNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home',      perm: 'dashboard.view' as const },
   { to: '/clinics',   icon: Building2,       label: 'Clínicas',  perm: 'clinics.view'   as const },
-  { to: '/patients',  icon: Users,           label: 'Pacientes', perm: 'patients.view'  as const },
+  { to: '/patients',  icon: Users,           label: 'Pacientes', perm: 'patients.view'  as const, badge: 'pending' as const },
   { to: '/calendar',  icon: Calendar,        label: 'Agenda',    perm: 'calendar.view'  as const },
 ];
 
@@ -50,6 +51,7 @@ export function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const { unreadCount: noticesCount } = useUnreadNotices();
   const { unreadCount: supportCount } = useUnreadSupportCount();
+  const { count: pendingCount } = usePendingEnrollments();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
 
@@ -91,15 +93,17 @@ export function MobileNav() {
   const getBadgeCount = (badge: string | null) => {
     if (badge === 'notices') return noticesCount;
     if (badge === 'support') return supportCount;
+    if (badge === 'pending') return pendingCount;
     return 0;
   };
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/98 backdrop-blur-sm border-t border-border">
       <div className="flex justify-around items-center py-1.5 px-2">
-        {allowedMain.map(({ to, icon: Icon, label }) => {
+        {allowedMain.map(({ to, icon: Icon, label, perm }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
+          const badgeCount = to === '/patients' ? pendingCount : 0;
           
           return (
             <NavLink
@@ -110,8 +114,13 @@ export function MobileNav() {
                 isActive ? 'text-primary' : 'text-muted-foreground'
               )}
             >
-              <div className={cn('p-1.5 rounded-lg transition-colors', isActive && 'bg-primary')}>
+              <div className={cn('relative p-1.5 rounded-lg transition-colors', isActive && 'bg-primary')}>
                 <Icon className={cn('w-5 h-5', isActive ? 'text-primary-foreground' : 'text-muted-foreground')} />
+                {badgeCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    {badgeCount > 9 ? '9+' : badgeCount}
+                  </span>
+                )}
               </div>
               <span className={cn('text-[10px] font-medium', isActive ? 'text-primary' : 'text-muted-foreground')}>
                 {label}

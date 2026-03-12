@@ -26,6 +26,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
+import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,7 +34,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 const allNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const },
   { to: '/clinics',   icon: Building2,       label: 'Clínicas',     perm: 'clinics.view'   as const },
-  { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const },
+  { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const, badge: 'pending' as const },
   { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const },
   { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const },
   { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const },
@@ -51,6 +52,7 @@ export function AppSidebar() {
   const { theme } = useTheme();
   const { unreadCount } = useUnreadNotices();
   const { unreadCount: supportUnread } = useUnreadSupportCount();
+  const { count: pendingCount } = usePendingEnrollments();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
 
@@ -124,7 +126,7 @@ export function AppSidebar() {
         {navItemsWithAccess.map(({ to, icon: Icon, label, badge, locked }) => {
           const isActive = !locked && (location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to)));
-          const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : 0;
+          const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : badge === 'pending' ? pendingCount : 0;
           const showBadge = badgeCount > 0 && !locked;
           
           return (
