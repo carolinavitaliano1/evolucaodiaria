@@ -30,11 +30,20 @@ interface IntakeData {
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;';
+
+  const therapistSigBlock = contract.therapist_signature_data
+    ? `<div style="margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;">
+        <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura do terapeuta:</p>
+        <img src="${contract.therapist_signature_data}" style="max-height:70px;max-width:260px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura do terapeuta" />
+        ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:6px;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
+      </div>` : '';
+
   wrapper.innerHTML = `
     <div style="margin-bottom:32px;">
       ${contract.template_html}
     </div>
-    <div style="margin-top:40px;border-top:1px solid #ccc;padding-top:24px;">
+    ${therapistSigBlock}
+    <div style="margin-top:32px;border-top:1px solid #ccc;padding-top:24px;">
       <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital${signerName ? ` de ${signerName}` : ''}:</p>
       ${signerCpf ? `<p style="font-size:10px;color:#777;margin-bottom:8px;">CPF: ${signerCpf}</p>` : ''}
       <img src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura" />
