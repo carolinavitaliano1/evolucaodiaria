@@ -240,6 +240,37 @@ export default function Profile() {
     }
   }
 
+  function handleClinicSelect(clinicId: string) {
+    setSelectedClinicId(clinicId);
+    const c = ownedClinics.find(cl => cl.id === clinicId);
+    if (c) {
+      setPixKey(c.payment_pix_key || '');
+      setPixName(c.payment_pix_name || '');
+      setBankDetails(c.payment_bank_details || '');
+      setShowPaymentInPortal(c.show_payment_in_portal ?? false);
+    }
+  }
+
+  async function savePaymentData() {
+    if (!selectedClinicId) return;
+    setSavingPayment(true);
+    try {
+      const { error } = await supabase.from('clinics').update({
+        payment_pix_key: pixKey.trim() || null,
+        payment_pix_name: pixName.trim() || null,
+        payment_bank_details: bankDetails.trim() || null,
+        show_payment_in_portal: showPaymentInPortal,
+      }).eq('id', selectedClinicId);
+      if (error) throw error;
+      toast.success('Dados de recebimento salvos!');
+      loadData();
+    } catch (err: any) {
+      toast.error('Erro ao salvar: ' + err.message);
+    } finally {
+      setSavingPayment(false);
+    }
+  }
+
   function openStampDialog(stamp?: StampItem) {
     if (stamp) {
       setEditingStamp(stamp);
