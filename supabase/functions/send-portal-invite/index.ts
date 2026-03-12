@@ -21,7 +21,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
     if (authError || !user) throw new Error('Unauthorized');
 
-    const { patient_id } = await req.json();
+    const { patient_id, override_email, access_type, access_label, invite_token: providedToken } = await req.json();
 
     // Get patient data (must belong to therapist)
     const { data: patient, error: patientError } = await supabase
@@ -32,28 +32,31 @@ serve(async (req) => {
       .single();
 
     if (patientError || !patient) throw new Error('Paciente não encontrado');
-    if (!patient.email) throw new Error('Paciente não tem e-mail cadastrado. Adicione um e-mail antes de ativar o portal.');
 
-    // Generate invite token
-    const inviteToken = crypto.randomUUID();
+    const targetEmail = override_email || patient.email;
+    if (!targetEmail) throw new Error('E-mail não fornecido. Adicione um e-mail antes de ativar o portal.');
+
+    // Use provided token (from pre-created account) or generate new one
+    const inviteToken = providedToken || crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Upsert portal account
-    const { error: upsertError } = await supabase
-      .from('patient_portal_accounts')
-      .upsert({
-        patient_id: patient.id,
-        therapist_user_id: user.id,
-        patient_email: patient.email,
-        invite_token: inviteToken,
-        invite_sent_at: new Date().toISOString(),
-        invite_expires_at: expiresAt,
-        status: 'invited',
-        user_id: null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'patient_id' });
-
-    if (upsertError) throw upsertError;
+    // Only upsert if no token provided (new invite flow without pre-creation)
+    if (!providedToken) {
+      const { error: upsertError } = await supabase
+        .from('patient_portal_accounts')
+        .upsert({
+          patient_id: patient.id,
+          therapist_user_id: user.id,
+          patient_email: targetEmail,
+          invite_token: inviteToken,
+          invite_sent_at: new Date().toISOString(),
+          invite_expires_at: expiresAt,
+          status: 'invited',
+          user_id: null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'patient_id' });
+      if (upsertError) throw upsertError;
+    }
 
     // Get therapist name
     const { data: profile } = await supabase
