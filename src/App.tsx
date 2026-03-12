@@ -79,6 +79,7 @@ const App = () => (
                 <Route path="/portal/contrato" element={<PortalRoute><PortalContract /></PortalRoute>} />
                 <Route path="/portal/evolucoes" element={<PortalRoute><PortalEvolutions /></PortalRoute>} />
                 <Route path="/portal/financeiro" element={<PortalRoute><PortalFinancial /></PortalRoute>} />
+                <Route path="/portal/documentos" element={<PortalRoute><PortalDocuments /></PortalRoute>} />
                 <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/pricing" element={<Pricing />} />
