@@ -30,7 +30,7 @@ import { ThemeToggle } from './ThemeToggle';
 const mainNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home',      perm: 'dashboard.view' as const },
   { to: '/clinics',   icon: Building2,       label: 'Clínicas',  perm: 'clinics.view'   as const },
-  { to: '/patients',  icon: Users,           label: 'Pacientes', perm: 'patients.view'  as const },
+  { to: '/patients',  icon: Users,           label: 'Pacientes', perm: 'patients.view'  as const, badge: 'pending' as const },
   { to: '/calendar',  icon: Calendar,        label: 'Agenda',    perm: 'calendar.view'  as const },
 ];
 
