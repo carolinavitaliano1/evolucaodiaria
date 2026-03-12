@@ -2699,6 +2699,18 @@ export default function PatientDetail() {
           />
         </TabsContent>
 
+        {/* Mural Tab */}
+        <TabsContent value="mural">
+          <PatientFeed
+            patientId={patient.id}
+            therapistId={user.id}
+            therapistName={therapistProfile?.name ?? undefined}
+            isTherapist={true}
+            currentUserId={user.id}
+            currentUserName={therapistProfile?.name ?? 'Terapeuta'}
+          />
+        </TabsContent>
+
       </Tabs>
 
       {editingEvolution && (
