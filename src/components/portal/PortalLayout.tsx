@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, MessageSquare, FileText, LogOut, Bell, DollarSign, FolderOpen } from 'lucide-react';
+import { Home, MessageSquare, FileText, LogOut, Bell, DollarSign, FolderOpen, Newspaper } from 'lucide-react';
 import { usePortal } from '@/contexts/PortalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
