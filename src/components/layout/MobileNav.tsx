@@ -85,6 +85,11 @@ export function MobileNav() {
   // Total unread for the "Mais" button dot
   const totalMoreUnread = noticesCount + supportCount;
 
+  const isMoreActive = finalMore.some(item =>
+    location.pathname === item.to ||
+    (item.to !== '/' && location.pathname.startsWith(item.to))
+  );
+
   const getBadgeCount = (badge: string | null) => {
     if (badge === 'notices') return noticesCount;
     if (badge === 'support') return supportCount;
