@@ -160,8 +160,9 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
 export default function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic } = useApp();
+  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic, addPatientToState } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [submittingPatient, setSubmittingPatient] = useState(false);
   const [pendingPatients, setPendingPatients] = useState<any[]>([]);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
   const [quickWaPatient, setQuickWaPatient] = useState<{ id: string; name: string; phone: string | null; whatsapp: string | null; responsibleWhatsapp?: string | null; paymentValue?: number | null; clinicName?: string } | null>(null);

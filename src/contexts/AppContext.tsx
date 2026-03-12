@@ -875,7 +875,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addPackage, updatePackage, deletePackage, getClinicPackages,
       getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment,
       loadEvolutionsForClinic, loadAppointmentsForClinic, loadAttachmentsForPatient,
-      loadAllEvolutions, refreshData,
+      loadAllEvolutions, refreshData, addPatientToState,
     }}>
       {children}
     </AppContext.Provider>
