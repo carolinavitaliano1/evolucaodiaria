@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff, Wallet, Copy, Building2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
   interface Profile {
@@ -59,6 +61,15 @@ export default function Profile() {
   const [stampImage, setStampImage] = useState<string | null>(null);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState(false);
+
+  // Payment data states
+  const [ownedClinics, setOwnedClinics] = useState<{id: string; name: string; type: string; payment_pix_key: string | null; payment_pix_name: string | null; payment_bank_details: string | null; show_payment_in_portal: boolean}[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState<string>('');
+  const [pixKey, setPixKey] = useState('');
+  const [pixName, setPixName] = useState('');
+  const [bankDetails, setBankDetails] = useState('');
+  const [showPaymentInPortal, setShowPaymentInPortal] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
 
   // Signature pad states
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -124,6 +135,26 @@ export default function Profile() {
 
       if (stampsData) {
         setStamps(stampsData);
+      }
+
+      // Load own clinics with payment data (only 'propria' type)
+      const { data: clinicsData } = await supabase
+        .from('clinics')
+        .select('id, name, type, payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
+        .eq('user_id', userId)
+        .eq('type', 'propria')
+        .eq('is_archived', false)
+        .order('created_at', { ascending: true });
+
+      if (clinicsData && clinicsData.length > 0) {
+        const typed = clinicsData as typeof ownedClinics;
+        setOwnedClinics(typed);
+        const first = typed[0];
+        setSelectedClinicId(first.id);
+        setPixKey(first.payment_pix_key || '');
+        setPixName(first.payment_pix_name || '');
+        setBankDetails(first.payment_bank_details || '');
+        setShowPaymentInPortal(first.show_payment_in_portal ?? false);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -206,6 +237,37 @@ export default function Profile() {
       toast.error('Erro ao salvar perfil');
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleClinicSelect(clinicId: string) {
+    setSelectedClinicId(clinicId);
+    const c = ownedClinics.find(cl => cl.id === clinicId);
+    if (c) {
+      setPixKey(c.payment_pix_key || '');
+      setPixName(c.payment_pix_name || '');
+      setBankDetails(c.payment_bank_details || '');
+      setShowPaymentInPortal(c.show_payment_in_portal ?? false);
+    }
+  }
+
+  async function savePaymentData() {
+    if (!selectedClinicId) return;
+    setSavingPayment(true);
+    try {
+      const { error } = await supabase.from('clinics').update({
+        payment_pix_key: pixKey.trim() || null,
+        payment_pix_name: pixName.trim() || null,
+        payment_bank_details: bankDetails.trim() || null,
+        show_payment_in_portal: showPaymentInPortal,
+      }).eq('id', selectedClinicId);
+      if (error) throw error;
+      toast.success('Dados de recebimento salvos!');
+      loadData();
+    } catch (err: any) {
+      toast.error('Erro ao salvar: ' + err.message);
+    } finally {
+      setSavingPayment(false);
     }
   }
 
@@ -576,6 +638,91 @@ export default function Profile() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Payment Data — only shown if user has own clinics */}
+      {ownedClinics.length > 0 && (
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="w-5 h-5" />
+              Dados de Recebimento
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Configure os dados de pagamento que serão exibidos na aba Financeiro do Portal do Paciente.
+              <span className="ml-1 text-primary font-medium">Exclusivo para Consultório Particular.</span>
+            </p>
+
+            {/* Clinic selector if multiple own clinics */}
+            {ownedClinics.length > 1 && (
+              <div className="space-y-2">
+                <Label>Selecione o Consultório</Label>
+                <select
+                  value={selectedClinicId}
+                  onChange={e => handleClinicSelect(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {ownedClinics.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="pixKey">Chave PIX</Label>
+                <Input
+                  id="pixKey"
+                  value={pixKey}
+                  onChange={e => setPixKey(e.target.value)}
+                  placeholder="CPF, e-mail, celular ou chave aleatória"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pixName">Nome do Titular do PIX</Label>
+                <Input
+                  id="pixName"
+                  value={pixName}
+                  onChange={e => setPixName(e.target.value)}
+                  placeholder="Nome completo do titular"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bankDetails">Outros dados bancários <span className="text-muted-foreground font-normal text-xs">(opcional)</span></Label>
+              <Textarea
+                id="bankDetails"
+                value={bankDetails}
+                onChange={e => setBankDetails(e.target.value)}
+                placeholder="Banco, Agência, Conta corrente..."
+                className="resize-none min-h-[70px]"
+              />
+            </div>
+
+            {/* Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-xl border border-primary/20 bg-primary/5">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Exibir no Portal do Paciente</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Responsáveis verão a chave PIX na aba Financeiro</p>
+              </div>
+              <Switch
+                checked={showPaymentInPortal}
+                onCheckedChange={setShowPaymentInPortal}
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={savePaymentData} disabled={savingPayment} className="gap-2">
+                {savingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+                Salvar Dados de Recebimento
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Subscription Management */}
       <Card className="glass-card">

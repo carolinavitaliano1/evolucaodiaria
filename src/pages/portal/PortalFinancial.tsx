@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect, useRef } from 'react';
 import {
   Loader2, DollarSign, CheckCircle2, Clock, Receipt,
-  Copy, AlertCircle, Bell, Paperclip, Send, X, ChevronDown, ChevronUp,
+  Copy, AlertCircle, Bell, Paperclip, Send, X, ChevronDown, ChevronUp, QrCode,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,10 +37,18 @@ function getDueDateAlert(paymentDueDay: number | null): { type: 'today' | 'soon'
   return { type: null, daysLeft: diff };
 }
 
+interface ClinicPaymentData {
+  payment_pix_key: string | null;
+  payment_pix_name: string | null;
+  payment_bank_details: string | null;
+  show_payment_in_portal: boolean;
+}
+
 export default function PortalFinancial() {
   const { portalAccount, patient, sendMessage } = usePortal();
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
+  const [clinicPayment, setClinicPayment] = useState<ClinicPaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<string | null>(null);
   const [showReceiptUpload, setShowReceiptUpload] = useState(false);
@@ -61,12 +69,21 @@ export default function PortalFinancial() {
         .limit(12),
       supabase
         .from('patients')
-        .select('payment_info')
+        .select('payment_info, clinic_id')
         .eq('id', portalAccount.patient_id)
         .single(),
-    ]).then(([{ data: recs }, { data: pat }]) => {
+    ]).then(async ([{ data: recs }, { data: pat }]) => {
       setRecords((recs || []) as PaymentRecord[]);
       setPaymentInfo((pat as any)?.payment_info || null);
+      // Load clinic payment data if clinic_id exists
+      if ((pat as any)?.clinic_id) {
+        const { data: clinicData } = await supabase
+          .from('clinics')
+          .select('payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
+          .eq('id', (pat as any).clinic_id)
+          .single();
+        if (clinicData) setClinicPayment(clinicData as ClinicPaymentData);
+      }
       setLoading(false);
     });
   }, [portalAccount]);
@@ -158,7 +175,56 @@ export default function PortalFinancial() {
               </div>
             )}
 
-            {/* Payment method card */}
+            {/* PIX / Payment data card — from clinic settings */}
+            {clinicPayment?.show_payment_in_portal && (clinicPayment.payment_pix_key || clinicPayment.payment_bank_details) && (
+              <div className="rounded-2xl border-2 border-success/30 bg-success/5 overflow-hidden shadow-sm">
+                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-success/15 flex items-center justify-center">
+                    <QrCode className="w-4 h-4 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Como Pagar</p>
+                    <p className="text-[10px] text-muted-foreground">Dados de pagamento do seu terapeuta</p>
+                  </div>
+                </div>
+                <div className="px-4 pb-4 space-y-3">
+                  {clinicPayment.payment_pix_name && (
+                    <div>
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Titular</p>
+                      <p className="text-sm font-semibold text-foreground">{clinicPayment.payment_pix_name}</p>
+                    </div>
+                  )}
+                  {clinicPayment.payment_pix_key && (
+                    <div>
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Chave PIX</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 bg-card rounded-xl px-3 py-2 border border-success/20">
+                          <p className="text-sm font-mono font-semibold text-foreground break-all">{clinicPayment.payment_pix_key}</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          className="h-9 w-9 shrink-0 bg-success hover:bg-success/90 text-success-foreground border-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(clinicPayment.payment_pix_key!);
+                            toast.success('Chave PIX copiada! ✅');
+                          }}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {clinicPayment.payment_bank_details && (
+                    <div className="pt-1 border-t border-success/20">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Outros dados bancários</p>
+                      <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{clinicPayment.payment_bank_details}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Payment method card (legacy - from patient payment_info) */}
             {paymentInfo && (
               <div className="bg-card rounded-2xl border border-border overflow-hidden">
                 <button
