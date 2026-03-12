@@ -1207,6 +1207,8 @@ export function PortalTab({ patientId, patientEmail, patientName, responsibleEma
         patientId={patientId}
         patientEmail={patientEmail}
         patientName={patientName}
+        responsibleEmail={responsibleEmail}
+        responsibleName={responsibleName}
         onAdded={loadData}
       />
 
