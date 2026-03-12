@@ -42,6 +42,7 @@ import { generateReportPdf } from '@/utils/generateReportPdf';
 import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import jsPDF from 'jspdf';
+import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
