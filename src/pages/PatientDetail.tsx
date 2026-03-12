@@ -2251,6 +2251,17 @@ export default function PatientDetail() {
                       })}
                     </div>
                   </div>
+
+                  {/* Payment info (PIX / bank data) */}
+                  {(patient as any).payment_info && (
+                    <div className="bg-primary/5 rounded-xl border border-primary/20 p-4">
+                      <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                        <DollarSign className="w-3.5 h-3.5" /> Chave PIX / Dados de Pagamento
+                        <span className="ml-auto text-[10px] font-normal text-primary/60">Visível no portal do paciente</span>
+                      </p>
+                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{(patient as any).payment_info}</p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
