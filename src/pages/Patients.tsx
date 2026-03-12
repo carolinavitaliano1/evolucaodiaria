@@ -814,7 +814,14 @@ export default function Patients() {
             return (
               <div
                 key={patient.id}
-                className="bg-card rounded-xl border border-border p-4"
+                className={cn(
+                  "bg-card rounded-xl border p-4",
+                  (patient as any).status === 'pendente_revisao'
+                    ? 'border-warning/40 bg-warning/5'
+                    : (patient as any).status === 'rascunho'
+                    ? 'border-muted-foreground/20 opacity-75'
+                    : 'border-border'
+                )}
               >
                 <div 
                   className="flex-1 min-w-0 cursor-pointer"
@@ -822,7 +829,19 @@ export default function Patients() {
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
-                      <h3 className="font-medium text-foreground">{patient.name}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-foreground">{patient.name}</h3>
+                        {(patient as any).status === 'pendente_revisao' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/25">
+                            <AlertTriangle className="w-2.5 h-2.5" /> Pendente de Revisão
+                          </span>
+                        )}
+                        {(patient as any).status === 'rascunho' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                            Rascunho
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
                         <Building2 className="w-3.5 h-3.5" />
                         {getClinicName(patient.clinicId)}
