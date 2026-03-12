@@ -1753,29 +1753,26 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="evolutions" className="space-y-5">
-        <div className="bg-card rounded-2xl border border-border shadow-sm p-1.5">
-          <TabsList className="w-full bg-transparent h-auto flex flex-wrap gap-1 p-0">
-            {[
-              { value: 'evolutions', icon: FileText, label: 'Evoluções', shortLabel: 'Evol.' },
-              { value: 'reports', icon: BarChart3, label: 'Rel. Mensal', shortLabel: 'Relat.' },
-              { value: 'financial', icon: DollarSign, label: 'Financeiro', shortLabel: 'Fin.' },
-              { value: 'documents', icon: Paperclip, label: 'Documentos', shortLabel: 'Docs' },
-              { value: 'tasks', icon: ListTodo, label: 'Tarefas', shortLabel: 'Tasks' },
-              { value: 'notes', icon: PenLine, label: 'Notas', shortLabel: 'Notas' },
-              { value: 'portal', icon: MessageSquare, label: 'Portal', shortLabel: 'Portal' },
-            ].map(({ value, icon: Icon, label, shortLabel }) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="flex-1 min-w-[80px] gap-1.5 text-xs font-medium rounded-xl px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground transition-all"
-              >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">{label}</span>
-                <span className="sm:hidden">{shortLabel}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+        <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+          {[
+            { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
+            { value: 'reports', icon: BarChart3, label: 'Rel. Mensal' },
+            { value: 'financial', icon: DollarSign, label: 'Financeiro' },
+            { value: 'documents', icon: Paperclip, label: 'Documentos' },
+            { value: 'tasks', icon: ListTodo, label: 'Tarefas' },
+            { value: 'notes', icon: PenLine, label: 'Notas' },
+            { value: 'portal', icon: Users, label: 'Portal' },
+          ].map(({ value, icon: Icon, label }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="flex flex-col items-center justify-center gap-1.5 h-16 rounded-xl border border-border bg-card shadow-sm text-muted-foreground text-[11px] font-medium transition-all hover:border-primary/30 hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:border-primary/40 data-[state=active]:text-primary data-[state=active]:shadow-none"
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span>{label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
