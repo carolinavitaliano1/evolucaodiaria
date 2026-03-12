@@ -17,7 +17,19 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { clinic_id, name, birthdate, responsible_name, whatsapp, email, reason } = await req.json();
+    const body = await req.json();
+    const {
+      clinic_id,
+      // Patient
+      name, birthdate, cpf, phone, whatsapp, email,
+      // Legal responsible
+      responsible_name, responsible_cpf, responsible_whatsapp, responsible_email, responsible_relation,
+      // Financial responsible
+      financial_responsible,
+      financial_responsible_name, financial_responsible_cpf, financial_responsible_whatsapp,
+      // Misc
+      observations,
+    } = body;
 
     if (!clinic_id || !name || !birthdate) {
       return new Response(
@@ -40,6 +52,21 @@ serve(async (req) => {
       );
     }
 
+    // Determine financial responsible fields
+    // 'patient' → no financial fields needed (they pay themselves)
+    // 'responsible' → copy legal responsible data
+    // 'other' → use explicit financial_responsible_* fields
+    let fin_name: string | null = null;
+    let fin_cpf: string | null = null;
+    let fin_whatsapp: string | null = null;
+    const responsible_is_financial = financial_responsible === 'responsible';
+
+    if (financial_responsible === 'other') {
+      fin_name = financial_responsible_name?.trim() || null;
+      fin_cpf = financial_responsible_cpf?.trim() || null;
+      fin_whatsapp = financial_responsible_whatsapp?.trim() || null;
+    }
+
     // Insert patient with status 'pendente'
     const { data: patient, error: insertErr } = await supabaseAdmin
       .from("patients")
@@ -48,11 +75,19 @@ serve(async (req) => {
         user_id: clinic.user_id,
         name: name.trim(),
         birthdate,
-        responsible_name: responsible_name?.trim() || null,
-        responsible_whatsapp: whatsapp?.trim() || null,
+        cpf: cpf?.trim() || null,
+        phone: phone?.trim() || null,
         whatsapp: whatsapp?.trim() || null,
         email: email?.trim() || null,
-        observations: reason?.trim() || null,
+        responsible_name: responsible_name?.trim() || null,
+        responsible_cpf: responsible_cpf?.trim() || null,
+        responsible_whatsapp: responsible_whatsapp?.trim() || null,
+        responsible_email: responsible_email?.trim() || null,
+        observations: observations?.trim() || responsible_relation?.trim() || null,
+        responsible_is_financial,
+        financial_responsible_name: fin_name,
+        financial_responsible_cpf: fin_cpf,
+        financial_responsible_whatsapp: fin_whatsapp,
         status: "pendente",
       })
       .select("id")
