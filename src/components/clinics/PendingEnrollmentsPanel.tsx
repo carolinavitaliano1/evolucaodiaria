@@ -187,44 +187,120 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
           {selectedPatient && (
             <div className="space-y-5">
               {/* Read-only submitted data */}
-              <div className="rounded-xl bg-secondary/50 border border-border p-4 space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Dados enviados pela família</p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground text-xs">Paciente</span>
-                    <p className="font-medium text-foreground">{selectedPatient.name}</p>
+              <div className="rounded-xl bg-secondary/50 border border-border p-4 space-y-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dados enviados pela família</p>
+
+                {/* Patient */}
+                <div>
+                  <p className="text-xs font-medium text-primary mb-2">👤 Paciente</p>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground text-xs">Nome</span>
+                      <p className="font-medium text-foreground">{selectedPatient.name}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Nascimento</span>
+                      <p className="font-medium text-foreground">
+                        {format(new Date(selectedPatient.birthdate + 'T00:00:00'), 'dd/MM/yyyy')}
+                      </p>
+                    </div>
+                    {selectedPatient.cpf && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">CPF</span>
+                        <p className="font-medium text-foreground">{selectedPatient.cpf}</p>
+                      </div>
+                    )}
+                    {selectedPatient.phone && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">Telefone</span>
+                        <p className="font-medium text-foreground">{selectedPatient.phone}</p>
+                      </div>
+                    )}
+                    {selectedPatient.whatsapp && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">WhatsApp</span>
+                        <p className="font-medium text-foreground">{selectedPatient.whatsapp}</p>
+                      </div>
+                    )}
+                    {selectedPatient.email && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground text-xs">E-mail</span>
+                        <p className="font-medium text-foreground">{selectedPatient.email}</p>
+                      </div>
+                    )}
                   </div>
+                </div>
+
+                {/* Legal responsible */}
+                {selectedPatient.responsible_name && (
                   <div>
-                    <span className="text-muted-foreground text-xs">Nascimento</span>
-                    <p className="font-medium text-foreground">
-                      {format(new Date(selectedPatient.birthdate + 'T00:00:00'), 'dd/MM/yyyy')}
+                    <p className="text-xs font-medium text-primary mb-2">👨‍👩‍👧 Responsável Legal</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground text-xs">Nome</span>
+                        <p className="font-medium text-foreground">{selectedPatient.responsible_name}</p>
+                      </div>
+                      {selectedPatient.responsible_cpf && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">CPF</span>
+                          <p className="font-medium text-foreground">{selectedPatient.responsible_cpf}</p>
+                        </div>
+                      )}
+                      {selectedPatient.responsible_whatsapp && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">WhatsApp</span>
+                          <p className="font-medium text-foreground">{selectedPatient.responsible_whatsapp}</p>
+                        </div>
+                      )}
+                      {selectedPatient.responsible_email && (
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground text-xs">E-mail</span>
+                          <p className="font-medium text-foreground">{selectedPatient.responsible_email}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Financial responsible */}
+                <div>
+                  <p className="text-xs font-medium text-primary mb-2">💳 Responsável Financeiro</p>
+                  {selectedPatient.financial_responsible_name ? (
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground text-xs">Nome</span>
+                        <p className="font-medium text-foreground">{selectedPatient.financial_responsible_name}</p>
+                      </div>
+                      {selectedPatient.financial_responsible_cpf && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">CPF</span>
+                          <p className="font-medium text-foreground">{selectedPatient.financial_responsible_cpf}</p>
+                        </div>
+                      )}
+                      {selectedPatient.financial_responsible_whatsapp && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">WhatsApp</span>
+                          <p className="font-medium text-foreground">{selectedPatient.financial_responsible_whatsapp}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-foreground font-medium">
+                      {selectedPatient.responsible_is_financial === false
+                        ? 'O próprio paciente'
+                        : selectedPatient.responsible_name
+                          ? 'Responsável legal'
+                          : 'O próprio paciente'}
                     </p>
-                  </div>
-                  {selectedPatient.responsible_name && (
-                    <div>
-                      <span className="text-muted-foreground text-xs">Responsável</span>
-                      <p className="font-medium text-foreground">{selectedPatient.responsible_name}</p>
-                    </div>
-                  )}
-                  {(selectedPatient.responsible_whatsapp || selectedPatient.whatsapp) && (
-                    <div>
-                      <span className="text-muted-foreground text-xs">WhatsApp</span>
-                      <p className="font-medium text-foreground">{selectedPatient.responsible_whatsapp || selectedPatient.whatsapp}</p>
-                    </div>
-                  )}
-                  {selectedPatient.email && (
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground text-xs">E-mail</span>
-                      <p className="font-medium text-foreground">{selectedPatient.email}</p>
-                    </div>
-                  )}
-                  {selectedPatient.observations && (
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground text-xs">Motivo da Consulta</span>
-                      <p className="font-medium text-foreground text-sm leading-snug">{selectedPatient.observations}</p>
-                    </div>
                   )}
                 </div>
+
+                {selectedPatient.observations && (
+                  <div>
+                    <p className="text-xs font-medium text-primary mb-1">📝 Motivo da Consulta</p>
+                    <p className="text-sm text-foreground leading-snug">{selectedPatient.observations}</p>
+                  </div>
+                )}
               </div>
 
               {/* Clinical info to fill */}
