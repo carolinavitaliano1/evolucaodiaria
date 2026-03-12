@@ -720,10 +720,32 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
   };
 
   const handleDeleteAccount = async (accountId: string) => {
-    await supabase.from('patient_portal_accounts').delete().eq('id', accountId);
-    setAccounts(prev => prev.filter(a => a.id !== accountId));
-    if (expandedAccount === accountId) setExpandedAccount(null);
-    toast.success('Acesso removido');
+    setDeletingId(accountId);
+    try {
+      await supabase.from('patient_portal_accounts').delete().eq('id', accountId);
+      setAccounts(prev => prev.filter(a => a.id !== accountId));
+      if (expandedAccount === accountId) setExpandedAccount(null);
+      toast.success('Acesso excluído');
+    } catch {
+      toast.error('Erro ao excluir acesso');
+    } finally {
+      setDeletingId(null);
+      setDeleteConfirm(null);
+    }
+  };
+
+  const handleArchiveAccount = async (accountId: string) => {
+    setDeletingId(accountId);
+    try {
+      await supabase.from('patient_portal_accounts').update({ status: 'archived' }).eq('id', accountId);
+      setAccounts(prev => prev.map(a => a.id === accountId ? { ...a, status: 'archived' } : a));
+      toast.success('Acesso arquivado');
+    } catch {
+      toast.error('Erro ao arquivar acesso');
+    } finally {
+      setDeletingId(null);
+      setDeleteConfirm(null);
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -760,6 +782,8 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
             const isExpanded = expandedAccount === account.id;
             const statusCfg = account.status === 'active'
               ? { label: 'Ativo', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 }
+              : account.status === 'archived'
+              ? { label: 'Arquivado', color: 'bg-muted/30 text-muted-foreground border-border', icon: X }
               : { label: 'Convite enviado', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock };
             const StatusIcon = statusCfg.icon;
 
@@ -799,7 +823,7 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
                       </Button>
                     )}
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={e => { e.stopPropagation(); handleDeleteAccount(account.id); }}
+                      onClick={e => { e.stopPropagation(); setDeleteConfirm(account); }}
                       title="Remover acesso">
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -832,6 +856,49 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
         patientName={patientName}
         onAdded={loadData}
       />
+
+      {/* Delete / Archive confirmation dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={v => !v && setDeleteConfirm(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Trash2 className="w-4 h-4 text-destructive" />
+              Remover acesso ao portal
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <p className="text-sm text-muted-foreground">
+              O que você deseja fazer com o acesso de{' '}
+              <span className="font-semibold text-foreground">
+                {deleteConfirm?.access_label || ACCESS_TYPES.find(t => t.value === deleteConfirm?.access_type)?.label || 'este usuário'}
+              </span>
+              ?
+            </p>
+            <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-1.5 text-xs text-muted-foreground">
+              <p><span className="font-medium text-foreground">Arquivar:</span> bloqueia o acesso mas mantém o histórico de mensagens e documentos.</p>
+              <p><span className="font-medium text-destructive">Excluir:</span> remove permanentemente o acesso e todos os dados vinculados.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 text-xs h-9"
+                onClick={() => deleteConfirm && handleArchiveAccount(deleteConfirm.id)}
+                disabled={!!deletingId}>
+                {deletingId ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                Arquivar acesso
+              </Button>
+              <Button variant="destructive" className="flex-1 text-xs h-9"
+                onClick={() => deleteConfirm && handleDeleteAccount(deleteConfirm.id)}
+                disabled={!!deletingId}>
+                {deletingId ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                Excluir permanente
+              </Button>
+            </div>
+            <Button variant="ghost" className="w-full text-xs h-8 text-muted-foreground"
+              onClick={() => setDeleteConfirm(null)} disabled={!!deletingId}>
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
