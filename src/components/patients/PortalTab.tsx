@@ -532,6 +532,42 @@ function AccountPanel({
   );
 }
 
+// ─── Profile type config ─────────────────────────────────────────────────────
+const PROFILE_TYPES = [
+  {
+    value: 'school',
+    label: 'Escola',
+    icon: School,
+    description: 'Professores e coordenação',
+    color: 'text-warning',
+    activeBg: 'bg-warning/10 border-warning/40',
+  },
+  {
+    value: 'other',
+    label: 'Terapeuta Externo',
+    icon: Building2,
+    description: 'Outro profissional de saúde',
+    color: 'text-primary',
+    activeBg: 'bg-primary/10 border-primary/40',
+  },
+  {
+    value: 'responsible',
+    label: 'Familiar / Responsável',
+    icon: Users,
+    description: 'Pais, tutores ou guardiões',
+    color: 'text-success',
+    activeBg: 'bg-success/10 border-success/40',
+  },
+  {
+    value: 'patient',
+    label: 'Paciente',
+    icon: UserCircle,
+    description: 'O próprio paciente',
+    color: 'text-accent-foreground',
+    activeBg: 'bg-accent/30 border-accent',
+  },
+];
+
 // ─── Add Access Dialog ────────────────────────────────────────────────────────
 function AddAccessDialog({
   open, onClose, patientId, patientEmail, patientName, onAdded,
@@ -545,21 +581,42 @@ function AddAccessDialog({
 }) {
   const { user } = useAuth();
   const [email, setEmail] = useState(patientEmail || '');
-  const [accessType, setAccessType] = useState('patient');
+  const [accessType, setAccessType] = useState('responsible');
   const [accessLabel, setAccessLabel] = useState('');
   const [permissions, setPermissions] = useState({ ...DEFAULT_PERMISSIONS });
   const [saving, setSaving] = useState(false);
+  const [showPermissions, setShowPermissions] = useState(false);
 
-  // Reset when access type changes to set sensible defaults
+  // Specific details per profile type
+  const [schoolName, setSchoolName] = useState('');
+  const [schoolYear, setSchoolYear] = useState('');
+  const [teacherName, setTeacherName] = useState('');
+  const [coordinationContact, setCoordinationContact] = useState('');
+  const [specialty, setSpecialty] = useState('');
+  const [professionalId, setProfessionalId] = useState('');
+  const [originClinic, setOriginClinic] = useState('');
+  const [kinship, setKinship] = useState('');
+  const [livesWithPatient, setLivesWithPatient] = useState(false);
+
+  // Reset permissions when access type changes
   useEffect(() => {
-    if (accessType === 'school' || accessType === 'clinic') {
+    if (accessType === 'school') {
       setPermissions({ messages: false, feedbacks: true, financial: false, contract: false, intake: false, notices: true, documents: true });
+    } else if (accessType === 'other') {
+      setPermissions({ messages: true, feedbacks: true, financial: false, contract: false, intake: false, notices: true, documents: true });
     } else if (accessType === 'responsible') {
       setPermissions({ messages: true, feedbacks: true, financial: true, contract: true, intake: true, notices: true, documents: true });
     } else {
       setPermissions({ ...DEFAULT_PERMISSIONS });
     }
   }, [accessType]);
+
+  const buildSpecificDetails = () => {
+    if (accessType === 'school') return { school_name: schoolName, school_year: schoolYear, teacher_name: teacherName, coordination_contact: coordinationContact };
+    if (accessType === 'other') return { specialty, professional_id: professionalId, origin_clinic: originClinic };
+    if (accessType === 'responsible') return { kinship, lives_with_patient: livesWithPatient };
+    return {};
+  };
 
   const handleSend = async () => {
     if (!email.trim()) { toast.error('Informe o e-mail'); return; }
@@ -579,10 +636,10 @@ function AddAccessDialog({
         access_type: accessType,
         access_label: accessLabel.trim() || null,
         permissions,
-      });
+        specific_details: buildSpecificDetails(),
+      } as any);
       if (error) throw error;
 
-      // Send invite email via edge function
       const { error: fnError } = await supabase.functions.invoke('send-portal-invite', {
         body: {
           patient_id: patientId,
@@ -604,54 +661,184 @@ function AddAccessDialog({
     }
   };
 
+  const profileCfg = PROFILE_TYPES.find(p => p.value === accessType)!;
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="w-4 h-4 text-primary" /> Adicionar Acesso ao Portal
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Tipo de acesso</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {ACCESS_TYPES.map(t => (
-                <button key={t.value} type="button"
-                  onClick={() => setAccessType(t.value)}
-                  className={cn('rounded-xl border py-2 px-1 text-xs font-medium flex flex-col items-center gap-1 transition-colors',
-                    accessType === t.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/40 border-border text-foreground hover:bg-muted')}>
-                  <t.icon className={cn('w-4 h-4', accessType !== t.value && t.color)} />
-                  {t.label}
+        <div className="space-y-5 py-2">
+
+          {/* Step 1: Profile type selection */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qual é o vínculo com o paciente?</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {PROFILE_TYPES.map(p => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setAccessType(p.value)}
+                  className={cn(
+                    'rounded-xl border p-3 text-left flex items-start gap-3 transition-all duration-200',
+                    accessType === p.value
+                      ? cn('shadow-sm', p.activeBg)
+                      : 'bg-card border-border hover:bg-muted/30'
+                  )}
+                >
+                  <div className={cn('mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                    accessType === p.value ? 'bg-background/70' : 'bg-muted/50')}>
+                    <p.icon className={cn('w-4 h-4', p.color)} />
+                  </div>
+                  <div>
+                    <p className={cn('text-xs font-semibold', accessType === p.value ? p.color : 'text-foreground')}>{p.label}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{p.description}</p>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Nome / Identificação</Label>
-              <Input value={accessLabel} onChange={e => setAccessLabel(e.target.value)}
-                placeholder={accessType === 'responsible' ? 'Ex: Mãe – Ana' : accessType === 'school' ? 'Ex: Escola Municipal' : 'Identificação'} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">E-mail *</Label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+
+          {/* Step 2: Common fields */}
+          <div className="space-y-3">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados de acesso</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nome / Identificação</Label>
+                <Input
+                  value={accessLabel}
+                  onChange={e => setAccessLabel(e.target.value)}
+                  placeholder={accessType === 'responsible' ? 'Ex: Mãe – Ana' : accessType === 'school' ? 'Ex: Colégio XV' : 'Identificação'}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">E-mail (login) *</Label>
+                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+              </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Permissões</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(PERM_LABELS).map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2">
-                  <span className="text-xs">{label}</span>
-                  <Switch checked={!!permissions[key]} onCheckedChange={v => setPermissions(p => ({ ...p, [key]: v }))} />
+
+          {/* Step 3: Conditional specific fields */}
+          {accessType === 'school' && (
+            <div className="space-y-3 rounded-xl border border-warning/20 bg-warning/5 p-4 animate-fade-in">
+              <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
+                <School className="w-3.5 h-3.5" /> Informações da Escola
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome da Instituição</Label>
+                  <Input value={schoolName} onChange={e => setSchoolName(e.target.value)} placeholder="Ex: Colégio XV de Novembro" />
                 </div>
-              ))}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Série / Ano do Aluno</Label>
+                  <Input value={schoolYear} onChange={e => setSchoolYear(e.target.value)} placeholder="Ex: 3º ano – Fundamental" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome do Professor Regente</Label>
+                  <Input value={teacherName} onChange={e => setTeacherName(e.target.value)} placeholder="Nome do professor" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Contato da Coordenação</Label>
+                  <Input value={coordinationContact} onChange={e => setCoordinationContact(e.target.value)} placeholder="Tel. ou e-mail" />
+                </div>
+              </div>
             </div>
+          )}
+
+          {accessType === 'other' && (
+            <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4 animate-fade-in">
+              <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5" /> Informações do Terapeuta Externo
+              </p>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Especialidade</Label>
+                  <Select value={specialty} onValueChange={setSpecialty}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione a especialidade" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fonoaudiologia">Fonoaudiologia</SelectItem>
+                      <SelectItem value="terapia_ocupacional">Terapia Ocupacional</SelectItem>
+                      <SelectItem value="psicologia">Psicologia</SelectItem>
+                      <SelectItem value="fisioterapia">Fisioterapia</SelectItem>
+                      <SelectItem value="psiquiatria">Psiquiatria</SelectItem>
+                      <SelectItem value="neurologia">Neurologia</SelectItem>
+                      <SelectItem value="pedagogia">Pedagogia / Psicopedagogia</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Registro Profissional</Label>
+                    <Input value={professionalId} onChange={e => setProfessionalId(e.target.value)} placeholder="CRP / Crefito / CRM..." />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Clínica de Origem</Label>
+                    <Input value={originClinic} onChange={e => setOriginClinic(e.target.value)} placeholder="Nome da clínica" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {accessType === 'responsible' && (
+            <div className="space-y-3 rounded-xl border border-success/20 bg-success/5 p-4 animate-fade-in">
+              <p className="text-xs font-semibold text-success flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" /> Informações do Responsável
+              </p>
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Grau de Parentesco</Label>
+                  <Select value={kinship} onValueChange={setKinship}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mae">Mãe</SelectItem>
+                      <SelectItem value="pai">Pai</SelectItem>
+                      <SelectItem value="avo_a">Avó / Avô</SelectItem>
+                      <SelectItem value="tio_a">Tio / Tia</SelectItem>
+                      <SelectItem value="conjuge">Cônjuge / Companheiro(a)</SelectItem>
+                      <SelectItem value="irmao_a">Irmão / Irmã</SelectItem>
+                      <SelectItem value="tutor">Tutor Legal</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between bg-background/70 rounded-lg border border-border px-3 py-2.5">
+                  <Label className="text-xs cursor-pointer">Mora com o paciente?</Label>
+                  <Switch checked={livesWithPatient} onCheckedChange={setLivesWithPatient} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Permissions toggle */}
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setShowPermissions(p => !p)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showPermissions ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              Configurar permissões de acesso
+            </button>
+            {showPermissions && (
+              <div className="grid grid-cols-2 gap-2 animate-fade-in">
+                {Object.entries(PERM_LABELS).map(([key, label]) => (
+                  <div key={key} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2">
+                    <span className="text-xs">{label}</span>
+                    <Switch checked={!!permissions[key]} onCheckedChange={v => setPermissions(p => ({ ...p, [key]: v }))} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
           <Button onClick={handleSend} disabled={saving} className="w-full gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-            Enviar convite
+            Enviar convite por e-mail
           </Button>
         </div>
       </DialogContent>
