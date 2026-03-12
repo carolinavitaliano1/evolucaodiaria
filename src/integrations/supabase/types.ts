@@ -325,6 +325,36 @@ export type Database = {
           },
         ]
       }
+      contract_templates: {
+        Row: {
+          body_html: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_html?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_moods: {
         Row: {
           created_at: string
@@ -779,6 +809,7 @@ export type Database = {
       }
       patient_contracts: {
         Row: {
+          contract_template_id: string | null
           created_at: string
           id: string
           patient_id: string
@@ -786,10 +817,13 @@ export type Database = {
           signed_at: string | null
           status: string
           template_html: string
+          therapist_signature_data: string | null
+          therapist_signed_at: string | null
           therapist_user_id: string
           updated_at: string
         }
         Insert: {
+          contract_template_id?: string | null
           created_at?: string
           id?: string
           patient_id: string
@@ -797,10 +831,13 @@ export type Database = {
           signed_at?: string | null
           status?: string
           template_html?: string
+          therapist_signature_data?: string | null
+          therapist_signed_at?: string | null
           therapist_user_id: string
           updated_at?: string
         }
         Update: {
+          contract_template_id?: string | null
           created_at?: string
           id?: string
           patient_id?: string
@@ -808,10 +845,20 @@ export type Database = {
           signed_at?: string | null
           status?: string
           template_html?: string
+          therapist_signature_data?: string | null
+          therapist_signed_at?: string | null
           therapist_user_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patient_contracts_contract_template_id_fkey"
+            columns: ["contract_template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patient_intake_forms: {
         Row: {
