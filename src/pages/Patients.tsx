@@ -654,11 +654,101 @@ export default function Patients() {
               : 'Busque e gerencie todos os seus pacientes'}
           </p>
         </div>
-        <Button onClick={() => navigate('/clinics')} className="gap-2">
-          <Users className="w-4 h-4" />
-          Novo Paciente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegName(''); setQuickRegWhatsapp(''); setQuickRegClinicId(clinics[0]?.id || ''); }}>
+            <Link2 className="w-3.5 h-3.5" /> Cadastro via Link
+          </Button>
+          <Button onClick={() => navigate('/clinics')} className="gap-2">
+            <Users className="w-4 h-4" />
+            Novo Paciente
+          </Button>
+        </div>
       </div>
+
+      {/* Pending review banner */}
+      {visiblePatients.some((p: any) => p.status === 'pendente_revisao') && (
+        <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning mb-4">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            <strong>{visiblePatients.filter((p: any) => p.status === 'pendente_revisao').length} paciente(s)</strong> com ficha de pré-cadastro pendente de revisão.
+            Clique no paciente para revisar e ativar.
+          </span>
+        </div>
+      )}
+
+      {/* Quick Registration Dialog */}
+      <Dialog open={quickRegOpen} onOpenChange={(v) => { setQuickRegOpen(v); if (!v) setQuickRegLink(''); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-primary" /> Cadastro Rápido via Link
+            </DialogTitle>
+          </DialogHeader>
+          {!quickRegLink ? (
+            <div className="space-y-4 pt-1">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Crie um paciente em <strong>rascunho</strong> e gere um link seguro para o responsável preencher a ficha completa.
+              </p>
+              <div className="space-y-1">
+                <Label className="text-xs">Nome do Paciente <span className="text-destructive">*</span></Label>
+                <Input placeholder="Nome completo" value={quickRegName} onChange={e => setQuickRegName(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Clínica <span className="text-destructive">*</span></Label>
+                <Select value={quickRegClinicId} onValueChange={setQuickRegClinicId}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Selecionar clínica..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinics.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">WhatsApp do Responsável <span className="text-muted-foreground">(para envio via WhatsApp)</span></Label>
+                <Input placeholder="(00) 00000-0000" value={quickRegWhatsapp} onChange={e => setQuickRegWhatsapp(e.target.value)} />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" className="flex-1" onClick={() => setQuickRegOpen(false)}>Cancelar</Button>
+                <Button className="flex-1 gap-1.5" onClick={handleQuickReg}
+                  disabled={quickRegSaving || !quickRegName.trim() || !quickRegClinicId}>
+                  {quickRegSaving ? <><span className="w-3 h-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /></> : <Link2 className="w-3.5 h-3.5" />}
+                  Gerar Link
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center gap-2 text-success text-sm">
+                <CheckCircle2 className="w-4 h-4" /> Paciente criado em rascunho!
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Link de pré-cadastro</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={quickRegLink} className="text-xs" />
+                  <Button variant="outline" size="icon" className="shrink-0"
+                    onClick={() => { navigator.clipboard.writeText(quickRegLink); toast.success('Link copiado!'); }}>
+                    <Link2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+              {quickRegWhatsapp && (
+                <Button className="w-full gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white border-0"
+                  onClick={handleSendViaWhatsApp}>
+                  <Send className="w-4 h-4" /> Enviar via WhatsApp
+                </Button>
+              )}
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                O paciente ficará como <strong>Rascunho</strong> até que o responsável preencha a ficha e envie. Após o envio, será marcado como <strong>Pendente de Revisão</strong>.
+              </p>
+              <Button variant="outline" className="w-full" onClick={() => setQuickRegOpen(false)}>Fechar</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* own_only banner */}
       {ownOnly && (
