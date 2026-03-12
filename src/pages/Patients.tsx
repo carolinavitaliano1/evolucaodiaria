@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock } from 'lucide-react';
+import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock, Link2, Send, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/contexts/AppContext';
@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import { useMyAssignedPatientIds } from '@/hooks/usePatientAssignments';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function calculateAge(birthdate: string | null | undefined): number | null {
   if (!birthdate) return null;
@@ -52,6 +53,15 @@ export default function Patients() {
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [profile, setProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
 
+  // Quick registration via link
+  const [quickRegOpen, setQuickRegOpen] = useState(false);
+  const [quickRegName, setQuickRegName] = useState('');
+  const [quickRegWhatsapp, setQuickRegWhatsapp] = useState('');
+  const [quickRegClinicId, setQuickRegClinicId] = useState('');
+  const [quickRegSaving, setQuickRegSaving] = useState(false);
+  const [quickRegLink, setQuickRegLink] = useState('');
+  const [quickRegToken, setQuickRegToken] = useState('');
+
   // Permission-based flags
   const ownOnly = isOrgMember && hasPermission(orgPermissions, 'patients.own_only') && !isOrgOwner;
   const canSeeClinical = !isOrgMember || isOrgOwner || hasPermission(orgPermissions, 'evolutions.view');
@@ -83,6 +93,50 @@ export default function Patients() {
       (canSeeClinical && p.diagnosis?.toLowerCase().includes(term))
     );
   }, [visiblePatients, searchTerm, canSeeClinical]);
+
+  // Quick registration handler
+  const handleQuickReg = async () => {
+    if (!user || !quickRegName.trim() || !quickRegClinicId) return;
+    setQuickRegSaving(true);
+    try {
+      const clinic = clinics.find(c => c.id === quickRegClinicId);
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
+          user_id: user.id,
+          clinic_id: quickRegClinicId,
+          name: quickRegName.trim(),
+          birthdate: '2000-01-01', // placeholder, to be filled by patient
+          responsible_whatsapp: quickRegWhatsapp || null,
+          status: 'rascunho',
+        } as any)
+        .select('id, intake_token')
+        .single();
+      if (error) throw error;
+      const token = (data as any).intake_token;
+      const appUrl = window.location.origin;
+      const link = `${appUrl}/cadastro-paciente/${token}`;
+      setQuickRegToken(token);
+      setQuickRegLink(link);
+      toast.success('Paciente criado! Compartilhe o link abaixo.');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar paciente');
+    } finally {
+      setQuickRegSaving(false);
+    }
+  };
+
+  const handleSendViaWhatsApp = () => {
+    if (!quickRegWhatsapp || !quickRegLink) return;
+    const num = quickRegWhatsapp.replace(/\D/g, '');
+    const phone = num.startsWith('55') ? num : `55${num}`;
+    const msg = encodeURIComponent(`Olá, ${quickRegName}! Por favor, preencha a ficha da clínica clicando aqui: ${quickRegLink}`);
+    const el = document.createElement('a');
+    el.href = `https://wa.me/${phone}?text=${msg}`;
+    el.target = '_blank';
+    el.rel = 'noopener noreferrer';
+    el.click();
+  };
 
   const handleOpenPatient = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
@@ -600,11 +654,101 @@ export default function Patients() {
               : 'Busque e gerencie todos os seus pacientes'}
           </p>
         </div>
-        <Button onClick={() => navigate('/clinics')} className="gap-2">
-          <Users className="w-4 h-4" />
-          Novo Paciente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegName(''); setQuickRegWhatsapp(''); setQuickRegClinicId(clinics[0]?.id || ''); }}>
+            <Link2 className="w-3.5 h-3.5" /> Cadastro via Link
+          </Button>
+          <Button onClick={() => navigate('/clinics')} className="gap-2">
+            <Users className="w-4 h-4" />
+            Novo Paciente
+          </Button>
+        </div>
       </div>
+
+      {/* Pending review banner */}
+      {visiblePatients.some((p: any) => p.status === 'pendente_revisao') && (
+        <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning mb-4">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            <strong>{visiblePatients.filter((p: any) => p.status === 'pendente_revisao').length} paciente(s)</strong> com ficha de pré-cadastro pendente de revisão.
+            Clique no paciente para revisar e ativar.
+          </span>
+        </div>
+      )}
+
+      {/* Quick Registration Dialog */}
+      <Dialog open={quickRegOpen} onOpenChange={(v) => { setQuickRegOpen(v); if (!v) setQuickRegLink(''); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-primary" /> Cadastro Rápido via Link
+            </DialogTitle>
+          </DialogHeader>
+          {!quickRegLink ? (
+            <div className="space-y-4 pt-1">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Crie um paciente em <strong>rascunho</strong> e gere um link seguro para o responsável preencher a ficha completa.
+              </p>
+              <div className="space-y-1">
+                <Label className="text-xs">Nome do Paciente <span className="text-destructive">*</span></Label>
+                <Input placeholder="Nome completo" value={quickRegName} onChange={e => setQuickRegName(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Clínica <span className="text-destructive">*</span></Label>
+                <Select value={quickRegClinicId} onValueChange={setQuickRegClinicId}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Selecionar clínica..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinics.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">WhatsApp do Responsável <span className="text-muted-foreground">(para envio via WhatsApp)</span></Label>
+                <Input placeholder="(00) 00000-0000" value={quickRegWhatsapp} onChange={e => setQuickRegWhatsapp(e.target.value)} />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" className="flex-1" onClick={() => setQuickRegOpen(false)}>Cancelar</Button>
+                <Button className="flex-1 gap-1.5" onClick={handleQuickReg}
+                  disabled={quickRegSaving || !quickRegName.trim() || !quickRegClinicId}>
+                  {quickRegSaving ? <><span className="w-3 h-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /></> : <Link2 className="w-3.5 h-3.5" />}
+                  Gerar Link
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center gap-2 text-success text-sm">
+                <CheckCircle2 className="w-4 h-4" /> Paciente criado em rascunho!
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Link de pré-cadastro</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={quickRegLink} className="text-xs" />
+                  <Button variant="outline" size="icon" className="shrink-0"
+                    onClick={() => { navigator.clipboard.writeText(quickRegLink); toast.success('Link copiado!'); }}>
+                    <Link2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+              {quickRegWhatsapp && (
+                <Button className="w-full gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white border-0"
+                  onClick={handleSendViaWhatsApp}>
+                  <Send className="w-4 h-4" /> Enviar via WhatsApp
+                </Button>
+              )}
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                O paciente ficará como <strong>Rascunho</strong> até que o responsável preencha a ficha e envie. Após o envio, será marcado como <strong>Pendente de Revisão</strong>.
+              </p>
+              <Button variant="outline" className="w-full" onClick={() => setQuickRegOpen(false)}>Fechar</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* own_only banner */}
       {ownOnly && (
@@ -670,7 +814,14 @@ export default function Patients() {
             return (
               <div
                 key={patient.id}
-                className="bg-card rounded-xl border border-border p-4"
+                className={cn(
+                  "bg-card rounded-xl border p-4",
+                  (patient as any).status === 'pendente_revisao'
+                    ? 'border-warning/40 bg-warning/5'
+                    : (patient as any).status === 'rascunho'
+                    ? 'border-muted-foreground/20 opacity-75'
+                    : 'border-border'
+                )}
               >
                 <div 
                   className="flex-1 min-w-0 cursor-pointer"
@@ -678,7 +829,19 @@ export default function Patients() {
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
-                      <h3 className="font-medium text-foreground">{patient.name}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium text-foreground">{patient.name}</h3>
+                        {(patient as any).status === 'pendente_revisao' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/25">
+                            <AlertTriangle className="w-2.5 h-2.5" /> Pendente de Revisão
+                          </span>
+                        )}
+                        {(patient as any).status === 'rascunho' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                            Rascunho
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
                         <Building2 className="w-3.5 h-3.5" />
                         {getClinicName(patient.clinicId)}

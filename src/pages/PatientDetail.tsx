@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
@@ -1435,6 +1435,14 @@ export default function PatientDetail() {
                 {patient.isArchived && (
                   <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">Arquivado</span>
                 )}
+                {(patient as any).status === 'pendente_revisao' && (
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Pendente de Revisão
+                  </span>
+                )}
+                {(patient as any).status === 'rascunho' && (
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-muted text-muted-foreground">Rascunho</span>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2 mb-3">
@@ -1504,6 +1512,13 @@ export default function PatientDetail() {
                   title="WhatsApp"
                 >
                   <WhatsAppIcon className="w-4 h-4" />
+                </Button>
+              )}
+              {(patient as any).status === 'pendente_revisao' && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs text-success border-success/30 hover:bg-success/5"
+                  onClick={async () => { await supabase.from('patients').update({ status: 'ativo' } as any).eq('id', patient.id); updatePatient(patient.id, {} as any); toast.success('Paciente ativado!'); }}
+                  title="Ativar paciente">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Ativar
                 </Button>
               )}
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">

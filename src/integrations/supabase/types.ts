@@ -1141,6 +1141,7 @@ export type Database = {
           financial_responsible_name: string | null
           financial_responsible_whatsapp: string | null
           id: string
+          intake_token: string | null
           is_archived: boolean | null
           name: string
           observations: string | null
@@ -1158,6 +1159,7 @@ export type Database = {
           responsible_whatsapp: string | null
           schedule_by_day: Json | null
           schedule_time: string | null
+          status: string
           updated_at: string
           user_id: string
           weekdays: string[] | null
@@ -1177,6 +1179,7 @@ export type Database = {
           financial_responsible_name?: string | null
           financial_responsible_whatsapp?: string | null
           id?: string
+          intake_token?: string | null
           is_archived?: boolean | null
           name: string
           observations?: string | null
@@ -1194,6 +1197,7 @@ export type Database = {
           responsible_whatsapp?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
+          status?: string
           updated_at?: string
           user_id: string
           weekdays?: string[] | null
@@ -1213,6 +1217,7 @@ export type Database = {
           financial_responsible_name?: string | null
           financial_responsible_whatsapp?: string | null
           id?: string
+          intake_token?: string | null
           is_archived?: boolean | null
           name?: string
           observations?: string | null
@@ -1230,6 +1235,7 @@ export type Database = {
           responsible_whatsapp?: string | null
           schedule_by_day?: Json | null
           schedule_time?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
           weekdays?: string[] | null
