@@ -1781,6 +1781,7 @@ export default function PatientDetail() {
             { value: 'tasks', icon: ListTodo, label: 'Tarefas' },
             { value: 'notes', icon: PenLine, label: 'Notas' },
             { value: 'portal', icon: Users, label: 'Portal' },
+            { value: 'mural', icon: Newspaper, label: 'Mural' },
           ].map(({ value, icon: Icon, label }) => (
             <TabsTrigger
               key={value}
