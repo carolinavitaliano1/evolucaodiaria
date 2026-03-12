@@ -1992,6 +1992,11 @@ export default function PatientDetail() {
                             )}
                           </div>
                           <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs text-primary hover:bg-primary/10"
+                              onClick={() => setFeedbackEvolution(evo)} title="Gerar feedback para os pais">
+                              <Sparkles className="w-3 h-3" />
+                              <span className="hidden sm:inline">Feedback IA</span>
+                            </Button>
                             <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
                               <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
                             </Button>
