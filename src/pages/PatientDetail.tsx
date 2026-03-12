@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
@@ -43,6 +43,7 @@ import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import jsPDF from 'jspdf';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
+import { PatientFeed } from '@/components/feed/PatientFeed';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
@@ -1771,7 +1772,7 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="evolutions" className="space-y-5">
-        <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+        <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-4 sm:grid-cols-4 gap-2.5">
           {[
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
             { value: 'reports', icon: BarChart3, label: 'Rel. Mensal' },
@@ -1780,6 +1781,7 @@ export default function PatientDetail() {
             { value: 'tasks', icon: ListTodo, label: 'Tarefas' },
             { value: 'notes', icon: PenLine, label: 'Notas' },
             { value: 'portal', icon: Users, label: 'Portal' },
+            { value: 'mural', icon: Newspaper, label: 'Mural' },
           ].map(({ value, icon: Icon, label }) => (
             <TabsTrigger
               key={value}
@@ -2694,6 +2696,18 @@ export default function PatientDetail() {
             patientId={patient.id}
             patientEmail={patient.email}
             patientName={patient.name}
+          />
+        </TabsContent>
+
+        {/* Mural Tab */}
+        <TabsContent value="mural">
+          <PatientFeed
+            patientId={patient.id}
+            therapistId={user.id}
+            therapistName={therapistProfile?.name ?? undefined}
+            isTherapist={true}
+            currentUserId={user.id}
+            currentUserName={therapistProfile?.name ?? 'Terapeuta'}
           />
         </TabsContent>
 
