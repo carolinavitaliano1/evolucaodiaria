@@ -62,6 +62,15 @@ export default function Profile() {
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState(false);
 
+  // Payment data states
+  const [ownedClinics, setOwnedClinics] = useState<{id: string; name: string; type: string; payment_pix_key: string | null; payment_pix_name: string | null; payment_bank_details: string | null; show_payment_in_portal: boolean}[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState<string>('');
+  const [pixKey, setPixKey] = useState('');
+  const [pixName, setPixName] = useState('');
+  const [bankDetails, setBankDetails] = useState('');
+  const [showPaymentInPortal, setShowPaymentInPortal] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
+
   // Signature pad states
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
