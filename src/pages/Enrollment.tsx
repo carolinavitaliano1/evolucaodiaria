@@ -1,30 +1,28 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import {
-  CheckCircle2, Loader2, Building2, AlertTriangle, UserPlus, Eye, EyeOff,
+  CheckCircle2, Loader2, Building2, AlertTriangle, ClipboardList,
 } from 'lucide-react';
 
 export default function Enrollment() {
   const { clinicId } = useParams<{ clinicId: string }>();
-  const navigate = useNavigate();
   const [clinic, setClinic] = useState<{ name: string; address: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const [form, setForm] = useState({
-    email: '',
-    password: '',
     name: '',
     birthdate: '',
+    responsible_name: '',
     whatsapp: '',
+    email: '',
   });
 
   useEffect(() => {
@@ -44,52 +42,37 @@ export default function Enrollment() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.birthdate || !form.email || !form.password) {
-      toast.error('Preencha todos os campos obrigatórios');
-      return;
-    }
-    if (form.password.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
+    if (!form.name.trim() || !form.birthdate) {
+      toast.error('Preencha o nome e a data de nascimento do paciente');
       return;
     }
 
     setSubmitting(true);
     try {
-      // PASSO A: Criar conta de autenticação
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: {
-          data: { name: form.name },
-          emailRedirectTo: `${window.location.origin}/portal/auth`,
-        },
-      });
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      if (signUpError) {
-        if (signUpError.message.includes('already registered') || signUpError.message.includes('already been registered')) {
-          toast.error('Este e-mail já possui uma conta. Acesse o portal para entrar.');
-        } else {
-          throw signUpError;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/submit-enrollment`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            clinic_id: clinicId,
+            name: form.name,
+            birthdate: form.birthdate,
+            responsible_name: form.responsible_name,
+            whatsapp: form.whatsapp,
+            email: form.email,
+          }),
         }
-        setSubmitting(false);
-        return;
-      }
+      );
 
-      const userId = authData.user?.id;
-      if (!userId) throw new Error('Erro ao criar conta. Tente novamente.');
-
-      // PASSO B: Inserir paciente com status Pendente
-      const { error: insertError } = await supabase.from('patients').insert({
-        user_id: userId,
-        clinic_id: clinicId!,
-        name: form.name,
-        birthdate: form.birthdate,
-        whatsapp: form.whatsapp || null,
-        email: form.email,
-        status: 'pendente',
-      });
-
-      if (insertError) throw insertError;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao enviar ficha');
 
       setSubmitted(true);
     } catch (err: any) {
@@ -126,27 +109,24 @@ export default function Enrollment() {
           </div>
 
           <h1 className="text-2xl font-bold text-foreground mb-3">
-            Cadastro realizado com sucesso! 🎉
+            Ficha enviada com sucesso! 🎉
           </h1>
 
           <p className="text-muted-foreground leading-relaxed mb-6">
-            A clínica <strong className="text-foreground">{clinic?.name}</strong> analisará sua ficha e em breve seu portal estará totalmente liberado. Fique de olho no e-mail e WhatsApp informados. 📱
+            A clínica <strong className="text-foreground">{clinic?.name}</strong> entrará em contato em breve. Seus dados foram recebidos com segurança. 📱
           </p>
 
-          <p className="text-xs text-muted-foreground mb-6">
-            Você receberá um e-mail de confirmação. Após a ativação, acesse o portal com o e-mail e senha que você cadastrou.
+          <p className="text-xs text-muted-foreground mb-8">
+            Seus dados são tratados com total sigilo e privacidade. 🔒
           </p>
 
           <Button
+            variant="outline"
             className="w-full"
-            onClick={() => navigate('/portal/auth')}
+            onClick={() => window.close()}
           >
-            Ir para o Portal do Paciente
+            Fechar esta página
           </Button>
-
-          <p className="text-xs text-muted-foreground mt-6">
-            Seus dados são tratados com total sigilo e privacidade. 🔒
-          </p>
         </div>
       </div>
     );
@@ -165,61 +145,19 @@ export default function Enrollment() {
             <p className="text-sm text-muted-foreground mt-1">{clinic.address}</p>
           )}
           <p className="text-muted-foreground mt-3 text-sm">
-            Bem-vindo! Crie seu acesso para preencher a ficha de matrícula.
+            Preencha os dados abaixo para enviar sua ficha de cadastro.
           </p>
         </div>
 
         {/* Form */}
         <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-5">
-            <UserPlus className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Criar Conta e Enviar Ficha</h2>
+            <ClipboardList className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Ficha de Cadastro</h2>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Auth section */}
-            <div className="rounded-xl bg-secondary/40 p-4 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dados de Acesso</p>
-
-              <div>
-                <Label htmlFor="email">E-mail *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="email@exemplo.com"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="password">Senha *</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder="Mínimo 6 caracteres"
-                    required
-                    className="pr-10"
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Use este e-mail e senha para acessar o portal depois.</p>
-              </div>
-            </div>
-
-            {/* Patient data section */}
+            {/* Patient data */}
             <div className="rounded-xl bg-secondary/40 p-4 space-y-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dados do Paciente</p>
 
@@ -244,6 +182,21 @@ export default function Enrollment() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Responsible data */}
+            <div className="rounded-xl bg-secondary/40 p-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dados do Responsável / Contato</p>
+
+              <div>
+                <Label htmlFor="responsible_name">Nome do Responsável</Label>
+                <Input
+                  id="responsible_name"
+                  value={form.responsible_name}
+                  onChange={(e) => setForm({ ...form, responsible_name: e.target.value })}
+                  placeholder="Ex: Maria Silva"
+                />
+              </div>
 
               <div>
                 <Label htmlFor="whatsapp">WhatsApp para Contato</Label>
@@ -255,6 +208,17 @@ export default function Enrollment() {
                   type="tel"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="email">E-mail para Contato</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
             </div>
 
             <Button
@@ -263,9 +227,9 @@ export default function Enrollment() {
               disabled={submitting}
             >
               {submitting ? (
-                <><Loader2 className="w-4 h-4 animate-spin mr-2" />Criando conta...</>
+                <><Loader2 className="w-4 h-4 animate-spin mr-2" />Enviando ficha...</>
               ) : (
-                'Criar Conta e Enviar Ficha'
+                'Enviar Ficha de Cadastro'
               )}
             </Button>
           </form>
