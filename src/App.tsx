@@ -32,6 +32,7 @@ import Team from "./pages/Team";
 import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
 import PatientIntakePublic from "./pages/PatientIntakePublic";
+import Enrollment from "./pages/Enrollment";
 import PortalAuth from "./pages/portal/PortalAuth";
 import PortalHome from "./pages/portal/PortalHome";
 import PortalMessages from "./pages/portal/PortalMessages";
@@ -85,6 +86,8 @@ const App = () => (
                 <Route path="/portal/mural" element={<PortalRoute><PortalMural /></PortalRoute>} />
                 {/* Public intake form — no auth required */}
                 <Route path="/cadastro-paciente/:token" element={<PatientIntakePublic />} />
+                {/* Self-service enrollment — no auth required */}
+                <Route path="/matricula/:clinicId" element={<Enrollment />} />
                 <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/pricing" element={<Pricing />} />
