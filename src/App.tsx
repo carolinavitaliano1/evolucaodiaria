@@ -81,6 +81,8 @@ const App = () => (
                 <Route path="/portal/evolucoes" element={<PortalRoute><PortalEvolutions /></PortalRoute>} />
                 <Route path="/portal/financeiro" element={<PortalRoute><PortalFinancial /></PortalRoute>} />
                 <Route path="/portal/documentos" element={<PortalRoute><PortalDocuments /></PortalRoute>} />
+                {/* Public intake form — no auth required */}
+                <Route path="/cadastro-paciente/:token" element={<PatientIntakePublic />} />
                 <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/pricing" element={<Pricing />} />
