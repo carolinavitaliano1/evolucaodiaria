@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect, useRef } from 'react';
 import {
   Loader2, DollarSign, CheckCircle2, Clock, Receipt,
-  Copy, AlertCircle, Bell, Paperclip, Send, X, ChevronDown, ChevronUp,
+  Copy, AlertCircle, Bell, Paperclip, Send, X, ChevronDown, ChevronUp, QrCode,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
