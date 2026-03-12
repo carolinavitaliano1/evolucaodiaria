@@ -675,7 +675,7 @@ export default function ClinicDetail() {
     } catch (err: any) {
       toast.error(err.message || 'Erro ao cadastrar paciente');
     } finally {
-      setIsSubmitting(false);
+      setSubmittingPatient(false);
     }
   };
 
