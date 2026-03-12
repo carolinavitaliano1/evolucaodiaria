@@ -11,6 +11,7 @@ const navItems = [
   { to: '/portal/mensagens', icon: MessageSquare, label: 'Chat' },
   { to: '/portal/avisos', icon: Bell, label: 'Avisos' },
   { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro' },
+  { to: '/portal/mural', icon: Newspaper, label: 'Mural' },
   { to: '/portal/ficha', icon: FileText, label: 'Ficha' },
   { to: '/portal/documentos', icon: FolderOpen, label: 'Docs' },
 ];
