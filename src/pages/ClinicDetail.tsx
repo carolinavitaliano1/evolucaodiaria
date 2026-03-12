@@ -698,6 +698,11 @@ export default function ClinicDetail() {
     });
     setIsDialogOpen(false);
     toast.success('Paciente cadastrado com sucesso!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao cadastrar paciente');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleOpenPatient = (patientId: string) => {
