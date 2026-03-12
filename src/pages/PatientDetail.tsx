@@ -1893,12 +1893,17 @@ export default function PatientDetail() {
                 📜 Histórico <span className="text-muted-foreground font-normal">({patientEvolutions.length})</span>
               </h2>
               {patientEvolutions.length > 0 && (
-                <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 text-xs">
-                      <CalendarRange className="w-3.5 h-3.5" /> PDF por Período
-                    </Button>
-                  </DialogTrigger>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" className="gap-2 text-xs text-primary border-primary/30 hover:bg-primary/5"
+                    onClick={() => setFeedbackBulkOpen(true)}>
+                    <Sparkles className="w-3.5 h-3.5" /> Feedback em Lote
+                  </Button>
+                  <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2 text-xs">
+                        <CalendarRange className="w-3.5 h-3.5" /> PDF por Período
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>Gerar PDF de Evoluções</DialogTitle></DialogHeader>
                     <div className="space-y-4 pt-4">
