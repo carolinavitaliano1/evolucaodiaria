@@ -362,12 +362,24 @@ function AccountPanel({
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <ClipboardList className="w-4 h-4 text-success" /> Ficha do Paciente
                 </h3>
-                {hasIntakeSubmitted ? (
-                  <span className="text-xs text-success flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
-                  </span>
-                ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
+                <div className="flex items-center gap-2">
+                  {hasIntakeSubmitted ? (
+                    <span className="text-xs text-success flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
+                    </span>
+                  ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
+                  {hasIntakeSubmitted && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => handleDownloadIntake(intakeForm!, patientName)}
+                    >
+                      <Download className="w-3 h-3" /> Baixar PDF
+                    </Button>
+                  )}
+                </div>
               </div>
               {!hasIntakeSubmitted ? (
                 <div className="p-6 text-center">
