@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
+import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { 
