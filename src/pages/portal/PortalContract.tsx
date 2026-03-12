@@ -16,6 +16,8 @@ interface Contract {
   template_html: string;
   signed_at: string | null;
   signature_data: string | null;
+  therapist_signature_data: string | null;
+  therapist_signed_at: string | null;
   status: string;
 }
 
@@ -28,11 +30,20 @@ interface IntakeData {
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;';
+
+  const therapistSigBlock = contract.therapist_signature_data
+    ? `<div style="margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;">
+        <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura do terapeuta:</p>
+        <img src="${contract.therapist_signature_data}" style="max-height:70px;max-width:260px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura do terapeuta" />
+        ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:6px;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
+      </div>` : '';
+
   wrapper.innerHTML = `
     <div style="margin-bottom:32px;">
       ${contract.template_html}
     </div>
-    <div style="margin-top:40px;border-top:1px solid #ccc;padding-top:24px;">
+    ${therapistSigBlock}
+    <div style="margin-top:32px;border-top:1px solid #ccc;padding-top:24px;">
       <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital${signerName ? ` de ${signerName}` : ''}:</p>
       ${signerCpf ? `<p style="font-size:10px;color:#777;margin-bottom:8px;">CPF: ${signerCpf}</p>` : ''}
       <img src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura" />
@@ -189,14 +200,35 @@ export default function PortalContract() {
               />
             </div>
 
-            {/* Signature section */}
-            {contract.status === 'signed' && contract.signature_data && (
-              <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Assinatura de <strong>{signerName}</strong>:</p>
-                  {signerCpf && <p className="text-xs text-muted-foreground">CPF: {signerCpf}</p>}
-                </div>
-                <img src={contract.signature_data} alt="Assinatura" className="max-h-20 border border-border rounded" />
+            {/* Signature section — both parties */}
+            {contract.status === 'signed' && (
+              <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+                {/* Therapist signature */}
+                {contract.therapist_signature_data && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
+                    <img src={contract.therapist_signature_data} alt="Assinatura do terapeuta"
+                      className="max-h-16 border border-border rounded" />
+                    {contract.therapist_signed_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {/* Patient signature */}
+                {contract.signature_data && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">Assinatura de <strong>{signerName}</strong>:</p>
+                    {signerCpf && <p className="text-xs text-muted-foreground">CPF: {signerCpf}</p>}
+                    <img src={contract.signature_data} alt="Assinatura" className="max-h-16 border border-border rounded" />
+                    {contract.signed_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(contract.signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <Button
                   className="w-full gap-2"
                   variant="outline"
