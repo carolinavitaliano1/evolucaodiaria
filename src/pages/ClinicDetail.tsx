@@ -203,6 +203,19 @@ export default function ClinicDetail() {
     loadAppointmentsForClinic(id);
   }, [id]);
 
+  // Load pending enrollments
+  useEffect(() => {
+    if (!id || !user) return;
+    supabase
+      .from('patients')
+      .select('id, name, birthdate, responsible_name, responsible_whatsapp, whatsapp, email, observations, created_at')
+      .eq('clinic_id', id)
+      .eq('status', 'pendente')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setPendingPatients(data); });
+  }, [id, user]);
+
+
 
   // Load stamps + therapist profile
   useEffect(() => {
