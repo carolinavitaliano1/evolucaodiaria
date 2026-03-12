@@ -32,6 +32,7 @@ import Team from "./pages/Team";
 import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
 import PatientIntakePublic from "./pages/PatientIntakePublic";
+import Enrollment from "./pages/Enrollment";
 import PortalAuth from "./pages/portal/PortalAuth";
 import PortalHome from "./pages/portal/PortalHome";
 import PortalMessages from "./pages/portal/PortalMessages";
