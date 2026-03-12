@@ -579,8 +579,8 @@ export default function ClinicDetail() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.birthdate) return;
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+    if (submittingPatient) return;
+    setSubmittingPatient(true);
 
     try {
     const firstDayTime = formData.weekdays.length > 0 
@@ -589,7 +589,7 @@ export default function ClinicDetail() {
 
     const selectedPkg = formData.packageId ? clinicPackages.find(p => p.id === formData.packageId) : null;
 
-    // Single insert — do NOT call addPatient() which would cause a second insert
+    // Single insert via addPatient (handles both DB insert and state update)
     const { data: newPatient, error: insertError } = await supabase
       .from('patients')
       .insert({
@@ -623,36 +623,9 @@ export default function ClinicDetail() {
 
     if (insertError) throw insertError;
 
-    // Update context state directly from the returned record (no second insert)
+    // Sync new patient into context state (no second DB call)
     if (newPatient) {
-      const mapped = {
-        id: newPatient.id,
-        clinicId: newPatient.clinic_id,
-        name: newPatient.name,
-        birthdate: newPatient.birthdate,
-        phone: newPatient.phone || undefined,
-        whatsapp: newPatient.whatsapp || undefined,
-        email: newPatient.email || undefined,
-        clinicalArea: newPatient.clinical_area || undefined,
-        diagnosis: newPatient.diagnosis || undefined,
-        professionals: newPatient.professionals || undefined,
-        observations: newPatient.observations || undefined,
-        responsibleName: newPatient.responsible_name || undefined,
-        responsibleEmail: newPatient.responsible_email || undefined,
-        responsibleWhatsapp: newPatient.responsible_whatsapp || undefined,
-        paymentType: newPatient.payment_type || undefined,
-        paymentValue: newPatient.payment_value || undefined,
-        contractStartDate: newPatient.contract_start_date || undefined,
-        weekdays: newPatient.weekdays || undefined,
-        scheduleTime: newPatient.schedule_time || undefined,
-        scheduleByDay: newPatient.schedule_by_day || undefined,
-        packageId: newPatient.package_id || undefined,
-        isArchived: false,
-        status: newPatient.status || 'ativo',
-        createdAt: newPatient.created_at,
-      } as any;
-      // Prepend to patients list in context without triggering another DB call
-      setState((prev: any) => ({ ...prev, patients: [mapped, ...prev.patients] }));
+      addPatientToState(newPatient as any);
     }
 
     // If initial payment status was set, create payment record
