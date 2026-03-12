@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { CheckCircle2, Loader2, Building2, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Loader2, Building2, AlertTriangle, Home, X } from 'lucide-react';
 
 export default function Enrollment() {
   const { clinicId } = useParams<{ clinicId: string }>();
@@ -63,7 +63,7 @@ export default function Enrollment() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -80,14 +80,47 @@ export default function Enrollment() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
-        <div className="w-20 h-20 rounded-full bg-success/15 flex items-center justify-center mb-6">
-          <CheckCircle2 className="w-10 h-10 text-success" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-success/5 to-background p-6 text-center">
+        <div className="max-w-sm w-full">
+          {/* Animated check */}
+          <div className="w-24 h-24 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-6 animate-[scale-in_0.4s_ease-out]">
+            <CheckCircle2 className="w-12 h-12 text-success" />
+          </div>
+
+          <h1 className="text-2xl font-bold text-foreground mb-3">
+            Ficha enviada com sucesso! 🎉
+          </h1>
+
+          <p className="text-muted-foreground leading-relaxed mb-2">
+            A equipe de <strong className="text-foreground">{clinic?.name}</strong> já foi notificada e entrará em contato em breve para confirmar os horários e detalhes do atendimento.
+          </p>
+
+          <p className="text-sm text-muted-foreground mb-8">
+            Fique de olho no WhatsApp e e-mail que você informou. 📱
+          </p>
+
+          <div className="space-y-3">
+            <Button
+              className="w-full gap-2"
+              variant="outline"
+              onClick={() => { setSubmitted(false); setForm({ name: '', birthdate: '', responsible_name: '', whatsapp: '', email: '', reason: '' }); }}
+            >
+              <X className="w-4 h-4" />
+              Preencher outra ficha
+            </Button>
+            <Button
+              className="w-full gap-2 gradient-primary"
+              onClick={() => window.close()}
+            >
+              <Home className="w-4 h-4" />
+              Fechar página
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-6">
+            Seus dados são tratados com total sigilo e privacidade. 🔒
+          </p>
         </div>
-        <h1 className="text-2xl font-bold text-foreground mb-3">Ficha enviada com sucesso! 🎉</h1>
-        <p className="text-muted-foreground max-w-sm">
-          Sua ficha de matrícula foi recebida. A equipe de <strong>{clinic?.name}</strong> entrará em contato em breve para confirmar os detalhes.
-        </p>
       </div>
     );
   }
@@ -193,7 +226,7 @@ export default function Enrollment() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6 mb-4">
-          Seus dados são tratados com total sigilo e privacidade.
+          Seus dados são tratados com total sigilo e privacidade. 🔒
         </p>
       </div>
     </div>

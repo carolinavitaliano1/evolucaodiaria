@@ -100,9 +100,10 @@ export function MobileNav() {
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/98 backdrop-blur-sm border-t border-border">
       <div className="flex justify-around items-center py-1.5 px-2">
-        {allowedMain.map(({ to, icon: Icon, label }) => {
+        {allowedMain.map(({ to, icon: Icon, label, perm }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
+          const badgeCount = to === '/patients' ? pendingCount : 0;
           
           return (
             <NavLink
@@ -113,8 +114,13 @@ export function MobileNav() {
                 isActive ? 'text-primary' : 'text-muted-foreground'
               )}
             >
-              <div className={cn('p-1.5 rounded-lg transition-colors', isActive && 'bg-primary')}>
+              <div className={cn('relative p-1.5 rounded-lg transition-colors', isActive && 'bg-primary')}>
                 <Icon className={cn('w-5 h-5', isActive ? 'text-primary-foreground' : 'text-muted-foreground')} />
+                {badgeCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    {badgeCount > 9 ? '9+' : badgeCount}
+                  </span>
+                )}
               </div>
               <span className={cn('text-[10px] font-medium', isActive ? 'text-primary' : 'text-muted-foreground')}>
                 {label}
