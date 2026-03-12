@@ -653,9 +653,11 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
   const [accounts, setAccounts] = useState<PortalAccount[]>([]);
   const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
   const [loading, setLoading] = useState(true);
-  const [inviting, setInviting] = useState<string | null>(null); // account id being re-invited
+  const [inviting, setInviting] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<PortalAccount | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
