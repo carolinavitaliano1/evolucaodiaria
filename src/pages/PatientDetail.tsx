@@ -2691,6 +2691,34 @@ export default function PatientDetail() {
           showFaltaRemunerada={!!(clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false))} />
       )}
 
+      {/* Feedback IA — individual */}
+      {feedbackEvolution && (
+        <FeedbackIAModal
+          open={!!feedbackEvolution}
+          onOpenChange={(v) => !v && setFeedbackEvolution(null)}
+          evolutions={[feedbackEvolution]}
+          patientId={patient.id}
+          patientName={patient.name}
+          patientWhatsapp={patient.whatsapp}
+          responsibleWhatsapp={patient.responsibleWhatsapp}
+          clinicalArea={patient.clinicalArea}
+          isBulk={false}
+        />
+      )}
+
+      {/* Feedback IA — em lote */}
+      <FeedbackIAModal
+        open={feedbackBulkOpen}
+        onOpenChange={setFeedbackBulkOpen}
+        evolutions={patientEvolutions}
+        patientId={patient.id}
+        patientName={patient.name}
+        patientWhatsapp={patient.whatsapp}
+        responsibleWhatsapp={patient.responsibleWhatsapp}
+        clinicalArea={patient.clinicalArea}
+        isBulk={true}
+      />
+
       <EditPatientDialog patient={patient} open={editPatientOpen} onOpenChange={setEditPatientOpen}
         onSave={updatePatient} clinicPackages={clinic ? getClinicPackages(clinic.id) : []} />
 
