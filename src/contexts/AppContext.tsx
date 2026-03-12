@@ -596,6 +596,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.isArchived !== undefined) updateData.is_archived = updates.isArchived;
       if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl || null;
       if (updates.packageId !== undefined) updateData.package_id = updates.packageId || null;
+      if ((updates as any).payment_info !== undefined) updateData.payment_info = (updates as any).payment_info || null;
       const { error } = await supabase.from('patients').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, patients: prev.patients.map(p => p.id === id ? { ...p, ...updates } : p) }));
