@@ -1163,11 +1163,11 @@ export default function ClinicDetail() {
                   onClick={() => {
                     const link = `${window.location.origin}/matricula/${id}`;
                     navigator.clipboard.writeText(link);
-                    toast.success('Link de matrícula copiado!');
+                    toast.success('Link de cadastro copiado!');
                   }}
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  Copiar Link de Matrícula
+                  Copiar Link de Cadastro
                 </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
