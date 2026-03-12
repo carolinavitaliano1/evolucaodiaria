@@ -308,5 +308,6 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
       clinicalArea={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.clinicalArea || null) : null}
       isBulk={true}
     />
+    </>
   );
 }
