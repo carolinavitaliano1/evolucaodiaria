@@ -1530,6 +1530,7 @@ export default function ClinicDetail() {
                   </form>
                 </DialogContent>
               </Dialog>
+              </div>
               )}
             </div>
 
