@@ -990,6 +990,7 @@ export type Database = {
           patient_email: string
           patient_id: string
           permissions: Json
+          specific_details: Json | null
           status: string
           therapist_user_id: string
           updated_at: string
@@ -1006,6 +1007,7 @@ export type Database = {
           patient_email: string
           patient_id: string
           permissions?: Json
+          specific_details?: Json | null
           status?: string
           therapist_user_id: string
           updated_at?: string
@@ -1022,6 +1024,7 @@ export type Database = {
           patient_email?: string
           patient_id?: string
           permissions?: Json
+          specific_details?: Json | null
           status?: string
           therapist_user_id?: string
           updated_at?: string
