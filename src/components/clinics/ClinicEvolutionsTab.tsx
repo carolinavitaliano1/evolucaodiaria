@@ -256,16 +256,23 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
                     </div>
                   </div>
                   {canViewContent && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 flex-shrink-0"
-                      onClick={() => handleExportSingle(evo, patient)}
-                      disabled={isExportingThis}
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      {isExportingThis ? '...' : 'PDF'}
-                    </Button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10" title="Feedback IA para os pais"
+                        onClick={() => setFeedbackItem({ evolution: evo, patient })}>
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 flex-shrink-0 h-7 text-xs"
+                        onClick={() => handleExportSingle(evo, patient)}
+                        disabled={isExportingThis}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        {isExportingThis ? '...' : 'PDF'}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
