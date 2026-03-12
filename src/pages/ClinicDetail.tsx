@@ -160,8 +160,9 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
 export default function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic } = useApp();
+  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic, addPatientToState } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [submittingPatient, setSubmittingPatient] = useState(false);
   const [pendingPatients, setPendingPatients] = useState<any[]>([]);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
   const [quickWaPatient, setQuickWaPatient] = useState<{ id: string; name: string; phone: string | null; whatsapp: string | null; responsibleWhatsapp?: string | null; paymentValue?: number | null; clinicName?: string } | null>(null);
@@ -579,15 +580,18 @@ export default function ClinicDetail() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.birthdate) return;
+    if (submittingPatient) return;
+    setSubmittingPatient(true);
 
+    try {
     const firstDayTime = formData.weekdays.length > 0 
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
     const selectedPkg = formData.packageId ? clinicPackages.find(p => p.id === formData.packageId) : null;
 
-    // Save patient with payment_due_day via direct supabase call
-    const { data: newPatient } = await supabase
+    // Single insert via addPatient (handles both DB insert and state update)
+    const { data: newPatient, error: insertError } = await supabase
       .from('patients')
       .insert({
         clinic_id: clinic.id,
@@ -618,28 +622,12 @@ export default function ClinicDetail() {
       .select()
       .single();
 
-    // Also add to context so UI updates
-    addPatient({
-      clinicId: clinic.id,
-      name: formData.name,
-      birthdate: formData.birthdate,
-      phone: formData.phone,
-      whatsapp: formData.whatsapp,
-      clinicalArea: formData.clinicalArea,
-      diagnosis: formData.diagnosis,
-      professionals: formData.professionals,
-      observations: formData.observations,
-      responsibleName: formData.responsibleName,
-      responsibleEmail: formData.responsibleEmail,
-      responsibleWhatsapp: formData.responsibleWhatsapp,
-      paymentType: clinic.paymentType === 'sessao' ? 'sessao' : clinic.paymentType === 'fixo_mensal' ? 'fixo' : 'sessao',
-      paymentValue: selectedPkg ? selectedPkg.price : clinic.paymentAmount,
-      contractStartDate: formData.contractStartDate,
-      weekdays: formData.weekdays,
-      scheduleTime: firstDayTime,
-      scheduleByDay: formData.scheduleByDay,
-      packageId: formData.packageId || undefined,
-    });
+    if (insertError) throw insertError;
+
+    // Sync new patient into context state (no second DB call)
+    if (newPatient) {
+      addPatientToState(newPatient as any);
+    }
 
     // If initial payment status was set, create payment record
     if (newPatient && (formData.initialPaymentPaid || formData.paymentDueDay) && user) {
@@ -684,6 +672,11 @@ export default function ClinicDetail() {
     });
     setIsDialogOpen(false);
     toast.success('Paciente cadastrado com sucesso!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao cadastrar paciente');
+    } finally {
+      setSubmittingPatient(false);
+    }
   };
 
   const handleOpenPatient = (patientId: string) => {

@@ -61,6 +61,8 @@ interface AppContextType extends AppState {
   loadAttachmentsForPatient: (patientId: string) => Promise<void>;
   loadAllEvolutions: () => Promise<void>;
   refreshData: () => Promise<void>;
+  // Sync-only: adds an already-inserted patient record to local state (no DB call)
+  addPatientToState: (raw: Record<string, unknown>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -563,6 +565,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) { console.error(error); toast.error('Erro ao adicionar paciente'); }
   }, [user]);
 
+  // Sync an already-inserted patient DB row into local state (no DB call)
+  const addPatientToState = useCallback((raw: Record<string, unknown>) => {
+    const newPatient = mapPatient(raw);
+    setState(prev => ({ ...prev, patients: [newPatient, ...prev.patients] }));
+  }, []);
+
   const updatePatient = useCallback(async (id: string, updates: Partial<Patient>) => {
     if (!user) return;
     try {
@@ -867,7 +875,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addPackage, updatePackage, deletePackage, getClinicPackages,
       getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment,
       loadEvolutionsForClinic, loadAppointmentsForClinic, loadAttachmentsForPatient,
-      loadAllEvolutions, refreshData,
+      loadAllEvolutions, refreshData, addPatientToState,
     }}>
       {children}
     </AppContext.Provider>
