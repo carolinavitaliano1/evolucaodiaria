@@ -53,6 +53,15 @@ export default function Patients() {
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; stamp_image: string | null; signature_image: string | null; is_default: boolean }[]>([]);
   const [profile, setProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
 
+  // Quick registration via link
+  const [quickRegOpen, setQuickRegOpen] = useState(false);
+  const [quickRegName, setQuickRegName] = useState('');
+  const [quickRegWhatsapp, setQuickRegWhatsapp] = useState('');
+  const [quickRegClinicId, setQuickRegClinicId] = useState('');
+  const [quickRegSaving, setQuickRegSaving] = useState(false);
+  const [quickRegLink, setQuickRegLink] = useState('');
+  const [quickRegToken, setQuickRegToken] = useState('');
+
   // Permission-based flags
   const ownOnly = isOrgMember && hasPermission(orgPermissions, 'patients.own_only') && !isOrgOwner;
   const canSeeClinical = !isOrgMember || isOrgOwner || hasPermission(orgPermissions, 'evolutions.view');
