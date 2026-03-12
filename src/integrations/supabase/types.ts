@@ -454,6 +454,53 @@ export type Database = {
         }
         Relationships: []
       }
+      evolution_feedbacks: {
+        Row: {
+          content: string
+          created_at: string
+          evolution_ids: string[]
+          id: string
+          is_bulk: boolean
+          patient_id: string
+          photo_urls: Json
+          sent_to_portal: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          evolution_ids?: string[]
+          id?: string
+          is_bulk?: boolean
+          patient_id: string
+          photo_urls?: Json
+          sent_to_portal?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          evolution_ids?: string[]
+          id?: string
+          is_bulk?: boolean
+          patient_id?: string
+          photo_urls?: Json
+          sent_to_portal?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolution_feedbacks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evolution_templates: {
         Row: {
           clinic_id: string

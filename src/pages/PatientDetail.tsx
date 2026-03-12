@@ -42,6 +42,7 @@ import { generateReportPdf } from '@/utils/generateReportPdf';
 import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import jsPDF from 'jspdf';
+import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
@@ -212,6 +213,8 @@ export default function PatientDetail() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
+  const [feedbackEvolution, setFeedbackEvolution] = useState<Evolution | null>(null);
+  const [feedbackBulkOpen, setFeedbackBulkOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [archivePatientOpen, setArchivePatientOpen] = useState(false);
@@ -1890,12 +1893,17 @@ export default function PatientDetail() {
                 📜 Histórico <span className="text-muted-foreground font-normal">({patientEvolutions.length})</span>
               </h2>
               {patientEvolutions.length > 0 && (
-                <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 text-xs">
-                      <CalendarRange className="w-3.5 h-3.5" /> PDF por Período
-                    </Button>
-                  </DialogTrigger>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" className="gap-2 text-xs text-primary border-primary/30 hover:bg-primary/5"
+                    onClick={() => setFeedbackBulkOpen(true)}>
+                    <Sparkles className="w-3.5 h-3.5" /> Feedback em Lote
+                  </Button>
+                  <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2 text-xs">
+                        <CalendarRange className="w-3.5 h-3.5" /> PDF por Período
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>Gerar PDF de Evoluções</DialogTitle></DialogHeader>
                     <div className="space-y-4 pt-4">
@@ -1940,6 +1948,7 @@ export default function PatientDetail() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                </div>
               )}
             </div>
 
@@ -1989,6 +1998,11 @@ export default function PatientDetail() {
                             )}
                           </div>
                           <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs text-primary hover:bg-primary/10"
+                              onClick={() => setFeedbackEvolution(evo)} title="Gerar feedback para os pais">
+                              <Sparkles className="w-3 h-3" />
+                              <span className="hidden sm:inline">Feedback IA</span>
+                            </Button>
                             <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
                               <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
                             </Button>
@@ -2676,6 +2690,34 @@ export default function PatientDetail() {
           onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
           showFaltaRemunerada={!!(clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false))} />
       )}
+
+      {/* Feedback IA — individual */}
+      {feedbackEvolution && (
+        <FeedbackIAModal
+          open={!!feedbackEvolution}
+          onOpenChange={(v) => !v && setFeedbackEvolution(null)}
+          evolutions={[feedbackEvolution]}
+          patientId={patient.id}
+          patientName={patient.name}
+          patientWhatsapp={patient.whatsapp}
+          responsibleWhatsapp={patient.responsibleWhatsapp}
+          clinicalArea={patient.clinicalArea}
+          isBulk={false}
+        />
+      )}
+
+      {/* Feedback IA — em lote */}
+      <FeedbackIAModal
+        open={feedbackBulkOpen}
+        onOpenChange={setFeedbackBulkOpen}
+        evolutions={patientEvolutions}
+        patientId={patient.id}
+        patientName={patient.name}
+        patientWhatsapp={patient.whatsapp}
+        responsibleWhatsapp={patient.responsibleWhatsapp}
+        clinicalArea={patient.clinicalArea}
+        isBulk={true}
+      />
 
       <EditPatientDialog patient={patient} open={editPatientOpen} onOpenChange={setEditPatientOpen}
         onSave={updatePatient} clinicPackages={clinic ? getClinicPackages(clinic.id) : []} />

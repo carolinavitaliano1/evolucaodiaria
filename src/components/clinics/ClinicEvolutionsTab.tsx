@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle, Lock } from 'lucide-react';
+import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle, Lock, Sparkles } from 'lucide-react';
+import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -42,6 +43,8 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportingPatientId, setExportingPatientId] = useState<string | null>(null);
   const [filterUserId, setFilterUserId] = useState<string>('all');
+  const [feedbackItem, setFeedbackItem] = useState<{ evolution: any; patient: any } | null>(null);
+  const [feedbackDayOpen, setFeedbackDayOpen] = useState(false);
 
   // Status-only: can see if evolution exists but not read its content
   const canViewContent = !isOrgMember || isOwner || hasPermission(permissions, 'evolutions.view');
@@ -125,6 +128,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   };
 
   return (
+    <>
     <div className="space-y-4">
       {/* Header */}
       <div className="bg-card rounded-2xl p-4 lg:p-6 border border-border">
@@ -178,10 +182,18 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
             </Popover>
 
             {evolutionsByPatient.length > 0 && canViewContent && (
-              <Button onClick={handleExportAllInOne} disabled={isExporting} className="gap-2 gradient-primary" size="sm">
-                <Download className="w-4 h-4" />
-                {isExporting ? 'Exportando...' : 'Exportar Todos'}
-              </Button>
+              <>
+                <Button onClick={handleExportAllInOne} disabled={isExporting} className="gap-2 gradient-primary" size="sm">
+                  <Download className="w-4 h-4" />
+                  {isExporting ? 'Exportando...' : 'Exportar Todos'}
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  className="gap-2 text-primary border-primary/30 hover:bg-primary/5"
+                  onClick={() => setFeedbackDayOpen(true)}>
+                  <Sparkles className="w-4 h-4" /> Feedback IA
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -245,16 +257,23 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
                     </div>
                   </div>
                   {canViewContent && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 flex-shrink-0"
-                      onClick={() => handleExportSingle(evo, patient)}
-                      disabled={isExportingThis}
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      {isExportingThis ? '...' : 'PDF'}
-                    </Button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10" title="Feedback IA para os pais"
+                        onClick={() => setFeedbackItem({ evolution: evo, patient })}>
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 flex-shrink-0 h-7 text-xs"
+                        onClick={() => handleExportSingle(evo, patient)}
+                        disabled={isExportingThis}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        {isExportingThis ? '...' : 'PDF'}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -263,5 +282,32 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
         </div>
       )}
     </div>
+
+    {/* Feedback IA — individual card */}
+    {feedbackItem && (
+      <FeedbackIAModal
+        open={!!feedbackItem}
+        onOpenChange={(v) => !v && setFeedbackItem(null)}
+        evolutions={[feedbackItem.evolution]}
+        patientId={feedbackItem.patient.id}
+        patientName={feedbackItem.patient.name}
+        patientWhatsapp={feedbackItem.patient.whatsapp}
+        responsibleWhatsapp={feedbackItem.patient.responsibleWhatsapp}
+        clinicalArea={feedbackItem.patient.clinicalArea}
+        isBulk={false}
+      />
+    )}
+
+    {/* Feedback IA — todas as evoluções do dia em lote */}
+    <FeedbackIAModal
+      open={feedbackDayOpen}
+      onOpenChange={setFeedbackDayOpen}
+      evolutions={evolutionsByPatient.map(({ evo }) => evo)}
+      patientId={evolutionsByPatient[0]?.patient?.id || ''}
+      patientName={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.name || '') : `${evolutionsByPatient.length} pacientes`}
+      clinicalArea={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.clinicalArea || null) : null}
+      isBulk={true}
+    />
+    </>
   );
 }
