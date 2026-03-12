@@ -103,6 +103,7 @@ function mapPatient(p: Record<string, unknown>): Patient {
     paymentType: p.payment_type as 'sessao' | 'fixo' | undefined,
     paymentValue: p.payment_value ? Number(p.payment_value) : undefined,
     ...(p.payment_due_day !== undefined && p.payment_due_day !== null ? { payment_due_day: Number(p.payment_due_day) } : {}),
+    ...(p.payment_info ? { payment_info: p.payment_info as string } : {}),
     contractStartDate: (p.contract_start_date as string) || undefined,
     weekdays: (p.weekdays as string[]) || undefined, scheduleTime: (p.schedule_time as string) || undefined,
     scheduleByDay: p.schedule_by_day as ScheduleByDay | undefined,
@@ -595,6 +596,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.isArchived !== undefined) updateData.is_archived = updates.isArchived;
       if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl || null;
       if (updates.packageId !== undefined) updateData.package_id = updates.packageId || null;
+      if ((updates as any).payment_info !== undefined) updateData.payment_info = (updates as any).payment_info || null;
       const { error } = await supabase.from('patients').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, patients: prev.patients.map(p => p.id === id ? { ...p, ...updates } : p) }));
