@@ -260,17 +260,22 @@ export default function Enrollment() {
               )}
             </SectionCard>
 
-            {/* 4. Motivo */}
-            <div className="rounded-xl bg-secondary/40 p-4 space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Motivo da Consulta</p>
-              <textarea
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                rows={3}
-                value={form.observations}
-                onChange={set('observations')}
-                placeholder="Descreva brevemente o motivo da consulta ou principais queixas (opcional)..."
-              />
-            </div>
+            {/* 4. Informações Clínicas */}
+            <SectionCard icon={<ClipboardList className="w-4 h-4" />} title="Informações Clínicas">
+              <Field id="diagnosis" label="Diagnóstico (se houver)">
+                <Input id="diagnosis" value={form.diagnosis} onChange={set('diagnosis')} placeholder="Ex: TEA, TDAH, Ansiedade..." />
+              </Field>
+              <Field id="observations" label="Motivo da Consulta / Observações">
+                <textarea
+                  id="observations"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={3}
+                  value={form.observations}
+                  onChange={set('observations')}
+                  placeholder="Descreva brevemente o motivo da consulta, principais queixas ou outras observações relevantes (opcional)..."
+                />
+              </Field>
+            </SectionCard>
 
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting
