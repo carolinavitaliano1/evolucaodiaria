@@ -938,6 +938,8 @@ export type Database = {
       }
       patient_portal_accounts: {
         Row: {
+          access_label: string | null
+          access_type: string
           created_at: string
           id: string
           invite_expires_at: string | null
@@ -945,12 +947,15 @@ export type Database = {
           invite_token: string | null
           patient_email: string
           patient_id: string
+          permissions: Json
           status: string
           therapist_user_id: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          access_label?: string | null
+          access_type?: string
           created_at?: string
           id?: string
           invite_expires_at?: string | null
@@ -958,12 +963,15 @@ export type Database = {
           invite_token?: string | null
           patient_email: string
           patient_id: string
+          permissions?: Json
           status?: string
           therapist_user_id: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          access_label?: string | null
+          access_type?: string
           created_at?: string
           id?: string
           invite_expires_at?: string | null
@@ -971,6 +979,7 @@ export type Database = {
           invite_token?: string | null
           patient_email?: string
           patient_id?: string
+          permissions?: Json
           status?: string
           therapist_user_id?: string
           updated_at?: string
@@ -1100,6 +1109,62 @@ export type Database = {
             columns: ["package_id"]
             isOneToOne: false
             referencedRelation: "clinic_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_path: string
+          file_size: number | null
+          file_type: string
+          id: string
+          name: string
+          patient_id: string
+          portal_account_id: string
+          therapist_user_id: string
+          updated_at: string
+          uploaded_by_type: string
+          uploaded_by_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_path: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          name: string
+          patient_id: string
+          portal_account_id: string
+          therapist_user_id: string
+          updated_at?: string
+          uploaded_by_type?: string
+          uploaded_by_user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          name?: string
+          patient_id?: string
+          portal_account_id?: string
+          therapist_user_id?: string
+          updated_at?: string
+          uploaded_by_type?: string
+          uploaded_by_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_documents_portal_account_id_fkey"
+            columns: ["portal_account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_portal_accounts"
             referencedColumns: ["id"]
           },
         ]

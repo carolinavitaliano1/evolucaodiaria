@@ -39,6 +39,7 @@ import PortalNotices from "./pages/portal/PortalNotices";
 import PortalContract from "./pages/portal/PortalContract";
 import PortalEvolutions from "./pages/portal/PortalEvolutions";
 import PortalFinancial from "./pages/portal/PortalFinancial";
+import PortalDocuments from "./pages/portal/PortalDocuments";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,7 @@ const App = () => (
                 <Route path="/portal/contrato" element={<PortalRoute><PortalContract /></PortalRoute>} />
                 <Route path="/portal/evolucoes" element={<PortalRoute><PortalEvolutions /></PortalRoute>} />
                 <Route path="/portal/financeiro" element={<PortalRoute><PortalFinancial /></PortalRoute>} />
+                <Route path="/portal/documentos" element={<PortalRoute><PortalDocuments /></PortalRoute>} />
                 <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/pricing" element={<Pricing />} />

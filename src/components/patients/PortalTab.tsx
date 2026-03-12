@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Send, Loader2, Mail, RefreshCw, CheckCircle2, Clock, MessageSquare, Bell, FilePenLine, Eye, ExternalLink, ClipboardList, User, Phone, MapPin, Heart, CreditCard } from 'lucide-react';
+import {
+  Send, Loader2, Mail, RefreshCw, CheckCircle2, Clock, MessageSquare, Bell,
+  FilePenLine, Eye, ExternalLink, ClipboardList, User, Heart, CreditCard,
+  Plus, Trash2, ChevronDown, ChevronRight, Users, School, Building2, UserCircle, FileUp, Download, X
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -26,6 +34,9 @@ interface PortalAccount {
   status: string;
   invite_sent_at: string | null;
   patient_email: string;
+  access_type: string;
+  access_label: string | null;
+  permissions: Record<string, boolean>;
 }
 
 interface PortalMessage {
@@ -53,6 +64,51 @@ interface IntakeForm {
   payment_due_day: number | null;
 }
 
+interface PortalDocument {
+  id: string;
+  name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number | null;
+  description: string | null;
+  uploaded_by_type: string;
+  created_at: string;
+  portal_account_id: string;
+}
+
+const ACCESS_TYPES = [
+  { value: 'patient', label: 'Paciente', icon: UserCircle, color: 'text-primary' },
+  { value: 'responsible', label: 'Responsável', icon: Users, color: 'text-success' },
+  { value: 'school', label: 'Escola', icon: School, color: 'text-warning' },
+  { value: 'clinic', label: 'Clínica / Instituição', icon: Building2, color: 'text-destructive' },
+  { value: 'other', label: 'Outro', icon: User, color: 'text-muted-foreground' },
+];
+
+const DEFAULT_PERMISSIONS: Record<string, boolean> = {
+  messages: true, feedbacks: true, financial: true,
+  contract: true, intake: true, notices: true, documents: true,
+};
+
+const PERM_LABELS: Record<string, string> = {
+  messages: 'Mensagens', feedbacks: 'Feedbacks da sessão', financial: 'Financeiro',
+  contract: 'Contrato', intake: 'Ficha cadastral', notices: 'Avisos', documents: 'Documentos',
+};
+
+function AccessTypeIcon({ type, className }: { type: string; className?: string }) {
+  const cfg = ACCESS_TYPES.find(a => a.value === type) || ACCESS_TYPES[4];
+  return <cfg.icon className={cn('w-4 h-4', cfg.color, className)} />;
+}
+
+function AccessTypeBadge({ type, label }: { type: string; label?: string | null }) {
+  const cfg = ACCESS_TYPES.find(a => a.value === type) || ACCESS_TYPES[4];
+  return (
+    <span className={cn('inline-flex items-center gap-1 text-xs font-medium', cfg.color)}>
+      <cfg.icon className="w-3 h-3" />
+      {label || cfg.label}
+    </span>
+  );
+}
+
 function IntakeField({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
@@ -63,83 +119,59 @@ function IntakeField({ label, value }: { label: string; value: string | null | u
   );
 }
 
-export function PortalTab({ patientId, patientEmail, patientName }: PortalTabProps) {
+// ─── Sub-component: Per-account management panel ─────────────────────────────
+function AccountPanel({
+  account, patientId, patientName, intakeForm,
+}: {
+  account: PortalAccount;
+  patientId: string;
+  patientName: string;
+  intakeForm: IntakeForm | null;
+}) {
   const { user } = useAuth();
-  const [portalAccount, setPortalAccount] = useState<PortalAccount | null>(null);
   const [messages, setMessages] = useState<PortalMessage[]>([]);
-  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [inviting, setInviting] = useState(false);
+  const [documents, setDocuments] = useState<PortalDocument[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [messageType, setMessageType] = useState('message');
+  const [sending, setSending] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docDescription, setDocDescription] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const perms = account.permissions || DEFAULT_PERMISSIONS;
 
-  const loadData = async () => {
-    setLoading(true);
-    const [{ data: account }, { data: msgs }, { data: form }] = await Promise.all([
-      supabase.from('patient_portal_accounts').select('*').eq('patient_id', patientId).maybeSingle(),
-      supabase.from('portal_messages').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(50),
-      supabase.from('patient_intake_forms').select('*').eq('patient_id', patientId).maybeSingle(),
-    ]);
-    setPortalAccount(account as PortalAccount | null);
-    setMessages((msgs || []) as PortalMessage[]);
-    setIntakeForm(form as IntakeForm | null);
-    setLoading(false);
-  };
+  useEffect(() => {
+    // Load messages
+    supabase.from('portal_messages').select('*')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => setMessages((data || []) as PortalMessage[]));
 
-  useEffect(() => { loadData(); }, [patientId]);
+    // Load documents for this account
+    supabase.from('portal_documents').select('*')
+      .eq('portal_account_id', account.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setDocuments((data || []) as PortalDocument[]));
+  }, [account.id, patientId]);
 
-  // Realtime: new patient messages
+  // Realtime messages
   useEffect(() => {
     const channel = supabase
-      .channel(`portal-messages-therapist-${patientId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'portal_messages', filter: `patient_id=eq.${patientId}` },
-        (payload) => {
-          const newMsg = payload.new as PortalMessage;
-          if (newMsg.sender_type === 'patient') {
-            setMessages(prev => {
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              return [newMsg, ...prev];
-            });
-          }
+      .channel(`portal-msg-${account.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'portal_messages',
+        filter: `patient_id=eq.${patientId}`,
+      }, (payload) => {
+        const m = payload.new as PortalMessage;
+        if (m.sender_type === 'patient') {
+          setMessages(prev => prev.some(x => x.id === m.id) ? prev : [m, ...prev]);
         }
-      )
-      .subscribe();
+      }).subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [patientId]);
-
-  // Realtime: intake form updates
-  useEffect(() => {
-    const channel = supabase
-      .channel(`portal-intake-therapist-${patientId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'patient_intake_forms', filter: `patient_id=eq.${patientId}` },
-        (payload) => { setIntakeForm(payload.new as IntakeForm); }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [patientId]);
-
-  const handleSendInvite = async () => {
-    if (!patientEmail) { toast.error('Adicione um e-mail ao paciente antes de ativar o portal'); return; }
-    setInviting(true);
-    try {
-      const { error } = await supabase.functions.invoke('send-portal-invite', { body: { patient_id: patientId } });
-      if (error) throw error;
-      toast.success('Convite enviado! ✉️');
-      await loadData();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao enviar convite');
-    } finally {
-      setInviting(false);
-    }
-  };
+  }, [account.id, patientId]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !portalAccount) return;
+    if (!newMessage.trim()) return;
     setSending(true);
     try {
       const { data, error } = await supabase.from('portal_messages').insert({
@@ -162,295 +194,642 @@ export function PortalTab({ patientId, patientEmail, patientName }: PortalTabPro
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  const handleUploadDoc = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { toast.error('Arquivo muito grande. Máximo 20MB.'); return; }
+    setUploadingDoc(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user!.id}/${account.id}/${Date.now()}.${ext}`;
+      const { error: storageError } = await supabase.storage
+        .from('portal-documents')
+        .upload(filePath, file);
+      if (storageError) throw storageError;
 
-  const statusConfig = {
-    invited: { label: 'Convite enviado', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
-    active: { label: 'Portal ativo', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
+      const { error: dbError } = await supabase.from('portal_documents').insert({
+        patient_id: patientId,
+        therapist_user_id: user!.id,
+        portal_account_id: account.id,
+        name: file.name,
+        file_path: filePath,
+        file_type: file.type || 'application/octet-stream',
+        file_size: file.size,
+        description: docDescription || null,
+        uploaded_by_type: 'therapist',
+        uploaded_by_user_id: user!.id,
+      });
+      if (dbError) throw dbError;
+
+      // Refresh docs
+      const { data } = await supabase.from('portal_documents').select('*')
+        .eq('portal_account_id', account.id).order('created_at', { ascending: false });
+      setDocuments((data || []) as PortalDocument[]);
+      setDocDescription('');
+      toast.success('Documento enviado!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar documento');
+    } finally {
+      setUploadingDoc(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
-  const statusInfo = portalAccount ? statusConfig[portalAccount.status as keyof typeof statusConfig] : null;
+
+  const handleDownloadDoc = async (doc: PortalDocument) => {
+    const { data } = await supabase.storage.from('portal-documents').createSignedUrl(doc.file_path, 60);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+    else toast.error('Erro ao gerar link de download');
+  };
+
+  const handleDeleteDoc = async (doc: PortalDocument) => {
+    await supabase.storage.from('portal-documents').remove([doc.file_path]);
+    await supabase.from('portal_documents').delete().eq('id', doc.id);
+    setDocuments(prev => prev.filter(d => d.id !== doc.id));
+    toast.success('Documento removido');
+  };
+
   const unreadFromPatient = messages.filter(m => m.sender_type === 'patient' && !m.read_by_therapist).length;
   const hasIntakeSubmitted = !!intakeForm?.submitted_at;
 
+  // Build tabs based on permissions
+  const tabs = [
+    perms.messages && { id: 'messages', icon: MessageSquare, label: 'Msgs', badge: unreadFromPatient },
+    perms.intake && { id: 'intake', icon: ClipboardList, label: 'Ficha', dot: hasIntakeSubmitted },
+    perms.contract && { id: 'contract', icon: FilePenLine, label: 'Contr.' },
+    perms.notices && { id: 'notices', icon: Bell, label: 'Avisos' },
+    perms.feedbacks && { id: 'feedbacks', icon: Eye, label: 'Feed.' },
+    perms.documents && { id: 'documents', icon: FileUp, label: 'Docs' },
+  ].filter(Boolean) as { id: string; icon: React.ElementType; label: string; badge?: number; dot?: boolean }[];
+
+  const defaultTab = tabs[0]?.id || 'messages';
+
   return (
-    <div className="space-y-4">
-      {/* Portal status card */}
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">ED</span>
-              Portal do Paciente
-            </h3>
-            {portalAccount ? (
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {statusInfo && (
-                  <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border', statusInfo.color)}>
-                    <statusInfo.icon className="w-3 h-3" />
-                    {statusInfo.label}
-                  </span>
-                )}
-                {portalAccount.invite_sent_at && (
-                  <span className="text-xs text-muted-foreground">
-                    Enviado {format(new Date(portalAccount.invite_sent_at), "d MMM", { locale: ptBR })}
-                  </span>
-                )}
+    <Tabs defaultValue={defaultTab} className="space-y-3">
+      <TabsList className={cn('w-full h-9', `grid grid-cols-${Math.min(tabs.length, 6)}`)}>
+        {tabs.map(tab => (
+          <TabsTrigger key={tab.id} value={tab.id} className="text-xs relative gap-1">
+            <tab.icon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-[11px]">{tab.label}</span>
+            {tab.badge && tab.badge > 0 ? (
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                {tab.badge}
+              </span>
+            ) : null}
+            {tab.dot ? <span className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full" /> : null}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      {/* Messages */}
+      {perms.messages && (
+        <TabsContent value="messages" className="mt-0">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-primary" /> Mensagens
+              </h3>
+              <span className="text-xs text-muted-foreground">{messages.length} msgs</span>
+            </div>
+            <div className="p-4 border-b border-border space-y-2">
+              <Select value={messageType} onValueChange={setMessageType}>
+                <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="message">💬 Mensagem</SelectItem>
+                  <SelectItem value="tarefa">📋 Tarefa para casa</SelectItem>
+                  <SelectItem value="feedback">✨ Feedback de sessão</SelectItem>
+                </SelectContent>
+              </Select>
+              <Textarea value={newMessage} onChange={e => setNewMessage(e.target.value)}
+                placeholder={`Mensagem para ${account.access_label || patientName}...`}
+                className="resize-none text-sm min-h-[80px]" />
+              <Button size="sm" onClick={handleSendMessage} disabled={!newMessage.trim() || sending} className="gap-1.5">
+                {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Enviar
+              </Button>
+            </div>
+            <div className="divide-y divide-border max-h-56 overflow-y-auto">
+              {messages.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">Nenhuma mensagem ainda.</p>
+              ) : messages.map(msg => (
+                <div key={msg.id} className={cn('px-4 py-3', msg.sender_type === 'patient' && 'bg-muted/30')}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={cn('text-[10px] font-semibold uppercase tracking-wide',
+                      msg.sender_type === 'therapist' ? 'text-primary' : 'text-muted-foreground')}>
+                      {msg.sender_type === 'therapist' ? '👨‍⚕️ Você' : `👤 ${account.access_label || patientName}`}
+                    </span>
+                    {msg.message_type !== 'message' && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                        {msg.message_type === 'tarefa' ? '📋 Tarefa' : '✨ Feedback'}
+                      </Badge>
+                    )}
+                    {msg.sender_type === 'patient' && !msg.read_by_therapist && (
+                      <Badge className="text-[9px] px-1 py-0 h-3.5 bg-destructive">Nova</Badge>
+                    )}
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      {format(new Date(msg.created_at), "d MMM 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+      )}
+
+      {/* Intake */}
+      {perms.intake && (
+        <TabsContent value="intake" className="mt-0">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-primary" /> Ficha do Paciente
+              </h3>
+              {hasIntakeSubmitted ? (
+                <span className="text-xs text-success flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
+                </span>
+              ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
+            </div>
+            {!hasIntakeSubmitted ? (
+              <div className="p-6 text-center">
+                <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {!intakeForm ? 'Ficha ainda não preenchida.' : 'Paciente ainda não enviou a ficha.'}
+                </p>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground mt-0.5">Portal não ativado para este paciente</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              size="sm" variant={portalAccount ? 'outline' : 'default'}
-              onClick={handleSendInvite} disabled={inviting}
-              className="gap-1.5 text-xs h-8"
-            >
-              {inviting ? <Loader2 className="w-3 h-3 animate-spin" /> : portalAccount ? <RefreshCw className="w-3 h-3" /> : <Mail className="w-3 h-3" />}
-              {portalAccount ? 'Reenviar convite' : 'Ativar portal'}
-            </Button>
-            {portalAccount?.status === 'active' && (
-              <Button
-                size="sm" variant="ghost"
-                className="gap-1.5 text-xs h-8 text-muted-foreground"
-                onClick={() => window.open('/portal/home', '_blank')}
-              >
-                <ExternalLink className="w-3 h-3" />
-                Ver portal
-              </Button>
-            )}
-          </div>
-        </div>
-        {!patientEmail && (
-          <p className="text-xs text-warning mt-2 flex items-center gap-1">
-            ⚠️ Paciente sem e-mail cadastrado. Adicione um e-mail para ativar o portal.
-          </p>
-        )}
-      </div>
-
-      {/* Portal management tabs */}
-      {portalAccount && (
-        <Tabs defaultValue="messages" className="space-y-3">
-          <TabsList className="w-full grid grid-cols-5 h-9">
-            <TabsTrigger value="messages" className="text-xs relative">
-              <MessageSquare className="w-3.5 h-3.5" />
-              {unreadFromPatient > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
-                  {unreadFromPatient}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="intake" className="text-xs gap-1 relative">
-              <ClipboardList className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">Ficha</span>
-              {hasIntakeSubmitted && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full" />
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="contract" className="text-xs">
-              <FilePenLine className="w-3.5 h-3.5" />
-            </TabsTrigger>
-            <TabsTrigger value="notices" className="text-xs">
-              <Bell className="w-3.5 h-3.5" />
-            </TabsTrigger>
-            <TabsTrigger value="evolutions" className="text-xs">
-              <Eye className="w-3.5 h-3.5" />
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Messages Tab */}
-          <TabsContent value="messages" className="space-y-3 mt-0">
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                  Mensagens
-                </h3>
-                <span className="text-xs text-muted-foreground">{messages.length} msgs</span>
-              </div>
-              <div className="p-4 border-b border-border space-y-2">
-                <Select value={messageType} onValueChange={setMessageType}>
-                  <SelectTrigger className="w-full h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="message">💬 Mensagem</SelectItem>
-                    <SelectItem value="tarefa">📋 Tarefa para casa</SelectItem>
-                    <SelectItem value="feedback">✨ Feedback de sessão</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Textarea
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                  placeholder={messageType === 'tarefa' ? `Tarefa para ${patientName}...` : messageType === 'feedback' ? `Feedback da sessão...` : `Mensagem para ${patientName}...`}
-                  className="resize-none text-sm min-h-[80px]"
-                />
-                <Button size="sm" onClick={handleSendMessage} disabled={!newMessage.trim() || sending} className="gap-1.5">
-                  {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                  Enviar
-                </Button>
-              </div>
-              <div className="divide-y divide-border max-h-64 overflow-y-auto">
-                {messages.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">Nenhuma mensagem ainda.</p>
-                ) : (
-                  messages.map(msg => (
-                    <div key={msg.id} className={cn('px-4 py-3', msg.sender_type === 'patient' && 'bg-muted/30')}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={cn('text-[10px] font-semibold uppercase tracking-wide', msg.sender_type === 'therapist' ? 'text-primary' : 'text-muted-foreground')}>
-                          {msg.sender_type === 'therapist' ? '👨‍⚕️ Você' : `👤 ${patientName}`}
-                        </span>
-                        {msg.message_type !== 'message' && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                            {msg.message_type === 'tarefa' ? '📋 Tarefa' : '✨ Feedback'}
-                          </Badge>
-                        )}
-                        {msg.sender_type === 'patient' && !msg.read_by_therapist && (
-                          <Badge className="text-[9px] px-1 py-0 h-3.5 bg-destructive">Nova</Badge>
-                        )}
-                        <span className="text-[10px] text-muted-foreground ml-auto">
-                          {format(new Date(msg.created_at), "d MMM 'às' HH:mm", { locale: ptBR })}
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+              <div className="p-4 space-y-5">
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" /> Dados Pessoais
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3 pl-1">
+                    <IntakeField label="Nome completo" value={intakeForm.full_name} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <IntakeField label="CPF" value={intakeForm.cpf} />
+                      <IntakeField label="Data de nascimento" value={intakeForm.birthdate ? format(new Date(intakeForm.birthdate + 'T00:00:00'), 'dd/MM/yyyy') : null} />
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Intake Form Tab */}
-          <TabsContent value="intake" className="mt-0">
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4 text-primary" />
-                  Ficha do Paciente
-                </h3>
-                {hasIntakeSubmitted ? (
-                  <span className="text-xs text-success flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Enviada em {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Não enviada</span>
-                )}
-              </div>
-
-              {!hasIntakeSubmitted ? (
-                <div className="p-6 text-center">
-                  <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {!intakeForm ? 'Ficha ainda não preenchida pelo paciente.' : 'Paciente ainda não enviou a ficha ao terapeuta.'}
-                  </p>
-                  {intakeForm && !intakeForm.submitted_at && (
-                    <p className="text-xs text-muted-foreground/70 mt-1">Rascunho salvo, aguardando envio.</p>
-                  )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <IntakeField label="Telefone" value={intakeForm.phone} />
+                      <IntakeField label="Contato de emergência" value={intakeForm.emergency_contact} />
+                    </div>
+                    <IntakeField label="Endereço" value={intakeForm.address} />
+                  </div>
                 </div>
-              ) : (
-                <div className="p-4 space-y-5">
-                  {/* Personal Data */}
-                  <div className="space-y-3">
+                {(intakeForm.responsible_name || intakeForm.responsible_cpf) && (
+                  <div className="space-y-3 pt-3 border-t border-border">
                     <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" />
-                      Dados Pessoais
+                      <User className="w-3.5 h-3.5" /> Responsável
                     </h4>
                     <div className="grid grid-cols-1 gap-3 pl-1">
-                      <IntakeField label="Nome completo" value={intakeForm.full_name} />
+                      <IntakeField label="Nome" value={intakeForm.responsible_name} />
                       <div className="grid grid-cols-2 gap-3">
-                        <IntakeField label="CPF" value={intakeForm.cpf} />
-                        <IntakeField
-                          label="Data de nascimento"
-                          value={intakeForm.birthdate ? format(new Date(intakeForm.birthdate + 'T00:00:00'), 'dd/MM/yyyy') : null}
-                        />
+                        <IntakeField label="CPF" value={intakeForm.responsible_cpf} />
+                        <IntakeField label="Telefone" value={intakeForm.responsible_phone} />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <IntakeField label="Telefone" value={intakeForm.phone} />
-                        <IntakeField label="Contato de emergência" value={intakeForm.emergency_contact} />
-                      </div>
-                      <IntakeField label="Endereço" value={intakeForm.address} />
                     </div>
                   </div>
+                )}
+                {intakeForm.payment_due_day && (
+                  <div className="space-y-3 pt-3 border-t border-border">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5" /> Pagamento
+                    </h4>
+                    <div className="pl-1"><IntakeField label="Melhor dia" value={`Dia ${intakeForm.payment_due_day}`} /></div>
+                  </div>
+                )}
+                {(intakeForm.health_info || intakeForm.observations) && (
+                  <div className="space-y-3 pt-3 border-t border-border">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <Heart className="w-3.5 h-3.5" /> Saúde & Observações
+                    </h4>
+                    <div className="space-y-3 pl-1">
+                      {intakeForm.health_info && (
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Informações médicas</p>
+                          <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.health_info}</p>
+                        </div>
+                      )}
+                      {intakeForm.observations && (
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Observações</p>
+                          <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.observations}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      )}
 
-                  {/* Responsible */}
-                  {(intakeForm.responsible_name || intakeForm.responsible_cpf || intakeForm.responsible_phone) && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" />
-                        Responsável
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3 pl-1">
-                        <IntakeField label="Nome do responsável" value={intakeForm.responsible_name} />
-                        <div className="grid grid-cols-2 gap-3">
-                          <IntakeField label="CPF do responsável" value={intakeForm.responsible_cpf} />
-                          <IntakeField label="Telefone do responsável" value={intakeForm.responsible_phone} />
+      {/* Contract */}
+      {perms.contract && (
+        <TabsContent value="contract" className="mt-0">
+          <ContractManager patientId={patientId} patientName={patientName} />
+        </TabsContent>
+      )}
+
+      {/* Notices */}
+      {perms.notices && (
+        <TabsContent value="notices" className="mt-0">
+          <div className="bg-card rounded-xl border border-border p-4">
+            <PortalNoticesManager patientId={patientId} patientName={patientName} />
+          </div>
+        </TabsContent>
+      )}
+
+      {/* Feedbacks */}
+      {perms.feedbacks && (
+        <TabsContent value="feedbacks" className="mt-0">
+          <div className="bg-card rounded-xl border border-border p-4">
+            <SharedEvolutionsManager patientId={patientId} />
+          </div>
+        </TabsContent>
+      )}
+
+      {/* Documents */}
+      {perms.documents && (
+        <TabsContent value="documents" className="mt-0">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <FileUp className="w-4 h-4 text-primary" /> Documentos
+              </h3>
+              <span className="text-xs text-muted-foreground">{documents.length} arquivo(s)</span>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-muted-foreground">Envie documentos e relatórios para este acesso. Apenas esta pessoa verá esses arquivos.</p>
+              <div className="space-y-2">
+                <Input
+                  placeholder="Descrição opcional (ex: Relatório de progresso)"
+                  value={docDescription}
+                  onChange={e => setDocDescription(e.target.value)}
+                  className="text-sm h-8"
+                />
+                <div className="flex items-center gap-2">
+                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleUploadDoc}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xls,.xlsx" />
+                  <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingDoc} className="gap-1.5 text-xs">
+                    {uploadingDoc ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileUp className="w-3 h-3" />}
+                    {uploadingDoc ? 'Enviando...' : 'Selecionar arquivo'}
+                  </Button>
+                </div>
+              </div>
+
+              {documents.length > 0 ? (
+                <div className="space-y-2 mt-2">
+                  {documents.map(doc => (
+                    <div key={doc.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{doc.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {doc.description && <p className="text-xs text-muted-foreground truncate">{doc.description}</p>}
+                          <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
+                            {doc.uploaded_by_type === 'portal' ? '👤 Paciente' : '👨‍⚕️ Terapeuta'} •{' '}
+                            {format(new Date(doc.created_at), "d/MM/yy", { locale: ptBR })}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Payment */}
-                  {intakeForm.payment_due_day && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <CreditCard className="w-3.5 h-3.5" />
-                        Pagamento
-                      </h4>
-                      <div className="pl-1">
-                        <IntakeField label="Melhor dia para pagamento" value={`Dia ${intakeForm.payment_due_day}`} />
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDownloadDoc(doc)}>
+                          <Download className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteDoc(doc)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
-                  )}
-
-                  {/* Health & Observations */}
-                  {(intakeForm.health_info || intakeForm.observations) && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <Heart className="w-3.5 h-3.5" />
-                        Saúde & Observações
-                      </h4>
-                      <div className="space-y-3 pl-1">
-                        {intakeForm.health_info && (
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Informações médicas</p>
-                            <p className="text-sm text-foreground bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.health_info}</p>
-                          </div>
-                        )}
-                        {intakeForm.observations && (
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Observações adicionais</p>
-                            <p className="text-sm text-foreground bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.observations}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <FileUp className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Nenhum documento enviado ainda.</p>
                 </div>
               )}
             </div>
-          </TabsContent>
-
-          {/* Contract Tab */}
-          <TabsContent value="contract" className="mt-0">
-            <ContractManager patientId={patientId} patientName={patientName} />
-          </TabsContent>
-
-          {/* Notices Tab */}
-          <TabsContent value="notices" className="mt-0">
-            <div className="bg-card rounded-xl border border-border p-4">
-              <PortalNoticesManager patientId={patientId} patientName={patientName} />
-            </div>
-          </TabsContent>
-
-          {/* Shared Evolutions Tab */}
-          <TabsContent value="evolutions" className="mt-0">
-            <div className="bg-card rounded-xl border border-border p-4">
-              <SharedEvolutionsManager patientId={patientId} />
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </TabsContent>
       )}
+    </Tabs>
+  );
+}
+
+// ─── Add Access Dialog ────────────────────────────────────────────────────────
+function AddAccessDialog({
+  open, onClose, patientId, patientEmail, patientName, onAdded,
+}: {
+  open: boolean;
+  onClose: () => void;
+  patientId: string;
+  patientEmail?: string | null;
+  patientName: string;
+  onAdded: () => void;
+}) {
+  const { user } = useAuth();
+  const [email, setEmail] = useState(patientEmail || '');
+  const [accessType, setAccessType] = useState('patient');
+  const [accessLabel, setAccessLabel] = useState('');
+  const [permissions, setPermissions] = useState({ ...DEFAULT_PERMISSIONS });
+  const [saving, setSaving] = useState(false);
+
+  // Reset when access type changes to set sensible defaults
+  useEffect(() => {
+    if (accessType === 'school' || accessType === 'clinic') {
+      setPermissions({ messages: false, feedbacks: true, financial: false, contract: false, intake: false, notices: true, documents: true });
+    } else if (accessType === 'responsible') {
+      setPermissions({ messages: true, feedbacks: true, financial: true, contract: true, intake: true, notices: true, documents: true });
+    } else {
+      setPermissions({ ...DEFAULT_PERMISSIONS });
+    }
+  }, [accessType]);
+
+  const handleSend = async () => {
+    if (!email.trim()) { toast.error('Informe o e-mail'); return; }
+    setSaving(true);
+    try {
+      const inviteToken = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { error } = await supabase.from('patient_portal_accounts').insert({
+        patient_id: patientId,
+        therapist_user_id: user!.id,
+        patient_email: email.trim(),
+        invite_token: inviteToken,
+        invite_sent_at: new Date().toISOString(),
+        invite_expires_at: expiresAt,
+        status: 'invited',
+        user_id: null,
+        access_type: accessType,
+        access_label: accessLabel.trim() || null,
+        permissions,
+      });
+      if (error) throw error;
+
+      // Send invite email via edge function
+      const { error: fnError } = await supabase.functions.invoke('send-portal-invite', {
+        body: {
+          patient_id: patientId,
+          override_email: email.trim(),
+          access_type: accessType,
+          access_label: accessLabel.trim() || null,
+          invite_token: inviteToken,
+        },
+      });
+      if (fnError) console.warn('Email send warning:', fnError.message);
+
+      toast.success('Convite enviado! ✉️');
+      onAdded();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar acesso');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="w-4 h-4 text-primary" /> Adicionar Acesso ao Portal
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Tipo de acesso</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {ACCESS_TYPES.map(t => (
+                <button key={t.value} type="button"
+                  onClick={() => setAccessType(t.value)}
+                  className={cn('rounded-xl border py-2 px-1 text-xs font-medium flex flex-col items-center gap-1 transition-colors',
+                    accessType === t.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/40 border-border text-foreground hover:bg-muted')}>
+                  <t.icon className={cn('w-4 h-4', accessType !== t.value && t.color)} />
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nome / Identificação</Label>
+              <Input value={accessLabel} onChange={e => setAccessLabel(e.target.value)}
+                placeholder={accessType === 'responsible' ? 'Ex: Mãe – Ana' : accessType === 'school' ? 'Ex: Escola Municipal' : 'Identificação'} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">E-mail *</Label>
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Permissões</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(PERM_LABELS).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-xs">{label}</span>
+                  <Switch checked={!!permissions[key]} onCheckedChange={v => setPermissions(p => ({ ...p, [key]: v }))} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <Button onClick={handleSend} disabled={saving} className="w-full gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+            Enviar convite
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main PortalTab ───────────────────────────────────────────────────────────
+export function PortalTab({ patientId, patientEmail, patientName }: PortalTabProps) {
+  const { user } = useAuth();
+  const [accounts, setAccounts] = useState<PortalAccount[]>([]);
+  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [inviting, setInviting] = useState<string | null>(null); // account id being re-invited
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    const [{ data: accs }, { data: form }] = await Promise.all([
+      supabase.from('patient_portal_accounts').select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: true }),
+      supabase.from('patient_intake_forms').select('*').eq('patient_id', patientId).maybeSingle(),
+    ]);
+    const list = (accs || []) as PortalAccount[];
+    setAccounts(list);
+    setIntakeForm(form as IntakeForm | null);
+    // Auto-expand first active or first account
+    if (list.length > 0 && !expandedAccount) {
+      const active = list.find(a => a.status === 'active') || list[0];
+      setExpandedAccount(active.id);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, [patientId]);
+
+  // Realtime intake form
+  useEffect(() => {
+    const channel = supabase.channel(`portal-intake-therapist-${patientId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_intake_forms', filter: `patient_id=eq.${patientId}` },
+        (p) => setIntakeForm(p.new as IntakeForm))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [patientId]);
+
+  const handleReinvite = async (account: PortalAccount) => {
+    setInviting(account.id);
+    try {
+      const inviteToken = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from('patient_portal_accounts').update({
+        invite_token: inviteToken,
+        invite_sent_at: new Date().toISOString(),
+        invite_expires_at: expiresAt,
+        status: 'invited',
+      }).eq('id', account.id);
+
+      await supabase.functions.invoke('send-portal-invite', {
+        body: {
+          patient_id: patientId,
+          override_email: account.patient_email,
+          access_type: account.access_type,
+          access_label: account.access_label,
+          invite_token: inviteToken,
+        },
+      });
+      toast.success('Convite reenviado! ✉️');
+      await loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao reenviar convite');
+    } finally {
+      setInviting(null);
+    }
+  };
+
+  const handleDeleteAccount = async (accountId: string) => {
+    await supabase.from('patient_portal_accounts').delete().eq('id', accountId);
+    setAccounts(prev => prev.filter(a => a.id !== accountId));
+    if (expandedAccount === accountId) setExpandedAccount(null);
+    toast.success('Acesso removido');
+  };
+
+  if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">ED</span>
+          <span className="text-sm font-semibold text-foreground">Portal do Paciente</span>
+          <Badge variant="outline" className="text-xs">{accounts.length} acesso(s)</Badge>
+        </div>
+        <Button size="sm" onClick={() => setAddDialogOpen(true)} className="gap-1.5 text-xs h-8">
+          <Plus className="w-3 h-3" /> Adicionar acesso
+        </Button>
+      </div>
+
+      {!patientEmail && (
+        <p className="text-xs text-warning flex items-center gap-1 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
+          ⚠️ Paciente sem e-mail. Adicione um e-mail para enviar convites.
+        </p>
+      )}
+
+      {accounts.length === 0 ? (
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground mb-1">Nenhum acesso ao portal ainda.</p>
+          <p className="text-xs text-muted-foreground/70">Clique em "Adicionar acesso" para convidar o paciente, responsável, escola ou clínica.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {accounts.map(account => {
+            const isExpanded = expandedAccount === account.id;
+            const statusCfg = account.status === 'active'
+              ? { label: 'Ativo', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 }
+              : { label: 'Convite enviado', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock };
+            const StatusIcon = statusCfg.icon;
+
+            return (
+              <div key={account.id} className="bg-card rounded-xl border border-border overflow-hidden">
+                {/* Account header row */}
+                <div
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/20 transition-colors"
+                  onClick={() => setExpandedAccount(isExpanded ? null : account.id)}
+                >
+                  <AccessTypeIcon type={account.access_type} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-foreground truncate">
+                        {account.access_label || ACCESS_TYPES.find(t => t.value === account.access_type)?.label || 'Acesso'}
+                      </span>
+                      <AccessTypeBadge type={account.access_type} />
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className={cn('inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border', statusCfg.color)}>
+                        <StatusIcon className="w-2.5 h-2.5" />{statusCfg.label}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground truncate">{account.patient_email}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground"
+                      onClick={e => { e.stopPropagation(); handleReinvite(account); }}
+                      disabled={inviting === account.id} title="Reenviar convite">
+                      {inviting === account.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    </Button>
+                    {account.status === 'active' && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground"
+                        onClick={e => { e.stopPropagation(); window.open('/portal/home', '_blank'); }}
+                        title="Ver portal">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={e => { e.stopPropagation(); handleDeleteAccount(account.id); }}
+                      title="Remover acesso">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                    {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                </div>
+
+                {/* Expanded panel */}
+                {isExpanded && (
+                  <div className="border-t border-border p-4">
+                    <AccountPanel
+                      account={account}
+                      patientId={patientId}
+                      patientName={account.access_label || patientName}
+                      intakeForm={intakeForm}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <AddAccessDialog
+        open={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        patientId={patientId}
+        patientEmail={patientEmail}
+        patientName={patientName}
+        onAdded={loadData}
+      />
     </div>
   );
 }

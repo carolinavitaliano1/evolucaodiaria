@@ -9,6 +9,9 @@ export interface PortalAccount {
   therapist_user_id: string;
   patient_email: string;
   status: string;
+  access_type: string;
+  access_label: string | null;
+  permissions: Record<string, boolean>;
 }
 
 export interface PortalPatient {
