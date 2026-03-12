@@ -181,10 +181,18 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
             </Popover>
 
             {evolutionsByPatient.length > 0 && canViewContent && (
-              <Button onClick={handleExportAllInOne} disabled={isExporting} className="gap-2 gradient-primary" size="sm">
-                <Download className="w-4 h-4" />
-                {isExporting ? 'Exportando...' : 'Exportar Todos'}
-              </Button>
+              <>
+                <Button onClick={handleExportAllInOne} disabled={isExporting} className="gap-2 gradient-primary" size="sm">
+                  <Download className="w-4 h-4" />
+                  {isExporting ? 'Exportando...' : 'Exportar Todos'}
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  className="gap-2 text-primary border-primary/30 hover:bg-primary/5"
+                  onClick={() => setFeedbackDayOpen(true)}>
+                  <Sparkles className="w-4 h-4" /> Feedback IA
+                </Button>
+              </>
             )}
           </div>
         </div>
