@@ -154,6 +154,10 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
   const [therapistSigData, setTherapistSigData] = useState('');
   const [savingSig, setSavingSig] = useState(false);
 
+  // Stamps
+  const [stamps, setStamps] = useState<StampOption[]>([]);
+  const [selectedStampId, setSelectedStampId] = useState<string>('none');
+
   const loadContracts = async () => {
     setLoadingContracts(true);
     const { data } = await supabase
