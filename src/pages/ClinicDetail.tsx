@@ -1154,6 +1154,21 @@ export default function ClinicDetail() {
               <h2 className="text-xl font-bold text-foreground">Pacientes</h2>
               
               {!isArchived && (
+              <div className="flex items-center gap-2">
+                {/* Enrollment link button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-xs"
+                  onClick={() => {
+                    const link = `${window.location.origin}/matricula/${id}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success('Link de matrícula copiado!');
+                  }}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copiar Link de Matrícula
+                </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gradient-primary gap-2">
