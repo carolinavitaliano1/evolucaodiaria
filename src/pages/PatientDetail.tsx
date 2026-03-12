@@ -1948,6 +1948,7 @@ export default function PatientDetail() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                </div>
               )}
             </div>
 
