@@ -30,7 +30,8 @@ interface FormState {
   financial_responsible_name: string;
   financial_responsible_cpf: string;
   financial_responsible_whatsapp: string;
-  // Motivo
+  // Clínico
+  diagnosis: string;
   observations: string;
 }
 

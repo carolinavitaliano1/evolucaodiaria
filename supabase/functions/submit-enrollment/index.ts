@@ -67,6 +67,11 @@ serve(async (req) => {
       fin_whatsapp = financial_responsible_whatsapp?.trim() || null;
     }
 
+    // Build observations combining motivo + diagnosis
+    const obs_parts: string[] = [];
+    if (body.diagnosis?.trim()) obs_parts.push(`Diagnóstico: ${body.diagnosis.trim()}`);
+    if (observations?.trim()) obs_parts.push(observations.trim());
+
     // Insert patient with status 'pendente'
     const { data: patient, error: insertErr } = await supabaseAdmin
       .from("patients")
@@ -83,7 +88,9 @@ serve(async (req) => {
         responsible_cpf: responsible_cpf?.trim() || null,
         responsible_whatsapp: responsible_whatsapp?.trim() || null,
         responsible_email: responsible_email?.trim() || null,
-        observations: observations?.trim() || responsible_relation?.trim() || null,
+        professionals: responsible_relation?.trim() || null,
+        observations: obs_parts.join('\n') || null,
+        diagnosis: body.diagnosis?.trim() || null,
         responsible_is_financial,
         financial_responsible_name: fin_name,
         financial_responsible_cpf: fin_cpf,
