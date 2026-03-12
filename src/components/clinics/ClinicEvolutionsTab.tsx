@@ -128,6 +128,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   };
 
   return (
+    <>
     <div className="space-y-4">
       {/* Header */}
       <div className="bg-card rounded-2xl p-4 lg:p-6 border border-border">
