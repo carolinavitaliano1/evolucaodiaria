@@ -40,6 +40,7 @@ const empty: FormState = {
   responsible_name: '', responsible_cpf: '', responsible_whatsapp: '', responsible_email: '', responsible_relation: '',
   financial_responsible: 'responsible',
   financial_responsible_name: '', financial_responsible_cpf: '', financial_responsible_whatsapp: '',
+  diagnosis: '',
   observations: '',
 };
 
