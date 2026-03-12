@@ -588,10 +588,12 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
               />
               {/* Therapist signature */}
               {previewContract.therapist_signature_data && (
-                <div className="border-t border-border pt-4 space-y-1">
+                <div className="border-t border-border pt-4 space-y-2">
                   <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
-                  <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
-                    className="max-h-20 border border-border rounded" />
+                  <div className="flex items-end gap-4 flex-wrap">
+                    <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
+                      className="max-h-16 border border-border rounded" />
+                  </div>
                   {previewContract.therapist_signed_at && (
                     <p className="text-[10px] text-muted-foreground">
                       {format(new Date(previewContract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
