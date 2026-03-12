@@ -213,6 +213,8 @@ export default function PatientDetail() {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
+  const [feedbackEvolution, setFeedbackEvolution] = useState<Evolution | null>(null);
+  const [feedbackBulkOpen, setFeedbackBulkOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [archivePatientOpen, setArchivePatientOpen] = useState(false);
