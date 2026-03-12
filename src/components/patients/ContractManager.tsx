@@ -9,12 +9,21 @@ import { SignaturePad } from '@/components/ui/signature-pad';
 import { toast } from 'sonner';
 import {
   Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2,
-  PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X
+  PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X, Stamp
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+
+interface StampOption {
+  id: string;
+  name: string;
+  clinical_area: string;
+  stamp_image: string | null;
+  signature_image: string | null;
+}
 
 interface ContractTemplate {
   id: string;
