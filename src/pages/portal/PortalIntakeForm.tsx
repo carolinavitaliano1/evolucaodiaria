@@ -15,21 +15,43 @@ interface IntakeForm {
   cpf: string;
   birthdate: string;
   phone: string;
+  whatsapp: string;
+  email: string;
   address: string;
+  gender: string;
+  how_found: string;
+  // Emergency contact
+  emergency_contact_name: string;
+  emergency_contact_relation: string;
+  emergency_contact_address: string;
+  emergency_contact_phone: string;
+  // Responsible (minor)
   responsible_name: string;
   responsible_cpf: string;
   responsible_phone: string;
-  emergency_contact: string;
+  // Financial responsible
+  financial_responsible_name: string;
+  financial_responsible_email: string;
+  financial_responsible_cpf: string;
+  financial_responsible_relation: string;
+  financial_responsible_address: string;
+  financial_responsible_phone: string;
+  // Health
   health_info: string;
   observations: string;
-  payment_due_day: string; // stored as string for input, converted to int on save
+  payment_due_day: string;
 }
 
 const empty: IntakeForm = {
-  full_name: '', cpf: '', birthdate: '', phone: '', address: '',
+  full_name: '', cpf: '', birthdate: '', phone: '', whatsapp: '', email: '',
+  address: '', gender: '', how_found: '',
+  emergency_contact_name: '', emergency_contact_relation: '',
+  emergency_contact_address: '', emergency_contact_phone: '',
   responsible_name: '', responsible_cpf: '', responsible_phone: '',
-  emergency_contact: '', health_info: '', observations: '',
-  payment_due_day: '',
+  financial_responsible_name: '', financial_responsible_email: '',
+  financial_responsible_cpf: '', financial_responsible_relation: '',
+  financial_responsible_address: '', financial_responsible_phone: '',
+  health_info: '', observations: '', payment_due_day: '',
 };
 
 const PAYMENT_DAY_OPTIONS = [
@@ -38,6 +60,31 @@ const PAYMENT_DAY_OPTIONS = [
   { label: 'Dia 15', value: '15' },
   { label: 'Dia 20', value: '20' },
 ];
+
+const GENDER_OPTIONS = [
+  { label: 'Masculino', value: 'masculino' },
+  { label: 'Feminino', value: 'feminino' },
+  { label: 'Não-binário', value: 'nao_binario' },
+  { label: 'Prefiro não dizer', value: 'nao_informar' },
+];
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <div className="mt-1">{children}</div>
+    </div>
+  );
+}
 
 export default function PortalIntakeForm() {
   const { portalAccount } = usePortal();
@@ -56,30 +103,44 @@ export default function PortalIntakeForm() {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          const dayVal = (data as any).payment_due_day ? String((data as any).payment_due_day) : '';
+          const d = data as any;
+          const dayVal = d.payment_due_day ? String(d.payment_due_day) : '';
           const isPreset = PAYMENT_DAY_OPTIONS.some(o => o.value === dayVal);
           setCustomDay(!!dayVal && !isPreset);
           setForm({
-            full_name: data.full_name || '',
-            cpf: data.cpf || '',
-            birthdate: data.birthdate || '',
-            phone: data.phone || '',
-            address: data.address || '',
-            responsible_name: data.responsible_name || '',
-            responsible_cpf: data.responsible_cpf || '',
-            responsible_phone: data.responsible_phone || '',
-            emergency_contact: data.emergency_contact || '',
-            health_info: data.health_info || '',
-            observations: data.observations || '',
+            full_name: d.full_name || '',
+            cpf: d.cpf || '',
+            birthdate: d.birthdate || '',
+            phone: d.phone || '',
+            whatsapp: d.whatsapp || '',
+            email: d.email || '',
+            address: d.address || '',
+            gender: d.gender || '',
+            how_found: d.how_found || '',
+            emergency_contact_name: d.emergency_contact_name || '',
+            emergency_contact_relation: d.emergency_contact_relation || '',
+            emergency_contact_address: d.emergency_contact_address || '',
+            emergency_contact_phone: d.emergency_contact_phone || '',
+            responsible_name: d.responsible_name || '',
+            responsible_cpf: d.responsible_cpf || '',
+            responsible_phone: d.responsible_phone || '',
+            financial_responsible_name: d.financial_responsible_name || '',
+            financial_responsible_email: d.financial_responsible_email || '',
+            financial_responsible_cpf: d.financial_responsible_cpf || '',
+            financial_responsible_relation: d.financial_responsible_relation || '',
+            financial_responsible_address: d.financial_responsible_address || '',
+            financial_responsible_phone: d.financial_responsible_phone || '',
+            health_info: d.health_info || '',
+            observations: d.observations || '',
             payment_due_day: dayVal,
           });
-          if (data.submitted_at) setSubmitted(true);
+          if (d.submitted_at) setSubmitted(true);
         }
         setLoading(false);
       });
   }, [portalAccount]);
 
-  const set = (field: keyof IntakeForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const set = (field: keyof IntakeForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
 
   const handleSave = async (submit = false) => {
@@ -102,15 +163,19 @@ export default function PortalIntakeForm() {
         .upsert(payload, { onConflict: 'patient_id' });
       if (error) throw error;
 
-      // On submit: sync ALL key fields back to the patient record
       if (submit) {
         const patientUpdate: Record<string, any> = {};
         if (form.phone) patientUpdate.phone = form.phone;
+        if (form.whatsapp) patientUpdate.whatsapp = form.whatsapp;
+        if (form.email) patientUpdate.email = form.email;
         if (form.cpf) patientUpdate.cpf = form.cpf;
         if (form.birthdate) patientUpdate.birthdate = form.birthdate;
         if (form.responsible_name) patientUpdate.responsible_name = form.responsible_name;
         if (form.responsible_cpf) patientUpdate.responsible_cpf = form.responsible_cpf;
         if (form.responsible_phone) patientUpdate.responsible_whatsapp = form.responsible_phone;
+        if (form.financial_responsible_name) patientUpdate.financial_responsible_name = form.financial_responsible_name;
+        if (form.financial_responsible_cpf) patientUpdate.financial_responsible_cpf = form.financial_responsible_cpf;
+        if (form.financial_responsible_phone) patientUpdate.financial_responsible_whatsapp = form.financial_responsible_phone;
         if (form.observations) patientUpdate.observations = form.observations;
         if (paymentDueDay) patientUpdate.payment_due_day = paymentDueDay;
 
@@ -156,66 +221,128 @@ export default function PortalIntakeForm() {
           </div>
         )}
 
-        {/* Personal data */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Dados Pessoais</h2>
+        {/* Dados Pessoais */}
+        <SectionCard title="Dados Pessoais">
           <div className="grid grid-cols-1 gap-3">
-            <div>
-              <Label className="text-xs">Nome completo</Label>
-              <Input value={form.full_name} onChange={set('full_name')} placeholder="Seu nome completo" className="mt-1" />
-            </div>
+            <Field label="Nome completo *">
+              <Input value={form.full_name} onChange={set('full_name')} placeholder="Seu nome completo" />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">CPF</Label>
-                <Input value={form.cpf} onChange={set('cpf')} placeholder="000.000.000-00" className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs">Data de nascimento</Label>
-                <Input type="date" value={form.birthdate} onChange={set('birthdate')} className="mt-1" />
-              </div>
+              <Field label="CPF">
+                <Input value={form.cpf} onChange={set('cpf')} placeholder="000.000.000-00" />
+              </Field>
+              <Field label="Data de nascimento">
+                <Input type="date" value={form.birthdate} onChange={set('birthdate')} />
+              </Field>
             </div>
+            <Field label="Sexo">
+              <div className="grid grid-cols-2 gap-2">
+                {GENDER_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, gender: opt.value }))}
+                    className={cn(
+                      'rounded-xl border py-2 text-xs font-medium transition-colors',
+                      form.gender === opt.value
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted/50 border-border text-foreground hover:bg-muted'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </Field>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Telefone</Label>
-                <Input value={form.phone} onChange={set('phone')} placeholder="(00) 00000-0000" className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs">Contato de emergência</Label>
-                <Input value={form.emergency_contact} onChange={set('emergency_contact')} placeholder="Nome e telefone" className="mt-1" />
-              </div>
+              <Field label="Telefone">
+                <Input value={form.phone} onChange={set('phone')} placeholder="(00) 00000-0000" />
+              </Field>
+              <Field label="WhatsApp">
+                <Input value={form.whatsapp} onChange={set('whatsapp')} placeholder="(00) 00000-0000" />
+              </Field>
             </div>
-            <div>
-              <Label className="text-xs">Endereço</Label>
-              <Input value={form.address} onChange={set('address')} placeholder="Rua, número, cidade" className="mt-1" />
+            <Field label="E-mail">
+              <Input type="email" value={form.email} onChange={set('email')} placeholder="seu@email.com" />
+            </Field>
+            <Field label="Endereço">
+              <Input value={form.address} onChange={set('address')} placeholder="Rua, número, cidade" />
+            </Field>
+            <Field label="Como conheceu o profissional?">
+              <Input value={form.how_found} onChange={set('how_found')} placeholder="Ex: Instagram, Indicação, Google..." />
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* Contato de Emergência */}
+        <SectionCard title="Contato de Emergência">
+          <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Nome">
+                <Input value={form.emergency_contact_name} onChange={set('emergency_contact_name')} placeholder="Nome completo" />
+              </Field>
+              <Field label="Parentesco">
+                <Input value={form.emergency_contact_relation} onChange={set('emergency_contact_relation')} placeholder="Ex: Pai, Mãe, Cônjuge" />
+              </Field>
+            </div>
+            <Field label="Telefone">
+              <Input value={form.emergency_contact_phone} onChange={set('emergency_contact_phone')} placeholder="(00) 00000-0000" />
+            </Field>
+            <Field label="Endereço">
+              <Input value={form.emergency_contact_address} onChange={set('emergency_contact_address')} placeholder="Endereço do contato" />
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* Responsável (menor de idade) */}
+        <SectionCard title="Responsável (se menor de idade)">
+          <div className="grid grid-cols-1 gap-3">
+            <Field label="Nome do responsável">
+              <Input value={form.responsible_name} onChange={set('responsible_name')} placeholder="Nome completo" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="CPF do responsável">
+                <Input value={form.responsible_cpf} onChange={set('responsible_cpf')} placeholder="000.000.000-00" />
+              </Field>
+              <Field label="Telefone do responsável">
+                <Input value={form.responsible_phone} onChange={set('responsible_phone')} placeholder="(00) 00000-0000" />
+              </Field>
             </div>
           </div>
-        </div>
+        </SectionCard>
 
-        {/* Responsible */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Responsável (se menor de idade)</h2>
+        {/* Responsável Financeiro */}
+        <SectionCard title="Responsável Financeiro">
+          <p className="text-xs text-muted-foreground -mt-1">Deixe em branco se for o próprio paciente</p>
           <div className="grid grid-cols-1 gap-3">
-            <div>
-              <Label className="text-xs">Nome do responsável</Label>
-              <Input value={form.responsible_name} onChange={set('responsible_name')} placeholder="Nome completo" className="mt-1" />
-            </div>
+            <Field label="Nome">
+              <Input value={form.financial_responsible_name} onChange={set('financial_responsible_name')} placeholder="Nome completo" />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">CPF do responsável</Label>
-                <Input value={form.responsible_cpf} onChange={set('responsible_cpf')} placeholder="000.000.000-00" className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs">Telefone do responsável</Label>
-                <Input value={form.responsible_phone} onChange={set('responsible_phone')} placeholder="(00) 00000-0000" className="mt-1" />
-              </div>
+              <Field label="CPF">
+                <Input value={form.financial_responsible_cpf} onChange={set('financial_responsible_cpf')} placeholder="000.000.000-00" />
+              </Field>
+              <Field label="Parentesco">
+                <Input value={form.financial_responsible_relation} onChange={set('financial_responsible_relation')} placeholder="Ex: Pai, Mãe" />
+              </Field>
+            </div>
+            <Field label="E-mail">
+              <Input type="email" value={form.financial_responsible_email} onChange={set('financial_responsible_email')} placeholder="email@exemplo.com" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Telefone/WhatsApp">
+                <Input value={form.financial_responsible_phone} onChange={set('financial_responsible_phone')} placeholder="(00) 00000-0000" />
+              </Field>
+              <Field label="Endereço">
+                <Input value={form.financial_responsible_address} onChange={set('financial_responsible_address')} placeholder="Rua, número, cidade" />
+              </Field>
             </div>
           </div>
-        </div>
+        </SectionCard>
 
-        {/* Payment due day */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Melhor dia para pagamento</h2>
-          <p className="text-xs text-muted-foreground">Informe o dia do mês que prefere realizar o pagamento</p>
+        {/* Melhor dia para pagamento */}
+        <SectionCard title="Melhor dia para pagamento">
+          <p className="text-xs text-muted-foreground -mt-1">Informe o dia do mês que prefere realizar o pagamento</p>
           <div className="grid grid-cols-4 gap-2">
             {PAYMENT_DAY_OPTIONS.map(opt => (
               <button
@@ -246,33 +373,21 @@ export default function PortalIntakeForm() {
             Outro dia
           </button>
           {customDay && (
-            <div>
-              <Label className="text-xs">Dia personalizado (1-31)</Label>
-              <Input
-                type="number"
-                min={1}
-                max={31}
-                value={form.payment_due_day}
-                onChange={set('payment_due_day')}
-                placeholder="Ex: 25"
-                className="mt-1"
-              />
-            </div>
+            <Field label="Dia personalizado (1-31)">
+              <Input type="number" min={1} max={31} value={form.payment_due_day} onChange={set('payment_due_day')} placeholder="Ex: 25" />
+            </Field>
           )}
-        </div>
+        </SectionCard>
 
-        {/* Health info */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Informações de Saúde</h2>
-          <div>
-            <Label className="text-xs">Informações médicas relevantes (diagnósticos, medicamentos, alergias)</Label>
-            <Textarea value={form.health_info} onChange={set('health_info')} placeholder="Ex: uso de medicação, diagnósticos anteriores..." className="mt-1 resize-none" rows={3} />
-          </div>
-          <div>
-            <Label className="text-xs">Observações adicionais</Label>
-            <Textarea value={form.observations} onChange={set('observations')} placeholder="Algo mais que queira compartilhar com seu terapeuta..." className="mt-1 resize-none" rows={3} />
-          </div>
-        </div>
+        {/* Informações de Saúde */}
+        <SectionCard title="Informações de Saúde">
+          <Field label="Informações médicas relevantes (diagnósticos, medicamentos, alergias)">
+            <Textarea value={form.health_info} onChange={set('health_info')} placeholder="Ex: uso de medicação, diagnósticos anteriores..." className="resize-none" rows={3} />
+          </Field>
+          <Field label="Observações adicionais">
+            <Textarea value={form.observations} onChange={set('observations')} placeholder="Algo mais que queira compartilhar com seu terapeuta..." className="resize-none" rows={3} />
+          </Field>
+        </SectionCard>
 
         {/* Actions */}
         <div className="flex gap-2 pb-4">
