@@ -182,9 +182,19 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     setLoadingTemplates(false);
   };
 
+  const loadStamps = async () => {
+    if (!user) return;
+    const { data } = await supabase.from('stamps').select('id,name,clinical_area,stamp_image,signature_image').eq('user_id', user.id);
+    const list = (data || []) as StampOption[];
+    setStamps(list);
+    const def = list.find(s => (s as any).is_default);
+    if (def) setSelectedStampId(def.id);
+  };
+
   useEffect(() => {
     loadContracts();
     loadTemplates();
+    loadStamps();
   }, [patientId, user]);
 
   // ─── Template library actions ─────────────────────────────────────────────
