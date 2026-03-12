@@ -175,7 +175,56 @@ export default function PortalFinancial() {
               </div>
             )}
 
-            {/* Payment method card */}
+            {/* PIX / Payment data card — from clinic settings */}
+            {clinicPayment?.show_payment_in_portal && (clinicPayment.payment_pix_key || clinicPayment.payment_bank_details) && (
+              <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-teal-50/60 overflow-hidden shadow-sm dark:from-emerald-950/30 dark:to-teal-950/20 dark:border-emerald-800/40">
+                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                    <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Como Pagar</p>
+                    <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70">Dados de pagamento do seu terapeuta</p>
+                  </div>
+                </div>
+                <div className="px-4 pb-4 space-y-3">
+                  {clinicPayment.payment_pix_name && (
+                    <div>
+                      <p className="text-[10px] font-medium text-emerald-700/70 dark:text-emerald-400/70 uppercase tracking-wide">Titular</p>
+                      <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">{clinicPayment.payment_pix_name}</p>
+                    </div>
+                  )}
+                  {clinicPayment.payment_pix_key && (
+                    <div>
+                      <p className="text-[10px] font-medium text-emerald-700/70 dark:text-emerald-400/70 uppercase tracking-wide">Chave PIX</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 bg-white/70 dark:bg-emerald-950/40 rounded-xl px-3 py-2 border border-emerald-200/60 dark:border-emerald-800/40">
+                          <p className="text-sm font-mono font-semibold text-emerald-900 dark:text-emerald-200 break-all">{clinicPayment.payment_pix_key}</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          className="h-9 w-9 shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(clinicPayment.payment_pix_key!);
+                            toast.success('Chave PIX copiada! ✅');
+                          }}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {clinicPayment.payment_bank_details && (
+                    <div className="pt-1 border-t border-emerald-200/60 dark:border-emerald-800/40">
+                      <p className="text-[10px] font-medium text-emerald-700/70 dark:text-emerald-400/70 uppercase tracking-wide mb-1">Outros dados bancários</p>
+                      <p className="text-xs text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap leading-relaxed">{clinicPayment.payment_bank_details}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Payment method card (legacy - from patient payment_info) */}
             {paymentInfo && (
               <div className="bg-card rounded-2xl border border-border overflow-hidden">
                 <button
