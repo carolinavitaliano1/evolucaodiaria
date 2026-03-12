@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, MessageSquare, FileText, LogOut, Bell, DollarSign, BookOpen, FilePenLine } from 'lucide-react';
+import { Home, MessageSquare, FileText, LogOut, Bell, DollarSign, FolderOpen } from 'lucide-react';
 import { usePortal } from '@/contexts/PortalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/portal/avisos', icon: Bell, label: 'Avisos' },
   { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro' },
   { to: '/portal/ficha', icon: FileText, label: 'Ficha' },
+  { to: '/portal/documentos', icon: FolderOpen, label: 'Docs' },
 ];
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
