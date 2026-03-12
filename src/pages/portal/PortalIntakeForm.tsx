@@ -165,6 +165,7 @@ export default function PortalIntakeForm() {
 
       if (submit) {
         const patientUpdate: Record<string, any> = {};
+        if (form.full_name) patientUpdate.name = form.full_name;
         if (form.phone) patientUpdate.phone = form.phone;
         if (form.whatsapp) patientUpdate.whatsapp = form.whatsapp;
         if (form.email) patientUpdate.email = form.email;
