@@ -52,6 +52,7 @@ export function AppSidebar() {
   const { theme } = useTheme();
   const { unreadCount } = useUnreadNotices();
   const { unreadCount: supportUnread } = useUnreadSupportCount();
+  const { count: pendingCount } = usePendingEnrollments();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
 
