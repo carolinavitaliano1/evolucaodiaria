@@ -209,7 +209,7 @@ export default function ClinicDetail() {
     if (!id || !user) return;
     supabase
       .from('patients')
-      .select('id, name, birthdate, responsible_name, responsible_whatsapp, whatsapp, email, observations, created_at')
+      .select('id, name, birthdate, cpf, phone, whatsapp, email, responsible_name, responsible_cpf, responsible_whatsapp, responsible_email, responsible_is_financial, financial_responsible_name, financial_responsible_cpf, financial_responsible_whatsapp, professionals, diagnosis, observations, created_at')
       .eq('clinic_id', id)
       .eq('status', 'pendente')
       .order('created_at', { ascending: false })
