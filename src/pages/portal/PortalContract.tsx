@@ -16,6 +16,8 @@ interface Contract {
   template_html: string;
   signed_at: string | null;
   signature_data: string | null;
+  therapist_signature_data: string | null;
+  therapist_signed_at: string | null;
   status: string;
 }
 
