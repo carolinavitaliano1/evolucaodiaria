@@ -43,6 +43,8 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportingPatientId, setExportingPatientId] = useState<string | null>(null);
   const [filterUserId, setFilterUserId] = useState<string>('all');
+  const [feedbackItem, setFeedbackItem] = useState<{ evolution: any; patient: any } | null>(null);
+  const [feedbackDayOpen, setFeedbackDayOpen] = useState(false);
 
   // Status-only: can see if evolution exists but not read its content
   const canViewContent = !isOrgMember || isOwner || hasPermission(permissions, 'evolutions.view');
