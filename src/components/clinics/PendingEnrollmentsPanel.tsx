@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -28,8 +28,16 @@ interface PendingPatient {
   financial_responsible_name: string | null;
   financial_responsible_cpf: string | null;
   financial_responsible_whatsapp: string | null;
+  professionals: string | null; // parentesco
+  diagnosis: string | null;
   observations: string | null;
   created_at: string;
+}
+
+interface ClinicPackage {
+  id: string;
+  name: string;
+  price: number;
 }
 
 interface Props {
@@ -42,15 +50,15 @@ interface FinalizeForm {
   weekdays: string[];
   scheduleTime: string;
   paymentValue: string;
-  paymentType: 'sessao' | 'fixo';
-  contractStartDate: string;
+  paymentType: string; // 'sessao' | 'fixo' | package_id
+  packageId: string | null;
 }
 
 const WEEKDAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated }: Props) {
   const { user } = useAuth();
-  const { updatePatient } = useApp();
+  const { updatePatient, clinicPackages } = useApp();
   const [selectedPatient, setSelectedPatient] = useState<PendingPatient | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FinalizeForm>({
@@ -58,14 +66,17 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
     scheduleTime: '',
     paymentValue: '',
     paymentType: 'sessao',
-    contractStartDate: '',
+    packageId: null,
   });
+
+  // Packages for this clinic
+  const packages = clinicPackages.filter(p => p.clinicId === clinicId && p.isActive);
 
   if (pendingPatients.length === 0) return null;
 
   const openFinalize = (p: PendingPatient) => {
     setSelectedPatient(p);
-    setForm({ weekdays: [], scheduleTime: '', paymentValue: '', paymentType: 'sessao', contractStartDate: '' });
+    setForm({ weekdays: [], scheduleTime: '', paymentValue: '', paymentType: 'sessao', packageId: null });
   };
 
   const toggleWeekday = (day: string) => {
@@ -73,6 +84,21 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
       ...f,
       weekdays: f.weekdays.includes(day) ? f.weekdays.filter(d => d !== day) : [...f.weekdays, day],
     }));
+  };
+
+  const handlePaymentTypeChange = (value: string) => {
+    if (value === 'sessao' || value === 'fixo') {
+      setForm(f => ({ ...f, paymentType: value, packageId: null, paymentValue: '' }));
+    } else {
+      // it's a package id
+      const pkg = packages.find(p => p.id === value);
+      setForm(f => ({
+        ...f,
+        paymentType: 'fixo',
+        packageId: value,
+        paymentValue: pkg ? String(pkg.price) : '',
+      }));
+    }
   };
 
   const handleActivate = async () => {
@@ -85,7 +111,7 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
         schedule_time: form.scheduleTime || null,
         payment_value: form.paymentValue ? parseFloat(form.paymentValue) : null,
         payment_type: form.paymentType,
-        contract_start_date: form.contractStartDate || null,
+        package_id: form.packageId || null,
       };
 
       const { error } = await supabase
@@ -112,6 +138,9 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
     toast.success('Ficha removida.');
     onActivated(patientId);
   };
+
+  // Determine the selected dropdown value for the payment type control
+  const paymentSelectValue = form.packageId || form.paymentType;
 
   return (
     <>
@@ -240,6 +269,12 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
                         <span className="text-muted-foreground text-xs">Nome</span>
                         <p className="font-medium text-foreground">{selectedPatient.responsible_name}</p>
                       </div>
+                      {selectedPatient.professionals && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">Parentesco</span>
+                          <p className="font-medium text-foreground">{selectedPatient.professionals}</p>
+                        </div>
+                      )}
                       {selectedPatient.responsible_cpf && (
                         <div>
                           <span className="text-muted-foreground text-xs">CPF</span>
@@ -295,6 +330,15 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
                   )}
                 </div>
 
+                {/* Diagnosis */}
+                {selectedPatient.diagnosis && (
+                  <div>
+                    <p className="text-xs font-medium text-primary mb-1">🩺 Diagnóstico</p>
+                    <p className="text-sm text-foreground leading-snug">{selectedPatient.diagnosis}</p>
+                  </div>
+                )}
+
+                {/* Observations */}
                 {selectedPatient.observations && (
                   <div>
                     <p className="text-xs font-medium text-primary mb-1">📝 Motivo da Consulta</p>
@@ -341,8 +385,31 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="paymentValue" className="flex items-center gap-1.5">
-                      <DollarSign className="w-3.5 h-3.5" />Valor da Sessão
+                    <Label>
+                      <DollarSign className="w-3.5 h-3.5 inline mr-1" />
+                      Tipo de Cobrança
+                    </Label>
+                    <select
+                      className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={paymentSelectValue}
+                      onChange={(e) => handlePaymentTypeChange(e.target.value)}
+                    >
+                      <option value="sessao">Por Sessão</option>
+                      <option value="fixo">Fixo Mensal</option>
+                      {packages.length > 0 && (
+                        <optgroup label="Pacotes">
+                          {packages.map(pkg => (
+                            <option key={pkg.id} value={pkg.id}>
+                              {pkg.name} — R$ {pkg.price.toFixed(2).replace('.', ',')}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="paymentValue">
+                      Valor (R$)
                     </Label>
                     <Input
                       id="paymentValue"
@@ -354,27 +421,6 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
                       placeholder="0,00"
                     />
                   </div>
-                  <div>
-                    <Label>Tipo de Cobrança</Label>
-                    <select
-                      className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={form.paymentType}
-                      onChange={(e) => setForm(f => ({ ...f, paymentType: e.target.value as 'sessao' | 'fixo' }))}
-                    >
-                      <option value="sessao">Por Sessão</option>
-                      <option value="fixo">Fixo Mensal</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="contractStartDate">Data de Início do Contrato</Label>
-                  <Input
-                    id="contractStartDate"
-                    type="date"
-                    value={form.contractStartDate}
-                    onChange={(e) => setForm(f => ({ ...f, contractStartDate: e.target.value }))}
-                  />
                 </div>
               </div>
 
