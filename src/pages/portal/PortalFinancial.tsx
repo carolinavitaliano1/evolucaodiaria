@@ -37,10 +37,18 @@ function getDueDateAlert(paymentDueDay: number | null): { type: 'today' | 'soon'
   return { type: null, daysLeft: diff };
 }
 
+interface ClinicPaymentData {
+  payment_pix_key: string | null;
+  payment_pix_name: string | null;
+  payment_bank_details: string | null;
+  show_payment_in_portal: boolean;
+}
+
 export default function PortalFinancial() {
   const { portalAccount, patient, sendMessage } = usePortal();
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
+  const [clinicPayment, setClinicPayment] = useState<ClinicPaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<string | null>(null);
   const [showReceiptUpload, setShowReceiptUpload] = useState(false);
@@ -61,12 +69,21 @@ export default function PortalFinancial() {
         .limit(12),
       supabase
         .from('patients')
-        .select('payment_info')
+        .select('payment_info, clinic_id')
         .eq('id', portalAccount.patient_id)
         .single(),
-    ]).then(([{ data: recs }, { data: pat }]) => {
+    ]).then(async ([{ data: recs }, { data: pat }]) => {
       setRecords((recs || []) as PaymentRecord[]);
       setPaymentInfo((pat as any)?.payment_info || null);
+      // Load clinic payment data if clinic_id exists
+      if ((pat as any)?.clinic_id) {
+        const { data: clinicData } = await supabase
+          .from('clinics')
+          .select('payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
+          .eq('id', (pat as any).clinic_id)
+          .single();
+        if (clinicData) setClinicPayment(clinicData as ClinicPaymentData);
+      }
       setLoading(false);
     });
   }, [portalAccount]);
