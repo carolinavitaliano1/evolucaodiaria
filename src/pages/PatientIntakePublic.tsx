@@ -83,28 +83,37 @@ export default function PatientIntakePublic() {
 
       if (error) throw error;
 
-      // Also save to intake_forms table if patient has portal account
-      await supabase.from('patient_intake_forms').upsert({
-        patient_id: patient.id,
-        therapist_user_id: '00000000-0000-0000-0000-000000000000', // placeholder — will be updated by therapist
-        full_name: patient.name,
-        birthdate,
-        cpf: cpf || null,
-        phone: phone || null,
-        whatsapp: whatsapp || null,
-        email: email || null,
-        gender: gender || null,
-        address: address || null,
-        responsible_name: responsibleName || null,
-        responsible_phone: responsibleWhatsapp || null,
-        responsible_cpf: responsibleCpf || null,
-        financial_responsible_name: financialResponsibleName || null,
-        financial_responsible_phone: financialResponsibleWhatsapp || null,
-        financial_responsible_cpf: financialResponsibleCpf || null,
-        how_found: howFound || null,
-        health_info: observations || null,
-        submitted_at: new Date().toISOString(),
-      }, { onConflict: 'patient_id' }).maybeSingle();
+      // Also save to intake_forms table using the patient's therapist user_id
+      // We fetch the user_id from the patient record itself (set when therapist created the patient)
+      const { data: patientFull } = await supabase
+        .from('patients')
+        .select('user_id')
+        .eq('id', patient.id)
+        .single();
+
+      if (patientFull?.user_id) {
+        await supabase.from('patient_intake_forms').upsert({
+          patient_id: patient.id,
+          therapist_user_id: patientFull.user_id,
+          full_name: patient.name, // keep the therapist's registered name
+          birthdate,
+          cpf: cpf || null,
+          phone: phone || null,
+          whatsapp: whatsapp || null,
+          email: email || null,
+          gender: gender || null,
+          address: address || null,
+          responsible_name: responsibleName || null,
+          responsible_phone: responsibleWhatsapp || null,
+          responsible_cpf: responsibleCpf || null,
+          financial_responsible_name: financialResponsibleName || null,
+          financial_responsible_phone: financialResponsibleWhatsapp || null,
+          financial_responsible_cpf: financialResponsibleCpf || null,
+          how_found: howFound || null,
+          health_info: observations || null,
+          submitted_at: new Date().toISOString(),
+        }, { onConflict: 'patient_id' }).maybeSingle();
+      }
 
       setDone(true);
     } catch (err: any) {
