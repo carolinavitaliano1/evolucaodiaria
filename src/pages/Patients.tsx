@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock } from 'lucide-react';
+import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock, Link2, Send, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/contexts/AppContext';
@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import { useMyAssignedPatientIds } from '@/hooks/usePatientAssignments';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function calculateAge(birthdate: string | null | undefined): number | null {
   if (!birthdate) return null;
