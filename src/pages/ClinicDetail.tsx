@@ -1534,6 +1534,17 @@ export default function ClinicDetail() {
               )}
             </div>
 
+            {/* Pending Enrollments Panel */}
+            {id && (
+              <PendingEnrollmentsPanel
+                clinicId={id}
+                pendingPatients={pendingPatients}
+                onActivated={(patientId) => {
+                  setPendingPatients(prev => prev.filter(p => p.id !== patientId));
+                }}
+              />
+            )}
+
             {/* Search */}
             {clinicPatients.length > 0 && (
               <div className="relative mb-4">
