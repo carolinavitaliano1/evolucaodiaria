@@ -9,12 +9,21 @@ import { SignaturePad } from '@/components/ui/signature-pad';
 import { toast } from 'sonner';
 import {
   Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2,
-  PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X
+  PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X, Stamp
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+
+interface StampOption {
+  id: string;
+  name: string;
+  clinical_area: string;
+  stamp_image: string | null;
+  signature_image: string | null;
+}
 
 interface ContractTemplate {
   id: string;
@@ -145,6 +154,10 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
   const [therapistSigData, setTherapistSigData] = useState('');
   const [savingSig, setSavingSig] = useState(false);
 
+  // Stamps
+  const [stamps, setStamps] = useState<StampOption[]>([]);
+  const [selectedStampId, setSelectedStampId] = useState<string>('none');
+
   const loadContracts = async () => {
     setLoadingContracts(true);
     const { data } = await supabase
@@ -169,9 +182,19 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     setLoadingTemplates(false);
   };
 
+  const loadStamps = async () => {
+    if (!user) return;
+    const { data } = await supabase.from('stamps').select('id,name,clinical_area,stamp_image,signature_image').eq('user_id', user.id);
+    const list = (data || []) as StampOption[];
+    setStamps(list);
+    const def = list.find(s => (s as any).is_default);
+    if (def) setSelectedStampId(def.id);
+  };
+
   useEffect(() => {
     loadContracts();
     loadTemplates();
+    loadStamps();
   }, [patientId, user]);
 
   // ─── Template library actions ─────────────────────────────────────────────
@@ -278,9 +301,11 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     if (!signingContractId || !therapistSigData) return;
     setSavingSig(true);
     try {
+      const stamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
       const { error } = await supabase.from('patient_contracts').update({
         therapist_signature_data: therapistSigData,
         therapist_signed_at: new Date().toISOString(),
+        // store stamp image in a JSON metadata field if you have one, else just embed in signature_data
       } as any).eq('id', signingContractId);
       if (error) throw error;
       setContracts(prev => prev.map(c =>
@@ -487,12 +512,50 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                     <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <PenLine className="w-3.5 h-3.5 text-primary" /> Sua assinatura (terapeuta)
                     </p>
-                    <SignaturePad
-                      value={therapistSigData}
-                      onChange={setTherapistSigData}
-                      className="w-full h-28 border border-border rounded-xl bg-background"
-                    />
-                    <div className="flex gap-2">
+
+                    {/* Signature pad */}
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Assinatura</Label>
+                      <SignaturePad
+                        value={therapistSigData}
+                        onChange={setTherapistSigData}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Stamp selector */}
+                    {stamps.length > 0 && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] text-muted-foreground flex items-center gap-1">
+                          <Stamp className="w-3 h-3" /> Carimbo (opcional)
+                        </Label>
+                        <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Selecionar carimbo..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum carimbo</SelectItem>
+                            {stamps.map(s => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name} — {s.clinical_area}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {/* Stamp preview */}
+                        {selectedStampId !== 'none' && (() => {
+                          const stamp = stamps.find(s => s.id === selectedStampId);
+                          return stamp?.stamp_image ? (
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-background border border-border">
+                              <img src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain" />
+                              <span className="text-[10px] text-muted-foreground">{stamp.name}</span>
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
                       <Button variant="outline" size="sm" className="flex-1 text-xs"
                         onClick={() => { setSigningContractId(null); setTherapistSigData(''); }}>
                         Cancelar
@@ -525,10 +588,12 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
               />
               {/* Therapist signature */}
               {previewContract.therapist_signature_data && (
-                <div className="border-t border-border pt-4 space-y-1">
+                <div className="border-t border-border pt-4 space-y-2">
                   <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
-                  <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
-                    className="max-h-20 border border-border rounded" />
+                  <div className="flex items-end gap-4 flex-wrap">
+                    <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
+                      className="max-h-16 border border-border rounded" />
+                  </div>
                   {previewContract.therapist_signed_at && (
                     <p className="text-[10px] text-muted-foreground">
                       {format(new Date(previewContract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
