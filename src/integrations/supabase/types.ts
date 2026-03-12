@@ -819,9 +819,22 @@ export type Database = {
           birthdate: string | null
           cpf: string | null
           created_at: string
+          email: string | null
           emergency_contact: string | null
+          emergency_contact_address: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relation: string | null
+          financial_responsible_address: string | null
+          financial_responsible_cpf: string | null
+          financial_responsible_email: string | null
+          financial_responsible_name: string | null
+          financial_responsible_phone: string | null
+          financial_responsible_relation: string | null
           full_name: string | null
+          gender: string | null
           health_info: string | null
+          how_found: string | null
           id: string
           observations: string | null
           patient_id: string
@@ -833,15 +846,29 @@ export type Database = {
           submitted_at: string | null
           therapist_user_id: string
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           address?: string | null
           birthdate?: string | null
           cpf?: string | null
           created_at?: string
+          email?: string | null
           emergency_contact?: string | null
+          emergency_contact_address?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relation?: string | null
+          financial_responsible_address?: string | null
+          financial_responsible_cpf?: string | null
+          financial_responsible_email?: string | null
+          financial_responsible_name?: string | null
+          financial_responsible_phone?: string | null
+          financial_responsible_relation?: string | null
           full_name?: string | null
+          gender?: string | null
           health_info?: string | null
+          how_found?: string | null
           id?: string
           observations?: string | null
           patient_id: string
@@ -853,15 +880,29 @@ export type Database = {
           submitted_at?: string | null
           therapist_user_id: string
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           address?: string | null
           birthdate?: string | null
           cpf?: string | null
           created_at?: string
+          email?: string | null
           emergency_contact?: string | null
+          emergency_contact_address?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relation?: string | null
+          financial_responsible_address?: string | null
+          financial_responsible_cpf?: string | null
+          financial_responsible_email?: string | null
+          financial_responsible_name?: string | null
+          financial_responsible_phone?: string | null
+          financial_responsible_relation?: string | null
           full_name?: string | null
+          gender?: string | null
           health_info?: string | null
+          how_found?: string | null
           id?: string
           observations?: string | null
           patient_id?: string
@@ -873,6 +914,7 @@ export type Database = {
           submitted_at?: string | null
           therapist_user_id?: string
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
