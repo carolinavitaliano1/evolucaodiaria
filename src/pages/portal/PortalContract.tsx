@@ -191,14 +191,35 @@ export default function PortalContract() {
               />
             </div>
 
-            {/* Signature section */}
-            {contract.status === 'signed' && contract.signature_data && (
-              <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Assinatura de <strong>{signerName}</strong>:</p>
-                  {signerCpf && <p className="text-xs text-muted-foreground">CPF: {signerCpf}</p>}
-                </div>
-                <img src={contract.signature_data} alt="Assinatura" className="max-h-20 border border-border rounded" />
+            {/* Signature section — both parties */}
+            {contract.status === 'signed' && (
+              <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+                {/* Therapist signature */}
+                {contract.therapist_signature_data && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
+                    <img src={contract.therapist_signature_data} alt="Assinatura do terapeuta"
+                      className="max-h-16 border border-border rounded" />
+                    {contract.therapist_signed_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {/* Patient signature */}
+                {contract.signature_data && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">Assinatura de <strong>{signerName}</strong>:</p>
+                    {signerCpf && <p className="text-xs text-muted-foreground">CPF: {signerCpf}</p>}
+                    <img src={contract.signature_data} alt="Assinatura" className="max-h-16 border border-border rounded" />
+                    {contract.signed_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(contract.signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <Button
                   className="w-full gap-2"
                   variant="outline"
