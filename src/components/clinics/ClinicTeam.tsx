@@ -379,6 +379,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           role: inviteRole,
           role_label: inviteRoleLabel || null,
           permissions: permissionsMap,
+          remuneration_type: inviteRemunerationType,
+          remuneration_value: inviteRemunerationValue ? parseFloat(inviteRemunerationValue) : null,
           patient_assignments: Object.entries(selectedPatients).map(([patient_id, schedule_time]) => ({
             patient_id, schedule_time,
           })),
@@ -388,6 +390,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       toast.success(`Convite enviado para ${inviteEmail}`);
       setInviteEmail('');
       setInviteRoleLabel('');
+      setInviteRemunerationType('definir_depois');
+      setInviteRemunerationValue('');
       setSelectedPatients({});
       setInvitePermissions([...DEFAULT_THERAPIST_PERMISSIONS]);
       setInvitePreset('terapeuta');
