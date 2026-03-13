@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
@@ -144,6 +145,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'professional'>('professional');
   const [inviteRoleLabel, setInviteRoleLabel] = useState('');
+  const [inviteRemunerationType, setInviteRemunerationType] = useState<string>('definir_depois');
+  const [inviteRemunerationValue, setInviteRemunerationValue] = useState<string>('');
   const [selectedPatients, setSelectedPatients] = useState<Record<string, string>>({});
   const [invitePermissions, setInvitePermissions] = useState<PermissionKey[]>([...DEFAULT_THERAPIST_PERMISSIONS]);
   const [inviting, setInviting] = useState(false);
@@ -154,6 +157,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [editPatients, setEditPatients] = useState<Record<string, string>>({});
   const [editPermissions, setEditPermissions] = useState<PermissionKey[]>([]);
   const [editRoleLabel, setEditRoleLabel] = useState('');
+  const [editRemunerationType, setEditRemunerationType] = useState<string>('definir_depois');
+  const [editRemunerationValue, setEditRemunerationValue] = useState<string>('');
   const [savingAssign, setSavingAssign] = useState(false);
 
   // Remove confirm
@@ -375,6 +380,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           role: inviteRole,
           role_label: inviteRoleLabel || null,
           permissions: permissionsMap,
+          remuneration_type: inviteRemunerationType,
+          remuneration_value: inviteRemunerationValue ? parseFloat(inviteRemunerationValue) : null,
           patient_assignments: Object.entries(selectedPatients).map(([patient_id, schedule_time]) => ({
             patient_id, schedule_time,
           })),
@@ -384,6 +391,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       toast.success(`Convite enviado para ${inviteEmail}`);
       setInviteEmail('');
       setInviteRoleLabel('');
+      setInviteRemunerationType('definir_depois');
+      setInviteRemunerationValue('');
       setSelectedPatients({});
       setInvitePermissions([...DEFAULT_THERAPIST_PERMISSIONS]);
       setInvitePreset('terapeuta');
@@ -453,8 +462,10 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       const { error: updateError } = await supabase.from('organization_members').update({
         permissions: permissionsMap,
         role_label: editRoleLabel || null,
-        role: manageMember.role, // persist the role selected via preset cards
-      }).eq('id', manageMember.id);
+        role: manageMember.role,
+        remuneration_type: editRemunerationType,
+        remuneration_value: editRemunerationValue ? parseFloat(editRemunerationValue) : null,
+      } as any).eq('id', manageMember.id);
       if (updateError) throw updateError;
 
       await supabase.from('therapist_patient_assignments').delete().eq('member_id', manageMember.id);
@@ -489,6 +500,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         : [...DEFAULT_THERAPIST_PERMISSIONS]
     );
     setEditRoleLabel(member.role_label || '');
+    setEditRemunerationType((member as any).remuneration_type || 'definir_depois');
+    setEditRemunerationValue((member as any).remuneration_value?.toString() || '');
     setManageMember(member);
   }
 
@@ -1052,6 +1065,46 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         className="h-8 text-sm"
                       />
                     </div>
+                  </div>
+
+                  {/* Remuneration */}
+                  <div className="space-y-3 p-3 rounded-lg bg-muted/30 border border-border">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Banknote className="w-3.5 h-3.5" />
+                      Remuneração
+                    </p>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Modelo de pagamento</Label>
+                      <Select value={editRemunerationType} onValueChange={setEditRemunerationType}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="por_sessao">Por Sessão</SelectItem>
+                          <SelectItem value="fixo_mensal">Fixo Mensal</SelectItem>
+                          <SelectItem value="fixo_dia">Fixo por Dia</SelectItem>
+                          <SelectItem value="definir_depois">Definir Depois</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {editRemunerationType !== 'definir_depois' && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          {editRemunerationType === 'por_sessao' ? 'Valor por sessão (R$)' :
+                           editRemunerationType === 'fixo_mensal' ? 'Valor mensal fixo (R$)' :
+                           'Valor por dia trabalhado (R$)'}
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0,00"
+                          value={editRemunerationValue}
+                          onChange={e => setEditRemunerationValue(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Access toggle */}

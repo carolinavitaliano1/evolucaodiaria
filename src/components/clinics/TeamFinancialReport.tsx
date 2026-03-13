@@ -1,17 +1,15 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useClinicOrg, OrgMemberProfile } from '@/hooks/useClinicOrg';
-import { supabase } from '@/integrations/supabase/client';
+import { useClinicOrg, OrgMemberProfile, calcMemberRemuneration } from '@/hooks/useClinicOrg';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, Users, ChevronLeft,
-  ChevronRight, Crown, Shield, User, Download, Loader2
+  ChevronRight, Crown, Shield, User, Download, Loader2, AlertCircle
 } from 'lucide-react';
-import { format, subMonths, addMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -53,43 +51,17 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
     });
   }, [evolutions, clinicPatients, selectedMonth, selectedYear]);
 
-  const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
-
-  const calculatePatientRevenue = (patientId: string, evos: typeof monthlyEvolutions) => {
-    const patient = clinicPatients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue) return 0;
-    if (patient.paymentType === 'fixo') return patient.paymentValue;
-
-    const presentCount = evos.filter(e => e.patientId === patientId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')).length;
-    const paidAbsenceCount = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'falta_remunerada').length;
-    const feriadoRemCount = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'feriado_remunerado').length;
-    const regularAbsences = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'falta');
-
-    let paidRegularAbsences = 0;
-    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-
-    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
-  };
-
-  // Stats per member
+  // Stats per member using new remuneration logic
   const memberStats = useMemo(() => {
     return members.map(member => {
       const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-
-      // Revenue = sum of patient revenues for evos authored by this member
-      const patientIdsInEvos = [...new Set(memberEvos.map(e => e.patientId))];
-      const revenue = patientIdsInEvos.reduce((sum, patientId) => {
-        const patientEvos = memberEvos.filter(e => e.patientId === patientId);
-        return sum + calculatePatientRevenue(patientId, patientEvos);
-      }, 0);
-
-      return { member, sessions, absences, paidAbsences, revenue, evos: memberEvos };
+      const { amount: revenue, label: remunerationLabel, isUndefined } = calcMemberRemuneration(member, memberEvos);
+      return { member, sessions, absences, paidAbsences, revenue, remunerationLabel, isUndefined, evos: memberEvos };
     });
-  }, [members, monthlyEvolutions, clinicPatients]);
+  }, [members, monthlyEvolutions]);
 
   // Filtered evolutions for consolidated view
   const filteredEvolutions = useMemo(() => {
@@ -101,30 +73,32 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
   const totalAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const totalPaidAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
 
-  const patientIdsInFilter = [...new Set(filteredEvolutions.map(e => e.patientId))];
-  const totalRevenue = patientIdsInFilter.reduce((sum, patientId) => {
-    const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-    return sum + calculatePatientRevenue(patientId, patientEvos);
-  }, 0);
+  const totalRevenue = useMemo(() => {
+    if (filterMemberId === 'all') {
+      return memberStats.reduce((s, m) => s + m.revenue, 0);
+    }
+    const member = members.find(m => m.userId === filterMemberId);
+    if (!member) return 0;
+    return calcMemberRemuneration(member, filteredEvolutions).amount;
+  }, [memberStats, filterMemberId, members, filteredEvolutions]);
 
   const patientBreakdown = useMemo(() => {
-    return patientIdsInFilter
+    const patientIds = [...new Set(filteredEvolutions.map(e => e.patientId))];
+    return patientIds
       .map(patientId => {
         const patient = clinicPatients.find(p => p.id === patientId);
         if (!patient) return null;
         const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-        const revenue = calculatePatientRevenue(patientId, patientEvos);
         const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
         const absences = patientEvos.filter(e => e.attendanceStatus === 'falta').length;
         const paidAbsences = patientEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-        // Author of the first evo (for org view)
         const authorId = (patientEvos[0] as any)?.user_id;
         const author = members.find(m => m.userId === authorId);
-        return { patient, revenue, sessions, absences, paidAbsences, author };
+        return { patient, sessions, absences, paidAbsences, author };
       })
-      .filter((p): p is NonNullable<typeof p> => p !== null && (p.revenue > 0 || p.sessions > 0))
-      .sort((a, b) => b.revenue - a.revenue);
-  }, [patientIdsInFilter, filteredEvolutions, clinicPatients, members]);
+      .filter((p): p is NonNullable<typeof p> => p !== null && (p.sessions > 0 || p.absences > 0))
+      .sort((a, b) => b.sessions - a.sessions);
+  }, [filteredEvolutions, clinicPatients, members]);
 
   const handleExportPDF = async () => {
     setIsExporting(true);
@@ -150,7 +124,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       doc.setFontSize(12); doc.setTextColor(51, 51, 51);
       doc.text('Resumo do Período', margin, y); y += 7;
       doc.setFontSize(10); doc.setTextColor(70, 70, 70);
-      doc.text(`Faturamento Total: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 5;
+      doc.text(`Remuneração Total: R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 5;
       doc.text(`Sessões realizadas: ${totalSessions}`, margin, y); y += 5;
       doc.text(`Faltas remuneradas: ${totalPaidAbsences}`, margin, y); y += 5;
       doc.text(`Faltas: ${totalAbsences}`, margin, y); y += 12;
@@ -159,24 +133,26 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       if (filterMemberId === 'all' && memberStats.length > 0) {
         addPageIfNeeded(20);
         doc.setFontSize(12); doc.setTextColor(51, 51, 51);
-        doc.text('Faturamento por Profissional', margin, y); y += 7;
+        doc.text('Remuneração por Profissional', margin, y); y += 7;
 
         doc.setFontSize(9); doc.setTextColor(100, 100, 100);
         doc.text('Profissional', margin, y);
-        doc.text('Sessões', margin + 70, y);
-        doc.text('Faltas', margin + 95, y);
+        doc.text('Sessões', margin + 65, y);
+        doc.text('Modelo', margin + 90, y);
         doc.text('Valor', pw - margin - 25, y);
         y += 3;
         doc.setDrawColor(200, 200, 200); doc.line(margin, y, pw - margin, y); y += 5;
 
-        memberStats.forEach(({ member, sessions, absences, paidAbsences, revenue }) => {
+        memberStats.forEach(({ member, sessions, revenue, remunerationLabel, isUndefined }) => {
           addPageIfNeeded(8);
           doc.setFontSize(9); doc.setTextColor(51, 51, 51);
-          doc.text((member.name || member.email).substring(0, 30), margin, y);
+          doc.text((member.name || member.email).substring(0, 28), margin, y);
           doc.setTextColor(80, 80, 80);
-          doc.text(sessions.toString(), margin + 70, y);
-          doc.text(absences.toString(), margin + 95, y);
-          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 25, y);
+          doc.text(sessions.toString(), margin + 65, y);
+          doc.setTextColor(100, 100, 120);
+          doc.text(isUndefined ? '—' : remunerationLabel, margin + 90, y);
+          doc.setTextColor(isUndefined ? 160 : 51, isUndefined ? 160 : 51, isUndefined ? 160 : 51);
+          doc.text(isUndefined ? 'Não definida' : `R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 25, y);
           y += 6;
         });
         y += 5;
@@ -192,11 +168,11 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         doc.text('Paciente', margin, y);
         if (filterMemberId === 'all') doc.text('Profissional', margin + 50, y);
         doc.text('Sessões', margin + 100, y);
-        doc.text('Valor', pw - margin - 25, y);
+        doc.text('Faltas', pw - margin - 25, y);
         y += 3;
         doc.setDrawColor(200, 200, 200); doc.line(margin, y, pw - margin, y); y += 5;
 
-        patientBreakdown.forEach(({ patient, revenue, sessions, absences, paidAbsences, author }) => {
+        patientBreakdown.forEach(({ patient, sessions, absences, author }) => {
           addPageIfNeeded(8);
           doc.setFontSize(9); doc.setTextColor(51, 51, 51);
           doc.text(patient.name.substring(0, 20), margin, y);
@@ -206,7 +182,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           }
           doc.setTextColor(80, 80, 80);
           doc.text(sessions.toString(), margin + 105, y);
-          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 25, y);
+          doc.text(absences.toString(), pw - margin - 25, y);
           y += 6;
         });
 
@@ -214,8 +190,8 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         y += 3;
         doc.setDrawColor(200, 200, 200); doc.line(margin, y, pw - margin, y); y += 6;
         doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(51, 51, 51);
-        doc.text('Total', margin, y);
-        doc.text(`R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 25, y);
+        doc.text('Total de Sessões', margin, y);
+        doc.text(totalSessions.toString(), margin + 105, y);
         doc.setFont('helvetica', 'normal');
       }
 
@@ -290,7 +266,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card rounded-2xl p-4 border border-border">
           <DollarSign className="w-5 h-5 text-success mb-2" />
-          <p className="text-xs text-muted-foreground">Faturamento</p>
+          <p className="text-xs text-muted-foreground">Remuneração</p>
           <p className="text-lg font-bold text-foreground">
             R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
@@ -317,12 +293,12 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         <div className="bg-card rounded-2xl p-5 border border-border">
           <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" />
-            Faturamento por Profissional
+            Remuneração por Profissional
           </h3>
           <div className="space-y-2">
             {memberStats
               .sort((a, b) => b.revenue - a.revenue)
-              .map(({ member, sessions, absences, paidAbsences, revenue }) => (
+              .map(({ member, sessions, absences, paidAbsences, revenue, remunerationLabel, isUndefined }) => (
                 <div key={member.userId} className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border gap-3">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
@@ -342,9 +318,21 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                       </p>
                     </div>
                   </div>
-                  <p className="font-bold text-foreground shrink-0">
-                    R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
+                  <div className="text-right shrink-0">
+                    {isUndefined ? (
+                      <div className="flex items-center gap-1 text-warning text-xs">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        Não definida
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-bold text-foreground">
+                          R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                        <Badge variant="secondary" className="text-[10px] mt-0.5 py-0 h-4">{remunerationLabel}</Badge>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             {/* Total row */}
@@ -358,6 +346,40 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         </div>
       )}
 
+      {/* Single member remuneration card */}
+      {filterMemberId !== 'all' && (() => {
+        const memberStat = memberStats.find(ms => ms.member.userId === filterMemberId);
+        if (!memberStat) return null;
+        return (
+          <div className="bg-card rounded-2xl p-5 border border-border">
+            <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-success" />
+              Remuneração do Mês
+            </h3>
+            {memberStat.isUndefined ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                <AlertCircle className="w-4 h-4 text-warning shrink-0" />
+                <p className="text-sm text-warning font-medium">Remuneração não definida — contate o administrador.</p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-foreground">
+                    R$ {memberStat.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                  <Badge variant="secondary" className="mt-1">{memberStat.remunerationLabel}</Badge>
+                </div>
+                <div className="text-right text-sm text-muted-foreground space-y-1">
+                  <p><span className="font-medium text-foreground">{memberStat.sessions}</span> sessões</p>
+                  {memberStat.paidAbsences > 0 && <p><span className="font-medium text-warning">{memberStat.paidAbsences}</span> faltas rem.</p>}
+                  {memberStat.absences > 0 && <p><span className="font-medium text-destructive">{memberStat.absences}</span> faltas</p>}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Patient breakdown */}
       <div className="bg-card rounded-2xl p-5 border border-border">
         <h3 className="font-bold text-foreground mb-4">
@@ -369,33 +391,46 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           )}
         </h3>
         {patientBreakdown.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8 text-sm">Nenhum registro neste período</p>
+          <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+            <DollarSign className="w-8 h-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Nenhum atendimento neste período.</p>
+          </div>
         ) : (
-          <div className="space-y-2">
-            {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, author }) => (
-              <div key={patient.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border gap-2">
-                <div className="min-w-0">
-                  <p className="font-medium text-sm text-foreground">{patient.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {sessions} sessões
-                    {paidAbsences > 0 && ` • ${paidAbsences} faltas rem.`}
-                    {absences > 0 && ` • ${absences} faltas`}
-                    {filterMemberId === 'all' && author && (
-                      <span className="ml-1">• {author.name || author.email}</span>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-muted-foreground">Paciente</th>
+                  {filterMemberId === 'all' && canSeeAll && (
+                    <th className="text-left py-2 pr-3 text-xs font-semibold text-muted-foreground">Profissional</th>
+                  )}
+                  <th className="text-center py-2 pr-3 text-xs font-semibold text-muted-foreground">Sessões</th>
+                  <th className="text-center py-2 pr-3 text-xs font-semibold text-muted-foreground">F. Rem.</th>
+                  <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Faltas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {patientBreakdown.map(({ patient, sessions, absences, paidAbsences, author }) => (
+                  <tr key={patient.id} className="hover:bg-accent/40 transition-colors">
+                    <td className="py-2.5 pr-3 font-medium text-foreground max-w-[140px] truncate">{patient.name}</td>
+                    {filterMemberId === 'all' && canSeeAll && (
+                      <td className="py-2.5 pr-3 text-muted-foreground text-xs max-w-[120px] truncate">
+                        {author ? (author.name || author.email.split('@')[0]) : '—'}
+                      </td>
                     )}
-                  </p>
-                </div>
-                <p className="font-bold text-sm text-foreground shrink-0">
-                  R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-            ))}
-            <div className="flex justify-between items-center pt-3 border-t border-border">
-              <p className="font-bold text-foreground text-sm">Total</p>
-              <p className="font-bold text-foreground">
-                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
+                    <td className="py-2.5 pr-3 text-center text-foreground">{sessions}</td>
+                    <td className="py-2.5 pr-3 text-center text-warning">{paidAbsences || '—'}</td>
+                    <td className="py-2.5 text-center text-destructive">{absences || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border">
+                  <td colSpan={filterMemberId === 'all' && canSeeAll ? 4 : 3} className="py-2.5 font-bold text-foreground">Total</td>
+                  <td className="py-2.5 text-center font-bold text-foreground">{totalSessions}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         )}
       </div>
