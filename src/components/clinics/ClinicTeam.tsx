@@ -499,6 +499,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         : [...DEFAULT_THERAPIST_PERMISSIONS]
     );
     setEditRoleLabel(member.role_label || '');
+    setEditRemunerationType((member as any).remuneration_type || 'definir_depois');
+    setEditRemunerationValue((member as any).remuneration_value?.toString() || '');
     setManageMember(member);
   }
 
