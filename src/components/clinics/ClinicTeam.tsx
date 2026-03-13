@@ -461,8 +461,10 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       const { error: updateError } = await supabase.from('organization_members').update({
         permissions: permissionsMap,
         role_label: editRoleLabel || null,
-        role: manageMember.role, // persist the role selected via preset cards
-      }).eq('id', manageMember.id);
+        role: manageMember.role,
+        remuneration_type: editRemunerationType,
+        remuneration_value: editRemunerationValue ? parseFloat(editRemunerationValue) : null,
+      } as any).eq('id', manageMember.id);
       if (updateError) throw updateError;
 
       await supabase.from('therapist_patient_assignments').delete().eq('member_id', manageMember.id);
