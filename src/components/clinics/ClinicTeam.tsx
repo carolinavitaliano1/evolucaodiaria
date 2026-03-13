@@ -144,6 +144,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'professional'>('professional');
   const [inviteRoleLabel, setInviteRoleLabel] = useState('');
+  const [inviteRemunerationType, setInviteRemunerationType] = useState<string>('definir_depois');
+  const [inviteRemunerationValue, setInviteRemunerationValue] = useState<string>('');
   const [selectedPatients, setSelectedPatients] = useState<Record<string, string>>({});
   const [invitePermissions, setInvitePermissions] = useState<PermissionKey[]>([...DEFAULT_THERAPIST_PERMISSIONS]);
   const [inviting, setInviting] = useState(false);
@@ -154,6 +156,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [editPatients, setEditPatients] = useState<Record<string, string>>({});
   const [editPermissions, setEditPermissions] = useState<PermissionKey[]>([]);
   const [editRoleLabel, setEditRoleLabel] = useState('');
+  const [editRemunerationType, setEditRemunerationType] = useState<string>('definir_depois');
+  const [editRemunerationValue, setEditRemunerationValue] = useState<string>('');
   const [savingAssign, setSavingAssign] = useState(false);
 
   // Remove confirm
