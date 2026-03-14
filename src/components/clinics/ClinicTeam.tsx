@@ -713,6 +713,48 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
                   <Separator />
 
+                  {/* Remuneration — invite dialog */}
+                  <div className="space-y-3 p-3 rounded-lg bg-muted/30 border border-border">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Banknote className="w-3.5 h-3.5" />
+                      Remuneração
+                    </p>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Modelo de pagamento</Label>
+                      <Select value={inviteRemunerationType} onValueChange={setInviteRemunerationType}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="por_sessao">Por Sessão</SelectItem>
+                          <SelectItem value="fixo_mensal">Fixo Mensal</SelectItem>
+                          <SelectItem value="fixo_dia">Fixo por Dia</SelectItem>
+                          <SelectItem value="definir_depois">Definir Depois</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {inviteRemunerationType !== 'definir_depois' && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          {inviteRemunerationType === 'por_sessao' ? 'Valor por sessão (R$)' :
+                           inviteRemunerationType === 'fixo_mensal' ? 'Valor mensal fixo (R$)' :
+                           'Valor por dia trabalhado (R$)'}
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0,00"
+                          value={inviteRemunerationValue}
+                          onChange={e => setInviteRemunerationValue(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
                   {/* Patient assignments */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
