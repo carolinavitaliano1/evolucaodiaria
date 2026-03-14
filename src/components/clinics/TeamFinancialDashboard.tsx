@@ -1,18 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useClinicOrg, calcMemberRemuneration } from '@/hooks/useClinicOrg';
+import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, Users,
   ChevronLeft, ChevronRight, Crown, Shield, User, Download, Loader2,
-  Trophy, Medal, AlertCircle
+  Trophy, Medal
 } from 'lucide-react';
 import { format, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -55,6 +54,25 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
     [patients, clinicId]
   );
 
+  const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
+
+  const calculatePatientRevenue = (patientId: string, evos: typeof evolutions) => {
+    const patient = clinicPatients.find(p => p.id === patientId);
+    if (!patient || !patient.paymentValue) return 0;
+    if (patient.paymentType === 'fixo') return patient.paymentValue;
+
+    const presentCount = evos.filter(e => e.patientId === patientId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')).length;
+    const paidAbsenceCount = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'falta_remunerada').length;
+    const feriadoRemCount = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'feriado_remunerado').length;
+    const regularAbsences = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'falta');
+
+    let paidRegularAbsences = 0;
+    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
+    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+
+    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+  };
+
   // Current month evolutions
   const monthlyEvolutions = useMemo(() => {
     return evolutions.filter(e => {
@@ -74,31 +92,48 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
   const totalAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const totalPaidAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
 
-  // Per-member stats using the new remuneration logic
+  const patientIdsInFilter = [...new Set(filteredEvolutions.map(e => e.patientId))];
+  const totalRevenue = patientIdsInFilter.reduce((sum, patientId) => {
+    const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
+    return sum + calculatePatientRevenue(patientId, patientEvos);
+  }, 0);
+
+  // Per-member stats
   const memberStats = useMemo(() => {
     return members.map(member => {
       const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const { amount: revenue, label: remunerationLabel, isUndefined } = calcMemberRemuneration(member, memberEvos);
-      return { member, sessions, absences, paidAbsences, revenue, remunerationLabel, isUndefined };
+      const patientIdsInEvos = [...new Set(memberEvos.map(e => e.patientId))];
+      const revenue = patientIdsInEvos.reduce((sum, patientId) => {
+        const patientEvos = memberEvos.filter(e => e.patientId === patientId);
+        return sum + calculatePatientRevenue(patientId, patientEvos);
+      }, 0);
+      return { member, sessions, absences, paidAbsences, revenue };
     }).sort((a, b) => b.revenue - a.revenue);
-  }, [members, monthlyEvolutions]);
-
-  // Total revenue for filtered view
-  const totalRevenue = useMemo(() => {
-    if (filterMemberId === 'all') {
-      return memberStats.reduce((s, m) => s + m.revenue, 0);
-    }
-    const member = members.find(m => m.userId === filterMemberId);
-    if (!member) return 0;
-    const memberEvos = filteredEvolutions;
-    const { amount } = calcMemberRemuneration(member, memberEvos);
-    return amount;
-  }, [memberStats, filterMemberId, members, filteredEvolutions]);
+  }, [members, monthlyEvolutions, clinicPatients]);
 
   const maxMemberRevenue = memberStats[0]?.revenue || 1;
+
+  // Patient breakdown
+  const patientBreakdown = useMemo(() => {
+    return patientIdsInFilter
+      .map(patientId => {
+        const patient = clinicPatients.find(p => p.id === patientId);
+        if (!patient) return null;
+        const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
+        const revenue = calculatePatientRevenue(patientId, patientEvos);
+        const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
+        const absences = patientEvos.filter(e => e.attendanceStatus === 'falta').length;
+        const paidAbsences = patientEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+        const authorId = (patientEvos[0] as any)?.user_id;
+        const author = members.find(m => m.userId === authorId);
+        return { patient, revenue, sessions, absences, paidAbsences, author };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null && (p.revenue > 0 || p.sessions > 0))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [patientIdsInFilter, filteredEvolutions, clinicPatients, members]);
 
   // 6-month history chart data
   const chartData = useMemo(() => {
@@ -115,17 +150,11 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         ? monthEvos
         : monthEvos.filter(e => (e as any).user_id === filterMemberId);
 
-      let revenue = 0;
-      if (filterMemberId === 'all') {
-        revenue = members.reduce((sum, member) => {
-          const mEvos = filteredMonthEvos.filter(e => (e as any).user_id === member.userId);
-          return sum + calcMemberRemuneration(member, mEvos).amount;
-        }, 0);
-      } else {
-        const member = members.find(mb => mb.userId === filterMemberId);
-        if (member) revenue = calcMemberRemuneration(member, filteredMonthEvos).amount;
-      }
-
+      const pIds = [...new Set(filteredMonthEvos.map(e => e.patientId))];
+      const revenue = pIds.reduce((sum, patientId) => {
+        const pEvos = filteredMonthEvos.filter(e => e.patientId === patientId);
+        return sum + calculatePatientRevenue(patientId, pEvos);
+      }, 0);
       const sessions = filteredMonthEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
 
       return {
@@ -134,7 +163,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         sessoes: sessions,
       };
     });
-  }, [evolutions, clinicPatients, selectedDate, filterMemberId, members]);
+  }, [evolutions, clinicPatients, selectedDate, filterMemberId]);
 
   const myMember = members.find(m => m.userId === user?.id);
   const canSeeAll = myMember?.role === 'owner' || myMember?.role === 'admin';
@@ -169,7 +198,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       // ── Summary cards row ──
       const cardW = (pw - margin * 2 - 9) / 4;
       const cards = [
-        { label: 'Remuneração', value: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        { label: 'Faturamento', value: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Sessões', value: totalSessions.toString() },
         { label: 'Faltas Rem.', value: totalPaidAbsences.toString() },
         { label: 'Faltas', value: totalAbsences.toString() },
@@ -193,7 +222,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 100);
       doc.text('Mês', margin, y);
       doc.text('Sessões', margin + 60, y);
-      doc.text('Remuneração', margin + 110, y);
+      doc.text('Faturamento', margin + 110, y);
       y += 3;
       doc.setDrawColor(210, 210, 220); doc.line(margin, y, pw - margin, y); y += 4;
 
@@ -223,23 +252,20 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 100);
         doc.text('#', margin, y);
         doc.text('Profissional', margin + 12, y);
-        doc.text('Sessões', margin + 90, y);
-        doc.text('Modelo', margin + 115, y);
-        doc.text('Remuneração', margin + 148, y);
+        doc.text('Sessões', margin + 95, y);
+        doc.text('Faturamento', margin + 125, y);
         y += 3;
         doc.setDrawColor(210, 210, 220); doc.line(margin, y, pw - margin, y); y += 4;
 
-        memberStats.forEach(({ member, sessions, revenue, remunerationLabel, isUndefined }, i) => {
+        memberStats.forEach(({ member, sessions, revenue }, i) => {
           addPageIfNeeded(7);
           doc.setFont('helvetica', 'normal'); doc.setTextColor(60, 60, 80);
           doc.text((i + 1).toString(), margin + 2, y);
-          doc.text((member.name || member.email).substring(0, 22), margin + 12, y);
-          doc.text(sessions.toString(), margin + 90, y);
-          doc.setTextColor(100, 100, 120);
-          doc.text(isUndefined ? '—' : remunerationLabel.substring(0, 14), margin + 115, y);
+          doc.text((member.name || member.email).substring(0, 28), margin + 12, y);
+          doc.text(sessions.toString(), margin + 95, y);
           doc.setFont('helvetica', i === 0 ? 'bold' : 'normal');
-          doc.setTextColor(isUndefined ? 180 : (i === 0 ? 79 : 50), isUndefined ? 120 : (i === 0 ? 70 : 50), isUndefined ? 100 : (i === 0 ? 229 : 70));
-          doc.text(isUndefined ? 'Não definida' : `R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 148, y);
+          doc.setTextColor(i === 0 ? 79 : 50, i === 0 ? 70 : 50, i === 0 ? 229 : 70);
+          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 125, y);
           y += 7;
         });
 
@@ -248,8 +274,44 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         doc.setDrawColor(210, 210, 220); doc.line(margin, y, pw - margin, y); y += 5;
         doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 50); doc.setFontSize(9);
         doc.text('Total Consolidado', margin + 12, y);
-        doc.text(`R$ ${memberStats.reduce((s, m) => s + m.revenue, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 148, y);
+        doc.text(`R$ ${memberStats.reduce((s, m) => s + m.revenue, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 125, y);
         y += 10;
+      }
+
+      // ── Patient Breakdown ──
+      if (patientBreakdown.length > 0) {
+        addPageIfNeeded(30);
+        doc.setFontSize(11); doc.setTextColor(30, 30, 50); doc.setFont('helvetica', 'bold');
+        doc.text('Detalhamento por Paciente', margin, y); y += 7;
+
+        doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 100);
+        doc.text('Paciente', margin, y);
+        if (filterMemberId === 'all') doc.text('Profissional', margin + 60, y);
+        doc.text('Sessões', margin + 105, y);
+        doc.text('Faturamento', pw - margin - 35, y);
+        y += 3;
+        doc.setDrawColor(210, 210, 220); doc.line(margin, y, pw - margin, y); y += 4;
+
+        patientBreakdown.forEach(({ patient, revenue, sessions, author }) => {
+          addPageIfNeeded(7);
+          doc.setFont('helvetica', 'normal'); doc.setTextColor(50, 50, 70);
+          doc.text(patient.name.substring(0, 22), margin, y);
+          if (filterMemberId === 'all' && author) {
+            doc.setTextColor(100, 100, 120);
+            doc.text((author.name || author.email).substring(0, 18), margin + 60, y);
+          }
+          doc.setTextColor(50, 50, 70);
+          doc.text(sessions.toString(), margin + 108, y);
+          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 35, y);
+          y += 7;
+        });
+
+        addPageIfNeeded(10);
+        y += 2;
+        doc.setDrawColor(210, 210, 220); doc.line(margin, y, pw - margin, y); y += 5;
+        doc.setFontSize(9.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 50);
+        doc.text('Total', margin, y);
+        doc.text(`R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 35, y);
       }
 
       // ── Page footer ──
@@ -324,7 +386,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { icon: <DollarSign className="w-5 h-5 text-success" />, label: 'Remuneração', value: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+          { icon: <DollarSign className="w-5 h-5 text-success" />, label: 'Faturamento', value: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
           { icon: <TrendingUp className="w-5 h-5 text-primary" />, label: 'Sessões', value: totalSessions.toString() },
           { icon: <AlertTriangle className="w-5 h-5 text-warning" />, label: 'Faltas Rem.', value: totalPaidAbsences.toString() },
           { icon: <TrendingDown className="w-5 h-5 text-destructive" />, label: 'Faltas', value: totalAbsences.toString() },
@@ -377,11 +439,11 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
                 name === 'faturamento'
                   ? `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                   : value,
-                name === 'faturamento' ? 'Remuneração' : 'Sessões'
+                name === 'faturamento' ? 'Faturamento' : 'Sessões'
               ]}
             />
             <Legend
-              formatter={(value) => value === 'faturamento' ? 'Remuneração' : 'Sessões'}
+              formatter={(value) => value === 'faturamento' ? 'Faturamento' : 'Sessões'}
               wrapperStyle={{ fontSize: '12px' }}
             />
             <Bar yAxisId="revenue" dataKey="faturamento" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -398,7 +460,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
             Ranking de Profissionais
           </h3>
           <div className="space-y-3">
-            {memberStats.map(({ member, sessions, absences, paidAbsences, revenue, remunerationLabel, isUndefined }, i) => (
+            {memberStats.map(({ member, sessions, absences, paidAbsences, revenue }, i) => (
               <div key={member.userId} className={cn(
                 'flex items-center gap-3 p-3 rounded-xl border transition-colors',
                 i === 0 ? 'bg-primary/5 border-primary/20' : 'bg-secondary/30 border-border'
@@ -428,23 +490,9 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
                     {absences > 0 && ` · ${absences} faltas`}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
-                  {isUndefined ? (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <AlertCircle className="w-3.5 h-3.5 text-warning" />
-                      <span className="text-xs">Não definida</span>
-                    </div>
-                  ) : (
-                    <>
-                      <p className={cn('font-bold text-sm', i === 0 ? 'text-primary' : 'text-foreground')}>
-                        R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                      <Badge variant="secondary" className="text-[10px] mt-0.5 py-0 h-4">
-                        {remunerationLabel}
-                      </Badge>
-                    </>
-                  )}
-                </div>
+                <p className={cn('font-bold shrink-0 text-sm', i === 0 ? 'text-primary' : 'text-foreground')}>
+                  R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
               </div>
             ))}
             <div className="flex justify-between items-center pt-2 border-t border-border">
@@ -460,133 +508,67 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         </div>
       )}
 
-      {/* ── My Remuneration (single member view) ── */}
-      {filterMemberId !== 'all' && (() => {
-        const memberStat = memberStats.find(ms => ms.member.userId === filterMemberId);
-        if (!memberStat) return null;
-        return (
-          <div className="bg-card rounded-2xl p-4 border border-border">
-            <h3 className="font-bold text-foreground mb-3 text-sm flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-success" />
-              Remuneração do Mês
-            </h3>
-            {memberStat.isUndefined ? (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
-                <AlertCircle className="w-4 h-4 text-warning shrink-0" />
-                <p className="text-sm text-warning font-medium">Remuneração não definida — contate o administrador.</p>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-foreground">
-                    R$ {memberStat.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
-                  <Badge variant="secondary" className="mt-1 text-xs">{memberStat.remunerationLabel}</Badge>
-                </div>
-                <div className="text-right text-sm text-muted-foreground">
-                  <p>{memberStat.sessions} sessões</p>
-                  {memberStat.paidAbsences > 0 && <p>{memberStat.paidAbsences} faltas rem.</p>}
-                </div>
-              </div>
-            )}
+      {/* ── Patient Breakdown ── */}
+      <div className="bg-card rounded-2xl p-5 border border-border">
+        <h3 className="font-bold text-foreground mb-4 text-sm">
+          Detalhamento por Paciente
+          {filterMemberId !== 'all' && (
+            <span className="font-normal text-muted-foreground ml-2">
+              — {members.find(m => m.userId === filterMemberId)?.name || members.find(m => m.userId === filterMemberId)?.email}
+            </span>
+          )}
+        </h3>
+
+        {patientBreakdown.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+            <DollarSign className="w-8 h-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Nenhum dado financeiro para este período.</p>
           </div>
-        );
-      })()}
-
-      {/* ── Patient Breakdown ── (keep existing patient detail table for reference) */}
-      {filterMemberId !== 'all' && (() => {
-        const memberEvos = filteredEvolutions;
-        const patientIds = [...new Set(memberEvos.map(e => e.patientId))];
-        const breakdown = patientIds.map(pid => {
-          const patient = clinicPatients.find(p => p.id === pid);
-          if (!patient) return null;
-          const pEvos = memberEvos.filter(e => e.patientId === pid);
-          const sessions = pEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
-          const absences = pEvos.filter(e => e.attendanceStatus === 'falta').length;
-          return { patient, sessions, absences };
-        }).filter(Boolean).filter(p => p!.sessions > 0 || p!.absences > 0) as { patient: any; sessions: number; absences: number }[];
-
-        if (breakdown.length === 0) return null;
-        return (
-          <div className="bg-card rounded-2xl p-5 border border-border">
-            <h3 className="font-bold text-foreground mb-4 text-sm">
-              Atendimentos por Paciente
-              <span className="font-normal text-muted-foreground ml-2">
-                — {members.find(m => m.userId === filterMemberId)?.name || members.find(m => m.userId === filterMemberId)?.email}
-              </span>
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 pr-3 text-xs font-semibold text-muted-foreground">Paciente</th>
-                    <th className="text-center py-2 pr-3 text-xs font-semibold text-muted-foreground">Sessões</th>
-                    <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Faltas</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {breakdown.map(({ patient, sessions, absences }) => (
-                    <tr key={patient.id} className="hover:bg-accent/40 transition-colors">
-                      <td className="py-2.5 pr-3 font-medium text-foreground">{patient.name}</td>
-                      <td className="py-2.5 pr-3 text-center text-foreground">{sessions}</td>
-                      <td className="py-2.5 text-center text-destructive">{absences || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── Full Patient Breakdown (all members / admin view) ── */}
-      {canSeeAll && filterMemberId === 'all' && (() => {
-        const patientIds = [...new Set(filteredEvolutions.map(e => e.patientId))];
-        const breakdown = patientIds.map(pid => {
-          const patient = clinicPatients.find(p => p.id === pid);
-          if (!patient) return null;
-          const pEvos = filteredEvolutions.filter(e => e.patientId === pid);
-          const sessions = pEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
-          const absences = pEvos.filter(e => e.attendanceStatus === 'falta').length;
-          const paidAbsences = pEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-          const authorId = (pEvos[0] as any)?.user_id;
-          const author = members.find(m => m.userId === authorId);
-          return { patient, sessions, absences, paidAbsences, author };
-        }).filter(Boolean).filter(p => p!.sessions > 0 || p!.absences > 0) as any[];
-
-        if (breakdown.length === 0) return null;
-        return (
-          <div className="bg-card rounded-2xl p-5 border border-border">
-            <h3 className="font-bold text-foreground mb-4 text-sm">Detalhamento por Paciente</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 pr-3 text-xs font-semibold text-muted-foreground">Paciente</th>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-muted-foreground">Paciente</th>
+                  {filterMemberId === 'all' && canSeeAll && (
                     <th className="text-left py-2 pr-3 text-xs font-semibold text-muted-foreground">Profissional</th>
-                    <th className="text-center py-2 pr-3 text-xs font-semibold text-muted-foreground">Sessões</th>
-                    <th className="text-center py-2 pr-3 text-xs font-semibold text-muted-foreground">F. Rem.</th>
-                    <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Faltas</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {breakdown.map(({ patient, sessions, absences, paidAbsences, author }: any) => (
-                    <tr key={patient.id} className="hover:bg-accent/40 transition-colors">
-                      <td className="py-2.5 pr-3 font-medium text-foreground max-w-[140px] truncate">{patient.name}</td>
+                  )}
+                  <th className="text-center py-2 pr-3 text-xs font-semibold text-muted-foreground">Sessões</th>
+                  <th className="text-center py-2 pr-3 text-xs font-semibold text-muted-foreground">F. Rem.</th>
+                  <th className="text-center py-2 pr-3 text-xs font-semibold text-muted-foreground">Faltas</th>
+                  <th className="text-right py-2 text-xs font-semibold text-muted-foreground">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, author }) => (
+                  <tr key={patient.id} className="hover:bg-accent/40 transition-colors">
+                    <td className="py-2.5 pr-3 font-medium text-foreground max-w-[140px] truncate">{patient.name}</td>
+                    {filterMemberId === 'all' && canSeeAll && (
                       <td className="py-2.5 pr-3 text-muted-foreground text-xs max-w-[120px] truncate">
                         {author ? (author.name || author.email.split('@')[0]) : '—'}
                       </td>
-                      <td className="py-2.5 pr-3 text-center text-foreground">{sessions}</td>
-                      <td className="py-2.5 pr-3 text-center text-warning">{paidAbsences || '—'}</td>
-                      <td className="py-2.5 text-center text-destructive">{absences || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                    <td className="py-2.5 pr-3 text-center text-foreground">{sessions}</td>
+                    <td className="py-2.5 pr-3 text-center text-warning">{paidAbsences || '—'}</td>
+                    <td className="py-2.5 pr-3 text-center text-destructive">{absences || '—'}</td>
+                    <td className="py-2.5 text-right font-semibold text-foreground">
+                      R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border">
+                  <td colSpan={filterMemberId === 'all' && canSeeAll ? 5 : 4} className="py-2.5 font-bold text-foreground">Total</td>
+                  <td className="py-2.5 text-right font-bold text-foreground">
+                    R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-        );
-      })()}
+        )}
+      </div>
     </div>
   );
 }

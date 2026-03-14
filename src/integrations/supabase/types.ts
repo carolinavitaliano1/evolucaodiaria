@@ -921,8 +921,6 @@ export type Database = {
           joined_at: string | null
           organization_id: string
           permissions: Json | null
-          remuneration_type: string | null
-          remuneration_value: number | null
           role: string
           role_label: string | null
           status: string
@@ -937,8 +935,6 @@ export type Database = {
           joined_at?: string | null
           organization_id: string
           permissions?: Json | null
-          remuneration_type?: string | null
-          remuneration_value?: number | null
           role?: string
           role_label?: string | null
           status?: string
@@ -953,8 +949,6 @@ export type Database = {
           joined_at?: string | null
           organization_id?: string
           permissions?: Json | null
-          remuneration_type?: string | null
-          remuneration_value?: number | null
           role?: string
           role_label?: string | null
           status?: string
