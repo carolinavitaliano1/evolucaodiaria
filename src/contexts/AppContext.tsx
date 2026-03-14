@@ -114,7 +114,7 @@ function mapPatient(p: Record<string, unknown>): Patient {
   } as any;
 }
 
-function mapEvolution(e: Record<string, unknown>): Evolution {
+function mapEvolution(e: Record<string, unknown>): Evolution & { user_id?: string } {
   return {
     id: e.id as string, patientId: e.patient_id as string, clinicId: e.clinic_id as string,
     date: e.date as string, text: e.text as string,
@@ -122,6 +122,7 @@ function mapEvolution(e: Record<string, unknown>): Evolution {
     confirmedAttendance: (e.confirmed_attendance as boolean) || false,
     mood: (e.mood as Evolution['mood']) || undefined, signature: (e.signature as string) || undefined,
     stampId: (e.stamp_id as string) || undefined, createdAt: e.created_at as string,
+    user_id: (e.user_id as string) || undefined,
   };
 }
 
