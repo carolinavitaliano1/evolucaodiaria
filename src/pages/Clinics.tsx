@@ -119,7 +119,7 @@ export default function Clinics() {
     notes: '',
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
-    paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
+    paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado',
     paymentAmount: '',
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
   });
