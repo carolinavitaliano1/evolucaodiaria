@@ -55,41 +55,48 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
 
   const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
 
-  const calculatePatientRevenue = (patientId: string, evos: typeof monthlyEvolutions) => {
-    const patient = clinicPatients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue) return 0;
-    if (patient.paymentType === 'fixo') return patient.paymentValue;
+  // Calculate member remuneration based on their configured model
+  const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof monthlyEvolutions) => {
+    const { remunerationType, remunerationValue } = member;
+    if (!remunerationValue || remunerationType === 'definir_depois' || !remunerationType) return 0;
 
-    const presentCount = evos.filter(e => e.patientId === patientId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')).length;
-    const paidAbsenceCount = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'falta_remunerada').length;
-    const feriadoRemCount = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'feriado_remunerado').length;
-    const regularAbsences = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'falta');
+    if (remunerationType === 'fixo_mensal') {
+      // Fixed monthly salary — always the same value, regardless of sessions
+      return remunerationValue;
+    }
 
-    let paidRegularAbsences = 0;
-    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+    if (remunerationType === 'fixo_dia') {
+      // Fixed daily rate × distinct days with "presente" evolutions
+      const presentDays = new Set(
+        memberEvos
+          .filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')
+          .map(e => e.date)
+      );
+      return presentDays.size * remunerationValue;
+    }
 
-    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+    if (remunerationType === 'por_sessao') {
+      // Per session: count presente + reposicao
+      const sessions = memberEvos.filter(e =>
+        e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'
+      ).length;
+      return sessions * remunerationValue;
+    }
+
+    return 0;
   };
 
-  // Stats per member
+  // Stats per member — use each member's own remuneration model
   const memberStats = useMemo(() => {
     return members.map(member => {
       const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-
-      // Revenue = sum of patient revenues for evos authored by this member
-      const patientIdsInEvos = [...new Set(memberEvos.map(e => e.patientId))];
-      const revenue = patientIdsInEvos.reduce((sum, patientId) => {
-        const patientEvos = memberEvos.filter(e => e.patientId === patientId);
-        return sum + calculatePatientRevenue(patientId, patientEvos);
-      }, 0);
-
+      const revenue = calculateMemberRemuneration(member, memberEvos);
       return { member, sessions, absences, paidAbsences, revenue, evos: memberEvos };
     });
-  }, [members, monthlyEvolutions, clinicPatients]);
+  }, [members, monthlyEvolutions]);
 
   // Filtered evolutions for consolidated view
   const filteredEvolutions = useMemo(() => {
@@ -102,10 +109,20 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
   const totalPaidAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
 
   const patientIdsInFilter = [...new Set(filteredEvolutions.map(e => e.patientId))];
-  const totalRevenue = patientIdsInFilter.reduce((sum, patientId) => {
-    const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-    return sum + calculatePatientRevenue(patientId, patientEvos);
-  }, 0);
+
+  // Total = sum of each member's remuneration for the filtered scope
+  const totalRevenue = useMemo(() => {
+    if (filterMemberId === 'all') {
+      return members.reduce((sum, member) => {
+        const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
+        return sum + calculateMemberRemuneration(member, memberEvos);
+      }, 0);
+    } else {
+      const member = members.find(m => m.userId === filterMemberId);
+      if (!member) return 0;
+      return calculateMemberRemuneration(member, filteredEvolutions);
+    }
+  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId]);
 
   const patientBreakdown = useMemo(() => {
     return patientIdsInFilter
@@ -113,17 +130,16 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         const patient = clinicPatients.find(p => p.id === patientId);
         if (!patient) return null;
         const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-        const revenue = calculatePatientRevenue(patientId, patientEvos);
         const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
         const absences = patientEvos.filter(e => e.attendanceStatus === 'falta').length;
         const paidAbsences = patientEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
         // Author of the first evo (for org view)
         const authorId = (patientEvos[0] as any)?.user_id;
         const author = members.find(m => m.userId === authorId);
-        return { patient, revenue, sessions, absences, paidAbsences, author };
+        return { patient, sessions, absences, paidAbsences, author };
       })
-      .filter((p): p is NonNullable<typeof p> => p !== null && (p.revenue > 0 || p.sessions > 0))
-      .sort((a, b) => b.revenue - a.revenue);
+      .filter((p): p is NonNullable<typeof p> => p !== null && p.sessions > 0)
+      .sort((a, b) => b.sessions - a.sessions);
   }, [patientIdsInFilter, filteredEvolutions, clinicPatients, members]);
 
   const handleExportPDF = async () => {
@@ -196,7 +212,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         y += 3;
         doc.setDrawColor(200, 200, 200); doc.line(margin, y, pw - margin, y); y += 5;
 
-        patientBreakdown.forEach(({ patient, revenue, sessions, absences, paidAbsences, author }) => {
+        patientBreakdown.forEach(({ patient, sessions, absences, paidAbsences, author }) => {
           addPageIfNeeded(8);
           doc.setFontSize(9); doc.setTextColor(51, 51, 51);
           doc.text(patient.name.substring(0, 20), margin, y);
@@ -206,7 +222,6 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           }
           doc.setTextColor(80, 80, 80);
           doc.text(sessions.toString(), margin + 105, y);
-          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 25, y);
           y += 6;
         });
 
@@ -372,7 +387,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           <p className="text-center text-muted-foreground py-8 text-sm">Nenhum registro neste período</p>
         ) : (
           <div className="space-y-2">
-            {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, author }) => (
+            {patientBreakdown.map(({ patient, sessions, absences, paidAbsences, author }) => (
               <div key={patient.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border gap-2">
                 <div className="min-w-0">
                   <p className="font-medium text-sm text-foreground">{patient.name}</p>
@@ -385,8 +400,8 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                     )}
                   </p>
                 </div>
-                <p className="font-bold text-sm text-foreground shrink-0">
-                  R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <p className="text-xs text-muted-foreground font-semibold shrink-0">
+                  {sessions} sessões
                 </p>
               </div>
             ))}

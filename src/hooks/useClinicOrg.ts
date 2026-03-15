@@ -9,6 +9,8 @@ export interface OrgMemberProfile {
   name: string | null;
   avatarUrl: string | null;
   role: 'owner' | 'admin' | 'professional';
+  remunerationType: string | null;
+  remunerationValue: number | null;
 }
 
 export function useClinicOrg(clinicId: string) {
@@ -42,7 +44,7 @@ export function useClinicOrg(clinicId: string) {
 
       const { data: membersData } = await supabase
         .from('organization_members')
-        .select('id, user_id, email, role')
+        .select('id, user_id, email, role, remuneration_type, remuneration_value')
         .eq('organization_id', clinic.organization_id)
         .eq('status', 'active');
 
@@ -72,6 +74,8 @@ export function useClinicOrg(clinicId: string) {
           name: profilesMap[m.user_id!]?.name ?? null,
           avatarUrl: profilesMap[m.user_id!]?.avatar_url ?? null,
           role: m.role as OrgMemberProfile['role'],
+          remunerationType: m.remuneration_type ?? null,
+          remunerationValue: m.remuneration_value ? Number(m.remuneration_value) : null,
         }))
       );
     } catch (e) {
