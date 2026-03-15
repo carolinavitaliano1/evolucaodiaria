@@ -212,7 +212,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         y += 3;
         doc.setDrawColor(200, 200, 200); doc.line(margin, y, pw - margin, y); y += 5;
 
-        patientBreakdown.forEach(({ patient, revenue, sessions, absences, paidAbsences, author }) => {
+        patientBreakdown.forEach(({ patient, sessions, absences, paidAbsences, author }) => {
           addPageIfNeeded(8);
           doc.setFontSize(9); doc.setTextColor(51, 51, 51);
           doc.text(patient.name.substring(0, 20), margin, y);
@@ -222,7 +222,6 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           }
           doc.setTextColor(80, 80, 80);
           doc.text(sessions.toString(), margin + 105, y);
-          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 25, y);
           y += 6;
         });
 
