@@ -400,8 +400,8 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                     )}
                   </p>
                 </div>
-                <p className="font-bold text-sm text-foreground shrink-0">
-                  R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <p className="text-xs text-muted-foreground font-semibold shrink-0">
+                  {sessions} sessões
                 </p>
               </div>
             ))}
