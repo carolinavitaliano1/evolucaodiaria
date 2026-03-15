@@ -556,9 +556,10 @@ export default function Clinics() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="fixo_mensal">Fixo Mensal</SelectItem>
-                        <SelectItem value="fixo_diario">Fixo por Dia</SelectItem>
-                        <SelectItem value="sessao">Por Sessão</SelectItem>
-                      </SelectContent>
+                         <SelectItem value="fixo_diario">Fixo por Dia</SelectItem>
+                         <SelectItem value="sessao">Por Sessão</SelectItem>
+                         <SelectItem value="variado">Variado</SelectItem>
+                       </SelectContent>
                     </Select>
 
                     {formData.paymentType && (
