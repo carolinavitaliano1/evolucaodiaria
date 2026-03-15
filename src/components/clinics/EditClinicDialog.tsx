@@ -273,6 +273,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
                     <SelectItem value="sessao">Por sessão</SelectItem>
                     <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
                     <SelectItem value="fixo_diario">Fixo diário</SelectItem>
+                    <SelectItem value="variado">Variado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
