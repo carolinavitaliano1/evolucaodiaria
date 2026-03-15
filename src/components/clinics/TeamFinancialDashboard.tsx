@@ -106,11 +106,21 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
   const totalAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const totalPaidAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
 
+  // Total remuneration: sum each member's own model for the filtered scope
   const patientIdsInFilter = [...new Set(filteredEvolutions.map(e => e.patientId))];
-  const totalRevenue = patientIdsInFilter.reduce((sum, patientId) => {
-    const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-    return sum + calculatePatientRevenue(patientId, patientEvos);
-  }, 0);
+  const totalRevenue = useMemo(() => {
+    if (filterMemberId === 'all') {
+      // Sum all members' remuneration
+      return members.reduce((sum, member) => {
+        const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
+        return sum + calculateMemberRemuneration(member, memberEvos);
+      }, 0);
+    } else {
+      const member = members.find(m => m.userId === filterMemberId);
+      if (!member) return 0;
+      return calculateMemberRemuneration(member, filteredEvolutions);
+    }
+  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId]);
 
   // Per-member stats
   const memberStats = useMemo(() => {
@@ -119,34 +129,29 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const patientIdsInEvos = [...new Set(memberEvos.map(e => e.patientId))];
-      const revenue = patientIdsInEvos.reduce((sum, patientId) => {
-        const patientEvos = memberEvos.filter(e => e.patientId === patientId);
-        return sum + calculatePatientRevenue(patientId, patientEvos);
-      }, 0);
+      const revenue = calculateMemberRemuneration(member, memberEvos);
       return { member, sessions, absences, paidAbsences, revenue };
     }).sort((a, b) => b.revenue - a.revenue);
-  }, [members, monthlyEvolutions, clinicPatients]);
+  }, [members, monthlyEvolutions]);
 
   const maxMemberRevenue = memberStats[0]?.revenue || 1;
 
-  // Patient breakdown
+  // Patient breakdown (sessions info only — revenue is by member model, not per-patient)
   const patientBreakdown = useMemo(() => {
     return patientIdsInFilter
       .map(patientId => {
         const patient = clinicPatients.find(p => p.id === patientId);
         if (!patient) return null;
         const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-        const revenue = calculatePatientRevenue(patientId, patientEvos);
         const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
         const absences = patientEvos.filter(e => e.attendanceStatus === 'falta').length;
         const paidAbsences = patientEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
         const authorId = (patientEvos[0] as any)?.user_id;
         const author = members.find(m => m.userId === authorId);
-        return { patient, revenue, sessions, absences, paidAbsences, author };
+        return { patient, sessions, absences, paidAbsences, author };
       })
-      .filter((p): p is NonNullable<typeof p> => p !== null && (p.revenue > 0 || p.sessions > 0))
-      .sort((a, b) => b.revenue - a.revenue);
+      .filter((p): p is NonNullable<typeof p> => p !== null && p.sessions > 0)
+      .sort((a, b) => b.sessions - a.sessions);
   }, [patientIdsInFilter, filteredEvolutions, clinicPatients, members]);
 
   // 6-month history chart data

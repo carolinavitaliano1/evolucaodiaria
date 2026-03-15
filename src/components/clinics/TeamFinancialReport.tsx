@@ -86,24 +86,17 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
     return 0;
   };
 
-  // Stats per member
+  // Stats per member — use each member's own remuneration model
   const memberStats = useMemo(() => {
     return members.map(member => {
       const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-
-      // Revenue = sum of patient revenues for evos authored by this member
-      const patientIdsInEvos = [...new Set(memberEvos.map(e => e.patientId))];
-      const revenue = patientIdsInEvos.reduce((sum, patientId) => {
-        const patientEvos = memberEvos.filter(e => e.patientId === patientId);
-        return sum + calculatePatientRevenue(patientId, patientEvos);
-      }, 0);
-
+      const revenue = calculateMemberRemuneration(member, memberEvos);
       return { member, sessions, absences, paidAbsences, revenue, evos: memberEvos };
     });
-  }, [members, monthlyEvolutions, clinicPatients]);
+  }, [members, monthlyEvolutions]);
 
   // Filtered evolutions for consolidated view
   const filteredEvolutions = useMemo(() => {
@@ -116,10 +109,20 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
   const totalPaidAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
 
   const patientIdsInFilter = [...new Set(filteredEvolutions.map(e => e.patientId))];
-  const totalRevenue = patientIdsInFilter.reduce((sum, patientId) => {
-    const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-    return sum + calculatePatientRevenue(patientId, patientEvos);
-  }, 0);
+
+  // Total = sum of each member's remuneration for the filtered scope
+  const totalRevenue = useMemo(() => {
+    if (filterMemberId === 'all') {
+      return members.reduce((sum, member) => {
+        const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
+        return sum + calculateMemberRemuneration(member, memberEvos);
+      }, 0);
+    } else {
+      const member = members.find(m => m.userId === filterMemberId);
+      if (!member) return 0;
+      return calculateMemberRemuneration(member, filteredEvolutions);
+    }
+  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId]);
 
   const patientBreakdown = useMemo(() => {
     return patientIdsInFilter
@@ -127,17 +130,16 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         const patient = clinicPatients.find(p => p.id === patientId);
         if (!patient) return null;
         const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-        const revenue = calculatePatientRevenue(patientId, patientEvos);
         const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
         const absences = patientEvos.filter(e => e.attendanceStatus === 'falta').length;
         const paidAbsences = patientEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
         // Author of the first evo (for org view)
         const authorId = (patientEvos[0] as any)?.user_id;
         const author = members.find(m => m.userId === authorId);
-        return { patient, revenue, sessions, absences, paidAbsences, author };
+        return { patient, sessions, absences, paidAbsences, author };
       })
-      .filter((p): p is NonNullable<typeof p> => p !== null && (p.revenue > 0 || p.sessions > 0))
-      .sort((a, b) => b.revenue - a.revenue);
+      .filter((p): p is NonNullable<typeof p> => p !== null && p.sessions > 0)
+      .sort((a, b) => b.sessions - a.sessions);
   }, [patientIdsInFilter, filteredEvolutions, clinicPatients, members]);
 
   const handleExportPDF = async () => {
