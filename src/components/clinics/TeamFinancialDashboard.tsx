@@ -564,7 +564,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, author }) => (
+                {patientBreakdown.map(({ patient, sessions, absences, paidAbsences, author }) => (
                   <tr key={patient.id} className="hover:bg-accent/40 transition-colors">
                     <td className="py-2.5 pr-3 font-medium text-foreground max-w-[140px] truncate">{patient.name}</td>
                     {filterMemberId === 'all' && canSeeAll && (
@@ -575,8 +575,8 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
                     <td className="py-2.5 pr-3 text-center text-foreground">{sessions}</td>
                     <td className="py-2.5 pr-3 text-center text-warning">{paidAbsences || '—'}</td>
                     <td className="py-2.5 pr-3 text-center text-destructive">{absences || '—'}</td>
-                    <td className="py-2.5 text-right font-semibold text-foreground">
-                      R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <td className="py-2.5 text-right font-semibold text-muted-foreground text-xs">
+                      {sessions} sess.
                     </td>
                   </tr>
                 ))}

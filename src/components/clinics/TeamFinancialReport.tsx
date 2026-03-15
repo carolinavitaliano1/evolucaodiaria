@@ -387,7 +387,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           <p className="text-center text-muted-foreground py-8 text-sm">Nenhum registro neste período</p>
         ) : (
           <div className="space-y-2">
-            {patientBreakdown.map(({ patient, revenue, sessions, absences, paidAbsences, author }) => (
+            {patientBreakdown.map(({ patient, sessions, absences, paidAbsences, author }) => (
               <div key={patient.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border gap-2">
                 <div className="min-w-0">
                   <p className="font-medium text-sm text-foreground">{patient.name}</p>
