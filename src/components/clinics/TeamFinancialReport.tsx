@@ -55,21 +55,35 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
 
   const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
 
-  const calculatePatientRevenue = (patientId: string, evos: typeof monthlyEvolutions) => {
-    const patient = clinicPatients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue) return 0;
-    if (patient.paymentType === 'fixo') return patient.paymentValue;
+  // Calculate member remuneration based on their configured model
+  const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof monthlyEvolutions) => {
+    const { remunerationType, remunerationValue } = member;
+    if (!remunerationValue || remunerationType === 'definir_depois' || !remunerationType) return 0;
 
-    const presentCount = evos.filter(e => e.patientId === patientId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')).length;
-    const paidAbsenceCount = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'falta_remunerada').length;
-    const feriadoRemCount = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'feriado_remunerado').length;
-    const regularAbsences = evos.filter(e => e.patientId === patientId && e.attendanceStatus === 'falta');
+    if (remunerationType === 'fixo_mensal') {
+      // Fixed monthly salary — always the same value, regardless of sessions
+      return remunerationValue;
+    }
 
-    let paidRegularAbsences = 0;
-    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+    if (remunerationType === 'fixo_dia') {
+      // Fixed daily rate × distinct days with "presente" evolutions
+      const presentDays = new Set(
+        memberEvos
+          .filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')
+          .map(e => e.date)
+      );
+      return presentDays.size * remunerationValue;
+    }
 
-    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+    if (remunerationType === 'por_sessao') {
+      // Per session: count presente + reposicao
+      const sessions = memberEvos.filter(e =>
+        e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'
+      ).length;
+      return sessions * remunerationValue;
+    }
+
+    return 0;
   };
 
   // Stats per member
