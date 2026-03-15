@@ -58,7 +58,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         servicesDescription: clinic.servicesDescription || '',
         weekdays: clinic.weekdays || [],
         scheduleByDay: (clinic.scheduleByDay || {}) as { [day: string]: { start: string; end: string } },
-        paymentType: (clinic.paymentType || '') as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
+        paymentType: (clinic.paymentType || '') as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado',
         paymentAmount: clinic.paymentAmount?.toString() || '',
         discountPercentage: clinic.discountPercentage?.toString() || '0',
         absencePaymentType: clinic.absencePaymentType || 'always',
