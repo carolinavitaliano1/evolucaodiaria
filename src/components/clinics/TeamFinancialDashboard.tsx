@@ -169,11 +169,17 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         ? monthEvos
         : monthEvos.filter(e => (e as any).user_id === filterMemberId);
 
-      const pIds = [...new Set(filteredMonthEvos.map(e => e.patientId))];
-      const revenue = pIds.reduce((sum, patientId) => {
-        const pEvos = filteredMonthEvos.filter(e => e.patientId === patientId);
-        return sum + calculatePatientRevenue(patientId, pEvos);
-      }, 0);
+      // Revenue: sum each member's remuneration for this month
+      const revenue = filterMemberId === 'all'
+        ? members.reduce((sum, member) => {
+            const memberEvos = monthEvos.filter(e => (e as any).user_id === member.userId);
+            return sum + calculateMemberRemuneration(member, memberEvos);
+          }, 0)
+        : (() => {
+            const member = members.find(m => m.userId === filterMemberId);
+            if (!member) return 0;
+            return calculateMemberRemuneration(member, filteredMonthEvos);
+          })();
       const sessions = filteredMonthEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
 
       return {
