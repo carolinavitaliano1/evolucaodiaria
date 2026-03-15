@@ -562,19 +562,25 @@ export default function Clinics() {
                        </SelectContent>
                     </Select>
 
-                    {formData.paymentType && (
-                      <div className="mt-3">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.paymentAmount}
-                          onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
-                          placeholder="Valor (R$)"
-                        />
-                      </div>
-                    )}
+                    {formData.paymentType && formData.paymentType !== 'variado' && (
+                       <div className="mt-3">
+                         <Input
+                           type="number"
+                           step="0.01"
+                           value={formData.paymentAmount}
+                           onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
+                           placeholder="Valor (R$)"
+                         />
+                       </div>
+                     )}
 
-                    {formData.paymentType === 'sessao' && (
+                     {formData.paymentType === 'variado' && (
+                       <p className="mt-2 text-xs text-muted-foreground p-3 rounded-lg bg-secondary/50">
+                         O valor é definido individualmente por paciente/pacote. Os valores serão calculados conforme cada tipo de cobrança cadastrado.
+                       </p>
+                     )}
+
+                     {(formData.paymentType === 'sessao' || formData.paymentType === 'variado') && (
                       <div className="mt-3 space-y-2 p-3 rounded-lg bg-secondary/50">
                         <span className="text-sm font-medium">Recebe por faltas?</span>
                         <div className="flex gap-2">
