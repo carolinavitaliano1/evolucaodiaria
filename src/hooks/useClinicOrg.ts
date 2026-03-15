@@ -9,6 +9,8 @@ export interface OrgMemberProfile {
   name: string | null;
   avatarUrl: string | null;
   role: 'owner' | 'admin' | 'professional';
+  remunerationType: string | null;
+  remunerationValue: number | null;
 }
 
 export function useClinicOrg(clinicId: string) {
