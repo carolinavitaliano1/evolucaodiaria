@@ -317,7 +317,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         y += 3;
         doc.setDrawColor(210, 210, 220); doc.line(margin, y, pw - margin, y); y += 4;
 
-        patientBreakdown.forEach(({ patient, revenue, sessions, author }) => {
+        patientBreakdown.forEach(({ patient, sessions, author }) => {
           addPageIfNeeded(7);
           doc.setFont('helvetica', 'normal'); doc.setTextColor(50, 50, 70);
           doc.text(patient.name.substring(0, 22), margin, y);
@@ -327,7 +327,6 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
           }
           doc.setTextColor(50, 50, 70);
           doc.text(sessions.toString(), margin + 108, y);
-          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pw - margin - 35, y);
           y += 7;
         });
 
