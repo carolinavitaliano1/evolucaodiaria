@@ -119,7 +119,7 @@ export default function Clinics() {
     notes: '',
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
-    paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
+    paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado',
     paymentAmount: '',
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
   });
@@ -556,24 +556,31 @@ export default function Clinics() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="fixo_mensal">Fixo Mensal</SelectItem>
-                        <SelectItem value="fixo_diario">Fixo por Dia</SelectItem>
-                        <SelectItem value="sessao">Por Sessão</SelectItem>
-                      </SelectContent>
+                         <SelectItem value="fixo_diario">Fixo por Dia</SelectItem>
+                         <SelectItem value="sessao">Por Sessão</SelectItem>
+                         <SelectItem value="variado">Variado</SelectItem>
+                       </SelectContent>
                     </Select>
 
-                    {formData.paymentType && (
-                      <div className="mt-3">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.paymentAmount}
-                          onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
-                          placeholder="Valor (R$)"
-                        />
-                      </div>
-                    )}
+                    {formData.paymentType && formData.paymentType !== 'variado' && (
+                       <div className="mt-3">
+                         <Input
+                           type="number"
+                           step="0.01"
+                           value={formData.paymentAmount}
+                           onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
+                           placeholder="Valor (R$)"
+                         />
+                       </div>
+                     )}
 
-                    {formData.paymentType === 'sessao' && (
+                     {formData.paymentType === 'variado' && (
+                       <p className="mt-2 text-xs text-muted-foreground p-3 rounded-lg bg-secondary/50">
+                         O valor é definido individualmente por paciente/pacote. Os valores serão calculados conforme cada tipo de cobrança cadastrado.
+                       </p>
+                     )}
+
+                     {(formData.paymentType === 'sessao' || formData.paymentType === 'variado') && (
                       <div className="mt-3 space-y-2 p-3 rounded-lg bg-secondary/50">
                         <span className="text-sm font-medium">Recebe por faltas?</span>
                         <div className="flex gap-2">

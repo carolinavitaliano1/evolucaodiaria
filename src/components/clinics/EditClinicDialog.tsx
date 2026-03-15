@@ -39,7 +39,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     servicesDescription: '',
     weekdays: [] as string[],
     scheduleByDay: {} as { [day: string]: { start: string; end: string } },
-    paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
+    paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado',
     paymentAmount: '',
     discountPercentage: '',
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
@@ -58,7 +58,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         servicesDescription: clinic.servicesDescription || '',
         weekdays: clinic.weekdays || [],
         scheduleByDay: (clinic.scheduleByDay || {}) as { [day: string]: { start: string; end: string } },
-        paymentType: (clinic.paymentType || '') as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao',
+        paymentType: (clinic.paymentType || '') as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado',
         paymentAmount: clinic.paymentAmount?.toString() || '',
         discountPercentage: clinic.discountPercentage?.toString() || '0',
         absencePaymentType: clinic.absencePaymentType || 'always',
@@ -273,20 +273,28 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
                     <SelectItem value="sessao">Por sessão</SelectItem>
                     <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
                     <SelectItem value="fixo_diario">Fixo diário</SelectItem>
+                    <SelectItem value="variado">Variado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-xs">Valor (R$)</Label>
-                <Input
-                  type="number"
-                  value={formData.paymentAmount}
-                  onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
-                  placeholder="0,00"
-                  className="mt-1"
-                />
-              </div>
+              {formData.paymentType !== 'variado' && (
+                <div>
+                  <Label className="text-xs">Valor (R$)</Label>
+                  <Input
+                    type="number"
+                    value={formData.paymentAmount}
+                    onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
+                    placeholder="0,00"
+                    className="mt-1"
+                  />
+                </div>
+              )}
             </div>
+            {formData.paymentType === 'variado' && (
+              <p className="text-xs text-muted-foreground p-3 rounded-lg bg-secondary/50">
+                Valor variado: o recebimento é definido individualmente por paciente ou pacote cadastrado na contratante.
+              </p>
+            )}
             <div>
               <Label className="text-xs">Porcentagem retida pela clínica</Label>
               <Input
