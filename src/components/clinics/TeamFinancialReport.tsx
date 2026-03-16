@@ -89,7 +89,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
   // Stats per member — use each member's own remuneration model
   const memberStats = useMemo(() => {
     return members.map(member => {
-      const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
+      const memberEvos = monthlyEvolutions.filter(e => e.userId === member.userId);
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
@@ -101,7 +101,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
   // Filtered evolutions for consolidated view
   const filteredEvolutions = useMemo(() => {
     if (filterMemberId === 'all') return monthlyEvolutions;
-    return monthlyEvolutions.filter(e => (e as any).user_id === filterMemberId);
+    return monthlyEvolutions.filter(e => e.userId === filterMemberId);
   }, [monthlyEvolutions, filterMemberId]);
 
   const totalSessions = filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
@@ -114,7 +114,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
   const totalRevenue = useMemo(() => {
     if (filterMemberId === 'all') {
       return members.reduce((sum, member) => {
-        const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
+        const memberEvos = monthlyEvolutions.filter(e => e.userId === member.userId);
         return sum + calculateMemberRemuneration(member, memberEvos);
       }, 0);
     } else {
