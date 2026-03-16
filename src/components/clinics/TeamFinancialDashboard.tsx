@@ -167,12 +167,12 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       });
       const filteredMonthEvos = filterMemberId === 'all'
         ? monthEvos
-        : monthEvos.filter(e => (e as any).user_id === filterMemberId);
+        : monthEvos.filter(e => e.userId === filterMemberId);
 
       // Revenue: sum each member's remuneration for this month
       const revenue = filterMemberId === 'all'
         ? members.reduce((sum, member) => {
-            const memberEvos = monthEvos.filter(e => (e as any).user_id === member.userId);
+            const memberEvos = monthEvos.filter(e => e.userId === member.userId);
             return sum + calculateMemberRemuneration(member, memberEvos);
           }, 0)
         : (() => {
