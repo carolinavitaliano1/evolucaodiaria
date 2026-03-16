@@ -408,25 +408,18 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       </div>
 
       {/* ── Summary cards ── */}
-      {/* Remuneration subtitle: contextual based on selected member's model */}
       {(() => {
-        const selectedMember = filterMemberId === 'all' ? null : members.find(m => m.userId === filterMemberId);
-        let remunerationSubtitle = '';
-        if (selectedMember) {
-          if (selectedMember.remunerationType === 'fixo_mensal') {
-            remunerationSubtitle = 'Valor Fixo Mensal';
-          } else if (selectedMember.remunerationType === 'fixo_dia') {
-            const workedDays = new Set(
-              filteredEvolutions
-                .filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')
-                .map(e => e.date)
-            ).size;
-            remunerationSubtitle = `Baseado em ${workedDays} dia${workedDays !== 1 ? 's' : ''} trabalhado${workedDays !== 1 ? 's' : ''}`;
-          } else if (selectedMember.remunerationType === 'por_sessao') {
-            remunerationSubtitle = `Baseado em ${totalSessions} sessão${totalSessions !== 1 ? 'ões' : ''}`;
-          }
+        const selMember = filterMemberId !== 'all' ? members.find(m => m.userId === filterMemberId) : null;
+        let sub = '';
+        if (selMember?.remunerationType === 'fixo_mensal') {
+          sub = 'Valor Fixo Mensal (salário)';
+        } else if (selMember?.remunerationType === 'fixo_dia') {
+          const days = new Set(filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+          sub = `Baseado em ${days} dia${days !== 1 ? 's' : ''} trabalhado${days !== 1 ? 's' : ''}`;
+        } else if (selMember?.remunerationType === 'por_sessao') {
+          sub = `Baseado em ${totalSessions} sessão${totalSessions !== 1 ? 'ões' : ''}`;
         } else if (filterMemberId === 'all') {
-          remunerationSubtitle = `${members.length} profissional${members.length !== 1 ? 'is' : ''}`;
+          sub = `${members.length} profissional${members.length !== 1 ? 'is' : ''}`;
         }
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -436,9 +429,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
               <p className="text-lg font-bold text-foreground mt-0.5">
                 R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
-              {remunerationSubtitle && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">{remunerationSubtitle}</p>
-              )}
+              {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
             </div>
             <div className="bg-card rounded-2xl p-4 border border-border">
               <TrendingUp className="w-5 h-5 text-primary" />
@@ -458,7 +449,6 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
           </div>
         );
       })()}
-      </div>
 
       {/* ── 6-Month Bar Chart ── */}
       <div className="bg-card rounded-2xl p-5 border border-border">
