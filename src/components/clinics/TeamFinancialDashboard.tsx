@@ -99,7 +99,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
   // Filtered evolutions
   const filteredEvolutions = useMemo(() => {
     if (filterMemberId === 'all') return monthlyEvolutions;
-    return monthlyEvolutions.filter(e => (e as any).user_id === filterMemberId);
+    return monthlyEvolutions.filter(e => e.userId === filterMemberId);
   }, [monthlyEvolutions, filterMemberId]);
 
   const totalSessions = filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
@@ -112,7 +112,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
     if (filterMemberId === 'all') {
       // Sum all members' remuneration
       return members.reduce((sum, member) => {
-        const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
+        const memberEvos = monthlyEvolutions.filter(e => e.userId === member.userId);
         return sum + calculateMemberRemuneration(member, memberEvos);
       }, 0);
     } else {
@@ -125,7 +125,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
   // Per-member stats
   const memberStats = useMemo(() => {
     return members.map(member => {
-      const memberEvos = monthlyEvolutions.filter(e => (e as any).user_id === member.userId);
+      const memberEvos = monthlyEvolutions.filter(e => e.userId === member.userId);
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
@@ -167,12 +167,12 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       });
       const filteredMonthEvos = filterMemberId === 'all'
         ? monthEvos
-        : monthEvos.filter(e => (e as any).user_id === filterMemberId);
+        : monthEvos.filter(e => e.userId === filterMemberId);
 
       // Revenue: sum each member's remuneration for this month
       const revenue = filterMemberId === 'all'
         ? members.reduce((sum, member) => {
-            const memberEvos = monthEvos.filter(e => (e as any).user_id === member.userId);
+            const memberEvos = monthEvos.filter(e => e.userId === member.userId);
             return sum + calculateMemberRemuneration(member, memberEvos);
           }, 0)
         : (() => {

@@ -117,6 +117,7 @@ function mapPatient(p: Record<string, unknown>): Patient {
 function mapEvolution(e: Record<string, unknown>): Evolution {
   return {
     id: e.id as string, patientId: e.patient_id as string, clinicId: e.clinic_id as string,
+    userId: (e.user_id as string) || undefined,
     date: e.date as string, text: e.text as string,
     attendanceStatus: e.attendance_status as Evolution['attendanceStatus'],
     confirmedAttendance: (e.confirmed_attendance as boolean) || false,
