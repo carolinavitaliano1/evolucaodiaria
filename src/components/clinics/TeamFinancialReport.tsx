@@ -362,7 +362,13 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {sessions} sessões
+                        {member.remunerationType === 'fixo_mensal' && '💼 Salário fixo mensal'}
+                        {member.remunerationType === 'fixo_dia' && (() => {
+                          const days = new Set(evos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+                          return `📅 ${days} dia${days !== 1 ? 's' : ''} trabalhado${days !== 1 ? 's' : ''}`;
+                        })()}
+                        {member.remunerationType === 'por_sessao' && `🔄 ${sessions} sessão${sessions !== 1 ? 'ões' : ''}`}
+                        {(!member.remunerationType || member.remunerationType === 'definir_depois') && `${sessions} sessões`}
                         {paidAbsences > 0 && ` • ${paidAbsences} faltas rem.`}
                         {absences > 0 && ` • ${absences} faltas`}
                       </p>
