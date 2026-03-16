@@ -501,6 +501,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             </div>
           </div>
 
+          {!isTerceirizada && (
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Financeiro</Label>
             <div className="space-y-3 mt-2">
@@ -597,6 +598,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
               </div>
             </div>
           </div>
+          )}
 
           {isPropria && (
             <div className="border-t pt-4">
