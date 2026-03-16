@@ -94,6 +94,7 @@ export interface Evolution {
   id: string;
   patientId: string;
   clinicId: string;
+  userId: string;
   date: string;
   text: string;
   attendanceStatus: 'presente' | 'falta' | 'falta_remunerada' | 'reposicao' | 'feriado_remunerado' | 'feriado_nao_remunerado';
