@@ -70,6 +70,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
   const [savingPayment, setSavingPayment] = useState(false);
 
   const isPropria = clinicType === 'propria';
+  const isTerceirizada = clinicType === 'terceirizada';
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
