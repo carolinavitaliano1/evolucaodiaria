@@ -305,10 +305,21 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card rounded-2xl p-4 border border-border">
           <DollarSign className="w-5 h-5 text-success mb-2" />
-          <p className="text-xs text-muted-foreground">Faturamento</p>
+          <p className="text-xs text-muted-foreground">Remuneração</p>
           <p className="text-lg font-bold text-foreground">
             R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
+          {filterMemberId !== 'all' && (() => {
+            const selM = members.find(m => m.userId === filterMemberId);
+            if (!selM) return null;
+            if (selM.remunerationType === 'fixo_mensal') return <p className="text-[10px] text-muted-foreground mt-0.5">💼 Valor Fixo Mensal (salário)</p>;
+            if (selM.remunerationType === 'fixo_dia') {
+              const days = new Set(filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+              return <p className="text-[10px] text-muted-foreground mt-0.5">📅 Baseado em {days} dia{days !== 1 ? 's' : ''} trabalhado{days !== 1 ? 's' : ''}</p>;
+            }
+            if (selM.remunerationType === 'por_sessao') return <p className="text-[10px] text-muted-foreground mt-0.5">🔄 Baseado em {totalSessions} sessão{totalSessions !== 1 ? 'ões' : ''}</p>;
+            return null;
+          })()}
         </div>
         <div className="bg-card rounded-2xl p-4 border border-border">
           <TrendingUp className="w-5 h-5 text-primary mb-2" />
@@ -337,7 +348,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           <div className="space-y-2">
             {memberStats
               .sort((a, b) => b.revenue - a.revenue)
-              .map(({ member, sessions, absences, paidAbsences, revenue }) => (
+              .map(({ member, sessions, absences, paidAbsences, revenue, evos }) => (
                 <div key={member.userId} className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border gap-3">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
@@ -351,7 +362,13 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {sessions} sessões
+                        {member.remunerationType === 'fixo_mensal' && '💼 Salário fixo mensal'}
+                        {member.remunerationType === 'fixo_dia' && (() => {
+                          const days = new Set(evos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+                          return `📅 ${days} dia${days !== 1 ? 's' : ''} trabalhado${days !== 1 ? 's' : ''}`;
+                        })()}
+                        {member.remunerationType === 'por_sessao' && `🔄 ${sessions} sessão${sessions !== 1 ? 'ões' : ''}`}
+                        {(!member.remunerationType || member.remunerationType === 'definir_depois') && `${sessions} sessões`}
                         {paidAbsences > 0 && ` • ${paidAbsences} faltas rem.`}
                         {absences > 0 && ` • ${absences} faltas`}
                       </p>

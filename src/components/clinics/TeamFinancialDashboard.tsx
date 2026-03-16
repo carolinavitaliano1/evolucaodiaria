@@ -408,20 +408,47 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       </div>
 
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { icon: <DollarSign className="w-5 h-5 text-success" />, label: 'Faturamento', value: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
-          { icon: <TrendingUp className="w-5 h-5 text-primary" />, label: 'Sessões', value: totalSessions.toString() },
-          { icon: <AlertTriangle className="w-5 h-5 text-warning" />, label: 'Faltas Rem.', value: totalPaidAbsences.toString() },
-          { icon: <TrendingDown className="w-5 h-5 text-destructive" />, label: 'Faltas', value: totalAbsences.toString() },
-        ].map(card => (
-          <div key={card.label} className="bg-card rounded-2xl p-4 border border-border">
-            {card.icon}
-            <p className="text-xs text-muted-foreground mt-2">{card.label}</p>
-            <p className="text-lg font-bold text-foreground mt-0.5">{card.value}</p>
+      {(() => {
+        const selMember = filterMemberId !== 'all' ? members.find(m => m.userId === filterMemberId) : null;
+        let sub = '';
+        if (selMember?.remunerationType === 'fixo_mensal') {
+          sub = 'Valor Fixo Mensal (salário)';
+        } else if (selMember?.remunerationType === 'fixo_dia') {
+          const days = new Set(filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+          sub = `Baseado em ${days} dia${days !== 1 ? 's' : ''} trabalhado${days !== 1 ? 's' : ''}`;
+        } else if (selMember?.remunerationType === 'por_sessao') {
+          sub = `Baseado em ${totalSessions} sessão${totalSessions !== 1 ? 'ões' : ''}`;
+        } else if (filterMemberId === 'all') {
+          sub = `${members.length} profissional${members.length !== 1 ? 'is' : ''}`;
+        }
+        return (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <DollarSign className="w-5 h-5 text-success" />
+              <p className="text-xs text-muted-foreground mt-2">Remuneração</p>
+              <p className="text-lg font-bold text-foreground mt-0.5">
+                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+              {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
+            </div>
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <p className="text-xs text-muted-foreground mt-2">Sessões</p>
+              <p className="text-lg font-bold text-foreground mt-0.5">{totalSessions}</p>
+            </div>
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <AlertTriangle className="w-5 h-5 text-warning" />
+              <p className="text-xs text-muted-foreground mt-2">Faltas Rem.</p>
+              <p className="text-lg font-bold text-foreground mt-0.5">{totalPaidAbsences}</p>
+            </div>
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <TrendingDown className="w-5 h-5 text-destructive" />
+              <p className="text-xs text-muted-foreground mt-2">Faltas</p>
+              <p className="text-lg font-bold text-foreground mt-0.5">{totalAbsences}</p>
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {/* ── 6-Month Bar Chart ── */}
       <div className="bg-card rounded-2xl p-5 border border-border">
@@ -508,8 +535,14 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
                     value={maxMemberRevenue > 0 ? (revenue / maxMemberRevenue) * 100 : 0}
                     className="h-1.5 mb-1"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {sessions} sessões
+                   <p className="text-xs text-muted-foreground">
+                    {member.remunerationType === 'fixo_mensal' && '💼 Salário fixo mensal'}
+                    {member.remunerationType === 'fixo_dia' && (() => {
+                      const days = new Set(monthlyEvolutions.filter(e => e.userId === member.userId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')).map(e => e.date)).size;
+                      return `📅 ${days} dia${days !== 1 ? 's' : ''} trabalhado${days !== 1 ? 's' : ''}`;
+                    })()}
+                    {member.remunerationType === 'por_sessao' && `🔄 ${sessions} sessão${sessions !== 1 ? 'ões' : ''}`}
+                    {(!member.remunerationType || member.remunerationType === 'definir_depois') && `${sessions} sessões`}
                     {paidAbsences > 0 && ` · ${paidAbsences} faltas rem.`}
                     {absences > 0 && ` · ${absences} faltas`}
                   </p>
