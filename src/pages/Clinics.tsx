@@ -723,7 +723,11 @@ export default function Clinics() {
                         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1"><Users className="w-3 h-3" />{patientCount} pac.</span>
                           {clinic.scheduleTime && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{clinic.scheduleTime}</span>}
-                          {clinic.paymentAmount && <span className="flex items-center gap-1 text-success font-medium"><DollarSign className="w-3 h-3" />R$ {clinic.paymentAmount.toFixed(0)}</span>}
+                           {clinic.paymentType === 'variado' ? (
+                              <span className="flex items-center gap-1 text-muted-foreground font-medium"><DollarSign className="w-3 h-3" />Variado</span>
+                            ) : clinic.paymentAmount ? (
+                              <span className="flex items-center gap-1 text-success font-medium"><DollarSign className="w-3 h-3" />R$ {clinic.paymentAmount.toFixed(0)}</span>
+                            ) : null}
                         </div>
                       </div>
                       <DropdownMenu>
