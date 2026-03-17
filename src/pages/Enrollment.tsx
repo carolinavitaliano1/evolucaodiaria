@@ -200,7 +200,7 @@ export default function Enrollment() {
             </SectionCard>
 
             {/* 2. Responsável Legal */}
-            <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Legal">
+            <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Legal (Contratante)">
               <p className="text-xs text-muted-foreground -mt-1">Preencha caso o paciente seja menor de idade ou possua responsável.</p>
               <Field id="responsible_name" label="Nome do Responsável Legal">
                 <Input id="responsible_name" value={form.responsible_name} onChange={set('responsible_name')} placeholder="Ex: Maria Silva" />
