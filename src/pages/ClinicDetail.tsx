@@ -187,8 +187,8 @@ export default function ClinicDetail() {
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image?: string | null; is_default: boolean | null }[]>([]);
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
-  const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
-  const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
+  const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '', packageType: 'mensal' as 'mensal' | 'por_sessao' | 'personalizado', sessionLimit: '' });
+  const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string; packageType: 'mensal' | 'por_sessao' | 'personalizado'; sessionLimit: string} | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [batchSearch, setBatchSearch] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
