@@ -913,16 +913,18 @@ export default function PatientDetail() {
   const buildFiscalReceiptOpts = () => {
     const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
     const evos = getFiscalEvolutions();
-    const paymentValue = patient?.paymentValue || 0;
+    const rawPaymentValue = patient?.paymentValue || 0;
     const STATUS_BILLABLE: Record<string, boolean> = {
       presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
       falta: false, feriado_nao_remunerado: false,
     };
     const billableEvos = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false);
     const billableCount = billableEvos.length;
+    // Use per-session value for Personalizado packages
+    const fiscalPerSession = isPackagePersonalizado ? perSessionValue : rawPaymentValue;
     const calculatedTotal = patient?.paymentType === 'fixo'
-      ? paymentValue
-      : billableCount * paymentValue;
+      ? rawPaymentValue
+      : billableCount * fiscalPerSession;
 
     // For "total" mode: calculate paid sessions (those whose month/year has paid=true)
     // We use the paid amount from the record if available, otherwise calculate from sessions
