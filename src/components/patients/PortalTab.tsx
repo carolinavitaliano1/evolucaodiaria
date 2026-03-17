@@ -63,6 +63,10 @@ interface IntakeForm {
   health_info: string | null;
   observations: string | null;
   payment_due_day: number | null;
+  needs_review?: boolean;
+  review_status?: string | null;
+  reviewed_at?: string | null;
+  review_history?: Array<{ submitted_at: string; data: Record<string, any> }>;
 }
 
 interface PortalDocument {
