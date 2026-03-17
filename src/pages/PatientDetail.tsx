@@ -482,7 +482,18 @@ export default function PatientDetail() {
   const totalFeriadoNaoRem = patientEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const totalSessions = patientEvolutions.length;
   const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
-  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
+  const totalBillableEvos = patientEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const totalFinancial = patient?.paymentType === 'fixo'
+    ? (patient?.paymentValue || 0)
+    : patient?.paymentType === 'sessao'
+      ? (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0)
+      : (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
+  const totalFinancialSubtitle = patient?.paymentType === 'fixo'
+    ? 'Valor Fixo Mensal'
+    : patient?.paymentType === 'sessao'
+      ? `Total de ${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões`
+      : `${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões pagas`;
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
@@ -525,7 +536,14 @@ export default function PatientDetail() {
   const monthlyFeriadoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const monthlyFeriadoNaoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const monthlyTotal = monthlyEvolutions.length;
-  const monthlyRevenue = (monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem) * ((patient?.paymentValue) || 0);
+  const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
+  const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const monthlyRevenue = patient?.paymentType === 'fixo'
+    ? (patient?.paymentValue || 0)
+    : (monthlyBillableCount) * (patient?.paymentValue || 0);
+  const monthlyRevenueSubtitle = patient?.paymentType === 'fixo'
+    ? 'Valor Fixo'
+    : `${monthlyBillableCount} sessão(ões)`;
   const monthlyAttendanceRate = monthlyTotal > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyTotal) * 100) : 0;
   const monthlyMoodCounts = allMoodOptions.map(m => ({
     ...m, count: monthlyEvolutions.filter(e => e.mood === m.value).length,
@@ -547,7 +565,10 @@ export default function PatientDetail() {
   const finPaidAbsent = financialEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
   const finFeriadoRem = financialEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const finTotal = financialEvolutions.length;
-  const finRevenue = (finPresent + finReposicao + finPaidAbsent + finFeriadoRem) * ((patient?.paymentValue) || 0);
+  const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
+  const finRevenue = patient?.paymentType === 'fixo'
+    ? (patient?.paymentValue || 0)
+    : (finBillableCount) * (patient?.paymentValue || 0);
   const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
 
 
@@ -1566,7 +1587,7 @@ export default function PatientDetail() {
             <p className="text-xs font-medium text-muted-foreground">Receita Total</p>
           </div>
           <p className="text-2xl font-bold text-success">R$ {totalFinancial.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} pagas</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{totalFinancialSubtitle}</p>
         </div>
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <div className="flex items-center gap-2 mb-2">
@@ -2183,7 +2204,7 @@ export default function PatientDetail() {
                     <div className="bg-success/5 rounded-xl p-4 border border-success/20">
                       <p className="text-xs font-medium text-success mb-1">Receita</p>
                       <p className="text-2xl font-bold text-success">R$ {monthlyRevenue.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">{monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem} pagas</p>
+                      <p className="text-xs text-muted-foreground">{monthlyRevenueSubtitle}</p>
                     </div>
                     <div className="bg-destructive/5 rounded-xl p-4 border border-destructive/20">
                       <p className="text-xs font-medium text-destructive mb-1">Faltas</p>
