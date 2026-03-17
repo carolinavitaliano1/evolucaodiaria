@@ -18,7 +18,7 @@ export interface Clinic {
   weekdays?: string[];
   scheduleTime?: string;
   scheduleByDay?: ScheduleByDay;
-  paymentType?: 'fixo_mensal' | 'fixo_diario' | 'sessao';
+  paymentType?: 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado';
   paymentAmount?: number;
   paysOnAbsence?: boolean;
   absencePaymentType?: 'always' | 'never' | 'confirmed_only';

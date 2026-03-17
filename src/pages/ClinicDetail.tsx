@@ -982,14 +982,18 @@ export default function ClinicDetail() {
           </div>
         )}
 
-        {clinic.paymentAmount && (
+        {(clinic.paymentAmount || clinic.paymentType === 'variado') && (
           <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
             <DollarSign className="w-6 h-6 lg:w-8 lg:h-8 text-success lg:mb-2 shrink-0" />
             <div className="min-w-0">
               <p className="text-muted-foreground text-xs">Remuneração</p>
-              <p className="text-base lg:text-lg font-bold text-foreground">
-                R$ {clinic.paymentAmount.toFixed(2)}
-              </p>
+              {clinic.paymentType === 'variado' ? (
+                <p className="text-base lg:text-lg font-bold text-foreground">Variado</p>
+              ) : (
+                <p className="text-base lg:text-lg font-bold text-foreground">
+                  R$ {clinic.paymentAmount?.toFixed(2)}
+                </p>
+              )}
             </div>
           </div>
         )}
