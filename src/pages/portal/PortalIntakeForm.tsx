@@ -303,7 +303,7 @@ export default function PortalIntakeForm() {
         </SectionCard>
 
         {/* Responsável (menor de idade) */}
-        <SectionCard title="Responsável (se menor de idade)">
+        <SectionCard title="Responsável Legal (Contratante)">
           <div className="grid grid-cols-1 gap-3">
             <Field label="Nome do responsável">
               <Input value={form.responsible_name} onChange={set('responsible_name')} placeholder="Nome completo" />
