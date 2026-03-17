@@ -174,7 +174,7 @@ export default function Enrollment() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* 1. Dados do Paciente */}
-            <SectionCard icon={<User className="w-4 h-4" />} title="Dados do Paciente">
+            <SectionCard icon={<User className="w-4 h-4" />} title="Dados do Paciente (Paciente)">
               <Field id="name" label="Nome Completo" required>
                 <Input id="name" value={form.name} onChange={set('name')} placeholder="Ex: João Pedro Silva" required />
               </Field>

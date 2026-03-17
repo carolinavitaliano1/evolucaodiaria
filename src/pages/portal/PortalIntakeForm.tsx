@@ -64,7 +64,6 @@ const PAYMENT_DAY_OPTIONS = [
 const GENDER_OPTIONS = [
   { label: 'Masculino', value: 'masculino' },
   { label: 'Feminino', value: 'feminino' },
-  { label: 'Não-binário', value: 'nao_binario' },
   { label: 'Prefiro não dizer', value: 'nao_informar' },
 ];
 
