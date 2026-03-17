@@ -187,8 +187,8 @@ export default function ClinicDetail() {
   const [stamps, setStamps] = useState<{ id: string; name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image?: string | null; is_default: boolean | null }[]>([]);
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
-  const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '' });
-  const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string} | null>(null);
+  const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '', packageType: 'mensal' as 'mensal' | 'por_sessao' | 'personalizado', sessionLimit: '' });
+  const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string; packageType: 'mensal' | 'por_sessao' | 'personalizado'; sessionLimit: string} | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [batchSearch, setBatchSearch] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
@@ -1728,8 +1728,39 @@ export default function ClinicDetail() {
                         rows={2}
                       />
                     </div>
+                    {/* Tipo de Pacote */}
                     <div>
-                      <Label>Valor (R$) *</Label>
+                      <Label>Tipo de Pacote</Label>
+                      <Select
+                        value={newPackage.packageType}
+                        onValueChange={(v) => setNewPackage({ ...newPackage, packageType: v as typeof newPackage.packageType, sessionLimit: '' })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="por_sessao">Por Sessão</SelectItem>
+                          <SelectItem value="personalizado">Personalizado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Qtd. de sessões — só para personalizado */}
+                    {newPackage.packageType === 'personalizado' && (
+                      <div className="animate-in fade-in duration-200">
+                        <Label>Quantidade de Sessões</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={newPackage.sessionLimit}
+                          onChange={(e) => setNewPackage({ ...newPackage, sessionLimit: e.target.value })}
+                          placeholder="Ex: 8"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <Label>Valor Total (R$) *</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -1737,6 +1768,15 @@ export default function ClinicDetail() {
                         onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
                         placeholder="0.00"
                       />
+                      {/* Calculadora automática */}
+                      {newPackage.packageType === 'personalizado' && newPackage.price && newPackage.sessionLimit && Number(newPackage.sessionLimit) > 0 && (
+                        <p className="mt-1.5 text-sm text-muted-foreground animate-in fade-in duration-200">
+                          Valor equivalente por sessão:{' '}
+                          <span className="font-semibold">
+                            {(parseFloat(newPackage.price) / parseInt(newPackage.sessionLimit)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        </p>
+                      )}
                     </div>
                     <Button
                       className="w-full"
@@ -1749,8 +1789,10 @@ export default function ClinicDetail() {
                           description: newPackage.description || undefined,
                           price: parseFloat(newPackage.price),
                           isActive: true,
+                          packageType: newPackage.packageType,
+                          sessionLimit: newPackage.packageType === 'personalizado' && newPackage.sessionLimit ? parseInt(newPackage.sessionLimit) : null,
                         });
-                        setNewPackage({ name: '', description: '', price: '' });
+                        setNewPackage({ name: '', description: '', price: '', packageType: 'mensal', sessionLimit: '' });
                         setPackageDialogOpen(false);
                       }}
                     >
@@ -1772,12 +1814,12 @@ export default function ClinicDetail() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {clinicPackages.map((pkg) => (
-                  <div key={pkg.id} className="bg-secondary/50 rounded-xl p-4 border border-border">
+                   <div key={pkg.id} className="bg-secondary/50 rounded-xl p-4 border border-border">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-foreground">{pkg.name}</h3>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7"
-                          onClick={() => setEditingPackage({ id: pkg.id, name: pkg.name, description: pkg.description || '', price: pkg.price.toString() })}>
+                          onClick={() => setEditingPackage({ id: pkg.id, name: pkg.name, description: pkg.description || '', price: pkg.price.toString(), packageType: (pkg.packageType || 'mensal') as 'mensal' | 'por_sessao' | 'personalizado', sessionLimit: pkg.sessionLimit?.toString() || '' })}>
                           <Edit className="w-3.5 h-3.5" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
@@ -1789,9 +1831,24 @@ export default function ClinicDetail() {
                     {pkg.description && (
                       <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
                     )}
-                    <p className="text-lg font-bold text-success">
-                      R$ {pkg.price.toFixed(2)}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-lg font-bold text-success">
+                        R$ {pkg.price.toFixed(2)}
+                      </p>
+                      <span className={cn(
+                        "text-xs px-2 py-0.5 rounded-full font-medium",
+                        pkg.packageType === 'por_sessao' ? 'bg-primary/10 text-primary' :
+                        pkg.packageType === 'personalizado' ? 'bg-warning/10 text-warning' :
+                        'bg-muted text-muted-foreground'
+                      )}>
+                        {pkg.packageType === 'por_sessao' ? 'Por Sessão' : pkg.packageType === 'personalizado' ? 'Personalizado' : 'Mensal'}
+                      </span>
+                    </div>
+                    {pkg.packageType === 'personalizado' && pkg.sessionLimit && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {pkg.sessionLimit} sessões · {(pkg.price / pkg.sessionLimit).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/sessão
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2337,11 +2394,47 @@ export default function ClinicDetail() {
                   onChange={(e) => setEditingPackage({ ...editingPackage, description: e.target.value })}
                   placeholder="Detalhes do pacote..." rows={2} />
               </div>
+              {/* Tipo de Pacote */}
               <div>
-                <Label>Valor (R$) *</Label>
+                <Label>Tipo de Pacote</Label>
+                <Select
+                  value={editingPackage.packageType}
+                  onValueChange={(v) => setEditingPackage({ ...editingPackage, packageType: v as typeof editingPackage.packageType, sessionLimit: '' })}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="por_sessao">Por Sessão</SelectItem>
+                    <SelectItem value="personalizado">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editingPackage.packageType === 'personalizado' && (
+                <div className="animate-in fade-in duration-200">
+                  <Label>Quantidade de Sessões</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editingPackage.sessionLimit}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, sessionLimit: e.target.value })}
+                    placeholder="Ex: 8"
+                    className="mt-1"
+                  />
+                </div>
+              )}
+              <div>
+                <Label>Valor Total (R$) *</Label>
                 <Input type="number" step="0.01" value={editingPackage.price}
                   onChange={(e) => setEditingPackage({ ...editingPackage, price: e.target.value })}
                   placeholder="0.00" />
+                {editingPackage.packageType === 'personalizado' && editingPackage.price && editingPackage.sessionLimit && Number(editingPackage.sessionLimit) > 0 && (
+                  <p className="mt-1.5 text-sm text-muted-foreground animate-in fade-in duration-200">
+                    Valor equivalente por sessão:{' '}
+                    <span className="font-semibold">
+                      {(parseFloat(editingPackage.price) / parseInt(editingPackage.sessionLimit)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </p>
+                )}
               </div>
               <Button className="w-full" disabled={!editingPackage.name.trim() || !editingPackage.price}
                 onClick={() => {
@@ -2349,6 +2442,8 @@ export default function ClinicDetail() {
                     name: editingPackage.name,
                     description: editingPackage.description || undefined,
                     price: parseFloat(editingPackage.price),
+                    packageType: editingPackage.packageType,
+                    sessionLimit: editingPackage.packageType === 'personalizado' && editingPackage.sessionLimit ? parseInt(editingPackage.sessionLimit) : null,
                   });
                   setEditingPackage(null);
                   toast.success('Pacote atualizado!');

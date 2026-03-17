@@ -68,6 +68,8 @@ export interface ClinicPackage {
   description?: string;
   price: number;
   isActive: boolean;
+  packageType?: 'mensal' | 'por_sessao' | 'personalizado';
+  sessionLimit?: number | null;
   createdAt: string;
 }
 

@@ -147,6 +147,8 @@ function mapPackage(p: Record<string, unknown>): ClinicPackage {
     id: p.id as string, userId: p.user_id as string, clinicId: p.clinic_id as string,
     name: p.name as string, description: (p.description as string) || undefined,
     price: Number(p.price), isActive: (p.is_active as boolean) ?? true,
+    packageType: (p.package_type as 'mensal' | 'por_sessao' | 'personalizado') || 'mensal',
+    sessionLimit: p.session_limit != null ? Number(p.session_limit) : null,
     createdAt: p.created_at as string,
   };
 }
@@ -790,6 +792,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.from('clinic_packages').insert({
         user_id: user.id, clinic_id: pkg.clinicId, name: pkg.name,
         description: pkg.description || null, price: pkg.price, is_active: pkg.isActive,
+        package_type: pkg.packageType || 'mensal',
+        session_limit: pkg.sessionLimit ?? null,
       }).select().single();
       if (error) throw error;
       setState(prev => ({ ...prev, clinicPackages: [mapPackage(data as Record<string, unknown>), ...prev.clinicPackages] }));
@@ -805,6 +809,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.description !== undefined) updateData.description = updates.description || null;
       if (updates.price !== undefined) updateData.price = updates.price;
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+      if (updates.packageType !== undefined) updateData.package_type = updates.packageType;
+      if (updates.sessionLimit !== undefined) updateData.session_limit = updates.sessionLimit ?? null;
       const { error } = await supabase.from('clinic_packages').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, clinicPackages: prev.clinicPackages.map(p => p.id === id ? { ...p, ...updates } : p) }));
