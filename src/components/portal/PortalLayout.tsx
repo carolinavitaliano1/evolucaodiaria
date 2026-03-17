@@ -21,15 +21,27 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
   const { signOut } = useAuth();
   const location = useLocation();
   const [unreadNotices, setUnreadNotices] = useState(0);
+  const [unreadMural, setUnreadMural] = useState(0);
 
   useEffect(() => {
     if (!portalAccount) return;
+    // Count unread portal_notices (general)
     supabase
       .from('portal_notices')
       .select('id', { count: 'exact' })
       .eq('patient_id', portalAccount.patient_id)
       .eq('read_by_patient', false)
+      .not('title', 'ilike', '%Mural%')
       .then(({ count }) => setUnreadNotices(count || 0));
+
+    // Count unread mural notifications (portal_notices with "Mural" in title)
+    supabase
+      .from('portal_notices')
+      .select('id', { count: 'exact' })
+      .eq('patient_id', portalAccount.patient_id)
+      .eq('read_by_patient', false)
+      .ilike('title', '%Mural%')
+      .then(({ count }) => setUnreadMural(count || 0));
   }, [portalAccount, location.pathname]);
 
   return (
@@ -69,6 +81,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             const badge =
               to === '/portal/mensagens' && unreadCount > 0 ? unreadCount
               : to === '/portal/avisos' && unreadNotices > 0 ? unreadNotices
+              : to === '/portal/mural' && unreadMural > 0 ? unreadMural
               : 0;
             return (
               <NavLink

@@ -166,6 +166,24 @@ export function FeedPostCreator({ patientId, therapistId, therapistName, onPostC
 
       if (error) throw error;
 
+      // Notify the patient via portal_notice
+      const noticeTitle = '📌 Novidade no Mural!';
+      const noticeContent = content.trim()
+        ? `Seu terapeuta publicou: "${content.trim().substring(0, 100)}${content.trim().length > 100 ? '...' : ''}"`
+        : finalMediaType === 'image'
+          ? 'Seu terapeuta compartilhou uma foto no mural.'
+          : finalMediaType === 'video'
+            ? 'Seu terapeuta compartilhou um vídeo no mural.'
+            : 'Seu terapeuta publicou algo novo no mural.';
+
+      await supabase.from('portal_notices').insert({
+        patient_id: patientId,
+        therapist_user_id: therapistId,
+        title: noticeTitle,
+        content: noticeContent,
+        read_by_patient: false,
+      });
+
       setUploadProgress(100);
       toast.success('Postagem publicada!');
       setContent('');
