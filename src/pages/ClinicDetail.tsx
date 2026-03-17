@@ -2379,11 +2379,47 @@ export default function ClinicDetail() {
                   onChange={(e) => setEditingPackage({ ...editingPackage, description: e.target.value })}
                   placeholder="Detalhes do pacote..." rows={2} />
               </div>
+              {/* Tipo de Pacote */}
               <div>
-                <Label>Valor (R$) *</Label>
+                <Label>Tipo de Pacote</Label>
+                <Select
+                  value={editingPackage.packageType}
+                  onValueChange={(v) => setEditingPackage({ ...editingPackage, packageType: v as typeof editingPackage.packageType, sessionLimit: '' })}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="por_sessao">Por Sessão</SelectItem>
+                    <SelectItem value="personalizado">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editingPackage.packageType === 'personalizado' && (
+                <div className="animate-in fade-in duration-200">
+                  <Label>Quantidade de Sessões</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editingPackage.sessionLimit}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, sessionLimit: e.target.value })}
+                    placeholder="Ex: 8"
+                    className="mt-1"
+                  />
+                </div>
+              )}
+              <div>
+                <Label>Valor Total (R$) *</Label>
                 <Input type="number" step="0.01" value={editingPackage.price}
                   onChange={(e) => setEditingPackage({ ...editingPackage, price: e.target.value })}
                   placeholder="0.00" />
+                {editingPackage.packageType === 'personalizado' && editingPackage.price && editingPackage.sessionLimit && Number(editingPackage.sessionLimit) > 0 && (
+                  <p className="mt-1.5 text-sm text-muted-foreground animate-in fade-in duration-200">
+                    Valor equivalente por sessão:{' '}
+                    <span className="font-semibold">
+                      {(parseFloat(editingPackage.price) / parseInt(editingPackage.sessionLimit)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </p>
+                )}
               </div>
               <Button className="w-full" disabled={!editingPackage.name.trim() || !editingPackage.price}
                 onClick={() => {
@@ -2391,6 +2427,8 @@ export default function ClinicDetail() {
                     name: editingPackage.name,
                     description: editingPackage.description || undefined,
                     price: parseFloat(editingPackage.price),
+                    packageType: editingPackage.packageType,
+                    sessionLimit: editingPackage.packageType === 'personalizado' && editingPackage.sessionLimit ? parseInt(editingPackage.sessionLimit) : null,
                   });
                   setEditingPackage(null);
                   toast.success('Pacote atualizado!');
