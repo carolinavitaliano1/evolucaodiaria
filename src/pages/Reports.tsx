@@ -199,26 +199,30 @@ export default function Reports() {
   ].filter(d => d.value > 0), [attendanceStats]);
 
   const clinicComparison = useMemo(() => {
-    return clinics.map(clinic => {
-      const clinicEvolutions = evolutions.filter(e => {
-        const evolutionDate = parseISO(e.date);
-        return e.clinicId === clinic.id && isWithinInterval(evolutionDate, { start: dateRange.start, end: dateRange.end });
-      });
-      const present = clinicEvolutions.filter(e => e.attendanceStatus === 'presente').length;
-      const reposicao = clinicEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
-      const absent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta').length;
-      const paidAbsent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const total = present + reposicao + absent + paidAbsent;
-      const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
-      return {
-        name: clinic.name.length > 15 ? clinic.name.slice(0, 15) + '...' : clinic.name,
-        fullName: clinic.name,
-        Presenças: present + reposicao,
-        Faltas: absent,
-        'Faltas Rem.': paidAbsent,
-        taxa: rate,
-      };
-    });
+    return clinics
+      .filter(clinic => !clinic.isArchived) // exclude archived clinics
+      .map(clinic => {
+        const clinicEvolutions = evolutions.filter(e => {
+          const evolutionDate = parseISO(e.date);
+          return e.clinicId === clinic.id && isWithinInterval(evolutionDate, { start: dateRange.start, end: dateRange.end });
+        });
+        const present = clinicEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+        const reposicao = clinicEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+        const absent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+        const paidAbsent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+        const total = present + reposicao + absent + paidAbsent;
+        const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
+        return {
+          name: clinic.name.length > 15 ? clinic.name.slice(0, 15) + '...' : clinic.name,
+          fullName: clinic.name,
+          Presenças: present + reposicao,
+          Faltas: absent,
+          'Faltas Rem.': paidAbsent,
+          taxa: rate,
+          total,
+        };
+      })
+      .filter(c => c.total > 0); // only show clinics with activity in the period
   }, [clinics, evolutions, dateRange]);
 
   const totalRevenue = useMemo(() => {
