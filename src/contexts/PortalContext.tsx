@@ -92,11 +92,18 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
           filter: `patient_id=eq.${patientId}`,
         },
         () => {
-          // Reload messages when any change happens
           loadMessages(patientId);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Reload messages once subscribed to catch anything missed
+          loadMessages(patientId);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          // On error, attempt a fresh load as fallback
+          loadMessages(patientId);
+        }
+      });
 
     channelRef.current = channel;
   }, [user?.id, loadMessages]);
@@ -132,7 +139,7 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
         if (patientData) setPatient(patientData as PortalPatient);
         if (msgs) setMessages(msgs as PortalMessage[]);
 
-        // Setup realtime subscription
+        // Setup realtime subscription for messages
         setupRealtime(account.patient_id);
       } else {
         setPortalAccount(null);

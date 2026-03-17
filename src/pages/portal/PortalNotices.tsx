@@ -1,10 +1,11 @@
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Bell, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Notice {
   id: string;
@@ -18,27 +19,65 @@ export default function PortalNotices() {
   const { portalAccount } = usePortal();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  useEffect(() => {
+  const loadNotices = useCallback(async () => {
     if (!portalAccount) return;
-    supabase
+    const { data } = await supabase
       .from('portal_notices')
       .select('*')
       .eq('patient_id', portalAccount.patient_id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setNotices((data || []) as Notice[]);
-        setLoading(false);
-        // Mark all as read
-        if (data && data.some(n => !n.read_by_patient)) {
-          supabase
-            .from('portal_notices')
-            .update({ read_by_patient: true })
-            .eq('patient_id', portalAccount.patient_id)
-            .eq('read_by_patient', false);
-        }
-      });
+      .order('created_at', { ascending: false });
+
+    const list = (data || []) as Notice[];
+    setNotices(list);
+    setLoading(false);
+
+    // Mark all as read
+    if (list.some(n => !n.read_by_patient)) {
+      await supabase
+        .from('portal_notices')
+        .update({ read_by_patient: true })
+        .eq('patient_id', portalAccount.patient_id)
+        .eq('read_by_patient', false);
+    }
   }, [portalAccount]);
+
+  useEffect(() => {
+    if (!portalAccount) return;
+
+    loadNotices();
+
+    // Cleanup previous channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Realtime subscription for portal_notices
+    const channel = supabase
+      .channel(`portal-notices-${portalAccount.patient_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'portal_notices',
+          filter: `patient_id=eq.${portalAccount.patient_id}`,
+        },
+        () => { loadNotices(); }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [portalAccount, loadNotices]);
 
   return (
     <PortalLayout>

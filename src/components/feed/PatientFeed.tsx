@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FeedPostCreator } from './FeedPostCreator';
 import { FeedPostCard, FeedPost, FeedComment, FeedReaction } from './FeedPostCard';
 import { Loader2, Newspaper } from 'lucide-react';
 import { toast } from 'sonner';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface PatientFeedProps {
   patientId: string;
@@ -24,9 +25,9 @@ export function PatientFeed({
 }: PatientFeedProps) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   const loadPosts = useCallback(async () => {
-    setLoading(true);
     try {
       const { data: postsData, error } = await supabase
         .from('feed_posts')
@@ -38,6 +39,8 @@ export function PatientFeed({
       if (!postsData) { setPosts([]); return; }
 
       const postIds = postsData.map(p => p.id);
+      if (postIds.length === 0) { setPosts([]); return; }
+
       const [{ data: commentsData }, { data: reactionsData }] = await Promise.all([
         supabase.from('feed_comments').select('*').in('post_id', postIds).order('created_at', { ascending: true }),
         supabase.from('feed_reactions').select('*').in('post_id', postIds),
@@ -62,10 +65,60 @@ export function PatientFeed({
     }
   }, [patientId]);
 
-  useEffect(() => { loadPosts(); }, [loadPosts]);
+  useEffect(() => {
+    setLoading(true);
+    loadPosts();
+
+    // Cleanup previous channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Realtime subscription for feed_posts
+    const channel = supabase
+      .channel(`feed-posts-${patientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'feed_posts',
+          filter: `patient_id=eq.${patientId}`,
+        },
+        () => { loadPosts(); }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'feed_comments',
+        },
+        () => { loadPosts(); }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'feed_reactions',
+        },
+        () => { loadPosts(); }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [patientId, loadPosts]);
 
   const handleDeletePost = async (postId: string) => {
-    // Delete media from storage if exists
     const post = posts.find(p => p.id === postId);
     if (post?.media_url) {
       try {
