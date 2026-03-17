@@ -74,7 +74,7 @@ function mapClinic(c: Record<string, unknown>): Clinic {
     address: (c.address as string) || undefined, notes: (c.notes as string) || undefined,
     weekdays: (c.weekdays as string[]) || undefined, scheduleTime: (c.schedule_time as string) || undefined,
     scheduleByDay: c.schedule_by_day as ScheduleByDay | undefined,
-    paymentType: c.payment_type as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
+    paymentType: c.payment_type as 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado' | undefined,
     paymentAmount: c.payment_amount ? Number(c.payment_amount) : undefined,
     paysOnAbsence: c.pays_on_absence as boolean,
     absencePaymentType: c.absence_payment_type as 'always' | 'never' | 'confirmed_only' | undefined,
