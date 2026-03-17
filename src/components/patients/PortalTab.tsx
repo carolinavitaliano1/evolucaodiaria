@@ -409,6 +409,11 @@ function AccountPanel({
               <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/20">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <ClipboardList className="w-4 h-4 text-success" /> Ficha do Paciente
+                  {intakeForm?.needs_review && (
+                    <span className="inline-flex items-center gap-1 bg-warning/20 text-warning text-[10px] font-semibold px-2 py-0.5 rounded-full border border-warning/30 ml-1">
+                      <Clock className="w-3 h-3" /> Aguarda revisão
+                    </span>
+                  )}
                 </h3>
                 <div className="flex items-center gap-2">
                   {hasIntakeSubmitted ? (
@@ -429,6 +434,34 @@ function AccountPanel({
                   )}
                 </div>
               </div>
+
+              {/* Review pending banner */}
+              {intakeForm?.needs_review && (
+                <IntakeReviewPanel intakeForm={intakeForm} patientId={patientId} onReviewed={async (approved) => {
+                  const { error } = await supabase
+                    .from('patient_intake_forms')
+                    .update({
+                      needs_review: false,
+                      review_status: approved ? 'approved' : 'rejected',
+                      reviewed_at: new Date().toISOString(),
+                    })
+                    .eq('patient_id', patientId);
+                  if (!error) {
+                    toast.success(approved ? 'Alterações aprovadas!' : 'Alterações rejeitadas.');
+                    // Re-fetch intake form
+                    const { data } = await supabase.from('patient_intake_forms').select('*').eq('patient_id', patientId).maybeSingle();
+                    if (data) {
+                      // Force parent re-render by reloading - we pass updated data via callback
+                    }
+                  }
+                }} />
+              )}
+
+              {/* History collapsible */}
+              {intakeForm?.review_history && Array.isArray(intakeForm.review_history) && intakeForm.review_history.length > 0 && (
+                <IntakeHistoryPanel history={intakeForm.review_history} />
+              )}
+
               {!hasIntakeSubmitted ? (
                 <div className="p-6 text-center">
                   <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
@@ -458,7 +491,7 @@ function AccountPanel({
                   {(intakeForm.responsible_name || intakeForm.responsible_cpf) && (
                     <div className="space-y-3 pt-3 border-t border-border">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" /> Responsável
+                        <User className="w-3.5 h-3.5" /> Responsável (Contratante)
                       </h4>
                       <div className="grid grid-cols-1 gap-3 pl-1">
                         <IntakeField label="Nome" value={intakeForm.responsible_name} />
