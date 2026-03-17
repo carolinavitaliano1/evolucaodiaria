@@ -490,12 +490,17 @@ export default function PatientDetail() {
   const isFixoDiario = ptType === 'fixo_diaria' || clPaymentType === 'fixo_diario';
   const isFixoMensal = ptType === 'fixo' || clPaymentType === 'fixo_mensal';
   const paymentValue = patient?.paymentValue || 0;
+  // Package personalizado: per-session value = total / sessionLimit
+  const isPackagePersonalizado = patientPackage?.packageType === 'personalizado' && (patientPackage?.sessionLimit ?? 0) > 0;
+  const perSessionValue = isPackagePersonalizado
+    ? paymentValue / (patientPackage!.sessionLimit!)
+    : paymentValue;
   const totalBillableCount = totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem;
   const totalFinancial = isFixoMensal
     ? paymentValue
     : isFixoDiario
-      ? totalUniqueDays * paymentValue
-      : totalBillableCount * paymentValue;
+      ? totalUniqueDays * perSessionValue
+      : totalBillableCount * perSessionValue;
   const totalFinancialSubtitle = isFixoMensal
     ? 'Valor Fixo Mensal'
     : isFixoDiario
