@@ -277,7 +277,7 @@ export default function Clinics() {
     ? archivedClinics 
     : activeClinics.filter(c => filter === 'all' || c.type === filter);
 
-  const { evolutions } = useApp();
+  const { evolutions, clinicPackages } = useApp();
   const totalPatients = patients.length;
   const pendingAppointments = privateAppointments.filter(a => a.status === 'agendado');
   const completedAppointments = privateAppointments.filter(a => a.status === 'concluído');
