@@ -486,14 +486,14 @@ export default function PatientDetail() {
   const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const totalFinancial = patient?.paymentType === 'fixo'
     ? (patient?.paymentValue || 0)
-    : patient?.paymentType === 'sessao'
-      ? (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0)
+    : totalUniqueDays > 0 && patient?.paymentType === 'fixo_diaria'
+      ? totalUniqueDays * (patient?.paymentValue || 0)
       : (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
   const totalFinancialSubtitle = patient?.paymentType === 'fixo'
     ? 'Valor Fixo Mensal'
-    : patient?.paymentType === 'sessao'
-      ? `Total de ${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões`
-      : `${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões pagas`;
+    : patient?.paymentType === 'fixo_diaria'
+      ? `Total de ${totalUniqueDays} diária(s)`
+      : `Total de ${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões`;
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
