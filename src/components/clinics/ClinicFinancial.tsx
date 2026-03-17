@@ -224,21 +224,35 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
   const absenceType = clinic.absencePaymentType || (clinic.paysOnAbsence === false ? 'never' : 'always');
 
-  const calculatePatientRevenue = (patientId: string) => {
-    const patient = clinicPatients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue) return 0;
-    if (patient.paymentType === 'fixo') return patient.paymentValue;
-    const presentCount = presentEvos.filter(e => e.patientId === patientId).length;
-    const paidAbsenceCount = paidAbsenceEvos.filter(e => e.patientId === patientId).length;
-    const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patientId).length;
-    let paidRegularAbsences = 0;
-    const regularAbsences = absentEvos.filter(e => e.patientId === patientId);
-    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
-  };
+  // Determine clinic-level payment type
+  const clPayType = (clinic.paymentType as string | undefined);
+  const isClinicFixoMensal = clPayType === 'fixo_mensal';
+  const isClinicFixoDiario = clPayType === 'fixo_diario';
+  const clinicBaseValue = clinic.paymentAmount || 0;
 
-  const totalPatientRevenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
+  // Count unique work days across all patients for the month (for fixo_diario)
+  const uniqueWorkDays = isClinicFixoDiario
+    ? new Set(presentEvos.map(e => e.date)).size
+    : 0;
+
+  // Total patient revenue — for fixed models this is a single global amount
+  const totalPatientRevenue = (() => {
+    if (isClinicFixoMensal) return clinicBaseValue;
+    if (isClinicFixoDiario) return uniqueWorkDays * clinicBaseValue;
+    // Per-session: sum across patients
+    return clinicPatients.reduce((sum, p) => {
+      const patient = p;
+      if (!patient.paymentValue) return sum;
+      const presentCount = presentEvos.filter(e => e.patientId === patient.id).length;
+      const paidAbsenceCount = paidAbsenceEvos.filter(e => e.patientId === patient.id).length;
+      const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
+      let paidRegularAbsences = 0;
+      const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
+      if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
+      else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+      return sum + (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+    }, 0);
+  })();
 
   // Filter services by selected month
   const monthlyServices = clinicServices.filter(s => {
@@ -261,17 +275,29 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const totalPaidAbsences = paidAbsenceEvos.length;
   const totalReposicoes = reposicaoEvos.length;
 
+  const isGlobalFixed = isClinicFixoMensal || isClinicFixoDiario;
+
   const allPatientBreakdown = clinicPatients
-    .map(patient => ({
-      patient,
-      revenue: calculatePatientRevenue(patient.id),
-      sessions: presentEvos.filter(e => e.patientId === patient.id).length,
-      absences: absentEvos.filter(e => e.patientId === patient.id).length,
-      paidAbsences: paidAbsenceEvos.filter(e => e.patientId === patient.id).length,
-      reposicoes: reposicaoEvos.filter(e => e.patientId === patient.id).length,
-    }))
-    .filter(p => p.revenue > 0 || p.sessions > 0 || p.absences > 0)
-    .sort((a, b) => b.revenue - a.revenue);
+    .map(patient => {
+      const patientPresentEvos = presentEvos.filter(e => e.patientId === patient.id);
+      const sessions = patientPresentEvos.length;
+      const absences = absentEvos.filter(e => e.patientId === patient.id).length;
+      const paidAbsences = paidAbsenceEvos.filter(e => e.patientId === patient.id).length;
+      const reposicoes = reposicaoEvos.filter(e => e.patientId === patient.id).length;
+      // For fixed-global clinics, don't assign revenue per patient
+      let revenue = 0;
+      if (!isGlobalFixed && patient.paymentValue) {
+        const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
+        let paidRegularAbsences = 0;
+        const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
+        if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
+        else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+        revenue = (sessions + paidAbsences + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+      }
+      return { patient, revenue, sessions, absences, paidAbsences, reposicoes };
+    })
+    .filter(p => p.sessions > 0 || p.absences > 0 || (!isGlobalFixed && p.revenue > 0))
+    .sort((a, b) => isGlobalFixed ? b.sessions - a.sessions : b.revenue - a.revenue);
 
   const patientBreakdown = allPatientBreakdown.filter(({ patient }) => {
     const pr = patientPaymentRecords[patient.id];
