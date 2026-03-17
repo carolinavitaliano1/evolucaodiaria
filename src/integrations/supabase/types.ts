@@ -1077,6 +1077,7 @@ export type Database = {
           health_info: string | null
           how_found: string | null
           id: string
+          needs_review: boolean
           observations: string | null
           patient_id: string
           payment_due_day: number | null
@@ -1084,6 +1085,9 @@ export type Database = {
           responsible_cpf: string | null
           responsible_name: string | null
           responsible_phone: string | null
+          review_history: Json
+          review_status: string | null
+          reviewed_at: string | null
           submitted_at: string | null
           therapist_user_id: string
           updated_at: string
@@ -1111,6 +1115,7 @@ export type Database = {
           health_info?: string | null
           how_found?: string | null
           id?: string
+          needs_review?: boolean
           observations?: string | null
           patient_id: string
           payment_due_day?: number | null
@@ -1118,6 +1123,9 @@ export type Database = {
           responsible_cpf?: string | null
           responsible_name?: string | null
           responsible_phone?: string | null
+          review_history?: Json
+          review_status?: string | null
+          reviewed_at?: string | null
           submitted_at?: string | null
           therapist_user_id: string
           updated_at?: string
@@ -1145,6 +1153,7 @@ export type Database = {
           health_info?: string | null
           how_found?: string | null
           id?: string
+          needs_review?: boolean
           observations?: string | null
           patient_id?: string
           payment_due_day?: number | null
@@ -1152,6 +1161,9 @@ export type Database = {
           responsible_cpf?: string | null
           responsible_name?: string | null
           responsible_phone?: string | null
+          review_history?: Json
+          review_status?: string | null
+          reviewed_at?: string | null
           submitted_at?: string | null
           therapist_user_id?: string
           updated_at?: string
