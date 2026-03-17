@@ -1690,120 +1690,6 @@ export default function PatientDetail() {
         </div>
       )}
 
-      {/* Therapist Assignments Card */}
-      {isOrg && (therapistAssignments.length > 0 || canManageAssignments) && (
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-foreground text-sm">Terapeutas Responsáveis</h2>
-              {therapistAssignments.length > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary/10 text-primary">
-                  {therapistAssignments.length}
-                </span>
-              )}
-            </div>
-            {canManageAssignments && (
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={() => setAssignmentDialogOpen(true)}>
-                <Pencil className="w-3 h-3" /> Editar vínculos
-              </Button>
-            )}
-          </div>
-          <div className="p-4">
-            {therapistAssignments.length === 0 ? (
-              <p className="text-sm text-muted-foreground italic text-center py-3">
-                Nenhum terapeuta vinculado a este paciente.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-3">
-                {therapistAssignments.map(t => (
-                  <div key={t.memberId} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-muted/50 border border-border">
-                    <Avatar className="w-8 h-8">
-                      {t.avatarUrl && <AvatarImage src={t.avatarUrl} />}
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-                        {(t.name || t.email)[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium text-foreground leading-tight">
-                        {t.name || t.email}
-                      </p>
-                      {t.scheduleTime && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {t.scheduleTime}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Assignment Management Dialog */}
-      {canManageAssignments && (
-        <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-primary" />
-                Terapeutas Responsáveis
-              </DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Selecione os terapeutas responsáveis por <strong>{patient.name}</strong>.
-            </p>
-            <div className="space-y-2 max-h-72 overflow-y-auto">
-              {orgMembers.map(member => {
-                const isAssigned = therapistAssignments.some(a => a.memberId === member.memberId);
-                const localTime = assignmentScheduleTimes[member.memberId] ?? (isAssigned ? member.scheduleTime || '' : '');
-                return (
-                  <div key={member.memberId} className="space-y-1.5">
-                    <div
-                      className={cn(
-                        'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
-                        isAssigned ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
-                      )}
-                      onClick={() => toggleAssignment(member, localTime || undefined)}
-                    >
-                      <Avatar className="w-8 h-8">
-                        {member.avatarUrl && <AvatarImage src={member.avatarUrl} />}
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-                          {(member.name || member.email)[0].toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{member.name || member.email}</p>
-                        <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                      </div>
-                      {isAssigned && <UserCheck className="w-4 h-4 text-primary shrink-0" />}
-                    </div>
-                    {isAssigned && (
-                      <div className="pl-3">
-                        <input
-                          type="text"
-                          placeholder="Horário (ex: 14:00)"
-                          defaultValue={member.scheduleTime || ''}
-                          className="w-full text-xs px-2 py-1 rounded border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                          onChange={e => setAssignmentScheduleTimes(prev => ({ ...prev, [member.memberId]: e.target.value }))}
-                          onBlur={e => updateScheduleTime(member.memberId, e.target.value)}
-                          onClick={e => e.stopPropagation()}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={() => setAssignmentDialogOpen(false)}>Concluir</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
       {/* Mood Chart */}
 
       {moodChartData.length >= 2 && (
@@ -1839,6 +1725,7 @@ export default function PatientDetail() {
             { value: 'notes', icon: PenLine, label: 'Notas' },
             { value: 'portal', icon: Users, label: 'Portal' },
             { value: 'mural', icon: Newspaper, label: 'Mural' },
+            ...(isOrg ? [{ value: 'therapists', icon: UserCheck, label: 'Terapeutas' }] : []),
           ].map(({ value, icon: Icon, label }) => (
             <TabsTrigger
               key={value}
@@ -2758,6 +2645,7 @@ export default function PatientDetail() {
           />
         </TabsContent>
 
+
         {/* Mural Tab */}
         <TabsContent value="mural">
           <PatientFeed
@@ -2769,6 +2657,140 @@ export default function PatientDetail() {
             currentUserName={therapistProfile?.name ?? 'Terapeuta'}
           />
         </TabsContent>
+
+        {/* Terapeutas Responsáveis Tab */}
+        {isOrg && (
+          <TabsContent value="therapists" className="space-y-4">
+            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-border bg-muted/30 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-primary" />
+                  <h2 className="font-semibold text-foreground text-sm">Terapeutas Responsáveis</h2>
+                  {therapistAssignments.length > 0 && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary/10 text-primary">
+                      {therapistAssignments.length}
+                    </span>
+                  )}
+                </div>
+                {canManageAssignments && (
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setAssignmentDialogOpen(true)}>
+                    <Pencil className="w-3 h-3" /> Gerenciar vínculos
+                  </Button>
+                )}
+              </div>
+              <div className="p-5">
+                {assignmentsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : therapistAssignments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                    <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center">
+                      <UserCheck className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Nenhum terapeuta vinculado</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {canManageAssignments
+                          ? 'Clique em "Gerenciar vínculos" para adicionar terapeutas responsáveis por este paciente.'
+                          : 'Nenhum terapeuta foi vinculado a este paciente ainda.'}
+                      </p>
+                    </div>
+                    {canManageAssignments && (
+                      <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={() => setAssignmentDialogOpen(true)}>
+                        <Plus className="w-3.5 h-3.5" /> Adicionar terapeuta
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {therapistAssignments.map(t => (
+                      <div key={t.memberId} className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border">
+                        <Avatar className="w-10 h-10 shrink-0">
+                          {t.avatarUrl && <AvatarImage src={t.avatarUrl} />}
+                          <AvatarFallback className="text-sm bg-primary/10 text-primary font-semibold">
+                            {(t.name || t.email)[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground leading-tight truncate">
+                            {t.name || t.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{t.email}</p>
+                          {t.scheduleTime && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3 shrink-0" /> {t.scheduleTime}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Inline management panel for owners/admins */}
+            {canManageAssignments && orgMembers.length > 0 && (
+              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-border bg-muted/30">
+                  <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" /> Todos os membros da equipe
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Clique em um membro para vincular ou desvincular deste paciente.</p>
+                </div>
+                <div className="p-4 space-y-2">
+                  {orgMembers.map(member => {
+                    const isAssigned = therapistAssignments.some(a => a.memberId === member.memberId);
+                    const localTime = assignmentScheduleTimes[member.memberId] ?? (isAssigned ? member.scheduleTime || '' : '');
+                    return (
+                      <div key={member.memberId} className="space-y-1.5">
+                        <div
+                          className={cn(
+                            'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                            isAssigned ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
+                          )}
+                          onClick={() => toggleAssignment(member, localTime || undefined)}
+                        >
+                          <Avatar className="w-9 h-9 shrink-0">
+                            {member.avatarUrl && <AvatarImage src={member.avatarUrl} />}
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
+                              {(member.name || member.email)[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{member.name || member.email}</p>
+                            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                          </div>
+                          <div className={cn(
+                            'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full shrink-0',
+                            isAssigned ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                          )}>
+                            <UserCheck className="w-3.5 h-3.5" />
+                            {isAssigned ? 'Vinculado' : 'Vincular'}
+                          </div>
+                        </div>
+                        {isAssigned && (
+                          <div className="pl-12">
+                            <input
+                              type="text"
+                              placeholder="Horário do atendimento (ex: 14:00)"
+                              defaultValue={member.scheduleTime || ''}
+                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                              onChange={e => setAssignmentScheduleTimes(prev => ({ ...prev, [member.memberId]: e.target.value }))}
+                              onBlur={e => updateScheduleTime(member.memberId, e.target.value)}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        )}
 
       </Tabs>
 
