@@ -545,14 +545,14 @@ export default function PatientDetail() {
   const monthlyTotal = monthlyEvolutions.length;
   const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
   const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const monthlyRevenue = ptType === 'fixo'
-    ? (patient?.paymentValue || 0)
-    : ptType === 'fixo_diaria'
-      ? monthlyUniqueDays * (patient?.paymentValue || 0)
-      : (monthlyBillableCount) * (patient?.paymentValue || 0);
-  const monthlyRevenueSubtitle = ptType === 'fixo'
+  const monthlyRevenue = isFixoMensal
+    ? paymentValue
+    : isFixoDiario
+      ? monthlyUniqueDays * paymentValue
+      : monthlyBillableCount * paymentValue;
+  const monthlyRevenueSubtitle = isFixoMensal
     ? 'Valor Fixo'
-    : ptType === 'fixo_diaria'
+    : isFixoDiario
       ? `${monthlyUniqueDays} diária(s)`
       : `${monthlyBillableCount} sessão(ões)`;
   const monthlyAttendanceRate = monthlyTotal > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyTotal) * 100) : 0;
