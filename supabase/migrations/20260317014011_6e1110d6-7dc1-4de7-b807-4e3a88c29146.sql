@@ -1,0 +1,1 @@
+ALTER TABLE public.clinics DROP CONSTRAINT IF EXISTS clinics_payment_type_check;
