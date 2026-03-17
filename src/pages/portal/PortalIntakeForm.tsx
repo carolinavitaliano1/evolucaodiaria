@@ -230,7 +230,7 @@ export default function PortalIntakeForm() {
         )}
 
         {/* Dados Pessoais */}
-        <SectionCard title="Dados Pessoais">
+        <SectionCard title="Dados Pessoais (Paciente)">
           <div className="grid grid-cols-1 gap-3">
             <Field label="Nome completo *">
               <Input value={form.full_name} onChange={set('full_name')} placeholder="Seu nome completo" />
