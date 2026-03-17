@@ -16,6 +16,10 @@ export interface FiscalReceiptOptions {
     responsible_cpf?: string;
     paymentType?: string;
     paymentValue?: number;
+    /** For Personalizado packages: effective per-session value (total / limit) */
+    effectiveSessionValue?: number;
+    /** For Personalizado packages: session limit */
+    packageSessionLimit?: number;
   };
   clinic?: {
     name?: string;
