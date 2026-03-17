@@ -1,12 +1,26 @@
+import { useEffect } from 'react';
 import { usePortal } from '@/contexts/PortalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientFeed } from '@/components/feed/PatientFeed';
 import { PortalLayout } from '@/components/portal/PortalLayout';
+import { supabase } from '@/integrations/supabase/client';
 import { Newspaper, Loader2 } from 'lucide-react';
 
 export default function PortalMural() {
   const { portalAccount, patient } = usePortal();
   const { user } = useAuth();
+
+  // Mark mural notifications as read when patient opens this page
+  useEffect(() => {
+    if (!portalAccount || !user) return;
+    supabase
+      .from('portal_notices')
+      .update({ read_by_patient: true })
+      .eq('patient_id', portalAccount.patient_id)
+      .eq('read_by_patient', false)
+      .ilike('title', '%Mural%')
+      .then(() => {});
+  }, [portalAccount, user]);
 
   if (!portalAccount || !patient || !user) {
     return (
