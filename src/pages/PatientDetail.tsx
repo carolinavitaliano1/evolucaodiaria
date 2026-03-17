@@ -485,16 +485,22 @@ export default function PatientDetail() {
   const totalBillableEvos = patientEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
   const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const ptType = patient?.paymentType as string | undefined;
-  const totalFinancial = ptType === 'fixo'
-    ? (patient?.paymentValue || 0)
-    : ptType === 'fixo_diaria'
-      ? totalUniqueDays * (patient?.paymentValue || 0)
-      : (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
-  const totalFinancialSubtitle = ptType === 'fixo'
+  // Effective billing mode: patient override → then check clinic payment type
+  const clPaymentType = clinic?.paymentType as string | undefined;
+  const isFixoDiario = ptType === 'fixo_diaria' || clPaymentType === 'fixo_diario';
+  const isFixoMensal = ptType === 'fixo' || clPaymentType === 'fixo_mensal';
+  const paymentValue = patient?.paymentValue || 0;
+  const totalBillableCount = totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem;
+  const totalFinancial = isFixoMensal
+    ? paymentValue
+    : isFixoDiario
+      ? totalUniqueDays * paymentValue
+      : totalBillableCount * paymentValue;
+  const totalFinancialSubtitle = isFixoMensal
     ? 'Valor Fixo Mensal'
-    : ptType === 'fixo_diaria'
+    : isFixoDiario
       ? `Total de ${totalUniqueDays} diária(s)`
-      : `Total de ${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões`;
+      : `Total de ${totalBillableCount} sessões`;
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
@@ -539,14 +545,14 @@ export default function PatientDetail() {
   const monthlyTotal = monthlyEvolutions.length;
   const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
   const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const monthlyRevenue = ptType === 'fixo'
-    ? (patient?.paymentValue || 0)
-    : ptType === 'fixo_diaria'
-      ? monthlyUniqueDays * (patient?.paymentValue || 0)
-      : (monthlyBillableCount) * (patient?.paymentValue || 0);
-  const monthlyRevenueSubtitle = ptType === 'fixo'
+  const monthlyRevenue = isFixoMensal
+    ? paymentValue
+    : isFixoDiario
+      ? monthlyUniqueDays * paymentValue
+      : monthlyBillableCount * paymentValue;
+  const monthlyRevenueSubtitle = isFixoMensal
     ? 'Valor Fixo'
-    : ptType === 'fixo_diaria'
+    : isFixoDiario
       ? `${monthlyUniqueDays} diária(s)`
       : `${monthlyBillableCount} sessão(ões)`;
   const monthlyAttendanceRate = monthlyTotal > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyTotal) * 100) : 0;
@@ -572,11 +578,11 @@ export default function PatientDetail() {
   const finTotal = financialEvolutions.length;
   const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
   const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const finRevenue = ptType === 'fixo'
-    ? (patient?.paymentValue || 0)
-    : ptType === 'fixo_diaria'
-      ? finUniqueDays * (patient?.paymentValue || 0)
-      : (finBillableCount) * (patient?.paymentValue || 0);
+  const finRevenue = isFixoMensal
+    ? paymentValue
+    : isFixoDiario
+      ? finUniqueDays * paymentValue
+      : finBillableCount * paymentValue;
   const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
 
 
