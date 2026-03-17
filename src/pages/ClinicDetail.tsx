@@ -1819,7 +1819,7 @@ export default function ClinicDetail() {
                       <h3 className="font-semibold text-foreground">{pkg.name}</h3>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7"
-                          onClick={() => setEditingPackage({ id: pkg.id, name: pkg.name, description: pkg.description || '', price: pkg.price.toString() })}>
+                          onClick={() => setEditingPackage({ id: pkg.id, name: pkg.name, description: pkg.description || '', price: pkg.price.toString(), packageType: (pkg.packageType || 'mensal') as 'mensal' | 'por_sessao' | 'personalizado', sessionLimit: pkg.sessionLimit?.toString() || '' })}>
                           <Edit className="w-3.5 h-3.5" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
