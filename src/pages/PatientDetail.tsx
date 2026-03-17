@@ -484,16 +484,17 @@ export default function PatientDetail() {
   const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
   const totalBillableEvos = patientEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
   const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const totalFinancial = patient?.paymentType === 'fixo'
+  const ptType = patient?.paymentType as string | undefined;
+  const totalFinancial = ptType === 'fixo'
     ? (patient?.paymentValue || 0)
-    : patient?.paymentType === 'sessao'
-      ? (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0)
+    : ptType === 'fixo_diaria'
+      ? totalUniqueDays * (patient?.paymentValue || 0)
       : (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
-  const totalFinancialSubtitle = patient?.paymentType === 'fixo'
+  const totalFinancialSubtitle = ptType === 'fixo'
     ? 'Valor Fixo Mensal'
-    : patient?.paymentType === 'sessao'
-      ? `Total de ${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões`
-      : `${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões pagas`;
+    : ptType === 'fixo_diaria'
+      ? `Total de ${totalUniqueDays} diária(s)`
+      : `Total de ${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões`;
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
@@ -538,12 +539,16 @@ export default function PatientDetail() {
   const monthlyTotal = monthlyEvolutions.length;
   const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
   const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const monthlyRevenue = patient?.paymentType === 'fixo'
+  const monthlyRevenue = ptType === 'fixo'
     ? (patient?.paymentValue || 0)
-    : (monthlyBillableCount) * (patient?.paymentValue || 0);
-  const monthlyRevenueSubtitle = patient?.paymentType === 'fixo'
+    : ptType === 'fixo_diaria'
+      ? monthlyUniqueDays * (patient?.paymentValue || 0)
+      : (monthlyBillableCount) * (patient?.paymentValue || 0);
+  const monthlyRevenueSubtitle = ptType === 'fixo'
     ? 'Valor Fixo'
-    : `${monthlyBillableCount} sessão(ões)`;
+    : ptType === 'fixo_diaria'
+      ? `${monthlyUniqueDays} diária(s)`
+      : `${monthlyBillableCount} sessão(ões)`;
   const monthlyAttendanceRate = monthlyTotal > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyTotal) * 100) : 0;
   const monthlyMoodCounts = allMoodOptions.map(m => ({
     ...m, count: monthlyEvolutions.filter(e => e.mood === m.value).length,
@@ -566,9 +571,12 @@ export default function PatientDetail() {
   const finFeriadoRem = financialEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const finTotal = financialEvolutions.length;
   const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
-  const finRevenue = patient?.paymentType === 'fixo'
+  const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const finRevenue = ptType === 'fixo'
     ? (patient?.paymentValue || 0)
-    : (finBillableCount) * (patient?.paymentValue || 0);
+    : ptType === 'fixo_diaria'
+      ? finUniqueDays * (patient?.paymentValue || 0)
+      : (finBillableCount) * (patient?.paymentValue || 0);
   const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
 
 
