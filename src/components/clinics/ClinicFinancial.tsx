@@ -224,21 +224,35 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
   const absenceType = clinic.absencePaymentType || (clinic.paysOnAbsence === false ? 'never' : 'always');
 
-  const calculatePatientRevenue = (patientId: string) => {
-    const patient = clinicPatients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue) return 0;
-    if (patient.paymentType === 'fixo') return patient.paymentValue;
-    const presentCount = presentEvos.filter(e => e.patientId === patientId).length;
-    const paidAbsenceCount = paidAbsenceEvos.filter(e => e.patientId === patientId).length;
-    const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patientId).length;
-    let paidRegularAbsences = 0;
-    const regularAbsences = absentEvos.filter(e => e.patientId === patientId);
-    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
-  };
+  // Determine clinic-level payment type
+  const clPayType = (clinic.paymentType as string | undefined);
+  const isClinicFixoMensal = clPayType === 'fixo_mensal';
+  const isClinicFixoDiario = clPayType === 'fixo_diario';
+  const clinicBaseValue = clinic.paymentAmount || 0;
 
-  const totalPatientRevenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
+  // Count unique work days across all patients for the month (for fixo_diario)
+  const uniqueWorkDays = isClinicFixoDiario
+    ? new Set(presentEvos.map(e => e.date)).size
+    : 0;
+
+  // Total patient revenue — for fixed models this is a single global amount
+  const totalPatientRevenue = (() => {
+    if (isClinicFixoMensal) return clinicBaseValue;
+    if (isClinicFixoDiario) return uniqueWorkDays * clinicBaseValue;
+    // Per-session: sum across patients
+    return clinicPatients.reduce((sum, p) => {
+      const patient = p;
+      if (!patient.paymentValue) return sum;
+      const presentCount = presentEvos.filter(e => e.patientId === patient.id).length;
+      const paidAbsenceCount = paidAbsenceEvos.filter(e => e.patientId === patient.id).length;
+      const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
+      let paidRegularAbsences = 0;
+      const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
+      if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
+      else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+      return sum + (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+    }, 0);
+  })();
 
   // Filter services by selected month
   const monthlyServices = clinicServices.filter(s => {
@@ -261,17 +275,29 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const totalPaidAbsences = paidAbsenceEvos.length;
   const totalReposicoes = reposicaoEvos.length;
 
+  const isGlobalFixed = isClinicFixoMensal || isClinicFixoDiario;
+
   const allPatientBreakdown = clinicPatients
-    .map(patient => ({
-      patient,
-      revenue: calculatePatientRevenue(patient.id),
-      sessions: presentEvos.filter(e => e.patientId === patient.id).length,
-      absences: absentEvos.filter(e => e.patientId === patient.id).length,
-      paidAbsences: paidAbsenceEvos.filter(e => e.patientId === patient.id).length,
-      reposicoes: reposicaoEvos.filter(e => e.patientId === patient.id).length,
-    }))
-    .filter(p => p.revenue > 0 || p.sessions > 0 || p.absences > 0)
-    .sort((a, b) => b.revenue - a.revenue);
+    .map(patient => {
+      const patientPresentEvos = presentEvos.filter(e => e.patientId === patient.id);
+      const sessions = patientPresentEvos.length;
+      const absences = absentEvos.filter(e => e.patientId === patient.id).length;
+      const paidAbsences = paidAbsenceEvos.filter(e => e.patientId === patient.id).length;
+      const reposicoes = reposicaoEvos.filter(e => e.patientId === patient.id).length;
+      // For fixed-global clinics, don't assign revenue per patient
+      let revenue = 0;
+      if (!isGlobalFixed && patient.paymentValue) {
+        const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
+        let paidRegularAbsences = 0;
+        const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
+        if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
+        else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+        revenue = (sessions + paidAbsences + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+      }
+      return { patient, revenue, sessions, absences, paidAbsences, reposicoes };
+    })
+    .filter(p => p.sessions > 0 || p.absences > 0 || (!isGlobalFixed && p.revenue > 0))
+    .sort((a, b) => isGlobalFixed ? b.sessions - a.sessions : b.revenue - a.revenue);
 
   const patientBreakdown = allPatientBreakdown.filter(({ patient }) => {
     const pr = patientPaymentRecords[patient.id];
@@ -311,6 +337,13 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <p className="text-muted-foreground text-xs mb-0.5">Faturamento Bruto</p>
           <p className="text-lg font-bold text-foreground">
             R$ {totalRevenueWithServices.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {isClinicFixoMensal
+              ? 'Valor Fixo Mensal'
+              : isClinicFixoDiario
+                ? `Total de ${uniqueWorkDays} diária(s)`
+                : `${totalSessions} sessões`}
           </p>
           {discountPercent > 0 && (
             <div className="mt-2 pt-2 border-t border-border">
@@ -505,62 +538,69 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                         {reposicoes > 0 && ` (🔄${reposicoes})`}
                         {paidAbsences > 0 && ` · ${paidAbsences} faltas rem.`}
                         {absences > 0 && ` · ${absences} faltas`}
-                        {' · '}{patient.paymentType === 'fixo' ? 'Fixo' : 'Por sessão'}
                         {anyPatient.payment_due_day && ` · Vence dia ${anyPatient.payment_due_day}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <p className="font-bold text-foreground text-sm">
-                        R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                      {/* WhatsApp reminder for pending payments */}
-                      {clinic.type === 'propria' && !pr?.paid && (
-                        <QuickWhatsAppButton
-                          phone={(patient as any).whatsapp || (patient as any).phone || (patient as any).responsible_whatsapp}
-                          tooltip="Enviar lembrete de pagamento via WhatsApp"
-                          message={resolveTemplate(
-                            'Olá, {{nome_paciente}}! 😊 Passando para lembrar sobre o pagamento de R$ {{valor_sessao}} referente ao mês de {{data_consulta}}. Qualquer dúvida, estou à disposição. — {{nome_terapeuta}}',
-                            {
-                              nome_paciente: patient.name,
-                              valor_sessao: revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
-                              data_consulta: format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR }),
-                              nome_terapeuta: therapistName,
-                            }
+                      {isGlobalFixed ? (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                          {isClinicFixoMensal ? 'Coberto pelo Fixo' : 'Contrato de Diária'}
+                        </span>
+                      ) : (
+                        <>
+                          <p className="font-bold text-foreground text-sm">
+                            R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                          {/* WhatsApp reminder for pending payments */}
+                          {clinic.type === 'propria' && !pr?.paid && (
+                            <QuickWhatsAppButton
+                              phone={(patient as any).whatsapp || (patient as any).phone || (patient as any).responsible_whatsapp}
+                              tooltip="Enviar lembrete de pagamento via WhatsApp"
+                              message={resolveTemplate(
+                                'Olá, {{nome_paciente}}! 😊 Passando para lembrar sobre o pagamento de R$ {{valor_sessao}} referente ao mês de {{data_consulta}}. Qualquer dúvida, estou à disposição. — {{nome_terapeuta}}',
+                                {
+                                  nome_paciente: patient.name,
+                                  valor_sessao: revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+                                  data_consulta: format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR }),
+                                  nome_terapeuta: therapistName,
+                                }
+                              )}
+                            />
                           )}
-                        />
-                      )}
-                      {clinic.type === 'propria' && (
-                        <button
-                          type="button"
-                          disabled={savingPatientPayment === patient.id}
-                          title={pr?.paid ? 'Marcar como pendente' : 'Marcar como pago'}
-                          onClick={async () => {
-                            if (!user) return;
-                            setSavingPatientPayment(patient.id);
-                            const m = selectedDate.getMonth() + 1;
-                            const y = selectedDate.getFullYear();
-                            const newPaid = !pr?.paid;
-                            const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
-                            const existing = pr as any;
-                            if (existing?.id) {
-                              await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', existing.id);
-                            } else {
-                              await supabase.from('patient_payment_records' as any).insert({ user_id: user.id, patient_id: patient.id, clinic_id: clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate });
-                            }
-                            setPatientPaymentRecords(prev => ({ ...prev, [patient.id]: { ...(prev[patient.id] || {}), paid: newPaid, payment_date: newDate, id: existing?.id } as any }));
-                            setSavingPatientPayment(null);
-                          }}
-                          className={cn(
-                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50',
-                            pr?.paid ? 'bg-success' : 'bg-input'
+                          {clinic.type === 'propria' && (
+                            <button
+                              type="button"
+                              disabled={savingPatientPayment === patient.id}
+                              title={pr?.paid ? 'Marcar como pendente' : 'Marcar como pago'}
+                              onClick={async () => {
+                                if (!user) return;
+                                setSavingPatientPayment(patient.id);
+                                const m = selectedDate.getMonth() + 1;
+                                const y = selectedDate.getFullYear();
+                                const newPaid = !pr?.paid;
+                                const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
+                                const existing = pr as any;
+                                if (existing?.id) {
+                                  await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', existing.id);
+                                } else {
+                                  await supabase.from('patient_payment_records' as any).insert({ user_id: user.id, patient_id: patient.id, clinic_id: clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate });
+                                }
+                                setPatientPaymentRecords(prev => ({ ...prev, [patient.id]: { ...(prev[patient.id] || {}), paid: newPaid, payment_date: newDate, id: existing?.id } as any }));
+                                setSavingPatientPayment(null);
+                              }}
+                              className={cn(
+                                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50',
+                                pr?.paid ? 'bg-success' : 'bg-input'
+                              )}
+                            >
+                              <span className={cn('pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform', pr?.paid ? 'translate-x-4' : 'translate-x-0')} />
+                            </button>
                           )}
-                        >
-                          <span className={cn('pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform', pr?.paid ? 'translate-x-4' : 'translate-x-0')} />
-                        </button>
+                        </>
                       )}
                     </div>
                   </div>
-                  {clinic.type === 'propria' && pr?.paid && pr.payment_date && (
+                  {!isGlobalFixed && clinic.type === 'propria' && pr?.paid && pr.payment_date && (
                     <p className="text-[10px] text-success flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Pago em {format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy')}
