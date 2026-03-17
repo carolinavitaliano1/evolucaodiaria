@@ -565,7 +565,10 @@ export default function PatientDetail() {
   const finPaidAbsent = financialEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
   const finFeriadoRem = financialEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const finTotal = financialEvolutions.length;
-  const finRevenue = (finPresent + finReposicao + finPaidAbsent + finFeriadoRem) * ((patient?.paymentValue) || 0);
+  const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
+  const finRevenue = patient?.paymentType === 'fixo'
+    ? (patient?.paymentValue || 0)
+    : (finBillableCount) * (patient?.paymentValue || 0);
   const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
 
 
