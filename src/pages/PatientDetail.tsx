@@ -1519,7 +1519,10 @@ export default function PatientDetail() {
                 {patient.paymentValue && (
                   <span className="flex items-center gap-1">
                     <DollarSign className="w-3.5 h-3.5" />
-                    R$ {patient.paymentValue.toFixed(2)}{patient.paymentType === 'sessao' ? '/sessão' : '/mês'}
+                    {isPackagePersonalizado
+                      ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit})`
+                      : `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
+                    }
                   </span>
                 )}
                 {patient.diagnosis && (
