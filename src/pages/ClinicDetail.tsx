@@ -1728,8 +1728,39 @@ export default function ClinicDetail() {
                         rows={2}
                       />
                     </div>
+                    {/* Tipo de Pacote */}
                     <div>
-                      <Label>Valor (R$) *</Label>
+                      <Label>Tipo de Pacote</Label>
+                      <Select
+                        value={newPackage.packageType}
+                        onValueChange={(v) => setNewPackage({ ...newPackage, packageType: v as typeof newPackage.packageType, sessionLimit: '' })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="por_sessao">Por Sessão</SelectItem>
+                          <SelectItem value="personalizado">Personalizado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Qtd. de sessões — só para personalizado */}
+                    {newPackage.packageType === 'personalizado' && (
+                      <div className="animate-in fade-in duration-200">
+                        <Label>Quantidade de Sessões</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={newPackage.sessionLimit}
+                          onChange={(e) => setNewPackage({ ...newPackage, sessionLimit: e.target.value })}
+                          placeholder="Ex: 8"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <Label>Valor Total (R$) *</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -1737,6 +1768,15 @@ export default function ClinicDetail() {
                         onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
                         placeholder="0.00"
                       />
+                      {/* Calculadora automática */}
+                      {newPackage.packageType === 'personalizado' && newPackage.price && newPackage.sessionLimit && Number(newPackage.sessionLimit) > 0 && (
+                        <p className="mt-1.5 text-sm text-muted-foreground animate-in fade-in duration-200">
+                          Valor equivalente por sessão:{' '}
+                          <span className="font-semibold">
+                            {(parseFloat(newPackage.price) / parseInt(newPackage.sessionLimit)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        </p>
+                      )}
                     </div>
                     <Button
                       className="w-full"
@@ -1749,8 +1789,10 @@ export default function ClinicDetail() {
                           description: newPackage.description || undefined,
                           price: parseFloat(newPackage.price),
                           isActive: true,
+                          packageType: newPackage.packageType,
+                          sessionLimit: newPackage.packageType === 'personalizado' && newPackage.sessionLimit ? parseInt(newPackage.sessionLimit) : null,
                         });
-                        setNewPackage({ name: '', description: '', price: '' });
+                        setNewPackage({ name: '', description: '', price: '', packageType: 'mensal', sessionLimit: '' });
                         setPackageDialogOpen(false);
                       }}
                     >
