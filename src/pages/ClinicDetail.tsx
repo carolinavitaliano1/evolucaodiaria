@@ -1606,14 +1606,23 @@ export default function ClinicDetail() {
                       )}
                     </div>
 
-                    {patient.paymentValue && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <span className="text-success font-semibold">
-                          R$ {patient.paymentValue.toFixed(2)}
-                          {patient.paymentType === 'sessao' ? '/sessão' : '/mês'}
-                        </span>
-                      </div>
-                    )}
+                    {patient.paymentValue && (() => {
+                      const pkg = patient.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
+                      const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
+                      const displayValue = isPersonalizado
+                        ? patient.paymentValue / pkg!.sessionLimit!
+                        : patient.paymentValue;
+                      return (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <span className="text-success font-semibold">
+                            R$ {displayValue.toFixed(2)}/sessão
+                            {isPersonalizado && (
+                              <span className="text-xs text-muted-foreground font-normal ml-1">(Pacote de {pkg!.sessionLimit})</span>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     {(patient.whatsapp || patient.phone || patient.responsibleWhatsapp) && (
                       <div className="mt-2 pt-2 border-t border-border flex justify-end gap-2">
