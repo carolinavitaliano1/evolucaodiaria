@@ -35,7 +35,7 @@ const MOOD_LABELS: Record<string, { emoji: string; label: string }> = {
 };
 
 export default function Reports() {
-  const { clinics, patients, evolutions, loadAllEvolutions } = useApp();
+  const { clinics, patients, evolutions, loadAllEvolutions, clinicPackages } = useApp();
   const { user } = useAuth();
 
   // Load all evolutions for report generation
