@@ -147,6 +147,8 @@ function mapPackage(p: Record<string, unknown>): ClinicPackage {
     id: p.id as string, userId: p.user_id as string, clinicId: p.clinic_id as string,
     name: p.name as string, description: (p.description as string) || undefined,
     price: Number(p.price), isActive: (p.is_active as boolean) ?? true,
+    packageType: (p.package_type as 'mensal' | 'por_sessao' | 'personalizado') || 'mensal',
+    sessionLimit: p.session_limit != null ? Number(p.session_limit) : null,
     createdAt: p.created_at as string,
   };
 }
