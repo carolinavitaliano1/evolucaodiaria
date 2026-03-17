@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 
 export function StatsCards() {
-  const { clinics, patients, appointments, evolutions } = useApp();
+  const { clinics, patients, appointments, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
 
   const today = toLocalDateString(new Date());
@@ -80,8 +80,18 @@ export function StatsCards() {
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   });
 
-  // Clinic patient revenue (fixo + sessao)
+  // Helper: effective per-session value respecting personalizado packages
+  const getEffectiveSessionValue = (p: typeof patients[0]) => {
+    if (!p.paymentValue) return 0;
+    const pkg = p.packageId ? clinicPackages.find(pk => pk.id === p.packageId) : null;
+    const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
+    return isPersonalizado ? p.paymentValue / pkg!.sessionLimit! : p.paymentValue;
+  };
+
+  // Clinic patient revenue — skip archived patients; use effective session value for personalizado packages
   const clinicMonthlyRevenue = patients.reduce((sum, p) => {
+    // Fix 2: exclude archived patients
+    if (p.isArchived) return sum;
     if (p.paymentType === 'fixo' && p.paymentValue) {
       return sum + p.paymentValue;
     }
@@ -94,7 +104,8 @@ export function StatsCards() {
           e.attendanceStatus === 'feriado_remunerado'
         )
       );
-      return sum + (patientEvolutions.length * p.paymentValue);
+      // Fix 1 & 3: use fractionated value for personalizado packages
+      return sum + (patientEvolutions.length * getEffectiveSessionValue(p));
     }
     return sum;
   }, 0);
