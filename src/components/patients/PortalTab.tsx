@@ -560,11 +560,6 @@ function AccountPanel({
                     .eq('patient_id', patientId);
                   if (!error) {
                     toast.success(approved ? 'Alterações aprovadas!' : 'Alterações rejeitadas.');
-                    // Re-fetch intake form
-                    const { data } = await supabase.from('patient_intake_forms').select('*').eq('patient_id', patientId).maybeSingle();
-                    if (data) {
-                      // Force parent re-render by reloading - we pass updated data via callback
-                    }
                   }
                 }} />
               )}
