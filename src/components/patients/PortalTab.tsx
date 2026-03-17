@@ -63,6 +63,10 @@ interface IntakeForm {
   health_info: string | null;
   observations: string | null;
   payment_due_day: number | null;
+  needs_review?: boolean;
+  review_status?: string | null;
+  reviewed_at?: string | null;
+  review_history?: Array<{ submitted_at: string; data: Record<string, any> }>;
 }
 
 interface PortalDocument {
@@ -116,6 +120,118 @@ function IntakeField({ label, value }: { label: string; value: string | null | u
     <div className="space-y-0.5">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
       <p className="text-sm text-foreground">{value}</p>
+    </div>
+  );
+}
+
+// ─── IntakeReviewPanel ────────────────────────────────────────────────────────
+function IntakeReviewPanel({
+  intakeForm, patientId, onReviewed,
+}: {
+  intakeForm: IntakeForm;
+  patientId: string;
+  onReviewed: (approved: boolean) => void;
+}) {
+  const latest = intakeForm.review_history && intakeForm.review_history.length > 0
+    ? intakeForm.review_history[intakeForm.review_history.length - 1]
+    : null;
+
+  const fields: [string, string][] = latest?.data ? [
+    ['Nome completo', latest.data.full_name],
+    ['CPF', latest.data.cpf],
+    ['Telefone', latest.data.phone],
+    ['WhatsApp', latest.data.whatsapp],
+    ['E-mail', latest.data.email],
+    ['Endereço', latest.data.address],
+    ['Data de nasc.', latest.data.birthdate],
+    ['Resp. nome', latest.data.responsible_name],
+    ['Resp. CPF', latest.data.responsible_cpf],
+    ['Resp. telefone', latest.data.responsible_phone],
+    ['Fin. nome', latest.data.financial_responsible_name],
+    ['Fin. CPF', latest.data.financial_responsible_cpf],
+    ['Observações', latest.data.observations],
+    ['Informações saúde', latest.data.health_info],
+  ].filter(([, v]) => !!v) as [string, string][] : [];
+
+  return (
+    <div className="mx-4 my-3 rounded-xl border border-warning/40 bg-warning/5 overflow-hidden">
+      <div className="px-4 py-3 bg-warning/10 flex items-center gap-2 border-b border-warning/20">
+        <Clock className="w-4 h-4 text-warning flex-shrink-0" />
+        <div className="flex-1">
+          <p className="text-xs font-semibold text-warning">Atualização pendente de revisão</p>
+          {latest && (
+            <p className="text-[10px] text-warning/70 mt-0.5">
+              Enviada em {format(new Date(latest.submitted_at), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+            </p>
+          )}
+        </div>
+      </div>
+      {fields.length > 0 && (
+        <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2">
+          {fields.map(([label, value]) => (
+            <div key={label} className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+              <p className="text-xs text-foreground font-medium truncate">{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="px-4 pb-4 flex gap-2">
+        <Button
+          size="sm"
+          className="flex-1 h-8 text-xs gap-1.5 bg-success hover:bg-success/90 text-success-foreground"
+          onClick={() => onReviewed(true)}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" /> Aprovar alterações
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 h-8 text-xs gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/5"
+          onClick={() => onReviewed(false)}
+        >
+          <X className="w-3.5 h-3.5" /> Rejeitar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── IntakeHistoryPanel ───────────────────────────────────────────────────────
+function IntakeHistoryPanel({ history }: { history: Array<{ submitted_at: string; data: Record<string, any> }> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mx-4 my-2">
+      <button
+        type="button"
+        onClick={() => setOpen(p => !p)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+      >
+        {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        Histórico de atualizações ({history.length})
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 pl-2 border-l-2 border-border">
+          {[...history].reverse().map((entry, i) => (
+            <div key={i} className="rounded-lg border border-border bg-muted/20 p-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                {format(new Date(entry.submitted_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                {Object.entries(entry.data || {})
+                  .filter(([, v]) => !!v && typeof v === 'string')
+                  .slice(0, 10)
+                  .map(([k, v]) => (
+                    <div key={k} className="space-y-0.5">
+                      <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{k.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-foreground truncate">{v as string}</p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -405,6 +521,11 @@ function AccountPanel({
               <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/20">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <ClipboardList className="w-4 h-4 text-success" /> Ficha do Paciente
+                  {intakeForm?.needs_review && (
+                    <span className="inline-flex items-center gap-1 bg-warning/20 text-warning text-[10px] font-semibold px-2 py-0.5 rounded-full border border-warning/30 ml-1">
+                      <Clock className="w-3 h-3" /> Aguarda revisão
+                    </span>
+                  )}
                 </h3>
                 <div className="flex items-center gap-2">
                   {hasIntakeSubmitted ? (
@@ -425,6 +546,29 @@ function AccountPanel({
                   )}
                 </div>
               </div>
+
+              {/* Review pending banner */}
+              {intakeForm?.needs_review && (
+                <IntakeReviewPanel intakeForm={intakeForm} patientId={patientId} onReviewed={async (approved) => {
+                  const { error } = await supabase
+                    .from('patient_intake_forms')
+                    .update({
+                      needs_review: false,
+                      review_status: approved ? 'approved' : 'rejected',
+                      reviewed_at: new Date().toISOString(),
+                    })
+                    .eq('patient_id', patientId);
+                  if (!error) {
+                    toast.success(approved ? 'Alterações aprovadas!' : 'Alterações rejeitadas.');
+                  }
+                }} />
+              )}
+
+              {/* History collapsible */}
+              {intakeForm?.review_history && Array.isArray(intakeForm.review_history) && intakeForm.review_history.length > 0 && (
+                <IntakeHistoryPanel history={intakeForm.review_history} />
+              )}
+
               {!hasIntakeSubmitted ? (
                 <div className="p-6 text-center">
                   <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
@@ -454,7 +598,7 @@ function AccountPanel({
                   {(intakeForm.responsible_name || intakeForm.responsible_cpf) && (
                     <div className="space-y-3 pt-3 border-t border-border">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" /> Responsável
+                        <User className="w-3.5 h-3.5" /> Responsável (Contratante)
                       </h4>
                       <div className="grid grid-cols-1 gap-3 pl-1">
                         <IntakeField label="Nome" value={intakeForm.responsible_name} />

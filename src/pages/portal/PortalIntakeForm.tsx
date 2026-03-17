@@ -64,7 +64,6 @@ const PAYMENT_DAY_OPTIONS = [
 const GENDER_OPTIONS = [
   { label: 'Masculino', value: 'masculino' },
   { label: 'Feminino', value: 'feminino' },
-  { label: 'Não-binário', value: 'nao_binario' },
   { label: 'Prefiro não dizer', value: 'nao_informar' },
 ];
 
@@ -148,6 +147,32 @@ export default function PortalIntakeForm() {
     setSaving(true);
     try {
       const paymentDueDay = form.payment_due_day ? parseInt(form.payment_due_day, 10) : null;
+
+      // Build snapshot entry for review_history if this is a re-submission
+      let reviewHistoryUpdate: Record<string, any> = {};
+      if (submit && submitted) {
+        // Fetch current form to snapshot it before overwriting
+        const { data: currentForm } = await supabase
+          .from('patient_intake_forms')
+          .select('*')
+          .eq('patient_id', portalAccount.patient_id)
+          .maybeSingle();
+
+        if (currentForm) {
+          const snapshot = {
+            submitted_at: new Date().toISOString(),
+            data: form,
+          };
+          const existingHistory = Array.isArray((currentForm as any).review_history) ? (currentForm as any).review_history : [];
+          reviewHistoryUpdate = {
+            review_history: [...existingHistory, snapshot],
+            needs_review: true,
+            review_status: 'pending',
+            reviewed_at: null,
+          };
+        }
+      }
+
       const payload: Record<string, any> = {
         patient_id: portalAccount.patient_id,
         therapist_user_id: portalAccount.therapist_user_id,
@@ -155,6 +180,7 @@ export default function PortalIntakeForm() {
         birthdate: form.birthdate || null,
         payment_due_day: paymentDueDay,
         updated_at: new Date().toISOString(),
+        ...reviewHistoryUpdate,
       };
       if (submit) payload.submitted_at = new Date().toISOString();
 
@@ -164,31 +190,12 @@ export default function PortalIntakeForm() {
       if (error) throw error;
 
       if (submit) {
-        const patientUpdate: Record<string, any> = {};
-        // NOTE: do NOT sync full_name → patients.name to avoid overwriting the therapist's registered name
-        if (form.phone) patientUpdate.phone = form.phone;
-        if (form.whatsapp) patientUpdate.whatsapp = form.whatsapp;
-        if (form.email) patientUpdate.email = form.email;
-        if (form.cpf) patientUpdate.cpf = form.cpf;
-        if (form.birthdate) patientUpdate.birthdate = form.birthdate;
-        if (form.responsible_name) patientUpdate.responsible_name = form.responsible_name;
-        if (form.responsible_cpf) patientUpdate.responsible_cpf = form.responsible_cpf;
-        if (form.responsible_phone) patientUpdate.responsible_whatsapp = form.responsible_phone;
-        if (form.financial_responsible_name) patientUpdate.financial_responsible_name = form.financial_responsible_name;
-        if (form.financial_responsible_cpf) patientUpdate.financial_responsible_cpf = form.financial_responsible_cpf;
-        if (form.financial_responsible_phone) patientUpdate.financial_responsible_whatsapp = form.financial_responsible_phone;
-        if (form.observations) patientUpdate.observations = form.observations;
-        if (paymentDueDay) patientUpdate.payment_due_day = paymentDueDay;
-
-        if (Object.keys(patientUpdate).length > 0) {
-          await supabase
-            .from('patients')
-            .update(patientUpdate)
-            .eq('id', portalAccount.patient_id);
-        }
-
         setSubmitted(true);
-        toast.success('Ficha enviada ao terapeuta! ✅');
+        if (submitted) {
+          toast.success('Dados atualizados! Seu terapeuta será notificado para revisar. ✅');
+        } else {
+          toast.success('Ficha enviada ao terapeuta! ✅');
+        }
       } else {
         toast.success('Rascunho salvo');
       }
@@ -223,7 +230,7 @@ export default function PortalIntakeForm() {
         )}
 
         {/* Dados Pessoais */}
-        <SectionCard title="Dados Pessoais">
+        <SectionCard title="Dados Pessoais (Paciente)">
           <div className="grid grid-cols-1 gap-3">
             <Field label="Nome completo *">
               <Input value={form.full_name} onChange={set('full_name')} placeholder="Seu nome completo" />
@@ -296,7 +303,7 @@ export default function PortalIntakeForm() {
         </SectionCard>
 
         {/* Responsável (menor de idade) */}
-        <SectionCard title="Responsável (se menor de idade)">
+        <SectionCard title="Responsável Legal (Contratante)">
           <div className="grid grid-cols-1 gap-3">
             <Field label="Nome do responsável">
               <Input value={form.responsible_name} onChange={set('responsible_name')} placeholder="Nome completo" />

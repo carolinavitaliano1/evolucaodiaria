@@ -174,7 +174,7 @@ export default function Enrollment() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* 1. Dados do Paciente */}
-            <SectionCard icon={<User className="w-4 h-4" />} title="Dados do Paciente">
+            <SectionCard icon={<User className="w-4 h-4" />} title="Dados do Paciente (Paciente)">
               <Field id="name" label="Nome Completo" required>
                 <Input id="name" value={form.name} onChange={set('name')} placeholder="Ex: João Pedro Silva" required />
               </Field>
@@ -200,7 +200,7 @@ export default function Enrollment() {
             </SectionCard>
 
             {/* 2. Responsável Legal */}
-            <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Legal">
+            <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Legal (Contratante)">
               <p className="text-xs text-muted-foreground -mt-1">Preencha caso o paciente seja menor de idade ou possua responsável.</p>
               <Field id="responsible_name" label="Nome do Responsável Legal">
                 <Input id="responsible_name" value={form.responsible_name} onChange={set('responsible_name')} placeholder="Ex: Maria Silva" />
