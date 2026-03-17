@@ -958,6 +958,8 @@ export default function PatientDetail() {
         responsible_cpf: (patient as any).responsible_cpf || (patient as any).responsibleCpf || undefined,
         paymentType: patient.paymentType || undefined,
         paymentValue: patient.paymentValue || undefined,
+        effectiveSessionValue: isPackagePersonalizado ? perSessionValue : undefined,
+        packageSessionLimit: isPackagePersonalizado ? patientPackage!.sessionLimit! : undefined,
       },
       clinic: clinic ? {
         name: clinic.name,
