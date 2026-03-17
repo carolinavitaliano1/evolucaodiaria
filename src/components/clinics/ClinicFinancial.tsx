@@ -338,6 +338,13 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <p className="text-lg font-bold text-foreground">
             R$ {totalRevenueWithServices.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {isClinicFixoMensal
+              ? 'Valor Fixo Mensal'
+              : isClinicFixoDiario
+                ? `Total de ${uniqueWorkDays} diária(s)`
+                : `${totalSessions} sessões`}
+          </p>
           {discountPercent > 0 && (
             <div className="mt-2 pt-2 border-t border-border">
               <p className="text-muted-foreground text-[10px]">Líquido ({discountPercent}% desc.)</p>
