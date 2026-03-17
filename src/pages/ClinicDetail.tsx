@@ -1814,7 +1814,7 @@ export default function ClinicDetail() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {clinicPackages.map((pkg) => (
-                  <div key={pkg.id} className="bg-secondary/50 rounded-xl p-4 border border-border">
+                   <div key={pkg.id} className="bg-secondary/50 rounded-xl p-4 border border-border">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-foreground">{pkg.name}</h3>
                       <div className="flex gap-1">
@@ -1831,9 +1831,24 @@ export default function ClinicDetail() {
                     {pkg.description && (
                       <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
                     )}
-                    <p className="text-lg font-bold text-success">
-                      R$ {pkg.price.toFixed(2)}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-lg font-bold text-success">
+                        R$ {pkg.price.toFixed(2)}
+                      </p>
+                      <span className={cn(
+                        "text-xs px-2 py-0.5 rounded-full font-medium",
+                        pkg.packageType === 'por_sessao' ? 'bg-primary/10 text-primary' :
+                        pkg.packageType === 'personalizado' ? 'bg-warning/10 text-warning' :
+                        'bg-muted text-muted-foreground'
+                      )}>
+                        {pkg.packageType === 'por_sessao' ? 'Por Sessão' : pkg.packageType === 'personalizado' ? 'Personalizado' : 'Mensal'}
+                      </span>
+                    </div>
+                    {pkg.packageType === 'personalizado' && pkg.sessionLimit && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {pkg.sessionLimit} sessões · {(pkg.price / pkg.sessionLimit).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/sessão
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
