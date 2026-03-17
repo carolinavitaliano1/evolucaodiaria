@@ -536,7 +536,14 @@ export default function PatientDetail() {
   const monthlyFeriadoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const monthlyFeriadoNaoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const monthlyTotal = monthlyEvolutions.length;
-  const monthlyRevenue = (monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem) * ((patient?.paymentValue) || 0);
+  const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
+  const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const monthlyRevenue = patient?.paymentType === 'fixo'
+    ? (patient?.paymentValue || 0)
+    : (monthlyBillableCount) * (patient?.paymentValue || 0);
+  const monthlyRevenueSubtitle = patient?.paymentType === 'fixo'
+    ? 'Valor Fixo'
+    : `${monthlyBillableCount} sessão(ões)`;
   const monthlyAttendanceRate = monthlyTotal > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyTotal) * 100) : 0;
   const monthlyMoodCounts = allMoodOptions.map(m => ({
     ...m, count: monthlyEvolutions.filter(e => e.mood === m.value).length,
