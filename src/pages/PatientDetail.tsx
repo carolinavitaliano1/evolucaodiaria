@@ -490,12 +490,17 @@ export default function PatientDetail() {
   const isFixoDiario = ptType === 'fixo_diaria' || clPaymentType === 'fixo_diario';
   const isFixoMensal = ptType === 'fixo' || clPaymentType === 'fixo_mensal';
   const paymentValue = patient?.paymentValue || 0;
+  // Package personalizado: per-session value = total / sessionLimit
+  const isPackagePersonalizado = patientPackage?.packageType === 'personalizado' && (patientPackage?.sessionLimit ?? 0) > 0;
+  const perSessionValue = isPackagePersonalizado
+    ? paymentValue / (patientPackage!.sessionLimit!)
+    : paymentValue;
   const totalBillableCount = totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem;
   const totalFinancial = isFixoMensal
     ? paymentValue
     : isFixoDiario
-      ? totalUniqueDays * paymentValue
-      : totalBillableCount * paymentValue;
+      ? totalUniqueDays * perSessionValue
+      : totalBillableCount * perSessionValue;
   const totalFinancialSubtitle = isFixoMensal
     ? 'Valor Fixo Mensal'
     : isFixoDiario
@@ -548,8 +553,8 @@ export default function PatientDetail() {
   const monthlyRevenue = isFixoMensal
     ? paymentValue
     : isFixoDiario
-      ? monthlyUniqueDays * paymentValue
-      : monthlyBillableCount * paymentValue;
+      ? monthlyUniqueDays * perSessionValue
+      : monthlyBillableCount * perSessionValue;
   const monthlyRevenueSubtitle = isFixoMensal
     ? 'Valor Fixo'
     : isFixoDiario
@@ -581,8 +586,8 @@ export default function PatientDetail() {
   const finRevenue = isFixoMensal
     ? paymentValue
     : isFixoDiario
-      ? finUniqueDays * paymentValue
-      : finBillableCount * paymentValue;
+      ? finUniqueDays * perSessionValue
+      : finBillableCount * perSessionValue;
   const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
 
 
@@ -1514,7 +1519,10 @@ export default function PatientDetail() {
                 {patient.paymentValue && (
                   <span className="flex items-center gap-1">
                     <DollarSign className="w-3.5 h-3.5" />
-                    R$ {patient.paymentValue.toFixed(2)}{patient.paymentType === 'sessao' ? '/sessão' : '/mês'}
+                    {isPackagePersonalizado
+                      ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit})`
+                      : `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
+                    }
                   </span>
                 )}
                 {patient.diagnosis && (
