@@ -578,11 +578,11 @@ export default function PatientDetail() {
   const finTotal = financialEvolutions.length;
   const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
   const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const finRevenue = ptType === 'fixo'
-    ? (patient?.paymentValue || 0)
-    : ptType === 'fixo_diaria'
-      ? finUniqueDays * (patient?.paymentValue || 0)
-      : (finBillableCount) * (patient?.paymentValue || 0);
+  const finRevenue = isFixoMensal
+    ? paymentValue
+    : isFixoDiario
+      ? finUniqueDays * paymentValue
+      : finBillableCount * paymentValue;
   const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
 
 
