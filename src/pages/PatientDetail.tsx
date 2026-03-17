@@ -913,16 +913,18 @@ export default function PatientDetail() {
   const buildFiscalReceiptOpts = () => {
     const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
     const evos = getFiscalEvolutions();
-    const paymentValue = patient?.paymentValue || 0;
+    const rawPaymentValue = patient?.paymentValue || 0;
     const STATUS_BILLABLE: Record<string, boolean> = {
       presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
       falta: false, feriado_nao_remunerado: false,
     };
     const billableEvos = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false);
     const billableCount = billableEvos.length;
+    // Use per-session value for Personalizado packages
+    const fiscalPerSession = isPackagePersonalizado ? perSessionValue : rawPaymentValue;
     const calculatedTotal = patient?.paymentType === 'fixo'
-      ? paymentValue
-      : billableCount * paymentValue;
+      ? rawPaymentValue
+      : billableCount * fiscalPerSession;
 
     // For "total" mode: calculate paid sessions (those whose month/year has paid=true)
     // We use the paid amount from the record if available, otherwise calculate from sessions
@@ -956,6 +958,8 @@ export default function PatientDetail() {
         responsible_cpf: (patient as any).responsible_cpf || (patient as any).responsibleCpf || undefined,
         paymentType: patient.paymentType || undefined,
         paymentValue: patient.paymentValue || undefined,
+        effectiveSessionValue: isPackagePersonalizado ? perSessionValue : undefined,
+        packageSessionLimit: isPackagePersonalizado ? patientPackage!.sessionLimit! : undefined,
       },
       clinic: clinic ? {
         name: clinic.name,
@@ -1020,7 +1024,9 @@ export default function PatientDetail() {
       };
       const periodLabel = `${format(fiscalStartDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(fiscalEndDate, 'dd/MM/yyyy', { locale: ptBR })}`;
       const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
-      const payVal = patient.paymentValue || 0;
+      const rawPayVal = patient.paymentValue || 0;
+      // For Personalizado packages use per-session value
+      const payVal = isPackagePersonalizado ? perSessionValue : rawPayVal;
       const areaLabel = patient.clinicalArea || fiscalStamp?.clinical_area || 'Atendimento';
 
       let sessionTotal = 0;
@@ -1257,7 +1263,11 @@ export default function PatientDetail() {
       if (clinic?.name) idLines.push(['Unidade Clínica:', clinic.name]);
       if (patient.clinicalArea) idLines.push(['Área Clínica:', patient.clinicalArea]);
       if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
-      if (patient.paymentValue) idLines.push(['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]);
+      if (patient.paymentValue) idLines.push(
+        isPackagePersonalizado
+          ? ['Valor por Sessão:', `R$ ${perSessionValue.toFixed(2)} (Pacote ${patientPackage!.name} — ${patientPackage!.sessionLimit} sessões)`]
+          : ['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]
+      );
       idLines.push(['Período de Referência:', monthLabelCap]);
       idLines.push(['Data de Emissão:', format(new Date(), 'dd/MM/yyyy', { locale: ptBR })]);
       idLines.forEach(([label, value]) => {
@@ -1280,7 +1290,11 @@ export default function PatientDetail() {
         ['Faltas remuneradas:', String(finPaidAbsent)],
         ['Feriados remunerados:', String(finFeriadoRem)],
         ['Total de sessões cobradas:', String(paidSessions)],
-        ['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
+        ...(isPackagePersonalizado
+          ? [['Pacote:', `${paidSessions} sessão(ões) utilizadas de ${patientPackage!.sessionLimit} (${patientPackage!.name})`] as [string, string],
+             ['Valor por sessão (fracionado):', `R$ ${perSessionValue.toFixed(2)}`] as [string, string]]
+          : [['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
+        ),
         ['TOTAL FATURADO NO MÊS:', `R$ ${finRevenue.toFixed(2)}`],
       ];
       finRows.forEach(([label, value], i) => {

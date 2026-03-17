@@ -16,6 +16,10 @@ export interface FiscalReceiptOptions {
     responsible_cpf?: string;
     paymentType?: string;
     paymentValue?: number;
+    /** For Personalizado packages: effective per-session value (total / limit) */
+    effectiveSessionValue?: number;
+    /** For Personalizado packages: session limit */
+    packageSessionLimit?: number;
   };
   clinic?: {
     name?: string;
@@ -194,7 +198,8 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   // ─── DETALHAMENTO DAS SESSÕES ───────────────────────────────────────────
   const areaLabel   = patient.clinicalArea || stamp?.clinical_area || 'Atendimento';
   const areaDisplay = areaLabel.length > 28 ? areaLabel.substring(0, 27) + '…' : areaLabel;
-  const paymentValue = patient.paymentValue || 0;
+  // For Personalizado packages use the fractional per-session value; otherwise use raw paymentValue
+  const paymentValue = patient.effectiveSessionValue ?? patient.paymentValue ?? 0;
 
   sectionTitle(`DETALHAMENTO DAS SESSÕES (${evolutions.length})`);
 
@@ -245,11 +250,18 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   drawDivider(2, 4);
   sectionTitle('RESUMO FINANCEIRO');
 
+  const isPersonalizado = !!patient.effectiveSessionValue && !!patient.packageSessionLimit;
   const summaryRows: [string, string][] = patient.paymentType === 'fixo'
     ? [
         ['Modalidade:', 'Mensalidade fixa'],
         ['Sessões realizadas:', String(sessionCount)],
-        ['Valor da mensalidade:', `R$ ${paymentValue.toFixed(2)}`],
+        ['Valor da mensalidade:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
+      ]
+    : isPersonalizado
+    ? [
+        ['Modalidade:', `Pacote Personalizado (${patient.packageSessionLimit} sessões)`],
+        ['Sessões cobráveis:', String(sessionCount)],
+        ['Valor por sessão:', `R$ ${paymentValue.toFixed(2)}`],
       ]
     : [
         ['Modalidade:', 'Por sessão'],
