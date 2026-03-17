@@ -1024,7 +1024,9 @@ export default function PatientDetail() {
       };
       const periodLabel = `${format(fiscalStartDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(fiscalEndDate, 'dd/MM/yyyy', { locale: ptBR })}`;
       const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
-      const payVal = patient.paymentValue || 0;
+      const rawPayVal = patient.paymentValue || 0;
+      // For Personalizado packages use per-session value
+      const payVal = isPackagePersonalizado ? perSessionValue : rawPayVal;
       const areaLabel = patient.clinicalArea || fiscalStamp?.clinical_area || 'Atendimento';
 
       let sessionTotal = 0;
