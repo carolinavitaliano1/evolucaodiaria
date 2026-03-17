@@ -1,60 +1,73 @@
 
+## Como funcionaria um modelo multidisciplinar no app
 
-## Diagnóstico — Raiz dos 3 problemas
-
-### 1. Mural (feed_posts) — paciente não vê posts
-- `feed_posts` **não está na publicação Realtime** (apenas `portal_messages` está)
-- A RLS para SELECT do paciente existe (`is_portal_patient`), mas como não há Realtime para `feed_posts`, a página `PortalMural` faz apenas um `loadPosts()` inicial e nunca atualiza quando o terapeuta publica
-
-### 2. Mensagens — não atualiza em tempo real
-- `portal_messages` está na publicação Realtime ✅
-- Mas o `PortalContext` cria o canal de realtime com `filter: patient_id=eq.${patientId}` — isso exige que a tabela tenha **replica identity FULL** ou que o filtro seja suportado; sem isso o Supabase Realtime não dispara
-
-### 3. Avisos (portal_notices) — não atualiza
-- `portal_notices` **não está na publicação Realtime**
-- `PortalNotices.tsx` faz apenas uma query no `useEffect` inicial sem nenhum listener — quando o terapeuta cria um aviso, o paciente só vê se recarregar a página
+A estrutura atual já é quase toda compatível — clínicas, pacientes, evoluções, templates e carimbos são por usuário. O que falta é suporte para **múltiplos profissionais dentro de uma mesma clínica**, cada um com seu próprio acesso, carimbos e evoluções, mas compartilhando a base de pacientes.
 
 ---
 
-## Plano de Correção
+### O que precisaria ser adicionado (sem remover nada)
 
-### Banco de dados (migration)
-1. Adicionar `feed_posts`, `feed_comments`, `feed_reactions` e `portal_notices` à publicação `supabase_realtime`
-2. Habilitar `REPLICA IDENTITY FULL` em `portal_messages` para garantir que filtros de realtime funcionem
-
-### Código
-
-**`PortalContext.tsx`** — já tem realtime para `portal_messages`, mas precisa funcionar com a nova configuração
-
-**`PortalNotices.tsx`** — adicionar assinatura Realtime para `portal_notices` + polling de fallback ao montar a página
-
-**`PatientFeed.tsx`** (usado no `PortalMural`) — adicionar assinatura Realtime para `feed_posts` para recarregar quando terapeuta publicar
-
-```text
-Fluxo corrigido:
-
-Terapeuta publica post
-    └─> INSERT em feed_posts
-         └─> Realtime dispara
-              └─> PatientFeed recarrega posts automaticamente
-              └─> badge "Mural" atualiza via portal_notices
-
-Terapeuta envia mensagem
-    └─> INSERT em portal_messages
-         └─> Realtime dispara (REPLICA IDENTITY FULL)
-              └─> PortalContext.loadMessages() executa
-              └─> Chat atualiza sem recarregar
-
-Terapeuta cria aviso
-    └─> INSERT em portal_notices
-         └─> Realtime dispara
-              └─> PortalNotices recarrega lista
-              └─> badge "Avisos" atualiza
+```
+ESTRUTURA ATUAL                    ESTRUTURA MULTIDISCIPLINAR
+─────────────────────────          ─────────────────────────────────
+usuário único → clínica            organização → clínica → membros
+usuário único → pacientes          pacientes compartilhados por clínica
+usuário único → evoluções          evoluções com "autor" (profissional)
 ```
 
-### Arquivos que serão alterados
-- `supabase/migrations/` — nova migration para publicação Realtime + REPLICA IDENTITY
-- `src/components/feed/PatientFeed.tsx` — adicionar Realtime subscription em `feed_posts`
-- `src/pages/portal/PortalNotices.tsx` — adicionar Realtime subscription em `portal_notices`
-- `src/contexts/PortalContext.tsx` — garantir canal de mensagens robusto com status callback
+**1. Organizações / Equipes**
+- Nova tabela `organizations` — uma clínica multidisciplinar seria uma organização
+- Nova tabela `organization_members` — com papéis: `owner`, `admin`, `professional`
+- O dono convida outros usuários via e-mail
 
+**2. Pacientes compartilhados**
+- Pacientes passariam a ser da organização, não só do usuário
+- Cada profissional vê os pacientes da clínica, não só os seus
+- Permissões por papel: quem pode criar/editar/arquivar
+
+**3. Evoluções por profissional**
+- Cada evolução já tem `user_id` — continuaria funcionando como "autor"
+- Na visualização, apareceria o nome do profissional que registrou
+- Carimbo automático do profissional logado
+
+**4. Templates por organização**
+- Templates criados pelo dono ficam disponíveis para toda a equipe
+- Cada profissional ainda pode ter seus próprios templates pessoais
+
+**5. Financeiro separado por profissional**
+- Cada membro vê seus próprios recebimentos
+- O dono/admin vê o consolidado de todos
+
+---
+
+### Impacto no que já existe
+
+| Funcionalidade atual | Impacto |
+|---|---|
+| Clínica própria (terapeuta solo) | Zero — continua igual |
+| Templates de evolução | Zero — apenas compartilhamento opcional |
+| Carimbos pessoais | Zero — cada membro tem os seus |
+| Exportação PDF | Pequena — adicionar nome do profissional no rodapé |
+| Dashboard | Pequena — filtro por membro |
+
+O terapeuta solo continua usando o app exatamente como hoje. O modo multidisciplinar seria **opt-in** — ao criar uma clínica, escolheria entre "uso individual" ou "equipe multidisciplinar".
+
+---
+
+### Implementação em fases
+
+**Fase 1** — Convite e membros
+- Tabelas `organizations` e `organization_members`
+- Fluxo de convite por e-mail
+- Papéis: dono, admin, profissional
+
+**Fase 2** — Dados compartilhados
+- Pacientes e evoluções vinculados à organização
+- Filtros por profissional na agenda e evoluções
+
+**Fase 3** — Financeiro consolidado
+- Relatórios por membro e consolidado para o admin
+
+---
+
+Quer que eu implemente isso? Posso começar pela Fase 1 (estrutura de equipe e convites) mantendo tudo que existe intacto para usuários solo.
