@@ -250,11 +250,18 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   drawDivider(2, 4);
   sectionTitle('RESUMO FINANCEIRO');
 
+  const isPersonalizado = !!patient.effectiveSessionValue && !!patient.packageSessionLimit;
   const summaryRows: [string, string][] = patient.paymentType === 'fixo'
     ? [
         ['Modalidade:', 'Mensalidade fixa'],
         ['Sessões realizadas:', String(sessionCount)],
-        ['Valor da mensalidade:', `R$ ${paymentValue.toFixed(2)}`],
+        ['Valor da mensalidade:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
+      ]
+    : isPersonalizado
+    ? [
+        ['Modalidade:', `Pacote Personalizado (${patient.packageSessionLimit} sessões)`],
+        ['Sessões cobráveis:', String(sessionCount)],
+        ['Valor por sessão:', `R$ ${paymentValue.toFixed(2)}`],
       ]
     : [
         ['Modalidade:', 'Por sessão'],
