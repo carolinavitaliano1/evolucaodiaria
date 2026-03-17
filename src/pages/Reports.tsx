@@ -35,7 +35,7 @@ const MOOD_LABELS: Record<string, { emoji: string; label: string }> = {
 };
 
 export default function Reports() {
-  const { clinics, patients, evolutions, loadAllEvolutions } = useApp();
+  const { clinics, patients, evolutions, loadAllEvolutions, clinicPackages } = useApp();
   const { user } = useAuth();
 
   // Load all evolutions for report generation
@@ -128,7 +128,14 @@ export default function Reports() {
       const feriadoRem = pEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
       const total = present + reposicao + absent + paidAbsent + feriadoRem;
       const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
-      
+
+      // Effective per-session value: handles personalizado packages (total / sessionLimit)
+      const pkg = patient?.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
+      const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
+      const effectiveSessionValue = patient?.paymentValue
+        ? (isPersonalizado ? patient.paymentValue / pkg!.sessionLimit! : patient.paymentValue)
+        : 0;
+
       let revenue = 0;
       if (patient?.paymentType === 'fixo' && patient.paymentValue) {
         revenue = patient.paymentValue;
@@ -140,7 +147,7 @@ export default function Reports() {
         } else if (absenceType === 'confirmed_only') {
           paidRegularAbsences = pEvolutions.filter(e => e.attendanceStatus === 'falta' && e.confirmedAttendance).length;
         }
-        revenue = (present + reposicao + paidAbsent + paidRegularAbsences + feriadoRem) * patient.paymentValue;
+        revenue = (present + reposicao + paidAbsent + paidRegularAbsences + feriadoRem) * effectiveSessionValue;
       }
 
       // Mood counts
@@ -164,7 +171,7 @@ export default function Reports() {
         moods,
       };
     }).sort((a, b) => a.clinicName.localeCompare(b.clinicName) || b.total - a.total);
-  }, [filteredEvolutions, patients, clinics]);
+  }, [filteredEvolutions, patients, clinics, clinicPackages]);
 
   const dailyData = useMemo(() => {
     const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
@@ -192,26 +199,30 @@ export default function Reports() {
   ].filter(d => d.value > 0), [attendanceStats]);
 
   const clinicComparison = useMemo(() => {
-    return clinics.map(clinic => {
-      const clinicEvolutions = evolutions.filter(e => {
-        const evolutionDate = parseISO(e.date);
-        return e.clinicId === clinic.id && isWithinInterval(evolutionDate, { start: dateRange.start, end: dateRange.end });
-      });
-      const present = clinicEvolutions.filter(e => e.attendanceStatus === 'presente').length;
-      const reposicao = clinicEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
-      const absent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta').length;
-      const paidAbsent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const total = present + reposicao + absent + paidAbsent;
-      const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
-      return {
-        name: clinic.name.length > 15 ? clinic.name.slice(0, 15) + '...' : clinic.name,
-        fullName: clinic.name,
-        Presenças: present + reposicao,
-        Faltas: absent,
-        'Faltas Rem.': paidAbsent,
-        taxa: rate,
-      };
-    });
+    return clinics
+      .filter(clinic => !clinic.isArchived) // exclude archived clinics
+      .map(clinic => {
+        const clinicEvolutions = evolutions.filter(e => {
+          const evolutionDate = parseISO(e.date);
+          return e.clinicId === clinic.id && isWithinInterval(evolutionDate, { start: dateRange.start, end: dateRange.end });
+        });
+        const present = clinicEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+        const reposicao = clinicEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+        const absent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+        const paidAbsent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+        const total = present + reposicao + absent + paidAbsent;
+        const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
+        return {
+          name: clinic.name.length > 15 ? clinic.name.slice(0, 15) + '...' : clinic.name,
+          fullName: clinic.name,
+          Presenças: present + reposicao,
+          Faltas: absent,
+          'Faltas Rem.': paidAbsent,
+          taxa: rate,
+          total,
+        };
+      })
+      .filter(c => c.total > 0); // only show clinics with activity in the period
   }, [clinics, evolutions, dateRange]);
 
   const totalRevenue = useMemo(() => {
