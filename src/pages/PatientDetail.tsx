@@ -553,8 +553,8 @@ export default function PatientDetail() {
   const monthlyRevenue = isFixoMensal
     ? paymentValue
     : isFixoDiario
-      ? monthlyUniqueDays * paymentValue
-      : monthlyBillableCount * paymentValue;
+      ? monthlyUniqueDays * perSessionValue
+      : monthlyBillableCount * perSessionValue;
   const monthlyRevenueSubtitle = isFixoMensal
     ? 'Valor Fixo'
     : isFixoDiario
