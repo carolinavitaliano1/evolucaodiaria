@@ -1290,7 +1290,11 @@ export default function PatientDetail() {
         ['Faltas remuneradas:', String(finPaidAbsent)],
         ['Feriados remunerados:', String(finFeriadoRem)],
         ['Total de sessões cobradas:', String(paidSessions)],
-        ['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
+        ...(isPackagePersonalizado
+          ? [['Pacote:', `${paidSessions} sessão(ões) utilizadas de ${patientPackage!.sessionLimit} (${patientPackage!.name})`] as [string, string],
+             ['Valor por sessão (fracionado):', `R$ ${perSessionValue.toFixed(2)}`] as [string, string]]
+          : [['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
+        ),
         ['TOTAL FATURADO NO MÊS:', `R$ ${finRevenue.toFixed(2)}`],
       ];
       finRows.forEach(([label, value], i) => {
