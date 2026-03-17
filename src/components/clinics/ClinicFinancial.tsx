@@ -44,7 +44,7 @@ interface ClinicPaymentRecord {
 }
 
 export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
-  const { clinics, patients, evolutions, updateClinic } = useApp();
+  const { clinics, patients, evolutions, updateClinic, clinicPackages } = useApp();
   const { user } = useAuth();
   const { isOrg } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
