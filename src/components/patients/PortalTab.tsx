@@ -124,6 +124,118 @@ function IntakeField({ label, value }: { label: string; value: string | null | u
   );
 }
 
+// ─── IntakeReviewPanel ────────────────────────────────────────────────────────
+function IntakeReviewPanel({
+  intakeForm, patientId, onReviewed,
+}: {
+  intakeForm: IntakeForm;
+  patientId: string;
+  onReviewed: (approved: boolean) => void;
+}) {
+  const latest = intakeForm.review_history && intakeForm.review_history.length > 0
+    ? intakeForm.review_history[intakeForm.review_history.length - 1]
+    : null;
+
+  const fields: [string, string][] = latest?.data ? [
+    ['Nome completo', latest.data.full_name],
+    ['CPF', latest.data.cpf],
+    ['Telefone', latest.data.phone],
+    ['WhatsApp', latest.data.whatsapp],
+    ['E-mail', latest.data.email],
+    ['Endereço', latest.data.address],
+    ['Data de nasc.', latest.data.birthdate],
+    ['Resp. nome', latest.data.responsible_name],
+    ['Resp. CPF', latest.data.responsible_cpf],
+    ['Resp. telefone', latest.data.responsible_phone],
+    ['Fin. nome', latest.data.financial_responsible_name],
+    ['Fin. CPF', latest.data.financial_responsible_cpf],
+    ['Observações', latest.data.observations],
+    ['Informações saúde', latest.data.health_info],
+  ].filter(([, v]) => !!v) as [string, string][] : [];
+
+  return (
+    <div className="mx-4 my-3 rounded-xl border border-warning/40 bg-warning/5 overflow-hidden">
+      <div className="px-4 py-3 bg-warning/10 flex items-center gap-2 border-b border-warning/20">
+        <Clock className="w-4 h-4 text-warning flex-shrink-0" />
+        <div className="flex-1">
+          <p className="text-xs font-semibold text-warning">Atualização pendente de revisão</p>
+          {latest && (
+            <p className="text-[10px] text-warning/70 mt-0.5">
+              Enviada em {format(new Date(latest.submitted_at), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+            </p>
+          )}
+        </div>
+      </div>
+      {fields.length > 0 && (
+        <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2">
+          {fields.map(([label, value]) => (
+            <div key={label} className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+              <p className="text-xs text-foreground font-medium truncate">{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="px-4 pb-4 flex gap-2">
+        <Button
+          size="sm"
+          className="flex-1 h-8 text-xs gap-1.5 bg-success hover:bg-success/90 text-success-foreground"
+          onClick={() => onReviewed(true)}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" /> Aprovar alterações
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 h-8 text-xs gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/5"
+          onClick={() => onReviewed(false)}
+        >
+          <X className="w-3.5 h-3.5" /> Rejeitar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── IntakeHistoryPanel ───────────────────────────────────────────────────────
+function IntakeHistoryPanel({ history }: { history: Array<{ submitted_at: string; data: Record<string, any> }> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mx-4 my-2">
+      <button
+        type="button"
+        onClick={() => setOpen(p => !p)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+      >
+        {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        Histórico de atualizações ({history.length})
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 pl-2 border-l-2 border-border">
+          {[...history].reverse().map((entry, i) => (
+            <div key={i} className="rounded-lg border border-border bg-muted/20 p-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                {format(new Date(entry.submitted_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                {Object.entries(entry.data || {})
+                  .filter(([, v]) => !!v && typeof v === 'string')
+                  .slice(0, 10)
+                  .map(([k, v]) => (
+                    <div key={k} className="space-y-0.5">
+                      <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{k.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-foreground truncate">{v as string}</p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Sub-component: Per-account management panel ─────────────────────────────
 function AccountPanel({
   account, patientId, patientName, intakeForm,
