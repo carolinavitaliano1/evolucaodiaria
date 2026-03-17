@@ -482,7 +482,18 @@ export default function PatientDetail() {
   const totalFeriadoNaoRem = patientEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const totalSessions = patientEvolutions.length;
   const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
-  const totalFinancial = (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
+  const totalBillableEvos = patientEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const totalFinancial = patient?.paymentType === 'fixo'
+    ? (patient?.paymentValue || 0)
+    : patient?.paymentType === 'sessao'
+      ? (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0)
+      : (totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem) * (patient?.paymentValue || 0);
+  const totalFinancialSubtitle = patient?.paymentType === 'fixo'
+    ? 'Valor Fixo Mensal'
+    : patient?.paymentType === 'sessao'
+      ? `Total de ${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões`
+      : `${totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem} sessões pagas`;
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
