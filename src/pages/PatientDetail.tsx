@@ -586,8 +586,8 @@ export default function PatientDetail() {
   const finRevenue = isFixoMensal
     ? paymentValue
     : isFixoDiario
-      ? finUniqueDays * paymentValue
-      : finBillableCount * paymentValue;
+      ? finUniqueDays * perSessionValue
+      : finBillableCount * perSessionValue;
   const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
 
 
