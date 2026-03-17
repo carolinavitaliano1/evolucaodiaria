@@ -198,7 +198,8 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   // ─── DETALHAMENTO DAS SESSÕES ───────────────────────────────────────────
   const areaLabel   = patient.clinicalArea || stamp?.clinical_area || 'Atendimento';
   const areaDisplay = areaLabel.length > 28 ? areaLabel.substring(0, 27) + '…' : areaLabel;
-  const paymentValue = patient.paymentValue || 0;
+  // For Personalizado packages use the fractional per-session value; otherwise use raw paymentValue
+  const paymentValue = patient.effectiveSessionValue ?? patient.paymentValue ?? 0;
 
   sectionTitle(`DETALHAMENTO DAS SESSÕES (${evolutions.length})`);
 
