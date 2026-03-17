@@ -128,7 +128,14 @@ export default function Reports() {
       const feriadoRem = pEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
       const total = present + reposicao + absent + paidAbsent + feriadoRem;
       const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
-      
+
+      // Effective per-session value: handles personalizado packages (total / sessionLimit)
+      const pkg = patient?.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
+      const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
+      const effectiveSessionValue = patient?.paymentValue
+        ? (isPersonalizado ? patient.paymentValue / pkg!.sessionLimit! : patient.paymentValue)
+        : 0;
+
       let revenue = 0;
       if (patient?.paymentType === 'fixo' && patient.paymentValue) {
         revenue = patient.paymentValue;
@@ -140,7 +147,7 @@ export default function Reports() {
         } else if (absenceType === 'confirmed_only') {
           paidRegularAbsences = pEvolutions.filter(e => e.attendanceStatus === 'falta' && e.confirmedAttendance).length;
         }
-        revenue = (present + reposicao + paidAbsent + paidRegularAbsences + feriadoRem) * patient.paymentValue;
+        revenue = (present + reposicao + paidAbsent + paidRegularAbsences + feriadoRem) * effectiveSessionValue;
       }
 
       // Mood counts
@@ -164,7 +171,7 @@ export default function Reports() {
         moods,
       };
     }).sort((a, b) => a.clinicName.localeCompare(b.clinicName) || b.total - a.total);
-  }, [filteredEvolutions, patients, clinics]);
+  }, [filteredEvolutions, patients, clinics, clinicPackages]);
 
   const dailyData = useMemo(() => {
     const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
