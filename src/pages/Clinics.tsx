@@ -277,29 +277,41 @@ export default function Clinics() {
     ? archivedClinics 
     : activeClinics.filter(c => filter === 'all' || c.type === filter);
 
-  const { evolutions } = useApp();
-  const totalPatients = patients.length;
+  const { evolutions, clinicPackages } = useApp();
+  const totalPatients = patients.filter(p => !p.isArchived).length;
   const pendingAppointments = privateAppointments.filter(a => a.status === 'agendado');
   const completedAppointments = privateAppointments.filter(a => a.status === 'concluído');
+
+  // Active clinic IDs (non-archived)
+  const activeClinicIds = new Set(activeClinics.map(c => c.id));
 
   const totalRevenue = useMemo(() => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     const monthlyEvolutions = evolutions.filter(e => {
-      const date = new Date(e.date);
+      const date = new Date(e.date + 'T12:00:00');
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     });
-    const clinicRevenue = patients.reduce((sum, p) => {
-      if (p.paymentType === 'fixo' && p.paymentValue) return sum + p.paymentValue;
+    // Only count non-archived patients from non-archived clinics
+    const activePatients = patients.filter(p => !p.isArchived && activeClinicIds.has(p.clinicId));
+    const clinicRevenue = activePatients.reduce((sum, p) => {
+      const pkg = p.packageId ? clinicPackages.find(pk => pk.id === p.packageId) : null;
+      const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
+      const perSessionVal = isPersonalizado ? (p.paymentValue || 0) / pkg!.sessionLimit! : (p.paymentValue || 0);
+
+      if (p.paymentType === 'fixo') return sum + (p.paymentValue || 0);
       if (p.paymentType === 'sessao' && p.paymentValue) {
-        const count = monthlyEvolutions.filter(e => e.patientId === p.id && e.attendanceStatus === 'presente').length;
-        return sum + count * p.paymentValue;
+        const count = monthlyEvolutions.filter(e =>
+          e.patientId === p.id &&
+          ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus)
+        ).length;
+        return sum + count * perSessionVal;
       }
       return sum;
     }, 0);
     const privateRevenue = privateAppointments.filter(a => a.status === 'concluído').reduce((sum, a) => sum + a.price, 0);
     return clinicRevenue + privateRevenue;
-  }, [evolutions, patients, privateAppointments]);
+  }, [evolutions, patients, privateAppointments, clinicPackages, activeClinicIds]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
