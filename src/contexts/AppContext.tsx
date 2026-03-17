@@ -792,6 +792,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.from('clinic_packages').insert({
         user_id: user.id, clinic_id: pkg.clinicId, name: pkg.name,
         description: pkg.description || null, price: pkg.price, is_active: pkg.isActive,
+        package_type: pkg.packageType || 'mensal',
+        session_limit: pkg.sessionLimit ?? null,
       }).select().single();
       if (error) throw error;
       setState(prev => ({ ...prev, clinicPackages: [mapPackage(data as Record<string, unknown>), ...prev.clinicPackages] }));
@@ -807,6 +809,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.description !== undefined) updateData.description = updates.description || null;
       if (updates.price !== undefined) updateData.price = updates.price;
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+      if (updates.packageType !== undefined) updateData.package_type = updates.packageType;
+      if (updates.sessionLimit !== undefined) updateData.session_limit = updates.sessionLimit ?? null;
       const { error } = await supabase.from('clinic_packages').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, clinicPackages: prev.clinicPackages.map(p => p.id === id ? { ...p, ...updates } : p) }));
