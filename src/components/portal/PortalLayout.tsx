@@ -81,6 +81,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             const badge =
               to === '/portal/mensagens' && unreadCount > 0 ? unreadCount
               : to === '/portal/avisos' && unreadNotices > 0 ? unreadNotices
+              : to === '/portal/mural' && unreadMural > 0 ? unreadMural
               : 0;
             return (
               <NavLink
