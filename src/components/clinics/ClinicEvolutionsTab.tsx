@@ -299,15 +299,12 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
       />
     )}
 
-    {/* Feedback IA — todas as evoluções do dia em lote */}
-    <FeedbackIAModal
+    {/* Feedback IA — por paciente do dia selecionado */}
+    <BulkDayFeedbackModal
       open={feedbackDayOpen}
       onOpenChange={setFeedbackDayOpen}
-      evolutions={evolutionsByPatient.map(({ evo }) => evo)}
-      patientId={evolutionsByPatient[0]?.patient?.id || ''}
-      patientName={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.name || '') : `${evolutionsByPatient.length} pacientes`}
-      clinicalArea={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.clinicalArea || null) : null}
-      isBulk={true}
+      items={evolutionsByPatient.filter(({ patient }) => !!patient) as { evo: Evolution; patient: Patient }[]}
+      selectedDate={selectedDate}
     />
     </>
   );
