@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle, Lock, Sparkles } from 'lucide-react';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
+import { BulkDayFeedbackModal } from '@/components/evolutions/BulkDayFeedbackModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -298,15 +299,12 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
       />
     )}
 
-    {/* Feedback IA — todas as evoluções do dia em lote */}
-    <FeedbackIAModal
+    {/* Feedback IA — por paciente do dia selecionado */}
+    <BulkDayFeedbackModal
       open={feedbackDayOpen}
       onOpenChange={setFeedbackDayOpen}
-      evolutions={evolutionsByPatient.map(({ evo }) => evo)}
-      patientId={evolutionsByPatient[0]?.patient?.id || ''}
-      patientName={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.name || '') : `${evolutionsByPatient.length} pacientes`}
-      clinicalArea={evolutionsByPatient.length === 1 ? (evolutionsByPatient[0]?.patient?.clinicalArea || null) : null}
-      isBulk={true}
+      items={evolutionsByPatient.filter(({ patient }) => !!patient) as { evo: Evolution; patient: Patient }[]}
+      selectedDate={selectedDate}
     />
     </>
   );
