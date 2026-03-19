@@ -67,7 +67,7 @@ export function FeedbackIAModal({
         body: {
           evolutions: evolutions.map(e => ({
             date: e.date,
-            text: e.text,
+            text: extractEvolutionText(e),
             attendanceStatus: e.attendanceStatus,
           })),
           patientName,
