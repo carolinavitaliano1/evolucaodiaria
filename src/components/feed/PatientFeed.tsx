@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FeedPostCreator } from './FeedPostCreator';
 import { FeedPostCard, FeedPost, FeedComment, FeedReaction } from './FeedPostCard';
@@ -26,20 +26,25 @@ export function PatientFeed({
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const patientIdRef = useRef(patientId);
+  patientIdRef.current = patientId;
 
-  const loadPosts = useCallback(async () => {
+  const loadPosts = async (pid: string) => {
     try {
       const { data: postsData, error } = await supabase
         .from('feed_posts')
         .select('*')
-        .eq('patient_id', patientId)
+        .eq('patient_id', pid)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      if (!postsData) { setPosts([]); return; }
+
+      if (!postsData || postsData.length === 0) {
+        setPosts([]);
+        return;
+      }
 
       const postIds = postsData.map(p => p.id);
-      if (postIds.length === 0) { setPosts([]); return; }
 
       const [{ data: commentsData }, { data: reactionsData }] = await Promise.all([
         supabase.from('feed_comments').select('*').in('post_id', postIds).order('created_at', { ascending: true }),
@@ -58,16 +63,16 @@ export function PatientFeed({
       }));
 
       setPosts(merged);
-    } catch (err: any) {
+    } catch {
       toast.error('Erro ao carregar o mural');
     } finally {
       setLoading(false);
     }
-  }, [patientId]);
+  };
 
   useEffect(() => {
     setLoading(true);
-    loadPosts();
+    loadPosts(patientId);
 
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
@@ -76,9 +81,15 @@ export function PatientFeed({
 
     const channel = supabase
       .channel(`feed-posts-${patientId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_posts', filter: `patient_id=eq.${patientId}` }, () => { loadPosts(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_comments' }, () => { loadPosts(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_reactions' }, () => { loadPosts(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_posts', filter: `patient_id=eq.${patientId}` }, () => {
+        loadPosts(patientIdRef.current);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_comments' }, () => {
+        loadPosts(patientIdRef.current);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_reactions' }, () => {
+        loadPosts(patientIdRef.current);
+      })
       .subscribe();
 
     channelRef.current = channel;
@@ -89,8 +100,7 @@ export function PatientFeed({
         channelRef.current = null;
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId]);
+  }, [patientId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDeletePost = async (postId: string) => {
     const post = posts.find(p => p.id === postId);
