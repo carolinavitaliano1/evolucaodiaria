@@ -889,7 +889,7 @@ export default function ClinicDetail() {
   };
 
   const selectAllPatients = () => {
-    const patientsWithoutEvolution = clinicPatients
+    const patientsWithoutEvolution = batchDayPatients
       .filter(p => !getPatientBatchDateEvolution(p.id))
       .map(p => p.id);
     setSelectedPatients(patientsWithoutEvolution);
