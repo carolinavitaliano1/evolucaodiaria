@@ -653,6 +653,13 @@ function AccountPanel({
                       </div>
                     </div>
                   )}
+                  {/* Custom answers */}
+                  {(intakeForm as any).custom_answers && Object.keys((intakeForm as any).custom_answers).length > 0 && (
+                    <CustomAnswersSection
+                      answers={(intakeForm as any).custom_answers}
+                      therapistUserId={user!.id}
+                    />
+                  )}
                 </div>
               )}
             </div>
