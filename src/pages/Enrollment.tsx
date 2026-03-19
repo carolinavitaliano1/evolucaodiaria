@@ -206,9 +206,9 @@ export default function Enrollment() {
               </Field>
             </SectionCard>
 
-            {/* 2. Dados do Responsável (obrigatório para menores) */}
+            {/* 2. Dados do Responsável Legal (obrigatório para menores) */}
             {form.is_minor && (
-              <SectionCard icon={<Users className="w-4 h-4" />} title="Dados do Responsável *">
+              <SectionCard icon={<Users className="w-4 h-4" />} title="Dados do Responsável Legal *">
                 <p className="text-xs text-muted-foreground -mt-1">Responsável principal — todas as comunicações serão direcionadas a esta pessoa.</p>
                 <Field id="guardian_name" label="Nome do Responsável" required>
                   <Input id="guardian_name" value={form.guardian_name} onChange={set('guardian_name')} placeholder="Ex: Maria Silva" required />
@@ -232,11 +232,48 @@ export default function Enrollment() {
                 <Field id="guardian_email" label="E-mail">
                   <Input id="guardian_email" type="email" value={form.guardian_email} onChange={set('guardian_email')} placeholder="email@exemplo.com" />
                 </Field>
+
+                {/* Toggle: responsável legal é o financeiro? */}
+                <div className="rounded-xl border border-primary/30 bg-background/60 p-3 space-y-3 mt-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Responsável legal é também o financeiro?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {form.financial_responsible === 'responsible'
+                          ? 'Sim — usará os dados acima para cobrança'
+                          : 'Não — preencha os dados do responsável financeiro abaixo'}
+                      </p>
+                    </div>
+                    <div
+                      className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors ${form.financial_responsible === 'responsible' ? 'bg-primary' : 'bg-input'}`}
+                      onClick={() => setForm(f => ({ ...f, financial_responsible: f.financial_responsible === 'responsible' ? 'other' : 'responsible' }))}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.financial_responsible === 'responsible' ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </div>
+                  </div>
+
+                  {form.financial_responsible === 'other' && (
+                    <div className="space-y-3 pt-1 border-t border-border">
+                      <p className="text-xs font-semibold text-foreground">Responsável Financeiro</p>
+                      <Field id="fin_name" label="Nome">
+                        <Input id="fin_name" value={form.financial_responsible_name} onChange={set('financial_responsible_name')} placeholder="Nome completo" />
+                      </Field>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field id="fin_cpf" label="CPF">
+                          <Input id="fin_cpf" value={form.financial_responsible_cpf} onChange={set('financial_responsible_cpf')} placeholder="000.000.000-00" />
+                        </Field>
+                        <Field id="fin_whatsapp" label="WhatsApp">
+                          <Input id="fin_whatsapp" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
+                        </Field>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </SectionCard>
             )}
 
-            {/* 3. Responsável Legal (Contratante) */}
-            <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Legal (Contratante)">
+            {/* 3. Responsável Financeiro (paciente maior) */}
+            <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Financeiro">
               <p className="text-xs text-muted-foreground -mt-1">Dados jurídicos para contrato. {form.is_minor ? 'Pode ser o mesmo responsável acima.' : 'Preencha se houver representante legal.'}</p>
               <Field id="responsible_name" label="Nome do Responsável Legal">
                 <Input id="responsible_name" value={form.responsible_name} onChange={set('responsible_name')} placeholder="Ex: Maria Silva" />
@@ -257,39 +294,43 @@ export default function Enrollment() {
                   <Input id="responsible_email" type="email" value={form.responsible_email} onChange={set('responsible_email')} placeholder="email@exemplo.com" />
                 </Field>
               </div>
-            </SectionCard>
 
-            {/* 4. Responsável Financeiro */}
-            <SectionCard icon={<CreditCard className="w-4 h-4" />} title="Responsável Financeiro">
-              <p className="text-xs text-muted-foreground -mt-1">Quem será responsável pelo pagamento?</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(['patient', 'responsible', 'other'] as const).map((opt) => (
-                  <button
-                    key={opt} type="button"
-                    onClick={() => setForm(f => ({ ...f, financial_responsible: opt }))}
-                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-colors text-center ${
-                      form.financial_responsible === opt
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-secondary text-foreground border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {opt === 'patient' ? 'O próprio paciente' : opt === 'responsible' ? 'Responsável legal' : 'Outra pessoa'}
-                  </button>
-                ))}
-              </div>
-              {form.financial_responsible === 'other' && (
-                <div className="space-y-3 pt-1">
-                  <Field id="fin_name" label="Nome do Responsável Financeiro">
-                    <Input id="fin_name" value={form.financial_responsible_name} onChange={set('financial_responsible_name')} placeholder="Nome completo" />
-                  </Field>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field id="fin_cpf" label="CPF">
-                      <Input id="fin_cpf" value={form.financial_responsible_cpf} onChange={set('financial_responsible_cpf')} placeholder="000.000.000-00" />
-                    </Field>
-                    <Field id="fin_whatsapp" label="WhatsApp">
-                      <Input id="fin_whatsapp" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
-                    </Field>
+              {/* Toggle de responsável financeiro diferente — apenas para maiores */}
+              {!form.is_minor && (
+                <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3 mt-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Responsável legal é também o financeiro?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {form.financial_responsible !== 'other'
+                          ? 'Sim — não é necessário preencher dados separados'
+                          : 'Não — preencha os dados do responsável financeiro abaixo'}
+                      </p>
+                    </div>
+                    <div
+                      className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors ${form.financial_responsible !== 'other' ? 'bg-primary' : 'bg-input'}`}
+                      onClick={() => setForm(f => ({ ...f, financial_responsible: f.financial_responsible === 'other' ? 'responsible' : 'other' }))}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.financial_responsible !== 'other' ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </div>
                   </div>
+
+                  {form.financial_responsible === 'other' && (
+                    <div className="space-y-3 pt-1 border-t border-border">
+                      <p className="text-xs font-semibold text-foreground">Responsável Financeiro</p>
+                      <Field id="fin_name2" label="Nome">
+                        <Input id="fin_name2" value={form.financial_responsible_name} onChange={set('financial_responsible_name')} placeholder="Nome completo" />
+                      </Field>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field id="fin_cpf2" label="CPF">
+                          <Input id="fin_cpf2" value={form.financial_responsible_cpf} onChange={set('financial_responsible_cpf')} placeholder="000.000.000-00" />
+                        </Field>
+                        <Field id="fin_whatsapp2" label="WhatsApp">
+                          <Input id="fin_whatsapp2" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
+                        </Field>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </SectionCard>

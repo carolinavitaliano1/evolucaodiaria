@@ -345,7 +345,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             {formData.isMinor && (
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3 mb-3">
                 <p className="text-sm font-semibold text-primary flex items-center gap-2">
-                  👨‍👩‍👧 Dados do Responsável <span className="text-xs font-normal text-muted-foreground">(obrigatório para menores)</span>
+                  👨‍👩‍👧 Dados do Responsável Legal <span className="text-xs font-normal text-muted-foreground">(obrigatório para menores)</span>
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -395,10 +395,66 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                     />
                   </div>
                 </div>
+
+                {/* Toggle: responsável legal é também o financeiro */}
+                <div className="rounded-lg border border-primary/30 bg-background/60 px-3 py-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Responsável legal é também o financeiro?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formData.responsibleIsFinancial
+                          ? 'Sim — usará os dados acima para cobrança'
+                          : 'Não — preencha os dados do responsável financeiro abaixo'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.responsibleIsFinancial}
+                      onCheckedChange={(v) => setFormData({ ...formData, responsibleIsFinancial: v, financialResponsibleName: '', financialResponsibleCpf: '', financialResponsibleWhatsapp: '' })}
+                    />
+                  </div>
+
+                  {!formData.responsibleIsFinancial && (
+                    <div className="space-y-2 pt-1 border-t border-border">
+                      <p className="text-xs font-medium text-foreground">Responsável Financeiro</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Nome *</Label>
+                          <Input
+                            value={formData.financialResponsibleName}
+                            onChange={(e) => setFormData({ ...formData, financialResponsibleName: e.target.value })}
+                            placeholder="Nome completo"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">CPF</Label>
+                          <Input
+                            value={formData.financialResponsibleCpf}
+                            onChange={(e) => setFormData({ ...formData, financialResponsibleCpf: e.target.value })}
+                            placeholder="000.000.000-00"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5">
+                          <WhatsAppIcon className="w-3 h-3 text-[#25D366]" />
+                          WhatsApp
+                        </Label>
+                        <Input
+                          value={formData.financialResponsibleWhatsapp}
+                          onChange={(e) => setFormData({ ...formData, financialResponsibleWhatsapp: e.target.value })}
+                          placeholder="(11) 99999-9999"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            <Label className="text-sm font-medium">Responsável Legal (Contratante)</Label>
+            <Label className="text-sm font-medium">Responsável Financeiro</Label>
             <p className="text-xs text-muted-foreground mb-3">Dados jurídicos / contratuais do responsável.</p>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -440,12 +496,12 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                 />
               </div>
 
-              {/* Financial responsible toggle */}
-              {formData.responsibleName && (
+              {/* Financial responsible toggle — only shown when NOT minor (minor uses guardian toggle above) */}
+              {!formData.isMinor && formData.responsibleName && (
                 <div className="rounded-lg border border-border bg-muted/30 px-3 py-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-medium text-foreground">Responsável financeiro</p>
+                      <p className="text-xs font-medium text-foreground">Responsável financeiro é o mesmo?</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {formData.responsibleIsFinancial
                           ? 'O responsável legal acima é também o responsável financeiro'
@@ -460,7 +516,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
                   {!formData.responsibleIsFinancial && (
                     <div className="space-y-2 pt-1 border-t border-border">
-                      <p className="text-xs font-medium text-foreground">Dados do Responsável Financeiro</p>
+                      <p className="text-xs font-medium text-foreground">Responsável Financeiro</p>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-xs">Nome *</Label>
