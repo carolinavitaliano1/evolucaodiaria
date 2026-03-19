@@ -12,6 +12,19 @@ import {
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { Evolution } from '@/types';
 import { format } from 'date-fns';
+
+/** Extrai texto clínico relevante de uma evolução.
+ *  Prioriza o campo `text` livre. Se vazio, usa campos de texto longo (>20 chars) do templateData. */
+function extractEvolutionText(e: Evolution): string {
+  if (e.text && e.text.trim()) return e.text;
+  if (e.templateData && typeof e.templateData === 'object') {
+    const longTexts = Object.values(e.templateData as Record<string, any>)
+      .filter(v => typeof v === 'string' && v.trim().length > 20)
+      .map(v => (v as string).trim());
+    if (longTexts.length > 0) return longTexts.join('\n\n');
+  }
+  return '(sessão registrada sem texto descritivo)';
+}
 import { ptBR } from 'date-fns/locale';
 
 interface FeedbackIAModalProps {
@@ -54,7 +67,7 @@ export function FeedbackIAModal({
         body: {
           evolutions: evolutions.map(e => ({
             date: e.date,
-            text: e.text,
+            text: extractEvolutionText(e),
             attendanceStatus: e.attendanceStatus,
           })),
           patientName,
