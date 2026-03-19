@@ -805,6 +805,45 @@ export type Database = {
         }
         Relationships: []
       }
+      intake_custom_questions: {
+        Row: {
+          created_at: string
+          field_type: string
+          id: string
+          is_active: boolean
+          options: Json | null
+          question: string
+          required: boolean
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          options?: Json | null
+          question: string
+          required?: boolean
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          options?: Json | null
+          question?: string
+          required?: boolean
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       internal_notifications: {
         Row: {
           created_at: string
@@ -1093,6 +1132,7 @@ export type Database = {
           birthdate: string | null
           cpf: string | null
           created_at: string
+          custom_answers: Json | null
           email: string | null
           emergency_contact: string | null
           emergency_contact_address: string | null
@@ -1131,6 +1171,7 @@ export type Database = {
           birthdate?: string | null
           cpf?: string | null
           created_at?: string
+          custom_answers?: Json | null
           email?: string | null
           emergency_contact?: string | null
           emergency_contact_address?: string | null
@@ -1169,6 +1210,7 @@ export type Database = {
           birthdate?: string | null
           cpf?: string | null
           created_at?: string
+          custom_answers?: Json | null
           email?: string | null
           emergency_contact?: string | null
           emergency_contact_address?: string | null
