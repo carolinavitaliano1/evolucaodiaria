@@ -62,8 +62,7 @@ export default function Team() {
   const [confirmSwapOpen, setConfirmSwapOpen] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
-  const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
-  const hasAccess = isOwnerEmail || isOwner;
+  const hasAccess = true; // Feature available to all users
 
   const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'propria');
   const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
