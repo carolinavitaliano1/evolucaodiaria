@@ -190,6 +190,7 @@ export default function ClinicDetail() {
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '', packageType: 'mensal' as 'mensal' | 'por_sessao' | 'personalizado', sessionLimit: '' });
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string; packageType: 'mensal' | 'por_sessao' | 'personalizado'; sessionLimit: string} | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
+  const [improvingBatchTemplateFieldId, setImprovingBatchTemplateFieldId] = useState<string | null>(null);
   const [batchSearch, setBatchSearch] = useState('');
   const [batchFilterByDay, setBatchFilterByDay] = useState(true);
   const [patientSearch, setPatientSearch] = useState('');
@@ -2103,12 +2104,47 @@ export default function ClinicDetail() {
                                 </SelectContent>
                               </Select>
                             ) : field.type === 'textarea' ? (
-                              <Textarea
-                                value={batchTemplateFormValues[field.id] || ''}
-                                onChange={(e) => setBatchTemplateFormValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                                placeholder={field.placeholder || ''}
-                                rows={3}
-                              />
+                              <div className="space-y-1">
+                                <Textarea
+                                  value={batchTemplateFormValues[field.id] || ''}
+                                  onChange={(e) => setBatchTemplateFormValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                  placeholder={field.placeholder || ''}
+                                  rows={3}
+                                />
+                                {batchTemplateFormValues[field.id]?.trim() && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5 h-7 text-xs"
+                                    disabled={improvingBatchTemplateFieldId !== null}
+                                    onClick={async () => {
+                                      const currentVal = batchTemplateFormValues[field.id];
+                                      if (!currentVal?.trim()) return;
+                                      setImprovingBatchTemplateFieldId(field.id);
+                                      try {
+                                        const { data, error } = await supabase.functions.invoke('improve-evolution', {
+                                          body: { text: currentVal },
+                                        });
+                                        if (error) throw error;
+                                        if (data?.improved) {
+                                          setBatchTemplateFormValues(prev => ({ ...prev, [field.id]: data.improved }));
+                                          toast.success('Texto melhorado com IA!');
+                                        }
+                                      } catch {
+                                        toast.error('Erro ao melhorar texto');
+                                      } finally {
+                                        setImprovingBatchTemplateFieldId(null);
+                                      }
+                                    }}
+                                  >
+                                    {improvingBatchTemplateFieldId === field.id
+                                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      : <Wand2 className="w-3.5 h-3.5" />}
+                                    Melhorar com IA
+                                  </Button>
+                                )}
+                              </div>
                             ) : (
                               <Input
                                 value={batchTemplateFormValues[field.id] || ''}
