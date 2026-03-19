@@ -19,13 +19,15 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Validate JWT with anon client
-    const anonClient = createClient(
+    // Validate JWT - use service role client to verify user token
+    const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { persistSession: false } }
     );
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+    const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
     if (authError || !user) {
+      console.error('[send-portal-invite] Auth error:', authError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
