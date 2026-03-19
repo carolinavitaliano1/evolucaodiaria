@@ -10,16 +10,24 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) throw new Error('Unauthorized');
+
+    // Use anon client with user's token to validate JWT
+    const anonClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authError } = await anonClient.auth.getUser();
+    if (authError || !user) throw new Error('Unauthorized');
+
+    // Service role client for privileged operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { persistSession: false } }
     );
-
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Unauthorized');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (authError || !user) throw new Error('Unauthorized');
 
     const { patient_id, override_email, access_type, access_label, invite_token: providedToken } = await req.json();
 
