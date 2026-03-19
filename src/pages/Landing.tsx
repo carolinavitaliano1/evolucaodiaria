@@ -510,8 +510,8 @@ export default function Landing() {
             <span className="font-semibold text-foreground">Evolução Diária</span>
           </div>
           <div className="flex gap-4 text-sm text-muted-foreground">
-            <button onClick={() => navigate('/privacidade')} className="hover:text-foreground transition-colors underline underline-offset-2">Política de Privacidade</button>
-            <button onClick={() => navigate('/termos')} className="hover:text-foreground transition-colors underline underline-offset-2">Termos de Uso</button>
+            <a href="/privacidade" className="hover:text-foreground transition-colors underline underline-offset-2">Política de Privacidade</a>
+            <a href="/termos" className="hover:text-foreground transition-colors underline underline-offset-2">Termos de Uso</a>
           </div>
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Evolução Diária. Todos os direitos reservados.
