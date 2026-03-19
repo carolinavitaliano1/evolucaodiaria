@@ -190,6 +190,7 @@ export default function ClinicDetail() {
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '', packageType: 'mensal' as 'mensal' | 'por_sessao' | 'personalizado', sessionLimit: '' });
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string; packageType: 'mensal' | 'por_sessao' | 'personalizado'; sessionLimit: string} | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
+  const [improvingBatchTemplateFieldId, setImprovingBatchTemplateFieldId] = useState<string | null>(null);
   const [batchSearch, setBatchSearch] = useState('');
   const [batchFilterByDay, setBatchFilterByDay] = useState(true);
   const [patientSearch, setPatientSearch] = useState('');
