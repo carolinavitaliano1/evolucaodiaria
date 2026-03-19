@@ -67,6 +67,7 @@ export default function CalendarPage() {
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [popupItem, setPopupItem] = useState<CalItem | null>(null);
+  const { connected: googleConnected, loading: googleLoading, events: googleEvents, connect: connectGoogle, disconnect: disconnectGoogle } = useGoogleCalendar(viewDate);
   const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
