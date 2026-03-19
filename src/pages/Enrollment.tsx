@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import {
   CheckCircle2, Loader2, Building2, AlertTriangle, ClipboardList, User, Users, CreditCard,
@@ -11,37 +12,27 @@ import {
 
 type FinancialResponsible = 'patient' | 'responsible' | 'other';
 
+const GUARDIAN_KINSHIP_OPTIONS = ['Mãe','Pai','Avó','Avô','Tia','Tio','Responsável Legal','Outro'];
+
 interface FormState {
-  // Dados do paciente
-  name: string;
-  birthdate: string;
-  cpf: string;
-  phone: string;
-  whatsapp: string;
-  email: string;
-  // Responsável legal
-  responsible_name: string;
-  responsible_cpf: string;
-  responsible_whatsapp: string;
-  responsible_email: string;
-  responsible_relation: string;
-  // Responsável financeiro
+  name: string; birthdate: string; cpf: string; phone: string; whatsapp: string; email: string;
+  is_minor: boolean;
+  guardian_name: string; guardian_email: string; guardian_phone: string; guardian_kinship: string;
+  responsible_name: string; responsible_cpf: string; responsible_whatsapp: string;
+  responsible_email: string; responsible_relation: string;
   financial_responsible: FinancialResponsible;
-  financial_responsible_name: string;
-  financial_responsible_cpf: string;
-  financial_responsible_whatsapp: string;
-  // Clínico
-  diagnosis: string;
-  observations: string;
+  financial_responsible_name: string; financial_responsible_cpf: string; financial_responsible_whatsapp: string;
+  diagnosis: string; observations: string;
 }
 
 const empty: FormState = {
   name: '', birthdate: '', cpf: '', phone: '', whatsapp: '', email: '',
+  is_minor: true,
+  guardian_name: '', guardian_email: '', guardian_phone: '', guardian_kinship: '',
   responsible_name: '', responsible_cpf: '', responsible_whatsapp: '', responsible_email: '', responsible_relation: '',
   financial_responsible: 'responsible',
   financial_responsible_name: '', financial_responsible_cpf: '', financial_responsible_whatsapp: '',
-  diagnosis: '',
-  observations: '',
+  diagnosis: '', observations: '',
 };
 
 function SectionCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -98,12 +89,15 @@ export default function Enrollment() {
       toast.error('Preencha o nome e a data de nascimento do paciente');
       return;
     }
+    if (form.is_minor && !form.guardian_name.trim()) {
+      toast.error('Preencha o nome do responsável (paciente menor de idade)');
+      return;
+    }
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke('submit-enrollment', {
         body: { clinic_id: clinicId, ...form },
       });
-
       if (error) throw new Error(error.message || 'Erro ao enviar ficha');
       if (data?.error) throw new Error(data.error);
       setSubmitted(true);
@@ -141,12 +135,10 @@ export default function Enrollment() {
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-3">Ficha enviada com sucesso! 🎉</h1>
           <p className="text-muted-foreground leading-relaxed mb-6">
-            A clínica <strong className="text-foreground">{clinic?.name}</strong> entrará em contato em breve. Seus dados foram recebidos com segurança. 📱
+            A clínica <strong className="text-foreground">{clinic?.name}</strong> entrará em contato em breve.
           </p>
           <p className="text-xs text-muted-foreground mb-8">Seus dados são tratados com total sigilo e privacidade. 🔒</p>
-          <Button variant="outline" className="w-full" onClick={() => window.close()}>
-            Fechar esta página
-          </Button>
+          <Button variant="outline" className="w-full" onClick={() => window.close()}>Fechar esta página</Button>
         </div>
       </div>
     );
@@ -155,7 +147,6 @@ export default function Enrollment() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-background p-4">
       <div className="max-w-lg mx-auto">
-        {/* Header */}
         <div className="text-center py-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-4">
             <Building2 className="w-7 h-7 text-primary" />
@@ -165,7 +156,6 @@ export default function Enrollment() {
           <p className="text-muted-foreground mt-3 text-sm">Preencha os dados abaixo para enviar sua ficha de cadastro.</p>
         </div>
 
-        {/* Form */}
         <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-5">
             <ClipboardList className="w-5 h-5 text-primary" />
@@ -173,8 +163,25 @@ export default function Enrollment() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Toggle menor de idade */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Paciente é menor de idade?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {form.is_minor
+                    ? 'Seção do responsável será obrigatória'
+                    : 'As comunicações irão diretamente ao paciente'}
+                </p>
+              </div>
+              <Switch
+                checked={form.is_minor}
+                onCheckedChange={(v) => setForm(f => ({ ...f, is_minor: v }))}
+              />
+            </div>
+
             {/* 1. Dados do Paciente */}
-            <SectionCard icon={<User className="w-4 h-4" />} title="Dados do Paciente (Paciente)">
+            <SectionCard icon={<User className="w-4 h-4" />} title="Dados do Paciente">
               <Field id="name" label="Nome Completo" required>
                 <Input id="name" value={form.name} onChange={set('name')} placeholder="Ex: João Pedro Silva" required />
               </Field>
@@ -199,9 +206,38 @@ export default function Enrollment() {
               </Field>
             </SectionCard>
 
-            {/* 2. Responsável Legal */}
+            {/* 2. Dados do Responsável (obrigatório para menores) */}
+            {form.is_minor && (
+              <SectionCard icon={<Users className="w-4 h-4" />} title="Dados do Responsável *">
+                <p className="text-xs text-muted-foreground -mt-1">Responsável principal — todas as comunicações serão direcionadas a esta pessoa.</p>
+                <Field id="guardian_name" label="Nome do Responsável" required>
+                  <Input id="guardian_name" value={form.guardian_name} onChange={set('guardian_name')} placeholder="Ex: Maria Silva" required />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field id="guardian_kinship" label="Parentesco">
+                    <select
+                      id="guardian_kinship"
+                      value={form.guardian_kinship}
+                      onChange={set('guardian_kinship')}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      <option value="">Selecione...</option>
+                      {GUARDIAN_KINSHIP_OPTIONS.map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  </Field>
+                  <Field id="guardian_phone" label="WhatsApp">
+                    <Input id="guardian_phone" type="tel" value={form.guardian_phone} onChange={set('guardian_phone')} placeholder="(11) 99999-9999" />
+                  </Field>
+                </div>
+                <Field id="guardian_email" label="E-mail">
+                  <Input id="guardian_email" type="email" value={form.guardian_email} onChange={set('guardian_email')} placeholder="email@exemplo.com" />
+                </Field>
+              </SectionCard>
+            )}
+
+            {/* 3. Responsável Legal (Contratante) */}
             <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Legal (Contratante)">
-              <p className="text-xs text-muted-foreground -mt-1">Preencha caso o paciente seja menor de idade ou possua responsável.</p>
+              <p className="text-xs text-muted-foreground -mt-1">Dados jurídicos para contrato. {form.is_minor ? 'Pode ser o mesmo responsável acima.' : 'Preencha se houver representante legal.'}</p>
               <Field id="responsible_name" label="Nome do Responsável Legal">
                 <Input id="responsible_name" value={form.responsible_name} onChange={set('responsible_name')} placeholder="Ex: Maria Silva" />
               </Field>
@@ -223,14 +259,13 @@ export default function Enrollment() {
               </div>
             </SectionCard>
 
-            {/* 3. Responsável Financeiro */}
+            {/* 4. Responsável Financeiro */}
             <SectionCard icon={<CreditCard className="w-4 h-4" />} title="Responsável Financeiro">
               <p className="text-xs text-muted-foreground -mt-1">Quem será responsável pelo pagamento?</p>
               <div className="grid grid-cols-3 gap-2">
                 {(['patient', 'responsible', 'other'] as const).map((opt) => (
                   <button
-                    key={opt}
-                    type="button"
+                    key={opt} type="button"
                     onClick={() => setForm(f => ({ ...f, financial_responsible: opt }))}
                     className={`px-2 py-2 rounded-lg text-xs font-medium border transition-colors text-center ${
                       form.financial_responsible === opt
@@ -242,7 +277,6 @@ export default function Enrollment() {
                   </button>
                 ))}
               </div>
-
               {form.financial_responsible === 'other' && (
                 <div className="space-y-3 pt-1">
                   <Field id="fin_name" label="Nome do Responsável Financeiro">
@@ -260,7 +294,7 @@ export default function Enrollment() {
               )}
             </SectionCard>
 
-            {/* 4. Informações Clínicas */}
+            {/* 5. Informações Clínicas */}
             <SectionCard icon={<ClipboardList className="w-4 h-4" />} title="Informações Clínicas">
               <Field id="diagnosis" label="Diagnóstico (se houver)">
                 <Input id="diagnosis" value={form.diagnosis} onChange={set('diagnosis')} placeholder="Ex: TEA, TDAH, Ansiedade..." />
@@ -272,7 +306,7 @@ export default function Enrollment() {
                   rows={3}
                   value={form.observations}
                   onChange={set('observations')}
-                  placeholder="Descreva brevemente o motivo da consulta, principais queixas ou outras observações relevantes (opcional)..."
+                  placeholder="Descreva brevemente o motivo da consulta..."
                 />
               </Field>
             </SectionCard>
