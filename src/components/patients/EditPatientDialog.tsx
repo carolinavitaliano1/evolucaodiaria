@@ -45,6 +45,11 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     diagnosis: '',
     professionals: '',
     observations: '',
+    isMinor: true,
+    guardianName: '',
+    guardianEmail: '',
+    guardianPhone: '',
+    guardianKinship: '',
     responsibleName: '',
     responsibleEmail: '',
     responsibleWhatsapp: '',
@@ -88,6 +93,11 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
         diagnosis: patient.diagnosis || '',
         professionals: patient.professionals || '',
         observations: patient.observations || '',
+        isMinor: p.is_minor !== undefined ? !!p.is_minor : (patient.isMinor !== undefined ? patient.isMinor : true),
+        guardianName: patient.guardianName || p.guardian_name || '',
+        guardianEmail: patient.guardianEmail || p.guardian_email || '',
+        guardianPhone: patient.guardianPhone || p.guardian_phone || '',
+        guardianKinship: patient.guardianKinship || p.guardian_kinship || '',
         responsibleName: patient.responsibleName || '',
         responsibleEmail: patient.responsibleEmail || '',
         responsibleWhatsapp: patient.responsibleWhatsapp || '',
@@ -171,6 +181,16 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
       diagnosis: formData.diagnosis || undefined,
       professionals: formData.professionals || undefined,
       observations: formData.observations || undefined,
+      isMinor: formData.isMinor,
+      is_minor: formData.isMinor,
+      guardianName: formData.guardianName || undefined,
+      guardian_name: formData.guardianName || null,
+      guardianEmail: formData.guardianEmail || undefined,
+      guardian_email: formData.guardianEmail || null,
+      guardianPhone: formData.guardianPhone || undefined,
+      guardian_phone: formData.guardianPhone || null,
+      guardianKinship: formData.guardianKinship || undefined,
+      guardian_kinship: formData.guardianKinship || null,
       responsibleName: formData.responsibleName || undefined,
       responsibleEmail: formData.responsibleEmail || undefined,
       responsibleWhatsapp: formData.responsibleWhatsapp || undefined,
@@ -305,8 +325,81 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
           </div>
 
           <div className="border-t pt-4">
-            <Label className="text-sm font-medium">Responsável Legal</Label>
-            <p className="text-xs text-muted-foreground mb-3">Preencha se o paciente for menor de 18 anos ou tiver representante legal.</p>
+            {/* is_minor toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border mb-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">Paciente é menor de idade?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {formData.isMinor
+                    ? 'Comunicações serão direcionadas ao responsável'
+                    : 'Comunicações serão direcionadas diretamente ao paciente'}
+                </p>
+              </div>
+              <Switch
+                checked={formData.isMinor}
+                onCheckedChange={(v) => setFormData({ ...formData, isMinor: v })}
+              />
+            </div>
+
+            {/* Guardian section — only when is_minor */}
+            {formData.isMinor && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3 mb-3">
+                <p className="text-sm font-semibold text-primary flex items-center gap-2">
+                  👨‍👩‍👧 Dados do Responsável <span className="text-xs font-normal text-muted-foreground">(obrigatório para menores)</span>
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Nome do Responsável *</Label>
+                    <Input
+                      value={formData.guardianName}
+                      onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Parentesco</Label>
+                    <Select
+                      value={formData.guardianKinship}
+                      onValueChange={(v) => setFormData({ ...formData, guardianKinship: v })}
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['Mãe','Pai','Avó','Avô','Tia','Tio','Responsável Legal','Outro'].map(k => (
+                          <SelectItem key={k} value={k}>{k}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs flex items-center gap-1.5">
+                      <WhatsAppIcon className="w-3 h-3 text-[#25D366]" />
+                      WhatsApp do Responsável
+                    </Label>
+                    <Input
+                      value={formData.guardianPhone}
+                      onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">E-mail do Responsável</Label>
+                    <Input
+                      type="email"
+                      value={formData.guardianEmail}
+                      onChange={(e) => setFormData({ ...formData, guardianEmail: e.target.value })}
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Label className="text-sm font-medium">Responsável Legal (Contratante)</Label>
+            <p className="text-xs text-muted-foreground mb-3">Dados jurídicos / contratuais do responsável.</p>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>

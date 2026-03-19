@@ -102,6 +102,12 @@ function mapPatient(p: Record<string, unknown>): Patient {
     ...(p.financial_responsible_name ? { financial_responsible_name: p.financial_responsible_name as string } : {}),
     ...(p.financial_responsible_cpf ? { financial_responsible_cpf: p.financial_responsible_cpf as string } : {}),
     ...(p.financial_responsible_whatsapp ? { financial_responsible_whatsapp: p.financial_responsible_whatsapp as string } : {}),
+    // Guardian / minor
+    isMinor: p.is_minor !== undefined ? (p.is_minor as boolean) : true,
+    guardianName: (p.guardian_name as string) || undefined,
+    guardianEmail: (p.guardian_email as string) || undefined,
+    guardianPhone: (p.guardian_phone as string) || undefined,
+    guardianKinship: (p.guardian_kinship as string) || undefined,
     paymentType: p.payment_type as 'sessao' | 'fixo' | undefined,
     paymentValue: p.payment_value ? Number(p.payment_value) : undefined,
     ...(p.payment_due_day !== undefined && p.payment_due_day !== null ? { payment_due_day: Number(p.payment_due_day) } : {}),
