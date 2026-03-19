@@ -352,13 +352,25 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
                                       cfg?.bg,
                                       canManage && 'cursor-pointer hover:opacity-80'
                                     )}
-                                    onClick={() => canManage && removeRecord(member, dateStr)}
+                                    onClick={() => canManage && (record.status !== 'present' ? openAbsenceDialog(member, dateStr, record.status as 'absent' | 'justified') : removeRecord(member, dateStr))}
                                   >
                                     {cfg && <cfg.icon className={cn('w-4 h-4', cfg.color)} />}
                                   </div>
-                                  {record.justification && (
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 bg-popover border border-border rounded-lg px-2 py-1 text-xs text-foreground whitespace-nowrap shadow-md max-w-[200px] text-left">
-                                      {record.justification}
+                                  {/* Attachment badge */}
+                                  {record.attachment_name && (
+                                    <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary rounded-full flex items-center justify-center" title={`Anexo: ${record.attachment_name}`}>
+                                      <Paperclip className="w-2 h-2 text-primary-foreground" />
+                                    </div>
+                                  )}
+                                  {(record.justification || record.attachment_name) && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 bg-popover border border-border rounded-lg px-2 py-1.5 text-xs text-foreground shadow-md min-w-[140px] max-w-[220px] text-left space-y-1">
+                                      {record.justification && <p>{record.justification}</p>}
+                                      {record.attachment_name && (
+                                        <p className="flex items-center gap-1 text-primary">
+                                          <Paperclip className="w-3 h-3" />
+                                          {record.attachment_name}
+                                        </p>
+                                      )}
                                     </div>
                                   )}
                                 </div>
