@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertCircle, Calendar } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertCircle, Calendar, Paperclip, X, FileText, ExternalLink } from 'lucide-react';
 import { format, startOfWeek, addDays, subWeeks, addWeeks, isToday, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
