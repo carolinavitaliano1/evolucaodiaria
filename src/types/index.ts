@@ -48,6 +48,12 @@ export interface Patient {
   responsibleName?: string;
   responsibleEmail?: string;
   responsibleWhatsapp?: string;
+  // Guardian / minor fields
+  isMinor?: boolean;
+  guardianName?: string;
+  guardianEmail?: string;
+  guardianPhone?: string;
+  guardianKinship?: string;
   paymentType?: 'sessao' | 'fixo';
   paymentValue?: number;
   contractStartDate?: string;
