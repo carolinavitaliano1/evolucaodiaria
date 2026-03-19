@@ -269,6 +269,17 @@ export default function ClinicDetail() {
     return clinicPatients.filter(p => p.weekdays?.includes(todayWeekday));
   }, [clinicPatients, todayWeekday]);
 
+  // Patients scheduled for the selected batch date (by weekday)
+  const batchDateWeekday = useMemo(() => {
+    const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    return days[batchDate.getDay()];
+  }, [batchDate]);
+
+  const batchDayPatients = useMemo(() => {
+    if (!batchFilterByDay) return clinicPatients;
+    return clinicPatients.filter(p => p.weekdays?.includes(batchDateWeekday));
+  }, [clinicPatients, batchFilterByDay, batchDateWeekday]);
+
   // Get appointments for today at this clinic
   const todayAppointments = useMemo(() => {
     const today = toLocalDateString(new Date());
