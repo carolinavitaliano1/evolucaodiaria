@@ -8,8 +8,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { supabase } from '@/integrations/supabase/client';
-
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface MiniCalendarProps {
   onDateSelect?: (date: Date) => void;
@@ -17,11 +17,14 @@ interface MiniCalendarProps {
 
 export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
   const { selectedDate, setSelectedDate, appointments } = useApp();
+  const { user } = useAuth();
   const { theme } = useTheme();
   const [viewDate, setViewDate] = useState(selectedDate);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [clickedDate, setClickedDate] = useState<Date>(selectedDate);
   const [eventDates, setEventDates] = useState<string[]>([]);
+
+  const { events: googleEvents } = useGoogleCalendar(viewDate);
 
   const monthStart = startOfMonth(viewDate);
   const monthEnd = endOfMonth(viewDate);
@@ -34,9 +37,10 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
 
   useEffect(() => {
     loadEventDates();
-  }, [viewDate]);
+  }, [viewDate, user?.id]);
 
   async function loadEventDates() {
+    if (!user?.id) return;
     try {
       const startStr = format(monthStart, 'yyyy-MM-dd');
       const endStr = format(monthEnd, 'yyyy-MM-dd');
@@ -44,7 +48,7 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
       const { data } = await supabase
         .from('events')
         .select('date')
-        .eq('user_id', DEMO_USER_ID)
+        .eq('user_id', user.id)
         .gte('date', startStr)
         .lte('date', endStr);
 
@@ -71,6 +75,11 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
   const hasEvents = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     return eventDates.includes(dateStr);
+  };
+
+  const hasGoogleEvents = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return googleEvents.some(e => e.date === dateStr);
   };
 
   return (
@@ -123,6 +132,7 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
             const isSelected = isSameDay(day, selectedDate);
             const hasApts = hasAppointments(day);
             const hasEvts = hasEvents(day);
+            const hasGEvts = hasGoogleEvents(day);
             
             return (
               <button
@@ -136,16 +146,25 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
                 )}
               >
                 {format(day, 'd')}
-                {(hasApts || hasEvts) && !isSelected && (
+                {(hasApts || hasEvts || hasGEvts) && !isSelected && (
                   <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
                     {hasApts && <div className="w-1 h-1 rounded-full bg-primary" />}
                     {hasEvts && <div className="w-1 h-1 rounded-full bg-amber-500" />}
+                    {hasGEvts && <div className="w-1 h-1 rounded-full bg-[#4285F4]" />}
                   </div>
                 )}
               </button>
             );
           })}
         </div>
+
+        {/* Google Calendar legend if connected */}
+        {googleEvents.length > 0 && (
+          <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]" />
+            <span>Google Calendar</span>
+          </div>
+        )}
       </div>
 
       <EventDialog 
