@@ -1374,9 +1374,14 @@ export type Database = {
           financial_responsible_cpf: string | null
           financial_responsible_name: string | null
           financial_responsible_whatsapp: string | null
+          guardian_email: string | null
+          guardian_kinship: string | null
+          guardian_name: string | null
+          guardian_phone: string | null
           id: string
           intake_token: string | null
           is_archived: boolean | null
+          is_minor: boolean
           name: string
           observations: string | null
           package_id: string | null
@@ -1413,9 +1418,14 @@ export type Database = {
           financial_responsible_cpf?: string | null
           financial_responsible_name?: string | null
           financial_responsible_whatsapp?: string | null
+          guardian_email?: string | null
+          guardian_kinship?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
           id?: string
           intake_token?: string | null
           is_archived?: boolean | null
+          is_minor?: boolean
           name: string
           observations?: string | null
           package_id?: string | null
@@ -1452,9 +1462,14 @@ export type Database = {
           financial_responsible_cpf?: string | null
           financial_responsible_name?: string | null
           financial_responsible_whatsapp?: string | null
+          guardian_email?: string | null
+          guardian_kinship?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
           id?: string
           intake_token?: string | null
           is_archived?: boolean | null
+          is_minor?: boolean
           name?: string
           observations?: string | null
           package_id?: string | null
