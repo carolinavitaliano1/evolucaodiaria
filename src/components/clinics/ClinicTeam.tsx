@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { TeamAttendanceGrid } from '@/components/clinics/TeamAttendanceGrid';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -965,6 +966,24 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           </button>
         )}
       </div>
+
+      {/* ──────────────────────────────────────────────────────────────
+          Attendance Grid
+      ────────────────────────────────────────────────────────────── */}
+      {organization && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-1 border-b border-border">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-foreground text-sm">Quadro de Presença</h3>
+            <span className="text-xs text-muted-foreground">— registre presenças, faltas e justificativas</span>
+          </div>
+          <TeamAttendanceGrid
+            organizationId={organization.id}
+            members={members}
+            canManage={canManage}
+          />
+        </div>
+      )}
 
       {/* ──────────────────────────────────────────────────────────────
           Member Management Modal
