@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       .from('patients')
       .select('id, name, email')
       .eq('id', patient_id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     if (patientError || !patient) throw new Error('Paciente não encontrado');
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
         .from('patient_portal_accounts')
         .select('id')
         .eq('patient_id', patient.id)
-        .eq('therapist_user_id', user.id)
+        .eq('therapist_user_id', userId)
         .eq('patient_email', targetEmail)
         .maybeSingle();
 
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
           .from('patient_portal_accounts')
           .insert({
             patient_id: patient.id,
-            therapist_user_id: user.id,
+            therapist_user_id: userId,
             patient_email: targetEmail,
             invite_token: inviteToken,
             invite_sent_at: new Date().toISOString(),
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     const { data: profile } = await supabase
       .from('profiles')
       .select('name')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     const therapistName = profile?.name || 'Seu terapeuta';
