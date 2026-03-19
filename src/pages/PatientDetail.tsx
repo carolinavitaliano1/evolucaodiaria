@@ -1500,6 +1500,35 @@ export default function PatientDetail() {
                 )}
               </div>
 
+              {/* Guardian badge for minors */}
+              {patient.isMinor && patient.guardianName && (
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-medium border border-amber-500/20">
+                    👨‍👩‍👧 Responsável: {patient.guardianName}{patient.guardianKinship ? ` (${patient.guardianKinship})` : ''}
+                    {patient.guardianPhone && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cleaned = patient.guardianPhone!.replace(/\D/g, '');
+                          const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                          const a = document.createElement('a');
+                          a.href = `https://wa.me/${number}`;
+                          a.target = '_blank';
+                          a.rel = 'noopener noreferrer';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }}
+                        className="ml-1 text-[#25D366] hover:text-[#128C7E] transition-colors"
+                        title={`WhatsApp do responsável: ${patient.guardianPhone}`}
+                      >
+                        <WhatsAppIcon className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2 mb-3">
                 {age !== null && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
