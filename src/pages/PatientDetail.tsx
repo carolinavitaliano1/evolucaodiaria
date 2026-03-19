@@ -1503,7 +1503,7 @@ export default function PatientDetail() {
               {/* Guardian badge for minors */}
               {patient.isMinor && patient.guardianName && (
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-medium border border-amber-500/20">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-warning/10 text-warning text-xs font-medium border border-warning/20">
                     👨‍👩‍👧 Responsável: {patient.guardianName}{patient.guardianKinship ? ` (${patient.guardianKinship})` : ''}
                     {patient.guardianPhone && (
                       <button
