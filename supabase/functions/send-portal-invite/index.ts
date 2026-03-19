@@ -19,20 +19,28 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Single service role client - getUser(token) validates the JWT correctly
-    const supabase = createClient(
+    // Use anon client with user's token to validate JWT
+    const anonClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-      { auth: { persistSession: false } }
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
+    const { data: claimsData, error: authError } = await anonClient.auth.getClaims(token);
+    if (authError || !claimsData?.claims) {
       console.error('[send-portal-invite] Auth error:', authError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    const userId = claimsData.claims.sub;
+
+    // Service role client for privileged DB operations
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { persistSession: false } }
+    );
 
     const { patient_id, override_email, access_type, access_label, invite_token: providedToken } = await req.json();
 
@@ -41,7 +49,7 @@ Deno.serve(async (req) => {
       .from('patients')
       .select('id, name, email')
       .eq('id', patient_id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     if (patientError || !patient) throw new Error('Paciente não encontrado');
@@ -60,7 +68,7 @@ Deno.serve(async (req) => {
         .from('patient_portal_accounts')
         .select('id')
         .eq('patient_id', patient.id)
-        .eq('therapist_user_id', user.id)
+        .eq('therapist_user_id', userId)
         .eq('patient_email', targetEmail)
         .maybeSingle();
 
@@ -84,7 +92,7 @@ Deno.serve(async (req) => {
           .from('patient_portal_accounts')
           .insert({
             patient_id: patient.id,
-            therapist_user_id: user.id,
+            therapist_user_id: userId,
             patient_email: targetEmail,
             invite_token: inviteToken,
             invite_sent_at: new Date().toISOString(),
@@ -100,7 +108,7 @@ Deno.serve(async (req) => {
     const { data: profile } = await supabase
       .from('profiles')
       .select('name')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     const therapistName = profile?.name || 'Seu terapeuta';
