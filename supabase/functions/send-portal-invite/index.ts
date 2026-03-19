@@ -53,22 +53,47 @@ Deno.serve(async (req) => {
     const inviteToken = providedToken || crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Only upsert if no token provided (new invite flow without pre-creation)
+    // Only insert/update if no token provided (new invite flow without pre-creation)
     if (!providedToken) {
-      const { error: upsertError } = await supabase
+      // Check if there's an existing account for this patient+therapist+email
+      const { data: existing } = await supabase
         .from('patient_portal_accounts')
-        .upsert({
-          patient_id: patient.id,
-          therapist_user_id: user.id,
-          patient_email: targetEmail,
-          invite_token: inviteToken,
-          invite_sent_at: new Date().toISOString(),
-          invite_expires_at: expiresAt,
-          status: 'invited',
-          user_id: null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'patient_id' });
-      if (upsertError) throw upsertError;
+        .select('id')
+        .eq('patient_id', patient.id)
+        .eq('therapist_user_id', user.id)
+        .eq('patient_email', targetEmail)
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('patient_portal_accounts')
+          .update({
+            invite_token: inviteToken,
+            invite_sent_at: new Date().toISOString(),
+            invite_expires_at: expiresAt,
+            status: 'invited',
+            user_id: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+        if (updateError) throw updateError;
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('patient_portal_accounts')
+          .insert({
+            patient_id: patient.id,
+            therapist_user_id: user.id,
+            patient_email: targetEmail,
+            invite_token: inviteToken,
+            invite_sent_at: new Date().toISOString(),
+            invite_expires_at: expiresAt,
+            status: 'invited',
+            user_id: null,
+          });
+        if (insertError) throw insertError;
+      }
     }
 
     // Get therapist name
