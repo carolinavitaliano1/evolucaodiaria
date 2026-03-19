@@ -14,16 +14,18 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
-    // OAuth callback from Google — no Authorization header, uses state (user_id) + service role
+    // OAuth callback from Google — no Authorization header, uses state param
     if (action === 'callback') {
       const code = url.searchParams.get('code');
-      const state = url.searchParams.get('state'); // user_id
+      const stateParam = url.searchParams.get('state');
       const error = url.searchParams.get('error');
 
-      const appUrl = 'https://clinipro.lovable.app';
+      // state = "<userId>|<appOrigin>"
+      const [userId, appOrigin] = (stateParam || '').split('|');
+      const safeAppOrigin = appOrigin && appOrigin.startsWith('https://') ? appOrigin : 'https://clinipro.lovable.app';
 
-      if (error || !code || !state) {
-        return Response.redirect(`${appUrl}/calendar?google_error=${error || 'missing_code'}`, 302);
+      if (error || !code || !userId) {
+        return Response.redirect(`${safeAppOrigin}/calendar?google_error=${error || 'missing_code'}`, 302);
       }
 
       const clientId = Deno.env.get('GOOGLE_CLIENT_ID')!;
@@ -46,7 +48,7 @@ Deno.serve(async (req: Request) => {
 
       if (!tokenRes.ok || !tokenData.access_token) {
         console.error('Token exchange failed:', tokenData);
-        return Response.redirect(`${appUrl}/calendar?google_error=token_exchange_failed`, 302);
+        return Response.redirect(`${safeAppOrigin}/calendar?google_error=token_exchange_failed`, 302);
       }
 
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
@@ -57,7 +59,7 @@ Deno.serve(async (req: Request) => {
       );
 
       const { error: upsertError } = await serviceClient.from('google_calendar_tokens').upsert({
-        user_id: state,
+        user_id: userId,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token || null,
         expires_at: expiresAt,
@@ -66,10 +68,10 @@ Deno.serve(async (req: Request) => {
 
       if (upsertError) {
         console.error('Upsert error:', upsertError);
-        return Response.redirect(`${appUrl}/calendar?google_error=db_error`, 302);
+        return Response.redirect(`${safeAppOrigin}/calendar?google_error=db_error`, 302);
       }
 
-      return Response.redirect(`${appUrl}/calendar?google_connected=true`, 302);
+      return Response.redirect(`${safeAppOrigin}/calendar?google_connected=true`, 302);
     }
 
     // All other actions require authenticated user
@@ -97,11 +99,18 @@ Deno.serve(async (req: Request) => {
     }
     const userId = claimsData.claims.sub;
 
-    // Return OAuth URL for frontend redirect
+    // Return OAuth URL — include app origin in state so callback redirects back correctly
     if (action === 'get_auth_url') {
       const clientId = Deno.env.get('GOOGLE_CLIENT_ID')!;
       const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-calendar-auth?action=callback`;
       const scope = 'https://www.googleapis.com/auth/calendar.readonly';
+
+      // Read the app origin from the request Origin header (set by browser)
+      const origin = req.headers.get('Origin') || req.headers.get('Referer') || 'https://clinipro.lovable.app';
+      const appOrigin = origin.startsWith('https://') ? new URL(origin).origin : 'https://clinipro.lovable.app';
+
+      // state = "<userId>|<appOrigin>"
+      const state = `${userId}|${appOrigin}`;
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}` +
@@ -110,7 +119,7 @@ Deno.serve(async (req: Request) => {
         `&scope=${encodeURIComponent(scope)}` +
         `&access_type=offline` +
         `&prompt=consent` +
-        `&state=${encodeURIComponent(userId)}`;
+        `&state=${encodeURIComponent(state)}`;
 
       return new Response(JSON.stringify({ url: authUrl }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
