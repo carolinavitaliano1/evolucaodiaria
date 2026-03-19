@@ -254,6 +254,7 @@ function AccountPanel({
   const [sending, setSending] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [docDescription, setDocDescription] = useState('');
+  const [showCustomQuestionsManager, setShowCustomQuestionsManager] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const perms = account.permissions || DEFAULT_PERMISSIONS;
 
