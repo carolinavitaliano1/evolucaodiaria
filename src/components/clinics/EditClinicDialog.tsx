@@ -30,7 +30,7 @@ interface EditClinicDialogProps {
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
-    type: 'propria' as 'propria' | 'terceirizada',
+    type: 'propria' as 'propria' | 'terceirizada' | 'clinica',
     address: '',
     notes: '',
     email: '',
@@ -118,17 +118,26 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             <RadioGroup
               value={formData.type}
               onValueChange={(v) => setFormData({ ...formData, type: v as any })}
-              className="flex gap-4 mt-1"
+              className="flex gap-4 mt-1 flex-wrap"
             >
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="propria" id="edit-propria" />
                 <Label htmlFor="edit-propria" className="cursor-pointer text-sm">Consultório</Label>
               </div>
               <div className="flex items-center gap-2">
+                <RadioGroupItem value="clinica" id="edit-clinica" />
+                <Label htmlFor="edit-clinica" className="cursor-pointer text-sm">Clínica</Label>
+              </div>
+              <div className="flex items-center gap-2">
                 <RadioGroupItem value="terceirizada" id="edit-terceirizada" />
                 <Label htmlFor="edit-terceirizada" className="cursor-pointer text-sm">Contratante</Label>
               </div>
             </RadioGroup>
+            {formData.type === 'clinica' && (
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                🏥 Modalidade que permite usar a Gestão de Equipe para convidar terapeutas e colaboradores.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

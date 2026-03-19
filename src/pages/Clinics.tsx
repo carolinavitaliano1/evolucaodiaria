@@ -65,7 +65,7 @@ export default function Clinics() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [sendingSupportMsg, setSendingSupportMsg] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'propria' | 'terceirizada' | 'archived'>('all');
+  const [filter, setFilter] = useState<'all' | 'propria' | 'clinica' | 'terceirizada' | 'archived'>('all');
   const [stampFile, setStampFile] = useState<UploadedFile | null>(null);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('clinics');
@@ -114,7 +114,7 @@ export default function Clinics() {
 
   const [formData, setFormData] = useState({
     name: '',
-    type: 'propria' as 'propria' | 'terceirizada',
+    type: 'propria' as 'propria' | 'terceirizada' | 'clinica',
     address: '',
     notes: '',
     weekdays: [] as string[],
@@ -437,17 +437,26 @@ export default function Clinics() {
                     <RadioGroup
                       value={formData.type}
                       onValueChange={(v) => setFormData({ ...formData, type: v as any })}
-                      className="flex gap-4 mt-2"
+                      className="flex gap-4 mt-2 flex-wrap"
                     >
                       <div className="flex items-center gap-2">
                         <RadioGroupItem value="propria" id="propria" />
                         <Label htmlFor="propria" className="cursor-pointer text-sm">Consultório</Label>
                       </div>
                       <div className="flex items-center gap-2">
+                        <RadioGroupItem value="clinica" id="clinica" />
+                        <Label htmlFor="clinica" className="cursor-pointer text-sm">Clínica</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <RadioGroupItem value="terceirizada" id="terceirizada" />
                         <Label htmlFor="terceirizada" className="cursor-pointer text-sm">Contratante</Label>
                       </div>
                     </RadioGroup>
+                    {formData.type === 'clinica' && (
+                      <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                        🏥 Modalidade que permite usar a Gestão de Equipe para convidar terapeutas e colaboradores.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -655,10 +664,11 @@ export default function Clinics() {
           {/* Filter Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {([
-              { key: 'all',          label: 'Ativas',       count: activeClinics.length,                                         icon: Building2,        color: 'text-primary',     bg: 'bg-primary/10' },
-              { key: 'propria',      label: 'Consultórios', count: activeClinics.filter(c => c.type === 'propria').length,        icon: Building2,        color: 'text-violet-500',  bg: 'bg-violet-500/10' },
-              { key: 'terceirizada', label: 'Contratantes', count: activeClinics.filter(c => c.type === 'terceirizada').length,   icon: Briefcase,        color: 'text-blue-500',    bg: 'bg-blue-500/10' },
-              { key: 'archived',     label: 'Arquivadas',   count: archivedClinics.length,                                        icon: Archive,          color: 'text-muted-foreground', bg: 'bg-secondary' },
+              { key: 'all',          label: 'Ativas',       count: activeClinics.length,                                           icon: Building2,   color: 'text-primary',          bg: 'bg-primary/10' },
+              { key: 'propria',      label: 'Consultórios', count: activeClinics.filter(c => c.type === 'propria').length,          icon: Building2,   color: 'text-violet-500',       bg: 'bg-violet-500/10' },
+              { key: 'clinica',      label: 'Clínicas',     count: activeClinics.filter(c => c.type === 'clinica').length,          icon: Users,       color: 'text-emerald-600',      bg: 'bg-emerald-600/10' },
+              { key: 'terceirizada', label: 'Contratantes', count: activeClinics.filter(c => c.type === 'terceirizada').length,     icon: Briefcase,   color: 'text-blue-500',         bg: 'bg-blue-500/10' },
+              { key: 'archived',     label: 'Arquivadas',   count: archivedClinics.length,                                          icon: Archive,     color: 'text-muted-foreground', bg: 'bg-secondary' },
             ] as const).map(({ key, label, count, icon: Icon, color, bg }) => (
               <button
                 key={key}
@@ -699,6 +709,7 @@ export default function Clinics() {
               {filteredClinics.map((clinic) => {
                 const patientCount = patients.filter(p => p.clinicId === clinic.id).length;
                 const isPropria = clinic.type === 'propria';
+                const isClinica = clinic.type === 'clinica';
 
                 const quickActions = [
                   { label: 'Hoje', icon: ClipboardList, color: 'text-primary', tab: 'today' },
@@ -722,8 +733,12 @@ export default function Clinics() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <h3 className="font-semibold text-foreground truncate">{clinic.name}</h3>
-                          <Badge variant="outline" className={cn("text-xs shrink-0", isPropria ? "border-primary/50 text-primary" : "border-muted-foreground/40 text-muted-foreground")}>
-                            {isPropria ? 'Consultório' : 'Contratante'}
+                          <Badge variant="outline" className={cn("text-xs shrink-0",
+                            isPropria ? "border-primary/50 text-primary" :
+                            isClinica ? "border-success/60 text-success" :
+                            "border-muted-foreground/40 text-muted-foreground"
+                          )}>
+                            {isPropria ? 'Consultório' : isClinica ? 'Clínica' : 'Contratante'}
                           </Badge>
                           {clinic.isArchived && <Badge variant="secondary" className="text-xs shrink-0">Arquivada</Badge>}
                         </div>

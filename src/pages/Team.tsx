@@ -64,7 +64,7 @@ export default function Team() {
 
   const hasAccess = true; // Feature available to all users
 
-  const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'propria');
+  const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'clinica');
   const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
 
   // The one clinic that currently holds the team benefit
@@ -325,15 +325,15 @@ export default function Team() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-foreground">Ativar Gestão de Equipe</h2>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Selecione o consultório onde a equipe será gerenciada. O benefício pode ser usado em <strong>um consultório por vez</strong>.
+                Selecione a clínica onde a equipe será gerenciada. O benefício pode ser usado em <strong>uma clínica por vez</strong>.
               </p>
             </div>
 
             {teamClinics.length === 0 ? (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Você não possui consultórios cadastrados.</p>
+                <p className="text-sm text-muted-foreground">Você não possui clínicas cadastradas na modalidade <strong>Clínica</strong>.</p>
                 <Button variant="outline" onClick={() => navigate('/clinics')}>
-                  Cadastrar Consultório
+                  Cadastrar Clínica
                 </Button>
               </div>
             ) : (
@@ -345,7 +345,7 @@ export default function Team() {
                 className="gap-2 w-full"
               >
                 <Building2 className="w-4 h-4" />
-                Selecionar Consultório
+                Selecionar Clínica
               </Button>
             )}
           </div>
@@ -357,12 +357,12 @@ export default function Team() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UsersRound className="w-5 h-5 text-primary" />
-                Selecionar Consultório para a Equipe
+                Selecionar Clínica para a Equipe
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Escolha qual consultório usará a Gestão de Equipe. Você poderá trocar depois, mas os dados da equipe não serão transferidos.
+                Escolha qual clínica usará a Gestão de Equipe. Você poderá trocar depois, mas os dados da equipe não serão transferidos.
               </p>
               <div className="space-y-2">
                 {teamClinics.map(clinic => (
