@@ -143,7 +143,7 @@ export default function TermsOfUse() {
           <section>
             <h2 className="text-xl font-semibold mb-3">13. Contato</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Para dúvidas sobre estes Termos, entre em contato pelo e-mail: <a href="mailto:contato@evolucaodiaria.app.br" className="text-primary underline">contato@evolucaodiaria.app.br</a>
+              Para dúvidas sobre estes Termos, entre em contato pelo e-mail: <a href="mailto:evolucaodiaria.contato@gmail.com" className="text-primary underline">evolucaodiaria.contato@gmail.com</a>
             </p>
           </section>
 
