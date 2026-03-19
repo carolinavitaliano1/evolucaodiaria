@@ -86,11 +86,12 @@ export function BulkDayFeedbackModal({ open, onOpenChange, items, selectedDate }
     const item = feedbackItems[idx];
     setFeedbackItems(prev => prev.map((fi, i) => i === idx ? { ...fi, generating: true } : fi));
     try {
+      const evolutionText = extractEvolutionText(item.evolution);
       const { data, error } = await supabase.functions.invoke('generate-feedback', {
         body: {
           evolutions: [{
             date: item.evolution.date,
-            text: item.evolution.text,
+            text: evolutionText,
             attendanceStatus: item.evolution.attendanceStatus,
           }],
           patientName: item.patient.name,
