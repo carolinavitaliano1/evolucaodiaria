@@ -139,44 +139,94 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
     setDialogDate(dateStr);
     setDialogStatus(type);
     setDialogJustification(existing?.justification || '');
+    setExistingAttachmentUrl(existing?.attachment_url || null);
+    setExistingAttachmentName(existing?.attachment_name || null);
+    setAttachmentFile(null);
     setDialogOpen(true);
+  }
+
+  async function uploadAttachment(file: File, recordId: string): Promise<{ url: string; name: string } | null> {
+    const ext = file.name.split('.').pop();
+    const path = `${user!.id}/${recordId}.${ext}`;
+    setAttachmentUploading(true);
+    const { error } = await supabase.storage
+      .from('attendance-attachments')
+      .upload(path, file, { upsert: true });
+    setAttachmentUploading(false);
+    if (error) { toast.error('Erro ao enviar anexo'); return null; }
+    const { data } = supabase.storage.from('attendance-attachments').getPublicUrl(path);
+    // For private bucket, use createSignedUrl on view
+    return { url: path, name: file.name };
+  }
+
+  async function getSignedUrl(path: string): Promise<string | null> {
+    const { data, error } = await supabase.storage
+      .from('attendance-attachments')
+      .createSignedUrl(path, 3600);
+    return error ? null : (data?.signedUrl || null);
   }
 
   async function saveAbsence() {
     if (!dialogMember) return;
     setDialogSaving(true);
     const existing = getRecord(dialogMember.id, dialogDate);
-    if (existing) {
-      const { error } = await supabase.from('team_attendance')
-        .update({ status: dialogStatus, justification: dialogJustification || null })
-        .eq('id', existing.id);
-      if (!error) {
-        setAttendance(prev => prev.map(a => a.id === existing.id
-          ? { ...a, status: dialogStatus, justification: dialogJustification || null }
-          : a));
-        toast.success('Falta registrada');
-        setDialogOpen(false);
+
+    try {
+      let attachmentPath = existing?.attachment_url || null;
+      let attachmentName = existing?.attachment_name || null;
+
+      if (existing) {
+        // Upload new attachment if provided
+        if (attachmentFile) {
+          const res = await uploadAttachment(attachmentFile, existing.id);
+          if (res) { attachmentPath = res.url; attachmentName = res.name; }
+        }
+        const { error } = await supabase.from('team_attendance')
+          .update({
+            status: dialogStatus,
+            justification: dialogJustification || null,
+            attachment_url: attachmentPath,
+            attachment_name: attachmentName,
+          })
+          .eq('id', existing.id);
+        if (!error) {
+          setAttendance(prev => prev.map(a => a.id === existing.id
+            ? { ...a, status: dialogStatus, justification: dialogJustification || null, attachment_url: attachmentPath, attachment_name: attachmentName }
+            : a));
+          toast.success('Falta registrada');
+          setDialogOpen(false);
+        } else { toast.error('Erro ao salvar'); }
       } else {
-        toast.error('Erro ao salvar');
+        // Insert first, then upload with the new ID
+        const { data, error } = await supabase.from('team_attendance').insert({
+          organization_id: organizationId,
+          member_id: dialogMember.id,
+          date: dialogDate,
+          status: dialogStatus,
+          justification: dialogJustification || null,
+          created_by: user!.id,
+        }).select().single();
+        if (!error && data) {
+          let finalPath = null;
+          let finalName = null;
+          if (attachmentFile) {
+            const res = await uploadAttachment(attachmentFile, data.id);
+            if (res) {
+              finalPath = res.url;
+              finalName = res.name;
+              await supabase.from('team_attendance')
+                .update({ attachment_url: finalPath, attachment_name: finalName })
+                .eq('id', data.id);
+            }
+          }
+          setAttendance(prev => [...prev, { ...data, attachment_url: finalPath, attachment_name: finalName } as AttendanceRecord]);
+          toast.success('Falta registrada');
+          setDialogOpen(false);
+        } else { toast.error('Erro ao salvar'); }
       }
-    } else {
-      const { data, error } = await supabase.from('team_attendance').insert({
-        organization_id: organizationId,
-        member_id: dialogMember.id,
-        date: dialogDate,
-        status: dialogStatus,
-        justification: dialogJustification || null,
-        created_by: user!.id,
-      }).select().single();
-      if (!error && data) {
-        setAttendance(prev => [...prev, data as AttendanceRecord]);
-        toast.success('Falta registrada');
-        setDialogOpen(false);
-      } else {
-        toast.error('Erro ao salvar');
-      }
+    } finally {
+      setDialogSaving(false);
     }
-    setDialogSaving(false);
   }
 
   async function removeRecord(member: TeamMember, dateStr: string) {
