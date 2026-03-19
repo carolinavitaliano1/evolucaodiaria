@@ -477,14 +477,94 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
               />
             </div>
 
+            {/* Attachment */}
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1.5">
+                Anexo <span className="text-xs text-muted-foreground font-normal">(atestado, laudo — PDF ou imagem)</span>
+              </label>
+
+              {/* Show existing attachment */}
+              {existingAttachmentName && !attachmentFile && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-muted/40 mb-2">
+                  <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-sm text-foreground flex-1 truncate">{existingAttachmentName}</span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (existingAttachmentUrl) {
+                        const url = await getSignedUrl(existingAttachmentUrl);
+                        if (url) window.open(url, '_blank');
+                      }
+                    }}
+                    className="text-primary hover:text-primary/80 flex-shrink-0"
+                    title="Visualizar"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setExistingAttachmentUrl(null); setExistingAttachmentName(null); }}
+                    className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                    title="Remover anexo"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* New file selected */}
+              {attachmentFile && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-primary/40 bg-primary/5 mb-2">
+                  <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-sm text-foreground flex-1 truncate">{attachmentFile.name}</span>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {(attachmentFile.size / 1024).toFixed(0)} KB
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachmentFile(null)}
+                    className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Upload button */}
+              {!attachmentFile && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-3 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <Paperclip className="w-4 h-4" />
+                  {existingAttachmentName ? 'Substituir anexo' : 'Anexar atestado ou laudo'}
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    if (f.size > 10 * 1024 * 1024) { toast.error('Arquivo muito grande. Máximo 10MB.'); return; }
+                    setAttachmentFile(f);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button
                 onClick={saveAbsence}
-                disabled={dialogSaving}
+                disabled={dialogSaving || attachmentUploading}
                 className={dialogStatus === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
               >
-                {dialogSaving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                {(dialogSaving || attachmentUploading) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 Salvar
               </Button>
             </div>
