@@ -27,6 +27,8 @@ interface AttendanceRecord {
   date: string;
   status: 'present' | 'absent' | 'justified';
   justification: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
 }
 
 interface TeamAttendanceGridProps {
