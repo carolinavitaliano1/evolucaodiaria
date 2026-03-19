@@ -64,7 +64,7 @@ export default function Team() {
 
   const hasAccess = true; // Feature available to all users
 
-  const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'propria');
+  const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'clinica');
   const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
 
   // The one clinic that currently holds the team benefit
