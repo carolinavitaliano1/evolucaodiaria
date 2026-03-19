@@ -1576,11 +1576,21 @@ export default function PatientDetail() {
 
             {/* Action buttons */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {(patient.whatsapp || patient.responsibleWhatsapp || patient.phone) && (
+              {(patient.whatsapp || patient.guardianPhone || patient.responsibleWhatsapp || patient.phone) && (
                 <Button
                   variant="ghost" size="icon"
                   className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
                   onClick={() => {
+                    // Guardian fallback: if minor and guardian phone → use guardian
+                    if (patient.isMinor && patient.guardianPhone) {
+                      const cleaned = patient.guardianPhone.replace(/\D/g, '');
+                      const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                      const a = document.createElement('a');
+                      a.href = `https://wa.me/${number}`;
+                      a.target = '_blank'; a.rel = 'noopener noreferrer';
+                      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                      return;
+                    }
                     const hasPatientNum = !!(patient.whatsapp || patient.phone);
                     const hasResponsible = !!patient.responsibleWhatsapp;
                     if (hasPatientNum && hasResponsible) {
@@ -1596,7 +1606,7 @@ export default function PatientDetail() {
                       window.open(`https://wa.me/${number}`, '_blank');
                     }
                   }}
-                  title="WhatsApp"
+                  title={patient.isMinor && patient.guardianPhone ? `WhatsApp do Responsável: ${patient.guardianName}` : 'WhatsApp'}
                 >
                   <WhatsAppIcon className="w-4 h-4" />
                 </Button>
