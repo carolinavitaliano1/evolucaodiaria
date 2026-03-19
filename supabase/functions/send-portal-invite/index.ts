@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -6,28 +5,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) throw new Error('Unauthorized');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Use anon client with user's token to validate JWT
-    const anonClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: { user }, error: authError } = await anonClient.auth.getUser();
-    if (authError || !user) throw new Error('Unauthorized');
+    const token = authHeader.replace('Bearer ', '');
 
-    // Service role client for privileged operations
+    // Single service role client - getUser(token) validates the JWT correctly
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { persistSession: false } }
     );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      console.error('[send-portal-invite] Auth error:', authError?.message);
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { patient_id, override_email, access_type, access_label, invite_token: providedToken } = await req.json();
 
@@ -48,22 +53,47 @@ serve(async (req) => {
     const inviteToken = providedToken || crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Only upsert if no token provided (new invite flow without pre-creation)
+    // Only insert/update if no token provided (new invite flow without pre-creation)
     if (!providedToken) {
-      const { error: upsertError } = await supabase
+      // Check if there's an existing account for this patient+therapist+email
+      const { data: existing } = await supabase
         .from('patient_portal_accounts')
-        .upsert({
-          patient_id: patient.id,
-          therapist_user_id: user.id,
-          patient_email: targetEmail,
-          invite_token: inviteToken,
-          invite_sent_at: new Date().toISOString(),
-          invite_expires_at: expiresAt,
-          status: 'invited',
-          user_id: null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'patient_id' });
-      if (upsertError) throw upsertError;
+        .select('id')
+        .eq('patient_id', patient.id)
+        .eq('therapist_user_id', user.id)
+        .eq('patient_email', targetEmail)
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('patient_portal_accounts')
+          .update({
+            invite_token: inviteToken,
+            invite_sent_at: new Date().toISOString(),
+            invite_expires_at: expiresAt,
+            status: 'invited',
+            user_id: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+        if (updateError) throw updateError;
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('patient_portal_accounts')
+          .insert({
+            patient_id: patient.id,
+            therapist_user_id: user.id,
+            patient_email: targetEmail,
+            invite_token: inviteToken,
+            invite_sent_at: new Date().toISOString(),
+            invite_expires_at: expiresAt,
+            status: 'invited',
+            user_id: null,
+          });
+        if (insertError) throw insertError;
+      }
     }
 
     // Get therapist name
