@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import {
-  CheckCircle2, Loader2, Building2, AlertTriangle, ClipboardList, User, Users, CreditCard,
+  CheckCircle2, Loader2, Building2, AlertTriangle, ClipboardList, User, Users,
 } from 'lucide-react';
 
 type FinancialResponsible = 'patient' | 'responsible' | 'other';
