@@ -69,43 +69,16 @@ export function PatientFeed({
     setLoading(true);
     loadPosts();
 
-    // Cleanup previous channel
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
 
-    // Realtime subscription for feed_posts
     const channel = supabase
       .channel(`feed-posts-${patientId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'feed_posts',
-          filter: `patient_id=eq.${patientId}`,
-        },
-        () => { loadPosts(); }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'feed_comments',
-        },
-        () => { loadPosts(); }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'feed_reactions',
-        },
-        () => { loadPosts(); }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_posts', filter: `patient_id=eq.${patientId}` }, () => { loadPosts(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_comments' }, () => { loadPosts(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_reactions' }, () => { loadPosts(); })
       .subscribe();
 
     channelRef.current = channel;
@@ -116,7 +89,8 @@ export function PatientFeed({
         channelRef.current = null;
       }
     };
-  }, [patientId, loadPosts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId]);
 
   const handleDeletePost = async (postId: string) => {
     const post = posts.find(p => p.id === postId);
