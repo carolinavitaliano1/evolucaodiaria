@@ -529,6 +529,14 @@ function AccountPanel({
                   )}
                 </h3>
                 <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => setShowCustomQuestionsManager(true)}
+                  >
+                    <Settings2 className="w-3 h-3" /> Personalizar
+                  </Button>
                   {hasIntakeSubmitted ? (
                     <span className="text-xs text-success flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
@@ -548,7 +556,12 @@ function AccountPanel({
                 </div>
               </div>
 
-              {/* Review pending banner */}
+              {/* Custom Questions Manager Dialog */}
+              {showCustomQuestionsManager && (
+                <div className="p-4 border-b border-border bg-muted/10">
+                  <IntakeCustomQuestionsManager onClose={() => setShowCustomQuestionsManager(false)} />
+                </div>
+              )}
               {intakeForm?.needs_review && (
                 <IntakeReviewPanel intakeForm={intakeForm} patientId={patientId} onReviewed={async (approved) => {
                   const { error } = await supabase
