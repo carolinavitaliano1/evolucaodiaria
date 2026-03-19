@@ -114,7 +114,7 @@ export default function Clinics() {
 
   const [formData, setFormData] = useState({
     name: '',
-    type: 'propria' as 'propria' | 'terceirizada',
+    type: 'propria' as 'propria' | 'terceirizada' | 'clinica',
     address: '',
     notes: '',
     weekdays: [] as string[],
