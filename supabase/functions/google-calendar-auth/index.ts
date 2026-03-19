@@ -1,4 +1,3 @@
-import { serve } from "npm:@hono/node-server@1.13.8/dist/index.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -6,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -64,8 +63,9 @@ serve(async (req: Request) => {
       const state = url.searchParams.get('state'); // user_id
       const error = url.searchParams.get('error');
 
+      const appUrl = 'https://clinipro.lovable.app';
+
       if (error || !code || !state) {
-        const appUrl = Deno.env.get('APP_URL') || 'https://clinipro.lovable.app';
         return Response.redirect(`${appUrl}/calendar?google_error=${error || 'missing_code'}`, 302);
       }
 
@@ -88,13 +88,12 @@ serve(async (req: Request) => {
       const tokenData = await tokenRes.json();
 
       if (!tokenRes.ok || !tokenData.access_token) {
-        const appUrl = Deno.env.get('APP_URL') || 'https://clinipro.lovable.app';
+        console.error('Token exchange failed:', tokenData);
         return Response.redirect(`${appUrl}/calendar?google_error=token_exchange_failed`, 302);
       }
 
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
-      // Use service role to save tokens for the state user_id
       const serviceClient = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -108,7 +107,6 @@ serve(async (req: Request) => {
         scope: tokenData.scope || null,
       }, { onConflict: 'user_id' });
 
-      const appUrl = Deno.env.get('APP_URL') || 'https://clinipro.lovable.app';
       return Response.redirect(`${appUrl}/calendar?google_connected=true`, 302);
     }
 

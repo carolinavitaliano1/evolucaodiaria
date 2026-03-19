@@ -1,4 +1,3 @@
-import { serve } from "npm:@hono/node-server@1.13.8/dist/index.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -21,7 +20,7 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
   return res.json();
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -53,7 +52,6 @@ serve(async (req: Request) => {
     const timeMin = url.searchParams.get('timeMin') || new Date().toISOString();
     const timeMax = url.searchParams.get('timeMax') || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Get stored tokens
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -84,7 +82,6 @@ serve(async (req: Request) => {
           expires_at: newExpiresAt,
         }).eq('user_id', user.id);
       } else {
-        // Token invalid, remove and ask to reconnect
         await serviceClient.from('google_calendar_tokens').delete().eq('user_id', user.id);
         return new Response(JSON.stringify({ connected: false, events: [], need_reconnect: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -92,7 +89,6 @@ serve(async (req: Request) => {
       }
     }
 
-    // Fetch events from Google Calendar API
     const gcalUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
       `timeMin=${encodeURIComponent(timeMin)}` +
       `&timeMax=${encodeURIComponent(timeMax)}` +
