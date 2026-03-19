@@ -30,7 +30,7 @@ interface EditClinicDialogProps {
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
-    type: 'propria' as 'propria' | 'terceirizada',
+    type: 'propria' as 'propria' | 'terceirizada' | 'clinica',
     address: '',
     notes: '',
     email: '',

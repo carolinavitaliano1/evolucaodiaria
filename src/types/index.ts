@@ -12,7 +12,7 @@ export interface ScheduleByDay {
 export interface Clinic {
   id: string;
   name: string;
-  type: 'propria' | 'terceirizada';
+  type: 'propria' | 'terceirizada' | 'clinica';
   address?: string;
   notes?: string;
   weekdays?: string[];
