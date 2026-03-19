@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertCircle, Calendar } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertCircle, Calendar, Paperclip, X, FileText, ExternalLink } from 'lucide-react';
 import { format, startOfWeek, addDays, subWeeks, addWeeks, isToday, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -27,6 +27,8 @@ interface AttendanceRecord {
   date: string;
   status: 'present' | 'absent' | 'justified';
   justification: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
 }
 
 interface TeamAttendanceGridProps {
@@ -67,6 +69,13 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
   const [dialogJustification, setDialogJustification] = useState('');
   const [dialogSaving, setDialogSaving] = useState(false);
 
+  // Attachment state
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [existingAttachmentUrl, setExistingAttachmentUrl] = useState<string | null>(null);
+  const [existingAttachmentName, setExistingAttachmentName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const activeMembers = members.filter(m => m.status === 'active');
 
@@ -80,7 +89,7 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
 
     const { data } = await supabase
       .from('team_attendance')
-      .select('id, member_id, date, status, justification')
+      .select('id, member_id, date, status, justification, attachment_url, attachment_name')
       .eq('organization_id', organizationId)
       .in('member_id', memberIds)
       .gte('date', startStr)
@@ -130,44 +139,94 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
     setDialogDate(dateStr);
     setDialogStatus(type);
     setDialogJustification(existing?.justification || '');
+    setExistingAttachmentUrl(existing?.attachment_url || null);
+    setExistingAttachmentName(existing?.attachment_name || null);
+    setAttachmentFile(null);
     setDialogOpen(true);
+  }
+
+  async function uploadAttachment(file: File, recordId: string): Promise<{ url: string; name: string } | null> {
+    const ext = file.name.split('.').pop();
+    const path = `${user!.id}/${recordId}.${ext}`;
+    setAttachmentUploading(true);
+    const { error } = await supabase.storage
+      .from('attendance-attachments')
+      .upload(path, file, { upsert: true });
+    setAttachmentUploading(false);
+    if (error) { toast.error('Erro ao enviar anexo'); return null; }
+    const { data } = supabase.storage.from('attendance-attachments').getPublicUrl(path);
+    // For private bucket, use createSignedUrl on view
+    return { url: path, name: file.name };
+  }
+
+  async function getSignedUrl(path: string): Promise<string | null> {
+    const { data, error } = await supabase.storage
+      .from('attendance-attachments')
+      .createSignedUrl(path, 3600);
+    return error ? null : (data?.signedUrl || null);
   }
 
   async function saveAbsence() {
     if (!dialogMember) return;
     setDialogSaving(true);
     const existing = getRecord(dialogMember.id, dialogDate);
-    if (existing) {
-      const { error } = await supabase.from('team_attendance')
-        .update({ status: dialogStatus, justification: dialogJustification || null })
-        .eq('id', existing.id);
-      if (!error) {
-        setAttendance(prev => prev.map(a => a.id === existing.id
-          ? { ...a, status: dialogStatus, justification: dialogJustification || null }
-          : a));
-        toast.success('Falta registrada');
-        setDialogOpen(false);
+
+    try {
+      let attachmentPath = existing?.attachment_url || null;
+      let attachmentName = existing?.attachment_name || null;
+
+      if (existing) {
+        // Upload new attachment if provided
+        if (attachmentFile) {
+          const res = await uploadAttachment(attachmentFile, existing.id);
+          if (res) { attachmentPath = res.url; attachmentName = res.name; }
+        }
+        const { error } = await supabase.from('team_attendance')
+          .update({
+            status: dialogStatus,
+            justification: dialogJustification || null,
+            attachment_url: attachmentPath,
+            attachment_name: attachmentName,
+          })
+          .eq('id', existing.id);
+        if (!error) {
+          setAttendance(prev => prev.map(a => a.id === existing.id
+            ? { ...a, status: dialogStatus, justification: dialogJustification || null, attachment_url: attachmentPath, attachment_name: attachmentName }
+            : a));
+          toast.success('Falta registrada');
+          setDialogOpen(false);
+        } else { toast.error('Erro ao salvar'); }
       } else {
-        toast.error('Erro ao salvar');
+        // Insert first, then upload with the new ID
+        const { data, error } = await supabase.from('team_attendance').insert({
+          organization_id: organizationId,
+          member_id: dialogMember.id,
+          date: dialogDate,
+          status: dialogStatus,
+          justification: dialogJustification || null,
+          created_by: user!.id,
+        }).select().single();
+        if (!error && data) {
+          let finalPath = null;
+          let finalName = null;
+          if (attachmentFile) {
+            const res = await uploadAttachment(attachmentFile, data.id);
+            if (res) {
+              finalPath = res.url;
+              finalName = res.name;
+              await supabase.from('team_attendance')
+                .update({ attachment_url: finalPath, attachment_name: finalName })
+                .eq('id', data.id);
+            }
+          }
+          setAttendance(prev => [...prev, { ...data, attachment_url: finalPath, attachment_name: finalName } as AttendanceRecord]);
+          toast.success('Falta registrada');
+          setDialogOpen(false);
+        } else { toast.error('Erro ao salvar'); }
       }
-    } else {
-      const { data, error } = await supabase.from('team_attendance').insert({
-        organization_id: organizationId,
-        member_id: dialogMember.id,
-        date: dialogDate,
-        status: dialogStatus,
-        justification: dialogJustification || null,
-        created_by: user!.id,
-      }).select().single();
-      if (!error && data) {
-        setAttendance(prev => [...prev, data as AttendanceRecord]);
-        toast.success('Falta registrada');
-        setDialogOpen(false);
-      } else {
-        toast.error('Erro ao salvar');
-      }
+    } finally {
+      setDialogSaving(false);
     }
-    setDialogSaving(false);
   }
 
   async function removeRecord(member: TeamMember, dateStr: string) {
@@ -293,13 +352,25 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
                                       cfg?.bg,
                                       canManage && 'cursor-pointer hover:opacity-80'
                                     )}
-                                    onClick={() => canManage && removeRecord(member, dateStr)}
+                                    onClick={() => canManage && (record.status !== 'present' ? openAbsenceDialog(member, dateStr, record.status as 'absent' | 'justified') : removeRecord(member, dateStr))}
                                   >
                                     {cfg && <cfg.icon className={cn('w-4 h-4', cfg.color)} />}
                                   </div>
-                                  {record.justification && (
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 bg-popover border border-border rounded-lg px-2 py-1 text-xs text-foreground whitespace-nowrap shadow-md max-w-[200px] text-left">
-                                      {record.justification}
+                                  {/* Attachment badge */}
+                                  {record.attachment_name && (
+                                    <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary rounded-full flex items-center justify-center" title={`Anexo: ${record.attachment_name}`}>
+                                      <Paperclip className="w-2 h-2 text-primary-foreground" />
+                                    </div>
+                                  )}
+                                  {(record.justification || record.attachment_name) && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 bg-popover border border-border rounded-lg px-2 py-1.5 text-xs text-foreground shadow-md min-w-[140px] max-w-[220px] text-left space-y-1">
+                                      {record.justification && <p>{record.justification}</p>}
+                                      {record.attachment_name && (
+                                        <p className="flex items-center gap-1 text-primary">
+                                          <Paperclip className="w-3 h-3" />
+                                          {record.attachment_name}
+                                        </p>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -418,14 +489,94 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
               />
             </div>
 
+            {/* Attachment */}
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1.5">
+                Anexo <span className="text-xs text-muted-foreground font-normal">(atestado, laudo — PDF ou imagem)</span>
+              </label>
+
+              {/* Show existing attachment */}
+              {existingAttachmentName && !attachmentFile && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-muted/40 mb-2">
+                  <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-sm text-foreground flex-1 truncate">{existingAttachmentName}</span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (existingAttachmentUrl) {
+                        const url = await getSignedUrl(existingAttachmentUrl);
+                        if (url) window.open(url, '_blank');
+                      }
+                    }}
+                    className="text-primary hover:text-primary/80 flex-shrink-0"
+                    title="Visualizar"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setExistingAttachmentUrl(null); setExistingAttachmentName(null); }}
+                    className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                    title="Remover anexo"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* New file selected */}
+              {attachmentFile && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-primary/40 bg-primary/5 mb-2">
+                  <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-sm text-foreground flex-1 truncate">{attachmentFile.name}</span>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {(attachmentFile.size / 1024).toFixed(0)} KB
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachmentFile(null)}
+                    className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Upload button */}
+              {!attachmentFile && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-3 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <Paperclip className="w-4 h-4" />
+                  {existingAttachmentName ? 'Substituir anexo' : 'Anexar atestado ou laudo'}
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    if (f.size > 10 * 1024 * 1024) { toast.error('Arquivo muito grande. Máximo 10MB.'); return; }
+                    setAttachmentFile(f);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button
                 onClick={saveAbsence}
-                disabled={dialogSaving}
+                disabled={dialogSaving || attachmentUploading}
                 className={dialogStatus === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
               >
-                {dialogSaving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                {(dialogSaving || attachmentUploading) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 Salvar
               </Button>
             </div>

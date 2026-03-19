@@ -1996,6 +1996,8 @@ export type Database = {
       }
       team_attendance: {
         Row: {
+          attachment_name: string | null
+          attachment_url: string | null
           created_at: string
           created_by: string
           date: string
@@ -2007,6 +2009,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_url?: string | null
           created_at?: string
           created_by: string
           date: string
@@ -2018,6 +2022,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_url?: string | null
           created_at?: string
           created_by?: string
           date?: string
