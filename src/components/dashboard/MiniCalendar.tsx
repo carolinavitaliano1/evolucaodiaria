@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 
