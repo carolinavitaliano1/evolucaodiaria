@@ -735,7 +735,7 @@ export default function Clinics() {
                           <h3 className="font-semibold text-foreground truncate">{clinic.name}</h3>
                           <Badge variant="outline" className={cn("text-xs shrink-0",
                             isPropria ? "border-primary/50 text-primary" :
-                            isClinica ? "border-emerald-600/50 text-emerald-600" :
+                            isClinica ? "border-success/60 text-success" :
                             "border-muted-foreground/40 text-muted-foreground"
                           )}>
                             {isPropria ? 'Consultório' : isClinica ? 'Clínica' : 'Contratante'}
