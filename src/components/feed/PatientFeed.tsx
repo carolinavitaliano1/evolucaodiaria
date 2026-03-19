@@ -136,7 +136,7 @@ export function PatientFeed({
           patientId={patientId}
           therapistId={therapistId}
           therapistName={therapistName}
-          onPostCreated={loadPosts}
+          onPostCreated={() => loadPosts(patientId)}
         />
       )}
 
