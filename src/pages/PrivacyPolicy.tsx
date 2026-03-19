@@ -117,7 +117,7 @@ export default function PrivacyPolicy() {
               <li>Se opor a tratamento realizado com fundamento em legítimo interesse.</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-3">
-              Para exercer seus direitos, envie um e-mail para <a href="mailto:contato@evolucaodiaria.app.br" className="text-primary underline">contato@evolucaodiaria.app.br</a>.
+              Para exercer seus direitos, envie um e-mail para <a href="mailto:evolucaodiaria.contato@gmail.com" className="text-primary underline">evolucaodiaria.contato@gmail.com</a>.
             </p>
           </section>
 
