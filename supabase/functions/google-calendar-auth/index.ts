@@ -22,7 +22,14 @@ Deno.serve(async (req: Request) => {
 
       // state = "<userId>|<appOrigin>"
       const [userId, appOrigin] = (stateParam || '').split('|');
-      const safeAppOrigin = appOrigin && appOrigin.startsWith('https://') ? appOrigin : 'https://clinipro.lovable.app';
+      const allowedOrigins = [
+        'https://clinipro.lovable.app',
+        'https://evolucaodiaria.app.br',
+        'https://www.evolucaodiaria.app.br',
+      ];
+      const safeAppOrigin = appOrigin && allowedOrigins.some(o => appOrigin.startsWith(o))
+        ? appOrigin
+        : 'https://evolucaodiaria.app.br';
 
       if (error || !code || !userId) {
         return Response.redirect(`${safeAppOrigin}/calendar?google_error=${error || 'missing_code'}`, 302);
