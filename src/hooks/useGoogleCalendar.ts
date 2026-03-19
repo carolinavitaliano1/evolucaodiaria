@@ -43,14 +43,6 @@ export function useGoogleCalendar(viewDate?: Date): UseGoogleCalendarReturn {
     const end = timeMax || endOfMonth(now).toISOString();
 
     try {
-      const res = await supabase.functions.invoke('google-calendar-events', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        // Pass query params via body since functions.invoke doesn't support query params directly
-        body: null,
-        method: 'GET',
-      } as any);
-
-      // Use fetch directly for query params
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-events?timeMin=${encodeURIComponent(start)}&timeMax=${encodeURIComponent(end)}`;
       const response = await fetch(url, {
         headers: {
