@@ -19,13 +19,13 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Validate JWT - use service role client to verify user token
-    const adminClient = createClient(
+    // Single service role client - getUser(token) validates the JWT correctly
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { persistSession: false } }
     );
-    const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       console.error('[send-portal-invite] Auth error:', authError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -33,13 +33,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // Service role client for privileged operations
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-      { auth: { persistSession: false } }
-    );
 
     const { patient_id, override_email, access_type, access_label, invite_token: providedToken } = await req.json();
 
