@@ -89,7 +89,7 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
 
     const { data } = await supabase
       .from('team_attendance')
-      .select('id, member_id, date, status, justification')
+      .select('id, member_id, date, status, justification, attachment_url, attachment_name')
       .eq('organization_id', organizationId)
       .in('member_id', memberIds)
       .gte('date', startStr)
