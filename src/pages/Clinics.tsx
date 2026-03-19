@@ -709,6 +709,7 @@ export default function Clinics() {
               {filteredClinics.map((clinic) => {
                 const patientCount = patients.filter(p => p.clinicId === clinic.id).length;
                 const isPropria = clinic.type === 'propria';
+                const isClinica = clinic.type === 'clinica';
 
                 const quickActions = [
                   { label: 'Hoje', icon: ClipboardList, color: 'text-primary', tab: 'today' },
