@@ -69,6 +69,13 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
   const [dialogJustification, setDialogJustification] = useState('');
   const [dialogSaving, setDialogSaving] = useState(false);
 
+  // Attachment state
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [existingAttachmentUrl, setExistingAttachmentUrl] = useState<string | null>(null);
+  const [existingAttachmentName, setExistingAttachmentName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const activeMembers = members.filter(m => m.status === 'active');
 
