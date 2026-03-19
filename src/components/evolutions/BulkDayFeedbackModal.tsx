@@ -15,6 +15,27 @@ import { Evolution, Patient } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+/**
+ * Extrai texto clínico relevante de uma evolução.
+ * Prioriza o campo `text` livre. Se vazio, concatena apenas os campos
+ * do tipo `textarea` (texto longo) do templateData para evitar ruído de
+ * campos curtos (selects, checkboxes, numbers).
+ */
+function extractEvolutionText(evolution: Evolution): string {
+  if (evolution.text && evolution.text.trim()) return evolution.text;
+
+  if (evolution.templateData && typeof evolution.templateData === 'object') {
+    const td = evolution.templateData as Record<string, any>;
+    // Campos que tipicamente contêm texto longo — valores com mais de 20 chars
+    const longTexts = Object.values(td)
+      .filter(v => typeof v === 'string' && v.trim().length > 20)
+      .map(v => (v as string).trim());
+    if (longTexts.length > 0) return longTexts.join('\n\n');
+  }
+
+  return '(sessão registrada sem texto descritivo)';
+}
+
 interface PatientFeedbackItem {
   evolution: Evolution;
   patient: Patient;
