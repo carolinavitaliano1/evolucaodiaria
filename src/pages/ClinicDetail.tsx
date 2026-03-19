@@ -1953,8 +1953,8 @@ export default function ClinicDetail() {
                     </div>
                   </div>
 
-                  {/* Batch date picker */}
-                  <div className="flex items-center gap-3">
+                  {/* Batch date picker + day filter toggle */}
+                  <div className="flex flex-wrap items-center gap-3">
                     <Label className="text-sm font-medium shrink-0">Data:</Label>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -1967,16 +1967,30 @@ export default function ClinicDetail() {
                         <CalendarComponent
                           mode="single"
                           selected={batchDate}
-                          onSelect={(d) => d && setBatchDate(d)}
+                          onSelect={(d) => { if (d) { setBatchDate(d); setSelectedPatients([]); } }}
                           locale={ptBR}
                         />
                       </PopoverContent>
                     </Popover>
+                    <button
+                      onClick={() => { setBatchFilterByDay(v => !v); setSelectedPatients([]); }}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all",
+                        batchFilterByDay
+                          ? "bg-primary/10 text-primary border-primary/30"
+                          : "bg-muted text-muted-foreground border-border hover:text-foreground"
+                      )}
+                    >
+                      {batchFilterByDay ? '📅 Só pacientes do dia' : '👥 Todos os pacientes'}
+                    </button>
+                    {batchFilterByDay && batchDayPatients.length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Nenhum paciente agendado neste dia da semana.</p>
+                    )}
                   </div>
 
                   {/* Patient list */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[320px] overflow-y-auto pr-1">
-                    {clinicPatients
+                    {batchDayPatients
                       .filter(p => p.name.toLowerCase().includes(batchSearch.toLowerCase()))
                       .map((patient) => {
                         const existingEvo = getPatientBatchDateEvolution(patient.id);
