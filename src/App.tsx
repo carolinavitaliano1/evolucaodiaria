@@ -74,6 +74,8 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
                 <Route path="/landing" element={<Landing />} />
+                <Route path="/privacidade" element={<PrivacyPolicy />} />
+                <Route path="/termos" element={<TermsOfUse />} />
                 <Route path="/auth" element={<Auth />} />
                 {/* Portal routes (patient-facing) */}
                 <Route path="/portal/auth" element={<PortalAuth />} />
