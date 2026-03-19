@@ -65,7 +65,7 @@ export default function Clinics() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [sendingSupportMsg, setSendingSupportMsg] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'propria' | 'terceirizada' | 'archived'>('all');
+  const [filter, setFilter] = useState<'all' | 'propria' | 'clinica' | 'terceirizada' | 'archived'>('all');
   const [stampFile, setStampFile] = useState<UploadedFile | null>(null);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('clinics');
