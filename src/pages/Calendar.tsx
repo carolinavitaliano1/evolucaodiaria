@@ -174,7 +174,7 @@ export default function CalendarPage() {
       }));
 
     return [...appts, ...scheduledPatients, ...privAppts, ...evts, ...googleEvts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-  }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate, evolutions]);
+  }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate, evolutions, googleEvents]);
 
   // --- Appointment form ---
   const clinicPatients = patients.filter(p => p.clinicId === formData.clinicId);
