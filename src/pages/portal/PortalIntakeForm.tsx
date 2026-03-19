@@ -20,26 +20,31 @@ interface IntakeForm {
   address: string;
   gender: string;
   how_found: string;
-  // Emergency contact
   emergency_contact_name: string;
   emergency_contact_relation: string;
   emergency_contact_address: string;
   emergency_contact_phone: string;
-  // Responsible (minor)
   responsible_name: string;
   responsible_cpf: string;
   responsible_phone: string;
-  // Financial responsible
   financial_responsible_name: string;
   financial_responsible_email: string;
   financial_responsible_cpf: string;
   financial_responsible_relation: string;
   financial_responsible_address: string;
   financial_responsible_phone: string;
-  // Health
   health_info: string;
   observations: string;
   payment_due_day: string;
+}
+
+interface CustomQuestion {
+  id: string;
+  question: string;
+  field_type: 'text' | 'textarea' | 'select' | 'yesno';
+  options: string[];
+  required: boolean;
+  sort_order: number;
 }
 
 const empty: IntakeForm = {
@@ -85,6 +90,87 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function CustomQuestionField({
+  question,
+  value,
+  onChange,
+}: {
+  question: CustomQuestion;
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const label = question.required ? `${question.question} *` : question.question;
+
+  if (question.field_type === 'textarea') {
+    return (
+      <Field label={label}>
+        <Textarea
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Sua resposta..."
+          className="resize-none"
+          rows={3}
+        />
+      </Field>
+    );
+  }
+
+  if (question.field_type === 'yesno') {
+    return (
+      <Field label={label}>
+        <div className="grid grid-cols-2 gap-2">
+          {['Sim', 'Não'].map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange(opt)}
+              className={cn(
+                'rounded-xl border py-2 text-xs font-medium transition-colors',
+                value === opt
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-muted/50 border-border text-foreground hover:bg-muted'
+              )}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </Field>
+    );
+  }
+
+  if (question.field_type === 'select') {
+    return (
+      <Field label={label}>
+        <div className="flex flex-wrap gap-2">
+          {(question.options || []).map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange(opt)}
+              className={cn(
+                'rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors',
+                value === opt
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-muted/50 border-border text-foreground hover:bg-muted'
+              )}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </Field>
+    );
+  }
+
+  // default: text
+  return (
+    <Field label={label}>
+      <Input value={value} onChange={e => onChange(e.target.value)} placeholder="Sua resposta..." />
+    </Field>
+  );
+}
+
 export default function PortalIntakeForm() {
   const { portalAccount } = usePortal();
   const [form, setForm] = useState<IntakeForm>(empty);
@@ -92,66 +178,97 @@ export default function PortalIntakeForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [customDay, setCustomDay] = useState(false);
+  const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
+  const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!portalAccount) return;
-    supabase
-      .from('patient_intake_forms')
-      .select('*')
-      .eq('patient_id', portalAccount.patient_id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          const d = data as any;
-          const dayVal = d.payment_due_day ? String(d.payment_due_day) : '';
-          const isPreset = PAYMENT_DAY_OPTIONS.some(o => o.value === dayVal);
-          setCustomDay(!!dayVal && !isPreset);
-          setForm({
-            full_name: d.full_name || '',
-            cpf: d.cpf || '',
-            birthdate: d.birthdate || '',
-            phone: d.phone || '',
-            whatsapp: d.whatsapp || '',
-            email: d.email || '',
-            address: d.address || '',
-            gender: d.gender || '',
-            how_found: d.how_found || '',
-            emergency_contact_name: d.emergency_contact_name || '',
-            emergency_contact_relation: d.emergency_contact_relation || '',
-            emergency_contact_address: d.emergency_contact_address || '',
-            emergency_contact_phone: d.emergency_contact_phone || '',
-            responsible_name: d.responsible_name || '',
-            responsible_cpf: d.responsible_cpf || '',
-            responsible_phone: d.responsible_phone || '',
-            financial_responsible_name: d.financial_responsible_name || '',
-            financial_responsible_email: d.financial_responsible_email || '',
-            financial_responsible_cpf: d.financial_responsible_cpf || '',
-            financial_responsible_relation: d.financial_responsible_relation || '',
-            financial_responsible_address: d.financial_responsible_address || '',
-            financial_responsible_phone: d.financial_responsible_phone || '',
-            health_info: d.health_info || '',
-            observations: d.observations || '',
-            payment_due_day: dayVal,
-          });
-          if (d.submitted_at) setSubmitted(true);
+
+    const loadData = async () => {
+      // Load intake form
+      const { data: formData } = await supabase
+        .from('patient_intake_forms')
+        .select('*')
+        .eq('patient_id', portalAccount.patient_id)
+        .maybeSingle();
+
+      if (formData) {
+        const d = formData as any;
+        const dayVal = d.payment_due_day ? String(d.payment_due_day) : '';
+        const isPreset = PAYMENT_DAY_OPTIONS.some(o => o.value === dayVal);
+        setCustomDay(!!dayVal && !isPreset);
+        setForm({
+          full_name: d.full_name || '',
+          cpf: d.cpf || '',
+          birthdate: d.birthdate || '',
+          phone: d.phone || '',
+          whatsapp: d.whatsapp || '',
+          email: d.email || '',
+          address: d.address || '',
+          gender: d.gender || '',
+          how_found: d.how_found || '',
+          emergency_contact_name: d.emergency_contact_name || '',
+          emergency_contact_relation: d.emergency_contact_relation || '',
+          emergency_contact_address: d.emergency_contact_address || '',
+          emergency_contact_phone: d.emergency_contact_phone || '',
+          responsible_name: d.responsible_name || '',
+          responsible_cpf: d.responsible_cpf || '',
+          responsible_phone: d.responsible_phone || '',
+          financial_responsible_name: d.financial_responsible_name || '',
+          financial_responsible_email: d.financial_responsible_email || '',
+          financial_responsible_cpf: d.financial_responsible_cpf || '',
+          financial_responsible_relation: d.financial_responsible_relation || '',
+          financial_responsible_address: d.financial_responsible_address || '',
+          financial_responsible_phone: d.financial_responsible_phone || '',
+          health_info: d.health_info || '',
+          observations: d.observations || '',
+          payment_due_day: dayVal,
+        });
+        if (d.submitted_at) setSubmitted(true);
+        if (d.custom_answers && typeof d.custom_answers === 'object') {
+          setCustomAnswers(d.custom_answers as Record<string, string>);
         }
-        setLoading(false);
-      });
+      }
+
+      // Load custom questions from therapist
+      const { data: questionsData } = await supabase
+        .from('intake_custom_questions' as any)
+        .select('*')
+        .eq('user_id', portalAccount.therapist_user_id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      setCustomQuestions((questionsData || []) as unknown as CustomQuestion[]);
+      setLoading(false);
+    };
+
+    loadData();
   }, [portalAccount]);
 
   const set = (field: keyof IntakeForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
 
+  const setAnswer = (questionId: string, value: string) =>
+    setCustomAnswers(prev => ({ ...prev, [questionId]: value }));
+
   const handleSave = async (submit = false) => {
     if (!portalAccount) return;
+
+    // Validate required custom questions if submitting
+    if (submit) {
+      const missing = customQuestions.filter(q => q.required && !customAnswers[q.id]?.trim());
+      if (missing.length > 0) {
+        toast.error(`Preencha as perguntas obrigatórias: ${missing.map(q => `"${q.question}"`).join(', ')}`);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const paymentDueDay = form.payment_due_day ? parseInt(form.payment_due_day, 10) : null;
 
-      // Build snapshot entry for review_history if this is a re-submission
       let reviewHistoryUpdate: Record<string, any> = {};
       if (submit && submitted) {
-        // Fetch current form to snapshot it before overwriting
         const { data: currentForm } = await supabase
           .from('patient_intake_forms')
           .select('*')
@@ -161,7 +278,7 @@ export default function PortalIntakeForm() {
         if (currentForm) {
           const snapshot = {
             submitted_at: new Date().toISOString(),
-            data: form,
+            data: { ...form, custom_answers: customAnswers },
           };
           const existingHistory = Array.isArray((currentForm as any).review_history) ? (currentForm as any).review_history : [];
           reviewHistoryUpdate = {
@@ -179,6 +296,7 @@ export default function PortalIntakeForm() {
         ...form,
         birthdate: form.birthdate || null,
         payment_due_day: paymentDueDay,
+        custom_answers: customAnswers,
         updated_at: new Date().toISOString(),
         ...reviewHistoryUpdate,
       };
@@ -396,6 +514,22 @@ export default function PortalIntakeForm() {
             <Textarea value={form.observations} onChange={set('observations')} placeholder="Algo mais que queira compartilhar com seu terapeuta..." className="resize-none" rows={3} />
           </Field>
         </SectionCard>
+
+        {/* Perguntas Personalizadas do Terapeuta */}
+        {customQuestions.length > 0 && (
+          <SectionCard title="Perguntas do Terapeuta">
+            <div className="space-y-4">
+              {customQuestions.map(q => (
+                <CustomQuestionField
+                  key={q.id}
+                  question={q}
+                  value={customAnswers[q.id] || ''}
+                  onChange={val => setAnswer(q.id, val)}
+                />
+              ))}
+            </div>
+          </SectionCard>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2 pb-4">

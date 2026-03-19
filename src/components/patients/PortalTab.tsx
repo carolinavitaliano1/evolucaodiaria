@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import {
   Send, Loader2, Mail, RefreshCw, CheckCircle2, Clock, MessageSquare, Bell,
   FilePenLine, Eye, ExternalLink, ClipboardList, User, Heart, CreditCard,
-  Plus, Trash2, ChevronDown, ChevronRight, Users, School, Building2, UserCircle, FileUp, Download, X
+  Plus, Trash2, ChevronDown, ChevronRight, Users, School, Building2, UserCircle, FileUp, Download, X, Settings2, ListOrdered
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { ContractManager } from './ContractManager';
 import { PortalNoticesManager } from './PortalNoticesManager';
 import { SharedEvolutionsManager } from './SharedEvolutionsManager';
+import { IntakeCustomQuestionsManager, type CustomQuestion } from './IntakeCustomQuestionsManager';
 
 interface PortalTabProps {
   patientId: string;
@@ -124,7 +125,50 @@ function IntakeField({ label, value }: { label: string; value: string | null | u
   );
 }
 
-// ─── IntakeReviewPanel ────────────────────────────────────────────────────────
+// ─── CustomAnswersSection ─────────────────────────────────────────────────────
+function CustomAnswersSection({
+  answers,
+  therapistUserId,
+}: {
+  answers: Record<string, string>;
+  therapistUserId: string;
+}) {
+  const [questions, setQuestions] = useState<{ id: string; question: string }[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from('intake_custom_questions' as any)
+      .select('id, question')
+      .eq('user_id', therapistUserId)
+      .then(({ data }) => setQuestions((data || []) as unknown as { id: string; question: string }[]));
+  }, [therapistUserId]);
+
+  const entries = Object.entries(answers).filter(([, v]) => !!v);
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="space-y-3 pt-3 border-t border-border">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+        <ListOrdered className="w-3.5 h-3.5" /> Perguntas Personalizadas
+      </h4>
+      <div className="space-y-2 pl-1">
+        {entries.map(([qId, answer]) => {
+          const q = questions.find(x => x.id === qId);
+          return (
+            <div key={qId} className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                {q ? q.question : qId}
+              </p>
+              <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{answer}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
 function IntakeReviewPanel({
   intakeForm, patientId, onReviewed,
 }: {
@@ -253,6 +297,7 @@ function AccountPanel({
   const [sending, setSending] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [docDescription, setDocDescription] = useState('');
+  const [showCustomQuestionsManager, setShowCustomQuestionsManager] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const perms = account.permissions || DEFAULT_PERMISSIONS;
 
@@ -528,6 +573,14 @@ function AccountPanel({
                   )}
                 </h3>
                 <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => setShowCustomQuestionsManager(true)}
+                  >
+                    <Settings2 className="w-3 h-3" /> Personalizar
+                  </Button>
                   {hasIntakeSubmitted ? (
                     <span className="text-xs text-success flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
@@ -547,7 +600,12 @@ function AccountPanel({
                 </div>
               </div>
 
-              {/* Review pending banner */}
+              {/* Custom Questions Manager Dialog */}
+              {showCustomQuestionsManager && (
+                <div className="p-4 border-b border-border bg-muted/10">
+                  <IntakeCustomQuestionsManager onClose={() => setShowCustomQuestionsManager(false)} />
+                </div>
+              )}
               {intakeForm?.needs_review && (
                 <IntakeReviewPanel intakeForm={intakeForm} patientId={patientId} onReviewed={async (approved) => {
                   const { error } = await supabase
@@ -637,6 +695,13 @@ function AccountPanel({
                         )}
                       </div>
                     </div>
+                  )}
+                  {/* Custom answers */}
+                  {(intakeForm as any).custom_answers && Object.keys((intakeForm as any).custom_answers).length > 0 && (
+                    <CustomAnswersSection
+                      answers={(intakeForm as any).custom_answers}
+                      therapistUserId={user!.id}
+                    />
                   )}
                 </div>
               )}
