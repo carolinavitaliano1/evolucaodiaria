@@ -125,7 +125,50 @@ function IntakeField({ label, value }: { label: string; value: string | null | u
   );
 }
 
-// ─── IntakeReviewPanel ────────────────────────────────────────────────────────
+// ─── CustomAnswersSection ─────────────────────────────────────────────────────
+function CustomAnswersSection({
+  answers,
+  therapistUserId,
+}: {
+  answers: Record<string, string>;
+  therapistUserId: string;
+}) {
+  const [questions, setQuestions] = useState<{ id: string; question: string }[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from('intake_custom_questions' as any)
+      .select('id, question')
+      .eq('user_id', therapistUserId)
+      .then(({ data }) => setQuestions((data || []) as unknown as { id: string; question: string }[]));
+  }, [therapistUserId]);
+
+  const entries = Object.entries(answers).filter(([, v]) => !!v);
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="space-y-3 pt-3 border-t border-border">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+        <ListOrdered className="w-3.5 h-3.5" /> Perguntas Personalizadas
+      </h4>
+      <div className="space-y-2 pl-1">
+        {entries.map(([qId, answer]) => {
+          const q = questions.find(x => x.id === qId);
+          return (
+            <div key={qId} className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                {q ? q.question : qId}
+              </p>
+              <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{answer}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
 function IntakeReviewPanel({
   intakeForm, patientId, onReviewed,
 }: {
