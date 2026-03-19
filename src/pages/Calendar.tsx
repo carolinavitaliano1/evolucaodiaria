@@ -162,7 +162,18 @@ export default function CalendarPage() {
         isDraggable: true,
       }));
 
-    return [...appts, ...scheduledPatients, ...privAppts, ...evts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const googleEvts: CalItem[] = googleEvents
+      .filter(e => e.date === dateStr)
+      .map(e => ({
+        id: `google-${e.id}`, time: e.time || '', title: e.title,
+        sub: 'Google Calendar',
+        type: 'evento', rawEvent: null,
+        color: 'bg-[#4285F4]',
+        bgColor: 'bg-blue-100 text-blue-800 border-blue-300',
+        isDraggable: false,
+      }));
+
+    return [...appts, ...scheduledPatients, ...privAppts, ...evts, ...googleEvts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate, evolutions]);
 
   // --- Appointment form ---
