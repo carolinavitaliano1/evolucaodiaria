@@ -24,7 +24,7 @@ interface EditClinicDialogProps {
   clinic: Clinic;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (id: string, updates: Partial<Clinic>) => void;
+  onSave: (id: string, updates: Partial<Clinic>) => Promise<void> | void;
 }
 
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
