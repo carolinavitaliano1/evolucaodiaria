@@ -364,7 +364,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Salvar Alterações</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar Alterações'}</Button>
           </div>
         </form>
       </DialogContent>
