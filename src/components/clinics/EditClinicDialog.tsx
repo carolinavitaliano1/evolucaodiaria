@@ -82,23 +82,28 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         name: formData.name,
         type: formData.type,
         address: formData.address || undefined,
-      notes: formData.notes || undefined,
-      email: formData.email || undefined,
-      cnpj: formData.cnpj || undefined,
-      phone: formData.phone || undefined,
-      servicesDescription: formData.servicesDescription || undefined,
-      weekdays: formData.weekdays,
-      scheduleTime: firstDayTime || undefined,
-      scheduleByDay: formData.scheduleByDay,
-      paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
-      paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
-      discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
-      paysOnAbsence: formData.absencePaymentType !== 'never',
-      absencePaymentType: formData.absencePaymentType,
-    });
-
-    toast.success('Clínica atualizada!');
-    onOpenChange(false);
+        notes: formData.notes || undefined,
+        email: formData.email || undefined,
+        cnpj: formData.cnpj || undefined,
+        phone: formData.phone || undefined,
+        servicesDescription: formData.servicesDescription || undefined,
+        weekdays: formData.weekdays,
+        scheduleTime: firstDayTime || undefined,
+        scheduleByDay: formData.scheduleByDay,
+        paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
+        paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
+        discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
+        paysOnAbsence: formData.absencePaymentType !== 'never',
+        absencePaymentType: formData.absencePaymentType,
+      });
+      toast.success('Clínica atualizada!');
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao atualizar clínica');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
