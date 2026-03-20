@@ -24,7 +24,7 @@ interface EditClinicDialogProps {
   clinic: Clinic;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (id: string, updates: Partial<Clinic>) => void;
+  onSave: (id: string, updates: Partial<Clinic>) => Promise<void> | void;
 }
 
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
@@ -66,7 +66,9 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     }
   }, [open, clinic]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
@@ -74,27 +76,34 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
-    onSave(clinic.id, {
-      name: formData.name,
-      type: formData.type,
-      address: formData.address || undefined,
-      notes: formData.notes || undefined,
-      email: formData.email || undefined,
-      cnpj: formData.cnpj || undefined,
-      phone: formData.phone || undefined,
-      servicesDescription: formData.servicesDescription || undefined,
-      weekdays: formData.weekdays,
-      scheduleTime: firstDayTime || undefined,
-      scheduleByDay: formData.scheduleByDay,
-      paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
-      paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
-      discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
-      paysOnAbsence: formData.absencePaymentType !== 'never',
-      absencePaymentType: formData.absencePaymentType,
-    });
-
-    toast.success('Clínica atualizada!');
-    onOpenChange(false);
+    setSaving(true);
+    try {
+      await onSave(clinic.id, {
+        name: formData.name,
+        type: formData.type,
+        address: formData.address || undefined,
+        notes: formData.notes || undefined,
+        email: formData.email || undefined,
+        cnpj: formData.cnpj || undefined,
+        phone: formData.phone || undefined,
+        servicesDescription: formData.servicesDescription || undefined,
+        weekdays: formData.weekdays,
+        scheduleTime: firstDayTime || undefined,
+        scheduleByDay: formData.scheduleByDay,
+        paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
+        paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
+        discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
+        paysOnAbsence: formData.absencePaymentType !== 'never',
+        absencePaymentType: formData.absencePaymentType,
+      });
+      toast.success('Clínica atualizada!');
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao atualizar clínica');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -355,7 +364,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Salvar Alterações</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar Alterações'}</Button>
           </div>
         </form>
       </DialogContent>
