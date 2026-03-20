@@ -60,6 +60,11 @@ export function MissingEvolutionsAlert() {
       // 1. Recurring patients
       patients.forEach(p => {
         if (p.isArchived) return;
+        // Don't check days before the patient was registered
+        if (p.createdAt) {
+          const patientCreatedDate = toLocalDateString(new Date(p.createdAt));
+          if (dateStr < patientCreatedDate) return;
+        }
         const schedByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
         const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
         if (!scheduledDays.includes(weekday)) return;
