@@ -66,7 +66,9 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     }
   }, [open, clinic]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
@@ -74,10 +76,12 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
       ? formData.scheduleByDay[formData.weekdays[0]]?.start || ''
       : '';
 
-    onSave(clinic.id, {
-      name: formData.name,
-      type: formData.type,
-      address: formData.address || undefined,
+    setSaving(true);
+    try {
+      await onSave(clinic.id, {
+        name: formData.name,
+        type: formData.type,
+        address: formData.address || undefined,
       notes: formData.notes || undefined,
       email: formData.email || undefined,
       cnpj: formData.cnpj || undefined,
