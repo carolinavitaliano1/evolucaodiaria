@@ -22,7 +22,10 @@ serve(async (req) => {
       clinic_id,
       // Patient
       name, birthdate, cpf, phone, whatsapp, email,
-      // Legal responsible
+      // Minor / guardian
+      is_minor,
+      guardian_name, guardian_email, guardian_phone, guardian_kinship,
+      // Legal responsible (financial contract)
       responsible_name, responsible_cpf, responsible_whatsapp, responsible_email, responsible_relation,
       // Financial responsible
       financial_responsible,
