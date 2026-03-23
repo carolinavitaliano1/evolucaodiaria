@@ -87,6 +87,13 @@ serve(async (req) => {
         phone: phone?.trim() || null,
         whatsapp: whatsapp?.trim() || null,
         email: email?.trim() || null,
+        // Guardian (minor)
+        is_minor: is_minor === true || is_minor === 'true',
+        guardian_name: guardian_name?.trim() || null,
+        guardian_email: guardian_email?.trim() || null,
+        guardian_phone: guardian_phone?.trim() || null,
+        guardian_kinship: guardian_kinship?.trim() || null,
+        // Legal / contract responsible
         responsible_name: responsible_name?.trim() || null,
         responsible_cpf: responsible_cpf?.trim() || null,
         responsible_whatsapp: responsible_whatsapp?.trim() || null,
