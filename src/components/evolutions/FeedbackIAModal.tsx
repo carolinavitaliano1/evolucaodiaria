@@ -120,32 +120,19 @@ export function FeedbackIAModal({
     if (!content.trim() || !user) return;
     setSaving(true);
     try {
-      // Save to portal_notices
       const photoUrls = photos.filter(p => p.url).map(p => p.url!);
-      const portalContent = content + (photoUrls.length > 0
-        ? `\n\n📷 Fotos da sessão: ${photoUrls.join(', ')}`
-        : '');
 
-      const { error: noticeError } = await supabase.from('portal_notices').insert({
-        patient_id: patientId,
-        therapist_user_id: user.id,
-        title: isBulk
-          ? `📊 Resumo do período — ${format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}`
-          : `💬 Feedback da sessão — ${evolutions[0]?.date ? format(new Date(evolutions[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : format(new Date(), 'dd/MM/yyyy')}`,
-        content: portalContent,
-      });
-      if (noticeError) throw noticeError;
-
-      // Save feedback record
-      await supabase.from('evolution_feedbacks').insert({
+      // Save directly to evolution_feedbacks (shown in "Feedback da Sessão" tab)
+      const { error: feedbackError } = await supabase.from('evolution_feedbacks').insert({
         user_id: user.id,
         patient_id: patientId,
         evolution_ids: evolutions.map(e => e.id),
         content,
-        photo_urls: photos.filter(p => p.url).map(p => p.url),
+        photo_urls: photoUrls,
         sent_to_portal: true,
         is_bulk: isBulk,
       } as any);
+      if (feedbackError) throw feedbackError;
 
       setSentToPortal(true);
       toast.success('Feedback enviado para o portal do paciente! 🎉');

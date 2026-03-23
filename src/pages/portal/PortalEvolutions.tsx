@@ -6,49 +6,46 @@ import { Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-interface Evolution {
+interface EvolutionFeedback {
   id: string;
-  date: string;
-  text: string;
-  attendance_status: string;
+  content: string;
+  photo_urls: string[];
+  is_bulk: boolean;
+  created_at: string;
 }
 
 export default function PortalEvolutions() {
   const { portalAccount } = usePortal();
-  const [evolutions, setEvolutions] = useState<Evolution[]>([]);
+  const [feedbacks, setFeedbacks] = useState<EvolutionFeedback[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!portalAccount) return;
     supabase
-      .from('evolutions')
-      .select('id, date, text, attendance_status')
+      .from('evolution_feedbacks')
+      .select('id, content, photo_urls, is_bulk, created_at')
       .eq('patient_id', portalAccount.patient_id)
-      .eq('portal_visible', true)
-      .order('date', { ascending: false })
+      .eq('sent_to_portal', true)
+      .order('created_at', { ascending: false })
       .then(({ data }) => {
-        setEvolutions((data || []) as Evolution[]);
+        const list = (data || []).map((item: any) => ({
+          ...item,
+          photo_urls: Array.isArray(item.photo_urls)
+            ? item.photo_urls
+            : typeof item.photo_urls === 'string'
+              ? JSON.parse(item.photo_urls)
+              : [],
+        }));
+        setFeedbacks(list);
         setLoading(false);
       });
   }, [portalAccount]);
-
-  const statusLabel = (s: string) => {
-    const m: Record<string, string> = {
-      presente: '✅ Presente',
-      falta: '❌ Falta',
-      falta_remunerada: '💰 Falta',
-      reposicao: '🔄 Reposição',
-      feriado_remunerado: '🎉 Feriado',
-      feriado_nao_remunerado: '📅 Feriado',
-    };
-    return m[s] || s;
-  };
 
   return (
     <PortalLayout>
       <div className="space-y-5">
         <div>
-          <h1 className="text-lg font-bold text-foreground">Feedbacks da Sessão</h1>
+          <h1 className="text-lg font-bold text-foreground">Feedback da Sessão</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Registros compartilhados pelo seu terapeuta</p>
         </div>
 
@@ -56,7 +53,7 @@ export default function PortalEvolutions() {
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
-        ) : evolutions.length === 0 ? (
+        ) : feedbacks.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border p-8 text-center">
             <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
             <p className="font-semibold text-sm text-foreground">Nenhum registro disponível</p>
@@ -64,16 +61,31 @@ export default function PortalEvolutions() {
           </div>
         ) : (
           <div className="space-y-3">
-            {evolutions.map(evo => (
-              <div key={evo.id} className="bg-card rounded-2xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-foreground">
-                    {format(new Date(evo.date + 'T12:00:00'), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                  </p>
-                  <span className="text-xs text-muted-foreground">{statusLabel(evo.attendance_status)}</span>
+            {feedbacks.map(fb => (
+              <div key={fb.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-primary">
+                    {fb.is_bulk ? '📊 Resumo do período' : '💬 Feedback da sessão'}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(new Date(fb.created_at), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </span>
                 </div>
-                {evo.text && (
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{evo.text}</p>
+                {fb.content && (
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{fb.content}</p>
+                )}
+                {fb.photo_urls.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {fb.photo_urls.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={url}
+                          alt={`Foto ${i + 1}`}
+                          className="w-full h-32 object-cover rounded-xl border border-border hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
             ))}
