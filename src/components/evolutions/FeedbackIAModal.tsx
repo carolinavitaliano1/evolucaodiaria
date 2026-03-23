@@ -12,6 +12,7 @@ import {
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { Evolution } from '@/types';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 /** Extrai texto clínico relevante de uma evolução.
  *  Prioriza o campo `text` livre. Se vazio, usa campos de texto longo (>20 chars) do templateData. */
@@ -25,7 +26,6 @@ function extractEvolutionText(e: Evolution): string {
   }
   return '(sessão registrada sem texto descritivo)';
 }
-import { ptBR } from 'date-fns/locale';
 
 interface FeedbackIAModalProps {
   open: boolean;
