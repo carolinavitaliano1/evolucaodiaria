@@ -70,7 +70,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 // --- Mapper helpers ---
 function mapClinic(c: Record<string, unknown>): Clinic {
   return {
-    id: c.id as string, name: c.name as string, type: c.type as 'propria' | 'terceirizada',
+    id: c.id as string, name: c.name as string, type: c.type as 'propria' | 'terceirizada' | 'clinica',
     address: (c.address as string) || undefined, notes: (c.notes as string) || undefined,
     weekdays: (c.weekdays as string[]) || undefined, scheduleTime: (c.schedule_time as string) || undefined,
     scheduleByDay: c.schedule_by_day as ScheduleByDay | undefined,
