@@ -29,7 +29,7 @@ interface EditPatientDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (id: string, updates: Partial<Patient>) => void;
   clinicPackages?: ClinicPackage[];
-  clinicType?: 'propria' | 'terceirizada';
+  clinicType?: 'propria' | 'terceirizada' | 'clinica';
 }
 
 export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicPackages = [], clinicType }: EditPatientDialogProps) {
