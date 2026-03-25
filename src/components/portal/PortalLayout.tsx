@@ -12,7 +12,7 @@ const navItems = [
   { to: '/portal/avisos', icon: Bell, label: 'Avisos' },
   { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro' },
   { to: '/portal/mural', icon: Newspaper, label: 'Mural' },
-  { to: '/portal/evolucoes', icon: MessageSquare, label: 'Feedback' },
+  { to: '/portal/evolucoes', icon: BookOpen, label: 'Feedback' },
   { to: '/portal/ficha', icon: FileText, label: 'Ficha' },
   { to: '/portal/documentos', icon: FolderOpen, label: 'Docs' },
 ];
