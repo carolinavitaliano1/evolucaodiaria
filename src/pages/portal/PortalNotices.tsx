@@ -27,19 +27,21 @@ export default function PortalNotices() {
       .from('portal_notices')
       .select('*')
       .eq('patient_id', portalAccount.patient_id)
+      .not('title', 'ilike', '%Mural%')
       .order('created_at', { ascending: false });
 
     const list = (data || []) as Notice[];
     setNotices(list);
     setLoading(false);
 
-    // Mark all as read
+    // Mark only non-mural notices as read
     if (list.some(n => !n.read_by_patient)) {
       await supabase
         .from('portal_notices')
         .update({ read_by_patient: true })
         .eq('patient_id', portalAccount.patient_id)
-        .eq('read_by_patient', false);
+        .eq('read_by_patient', false)
+        .not('title', 'ilike', '%Mural%');
     }
   }, [portalAccount]);
 

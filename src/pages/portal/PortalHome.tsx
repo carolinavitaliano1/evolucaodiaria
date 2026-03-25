@@ -23,7 +23,7 @@ export default function PortalHome() {
     { to: '/portal/avisos', icon: Bell, label: 'Avisos', desc: 'Comunicados do terapeuta' },
     { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro', desc: 'Pagamentos e recibos' },
     { to: '/portal/ficha', icon: FileText, label: 'Minha Ficha', desc: 'Dados cadastrais' },
-    { to: '/portal/evolucoes', icon: BookOpen, label: 'Evoluções', desc: 'Registros compartilhados' },
+    { to: '/portal/evolucoes', icon: BookOpen, label: 'Feedback', desc: 'Feedbacks da sessão' },
     { to: '/portal/contrato', icon: FilePenLine, label: 'Contrato', desc: 'Contrato terapêutico' },
   ];
 
