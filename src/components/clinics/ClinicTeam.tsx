@@ -21,7 +21,7 @@ import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
   Settings, Lock, MoreVertical, UserCheck, UserX,
-  Briefcase, Banknote, Search, SlidersHorizontal,
+  Briefcase, Banknote, Search, SlidersHorizontal, UserCircle, Activity
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
