@@ -215,19 +215,20 @@ export function FeedbackIAModal({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <MessageSquare className="w-3.5 h-3.5 text-primary" /> Feedback gerado
+                    <MessageSquare className="w-3.5 h-3.5 text-primary" /> Feedback
                   </p>
                   <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground gap-1"
                     onClick={handleGenerate} disabled={generating}>
                     {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                    Regerar
+                    {content.trim() ? 'Regerar com IA' : 'Gerar com IA'}
                   </Button>
                 </div>
                 <Textarea
-                  value={content}
+                  value={content.trim() === '' ? '' : content}
                   onChange={e => setContent(e.target.value)}
                   className="min-h-[180px] text-sm resize-none"
-                  placeholder="Feedback gerado aqui..."
+                  placeholder="Escreva aqui o feedback para os pais/responsáveis..."
+                  autoFocus
                 />
                 <p className="text-[10px] text-muted-foreground">Você pode editar o texto acima antes de enviar.</p>
               </div>
