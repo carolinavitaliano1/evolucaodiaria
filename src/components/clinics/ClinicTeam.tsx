@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { TeamAttendanceGrid } from '@/components/clinics/TeamAttendanceGrid';
+import { StaffAttendanceReport } from '@/components/clinics/StaffAttendanceReport';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -20,7 +21,7 @@ import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
   Settings, Lock, MoreVertical, UserCheck, UserX,
-  Briefcase, Banknote, Search, SlidersHorizontal,
+  Briefcase, Banknote, Search, SlidersHorizontal, UserCircle, Activity
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
@@ -185,6 +186,185 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   }, [members, searchQuery, statusFilter]);
 
   useEffect(() => { loadTeam(); }, [clinicId]);
+
+  const MembersView = (
+    <div className="space-y-6">
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, e-mail ou cargo..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="pl-9 bg-card border-border"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-1 bg-muted/50 border border-border p-1 rounded-lg">
+            {(['all', 'active', 'pending', 'inactive'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  'px-2.5 py-1 rounded-md text-[10px] font-medium transition-all',
+                  statusFilter === s
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {STATUS_LABELS[s] || 'Todos'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredMembers.map(member => {
+          const initials = getInitials(member.profile?.name, member.email);
+          const color = getAvatarColor(member.email);
+          const roleLabel = member.role_label || ROLE_LABELS[member.role] || member.role;
+          const isMe = member.user_id === user?.id;
+
+          return (
+            <div
+              key={member.id}
+              onClick={() => canManage && setManageMember(member)}
+              className={cn(
+                'group p-4 rounded-2xl border bg-card transition-all flex flex-col',
+                canManage ? 'cursor-pointer hover:border-primary/40 hover:shadow-md' : 'cursor-default'
+              )}
+            >
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-11 h-11 ring-2 ring-background ring-offset-2 ring-offset-border/20">
+                    {member.profile?.avatar_url && (
+                      <AvatarImage src={member.profile.avatar_url} />
+                    )}
+                    <AvatarFallback className={cn('text-white font-bold', color)}>
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-bold text-foreground text-sm truncate">
+                      {member.profile?.name || member.email.split('@')[0]}
+                      {isMe && <span className="ml-1.5 text-[10px] font-normal text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Você</span>}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Badge variant="outline" className={cn('text-[10px] h-4 px-1.5 font-medium border-0', STATUS_COLORS[member.status])}>
+                        {STATUS_LABELS[member.status]}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground truncate">{roleLabel}</span>
+                    </div>
+                  </div>
+                </div>
+                {canManage && (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    {!isMe && member.status === 'pending' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-primary hover:bg-primary/10"
+                        onClick={e => handleResendInvite(member, e)}
+                        disabled={resendingId === member.id}
+                        title="Reenviar convite"
+                      >
+                        {resendingId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
+                      <MoreVertical className="w-3.5 h-3.5" />
+                    </Button>
+                    {isOwner && !isMe && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-success hover:bg-success/10')}
+                        onClick={e => { e.stopPropagation(); handleToggleMemberStatus(member); }}
+                        title={member.status === 'active' ? 'Suspender acesso' : 'Reativar acesso'}
+                      >
+                        {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Assignments preview */}
+              {member.assignments && member.assignments.length > 0 && (
+                <div className="mt-auto pt-4 border-t border-border/50">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <UserCircle className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Pacientes ({member.assignments.length})</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {member.assignments.slice(0, 3).map(a => (
+                      <span key={a.id} className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border/50">
+                        {a.patient_name || '...'}
+                      </span>
+                    ))}
+                    {member.assignments.length > 3 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                        +{member.assignments.length - 3}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Add collaborator card */}
+        {canManage && (
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="rounded-xl border-2 border-dashed border-border hover:border-primary/40 bg-card hover:bg-primary/5 p-4 flex flex-col items-center justify-center gap-3 transition-all min-h-[180px] cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <UserPlus className="w-5 h-5 text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">Convidar Colaborador</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Enviar convite por e-mail</p>
+            </div>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const AttendanceView = (
+    <div className="space-y-6">
+      {organization && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-1 border-b border-border">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-foreground text-sm">Quadro de Presença</h3>
+            <span className="text-xs text-muted-foreground">— registre presenças, faltas e justificativas</span>
+          </div>
+          <TeamAttendanceGrid
+            organizationId={organization.id}
+            members={members}
+            canManage={canManage}
+          />
+        </div>
+      )}
+    </div>
+  );
+
+  const FrequencyView = (
+    <div className="space-y-6">
+      {organization && (
+        <StaffAttendanceReport 
+          organizationId={organization.id} 
+          members={members} 
+        />
+      )}
+    </div>
+  );
 
   useEffect(() => {
     if (organization && canManage) loadLateEvolutions();
@@ -967,23 +1147,26 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         )}
       </div>
 
-      {/* ──────────────────────────────────────────────────────────────
-          Attendance Grid
-      ────────────────────────────────────────────────────────────── */}
-      {organization && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 pb-1 border-b border-border">
-            <CalendarDays className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm">Quadro de Presença</h3>
-            <span className="text-xs text-muted-foreground">— registre presenças, faltas e justificativas</span>
-          </div>
-          <TeamAttendanceGrid
-            organizationId={organization.id}
-            members={members}
-            canManage={canManage}
-          />
-        </div>
-      )}
+      <Tabs defaultValue="members" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 h-11 bg-muted/50 p-1 rounded-xl mb-6">
+          <TabsTrigger value="members" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+            <Users className="w-4 h-4" />
+            Equipe
+          </TabsTrigger>
+          <TabsTrigger value="attendance" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+            <CalendarDays className="w-4 h-4" />
+            Ponto Diário
+          </TabsTrigger>
+          <TabsTrigger value="frequency" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+            <Activity className="w-4 h-4" />
+            Frequência
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="members">{MembersView}</TabsContent>
+        <TabsContent value="attendance">{AttendanceView}</TabsContent>
+        <TabsContent value="frequency">{FrequencyView}</TabsContent>
+      </Tabs>
 
       {/* ──────────────────────────────────────────────────────────────
           Member Management Modal
