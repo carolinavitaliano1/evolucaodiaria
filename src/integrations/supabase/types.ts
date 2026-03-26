@@ -1251,6 +1251,7 @@ export type Database = {
           amount: number
           clinic_id: string
           created_at: string
+          due_date: string | null
           id: string
           month: number
           notes: string | null
@@ -1265,6 +1266,7 @@ export type Database = {
           amount?: number
           clinic_id: string
           created_at?: string
+          due_date?: string | null
           id?: string
           month: number
           notes?: string | null
@@ -1279,6 +1281,7 @@ export type Database = {
           amount?: number
           clinic_id?: string
           created_at?: string
+          due_date?: string | null
           id?: string
           month?: number
           notes?: string | null
