@@ -294,9 +294,9 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       {
         id: 'edit',
         label: 'Editar',
-        description: 'Cria, move e cancela agendamentos de todos.',
-        grants: ['calendar.view', 'calendar.edit'],
-        revokes: ['calendar.own_only'],
+        description: 'Visualiza e edita apenas os próprios agendamentos.',
+        grants: ['calendar.view', 'calendar.own_only', 'calendar.edit'],
+        revokes: [],
       },
       {
         id: 'all',
