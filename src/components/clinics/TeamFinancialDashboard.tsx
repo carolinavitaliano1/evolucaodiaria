@@ -312,12 +312,13 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 100);
         doc.text('Paciente', margin, y);
         if (filterMemberId === 'all') doc.text('Profissional', margin + 60, y);
-        doc.text('Sessões', margin + 105, y);
+        doc.text('Real.', margin + 100, y);
+        doc.text('Faltas', margin + 115, y);
         doc.text('Faturamento', pw - margin - 35, y);
         y += 3;
         doc.setDrawColor(210, 210, 220); doc.line(margin, y, pw - margin, y); y += 4;
 
-        patientBreakdown.forEach(({ patient, sessions, author }) => {
+        patientBreakdown.forEach(({ patient, sessions, absences, paidAbsences, author }) => {
           addPageIfNeeded(7);
           doc.setFont('helvetica', 'normal'); doc.setTextColor(50, 50, 70);
           doc.text(patient.name.substring(0, 22), margin, y);
@@ -326,7 +327,8 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
             doc.text((author.name || author.email).substring(0, 18), margin + 60, y);
           }
           doc.setTextColor(50, 50, 70);
-          doc.text(sessions.toString(), margin + 108, y);
+          doc.text(sessions.toString(), margin + 102, y);
+          doc.text((absences + paidAbsences).toString(), margin + 118, y);
           y += 7;
         });
 

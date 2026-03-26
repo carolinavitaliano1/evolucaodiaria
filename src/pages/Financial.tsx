@@ -860,11 +860,11 @@ export default function Financial() {
         doc.text(dateStr, col1, y);
         doc.text(patientName, col2, y);
 
-        // Frequência column (colored)
-        if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao' || evo.attendanceStatus === 'feriado_remunerado') doc.setTextColor(34, 139, 34);
-        else if (evo.attendanceStatus === 'falta_remunerada') doc.setTextColor(200, 150, 0);
-        else if (evo.attendanceStatus === 'feriado_nao_remunerado') doc.setTextColor(100, 100, 100);
-        else doc.setTextColor(220, 53, 69);
+        // Frequência column (colored) - Present/Reposicao (Green), Paid Absence (Orange), Others (Gray/Red)
+        if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao') doc.setTextColor(34, 139, 34);
+        else if (evo.attendanceStatus === 'falta_remunerada' || evo.attendanceStatus === 'feriado_remunerado') doc.setTextColor(185, 120, 0); // Deeper orange
+        else if (evo.attendanceStatus === 'feriado_nao_remunerado') doc.setTextColor(120, 120, 120);
+        else doc.setTextColor(200, 40, 40); // Better red
         doc.text(statusLabel, col3, y);
 
         // Status Pgto column
