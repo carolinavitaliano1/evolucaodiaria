@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
   Sparkles, Loader2, Send, Copy, CheckCircle2,
-  Image, X, Upload, MessageSquare
+  Image, X, Upload, MessageSquare, PenLine
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { Evolution } from '@/types';
