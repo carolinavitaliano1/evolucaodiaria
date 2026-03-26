@@ -9,8 +9,15 @@ export default function CheckoutSuccess() {
   const { refresh } = useSubscription();
 
   useEffect(() => {
+    // Clear stale subscription cache so ProtectedRoute won't redirect back to /pricing
+    localStorage.removeItem('evolucao_subscription_cache');
+    localStorage.removeItem('clinipro_subscription_cache');
     refresh();
-  }, [refresh]);
+
+    // Auto-redirect to dashboard after 4 seconds
+    const timer = setTimeout(() => navigate('/dashboard', { replace: true }), 4000);
+    return () => clearTimeout(timer);
+  }, [refresh, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
