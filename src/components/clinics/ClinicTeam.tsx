@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { TeamAttendanceGrid } from '@/components/clinics/TeamAttendanceGrid';
+import { StaffAttendanceReport } from '@/components/clinics/StaffAttendanceReport';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
