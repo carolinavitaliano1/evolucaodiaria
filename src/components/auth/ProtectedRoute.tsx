@@ -56,7 +56,12 @@ export function ProtectedRoute({ children, requireSubscription = false }: Protec
     }
 
     if (!subscribed) {
-      return <Navigate to="/pricing" replace />;
+      // Don't redirect to /pricing if the user just came from a successful checkout
+      const isReturningFromCheckout = window.location.pathname === '/checkout-success' ||
+        document.referrer.includes('checkout.stripe.com');
+      if (!isReturningFromCheckout) {
+        return <Navigate to="/pricing" replace />;
+      }
     }
   }
 
