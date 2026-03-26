@@ -165,9 +165,9 @@ export function FeedbackIAModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary" />
+              <MessageSquare className="w-4 h-4 text-primary" />
             </div>
-            Feedback IA para os Pais
+            Feedback para os Pais
           </DialogTitle>
         </DialogHeader>
 
@@ -176,24 +176,37 @@ export function FeedbackIAModal({
           <div className="bg-primary/5 border border-primary/15 rounded-xl px-3 py-2.5">
             <p className="text-xs text-muted-foreground">
               {isBulk
-                ? <><span className="font-semibold text-foreground">{evolutions.length} sessões selecionadas</span> — a IA vai gerar um resumo do período em linguagem para os pais.</>
-                : <><span className="font-semibold text-foreground">{patientName}</span> — sessão de {evolutions[0]?.date ? format(new Date(evolutions[0].date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }) : ''}. A IA vai resumir a sessão em linguagem acessível.</>
+                ? <><span className="font-semibold text-foreground">{evolutions.length} sessões selecionadas</span> — escreva seu feedback ou use a IA para gerar um resumo.</>
+                : <><span className="font-semibold text-foreground">{patientName}</span> — sessão de {evolutions[0]?.date ? format(new Date(evolutions[0].date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }) : ''}.</>
               }
             </p>
           </div>
 
-          {/* Generate button */}
+          {/* Options: Write manually or Generate with AI */}
           {!content && (
-            <Button
-              className="w-full gap-2"
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando com IA...</>
-                : <><Sparkles className="w-4 h-4" /> Gerar Feedback com IA</>
-              }
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setContent(' ')}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                  <PenLine className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Escrever manualmente</span>
+                <span className="text-[10px] text-muted-foreground">Redija seu próprio texto</span>
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all group disabled:opacity-50"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                  {generating ? <Loader2 className="w-5 h-5 text-primary animate-spin" /> : <Sparkles className="w-5 h-5 text-primary" />}
+                </div>
+                <span className="text-sm font-medium text-foreground">{generating ? 'Gerando...' : 'Gerar com IA'}</span>
+                <span className="text-[10px] text-muted-foreground">Resumo automático da sessão</span>
+              </button>
+            </div>
           )}
 
           {/* Content editor */}
