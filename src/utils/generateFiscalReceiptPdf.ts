@@ -218,7 +218,9 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   y += 4;
 
   let sessionTotal = 0;
-  let sessionCount = 0;
+  let realizedCount = 0;
+  let paidAbsenceCount = 0;
+  let unpaidAbsenceCount = 0;
 
   doc.setFont('helvetica', 'normal');
   for (const evo of evolutions) {
@@ -231,41 +233,63 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     doc.setTextColor(...darkText);
     doc.text(dateStr, c1, y);
     doc.text(areaDisplay, c2, y);
-    doc.setTextColor(st.billable ? darkText[0] : mutedText[0], st.billable ? darkText[1] : mutedText[1], st.billable ? darkText[2] : mutedText[2]);
+    
+    // Status color: green for present/reposicao, orange for paid absence, gray for others
+    let stColor = darkText;
+    if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao') {
+      stColor = successColor;
+      realizedCount++;
+    } else if (evo.attendanceStatus === 'falta_remunerada' || evo.attendanceStatus === 'feriado_remunerado') {
+      stColor = warningColor;
+      paidAbsenceCount++;
+    } else {
+      stColor = mutedText;
+      unpaidAbsenceCount++;
+    }
+
+    doc.setTextColor(...stColor);
     doc.text(st.label, c3, y);
+    
     doc.setTextColor(sessionValue > 0 ? darkText[0] : mutedText[0], sessionValue > 0 ? darkText[1] : mutedText[1], sessionValue > 0 ? darkText[2] : mutedText[2]);
     doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '—', c4, y, { align: 'right' });
     y += LH + 0.5;
 
-    if (st.billable) { sessionTotal += sessionValue; sessionCount++; }
+    if (st.billable) { sessionTotal += sessionValue; }
   }
 
   if (patient.paymentType === 'fixo' && paymentValue > 0) {
     sessionTotal  = paymentValue;
-    sessionCount  = evolutions.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
   }
 
   // ─── RESUMO FINANCEIRO ──────────────────────────────────────────────────
-  ensureSpace(38);
+  ensureSpace(42);
   drawDivider(2, 4);
   sectionTitle('RESUMO FINANCEIRO');
 
   const isPersonalizado = !!patient.effectiveSessionValue && !!patient.packageSessionLimit;
+  const billableCount = realizedCount + paidAbsenceCount;
+
   const summaryRows: [string, string][] = patient.paymentType === 'fixo'
     ? [
         ['Modalidade:', 'Mensalidade fixa'],
-        ['Sessões realizadas:', String(sessionCount)],
+        ['Sessões Realizadas:', String(realizedCount)],
+        ['Faltas Remuneradas:', String(paidAbsenceCount)],
+        ['Faltas / Feriados:', String(unpaidAbsenceCount)],
         ['Valor da mensalidade:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
       ]
     : isPersonalizado
     ? [
         ['Modalidade:', `Pacote Personalizado (${patient.packageSessionLimit} sessões)`],
-        ['Sessões cobráveis:', String(sessionCount)],
+        ['Sessões Realizadas:', String(realizedCount)],
+        ['Faltas Remuneradas:', String(paidAbsenceCount)],
+        ['Sessões Cobráveis (Total):', String(billableCount)],
         ['Valor por sessão:', `R$ ${paymentValue.toFixed(2)}`],
       ]
     : [
         ['Modalidade:', 'Por sessão'],
-        ['Sessões cobráveis:', String(sessionCount)],
+        ['Sessões Realizadas:', String(realizedCount)],
+        ['Faltas Remuneradas:', String(paidAbsenceCount)],
+        ['Sessões Cobráveis (Total):', String(billableCount)],
         ['Valor por sessão:', `R$ ${paymentValue.toFixed(2)}`],
       ];
 
