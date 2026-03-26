@@ -1123,17 +1123,24 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
   const FinancialWithDays = (
     <Tabs defaultValue="mensal" className="space-y-4">
-      <TabsList className="h-auto p-0.5 gap-0.5">
-        <TabsTrigger value="mensal" className="text-xs px-3 py-1.5 gap-1">
-          <DollarSign className="w-3 h-3" />
-          Mensal
+      <TabsList className="grid w-full grid-cols-3 h-11 bg-muted/50 p-1 rounded-xl mb-4">
+        <TabsTrigger value="mensal" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+          <DollarSign className="w-4 h-4" />
+          Faturamento
         </TabsTrigger>
-        <TabsTrigger value="dias" className="text-xs px-3 py-1.5 gap-1">
-          <CalendarDays className="w-3 h-3" />
+        <TabsTrigger value="billing" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+          <Receipt className="w-4 h-4" />
+          Cobranças
+        </TabsTrigger>
+        <TabsTrigger value="dias" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+          <CalendarDays className="w-4 h-4" />
           Dias Específicos
         </TabsTrigger>
       </TabsList>
       <TabsContent value="mensal">{SoloView}</TabsContent>
+      <TabsContent value="billing">
+        <PatientBillingManager clinicId={clinicId} />
+      </TabsContent>
       <TabsContent value="dias">{DaysView}</TabsContent>
     </Tabs>
   );
