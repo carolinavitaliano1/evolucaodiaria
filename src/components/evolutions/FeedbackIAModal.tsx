@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
   Sparkles, Loader2, Send, Copy, CheckCircle2,
-  Image, X, Upload, MessageSquare
+  Image, X, Upload, MessageSquare, PenLine
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { Evolution } from '@/types';
@@ -165,9 +165,9 @@ export function FeedbackIAModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary" />
+              <MessageSquare className="w-4 h-4 text-primary" />
             </div>
-            Feedback IA para os Pais
+            Feedback para os Pais
           </DialogTitle>
         </DialogHeader>
 
@@ -176,24 +176,37 @@ export function FeedbackIAModal({
           <div className="bg-primary/5 border border-primary/15 rounded-xl px-3 py-2.5">
             <p className="text-xs text-muted-foreground">
               {isBulk
-                ? <><span className="font-semibold text-foreground">{evolutions.length} sessões selecionadas</span> — a IA vai gerar um resumo do período em linguagem para os pais.</>
-                : <><span className="font-semibold text-foreground">{patientName}</span> — sessão de {evolutions[0]?.date ? format(new Date(evolutions[0].date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }) : ''}. A IA vai resumir a sessão em linguagem acessível.</>
+                ? <><span className="font-semibold text-foreground">{evolutions.length} sessões selecionadas</span> — escreva seu feedback ou use a IA para gerar um resumo.</>
+                : <><span className="font-semibold text-foreground">{patientName}</span> — sessão de {evolutions[0]?.date ? format(new Date(evolutions[0].date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }) : ''}.</>
               }
             </p>
           </div>
 
-          {/* Generate button */}
+          {/* Options: Write manually or Generate with AI */}
           {!content && (
-            <Button
-              className="w-full gap-2"
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando com IA...</>
-                : <><Sparkles className="w-4 h-4" /> Gerar Feedback com IA</>
-              }
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setContent(' ')}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                  <PenLine className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Escrever manualmente</span>
+                <span className="text-[10px] text-muted-foreground">Redija seu próprio texto</span>
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all group disabled:opacity-50"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                  {generating ? <Loader2 className="w-5 h-5 text-primary animate-spin" /> : <Sparkles className="w-5 h-5 text-primary" />}
+                </div>
+                <span className="text-sm font-medium text-foreground">{generating ? 'Gerando...' : 'Gerar com IA'}</span>
+                <span className="text-[10px] text-muted-foreground">Resumo automático da sessão</span>
+              </button>
+            </div>
           )}
 
           {/* Content editor */}
@@ -202,19 +215,20 @@ export function FeedbackIAModal({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <MessageSquare className="w-3.5 h-3.5 text-primary" /> Feedback gerado
+                    <MessageSquare className="w-3.5 h-3.5 text-primary" /> Feedback
                   </p>
                   <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground gap-1"
                     onClick={handleGenerate} disabled={generating}>
                     {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                    Regerar
+                    {content.trim() ? 'Regerar com IA' : 'Gerar com IA'}
                   </Button>
                 </div>
                 <Textarea
-                  value={content}
+                  value={content.trim() === '' ? '' : content}
                   onChange={e => setContent(e.target.value)}
                   className="min-h-[180px] text-sm resize-none"
-                  placeholder="Feedback gerado aqui..."
+                  placeholder="Escreva aqui o feedback para os pais/responsáveis..."
+                  autoFocus
                 />
                 <p className="text-[10px] text-muted-foreground">Você pode editar o texto acima antes de enviar.</p>
               </div>
