@@ -321,11 +321,16 @@ export const PERMISSION_GROUPS: { label: string; keys: PermissionKey[] }[] = [
 
 /** Derive which level is currently active for a module given a permission set */
 export function getModuleLevel(module: PermissionModule, perms: PermissionKey[]): string {
-  // Walk levels from highest to lowest; return first whose grants are all satisfied
+  // Exact-match: the set of module keys present must equal the level's grants exactly
+  const activeModuleKeys = module.allKeys.filter(k => perms.includes(k));
   const levels = [...module.levels].reverse();
   for (const level of levels) {
     if (level.id === 'none') continue;
-    if (level.grants.every(k => perms.includes(k))) return level.id;
+    const sortedGrants = [...level.grants].sort();
+    const sortedActive = [...activeModuleKeys].sort();
+    if (sortedGrants.length === sortedActive.length && sortedGrants.every((k, i) => k === sortedActive[i])) {
+      return level.id;
+    }
   }
   return 'none';
 }
