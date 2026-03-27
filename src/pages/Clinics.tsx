@@ -444,19 +444,10 @@ export default function Clinics() {
                         <Label htmlFor="propria" className="cursor-pointer text-sm">Consultório</Label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <RadioGroupItem value="clinica" id="clinica" />
-                        <Label htmlFor="clinica" className="cursor-pointer text-sm">Clínica</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
                         <RadioGroupItem value="terceirizada" id="terceirizada" />
                         <Label htmlFor="terceirizada" className="cursor-pointer text-sm">Contratante</Label>
                       </div>
                     </RadioGroup>
-                    {formData.type === 'clinica' && (
-                      <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                        🏥 Modalidade que permite usar a Gestão de Equipe para convidar terapeutas e colaboradores.
-                      </p>
-                    )}
                   </div>
 
                   <div>
