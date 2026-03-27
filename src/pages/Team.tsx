@@ -62,7 +62,8 @@ export default function Team() {
   const [confirmSwapOpen, setConfirmSwapOpen] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
-  const hasAccess = true; // Feature available to all users
+  const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
+  const hasAccess = isOwnerEmail;
 
   const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'clinica');
   const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
@@ -261,9 +262,9 @@ export default function Team() {
               </span>
             </div>
             <div className="space-y-3">
-              <h2 className="text-2xl font-bold text-foreground">Plano Clínica</h2>
+              <h2 className="text-2xl font-bold text-foreground">Em Desenvolvimento</h2>
               <p className="text-muted-foreground leading-relaxed">
-                A <strong>Gestão de Equipe</strong> é exclusiva do Plano Clínica — convide terapeutas, secretárias e administradores, defina permissões individuais e gerencie toda a sua equipe em um só lugar.
+                A <strong>Gestão de Equipe</strong> está sendo desenvolvida e será disponibilizada em breve. Fique atento às novidades!
               </p>
             </div>
             <div className="bg-card border border-border rounded-2xl p-5 text-left space-y-3">
