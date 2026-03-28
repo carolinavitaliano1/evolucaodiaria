@@ -480,8 +480,9 @@ export default function PatientDetail() {
   const totalPaidAbsent = patientEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
   const totalFeriadoRem = patientEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const totalFeriadoNaoRem = patientEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
-  const totalSessions = patientEvolutions.length;
-  const attendanceRate = totalSessions > 0 ? Math.round(((totalPresent + totalReposicao) / totalSessions) * 100) : 0;
+  const totalSessions = totalPresent + totalReposicao;
+  const totalRegistros = patientEvolutions.length;
+  const attendanceRate = totalRegistros > 0 ? Math.round(((totalPresent + totalReposicao) / totalRegistros) * 100) : 0;
   const totalBillableEvos = patientEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
   const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const ptType = patient?.paymentType as string | undefined;
@@ -547,7 +548,7 @@ export default function PatientDetail() {
   const monthlyPaidAbsent = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
   const monthlyFeriadoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const monthlyFeriadoNaoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
-  const monthlyTotal = monthlyEvolutions.length;
+  const monthlyTotal = monthlyPresent + monthlyReposicao;
   const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
   const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const monthlyRevenue = isFixoMensal
@@ -560,7 +561,8 @@ export default function PatientDetail() {
     : isFixoDiario
       ? `${monthlyUniqueDays} diária(s)`
       : `${monthlyBillableCount} sessão(ões)`;
-  const monthlyAttendanceRate = monthlyTotal > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyTotal) * 100) : 0;
+  const monthlyRegistros = monthlyEvolutions.length;
+  const monthlyAttendanceRate = monthlyRegistros > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyRegistros) * 100) : 0;
   const monthlyMoodCounts = allMoodOptions.map(m => ({
     ...m, count: monthlyEvolutions.filter(e => e.mood === m.value).length,
   }));
@@ -1382,7 +1384,8 @@ export default function PatientDetail() {
 
   const handleSubmitEvolution = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!evolutionText.trim() && attachedFiles.length === 0 && Object.keys(templateFormValues).length === 0) return;
+    const isAbsence = ['falta', 'falta_remunerada', 'feriado_remunerado', 'feriado_nao_remunerado'].includes(attendanceStatus);
+    if (!isAbsence && !evolutionText.trim() && attachedFiles.length === 0 && Object.keys(templateFormValues).length === 0) return;
 
     const selectedTemplate = clinicTemplates.find(t => t.id === selectedTemplateId);
     let fullText = evolutionText;
