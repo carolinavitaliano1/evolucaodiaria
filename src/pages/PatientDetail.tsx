@@ -582,7 +582,7 @@ export default function PatientDetail() {
   const finAbsent = financialEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const finPaidAbsent = financialEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
   const finFeriadoRem = financialEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
-  const finTotal = financialEvolutions.length;
+  const finTotal = finPresent + finReposicao;
   const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
   const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const finRevenue = isFixoMensal
@@ -590,7 +590,8 @@ export default function PatientDetail() {
     : isFixoDiario
       ? finUniqueDays * perSessionValue
       : finBillableCount * perSessionValue;
-  const finAttendanceRate = finTotal > 0 ? Math.round(((finPresent + finReposicao) / finTotal) * 100) : 0;
+  const finRegistros = financialEvolutions.length;
+  const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
 
 
   if (!patient) {
