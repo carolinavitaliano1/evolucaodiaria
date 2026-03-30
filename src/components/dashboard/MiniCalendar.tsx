@@ -8,7 +8,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface MiniCalendarProps {
@@ -24,7 +23,7 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
   const [clickedDate, setClickedDate] = useState<Date>(selectedDate);
   const [eventDates, setEventDates] = useState<string[]>([]);
 
-  const { events: googleEvents } = useGoogleCalendar(viewDate);
+  
 
   const monthStart = startOfMonth(viewDate);
   const monthEnd = endOfMonth(viewDate);
@@ -77,10 +76,6 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
     return eventDates.includes(dateStr);
   };
 
-  const hasGoogleEvents = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return googleEvents.some(e => e.date === dateStr);
-  };
 
   return (
     <>
@@ -132,7 +127,7 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
             const isSelected = isSameDay(day, selectedDate);
             const hasApts = hasAppointments(day);
             const hasEvts = hasEvents(day);
-            const hasGEvts = hasGoogleEvents(day);
+            
             
             return (
               <button
@@ -146,11 +141,10 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
                 )}
               >
                 {format(day, 'd')}
-                {(hasApts || hasEvts || hasGEvts) && !isSelected && (
+                {(hasApts || hasEvts) && !isSelected && (
                   <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
                     {hasApts && <div className="w-1 h-1 rounded-full bg-primary" />}
                     {hasEvts && <div className="w-1 h-1 rounded-full bg-amber-500" />}
-                    {hasGEvts && <div className="w-1 h-1 rounded-full bg-[#4285F4]" />}
                   </div>
                 )}
               </button>
@@ -158,13 +152,6 @@ export function MiniCalendar({ onDateSelect }: MiniCalendarProps) {
           })}
         </div>
 
-        {/* Google Calendar legend if connected */}
-        {googleEvents.length > 0 && (
-          <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]" />
-            <span>Google Calendar</span>
-          </div>
-        )}
       </div>
 
       <EventDialog 
