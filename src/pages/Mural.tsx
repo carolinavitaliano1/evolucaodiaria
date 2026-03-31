@@ -84,6 +84,7 @@ const emptyForm = {
 
 export default function Mural() {
   const { user } = useAuth();
+  const isOwner = user?.email === 'carolinavitaliano1@gmail.com';
   const [notices, setNotices] = useState<Notice[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
