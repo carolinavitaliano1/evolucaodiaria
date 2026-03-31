@@ -292,23 +292,25 @@ export default function Mural() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleShare(n)} title="Copiar link">
-              {copiedId === n.id
-                ? <Check className="w-3.5 h-3.5 text-success" />
-                : <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
-              }
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => togglePin(n)} title={n.pinned ? 'Desafixar' : 'Fixar'}>
-              <Pin className={cn('w-3.5 h-3.5', n.pinned ? 'text-primary fill-primary' : 'text-muted-foreground')} />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(n)}>
-              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteId(n.id)}>
-              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-            </Button>
-          </div>
+          {isOwner && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleShare(n)} title="Copiar link">
+                {copiedId === n.id
+                  ? <Check className="w-3.5 h-3.5 text-success" />
+                  : <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
+                }
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => togglePin(n)} title={n.pinned ? 'Desafixar' : 'Fixar'}>
+                <Pin className={cn('w-3.5 h-3.5', n.pinned ? 'text-primary fill-primary' : 'text-muted-foreground')} />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(n)}>
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteId(n.id)}>
+                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Title */}
