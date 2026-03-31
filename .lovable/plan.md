@@ -1,73 +1,55 @@
 
-## Como funcionaria um modelo multidisciplinar no app
 
-A estrutura atual já é quase toda compatível — clínicas, pacientes, evoluções, templates e carimbos são por usuário. O que falta é suporte para **múltiplos profissionais dentro de uma mesma clínica**, cada um com seu próprio acesso, carimbos e evoluções, mas compartilhando a base de pacientes.
+## Problema Identificado
 
----
+Na tela de contrato do portal, existem dois problemas visíveis nas screenshots:
 
-### O que precisaria ser adicionado (sem remover nada)
+1. **Botões sobrepostos**: O `SignaturePad` renderiza seus próprios botões internos ("Limpar" e "Confirmar") E o `PortalContract` renderiza botões externos ("Cancelar" e "Confirmar assinatura"), causando sobreposição visual no mobile.
 
+2. **Falta de dados do assinante**: O contrato não exibe claramente os dados de quem está assinando (nome completo, CPF) antes da assinatura.
+
+3. **Experiência de assinatura ruim**: O pad é pequeno (h-32) e os botões internos conflitam com os externos.
+
+## Plano de Implementação
+
+### 1. Refatorar o SignaturePad (`src/components/ui/signature-pad.tsx`)
+- Adicionar prop `hideButtons` para permitir que o componente pai controle os botões
+- Expor métodos `clear()` e `save()` via `ref` (useImperativeHandle)
+- Aumentar altura padrão do canvas para melhor área de assinatura
+- Melhorar responsividade com classes Tailwind adaptativas
+
+### 2. Redesenhar a tela de contrato (`src/pages/portal/PortalContract.tsx`)
+- Buscar também o CPF do paciente da tabela `patients` (campos `cpf`, `responsible_cpf`, `responsible_name`, `is_minor`)
+- Exibir card com dados do assinante antes da área de assinatura:
+  - Nome completo
+  - CPF
+  - Se menor: indicar "Responsável Legal: [nome]"
+- Remover os botões internos do SignaturePad (usar `hideButtons`)
+- Renderizar apenas "Cancelar" e "Confirmar assinatura" como botões do PortalContract, em layout responsivo (`flex-col` no mobile, `flex-row` no desktop)
+- Aumentar a área de assinatura (h-40 ou h-48)
+- Garantir que os botões tenham `w-full` e espaçamento adequado no mobile
+
+### Detalhes Técnicos
+
+**SignaturePad** recebe nova prop e expõe ref:
+```typescript
+interface SignaturePadProps {
+  value?: string;
+  onChange?: (signature: string) => void;
+  className?: string;
+  disabled?: boolean;
+  hideButtons?: boolean;
+}
+
+// Expor clear/save via useImperativeHandle
+export interface SignaturePadRef {
+  clear: () => void;
+  save: () => void;
+}
 ```
-ESTRUTURA ATUAL                    ESTRUTURA MULTIDISCIPLINAR
-─────────────────────────          ─────────────────────────────────
-usuário único → clínica            organização → clínica → membros
-usuário único → pacientes          pacientes compartilhados por clínica
-usuário único → evoluções          evoluções com "autor" (profissional)
-```
 
-**1. Organizações / Equipes**
-- Nova tabela `organizations` — uma clínica multidisciplinar seria uma organização
-- Nova tabela `organization_members` — com papéis: `owner`, `admin`, `professional`
-- O dono convida outros usuários via e-mail
+**PortalContract** usa dados do paciente diretamente (já disponíveis via `usePortal().patient`) e busca CPF:
+- Usar `patient.is_minor` para determinar menor (ao invés de depender só do intake)
+- Buscar `patients.cpf` e `patients.responsible_cpf` junto com os dados existentes
+- Layout dos botões: `flex flex-col sm:flex-row gap-2` com botões `w-full`
 
-**2. Pacientes compartilhados**
-- Pacientes passariam a ser da organização, não só do usuário
-- Cada profissional vê os pacientes da clínica, não só os seus
-- Permissões por papel: quem pode criar/editar/arquivar
-
-**3. Evoluções por profissional**
-- Cada evolução já tem `user_id` — continuaria funcionando como "autor"
-- Na visualização, apareceria o nome do profissional que registrou
-- Carimbo automático do profissional logado
-
-**4. Templates por organização**
-- Templates criados pelo dono ficam disponíveis para toda a equipe
-- Cada profissional ainda pode ter seus próprios templates pessoais
-
-**5. Financeiro separado por profissional**
-- Cada membro vê seus próprios recebimentos
-- O dono/admin vê o consolidado de todos
-
----
-
-### Impacto no que já existe
-
-| Funcionalidade atual | Impacto |
-|---|---|
-| Clínica própria (terapeuta solo) | Zero — continua igual |
-| Templates de evolução | Zero — apenas compartilhamento opcional |
-| Carimbos pessoais | Zero — cada membro tem os seus |
-| Exportação PDF | Pequena — adicionar nome do profissional no rodapé |
-| Dashboard | Pequena — filtro por membro |
-
-O terapeuta solo continua usando o app exatamente como hoje. O modo multidisciplinar seria **opt-in** — ao criar uma clínica, escolheria entre "uso individual" ou "equipe multidisciplinar".
-
----
-
-### Implementação em fases
-
-**Fase 1** — Convite e membros
-- Tabelas `organizations` e `organization_members`
-- Fluxo de convite por e-mail
-- Papéis: dono, admin, profissional
-
-**Fase 2** — Dados compartilhados
-- Pacientes e evoluções vinculados à organização
-- Filtros por profissional na agenda e evoluções
-
-**Fase 3** — Financeiro consolidado
-- Relatórios por membro e consolidado para o admin
-
----
-
-Quer que eu implemente isso? Posso começar pela Fase 1 (estrutura de equipe e convites) mantendo tudo que existe intacto para usuários solo.
