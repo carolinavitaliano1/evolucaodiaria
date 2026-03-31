@@ -428,10 +428,12 @@ export default function Mural() {
         <div className="text-center py-20">
           <div className="text-6xl mb-4">📋</div>
           <p className="text-muted-foreground text-lg font-medium">Nenhum aviso ainda</p>
-          <p className="text-muted-foreground text-sm mt-1">Crie seu primeiro aviso, vídeo ou tutorial</p>
-          <Button className="gradient-primary gap-2 mt-4" onClick={openCreate}>
-            <Plus className="w-4 h-4" /> Criar primeiro aviso
-          </Button>
+          <p className="text-muted-foreground text-sm mt-1">{isOwner ? 'Crie seu primeiro aviso, vídeo ou tutorial' : 'Nenhum aviso publicado no momento'}</p>
+          {isOwner && (
+            <Button className="gradient-primary gap-2 mt-4" onClick={openCreate}>
+              <Plus className="w-4 h-4" /> Criar primeiro aviso
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
