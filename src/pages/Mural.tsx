@@ -390,10 +390,12 @@ export default function Mural() {
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Mural de Avisos</h1>
             <p className="text-muted-foreground text-sm mt-1">Avisos, vídeos e tutoriais para consulta rápida</p>
           </div>
-          <Button className="gradient-primary gap-2" onClick={openCreate}>
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Novo Aviso</span>
-          </Button>
+          {isOwner && (
+            <Button className="gradient-primary gap-2" onClick={openCreate}>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Novo Aviso</span>
+            </Button>
+          )}
         </div>
 
         {/* Filter chips */}
