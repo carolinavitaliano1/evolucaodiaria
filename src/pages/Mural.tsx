@@ -84,6 +84,7 @@ const emptyForm = {
 
 export default function Mural() {
   const { user } = useAuth();
+  const isOwner = user?.email === 'carolinavitaliano1@gmail.com';
   const [notices, setNotices] = useState<Notice[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -291,23 +292,25 @@ export default function Mural() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleShare(n)} title="Copiar link">
-              {copiedId === n.id
-                ? <Check className="w-3.5 h-3.5 text-success" />
-                : <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
-              }
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => togglePin(n)} title={n.pinned ? 'Desafixar' : 'Fixar'}>
-              <Pin className={cn('w-3.5 h-3.5', n.pinned ? 'text-primary fill-primary' : 'text-muted-foreground')} />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(n)}>
-              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteId(n.id)}>
-              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-            </Button>
-          </div>
+          {isOwner && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleShare(n)} title="Copiar link">
+                {copiedId === n.id
+                  ? <Check className="w-3.5 h-3.5 text-success" />
+                  : <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
+                }
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => togglePin(n)} title={n.pinned ? 'Desafixar' : 'Fixar'}>
+                <Pin className={cn('w-3.5 h-3.5', n.pinned ? 'text-primary fill-primary' : 'text-muted-foreground')} />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(n)}>
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteId(n.id)}>
+                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Title */}
@@ -389,10 +392,12 @@ export default function Mural() {
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Mural de Avisos</h1>
             <p className="text-muted-foreground text-sm mt-1">Avisos, vídeos e tutoriais para consulta rápida</p>
           </div>
-          <Button className="gradient-primary gap-2" onClick={openCreate}>
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Novo Aviso</span>
-          </Button>
+          {isOwner && (
+            <Button className="gradient-primary gap-2" onClick={openCreate}>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Novo Aviso</span>
+            </Button>
+          )}
         </div>
 
         {/* Filter chips */}
@@ -423,10 +428,12 @@ export default function Mural() {
         <div className="text-center py-20">
           <div className="text-6xl mb-4">📋</div>
           <p className="text-muted-foreground text-lg font-medium">Nenhum aviso ainda</p>
-          <p className="text-muted-foreground text-sm mt-1">Crie seu primeiro aviso, vídeo ou tutorial</p>
-          <Button className="gradient-primary gap-2 mt-4" onClick={openCreate}>
-            <Plus className="w-4 h-4" /> Criar primeiro aviso
-          </Button>
+          <p className="text-muted-foreground text-sm mt-1">{isOwner ? 'Crie seu primeiro aviso, vídeo ou tutorial' : 'Nenhum aviso publicado no momento'}</p>
+          {isOwner && (
+            <Button className="gradient-primary gap-2 mt-4" onClick={openCreate}>
+              <Plus className="w-4 h-4" /> Criar primeiro aviso
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
