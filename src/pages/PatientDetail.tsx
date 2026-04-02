@@ -553,16 +553,37 @@ export default function PatientDetail() {
   const monthlyTotal = monthlyPresent + monthlyReposicao;
   const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
   const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const monthlyRevenue = isFixoMensal
-    ? paymentValue
-    : isFixoDiario
-      ? monthlyUniqueDays * perSessionValue
-      : monthlyBillableCount * perSessionValue;
-  const monthlyRevenueSubtitle = isFixoMensal
-    ? 'Valor Fixo'
-    : isFixoDiario
-      ? `${monthlyUniqueDays} diária(s)`
-      : `${monthlyBillableCount} sessão(ões)`;
+  // Dynamic proration for Mensal packages
+  const monthlyDynamic = useMemo(() => {
+    if (isPackageMensal && isFixoMensal && paymentValue > 0) {
+      const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+      return getDynamicSessionValue(paymentValue, patientWeekdays, reportMonth.getMonth(), reportMonth.getFullYear());
+    }
+    return null;
+  }, [isPackageMensal, isFixoMensal, paymentValue, patient?.weekdays, patient?.scheduleByDay, reportMonth]);
+
+  const monthlyDeductibleAbsences = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+  const monthlyMensalDeduction = useMemo(() => {
+    if (monthlyDynamic && monthlyDynamic.occurrences > 0) {
+      return calculateMensalRevenueWithDeductions(paymentValue, monthlyDynamic.perSession, monthlyDeductibleAbsences);
+    }
+    return null;
+  }, [monthlyDynamic, paymentValue, monthlyDeductibleAbsences]);
+
+  const monthlyRevenue = monthlyMensalDeduction
+    ? monthlyMensalDeduction.finalRevenue
+    : isFixoMensal
+      ? paymentValue
+      : isFixoDiario
+        ? monthlyUniqueDays * perSessionValue
+        : monthlyBillableCount * perSessionValue;
+  const monthlyRevenueSubtitle = monthlyMensalDeduction
+    ? `${monthlyDynamic!.occurrences} sessões previstas`
+    : isFixoMensal
+      ? 'Valor Fixo'
+      : isFixoDiario
+        ? `${monthlyUniqueDays} diária(s)`
+        : `${monthlyBillableCount} sessão(ões)`;
   const monthlyRegistros = monthlyEvolutions.length;
   const monthlyAttendanceRate = monthlyRegistros > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyRegistros) * 100) : 0;
   const monthlyMoodCounts = allMoodOptions.map(m => ({
