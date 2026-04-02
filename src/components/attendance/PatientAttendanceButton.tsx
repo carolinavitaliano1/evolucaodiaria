@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipboardList, FileDown, FileText } from 'lucide-react';
 import { downloadAttendancePDF, downloadAttendanceDOCX, ExportOptions } from './AttendanceSheetPrint';
-import { buildGroupedAttendanceRows, PatientInfo, abbreviateTherapy, getStatusLabel } from './attendanceUtils';
+import { buildGroupedAttendanceRows, PatientInfo, getStatusLabel } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -217,7 +217,7 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
                         <div className="font-medium text-foreground text-xs leading-tight">{row.patientName}</div>
                       </td>
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
-                        {abbreviateTherapy(row.specialty)}
+                        {row.specialty || '—'}
                       </td>
                       {Array.from({ length: maxSessions }, (_, i) => {
                         const s = row.sessions[i];

@@ -8,7 +8,7 @@ import {
   Header, ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { GroupedPatientRow, getStatusLabel, abbreviateTherapy } from './attendanceUtils';
+import { GroupedPatientRow, getStatusLabel } from './attendanceUtils';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -77,7 +77,7 @@ export function downloadAttendancePDF(
   const tableData = rows.map(row => {
     const cells: string[] = [
       row.patientName,
-      abbreviateTherapy(row.specialty),
+      row.specialty || '—',
     ];
     for (let i = 0; i < maxSessions; i++) {
       cells.push(row.sessions[i] ? formatSessionCell(row.sessions[i]) : '');
@@ -263,7 +263,7 @@ export async function downloadAttendanceDOCX(
         });
         const cells = [
           makeCell(nameText, patientW),
-          makeCell(abbreviateTherapy(row.specialty), therapyW, AlignmentType.CENTER),
+          makeCell(row.specialty || '—', therapyW, AlignmentType.CENTER),
           ...sessionCells,
         ];
         if (options.showSignatureCol) cells.push(makeEmptyCell(signatureW));

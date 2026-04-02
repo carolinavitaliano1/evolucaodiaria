@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ClipboardList, FileDown, FileText } from 'lucide-react';
 import { downloadAttendancePDF, downloadAttendanceDOCX, ExportOptions } from './AttendanceSheetPrint';
-import { buildGroupedAttendanceRows, getStatusLabel, abbreviateTherapy, PatientInfo } from './attendanceUtils';
+import { buildGroupedAttendanceRows, getStatusLabel, PatientInfo } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -248,7 +248,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                         <div className="font-medium text-foreground text-xs leading-tight">{row.patientName}</div>
                       </td>
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
-                        {abbreviateTherapy(row.specialty)}
+                        {row.specialty || '—'}
                       </td>
                       {Array.from({ length: maxSessions }, (_, i) => {
                         const s = row.sessions[i];
