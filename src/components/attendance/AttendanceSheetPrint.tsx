@@ -8,7 +8,7 @@ import {
   Header, ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { GroupedPatientRow, getStatusLabel } from './attendanceUtils';
+import { GroupedPatientRow, getStatusLabel, getProfessionalTitle } from './attendanceUtils';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
