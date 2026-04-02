@@ -69,7 +69,7 @@ export function downloadAttendancePDF(
   doc.text(monthLabel, pageW / 2, 22, { align: 'center' });
 
   // Build columns
-  const headRow: string[] = ['Paciente / Resp.', 'Terapia'];
+  const headRow: string[] = ['Paciente', 'Terapia'];
   for (let i = 0; i < maxSessions; i++) headRow.push(`S${i + 1}`);
   if (options.showSignatureCol) headRow.push('Assinatura');
   if (options.showObsCol) headRow.push('Obs.');
