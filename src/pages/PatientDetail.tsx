@@ -494,6 +494,7 @@ export default function PatientDetail() {
   const paymentValue = patient?.paymentValue || 0;
   // Package personalizado: per-session value = total / sessionLimit
   const isPackagePersonalizado = patientPackage?.packageType === 'personalizado' && (patientPackage?.sessionLimit ?? 0) > 0;
+  const isPackageMensal = patientPackage?.packageType === 'mensal';
   const perSessionValue = isPackagePersonalizado
     ? paymentValue / (patientPackage!.sessionLimit!)
     : paymentValue;
