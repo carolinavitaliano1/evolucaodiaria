@@ -1173,7 +1173,7 @@ export default function ClinicDetail() {
                   size="sm"
                   className="gap-2 text-xs"
                   onClick={() => {
-                    const link = `${window.location.origin}/matricula/${id}`;
+                    const link = `https://evolucaodiaria.app.br/matricula/${id}`;
                     navigator.clipboard.writeText(link);
                     toast.success('Link de cadastro copiado!');
                   }}

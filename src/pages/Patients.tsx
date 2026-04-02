@@ -114,7 +114,7 @@ export default function Patients() {
         .single();
       if (error) throw error;
       const token = (data as any).intake_token;
-      const appUrl = window.location.origin;
+      const appUrl = 'https://evolucaodiaria.app.br';
       const link = `${appUrl}/cadastro-paciente/${token}`;
       setQuickRegToken(token);
       setQuickRegLink(link);
