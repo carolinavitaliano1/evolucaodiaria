@@ -376,20 +376,20 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
   return (
     <div className="space-y-5">
       {/* ── Controls bar ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-card rounded-2xl p-4 border border-border">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card rounded-2xl p-4 border border-border">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedDate(prev => subMonths(prev, 1))}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <span className="font-bold text-foreground capitalize min-w-[160px] text-center text-sm">{monthName}</span>
+          <span className="font-bold text-foreground capitalize min-w-[140px] sm:min-w-[160px] text-center text-sm">{monthName}</span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedDate(prev => addMonths(prev, 1))}>
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canSeeAll && (
             <Select value={filterMemberId} onValueChange={setFilterMemberId}>
-              <SelectTrigger className="h-8 text-sm w-auto min-w-[180px]">
+              <SelectTrigger className="h-8 text-sm w-full sm:w-auto sm:min-w-[180px]">
                 <SelectValue placeholder="Profissional" />
               </SelectTrigger>
               <SelectContent>
@@ -402,7 +402,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
               </SelectContent>
             </Select>
           )}
-          <Button size="sm" variant="default" className="gap-2 h-8" onClick={handleExportPDF} disabled={isExporting}>
+          <Button size="sm" variant="default" className="gap-2 h-8 w-full sm:w-auto" onClick={handleExportPDF} disabled={isExporting}>
             {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
             Exportar Extrato
           </Button>
