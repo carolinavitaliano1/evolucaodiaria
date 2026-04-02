@@ -496,7 +496,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         address: clinic.address || null, notes: clinic.notes || null,
         weekdays: clinic.weekdays || null, schedule_time: clinic.scheduleTime || null,
         schedule_by_day: clinic.scheduleByDay || null, payment_type: clinic.paymentType || null,
-        payment_amount: clinic.paymentAmount || null, pays_on_absence: clinic.paysOnAbsence ?? true,
+        payment_amount: clinic.paymentAmount ?? null, pays_on_absence: clinic.paysOnAbsence ?? true,
         absence_payment_type: clinic.absencePaymentType || 'always',
         letterhead: clinic.letterhead || null, stamp: clinic.stamp || null,
         email: clinic.email || null, cnpj: clinic.cnpj || null, phone: clinic.phone || null,
