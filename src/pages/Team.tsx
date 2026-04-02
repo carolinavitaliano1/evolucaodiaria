@@ -467,24 +467,24 @@ export default function Team() {
         )}
 
         {/* Tab switcher */}
-        <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
+        <div className="flex gap-1 p-1 bg-muted rounded-xl overflow-x-auto w-full sm:w-fit">
           <button
             onClick={() => setActiveTab('team')}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
               activeTab === 'team' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <UsersRound className="w-4 h-4" />Equipe
+            <UsersRound className="w-4 h-4 shrink-0" />Equipe
           </button>
           <button
             onClick={() => setActiveTab('compliance')}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
               activeTab === 'compliance' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <ClipboardCheck className="w-4 h-4" />Conformidade
+            <ClipboardCheck className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Conformidade</span><span className="sm:hidden">Conf.</span>
             {complianceBadge > 0 && (
               <span className="w-4 h-4 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center">
                 {complianceBadge > 9 ? '9+' : complianceBadge}
@@ -494,20 +494,20 @@ export default function Team() {
           <button
             onClick={() => setActiveTab('activity')}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
               activeTab === 'activity' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Activity className="w-4 h-4" />Atividade
+            <Activity className="w-4 h-4 shrink-0" />Atividade
           </button>
           <button
             onClick={() => setActiveTab('financial')}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
               activeTab === 'financial' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <DollarSign className="w-4 h-4" />Financeiro
+            <DollarSign className="w-4 h-4 shrink-0" />Financeiro
           </button>
         </div>
 
