@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
+import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { usePatientAssignments } from '@/hooks/usePatientAssignments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
