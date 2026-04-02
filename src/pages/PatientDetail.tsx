@@ -2232,6 +2232,11 @@ export default function PatientDetail() {
                       <p className="text-xs font-medium text-success mb-1">Receita</p>
                       <p className="text-2xl font-bold text-success">R$ {monthlyRevenue.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">{monthlyRevenueSubtitle}</p>
+                      {monthlyMensalDeduction?.hasDeduction && (
+                        <p className="text-xs text-destructive/80 mt-1">
+                          Mensalidade R$ {paymentValue.toFixed(2)} - R$ {monthlyMensalDeduction.deduction.toFixed(2)} ({monthlyDeductibleAbsences} Falta{monthlyDeductibleAbsences > 1 ? 's' : ''})
+                        </p>
+                      )}
                     </div>
                     <div className="bg-destructive/5 rounded-xl p-4 border border-destructive/20">
                       <p className="text-xs font-medium text-destructive mb-1">Faltas</p>
