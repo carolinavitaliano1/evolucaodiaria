@@ -78,6 +78,37 @@ export function abbreviateTherapy(name?: string): string {
   return name.length > 10 ? name.substring(0, 8) + '.' : name;
 }
 
+const PROFESSIONAL_TITLES: Record<string, string> = {
+  'musicoterapia': 'Musicoterapeuta',
+  'psicologia': 'Psicóloga',
+  'psicomotricidade': 'Psicomotricista',
+  'psicopedagogia': 'Psicopedagoga',
+  'fonoaudiologia': 'Fonoaudióloga',
+  'terapia ocupacional': 'Terapeuta Ocupacional',
+  'fisioterapia': 'Fisioterapeuta',
+  'neuropsicologia': 'Neuropsicóloga',
+  'arteterapia': 'Arteterapeuta',
+  'pedagogia': 'Pedagoga',
+  'nutrição': 'Nutricionista',
+  'educação física': 'Educadora Física',
+  'análise do comportamento aplicada': 'Analista do Comportamento',
+  'aba': 'Analista do Comportamento',
+  'integração sensorial': 'Terapeuta de Integração Sensorial',
+  'neuropediatria': 'Neuropediatra',
+  'pediatria': 'Pediatra',
+  'psiquiatria': 'Psiquiatra',
+};
+
+export function getProfessionalTitle(clinicalArea?: string): string {
+  if (!clinicalArea) return '';
+  const lower = clinicalArea.toLowerCase().trim();
+  if (PROFESSIONAL_TITLES[lower]) return PROFESSIONAL_TITLES[lower];
+  for (const [key, title] of Object.entries(PROFESSIONAL_TITLES)) {
+    if (lower.includes(key)) return title;
+  }
+  return clinicalArea;
+}
+
 function getExpectedDates(weekdays: string[] | undefined, month: number, year: number): string[] {
   if (!weekdays || weekdays.length === 0) return [];
   const dates: string[] = [];

@@ -8,7 +8,7 @@ import {
   Header, ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { GroupedPatientRow, getStatusLabel } from './attendanceUtils';
+import { GroupedPatientRow, getStatusLabel, getProfessionalTitle } from './attendanceUtils';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -185,7 +185,7 @@ export function downloadAttendancePDF(
     footerY += 4;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text(options.therapistTitle, centerX, footerY, { align: 'center' });
+    doc.text(getProfessionalTitle(options.therapistTitle), centerX, footerY, { align: 'center' });
   }
 
   doc.save(`Frequencia_${clinicName.replace(/\s+/g, '_')}_${MONTHS[month]}_${year}.pdf`);
@@ -345,7 +345,7 @@ export async function downloadAttendanceDOCX(
     footerChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 40 },
-      children: [new TextRun({ text: options.therapistTitle, size: 16, font: 'Arial' })],
+      children: [new TextRun({ text: getProfessionalTitle(options.therapistTitle), size: 16, font: 'Arial' })],
     }));
   }
 
