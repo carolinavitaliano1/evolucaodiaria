@@ -93,6 +93,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
     showSignatureCol,
     showObsCol,
     therapistName: profileName,
+    therapistTitle: selectedStamp?.clinical_area || '',
     stampImageBase64: selectedStamp?.stamp_image || null,
   };
 
