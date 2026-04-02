@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff, Wallet, Copy, Building2 } from 'lucide-react';
+import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff, Wallet, Copy, Building2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
   interface Profile {
@@ -36,7 +38,12 @@ interface StampItem {
 
 export default function Profile() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const userId = user?.id;
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stamps, setStamps] = useState<StampItem[]>([]);
@@ -1028,6 +1035,93 @@ export default function Profile() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Zona de Perigo */}
+      <Card className="border-destructive/40 bg-destructive/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Zona de Perigo
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            A exclusão da conta é permanente. Todos os seus dados (pacientes, evoluções, recibos, clínicas) serão apagados e não poderão ser recuperados.
+          </p>
+          <Button
+            variant="destructive"
+            onClick={() => { setDeleteConfirmText(''); setDeleteDialogOpen(true); }}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Excluir Minha Conta Permanentemente
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Excluir Conta Permanentemente
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left space-y-3">
+              <span className="block font-semibold text-foreground">
+                Atenção: Esta ação é irreversível.
+              </span>
+              <span className="block">
+                O acesso ao sistema será encerrado e todos os seus dados (pacientes, evoluções, recibos, clínicas, equipe) serão apagados permanentemente.
+              </span>
+              <span className="block">
+                Para confirmar, digite <strong className="text-destructive">EXCLUIR</strong> no campo abaixo:
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="Digite EXCLUIR para confirmar"
+            className="border-destructive/50 focus-visible:ring-destructive"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmText !== 'EXCLUIR' || deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) {
+                    toast.error('Sessão expirada. Faça login novamente.');
+                    setDeleting(false);
+                    return;
+                  }
+                  const { data, error } = await supabase.functions.invoke('delete-user-account', {
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                  });
+                  if (error) throw error;
+                  if (data?.error) throw new Error(data.error);
+
+                  await signOut();
+                  toast.success('Sua conta e todos os seus dados foram excluídos com sucesso.');
+                  navigate('/');
+                } catch (err: any) {
+                  console.error('Delete account error:', err);
+                  toast.error(err.message || 'Erro ao excluir conta. Tente novamente.');
+                } finally {
+                  setDeleting(false);
+                  setDeleteDialogOpen(false);
+                }
+              }}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {deleting ? 'Excluindo...' : 'Sim, excluir tudo'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
