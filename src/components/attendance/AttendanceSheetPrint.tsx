@@ -118,7 +118,7 @@ function makeHeaderCell(text: string, width: number) {
   });
 }
 
-function makeCell(text: string, width: number, alignment = AlignmentType.LEFT) {
+function makeCell(text: string, width: number, alignment: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.LEFT) {
   return new TableCell({
     borders,
     width: { size: width, type: WidthType.DXA },

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Printer } from 'lucide-react';
-import { printAttendanceSheet } from './AttendanceSheetPrint';
-import { buildPatientAttendanceRows } from './attendanceUtils';
+import { FileDown } from 'lucide-react';
+import { downloadAttendancePDF } from './AttendanceSheetPrint';
+import { buildGroupedAttendanceRows, PatientInfo } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 
 const MONTHS = [
@@ -22,22 +22,19 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
 
-  const handlePrint = () => {
-    const rows = buildPatientAttendanceRows(
-      {
-        id: patient.id,
-        name: patient.name,
-        clinicalArea: patient.clinicalArea,
-        professionals: patient.professionals,
-        weekdays: patient.weekdays,
-        scheduleTime: patient.scheduleTime,
-        scheduleByDay: patient.scheduleByDay as any,
-      },
-      evolutions,
-      month,
-      year
-    );
-    printAttendanceSheet(clinicName, month, year, rows);
+  const handleDownload = () => {
+    const info: PatientInfo = {
+      id: patient.id,
+      name: patient.name,
+      responsibleName: patient.responsibleName,
+      clinicalArea: patient.clinicalArea,
+      professionals: patient.professionals,
+      weekdays: patient.weekdays,
+      scheduleTime: patient.scheduleTime,
+      scheduleByDay: patient.scheduleByDay as any,
+    };
+    const rows = buildGroupedAttendanceRows([info], evolutions, month, year);
+    downloadAttendancePDF(clinicName, month, year, rows);
   };
 
   const currentYear = now.getFullYear();
@@ -65,9 +62,9 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
           ))}
         </SelectContent>
       </Select>
-      <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs h-8">
-        <Printer className="w-3.5 h-3.5" />
-        Imprimir Frequência
+      <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5 text-xs h-8">
+        <FileDown className="w-3.5 h-3.5" />
+        Baixar Frequência (PDF)
       </Button>
     </div>
   );
