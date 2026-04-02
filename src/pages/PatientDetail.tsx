@@ -1605,15 +1605,34 @@ export default function PatientDetail() {
 
               {/* Quick info row */}
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {patient.paymentValue && (
-                  <span className="flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5" />
-                    {isPackagePersonalizado
-                      ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit})`
-                      : `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
+                {patient.paymentValue && (() => {
+                  // Dynamic proration for header display (current month)
+                  const now = new Date();
+                  if (isPackageMensal && isFixoMensal) {
+                    const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+                    const headerDynamic = getDynamicSessionValue(paymentValue, patientWeekdays, now.getMonth(), now.getFullYear());
+                    if (headerDynamic.occurrences > 0) {
+                      return (
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <DollarSign className="w-3.5 h-3.5" />
+                          <span>R$ {patient.paymentValue.toFixed(2)}/mês</span>
+                          <span className="text-xs text-primary/80">
+                            (Mês de {headerDynamic.occurrences} semanas: R$ {headerDynamic.perSession.toFixed(2)}/sessão)
+                          </span>
+                        </span>
+                      );
                     }
-                  </span>
-                )}
+                  }
+                  return (
+                    <span className="flex items-center gap-1">
+                      <DollarSign className="w-3.5 h-3.5" />
+                      {isPackagePersonalizado
+                        ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit})`
+                        : `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
+                      }
+                    </span>
+                  );
+                })()}
                 {patient.diagnosis && (
                   <span className="truncate max-w-xs">📋 {patient.diagnosis}</span>
                 )}
