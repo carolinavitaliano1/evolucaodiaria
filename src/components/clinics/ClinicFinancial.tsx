@@ -319,13 +319,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       // For fixed-global clinics, don't assign revenue per patient
       let revenue = 0;
       if (!isGlobalFixed && patient.paymentValue) {
-        const effectiveValue = getEffectiveSessionValue(patient);
-        const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
-        let paidRegularAbsences = 0;
-        const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
-        if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-        else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-        revenue = (sessions + paidAbsences + paidRegularAbsences + feriadoRemCount) * effectiveValue;
+        revenue = calcPatientRevenue(patient);
       }
       return { patient, revenue, sessions, absences, paidAbsences, reposicoes };
     })
