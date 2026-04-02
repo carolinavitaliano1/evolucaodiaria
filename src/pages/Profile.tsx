@@ -38,7 +38,12 @@ interface StampItem {
 
 export default function Profile() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const userId = user?.id;
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stamps, setStamps] = useState<StampItem[]>([]);
