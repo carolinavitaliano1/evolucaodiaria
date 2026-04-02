@@ -563,7 +563,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         observations: patient.observations || null, responsible_name: patient.responsibleName || null,
         responsible_email: patient.responsibleEmail || null, responsible_whatsapp: (patient as any).responsibleWhatsapp || null,
         payment_type: patient.paymentType || null,
-        payment_value: patient.paymentValue || null, contract_start_date: patient.contractStartDate || null,
+        payment_value: patient.paymentValue ?? null, contract_start_date: patient.contractStartDate || null,
         weekdays: patient.weekdays || null, schedule_time: patient.scheduleTime || null,
         schedule_by_day: patient.scheduleByDay || null, package_id: patient.packageId || null,
       }).select().single();
