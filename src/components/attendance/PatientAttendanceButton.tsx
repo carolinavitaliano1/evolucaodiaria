@@ -38,6 +38,7 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
       showSignatureCol: true,
       showObsCol: true,
       therapistName: '',
+      therapistTitle: '',
       stampImageBase64: null,
     });
   };
