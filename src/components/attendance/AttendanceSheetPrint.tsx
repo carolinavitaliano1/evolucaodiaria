@@ -293,6 +293,7 @@ export async function downloadAttendanceDOCX(
     width: { size: totalW, type: WidthType.DXA },
     columnWidths: colWidths,
     rows: [headerRow, ...dataRows],
+    alignment: AlignmentType.CENTER,
   });
 
   // Footer: centered vertical signature block
