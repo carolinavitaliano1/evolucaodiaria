@@ -251,7 +251,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                         )}
                       </td>
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
-                        {row.professional || '—'}
+                        {abbreviateTherapy(row.specialty)}
                       </td>
                       {Array.from({ length: maxSessions }, (_, i) => {
                         const s = row.sessions[i];
