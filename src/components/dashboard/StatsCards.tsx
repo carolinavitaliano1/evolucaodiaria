@@ -162,7 +162,7 @@ export function StatsCards() {
   const stats = [
     {
       label: 'Clínicas',
-      value: clinics.length,
+      value: clinics.filter(c => !c.isArchived).length,
       icon: Building2,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
