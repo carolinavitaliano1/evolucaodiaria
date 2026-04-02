@@ -521,7 +521,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.scheduleTime !== undefined) updateData.schedule_time = updates.scheduleTime || null;
       if (updates.scheduleByDay !== undefined) updateData.schedule_by_day = updates.scheduleByDay || null;
       if (updates.paymentType !== undefined) updateData.payment_type = updates.paymentType || null;
-      if (updates.paymentAmount !== undefined) updateData.payment_amount = updates.paymentAmount || null;
+      if (updates.paymentAmount !== undefined) updateData.payment_amount = updates.paymentAmount ?? null;
       if (updates.paysOnAbsence !== undefined) updateData.pays_on_absence = updates.paysOnAbsence;
       if (updates.absencePaymentType !== undefined) updateData.absence_payment_type = updates.absencePaymentType;
       if (updates.letterhead !== undefined) updateData.letterhead = updates.letterhead || null;
