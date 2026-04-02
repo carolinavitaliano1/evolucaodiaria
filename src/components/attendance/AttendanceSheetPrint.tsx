@@ -166,13 +166,20 @@ export function downloadAttendancePDF(
   doc.line(centerX - lineHalfW, footerY, centerX + lineHalfW, footerY);
   footerY += 4;
 
-  // Therapist name and title
+  // Therapist name
   doc.setFontSize(9);
   doc.setTextColor(0);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('helvetica', 'bold');
   const nameLabel = options.therapistName || '________________________';
-  const titleLabel = options.therapistTitle ? ` - ${options.therapistTitle}` : '';
-  doc.text(`${nameLabel}${titleLabel}`, centerX, footerY, { align: 'center' });
+  doc.text(nameLabel, centerX, footerY, { align: 'center' });
+
+  // Therapist title on next line
+  if (options.therapistTitle) {
+    footerY += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(options.therapistTitle, centerX, footerY, { align: 'center' });
+  }
 
   doc.save(`Frequencia_${clinicName.replace(/\s+/g, '_')}_${MONTHS[month]}_${year}.pdf`);
 }
