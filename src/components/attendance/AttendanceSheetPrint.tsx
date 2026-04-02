@@ -77,7 +77,7 @@ export function downloadAttendancePDF(
   const tableData = rows.map(row => {
     const cells: string[] = [
       row.patientName,
-      abbreviateTherapy(row.specialty),
+      row.specialty || '—',
     ];
     for (let i = 0; i < maxSessions; i++) {
       cells.push(row.sessions[i] ? formatSessionCell(row.sessions[i]) : '');
