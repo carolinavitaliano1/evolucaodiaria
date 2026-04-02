@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://evolucaodiaria.app.br/auth?reset=true',
+      redirectTo: `${window.location.origin}/auth?reset=true`,
     });
     return { error: error as Error | null };
   };

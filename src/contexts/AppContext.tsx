@@ -496,7 +496,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         address: clinic.address || null, notes: clinic.notes || null,
         weekdays: clinic.weekdays || null, schedule_time: clinic.scheduleTime || null,
         schedule_by_day: clinic.scheduleByDay || null, payment_type: clinic.paymentType || null,
-        payment_amount: clinic.paymentAmount || null, pays_on_absence: clinic.paysOnAbsence ?? true,
+        payment_amount: clinic.paymentAmount ?? null, pays_on_absence: clinic.paysOnAbsence ?? true,
         absence_payment_type: clinic.absencePaymentType || 'always',
         letterhead: clinic.letterhead || null, stamp: clinic.stamp || null,
         email: clinic.email || null, cnpj: clinic.cnpj || null, phone: clinic.phone || null,
@@ -521,7 +521,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.scheduleTime !== undefined) updateData.schedule_time = updates.scheduleTime || null;
       if (updates.scheduleByDay !== undefined) updateData.schedule_by_day = updates.scheduleByDay || null;
       if (updates.paymentType !== undefined) updateData.payment_type = updates.paymentType || null;
-      if (updates.paymentAmount !== undefined) updateData.payment_amount = updates.paymentAmount || null;
+      if (updates.paymentAmount !== undefined) updateData.payment_amount = updates.paymentAmount ?? null;
       if (updates.paysOnAbsence !== undefined) updateData.pays_on_absence = updates.paysOnAbsence;
       if (updates.absencePaymentType !== undefined) updateData.absence_payment_type = updates.absencePaymentType;
       if (updates.letterhead !== undefined) updateData.letterhead = updates.letterhead || null;
@@ -563,7 +563,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         observations: patient.observations || null, responsible_name: patient.responsibleName || null,
         responsible_email: patient.responsibleEmail || null, responsible_whatsapp: (patient as any).responsibleWhatsapp || null,
         payment_type: patient.paymentType || null,
-        payment_value: patient.paymentValue || null, contract_start_date: patient.contractStartDate || null,
+        payment_value: patient.paymentValue ?? null, contract_start_date: patient.contractStartDate || null,
         weekdays: patient.weekdays || null, schedule_time: patient.scheduleTime || null,
         schedule_by_day: patient.scheduleByDay || null, package_id: patient.packageId || null,
       }).select().single();
@@ -604,8 +604,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if ((updates as any).financial_responsible_cpf !== undefined) updateData.financial_responsible_cpf = (updates as any).financial_responsible_cpf || null;
       if ((updates as any).financial_responsible_whatsapp !== undefined) updateData.financial_responsible_whatsapp = (updates as any).financial_responsible_whatsapp || null;
       if (updates.paymentType !== undefined) updateData.payment_type = updates.paymentType || null;
-      if (updates.paymentValue !== undefined) updateData.payment_value = updates.paymentValue || null;
-      if ((updates as any).payment_due_day !== undefined) updateData.payment_due_day = (updates as any).payment_due_day || null;
+      if (updates.paymentValue !== undefined) updateData.payment_value = updates.paymentValue ?? null;
+      if ((updates as any).payment_due_day !== undefined) updateData.payment_due_day = (updates as any).payment_due_day ?? null;
       if (updates.contractStartDate !== undefined) updateData.contract_start_date = updates.contractStartDate || null;
       if (updates.weekdays !== undefined) updateData.weekdays = updates.weekdays || null;
       if (updates.scheduleTime !== undefined) updateData.schedule_time = updates.scheduleTime || null;
