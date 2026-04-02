@@ -293,26 +293,78 @@ export default function Clinics() {
       const date = new Date(e.date + 'T12:00:00');
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     });
-    // Only count non-archived patients from non-archived clinics
-    const activePatients = patients.filter(p => !p.isArchived && activeClinicIds.has(p.clinicId));
-    const clinicRevenue = activePatients.reduce((sum, p) => {
+
+    // Helper: effective per-session value respecting personalizado packages
+    const getEffectiveSessionValue = (p: typeof patients[0]) => {
+      if (!p.paymentValue) return 0;
       const pkg = p.packageId ? clinicPackages.find(pk => pk.id === p.packageId) : null;
       const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
-      const perSessionVal = isPersonalizado ? (p.paymentValue || 0) / pkg!.sessionLimit! : (p.paymentValue || 0);
+      return isPersonalizado ? p.paymentValue / pkg!.sessionLimit! : p.paymentValue;
+    };
 
-      if (p.paymentType === 'fixo') return sum + (p.paymentValue || 0);
-      if (p.paymentType === 'sessao' && p.paymentValue) {
-        const count = monthlyEvolutions.filter(e =>
-          e.patientId === p.id &&
-          ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus)
-        ).length;
-        return sum + count * perSessionVal;
+    // Group patients by clinic
+    const patientsByClinic: Record<string, typeof patients> = {};
+    for (const p of patients) {
+      if (p.isArchived || !activeClinicIds.has(p.clinicId)) continue;
+      if (!patientsByClinic[p.clinicId]) patientsByClinic[p.clinicId] = [];
+      patientsByClinic[p.clinicId].push(p);
+    }
+
+    let clinicRevenue = 0;
+    for (const [cId, cPatients] of Object.entries(patientsByClinic)) {
+      const clinic = clinics.find(c => c.id === cId);
+      if (!clinic || clinic.isArchived) continue;
+
+      const clPayType = clinic.paymentType as string | undefined;
+      const isFixoMensal = clPayType === 'fixo_mensal';
+      const isFixoDiario = clPayType === 'fixo_diario';
+      const clinicBaseValue = clinic.paymentAmount || 0;
+
+      if (isFixoMensal) {
+        clinicRevenue += clinicBaseValue;
+        continue;
       }
-      return sum;
-    }, 0);
+
+      if (isFixoDiario) {
+        const clinicBillableEvos = monthlyEvolutions.filter(
+          e => cPatients.some(p => p.id === e.patientId) && (
+            e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'
+          )
+        );
+        const uniqueDays = new Set(clinicBillableEvos.map(e => e.date)).size;
+        clinicRevenue += uniqueDays * clinicBaseValue;
+        continue;
+      }
+
+      // Per-patient calculation
+      for (const p of cPatients) {
+        if (!p.paymentValue) continue;
+        const billableEvolutions = monthlyEvolutions.filter(
+          e => e.patientId === p.id && (
+            e.attendanceStatus === 'presente' ||
+            e.attendanceStatus === 'reposicao' ||
+            e.attendanceStatus === 'falta_remunerada' ||
+            e.attendanceStatus === 'feriado_remunerado'
+          )
+        );
+
+        if (p.paymentType === 'fixo') {
+          const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
+          const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
+          if (dynamic.occurrences > 0) {
+            clinicRevenue += billableEvolutions.length * dynamic.perSession;
+          } else {
+            clinicRevenue += billableEvolutions.length * p.paymentValue;
+          }
+        } else {
+          clinicRevenue += billableEvolutions.length * getEffectiveSessionValue(p);
+        }
+      }
+    }
+
     const privateRevenue = privateAppointments.filter(a => a.status === 'concluído').reduce((sum, a) => sum + a.price, 0);
     return clinicRevenue + privateRevenue;
-  }, [evolutions, patients, privateAppointments, clinicPackages, activeClinicIds]);
+  }, [evolutions, patients, clinics, privateAppointments, clinicPackages, activeClinicIds]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
