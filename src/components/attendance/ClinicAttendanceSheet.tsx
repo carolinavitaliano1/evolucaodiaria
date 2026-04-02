@@ -69,7 +69,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
   const exportOptions: ExportOptions = {
     showSignatureCol,
     showObsCol,
-    therapistName: selectedTherapist,
+    therapistName: selectedTherapist === 'none' ? '' : selectedTherapist,
     stampImageBase64: stampImage,
   };
 
