@@ -226,7 +226,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="bg-muted/50">
-                    <th className="border border-border px-2 py-1.5 text-left text-xs font-semibold text-foreground whitespace-nowrap">Paciente / Resp.</th>
+                    <th className="border border-border px-2 py-1.5 text-left text-xs font-semibold text-foreground whitespace-nowrap">Paciente</th>
                     <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">Terapia</th>
                     {Array.from({ length: maxSessions }, (_, i) => (
                       <th key={i} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
