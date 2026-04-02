@@ -25,3 +25,5 @@ project_id = "uhhpnjyceobdcxqviouy"
     verify_jwt = false
   [functions.google-calendar-events]
     verify_jwt = false
+  [functions.delete-user-account]
+    verify_jwt = false
