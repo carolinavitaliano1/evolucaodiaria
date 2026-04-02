@@ -211,7 +211,7 @@ export default function Financial() {
     .reduce((sum, a) => sum + (a.price || 0), 0);
   const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue;
 
-  const clinicStats = clinics.map(clinic => {
+  const clinicStats = clinics.filter(c => !c.isArchived).map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
     const revenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
     const loss = clinicPatients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
