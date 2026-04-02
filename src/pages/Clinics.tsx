@@ -339,6 +339,14 @@ export default function Clinics() {
       // Per-patient calculation
       for (const p of cPatients) {
         if (!p.paymentValue) continue;
+
+        // Fixo (mensal) patients: use full monthly value as expected revenue
+        if (p.paymentType === 'fixo') {
+          clinicRevenue += p.paymentValue;
+          continue;
+        }
+
+        // Session-based: count confirmed evolutions
         const billableEvolutions = monthlyEvolutions.filter(
           e => e.patientId === p.id && (
             e.attendanceStatus === 'presente' ||
@@ -347,18 +355,7 @@ export default function Clinics() {
             e.attendanceStatus === 'feriado_remunerado'
           )
         );
-
-        if (p.paymentType === 'fixo') {
-          const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
-          const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
-          if (dynamic.occurrences > 0) {
-            clinicRevenue += billableEvolutions.length * dynamic.perSession;
-          } else {
-            clinicRevenue += billableEvolutions.length * p.paymentValue;
-          }
-        } else {
-          clinicRevenue += billableEvolutions.length * getEffectiveSessionValue(p);
-        }
+        clinicRevenue += billableEvolutions.length * getEffectiveSessionValue(p);
       }
     }
 
