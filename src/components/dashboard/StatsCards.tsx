@@ -90,36 +90,42 @@ export function StatsCards() {
   };
 
   // Clinic patient revenue — skip archived patients; use effective session value for personalizado packages
+  // Revenue is now 100% based on confirmed evolutions (no projection)
   const clinicMonthlyRevenue = patients.reduce((sum, p) => {
     if (p.isArchived) return sum;
-    if (p.paymentType === 'fixo' && p.paymentValue) {
-      // Check if patient has a "mensal" package → apply dynamic proration with absence deduction
+    if (!p.paymentValue) return sum;
+
+    const billableEvolutions = monthlyEvolutions.filter(
+      e => e.patientId === p.id && (
+        e.attendanceStatus === 'presente' ||
+        e.attendanceStatus === 'reposicao' ||
+        e.attendanceStatus === 'falta_remunerada' ||
+        e.attendanceStatus === 'feriado_remunerado'
+      )
+    );
+
+    if (p.paymentType === 'fixo') {
+      // For fixed/monthly patients, calculate per-session value dynamically
       const pkg = p.packageId ? clinicPackages.find(pk => pk.id === p.packageId) : null;
       if (pkg?.packageType === 'mensal') {
         const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
         const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
         if (dynamic.occurrences > 0) {
-          const absences = monthlyEvolutions.filter(
-            e => e.patientId === p.id && e.attendanceStatus === 'falta'
-          ).length;
-          const result = calculateMensalRevenueWithDeductions(p.paymentValue, dynamic.perSession, absences);
-          return sum + result.finalRevenue;
+          return sum + (billableEvolutions.length * dynamic.perSession);
         }
       }
-      return sum + p.paymentValue;
+      // Fixed without mensal package: also use per-session fraction
+      const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
+      const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
+      if (dynamic.occurrences > 0) {
+        return sum + (billableEvolutions.length * dynamic.perSession);
+      }
+      // Fallback: count billable × full value (single session patient)
+      return sum + (billableEvolutions.length * p.paymentValue);
     }
-    // Per-session, variado, or any other type → count billable evolutions
-    if (p.paymentValue) {
-      const patientEvolutions = monthlyEvolutions.filter(
-        e => e.patientId === p.id && (
-          e.attendanceStatus === 'presente' ||
-          e.attendanceStatus === 'reposicao' ||
-          e.attendanceStatus === 'falta_remunerada' ||
-          e.attendanceStatus === 'feriado_remunerado'
-        )
-      );
-      return sum + (patientEvolutions.length * getEffectiveSessionValue(p));
-    }
+
+    // Per-session, variado, personalizado, etc.
+    return sum + (billableEvolutions.length * getEffectiveSessionValue(p));
   }, 0);
 
   const monthlyRevenue = clinicMonthlyRevenue + privateMonthlyRevenue;
