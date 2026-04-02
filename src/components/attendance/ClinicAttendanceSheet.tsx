@@ -1,20 +1,31 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { ClipboardList, FileDown, FileText, Upload, X } from 'lucide-react';
+import { ClipboardList, FileDown, FileText } from 'lucide-react';
 import { downloadAttendancePDF, downloadAttendanceDOCX, ExportOptions } from './AttendanceSheetPrint';
-import { buildGroupedAttendanceRows, getStatusLabel, GroupedPatientRow, PatientInfo } from './attendanceUtils';
+import { buildGroupedAttendanceRows, getStatusLabel, PatientInfo } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
+
+interface StampOption {
+  id: string;
+  name: string;
+  clinical_area: string;
+  stamp_image: string | null;
+  signature_image: string | null;
+  is_default: boolean | null;
+}
 
 interface ClinicAttendanceSheetProps {
   clinicName: string;
@@ -23,20 +34,30 @@ interface ClinicAttendanceSheetProps {
 }
 
 export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: ClinicAttendanceSheetProps) {
+  const { user } = useAuth();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [filterProfessional, setFilterProfessional] = useState('all');
 
   // Export config
-  const [selectedTherapist, setSelectedTherapist] = useState('');
-  const [stampImage, setStampImage] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState('');
+  const [stamps, setStamps] = useState<StampOption[]>([]);
+  const [selectedStampId, setSelectedStampId] = useState('none');
   const [showSignatureCol, setShowSignatureCol] = useState(false);
   const [showObsCol, setShowObsCol] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentYear = now.getFullYear();
   const years = [currentYear - 1, currentYear, currentYear + 1];
+
+  // Load profile and stamps
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data?.name) setProfileName(data.name); });
+    supabase.from('stamps').select('id, name, clinical_area, stamp_image, signature_image, is_default').eq('user_id', user.id)
+      .then(({ data }) => { if (data) setStamps(data as StampOption[]); });
+  }, [user]);
 
   const professionals = useMemo(() => {
     const set = new Set<string>();
@@ -66,11 +87,13 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
     groupedRows.reduce((max, row) => Math.max(max, row.sessions.length), 0),
     [groupedRows]);
 
+  const selectedStamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
+
   const exportOptions: ExportOptions = {
     showSignatureCol,
     showObsCol,
-    therapistName: selectedTherapist === 'none' ? '' : selectedTherapist,
-    stampImageBase64: stampImage,
+    therapistName: profileName,
+    stampImageBase64: selectedStamp?.stamp_image || null,
   };
 
   const handleDownloadPDF = () => {
@@ -79,14 +102,6 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
 
   const handleDownloadDOCX = async () => {
     await downloadAttendanceDOCX(clinicName, month, year, groupedRows, exportOptions);
-  };
-
-  const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setStampImage(reader.result as string);
-    reader.readAsDataURL(file);
   };
 
   return (
@@ -145,47 +160,34 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Therapist for footer */}
+            {/* Therapist name from profile */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Profissional Responsável (Rodapé)</label>
-              <Select value={selectedTherapist} onValueChange={setSelectedTherapist}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione o profissional" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {professionals.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="h-9 flex items-center px-3 rounded-md border border-border bg-muted/30 text-sm text-foreground">
+                {profileName || <span className="text-muted-foreground italic">Nome não cadastrado no perfil</span>}
+              </div>
             </div>
 
-            {/* Stamp upload */}
+            {/* Stamp selector from profile stamps */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Carimbo / Assinatura (imagem)</label>
-              <div className="flex items-center gap-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleStampUpload}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  {stampImage ? 'Trocar imagem' : 'Enviar imagem'}
-                </Button>
-                {stampImage && (
-                  <div className="flex items-center gap-2">
-                    <img src={stampImage} alt="Carimbo" className="h-10 w-auto rounded border border-border" />
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setStampImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Carimbo para o Documento</label>
+              <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione um carimbo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem carimbo</SelectItem>
+                  {stamps.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} — {s.clinical_area} {s.is_default ? '⭐' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedStamp?.stamp_image && (
+                <div className="mt-2 flex items-center gap-2">
+                  <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-12 w-auto rounded border border-border" />
+                  <span className="text-[10px] text-muted-foreground">Preview do carimbo</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -282,12 +284,12 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
             {/* Footer preview */}
             <div className="px-4 py-6 space-y-3 border-t border-border">
               <p className="text-sm text-foreground">
-                Responsável: {selectedTherapist || '____________________________________________________'}
+                Responsável: {profileName || '____________________________________________________'}
               </p>
-              {stampImage ? (
+              {selectedStamp?.stamp_image ? (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Carimbo:</span>
-                  <img src={stampImage} alt="Carimbo" className="h-16 w-auto" />
+                  <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-16 w-auto" />
                 </div>
               ) : (
                 <p className="text-sm text-foreground">Assinatura / Carimbo: ____________________________________________________</p>
