@@ -105,8 +105,15 @@ export function downloadAttendancePDF(
   if (options.showSignatureCol) { colStyles[colIdx] = { cellWidth: 35, halign: 'center' }; colIdx++; }
   if (options.showObsCol) { colStyles[colIdx] = { cellWidth: 18, halign: 'center' }; }
 
+  // Calculate total table width and center margin
+  let totalTableW = patientW + therapyW + (maxSessions * sessionColW);
+  if (options.showSignatureCol) totalTableW += 35;
+  if (options.showObsCol) totalTableW += 18;
+  const marginLeft = (pageW - totalTableW) / 2;
+
   autoTable(doc, {
     startY: 26,
+    margin: { left: marginLeft, right: marginLeft },
     head: [headRow],
     body: tableData.length > 0
       ? tableData
