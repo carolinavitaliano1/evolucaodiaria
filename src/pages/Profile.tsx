@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff, Wallet, Copy, Building2 } from 'lucide-react';
+import { User, Plus, Trash2, Stamp, Pencil, Camera, X, LogOut, CreditCard, Loader2, Lock, Eye, EyeOff, Wallet, Copy, Building2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
   interface Profile {
