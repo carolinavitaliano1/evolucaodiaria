@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
+import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
 
 export function StatsCards() {
   const { clinics, patients, appointments, evolutions, clinicPackages } = useApp();
@@ -90,9 +91,21 @@ export function StatsCards() {
 
   // Clinic patient revenue — skip archived patients; use effective session value for personalizado packages
   const clinicMonthlyRevenue = patients.reduce((sum, p) => {
-    // Fix 2: exclude archived patients
     if (p.isArchived) return sum;
     if (p.paymentType === 'fixo' && p.paymentValue) {
+      // Check if patient has a "mensal" package → apply dynamic proration with absence deduction
+      const pkg = p.packageId ? clinicPackages.find(pk => pk.id === p.packageId) : null;
+      if (pkg?.packageType === 'mensal') {
+        const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
+        const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
+        if (dynamic.occurrences > 0) {
+          const absences = monthlyEvolutions.filter(
+            e => e.patientId === p.id && e.attendanceStatus === 'falta'
+          ).length;
+          const result = calculateMensalRevenueWithDeductions(p.paymentValue, dynamic.perSession, absences);
+          return sum + result.finalRevenue;
+        }
+      }
       return sum + p.paymentValue;
     }
     if (p.paymentType === 'sessao' && p.paymentValue) {
@@ -104,7 +117,6 @@ export function StatsCards() {
           e.attendanceStatus === 'feriado_remunerado'
         )
       );
-      // Fix 1 & 3: use fractionated value for personalizado packages
       return sum + (patientEvolutions.length * getEffectiveSessionValue(p));
     }
     return sum;

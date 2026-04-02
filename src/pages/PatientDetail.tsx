@@ -39,6 +39,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { generateReportPdf } from '@/utils/generateReportPdf';
+import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
 import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import jsPDF from 'jspdf';
@@ -493,6 +494,7 @@ export default function PatientDetail() {
   const paymentValue = patient?.paymentValue || 0;
   // Package personalizado: per-session value = total / sessionLimit
   const isPackagePersonalizado = patientPackage?.packageType === 'personalizado' && (patientPackage?.sessionLimit ?? 0) > 0;
+  const isPackageMensal = patientPackage?.packageType === 'mensal';
   const perSessionValue = isPackagePersonalizado
     ? paymentValue / (patientPackage!.sessionLimit!)
     : paymentValue;
@@ -551,16 +553,37 @@ export default function PatientDetail() {
   const monthlyTotal = monthlyPresent + monthlyReposicao;
   const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
   const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const monthlyRevenue = isFixoMensal
-    ? paymentValue
-    : isFixoDiario
-      ? monthlyUniqueDays * perSessionValue
-      : monthlyBillableCount * perSessionValue;
-  const monthlyRevenueSubtitle = isFixoMensal
-    ? 'Valor Fixo'
-    : isFixoDiario
-      ? `${monthlyUniqueDays} diária(s)`
-      : `${monthlyBillableCount} sessão(ões)`;
+  // Dynamic proration for Mensal packages
+  const monthlyDynamic = useMemo(() => {
+    if (isPackageMensal && isFixoMensal && paymentValue > 0) {
+      const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+      return getDynamicSessionValue(paymentValue, patientWeekdays, reportMonth.getMonth(), reportMonth.getFullYear());
+    }
+    return null;
+  }, [isPackageMensal, isFixoMensal, paymentValue, patient?.weekdays, patient?.scheduleByDay, reportMonth]);
+
+  const monthlyDeductibleAbsences = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+  const monthlyMensalDeduction = useMemo(() => {
+    if (monthlyDynamic && monthlyDynamic.occurrences > 0) {
+      return calculateMensalRevenueWithDeductions(paymentValue, monthlyDynamic.perSession, monthlyDeductibleAbsences);
+    }
+    return null;
+  }, [monthlyDynamic, paymentValue, monthlyDeductibleAbsences]);
+
+  const monthlyRevenue = monthlyMensalDeduction
+    ? monthlyMensalDeduction.finalRevenue
+    : isFixoMensal
+      ? paymentValue
+      : isFixoDiario
+        ? monthlyUniqueDays * perSessionValue
+        : monthlyBillableCount * perSessionValue;
+  const monthlyRevenueSubtitle = monthlyMensalDeduction
+    ? `${monthlyDynamic!.occurrences} sessões previstas`
+    : isFixoMensal
+      ? 'Valor Fixo'
+      : isFixoDiario
+        ? `${monthlyUniqueDays} diária(s)`
+        : `${monthlyBillableCount} sessão(ões)`;
   const monthlyRegistros = monthlyEvolutions.length;
   const monthlyAttendanceRate = monthlyRegistros > 0 ? Math.round(((monthlyPresent + monthlyReposicao) / monthlyRegistros) * 100) : 0;
   const monthlyMoodCounts = allMoodOptions.map(m => ({
@@ -585,11 +608,30 @@ export default function PatientDetail() {
   const finTotal = finPresent + finReposicao;
   const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
   const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const finRevenue = isFixoMensal
-    ? paymentValue
-    : isFixoDiario
-      ? finUniqueDays * perSessionValue
-      : finBillableCount * perSessionValue;
+  // Dynamic proration for financial tab
+  const finDynamic = useMemo(() => {
+    if (isPackageMensal && isFixoMensal && paymentValue > 0) {
+      const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+      return getDynamicSessionValue(paymentValue, patientWeekdays, financialMonth.getMonth(), financialMonth.getFullYear());
+    }
+    return null;
+  }, [isPackageMensal, isFixoMensal, paymentValue, patient?.weekdays, patient?.scheduleByDay, financialMonth]);
+
+  const finDeductibleAbsences = finAbsent;
+  const finMensalDeduction = useMemo(() => {
+    if (finDynamic && finDynamic.occurrences > 0) {
+      return calculateMensalRevenueWithDeductions(paymentValue, finDynamic.perSession, finDeductibleAbsences);
+    }
+    return null;
+  }, [finDynamic, paymentValue, finDeductibleAbsences]);
+
+  const finRevenue = finMensalDeduction
+    ? finMensalDeduction.finalRevenue
+    : isFixoMensal
+      ? paymentValue
+      : isFixoDiario
+        ? finUniqueDays * perSessionValue
+        : finBillableCount * perSessionValue;
   const finRegistros = financialEvolutions.length;
   const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
 
@@ -1563,15 +1605,34 @@ export default function PatientDetail() {
 
               {/* Quick info row */}
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {patient.paymentValue && (
-                  <span className="flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5" />
-                    {isPackagePersonalizado
-                      ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit})`
-                      : `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
+                {patient.paymentValue && (() => {
+                  // Dynamic proration for header display (current month)
+                  const now = new Date();
+                  if (isPackageMensal && isFixoMensal) {
+                    const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+                    const headerDynamic = getDynamicSessionValue(paymentValue, patientWeekdays, now.getMonth(), now.getFullYear());
+                    if (headerDynamic.occurrences > 0) {
+                      return (
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <DollarSign className="w-3.5 h-3.5" />
+                          <span>R$ {patient.paymentValue.toFixed(2)}/mês</span>
+                          <span className="text-xs text-primary/80">
+                            (Mês de {headerDynamic.occurrences} semanas: R$ {headerDynamic.perSession.toFixed(2)}/sessão)
+                          </span>
+                        </span>
+                      );
                     }
-                  </span>
-                )}
+                  }
+                  return (
+                    <span className="flex items-center gap-1">
+                      <DollarSign className="w-3.5 h-3.5" />
+                      {isPackagePersonalizado
+                        ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit})`
+                        : `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
+                      }
+                    </span>
+                  );
+                })()}
                 {patient.diagnosis && (
                   <span className="truncate max-w-xs">📋 {patient.diagnosis}</span>
                 )}
@@ -2171,6 +2232,11 @@ export default function PatientDetail() {
                       <p className="text-xs font-medium text-success mb-1">Receita</p>
                       <p className="text-2xl font-bold text-success">R$ {monthlyRevenue.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">{monthlyRevenueSubtitle}</p>
+                      {monthlyMensalDeduction?.hasDeduction && (
+                        <p className="text-xs text-destructive/80 mt-1">
+                          Mensalidade R$ {paymentValue.toFixed(2)} - R$ {monthlyMensalDeduction.deduction.toFixed(2)} ({monthlyDeductibleAbsences} Falta{monthlyDeductibleAbsences > 1 ? 's' : ''})
+                        </p>
+                      )}
                     </div>
                     <div className="bg-destructive/5 rounded-xl p-4 border border-destructive/20">
                       <p className="text-xs font-medium text-destructive mb-1">Faltas</p>
@@ -2253,7 +2319,12 @@ export default function PatientDetail() {
                                 )}
                                 {patient.paymentValue && ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(evo.attendanceStatus) && (
                                   <span className="text-xs text-success font-medium ml-auto">
-                                    + R$ {patient.paymentValue.toFixed(2)}
+                                    + R$ {(monthlyDynamic && isPackageMensal ? monthlyDynamic.perSession : patient.paymentValue).toFixed(2)}
+                                  </span>
+                                )}
+                                {patient.paymentValue && isPackageMensal && monthlyDynamic && evo.attendanceStatus === 'falta' && (
+                                  <span className="text-xs text-destructive font-medium ml-auto">
+                                    - R$ {monthlyDynamic.perSession.toFixed(2)}
                                   </span>
                                 )}
                               </div>
@@ -2561,6 +2632,11 @@ export default function PatientDetail() {
                 <div className="rounded-lg bg-secondary/40 p-3 text-center">
                   <p className="text-xl font-bold text-success">R$ {finRevenue.toFixed(0)}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Receita</p>
+                  {finMensalDeduction?.hasDeduction && (
+                    <p className="text-xs text-destructive/80 mt-1">
+                      R$ {paymentValue.toFixed(0)} - R$ {finMensalDeduction.deduction.toFixed(0)} ({finDeductibleAbsences} falta{finDeductibleAbsences > 1 ? 's' : ''})
+                    </p>
+                  )}
                 </div>
               </div>
             )}
