@@ -245,38 +245,34 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     return isPersonalizado ? patient.paymentValue / pkg!.sessionLimit! : patient.paymentValue;
   };
 
-  // Helper: calculate revenue for a single patient considering mensal proration
+  // Helper: calculate revenue for a single patient based on CONFIRMED evolutions only
   const calcPatientRevenue = (patient: typeof clinicPatients[0]) => {
     if (!patient.paymentValue) return 0;
-    const pkg = patient.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
 
-    // Mensal package → dynamic proration with absence deduction
-    if (patient.paymentType === 'fixo' && pkg?.packageType === 'mensal') {
+    // Billable evolutions for this patient
+    const billableEvolutions = monthlyEvolutions.filter(
+      e => e.patientId === patient.id && (
+        e.attendanceStatus === 'presente' ||
+        e.attendanceStatus === 'reposicao' ||
+        e.attendanceStatus === 'falta_remunerada' ||
+        e.attendanceStatus === 'feriado_remunerado'
+      )
+    );
+
+    if (patient.paymentType === 'fixo') {
+      // For fixo patients, calculate per-session value dynamically
       const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
       const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
       if (dynamic.occurrences > 0) {
-        const absenceCount = monthlyEvolutions.filter(
-          e => e.patientId === patient.id && e.attendanceStatus === 'falta'
-        ).length;
-        const result = calculateMensalRevenueWithDeductions(patient.paymentValue, dynamic.perSession, absenceCount);
-        return result.finalRevenue;
+        return billableEvolutions.length * dynamic.perSession;
       }
-      return patient.paymentValue;
+      // Fallback: single session patient
+      return billableEvolutions.length * patient.paymentValue;
     }
 
-    // Fixo (non-mensal) → full monthly value
-    if (patient.paymentType === 'fixo') return patient.paymentValue;
-
-    // Per-session / personalizado
+    // Per-session / personalizado / variado
     const effectiveValue = getEffectiveSessionValue(patient);
-    const presentCount = presentEvos.filter(e => e.patientId === patient.id).length;
-    const paidAbsenceCount = paidAbsenceEvos.filter(e => e.patientId === patient.id).length;
-    const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
-    let paidRegularAbsences = 0;
-    const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
-    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * effectiveValue;
+    return billableEvolutions.length * effectiveValue;
   };
 
   // Total patient revenue — for fixed models this is a single global amount
