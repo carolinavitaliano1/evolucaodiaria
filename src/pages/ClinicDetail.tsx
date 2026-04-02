@@ -2238,6 +2238,10 @@ export default function ClinicDetail() {
             therapistStampImage={stamps.find(s => s.is_default)?.stamp_image || stamps[0]?.stamp_image || undefined}
             therapistSignatureImage={(stamps.find(s => s.is_default) as any)?.signature_image || (stamps[0] as any)?.signature_image || undefined}
           />
+        </TabsContent>
+
+        {/* Attendance Tab */}
+        <TabsContent value="attendance">
           <ClinicAttendanceSheet
             clinicName={clinic.name}
             patients={clinicPatients}
