@@ -217,7 +217,7 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
                         <div className="font-medium text-foreground text-xs leading-tight">{row.patientName}</div>
                       </td>
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
-                        {abbreviateTherapy(row.specialty)}
+                        {row.specialty || '—'}
                       </td>
                       {Array.from({ length: maxSessions }, (_, i) => {
                         const s = row.sessions[i];
