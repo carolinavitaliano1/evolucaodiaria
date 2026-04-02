@@ -282,19 +282,18 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                 </tbody>
               </table>
             </div>
-            {/* Footer preview */}
-            <div className="px-4 py-6 space-y-3 border-t border-border">
-              <p className="text-sm text-foreground">
-                Responsável: {profileName || '____________________________________________________'}
-              </p>
+            {/* Footer preview - centered vertical signature block */}
+            <div className="px-4 py-8 border-t border-border flex flex-col items-center">
               {selectedStamp?.stamp_image ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Carimbo:</span>
-                  <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-16 w-auto" />
-                </div>
+                <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-16 w-auto mb-2" />
               ) : (
-                <p className="text-sm text-foreground">Assinatura / Carimbo: ____________________________________________________</p>
+                <div className="h-16 mb-2" />
               )}
+              <div className="border-t border-foreground w-72 mt-2" />
+              <p className="text-center mt-1 text-sm text-foreground">
+                {profileName || '________________________'}
+                {selectedStamp?.clinical_area ? ` - ${selectedStamp.clinical_area}` : ''}
+              </p>
             </div>
           </CardContent>
         </Card>
