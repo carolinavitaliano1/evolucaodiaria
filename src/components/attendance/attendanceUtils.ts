@@ -48,6 +48,36 @@ export function getStatusLabel(status?: string): string {
   return STATUS_LABELS[status] || status;
 }
 
+const THERAPY_ABBREVIATIONS: Record<string, string> = {
+  'psicopedagogia': 'Psico',
+  'musicoterapia': 'Música',
+  'psicomotricidade': 'Psicomot.',
+  'fonoaudiologia': 'Fono',
+  'terapia ocupacional': 'T.O.',
+  'fisioterapia': 'Fisio',
+  'psicologia': 'Psicol.',
+  'neuropsicologia': 'Neuro',
+  'arteterapia': 'Arte',
+  'pedagogia': 'Pedag.',
+  'nutrição': 'Nutri',
+  'educação física': 'Ed. Fís.',
+  'análise do comportamento aplicada': 'ABA',
+  'aba': 'ABA',
+  'integração sensorial': 'I.S.',
+};
+
+export function abbreviateTherapy(name?: string): string {
+  if (!name) return '—';
+  const lower = name.toLowerCase().trim();
+  if (THERAPY_ABBREVIATIONS[lower]) return THERAPY_ABBREVIATIONS[lower];
+  // Try partial match
+  for (const [key, abbr] of Object.entries(THERAPY_ABBREVIATIONS)) {
+    if (lower.includes(key)) return abbr;
+  }
+  // Fallback: truncate if too long
+  return name.length > 10 ? name.substring(0, 8) + '.' : name;
+}
+
 function getExpectedDates(weekdays: string[] | undefined, month: number, year: number): string[] {
   if (!weekdays || weekdays.length === 0) return [];
   const dates: string[] = [];
