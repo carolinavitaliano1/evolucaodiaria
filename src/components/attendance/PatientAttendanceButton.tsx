@@ -34,7 +34,12 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
       scheduleByDay: patient.scheduleByDay as any,
     };
     const rows = buildGroupedAttendanceRows([info], evolutions, month, year);
-    downloadAttendancePDF(clinicName, month, year, rows);
+    downloadAttendancePDF(clinicName, month, year, rows, {
+      showSignatureCol: true,
+      showObsCol: true,
+      therapistName: '',
+      stampImageBase64: null,
+    });
   };
 
   const currentYear = now.getFullYear();
