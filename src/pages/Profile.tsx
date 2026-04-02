@@ -1071,7 +1071,7 @@ export default function Profile() {
                 Atenção: Esta ação é irreversível.
               </span>
               <span className="block">
-                O acesso ao sistema será encerrado e todos os seus dados (pacientes, evoluções, recibos, clínicas, equipe) serão apagados permanentemente.
+                Todos os seus dados (pacientes, evoluções, recibos, clínicas, equipe) serão apagados permanentemente e sua assinatura atual será cancelada imediatamente, sem cobranças futuras.
               </span>
               <span className="block">
                 Para confirmar, digite <strong className="text-destructive">EXCLUIR</strong> no campo abaixo:

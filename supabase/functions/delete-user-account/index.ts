@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@18.5.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Validate the requesting user's identity
+    // 1. Authenticate and validate user
     const anonClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -38,17 +39,66 @@ Deno.serve(async (req) => {
     }
 
     const userId = claimsData.claims.sub as string;
+    const userEmail = claimsData.claims.email as string | undefined;
 
-    // Admin client for privileged operations
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Delete user data from all tables (order matters due to FK constraints)
-    // Tables with FK to patients/clinics will cascade, but we need to delete
-    // top-level tables that reference user_id directly
+    // 2. Cancel Stripe subscription (if any) BEFORE deleting data
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (stripeKey && userEmail) {
+      try {
+        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
+        // Find customer by email
+        const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+
+        if (customers.data.length > 0) {
+          const customerId = customers.data[0].id;
+          console.log(`[DELETE-ACCOUNT] Found Stripe customer: ${customerId}`);
+
+          // Cancel all active subscriptions
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customerId,
+            status: "active",
+          });
+
+          for (const sub of subscriptions.data) {
+            console.log(`[DELETE-ACCOUNT] Canceling subscription: ${sub.id}`);
+            await stripe.subscriptions.cancel(sub.id);
+            console.log(`[DELETE-ACCOUNT] Subscription ${sub.id} canceled`);
+          }
+
+          // Also cancel trialing subscriptions
+          const trialingSubs = await stripe.subscriptions.list({
+            customer: customerId,
+            status: "trialing",
+          });
+
+          for (const sub of trialingSubs.data) {
+            console.log(`[DELETE-ACCOUNT] Canceling trialing subscription: ${sub.id}`);
+            await stripe.subscriptions.cancel(sub.id);
+          }
+        }
+      } catch (stripeError) {
+        console.error("[DELETE-ACCOUNT] Stripe cancellation failed:", stripeError);
+        // CRITICAL: Do NOT proceed with account deletion if Stripe fails
+        return new Response(
+          JSON.stringify({
+            error:
+              "Houve um erro ao cancelar sua cobrança automática. Por favor, tente novamente ou contate o suporte.",
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
+
+    // 3. Delete user data from all tables
     const tablesToClean = [
       "evolution_feedbacks",
       "evolutions",
@@ -98,33 +148,21 @@ Deno.serve(async (req) => {
         .from(table)
         .delete()
         .eq("user_id", userId);
-      // Ignore errors for tables where user may have no data
       if (error) {
-        console.log(`Note: could not clean ${table}: ${error.message}`);
+        console.log(`[DELETE-ACCOUNT] Note: could not clean ${table}: ${error.message}`);
       }
     }
 
-    // Also clean tables where the user is referenced as owner_id
     await adminClient.from("organizations").delete().eq("owner_id", userId);
+    await adminClient.from("internal_notifications").delete().eq("recipient_user_id", userId);
+    await adminClient.from("patient_portal_accounts").delete().eq("therapist_user_id", userId);
 
-    // Clean internal notifications where user is recipient
-    await adminClient
-      .from("internal_notifications")
-      .delete()
-      .eq("recipient_user_id", userId);
-
-    // Clean portal accounts where user is therapist
-    await adminClient
-      .from("patient_portal_accounts")
-      .delete()
-      .eq("therapist_user_id", userId);
-
-    // Finally, delete the auth user
+    // 4. Delete auth user
     const { error: deleteError } =
       await adminClient.auth.admin.deleteUser(userId);
 
     if (deleteError) {
-      console.error("Failed to delete auth user:", deleteError.message);
+      console.error("[DELETE-ACCOUNT] Failed to delete auth user:", deleteError.message);
       return new Response(
         JSON.stringify({ error: "Falha ao excluir conta de autenticação." }),
         {
@@ -134,12 +172,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log(`[DELETE-ACCOUNT] Account ${userId} fully deleted`);
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.error("[DELETE-ACCOUNT] Unexpected error:", err);
     return new Response(
       JSON.stringify({ error: "Erro interno do servidor." }),
       {
