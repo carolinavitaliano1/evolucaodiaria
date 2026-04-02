@@ -185,7 +185,7 @@ export function downloadAttendancePDF(
     footerY += 4;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text(options.therapistTitle, centerX, footerY, { align: 'center' });
+    doc.text(getProfessionalTitle(options.therapistTitle), centerX, footerY, { align: 'center' });
   }
 
   doc.save(`Frequencia_${clinicName.replace(/\s+/g, '_')}_${MONTHS[month]}_${year}.pdf`);
