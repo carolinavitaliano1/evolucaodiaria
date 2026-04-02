@@ -6,7 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
-import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
+import { getDynamicSessionValue } from '@/utils/dateHelpers';
 
 export function StatsCards() {
   const { clinics, patients, appointments, evolutions, clinicPackages } = useApp();
@@ -48,6 +48,7 @@ export function StatsCards() {
         .from('private_appointments')
         .select('price')
         .eq('user_id', user.id)
+        .eq('status', 'concluído')
         .gte('date', monthStart)
         .lt('date', monthEnd),
     ]);
@@ -77,7 +78,7 @@ export function StatsCards() {
   const totalTodayCount = clinicTodayCount + privateToday;
 
   const monthlyEvolutions = evolutions.filter(e => {
-    const date = new Date(e.date);
+    const date = new Date(`${e.date}T12:00:00`);
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   });
 
