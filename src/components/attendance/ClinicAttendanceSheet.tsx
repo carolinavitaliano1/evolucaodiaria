@@ -118,7 +118,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                 </Select>
               </div>
             )}
-            <Button onClick={handleDownloadPDF} className="gap-1.5 h-9 bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={handleDownloadPDF} className="gap-1.5 h-9">
               <FileDown className="w-4 h-4" />
               Baixar PDF
             </Button>
