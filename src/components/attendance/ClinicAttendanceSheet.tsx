@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ClipboardList, FileDown, FileText } from 'lucide-react';
 import { downloadAttendancePDF, downloadAttendanceDOCX, ExportOptions } from './AttendanceSheetPrint';
-import { buildGroupedAttendanceRows, getStatusLabel, PatientInfo } from './attendanceUtils';
+import { buildGroupedAttendanceRows, getStatusLabel, abbreviateTherapy, PatientInfo } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -93,6 +93,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
     showSignatureCol,
     showObsCol,
     therapistName: profileName,
+    therapistTitle: selectedStamp?.clinical_area || '',
     stampImageBase64: selectedStamp?.stamp_image || null,
   };
 
@@ -226,7 +227,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                 <thead>
                   <tr className="bg-muted/50">
                     <th className="border border-border px-2 py-1.5 text-left text-xs font-semibold text-foreground whitespace-nowrap">Paciente / Resp.</th>
-                    <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">Terapeuta</th>
+                    <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">Terapia</th>
                     {Array.from({ length: maxSessions }, (_, i) => (
                       <th key={i} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
                         S{i + 1}
@@ -250,7 +251,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                         )}
                       </td>
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
-                        {row.professional || '—'}
+                        {abbreviateTherapy(row.specialty)}
                       </td>
                       {Array.from({ length: maxSessions }, (_, i) => {
                         const s = row.sessions[i];
@@ -281,19 +282,18 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                 </tbody>
               </table>
             </div>
-            {/* Footer preview */}
-            <div className="px-4 py-6 space-y-3 border-t border-border">
-              <p className="text-sm text-foreground">
-                Responsável: {profileName || '____________________________________________________'}
-              </p>
+            {/* Footer preview - centered vertical signature block */}
+            <div className="px-4 py-8 border-t border-border flex flex-col items-center">
               {selectedStamp?.stamp_image ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Carimbo:</span>
-                  <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-16 w-auto" />
-                </div>
+                <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-16 w-auto mb-2" />
               ) : (
-                <p className="text-sm text-foreground">Assinatura / Carimbo: ____________________________________________________</p>
+                <div className="h-16 mb-2" />
               )}
+              <div className="border-t border-foreground w-72 mt-2" />
+              <p className="text-center mt-1 text-sm text-foreground">
+                {profileName || '________________________'}
+                {selectedStamp?.clinical_area ? ` - ${selectedStamp.clinical_area}` : ''}
+              </p>
             </div>
           </CardContent>
         </Card>

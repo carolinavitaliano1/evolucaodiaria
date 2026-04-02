@@ -8,7 +8,7 @@ import {
   Header, ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { GroupedPatientRow, getStatusLabel } from './attendanceUtils';
+import { GroupedPatientRow, getStatusLabel, abbreviateTherapy } from './attendanceUtils';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -19,6 +19,7 @@ export interface ExportOptions {
   showSignatureCol: boolean;
   showObsCol: boolean;
   therapistName: string;
+  therapistTitle: string;
   stampImageBase64: string | null;
 }
 
@@ -32,7 +33,6 @@ function formatSessionCell(s: GroupedPatientRow['sessions'][0]): string {
   return `${dateStr}\n${label}`;
 }
 
-// Helper: convert base64 data URL to raw bytes
 function base64ToUint8Array(dataUrl: string): { bytes: Uint8Array; type: string } {
   const match = dataUrl.match(/^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/i);
   if (!match) return { bytes: new Uint8Array(), type: 'png' };
@@ -68,8 +68,8 @@ export function downloadAttendancePDF(
   doc.setFontSize(9);
   doc.text(monthLabel, pageW / 2, 22, { align: 'center' });
 
-  // Build columns dynamically
-  const headRow: string[] = ['Paciente / Resp.', 'Terapeuta'];
+  // Build columns
+  const headRow: string[] = ['Paciente / Resp.', 'Terapia'];
   for (let i = 0; i < maxSessions; i++) headRow.push(`S${i + 1}`);
   if (options.showSignatureCol) headRow.push('Assinatura');
   if (options.showObsCol) headRow.push('Obs.');
@@ -77,7 +77,7 @@ export function downloadAttendancePDF(
   const tableData = rows.map(row => {
     const cells: string[] = [
       row.responsibleName ? `${row.patientName}\nResp.: ${row.responsibleName}` : row.patientName,
-      row.professional || '—',
+      abbreviateTherapy(row.specialty),
     ];
     for (let i = 0; i < maxSessions; i++) {
       cells.push(row.sessions[i] ? formatSessionCell(row.sessions[i]) : '');
@@ -87,17 +87,16 @@ export function downloadAttendancePDF(
     return cells;
   });
 
-  // Column widths
   const patientW = 40;
-  const therapistW = 28;
+  const therapyW = 22;
   const sigW = options.showSignatureCol ? 35 : 0;
   const obsW = options.showObsCol ? 18 : 0;
-  const fixedWidth = patientW + therapistW + sigW + obsW;
+  const fixedWidth = patientW + therapyW + sigW + obsW;
   const sessionColW = maxSessions > 0 ? Math.min(22, (pageW - 20 - fixedWidth) / maxSessions) : 20;
 
   const colStyles: Record<number, any> = {
     0: { cellWidth: patientW, halign: 'left' },
-    1: { cellWidth: therapistW, halign: 'center' },
+    1: { cellWidth: therapyW, halign: 'center' },
   };
   for (let i = 0; i < maxSessions; i++) {
     colStyles[2 + i] = { cellWidth: sessionColW, halign: 'center', fontSize: 6 };
@@ -143,28 +142,37 @@ export function downloadAttendancePDF(
     },
   });
 
-  // Footer
+  // Centered vertical signature block
   const finalY = (doc as any).lastAutoTable?.finalY || 180;
-  let footerY = finalY + 12;
+  const centerX = pageW / 2;
+  let footerY = finalY + 15;
+
+  // Stamp image or blank space
+  if (options.stampImageBase64) {
+    try {
+      doc.addImage(options.stampImageBase64, 'PNG', centerX - 20, footerY, 40, 20);
+      footerY += 22;
+    } catch {
+      footerY += 15;
+    }
+  } else {
+    footerY += 15; // blank space for manual stamp
+  }
+
+  // Horizontal line
+  const lineHalfW = 40;
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.4);
+  doc.line(centerX - lineHalfW, footerY, centerX + lineHalfW, footerY);
+  footerY += 4;
+
+  // Therapist name and title
   doc.setFontSize(9);
   doc.setTextColor(0);
   doc.setFont('helvetica', 'normal');
-
-  const therapistLabel = options.therapistName
-    ? `Responsável: ${options.therapistName}`
-    : 'Responsável: ____________________________________________________';
-  doc.text(therapistLabel, 14, footerY);
-  footerY += 8;
-
-  if (options.stampImageBase64) {
-    try {
-      doc.addImage(options.stampImageBase64, 'PNG', 14, footerY, 40, 20);
-    } catch {
-      doc.text('Assinatura / Carimbo: ____________________________________________________', 14, footerY);
-    }
-  } else {
-    doc.text('Assinatura / Carimbo: ____________________________________________________', 14, footerY);
-  }
+  const nameLabel = options.therapistName || '________________________';
+  const titleLabel = options.therapistTitle ? ` - ${options.therapistTitle}` : '';
+  doc.text(`${nameLabel}${titleLabel}`, centerX, footerY, { align: 'center' });
 
   doc.save(`Frequencia_${clinicName.replace(/\s+/g, '_')}_${MONTHS[month]}_${year}.pdf`);
 }
@@ -222,20 +230,20 @@ export async function downloadAttendanceDOCX(
 
   const contentWidth = 14400;
   const patientW = 2600;
-  const therapistW = 1800;
+  const therapyW = 1400;
   const signatureW = options.showSignatureCol ? 2000 : 0;
   const obsW = options.showObsCol ? 1000 : 0;
-  const fixedW = patientW + therapistW + signatureW + obsW;
+  const fixedW = patientW + therapyW + signatureW + obsW;
   const sessionW = maxSessions > 0 ? Math.floor((contentWidth - fixedW) / maxSessions) : 1200;
   const totalW = fixedW + sessionW * maxSessions;
 
-  const colWidths = [patientW, therapistW, ...Array(maxSessions).fill(sessionW)];
+  const colWidths = [patientW, therapyW, ...Array(maxSessions).fill(sessionW)];
   if (options.showSignatureCol) colWidths.push(signatureW);
   if (options.showObsCol) colWidths.push(obsW);
 
   const headerCells = [
     makeHeaderCell('Paciente / Resp.', patientW),
-    makeHeaderCell('Terapeuta', therapistW),
+    makeHeaderCell('Terapia', therapyW),
     ...Array.from({ length: maxSessions }, (_, i) => makeHeaderCell(`S${i + 1}`, sessionW)),
   ];
   if (options.showSignatureCol) headerCells.push(makeHeaderCell('Assinatura', signatureW));
@@ -257,7 +265,7 @@ export async function downloadAttendanceDOCX(
         });
         const cells = [
           makeCell(nameText, patientW),
-          makeCell(row.professional || '—', therapistW, AlignmentType.CENTER),
+          makeCell(abbreviateTherapy(row.specialty), therapyW, AlignmentType.CENTER),
           ...sessionCells,
         ];
         if (options.showSignatureCol) cells.push(makeEmptyCell(signatureW));
@@ -275,24 +283,18 @@ export async function downloadAttendanceDOCX(
     rows: [headerRow, ...dataRows],
   });
 
-  // Footer children
+  // Footer: centered vertical signature block
   const footerChildren: Paragraph[] = [
-    new Paragraph({ spacing: { before: 400 }, children: [] }),
+    new Paragraph({ spacing: { before: 600 }, children: [] }),
   ];
 
-  const therapistLabel = options.therapistName
-    ? `Responsável: ${options.therapistName}`
-    : 'Responsável: ____________________________________________________';
-  footerChildren.push(new Paragraph({
-    spacing: { before: 200 },
-    children: [new TextRun({ text: therapistLabel, size: 18, font: 'Arial' })],
-  }));
-
+  // Stamp image or blank space
   if (options.stampImageBase64) {
     const { bytes, type } = base64ToUint8Array(options.stampImageBase64);
     if (bytes.length > 0) {
       footerChildren.push(new Paragraph({
-        spacing: { before: 200 },
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 100 },
         children: [new ImageRun({
           type: type as any,
           data: bytes,
@@ -302,11 +304,29 @@ export async function downloadAttendanceDOCX(
       }));
     }
   } else {
-    footerChildren.push(new Paragraph({
-      spacing: { before: 200 },
-      children: [new TextRun({ text: 'Assinatura / Carimbo: ____________________________________________________', size: 18, font: 'Arial' })],
-    }));
+    // Blank space for manual stamp
+    footerChildren.push(new Paragraph({ spacing: { before: 600 }, children: [] }));
   }
+
+  // Horizontal line via border-bottom on a paragraph
+  footerChildren.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 100 },
+    border: {
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 1 },
+    },
+    indent: { left: 4000, right: 4000 },
+    children: [new TextRun({ text: ' ', size: 14 })],
+  }));
+
+  // Therapist name
+  const nameLabel = options.therapistName || '________________________';
+  const titleLabel = options.therapistTitle ? ` - ${options.therapistTitle}` : '';
+  footerChildren.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 60 },
+    children: [new TextRun({ text: `${nameLabel}${titleLabel}`, size: 18, font: 'Arial' })],
+  }));
 
   const docx = new Document({
     sections: [{
