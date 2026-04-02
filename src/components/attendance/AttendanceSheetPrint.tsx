@@ -345,7 +345,7 @@ export async function downloadAttendanceDOCX(
     footerChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 40 },
-      children: [new TextRun({ text: options.therapistTitle, size: 16, font: 'Arial' })],
+      children: [new TextRun({ text: getProfessionalTitle(options.therapistTitle), size: 16, font: 'Arial' })],
     }));
   }
 
