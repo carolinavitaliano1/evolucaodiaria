@@ -89,44 +89,72 @@ export function StatsCards() {
     return isPersonalizado ? p.paymentValue / pkg!.sessionLimit! : p.paymentValue;
   };
 
-  // Clinic patient revenue — skip archived patients; use effective session value for personalizado packages
-  // Revenue is now 100% based on confirmed evolutions (no projection)
-  const clinicMonthlyRevenue = patients.reduce((sum, p) => {
-    if (p.isArchived) return sum;
-    if (!p.paymentValue) return sum;
-
-    const billableEvolutions = monthlyEvolutions.filter(
-      e => e.patientId === p.id && (
-        e.attendanceStatus === 'presente' ||
-        e.attendanceStatus === 'reposicao' ||
-        e.attendanceStatus === 'falta_remunerada' ||
-        e.attendanceStatus === 'feriado_remunerado'
-      )
-    );
-
-    if (p.paymentType === 'fixo') {
-      // For fixed/monthly patients, calculate per-session value dynamically
-      const pkg = p.packageId ? clinicPackages.find(pk => pk.id === p.packageId) : null;
-      if (pkg?.packageType === 'mensal') {
-        const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
-        const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
-        if (dynamic.occurrences > 0) {
-          return sum + (billableEvolutions.length * dynamic.perSession);
-        }
-      }
-      // Fixed without mensal package: also use per-session fraction
-      const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
-      const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
-      if (dynamic.occurrences > 0) {
-        return sum + (billableEvolutions.length * dynamic.perSession);
-      }
-      // Fallback: count billable × full value (single session patient)
-      return sum + (billableEvolutions.length * p.paymentValue);
+  // Clinic patient revenue — considers clinic-level fixed models (fixo_mensal / fixo_diario)
+  // and per-patient revenue for other models
+  const clinicMonthlyRevenue = (() => {
+    // Group patients by clinic
+    const patientsByClinic: Record<string, typeof patients> = {};
+    for (const p of patients) {
+      if (p.isArchived) continue;
+      if (!patientsByClinic[p.clinicId]) patientsByClinic[p.clinicId] = [];
+      patientsByClinic[p.clinicId].push(p);
     }
 
-    // Per-session, variado, personalizado, etc.
-    return sum + (billableEvolutions.length * getEffectiveSessionValue(p));
-  }, 0);
+    let total = 0;
+    for (const [cId, cPatients] of Object.entries(patientsByClinic)) {
+      const clinic = clinics.find(c => c.id === cId);
+      if (!clinic || clinic.isArchived) continue;
+
+      const clPayType = clinic.paymentType as string | undefined;
+      const isFixoMensal = clPayType === 'fixo_mensal';
+      const isFixoDiario = clPayType === 'fixo_diario';
+      const clinicBaseValue = clinic.paymentAmount || 0;
+
+      if (isFixoMensal) {
+        total += clinicBaseValue;
+        continue;
+      }
+
+      if (isFixoDiario) {
+        // Count unique work days (present/reposicao) for this clinic
+        const clinicBillableEvos = monthlyEvolutions.filter(
+          e => cPatients.some(p => p.id === e.patientId) && (
+            e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'
+          )
+        );
+        const uniqueDays = new Set(clinicBillableEvos.map(e => e.date)).size;
+        total += uniqueDays * clinicBaseValue;
+        continue;
+      }
+
+      // Per-patient calculation
+      for (const p of cPatients) {
+        if (!p.paymentValue) continue;
+
+        const billableEvolutions = monthlyEvolutions.filter(
+          e => e.patientId === p.id && (
+            e.attendanceStatus === 'presente' ||
+            e.attendanceStatus === 'reposicao' ||
+            e.attendanceStatus === 'falta_remunerada' ||
+            e.attendanceStatus === 'feriado_remunerado'
+          )
+        );
+
+        if (p.paymentType === 'fixo') {
+          const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
+          const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
+          if (dynamic.occurrences > 0) {
+            total += billableEvolutions.length * dynamic.perSession;
+          } else {
+            total += billableEvolutions.length * p.paymentValue;
+          }
+        } else {
+          total += billableEvolutions.length * getEffectiveSessionValue(p);
+        }
+      }
+    }
+    return total;
+  })();
 
   const monthlyRevenue = clinicMonthlyRevenue + privateMonthlyRevenue;
 
