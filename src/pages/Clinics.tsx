@@ -393,13 +393,14 @@ export default function Clinics() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         {/* Tab header row */}
-        <div className="flex items-center justify-between gap-3">
-          <TabsList className="bg-secondary/50">
-            <TabsTrigger value="clinics" className="gap-1.5 text-xs sm:text-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <TabsList className="bg-secondary/50 w-full sm:w-auto">
+            <TabsTrigger value="clinics" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-initial">
               <Building2 className="w-3.5 h-3.5" />
-              Clínicas | Consultórios
+              <span className="hidden sm:inline">Clínicas | Consultórios</span>
+              <span className="sm:hidden">Clínicas</span>
             </TabsTrigger>
-            <TabsTrigger value="meus-servicos" className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger value="meus-servicos" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-initial">
               <Briefcase className="w-3.5 h-3.5" />
               Serviços
               {pendingAppointments.length > 0 && (

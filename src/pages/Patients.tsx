@@ -642,7 +642,7 @@ export default function Patients() {
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-1 flex items-center gap-2">
             <Users className="w-6 h-6 text-primary" />
@@ -654,14 +654,14 @@ export default function Patients() {
               : 'Busque e gerencie todos os seus pacientes'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegName(''); setQuickRegWhatsapp(''); setQuickRegClinicId(clinics[0]?.id || ''); }}>
-            <Link2 className="w-3.5 h-3.5" /> Cadastro via Link
+            <Link2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Cadastro via Link</span><span className="sm:hidden">Link</span>
           </Button>
-          <Button onClick={() => navigate('/clinics')} className="gap-2">
+          <Button onClick={() => navigate('/clinics')} className="gap-2" size="sm">
             <Users className="w-4 h-4" />
-            Novo Paciente
+            <span className="hidden sm:inline">Novo Paciente</span><span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>
