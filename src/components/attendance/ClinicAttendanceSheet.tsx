@@ -246,8 +246,6 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                     <tr key={row.patientId}>
                       <td className="border border-border px-2 py-1.5 align-top">
                         <div className="font-medium text-foreground text-xs leading-tight">{row.patientName}</div>
-                        {row.responsibleName && (
-                          <div className="text-[10px] text-muted-foreground">Resp.: {row.responsibleName}</div>
                         )}
                       </td>
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
