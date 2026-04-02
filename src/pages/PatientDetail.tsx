@@ -608,11 +608,30 @@ export default function PatientDetail() {
   const finTotal = finPresent + finReposicao;
   const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
   const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const finRevenue = isFixoMensal
-    ? paymentValue
-    : isFixoDiario
-      ? finUniqueDays * perSessionValue
-      : finBillableCount * perSessionValue;
+  // Dynamic proration for financial tab
+  const finDynamic = useMemo(() => {
+    if (isPackageMensal && isFixoMensal && paymentValue > 0) {
+      const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+      return getDynamicSessionValue(paymentValue, patientWeekdays, financialMonth.getMonth(), financialMonth.getFullYear());
+    }
+    return null;
+  }, [isPackageMensal, isFixoMensal, paymentValue, patient?.weekdays, patient?.scheduleByDay, financialMonth]);
+
+  const finDeductibleAbsences = finAbsent;
+  const finMensalDeduction = useMemo(() => {
+    if (finDynamic && finDynamic.occurrences > 0) {
+      return calculateMensalRevenueWithDeductions(paymentValue, finDynamic.perSession, finDeductibleAbsences);
+    }
+    return null;
+  }, [finDynamic, paymentValue, finDeductibleAbsences]);
+
+  const finRevenue = finMensalDeduction
+    ? finMensalDeduction.finalRevenue
+    : isFixoMensal
+      ? paymentValue
+      : isFixoDiario
+        ? finUniqueDays * perSessionValue
+        : finBillableCount * perSessionValue;
   const finRegistros = financialEvolutions.length;
   const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
 
