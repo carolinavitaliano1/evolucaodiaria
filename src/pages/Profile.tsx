@@ -1050,9 +1050,10 @@ export default function Profile() {
           </p>
           <Button
             variant="destructive"
+            className="w-full sm:w-auto whitespace-normal h-auto py-2 text-sm"
             onClick={() => { setDeleteConfirmText(''); setDeleteDialogOpen(true); }}
           >
-            <Trash2 className="h-4 w-4 mr-2" />
+            <Trash2 className="h-4 w-4 mr-2 shrink-0" />
             Excluir Minha Conta Permanentemente
           </Button>
         </CardContent>
