@@ -69,7 +69,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
   const exportOptions: ExportOptions = {
     showSignatureCol,
     showObsCol,
-    therapistName: selectedTherapist,
+    therapistName: selectedTherapist === 'none' ? '' : selectedTherapist,
     stampImageBase64: stampImage,
   };
 
@@ -151,7 +151,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
               <Select value={selectedTherapist} onValueChange={setSelectedTherapist}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione o profissional" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {professionals.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
