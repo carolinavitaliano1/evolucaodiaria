@@ -253,9 +253,7 @@ export async function downloadAttendanceDOCX(
 
   const dataRows = rows.length > 0
     ? rows.map(row => {
-        const nameText = row.responsibleName
-          ? `${row.patientName} — Resp.: ${row.responsibleName}`
-          : row.patientName;
+        const nameText = row.patientName;
         const sessionCells = Array.from({ length: maxSessions }, (_, i) => {
           const s = row.sessions[i];
           if (!s) return makeEmptyCell(sessionW);
