@@ -108,7 +108,8 @@ export function StatsCards() {
       }
       return sum + p.paymentValue;
     }
-    if (p.paymentType === 'sessao' && p.paymentValue) {
+    // Per-session, variado, or any other type → count billable evolutions
+    if (p.paymentValue) {
       const patientEvolutions = monthlyEvolutions.filter(
         e => e.patientId === p.id && (
           e.attendanceStatus === 'presente' ||
@@ -119,7 +120,6 @@ export function StatsCards() {
       );
       return sum + (patientEvolutions.length * getEffectiveSessionValue(p));
     }
-    return sum;
   }, 0);
 
   const monthlyRevenue = clinicMonthlyRevenue + privateMonthlyRevenue;
