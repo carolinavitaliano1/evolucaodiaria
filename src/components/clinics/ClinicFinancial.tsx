@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { DollarSign, Loader2, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase, CheckCircle2, Clock, XCircle, CalendarIcon, FileDown, CalendarDays, Receipt } from 'lucide-react';
 import { PatientBillingManager } from './PatientBillingManager';
+import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -244,24 +245,45 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     return isPersonalizado ? patient.paymentValue / pkg!.sessionLimit! : patient.paymentValue;
   };
 
+  // Helper: calculate revenue for a single patient considering mensal proration
+  const calcPatientRevenue = (patient: typeof clinicPatients[0]) => {
+    if (!patient.paymentValue) return 0;
+    const pkg = patient.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
+
+    // Mensal package → dynamic proration with absence deduction
+    if (patient.paymentType === 'fixo' && pkg?.packageType === 'mensal') {
+      const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
+      const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+      if (dynamic.occurrences > 0) {
+        const absenceCount = monthlyEvolutions.filter(
+          e => e.patientId === patient.id && e.attendanceStatus === 'falta'
+        ).length;
+        const result = calculateMensalRevenueWithDeductions(patient.paymentValue, dynamic.perSession, absenceCount);
+        return result.finalRevenue;
+      }
+      return patient.paymentValue;
+    }
+
+    // Fixo (non-mensal) → full monthly value
+    if (patient.paymentType === 'fixo') return patient.paymentValue;
+
+    // Per-session / personalizado
+    const effectiveValue = getEffectiveSessionValue(patient);
+    const presentCount = presentEvos.filter(e => e.patientId === patient.id).length;
+    const paidAbsenceCount = paidAbsenceEvos.filter(e => e.patientId === patient.id).length;
+    const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
+    let paidRegularAbsences = 0;
+    const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
+    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
+    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
+    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * effectiveValue;
+  };
+
   // Total patient revenue — for fixed models this is a single global amount
   const totalPatientRevenue = (() => {
     if (isClinicFixoMensal) return clinicBaseValue;
     if (isClinicFixoDiario) return uniqueWorkDays * clinicBaseValue;
-    // Per-session: sum across patients using effective (fractionated) value
-    return clinicPatients.reduce((sum, p) => {
-      const patient = p;
-      if (!patient.paymentValue) return sum;
-      const effectiveValue = getEffectiveSessionValue(patient);
-      const presentCount = presentEvos.filter(e => e.patientId === patient.id).length;
-      const paidAbsenceCount = paidAbsenceEvos.filter(e => e.patientId === patient.id).length;
-      const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
-      let paidRegularAbsences = 0;
-      const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
-      if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-      else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-      return sum + (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * effectiveValue;
-    }, 0);
+    return clinicPatients.reduce((sum, p) => sum + calcPatientRevenue(p), 0);
   })();
 
   // Filter services by selected month
@@ -297,13 +319,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       // For fixed-global clinics, don't assign revenue per patient
       let revenue = 0;
       if (!isGlobalFixed && patient.paymentValue) {
-        const effectiveValue = getEffectiveSessionValue(patient);
-        const feriadoRemCount = feriadoRemEvos.filter(e => e.patientId === patient.id).length;
-        let paidRegularAbsences = 0;
-        const regularAbsences = absentEvos.filter(e => e.patientId === patient.id);
-        if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-        else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-        revenue = (sessions + paidAbsences + paidRegularAbsences + feriadoRemCount) * effectiveValue;
+        revenue = calcPatientRevenue(patient);
       }
       return { patient, revenue, sessions, absences, paidAbsences, reposicoes };
     })
