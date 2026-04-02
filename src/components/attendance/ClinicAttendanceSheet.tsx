@@ -54,6 +54,10 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
       filterProfessional !== 'all' ? filterProfessional : undefined
     ), [patientInfos, evolutions, month, year, filterProfessional]);
 
+  const maxSessions = useMemo(() =>
+    groupedRows.reduce((max, row) => Math.max(max, row.sessions.length), 0),
+    [groupedRows]);
+
   const handleDownloadPDF = () => {
     downloadAttendancePDF(clinicName, month, year, groupedRows);
   };
@@ -135,58 +139,65 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="bg-muted/50">
-                    <th className="border border-border px-3 py-2 text-left text-xs font-semibold text-foreground">Paciente / Responsável</th>
-                    <th className="border border-border px-3 py-2 text-center text-xs font-semibold text-foreground">Terapeuta</th>
-                    <th className="border border-border px-3 py-2 text-left text-xs font-semibold text-foreground">Datas e Status</th>
-                    <th className="border border-border px-3 py-2 text-center text-xs font-semibold text-foreground w-[140px]">Assinatura</th>
-                    <th className="border border-border px-3 py-2 text-center text-xs font-semibold text-foreground w-[90px]">Obs.</th>
+                    <th className="border border-border px-2 py-1.5 text-left text-xs font-semibold text-foreground whitespace-nowrap">Paciente / Resp.</th>
+                    <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">Terapeuta</th>
+                    {Array.from({ length: maxSessions }, (_, i) => (
+                      <th key={i} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
+                        Sessão {i + 1}
+                      </th>
+                    ))}
+                    <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground w-[120px]">Assinatura</th>
+                    <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground w-[70px]">Obs.</th>
                   </tr>
                 </thead>
                 <tbody>
                   {groupedRows.map(row => (
-                    <tr key={row.patientId} className="min-h-[80px]">
-                      <td className="border border-border px-3 py-3 text-sm align-top">
-                        <div className="font-medium text-foreground">{row.patientName}</div>
+                    <tr key={row.patientId}>
+                      <td className="border border-border px-2 py-1.5 align-top">
+                        <div className="font-medium text-foreground text-xs leading-tight">{row.patientName}</div>
                         {row.responsibleName && (
-                          <div className="text-xs text-muted-foreground mt-0.5">Resp.: {row.responsibleName}</div>
+                          <div className="text-[10px] text-muted-foreground">Resp.: {row.responsibleName}</div>
                         )}
                       </td>
-                      <td className="border border-border px-3 py-3 text-xs text-center text-muted-foreground align-top">
+                      <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
                         {row.professional || '—'}
                       </td>
-                      <td className="border border-border px-3 py-3 text-xs align-top">
-                        <div className="flex flex-wrap gap-1">
-                          {row.sessions.map((s, i) => {
-                            const dateStr = format(new Date(s.date + 'T00:00:00'), 'dd/MM');
-                            const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agendado';
-                            const isPresent = s.attendanceStatus === 'presente' || s.attendanceStatus === 'reposicao';
-                            const isAbsent = s.attendanceStatus === 'falta';
-                            return (
-                              <span
-                                key={i}
-                                className={cn(
-                                  'inline-block px-1.5 py-0.5 rounded text-[10px] border',
-                                  isPresent && 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400',
-                                  isAbsent && 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400',
-                                  !s.isFilled && 'bg-muted border-border text-muted-foreground',
-                                  s.isFilled && !isPresent && !isAbsent && 'bg-yellow-50 border-yellow-200 text-yellow-700 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-400'
-                                )}
-                              >
-                                {dateStr} ({label})
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </td>
-                      <td className="border border-border px-3 py-3" />
-                      <td className="border border-border px-3 py-3" />
+                      {Array.from({ length: maxSessions }, (_, i) => {
+                        const s = row.sessions[i];
+                        if (!s) return <td key={i} className="border border-border px-1 py-1.5" />;
+                        const dateStr = format(new Date(s.date + 'T00:00:00'), 'dd/MM');
+                        const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agend.';
+                        const isPresent = s.attendanceStatus === 'presente' || s.attendanceStatus === 'reposicao';
+                        const isAbsent = s.attendanceStatus === 'falta';
+                        return (
+                          <td key={i} className="border border-border px-1 py-1.5 text-center align-top">
+                            <div className={cn(
+                              'text-[10px] leading-tight rounded px-0.5 py-0.5',
+                              isPresent && 'text-green-700 dark:text-green-400',
+                              isAbsent && 'text-red-700 dark:text-red-400',
+                              !s.isFilled && 'text-muted-foreground',
+                              s.isFilled && !isPresent && !isAbsent && 'text-yellow-700 dark:text-yellow-400'
+                            )}>
+                              <div className="font-medium">{dateStr}</div>
+                              <div>{label}</div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                      <td className="border border-border px-2 py-1.5" />
+                      <td className="border border-border px-2 py-1.5" />
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+            {/* Footer signature */}
+            <div className="px-4 py-6 space-y-4 border-t border-border">
+              <p className="text-sm text-foreground">Terapeuta Responsável: ____________________________________________________</p>
+              <p className="text-sm text-foreground">Assinatura / Carimbo: ____________________________________________________</p>
             </div>
           </CardContent>
         </Card>
