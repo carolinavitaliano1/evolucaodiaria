@@ -1024,6 +1024,7 @@ export default function ClinicDetail() {
             { value: 'notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notas', color: 'text-yellow-500' },
             { value: 'evolutions', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
             { value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' },
+            { value: 'attendance', icon: <ClipboardList className="w-5 h-5" />, label: 'Frequência', color: 'text-orange-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
             ...(isPropria ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
@@ -2237,6 +2238,10 @@ export default function ClinicDetail() {
             therapistStampImage={stamps.find(s => s.is_default)?.stamp_image || stamps[0]?.stamp_image || undefined}
             therapistSignatureImage={(stamps.find(s => s.is_default) as any)?.signature_image || (stamps[0] as any)?.signature_image || undefined}
           />
+        </TabsContent>
+
+        {/* Attendance Tab */}
+        <TabsContent value="attendance">
           <ClinicAttendanceSheet
             clinicName={clinic.name}
             patients={clinicPatients}
