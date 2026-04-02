@@ -1,13 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ClipboardList, FileDown, FileText } from 'lucide-react';
-import { downloadAttendancePDF, downloadAttendanceDOCX } from './AttendanceSheetPrint';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { ClipboardList, FileDown, FileText, Upload, X } from 'lucide-react';
+import { downloadAttendancePDF, downloadAttendanceDOCX, ExportOptions } from './AttendanceSheetPrint';
 import { buildGroupedAttendanceRows, getStatusLabel, GroupedPatientRow, PatientInfo } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 const MONTHS = [
@@ -26,6 +27,13 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [filterProfessional, setFilterProfessional] = useState('all');
+
+  // Export config
+  const [selectedTherapist, setSelectedTherapist] = useState('');
+  const [stampImage, setStampImage] = useState<string | null>(null);
+  const [showSignatureCol, setShowSignatureCol] = useState(false);
+  const [showObsCol, setShowObsCol] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentYear = now.getFullYear();
   const years = [currentYear - 1, currentYear, currentYear + 1];
@@ -58,16 +66,32 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
     groupedRows.reduce((max, row) => Math.max(max, row.sessions.length), 0),
     [groupedRows]);
 
+  const exportOptions: ExportOptions = {
+    showSignatureCol,
+    showObsCol,
+    therapistName: selectedTherapist,
+    stampImageBase64: stampImage,
+  };
+
   const handleDownloadPDF = () => {
-    downloadAttendancePDF(clinicName, month, year, groupedRows);
+    downloadAttendancePDF(clinicName, month, year, groupedRows, exportOptions);
   };
 
   const handleDownloadDOCX = async () => {
-    await downloadAttendanceDOCX(clinicName, month, year, groupedRows);
+    await downloadAttendanceDOCX(clinicName, month, year, groupedRows, exportOptions);
+  };
+
+  const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setStampImage(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   return (
     <div className="space-y-4">
+      {/* Filters */}
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -77,51 +101,108 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Gere a lista de frequência mensal agrupada por paciente. Baixe em PDF ou Word para impressão e coleta de assinaturas.
+            Gere a lista de frequência mensal agrupada por paciente. Configure as opções abaixo antes de exportar.
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Mês</label>
               <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
-                <SelectTrigger className="w-[130px] h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {MONTHS.map((m, i) => (
-                    <SelectItem key={i} value={String(i)}>{m}</SelectItem>
-                  ))}
+                  {MONTHS.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Ano</label>
               <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
-                <SelectTrigger className="w-[85px] h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-[85px] h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {years.map(y => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
+                  {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             {professionals.length > 0 && (
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Profissional</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Filtrar por Profissional</label>
                 <Select value={filterProfessional} onValueChange={setFilterProfessional}>
-                  <SelectTrigger className="w-[180px] h-9 text-xs">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
+                  <SelectTrigger className="w-[180px] h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    {professionals.map(p => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
+                    {professionals.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Export Config Panel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-foreground">Configurações de Exportação</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Therapist for footer */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Profissional Responsável (Rodapé)</label>
+              <Select value={selectedTherapist} onValueChange={setSelectedTherapist}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione o profissional" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhum</SelectItem>
+                  {professionals.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Stamp upload */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Carimbo / Assinatura (imagem)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleStampUpload}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {stampImage ? 'Trocar imagem' : 'Enviar imagem'}
+                </Button>
+                {stampImage && (
+                  <div className="flex items-center gap-2">
+                    <img src={stampImage} alt="Carimbo" className="h-10 w-auto rounded border border-border" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setStampImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Column toggles */}
+          <div className="flex flex-wrap gap-6 pt-2 border-t border-border">
+            <div className="flex items-center gap-2">
+              <Switch id="show-sig" checked={showSignatureCol} onCheckedChange={setShowSignatureCol} />
+              <Label htmlFor="show-sig" className="text-xs cursor-pointer">Exibir coluna de Assinatura do Responsável</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="show-obs" checked={showObsCol} onCheckedChange={setShowObsCol} />
+              <Label htmlFor="show-obs" className="text-xs cursor-pointer">Exibir coluna de Observações</Label>
+            </div>
+          </div>
+
+          {/* Export buttons */}
+          <div className="flex gap-2 pt-2">
             <Button onClick={handleDownloadPDF} className="gap-1.5 h-9">
               <FileDown className="w-4 h-4" />
               Baixar PDF
@@ -146,11 +227,15 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                     <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">Terapeuta</th>
                     {Array.from({ length: maxSessions }, (_, i) => (
                       <th key={i} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
-                        Sessão {i + 1}
+                        S{i + 1}
                       </th>
                     ))}
-                    <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground w-[120px]">Assinatura</th>
-                    <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground w-[70px]">Obs.</th>
+                    {showSignatureCol && (
+                      <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground w-[120px]">Assinatura</th>
+                    )}
+                    {showObsCol && (
+                      <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground w-[70px]">Obs.</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -187,17 +272,26 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                           </td>
                         );
                       })}
-                      <td className="border border-border px-2 py-1.5" />
-                      <td className="border border-border px-2 py-1.5" />
+                      {showSignatureCol && <td className="border border-border px-2 py-1.5" />}
+                      {showObsCol && <td className="border border-border px-2 py-1.5" />}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {/* Footer signature */}
-            <div className="px-4 py-6 space-y-4 border-t border-border">
-              <p className="text-sm text-foreground">Terapeuta Responsável: ____________________________________________________</p>
-              <p className="text-sm text-foreground">Assinatura / Carimbo: ____________________________________________________</p>
+            {/* Footer preview */}
+            <div className="px-4 py-6 space-y-3 border-t border-border">
+              <p className="text-sm text-foreground">
+                Responsável: {selectedTherapist || '____________________________________________________'}
+              </p>
+              {stampImage ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Carimbo:</span>
+                  <img src={stampImage} alt="Carimbo" className="h-16 w-auto" />
+                </div>
+              ) : (
+                <p className="text-sm text-foreground">Assinatura / Carimbo: ____________________________________________________</p>
+              )}
             </div>
           </CardContent>
         </Card>
