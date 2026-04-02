@@ -45,6 +45,7 @@ import { WhatsAppRecipientModal } from '@/components/whatsapp/WhatsAppRecipientM
 import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
 import { QuickWhatsAppModal } from '@/components/whatsapp/QuickWhatsAppModal';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
+import { ClinicAttendanceSheet } from '@/components/attendance/ClinicAttendanceSheet';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -2222,7 +2223,7 @@ export default function ClinicDetail() {
         </TabsContent>
 
         {/* Reports Tab */}
-        <TabsContent value="reports">
+        <TabsContent value="reports" className="space-y-6">
           <ClinicReports
             clinicId={clinic.id}
             clinicName={clinic.name}
@@ -2235,6 +2236,11 @@ export default function ClinicDetail() {
             therapistClinicalArea={stamps.find(s => s.is_default)?.clinical_area || stamps[0]?.clinical_area || undefined}
             therapistStampImage={stamps.find(s => s.is_default)?.stamp_image || stamps[0]?.stamp_image || undefined}
             therapistSignatureImage={(stamps.find(s => s.is_default) as any)?.signature_image || (stamps[0] as any)?.signature_image || undefined}
+          />
+          <ClinicAttendanceSheet
+            clinicName={clinic.name}
+            patients={clinicPatients}
+            evolutions={evolutions.filter(e => e.clinicId === clinic.id)}
           />
         </TabsContent>
 

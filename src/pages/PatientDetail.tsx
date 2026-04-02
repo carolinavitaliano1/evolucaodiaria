@@ -2,9 +2,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
+import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { usePatientAssignments } from '@/hooks/usePatientAssignments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
@@ -1844,6 +1845,19 @@ export default function PatientDetail() {
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
+          {/* Attendance Sheet Print */}
+          {patient && clinic && (
+            <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
+                <ClipboardList className="w-4 h-4 text-primary" /> Lista de Frequência
+              </h3>
+              <PatientAttendanceButton
+                patient={patient}
+                clinicName={clinic.name}
+                evolutions={patientEvolutions}
+              />
+            </div>
+          )}
           {/* New Evolution Form */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
