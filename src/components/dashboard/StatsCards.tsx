@@ -169,7 +169,7 @@ export function StatsCards() {
     },
     {
       label: 'Pacientes',
-      value: patients.length,
+      value: patients.filter(p => !p.isArchived).length,
       icon: Users,
       color: 'text-primary',
       bgColor: 'bg-primary/10',

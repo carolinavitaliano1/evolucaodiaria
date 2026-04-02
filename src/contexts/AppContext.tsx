@@ -604,8 +604,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if ((updates as any).financial_responsible_cpf !== undefined) updateData.financial_responsible_cpf = (updates as any).financial_responsible_cpf || null;
       if ((updates as any).financial_responsible_whatsapp !== undefined) updateData.financial_responsible_whatsapp = (updates as any).financial_responsible_whatsapp || null;
       if (updates.paymentType !== undefined) updateData.payment_type = updates.paymentType || null;
-      if (updates.paymentValue !== undefined) updateData.payment_value = updates.paymentValue || null;
-      if ((updates as any).payment_due_day !== undefined) updateData.payment_due_day = (updates as any).payment_due_day || null;
+      if (updates.paymentValue !== undefined) updateData.payment_value = updates.paymentValue ?? null;
+      if ((updates as any).payment_due_day !== undefined) updateData.payment_due_day = (updates as any).payment_due_day ?? null;
       if (updates.contractStartDate !== undefined) updateData.contract_start_date = updates.contractStartDate || null;
       if (updates.weekdays !== undefined) updateData.weekdays = updates.weekdays || null;
       if (updates.scheduleTime !== undefined) updateData.schedule_time = updates.scheduleTime || null;

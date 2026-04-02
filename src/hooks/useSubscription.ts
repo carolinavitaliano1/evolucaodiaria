@@ -67,7 +67,9 @@ export function useSubscription() {
       setState({ ...result, loading: false });
     } catch (error) {
       console.error('Error checking subscription:', error);
-      setState(prev => ({ ...prev, loading: false, subscribed: true }));
+      // On error, keep previous subscription state (or use cache) instead of granting access
+      const cached = user ? getCachedSubscription(user.id) : null;
+      setState(prev => ({ ...prev, loading: false, subscribed: cached?.subscribed ?? prev.subscribed }));
     }
   }, [user]);
 
