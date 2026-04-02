@@ -242,7 +242,7 @@ export async function downloadAttendanceDOCX(
   if (options.showObsCol) colWidths.push(obsW);
 
   const headerCells = [
-    makeHeaderCell('Paciente / Resp.', patientW),
+    makeHeaderCell('Paciente', patientW),
     makeHeaderCell('Terapia', therapyW),
     ...Array.from({ length: maxSessions }, (_, i) => makeHeaderCell(`S${i + 1}`, sessionW)),
   ];
