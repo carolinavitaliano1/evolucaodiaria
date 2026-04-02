@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDynamicSessionValue } from '@/utils/dateHelpers';
 
 type PaymentStatusFilter = 'all' | 'paid' | 'pending';
 
@@ -119,35 +120,59 @@ export default function Financial() {
   const feriadoRemEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado');
   const feriadoNaoRemEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado');
 
+  const getEffectiveSessionValue = (patient: typeof patients[0]) => {
+    if (!patient?.paymentValue) return 0;
+    const pkg = patient.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
+    const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
+    return isPersonalizado ? patient.paymentValue / pkg!.sessionLimit! : patient.paymentValue;
+  };
+
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
     if (!patient || !patient.paymentValue) return 0;
-    if (patient.paymentType === 'fixo') return patient.paymentValue;
-    const presentCount = presentEvolutions.filter(e => e.patientId === patientId).length;
-    const paidAbsenceCount = paidAbsenceEvolutions.filter(e => e.patientId === patientId).length;
-    const feriadoRemCount = feriadoRemEvolutions.filter(e => e.patientId === patientId).length;
-    const clinic = clinics.find(c => c.id === patient.clinicId);
-    const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
-    let paidRegularAbsences = 0;
-    const regularAbsences = absentEvolutions.filter(e => e.patientId === patientId);
-    if (absenceType === 'always') paidRegularAbsences = regularAbsences.length;
-    else if (absenceType === 'confirmed_only') paidRegularAbsences = regularAbsences.filter(e => e.confirmedAttendance).length;
-    return (presentCount + paidAbsenceCount + paidRegularAbsences + feriadoRemCount) * patient.paymentValue;
+
+    const billableEvolutions = monthlyEvolutions.filter(
+      e => e.patientId === patientId && (
+        e.attendanceStatus === 'presente' ||
+        e.attendanceStatus === 'reposicao' ||
+        e.attendanceStatus === 'falta_remunerada' ||
+        e.attendanceStatus === 'feriado_remunerado'
+      )
+    );
+
+    if (patient.paymentType === 'fixo') {
+      const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
+      const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+
+      if (dynamic.occurrences > 0) {
+        return billableEvolutions.length * dynamic.perSession;
+      }
+
+      return billableEvolutions.length * patient.paymentValue;
+    }
+
+    return billableEvolutions.length * getEffectiveSessionValue(patient);
   };
 
   const calculatePatientLoss = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue || patient.paymentType === 'fixo') return 0;
-    const clinic = clinics.find(c => c.id === patient.clinicId);
-    const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
-    if (absenceType === 'always') return 0;
-    const patientAbsences = absentEvolutions.filter(e => e.patientId === patientId);
-    if (absenceType === 'never') return patientAbsences.length * patient.paymentValue;
-    if (absenceType === 'confirmed_only') {
-      const nonConfirmedAbsences = patientAbsences.filter(e => !e.confirmedAttendance);
-      return nonConfirmedAbsences.length * patient.paymentValue;
+    if (!patient || !patient.paymentValue) return 0;
+
+    const deductibleAbsences = absentEvolutions.filter(e => e.patientId === patientId).length;
+    if (deductibleAbsences === 0) return 0;
+
+    if (patient.paymentType === 'fixo') {
+      const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
+      const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+
+      if (dynamic.occurrences > 0) {
+        return deductibleAbsences * dynamic.perSession;
+      }
+
+      return deductibleAbsences * patient.paymentValue;
     }
-    return 0;
+
+    return deductibleAbsences * getEffectiveSessionValue(patient);
   };
 
   const monthlyPrivateAppointments = getMonthlyAppointments(selectedMonth, selectedYear);
