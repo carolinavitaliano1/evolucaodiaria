@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ClipboardList, FileDown, FileText } from 'lucide-react';
 import { downloadAttendancePDF, downloadAttendanceDOCX, ExportOptions } from './AttendanceSheetPrint';
-import { buildGroupedAttendanceRows, getStatusLabel, abbreviateTherapy, PatientInfo } from './attendanceUtils';
+import { buildGroupedAttendanceRows, getStatusLabel, PatientInfo } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
