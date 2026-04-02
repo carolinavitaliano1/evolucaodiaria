@@ -263,7 +263,7 @@ export async function downloadAttendanceDOCX(
         });
         const cells = [
           makeCell(nameText, patientW),
-          makeCell(abbreviateTherapy(row.specialty), therapyW, AlignmentType.CENTER),
+          makeCell(row.specialty || '—', therapyW, AlignmentType.CENTER),
           ...sessionCells,
         ];
         if (options.showSignatureCol) cells.push(makeEmptyCell(signatureW));
