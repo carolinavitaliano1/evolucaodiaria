@@ -69,14 +69,14 @@ export function downloadAttendancePDF(
   doc.text(monthLabel, pageW / 2, 22, { align: 'center' });
 
   // Build columns
-  const headRow: string[] = ['Paciente / Resp.', 'Terapia'];
+  const headRow: string[] = ['Paciente', 'Terapia'];
   for (let i = 0; i < maxSessions; i++) headRow.push(`S${i + 1}`);
   if (options.showSignatureCol) headRow.push('Assinatura');
   if (options.showObsCol) headRow.push('Obs.');
 
   const tableData = rows.map(row => {
     const cells: string[] = [
-      row.responsibleName ? `${row.patientName}\nResp.: ${row.responsibleName}` : row.patientName,
+      row.patientName,
       abbreviateTherapy(row.specialty),
     ];
     for (let i = 0; i < maxSessions; i++) {
@@ -242,7 +242,7 @@ export async function downloadAttendanceDOCX(
   if (options.showObsCol) colWidths.push(obsW);
 
   const headerCells = [
-    makeHeaderCell('Paciente / Resp.', patientW),
+    makeHeaderCell('Paciente', patientW),
     makeHeaderCell('Terapia', therapyW),
     ...Array.from({ length: maxSessions }, (_, i) => makeHeaderCell(`S${i + 1}`, sessionW)),
   ];
@@ -253,9 +253,7 @@ export async function downloadAttendanceDOCX(
 
   const dataRows = rows.length > 0
     ? rows.map(row => {
-        const nameText = row.responsibleName
-          ? `${row.patientName} — Resp.: ${row.responsibleName}`
-          : row.patientName;
+        const nameText = row.patientName;
         const sessionCells = Array.from({ length: maxSessions }, (_, i) => {
           const s = row.sessions[i];
           if (!s) return makeEmptyCell(sessionW);

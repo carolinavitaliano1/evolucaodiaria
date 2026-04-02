@@ -226,7 +226,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="bg-muted/50">
-                    <th className="border border-border px-2 py-1.5 text-left text-xs font-semibold text-foreground whitespace-nowrap">Paciente / Resp.</th>
+                    <th className="border border-border px-2 py-1.5 text-left text-xs font-semibold text-foreground whitespace-nowrap">Paciente</th>
                     <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">Terapia</th>
                     {Array.from({ length: maxSessions }, (_, i) => (
                       <th key={i} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
@@ -246,9 +246,6 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
                     <tr key={row.patientId}>
                       <td className="border border-border px-2 py-1.5 align-top">
                         <div className="font-medium text-foreground text-xs leading-tight">{row.patientName}</div>
-                        {row.responsibleName && (
-                          <div className="text-[10px] text-muted-foreground">Resp.: {row.responsibleName}</div>
-                        )}
                       </td>
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
                         {abbreviateTherapy(row.specialty)}
