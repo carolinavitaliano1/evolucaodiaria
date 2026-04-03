@@ -232,7 +232,7 @@ export default function Enrollment() {
                     </select>
                   </Field>
                   <Field id="guardian_phone" label="WhatsApp">
-                    <Input id="guardian_phone" type="tel" value={form.guardian_phone} onChange={set('guardian_phone')} placeholder="(11) 99999-9999" />
+                    <Input id="guardian_phone" type="tel" value={form.guardian_phone} onChange={setMasked('guardian_phone', maskPhone)} placeholder="(11) 99999-9999" />
                   </Field>
                 </div>
                 <Field id="guardian_email" label="E-mail">
