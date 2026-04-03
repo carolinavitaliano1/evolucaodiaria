@@ -130,12 +130,14 @@ export default function Patients() {
     if (!quickRegWhatsapp || !quickRegLink) return;
     const num = quickRegWhatsapp.replace(/\D/g, '');
     const phone = num.startsWith('55') ? num : `55${num}`;
-    const msg = encodeURIComponent(`Olá, ${quickRegName}! Por favor, preencha a ficha da clínica clicando aqui: ${quickRegLink}`);
-    const el = document.createElement('a');
-    el.href = `https://wa.me/${phone}?text=${msg}`;
-    el.target = '_blank';
-    el.rel = 'noopener noreferrer';
-    el.click();
+    const cleanLink = quickRegLink.trim();
+    const message = [
+      `Olá, ${quickRegName}!`,
+      'Por favor, preencha a ficha da clínica pelo link abaixo:',
+      cleanLink,
+    ].join('\n\n');
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleOpenPatient = (patientId: string) => {
