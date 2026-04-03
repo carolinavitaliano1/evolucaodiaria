@@ -204,7 +204,7 @@ export default function Enrollment() {
                   <Input id="phone" type="tel" value={form.phone} onChange={set('phone')} placeholder="(11) 3333-3333" />
                 </Field>
                 <Field id="whatsapp" label="WhatsApp">
-                  <Input id="whatsapp" type="tel" value={form.whatsapp} onChange={set('whatsapp')} placeholder="(11) 99999-9999" />
+                  <Input id="whatsapp" type="tel" value={form.whatsapp} onChange={setMasked('whatsapp', maskPhone)} placeholder="(11) 99999-9999" />
                 </Field>
               </div>
               <Field id="email_patient" label="E-mail">
