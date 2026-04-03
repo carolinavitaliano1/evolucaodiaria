@@ -272,31 +272,31 @@ export default function Enrollment() {
               </SectionCard>
             )}
 
-            {/* 3. Responsável Financeiro (paciente maior) */}
-            <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Financeiro">
-              <p className="text-xs text-muted-foreground -mt-1">Dados jurídicos para contrato. {form.is_minor ? 'Pode ser o mesmo responsável acima.' : 'Preencha se houver representante legal.'}</p>
-              <Field id="responsible_name" label="Nome do Responsável Legal">
-                <Input id="responsible_name" value={form.responsible_name} onChange={set('responsible_name')} placeholder="Ex: Maria Silva" />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field id="responsible_cpf" label="CPF do Responsável">
-                  <Input id="responsible_cpf" value={form.responsible_cpf} onChange={set('responsible_cpf')} placeholder="000.000.000-00" />
+            {/* 3. Responsável Financeiro — só aparece se NÃO for menor, ou se menor com financeiro diferente */}
+            {!form.is_minor && (
+              <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Financeiro">
+                <p className="text-xs text-muted-foreground -mt-1">Dados jurídicos para contrato. Preencha se houver representante legal.</p>
+                <Field id="responsible_name" label="Nome do Responsável Legal">
+                  <Input id="responsible_name" value={form.responsible_name} onChange={set('responsible_name')} placeholder="Ex: Maria Silva" />
                 </Field>
-                <Field id="responsible_relation" label="Parentesco">
-                  <Input id="responsible_relation" value={form.responsible_relation} onChange={set('responsible_relation')} placeholder="Ex: Mãe, Pai" />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field id="responsible_whatsapp" label="WhatsApp">
-                  <Input id="responsible_whatsapp" type="tel" value={form.responsible_whatsapp} onChange={set('responsible_whatsapp')} placeholder="(11) 99999-9999" />
-                </Field>
-                <Field id="responsible_email" label="E-mail">
-                  <Input id="responsible_email" type="email" value={form.responsible_email} onChange={set('responsible_email')} placeholder="email@exemplo.com" />
-                </Field>
-              </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field id="responsible_cpf" label="CPF do Responsável">
+                    <Input id="responsible_cpf" value={form.responsible_cpf} onChange={set('responsible_cpf')} placeholder="000.000.000-00" />
+                  </Field>
+                  <Field id="responsible_relation" label="Parentesco">
+                    <Input id="responsible_relation" value={form.responsible_relation} onChange={set('responsible_relation')} placeholder="Ex: Mãe, Pai" />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field id="responsible_whatsapp" label="WhatsApp">
+                    <Input id="responsible_whatsapp" type="tel" value={form.responsible_whatsapp} onChange={set('responsible_whatsapp')} placeholder="(11) 99999-9999" />
+                  </Field>
+                  <Field id="responsible_email" label="E-mail">
+                    <Input id="responsible_email" type="email" value={form.responsible_email} onChange={set('responsible_email')} placeholder="email@exemplo.com" />
+                  </Field>
+                </div>
 
-              {/* Toggle de responsável financeiro diferente — apenas para maiores */}
-              {!form.is_minor && (
+                {/* Toggle de responsável financeiro diferente */}
                 <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3 mt-1">
                   <div className="flex items-center justify-between">
                     <div>
@@ -332,8 +332,8 @@ export default function Enrollment() {
                     </div>
                   )}
                 </div>
-              )}
-            </SectionCard>
+              </SectionCard>
+            )}
 
             {/* 5. Informações Clínicas */}
             <SectionCard icon={<ClipboardList className="w-4 h-4" />} title="Informações Clínicas">
