@@ -312,7 +312,7 @@ export default function Enrollment() {
                       </Field>
                       <div className="grid grid-cols-2 gap-3">
                         <Field id="fin_cpf2" label="CPF">
-                          <Input id="fin_cpf2" value={form.financial_responsible_cpf} onChange={set('financial_responsible_cpf')} placeholder="000.000.000-00" />
+                          <Input id="fin_cpf2" value={form.financial_responsible_cpf} onChange={setMasked('financial_responsible_cpf', maskCpf)} placeholder="000.000.000-00" />
                         </Field>
                         <Field id="fin_whatsapp2" label="WhatsApp">
                           <Input id="fin_whatsapp2" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
