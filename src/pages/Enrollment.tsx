@@ -332,6 +332,9 @@ export default function Enrollment() {
                           <Input id="fin_whatsapp2" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
                         </Field>
                       </div>
+                      <Field id="fin_email2" label="E-mail">
+                        <Input id="fin_email2" type="email" value={form.financial_responsible_email} onChange={set('financial_responsible_email')} placeholder="email@exemplo.com" />
+                      </Field>
                     </div>
                   )}
                 </div>
