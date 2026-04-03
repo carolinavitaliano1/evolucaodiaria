@@ -21,7 +21,7 @@ interface FormState {
   responsible_name: string; responsible_cpf: string; responsible_whatsapp: string;
   responsible_email: string; responsible_relation: string;
   financial_responsible: FinancialResponsible;
-  financial_responsible_name: string; financial_responsible_cpf: string; financial_responsible_whatsapp: string;
+  financial_responsible_name: string; financial_responsible_cpf: string; financial_responsible_whatsapp: string; financial_responsible_email: string;
   diagnosis: string; observations: string;
 }
 
@@ -31,7 +31,7 @@ const empty: FormState = {
   guardian_name: '', guardian_email: '', guardian_phone: '', guardian_kinship: '',
   responsible_name: '', responsible_cpf: '', responsible_whatsapp: '', responsible_email: '', responsible_relation: '',
   financial_responsible: 'responsible',
-  financial_responsible_name: '', financial_responsible_cpf: '', financial_responsible_whatsapp: '',
+  financial_responsible_name: '', financial_responsible_cpf: '', financial_responsible_whatsapp: '', financial_responsible_email: '',
   diagnosis: '', observations: '',
 };
 
@@ -266,6 +266,9 @@ export default function Enrollment() {
                           <Input id="fin_whatsapp" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
                         </Field>
                       </div>
+                      <Field id="fin_email" label="E-mail">
+                        <Input id="fin_email" type="email" value={form.financial_responsible_email} onChange={set('financial_responsible_email')} placeholder="email@exemplo.com" />
+                      </Field>
                     </div>
                   )}
                 </div>
@@ -329,6 +332,9 @@ export default function Enrollment() {
                           <Input id="fin_whatsapp2" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
                         </Field>
                       </div>
+                      <Field id="fin_email2" label="E-mail">
+                        <Input id="fin_email2" type="email" value={form.financial_responsible_email} onChange={set('financial_responsible_email')} placeholder="email@exemplo.com" />
+                      </Field>
                     </div>
                   )}
                 </div>
