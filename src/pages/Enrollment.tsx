@@ -269,7 +269,7 @@ export default function Enrollment() {
                           <Input id="fin_cpf" value={form.financial_responsible_cpf} onChange={setMasked('financial_responsible_cpf', maskCpf)} placeholder="000.000.000-00" />
                         </Field>
                         <Field id="fin_whatsapp" label="WhatsApp">
-                          <Input id="fin_whatsapp" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
+                          <Input id="fin_whatsapp" type="tel" value={form.financial_responsible_whatsapp} onChange={setMasked('financial_responsible_whatsapp', maskPhone)} placeholder="(11) 99999-9999" />
                         </Field>
                       </div>
                       <Field id="fin_email" label="E-mail">
