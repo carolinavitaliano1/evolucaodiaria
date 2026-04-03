@@ -176,7 +176,7 @@ export default function Enrollment() {
               </div>
               <Switch
                 checked={form.is_minor}
-                onCheckedChange={(v) => setForm(f => ({ ...f, is_minor: v }))}
+                onCheckedChange={(v) => setForm(f => ({ ...f, is_minor: v, financial_responsible: v ? 'responsible' : 'patient' }))}
               />
             </div>
 
@@ -275,53 +275,33 @@ export default function Enrollment() {
               </SectionCard>
             )}
 
-            {/* 3. Responsável Financeiro — só aparece se NÃO for menor, ou se menor com financeiro diferente */}
+            {/* 3. Responsável Financeiro — só aparece se NÃO for menor */}
             {!form.is_minor && (
               <SectionCard icon={<Users className="w-4 h-4" />} title="Responsável Financeiro">
-                <p className="text-xs text-muted-foreground -mt-1">Dados jurídicos para contrato. Preencha se houver representante legal.</p>
-                <Field id="responsible_name" label="Nome do Responsável Legal">
-                  <Input id="responsible_name" value={form.responsible_name} onChange={set('responsible_name')} placeholder="Ex: Maria Silva" />
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field id="responsible_cpf" label="CPF do Responsável">
-                    <Input id="responsible_cpf" value={form.responsible_cpf} onChange={set('responsible_cpf')} placeholder="000.000.000-00" />
-                  </Field>
-                  <Field id="responsible_relation" label="Parentesco">
-                    <Input id="responsible_relation" value={form.responsible_relation} onChange={set('responsible_relation')} placeholder="Ex: Mãe, Pai" />
-                  </Field>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field id="responsible_whatsapp" label="WhatsApp">
-                    <Input id="responsible_whatsapp" type="tel" value={form.responsible_whatsapp} onChange={set('responsible_whatsapp')} placeholder="(11) 99999-9999" />
-                  </Field>
-                  <Field id="responsible_email" label="E-mail">
-                    <Input id="responsible_email" type="email" value={form.responsible_email} onChange={set('responsible_email')} placeholder="email@exemplo.com" />
-                  </Field>
-                </div>
+                <p className="text-xs text-muted-foreground -mt-1">Dados jurídicos para contrato.</p>
 
-                {/* Toggle de responsável financeiro diferente */}
-                <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3 mt-1">
+                {/* Toggle: paciente é o responsável financeiro? */}
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground">Responsável legal é também o financeiro?</p>
+                      <p className="text-sm font-medium text-foreground">Paciente será o responsável financeiro?</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {form.financial_responsible !== 'other'
-                          ? 'Sim — não é necessário preencher dados separados'
+                        {form.financial_responsible === 'patient'
+                          ? 'Sim — os dados do paciente serão usados para cobrança'
                           : 'Não — preencha os dados do responsável financeiro abaixo'}
                       </p>
                     </div>
                     <div
-                      className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors ${form.financial_responsible !== 'other' ? 'bg-primary' : 'bg-input'}`}
-                      onClick={() => setForm(f => ({ ...f, financial_responsible: f.financial_responsible === 'other' ? 'responsible' : 'other' }))}
+                      className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors ${form.financial_responsible === 'patient' ? 'bg-primary' : 'bg-input'}`}
+                      onClick={() => setForm(f => ({ ...f, financial_responsible: f.financial_responsible === 'patient' ? 'other' : 'patient' }))}
                     >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.financial_responsible !== 'other' ? 'translate-x-6' : 'translate-x-1'}`} />
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.financial_responsible === 'patient' ? 'translate-x-6' : 'translate-x-1'}`} />
                     </div>
                   </div>
 
-                  {form.financial_responsible === 'other' && (
-                    <div className="space-y-3 pt-1 border-t border-border">
-                      <p className="text-xs font-semibold text-foreground">Responsável Financeiro</p>
-                      <Field id="fin_name2" label="Nome">
+                  {form.financial_responsible !== 'patient' && (
+                    <div className="space-y-3 pt-2 border-t border-border">
+                      <Field id="fin_name2" label="Nome do Responsável Financeiro">
                         <Input id="fin_name2" value={form.financial_responsible_name} onChange={set('financial_responsible_name')} placeholder="Nome completo" />
                       </Field>
                       <div className="grid grid-cols-2 gap-3">
