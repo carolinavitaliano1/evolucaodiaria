@@ -21,7 +21,7 @@ interface FormState {
   responsible_name: string; responsible_cpf: string; responsible_whatsapp: string;
   responsible_email: string; responsible_relation: string;
   financial_responsible: FinancialResponsible;
-  financial_responsible_name: string; financial_responsible_cpf: string; financial_responsible_whatsapp: string;
+  financial_responsible_name: string; financial_responsible_cpf: string; financial_responsible_whatsapp: string; financial_responsible_email: string;
   diagnosis: string; observations: string;
 }
 
