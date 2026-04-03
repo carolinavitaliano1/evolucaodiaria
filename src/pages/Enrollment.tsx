@@ -80,8 +80,14 @@ export default function Enrollment() {
       });
   }, [clinicId]);
 
+  const maskCpf = (v: string) => v.replace(/\D/g, '').slice(0, 11).replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  const maskPhone = (v: string) => v.replace(/\D/g, '').slice(0, 11).replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+
   const set = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
+
+  const setMasked = (field: keyof FormState, mask: (v: string) => string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(f => ({ ...f, [field]: mask(e.target.value) }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,7 +196,7 @@ export default function Enrollment() {
                   <Input id="birthdate" type="date" value={form.birthdate} onChange={set('birthdate')} required />
                 </Field>
                 <Field id="cpf" label="CPF">
-                  <Input id="cpf" value={form.cpf} onChange={set('cpf')} placeholder="000.000.000-00" />
+                  <Input id="cpf" value={form.cpf} onChange={setMasked('cpf', maskCpf)} placeholder="000.000.000-00" />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -198,7 +204,7 @@ export default function Enrollment() {
                   <Input id="phone" type="tel" value={form.phone} onChange={set('phone')} placeholder="(11) 3333-3333" />
                 </Field>
                 <Field id="whatsapp" label="WhatsApp">
-                  <Input id="whatsapp" type="tel" value={form.whatsapp} onChange={set('whatsapp')} placeholder="(11) 99999-9999" />
+                  <Input id="whatsapp" type="tel" value={form.whatsapp} onChange={setMasked('whatsapp', maskPhone)} placeholder="(11) 99999-9999" />
                 </Field>
               </div>
               <Field id="email_patient" label="E-mail">
@@ -260,10 +266,10 @@ export default function Enrollment() {
                       </Field>
                       <div className="grid grid-cols-2 gap-3">
                         <Field id="fin_cpf" label="CPF">
-                          <Input id="fin_cpf" value={form.financial_responsible_cpf} onChange={set('financial_responsible_cpf')} placeholder="000.000.000-00" />
+                          <Input id="fin_cpf" value={form.financial_responsible_cpf} onChange={setMasked('financial_responsible_cpf', maskCpf)} placeholder="000.000.000-00" />
                         </Field>
                         <Field id="fin_whatsapp" label="WhatsApp">
-                          <Input id="fin_whatsapp" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
+                          <Input id="fin_whatsapp" type="tel" value={form.financial_responsible_whatsapp} onChange={setMasked('financial_responsible_whatsapp', maskPhone)} placeholder="(11) 99999-9999" />
                         </Field>
                       </div>
                       <Field id="fin_email" label="E-mail">
@@ -306,10 +312,10 @@ export default function Enrollment() {
                       </Field>
                       <div className="grid grid-cols-2 gap-3">
                         <Field id="fin_cpf2" label="CPF">
-                          <Input id="fin_cpf2" value={form.financial_responsible_cpf} onChange={set('financial_responsible_cpf')} placeholder="000.000.000-00" />
+                          <Input id="fin_cpf2" value={form.financial_responsible_cpf} onChange={setMasked('financial_responsible_cpf', maskCpf)} placeholder="000.000.000-00" />
                         </Field>
                         <Field id="fin_whatsapp2" label="WhatsApp">
-                          <Input id="fin_whatsapp2" type="tel" value={form.financial_responsible_whatsapp} onChange={set('financial_responsible_whatsapp')} placeholder="(11) 99999-9999" />
+                          <Input id="fin_whatsapp2" type="tel" value={form.financial_responsible_whatsapp} onChange={setMasked('financial_responsible_whatsapp', maskPhone)} placeholder="(11) 99999-9999" />
                         </Field>
                       </div>
                       <Field id="fin_email2" label="E-mail">
