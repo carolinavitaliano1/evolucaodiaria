@@ -176,6 +176,7 @@ export default function Dashboard() {
 
         {/* Right Column - Appointments + Tasks + Notifications */}
         <div className="lg:col-span-8 space-y-5">
+          <PendingEnrollmentsCard />
           <PaymentReminders />
           <MissingEvolutionsAlert />
           <TodayAppointments />
