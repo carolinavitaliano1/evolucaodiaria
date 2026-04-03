@@ -60,7 +60,7 @@ interface ServiceRecord {
 }
 
 export default function Clinics() {
-  const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic } = useApp();
+  const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic, loadAllEvolutions } = useApp();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -131,6 +131,11 @@ export default function Clinics() {
       loadRegisteredServices();
     }
   }, [activeTab, user]);
+
+  useEffect(() => {
+    if (!user || clinics.length === 0) return;
+    loadAllEvolutions();
+  }, [user, clinics.length, loadAllEvolutions]);
 
   const loadPrivateAppointments = async () => {
     try {
@@ -339,9 +344,16 @@ export default function Clinics() {
       for (const p of cPatients) {
         if (!p.paymentValue) continue;
 
-        // Fixo (mensal) patients: use full monthly value as expected revenue
+        // Fixo (mensal) patients: same prorated logic used in Dashboard/Financial
         if (p.paymentType === 'fixo') {
-          clinicRevenue += p.paymentValue;
+          const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
+          const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
+
+          if (dynamic.occurrences > 0) {
+            clinicRevenue += billableEvolutions.length * dynamic.perSession;
+          } else {
+            clinicRevenue += billableEvolutions.length * p.paymentValue;
+          }
           continue;
         }
 
