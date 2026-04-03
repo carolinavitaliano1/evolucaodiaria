@@ -201,7 +201,7 @@ export default function Enrollment() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field id="phone" label="Telefone">
-                  <Input id="phone" type="tel" value={form.phone} onChange={set('phone')} placeholder="(11) 3333-3333" />
+                  <Input id="phone" type="tel" value={form.phone} onChange={setMasked('phone', maskPhone)} placeholder="(11) 3333-3333" />
                 </Field>
                 <Field id="whatsapp" label="WhatsApp">
                   <Input id="whatsapp" type="tel" value={form.whatsapp} onChange={setMasked('whatsapp', maskPhone)} placeholder="(11) 99999-9999" />
