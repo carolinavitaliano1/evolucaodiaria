@@ -281,7 +281,6 @@ export default function Clinics() {
   const { evolutions, clinicPackages } = useApp();
   const totalPatients = patients.filter(p => !p.isArchived).length;
   const pendingAppointments = privateAppointments.filter(a => a.status === 'agendado');
-  const completedAppointments = privateAppointments.filter(a => a.status === 'concluído');
 
   // Active clinic IDs (non-archived)
   const activeClinicIds = new Set(activeClinics.map(c => c.id));
@@ -359,9 +358,8 @@ export default function Clinics() {
       }
     }
 
-    const privateRevenue = privateAppointments.filter(a => a.status === 'concluído').reduce((sum, a) => sum + a.price, 0);
-    return clinicRevenue + privateRevenue;
-  }, [evolutions, patients, clinics, privateAppointments, clinicPackages, activeClinicIds]);
+    return clinicRevenue;
+  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
