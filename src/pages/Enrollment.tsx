@@ -196,7 +196,7 @@ export default function Enrollment() {
                   <Input id="birthdate" type="date" value={form.birthdate} onChange={set('birthdate')} required />
                 </Field>
                 <Field id="cpf" label="CPF">
-                  <Input id="cpf" value={form.cpf} onChange={set('cpf')} placeholder="000.000.000-00" />
+                  <Input id="cpf" value={form.cpf} onChange={setMasked('cpf', maskCpf)} placeholder="000.000.000-00" />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
