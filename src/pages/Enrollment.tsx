@@ -176,7 +176,7 @@ export default function Enrollment() {
               </div>
               <Switch
                 checked={form.is_minor}
-                onCheckedChange={(v) => setForm(f => ({ ...f, is_minor: v }))}
+                onCheckedChange={(v) => setForm(f => ({ ...f, is_minor: v, financial_responsible: v ? 'responsible' : 'patient' }))}
               />
             </div>
 
