@@ -87,7 +87,7 @@ export function PendingEnrollmentsCard() {
               size="sm"
               variant="ghost"
               className="shrink-0 text-xs text-primary"
-              onClick={() => navigate(`/clinics/${p.clinic_id}`)}
+              onClick={() => navigate(`/patients/${p.id}`)}
             >
               Revisar <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
