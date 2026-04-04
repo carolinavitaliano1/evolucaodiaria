@@ -1,52 +1,43 @@
 
 
-# Plano: Editor Rico de Contratos com Variáveis Dinâmicas
+# Grupos Terapêuticos — Implementação
 
-## Contexto
+## Resumo
+Criar a funcionalidade completa de Grupos Terapêuticos como nova aba na clínica/consultório, com tabelas no banco, componente de gestão e formulário de cadastro/edição.
 
-O sistema atual de contratos usa um `<Textarea>` para edição de HTML bruto e suporta apenas `{{patient_name}}`. O pedido é evoluir para um editor de texto rico (Rich Text Editor) com variáveis clicáveis como "chips" e preenchimento automático no momento de gerar/enviar o contrato.
+## 1. Migração SQL
+Criar duas tabelas:
 
-## O que será feito
+- **`therapeutic_groups`**: `id`, `user_id`, `clinic_id`, `name` (obrigatório), campos opcionais de texto (description, therapeutic_focus, objectives, support_reason, shared_goals, communication_patterns, conflict_areas, meeting_frequency, meeting_format, facilitation_style, waitlist_policy, entry_criteria, exclusion_criteria, confidentiality_agreement, group_rules, materials, support_resources, assessment_method, next_topics, facilitation_notes, supervision_notes, general_notes, follow_up_plan, session_link), `duration_minutes` (int), `max_participants` (int), `open_to_new` (boolean default false), `default_price` (numeric), `is_archived` (boolean default false), timestamps.
 
-### 1. Instalar TipTap (Rich Text Editor)
-Adicionar `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-underline`, `@tiptap/extension-text-align`, `@tiptap/extension-mention` (para inserir variáveis como nodes inline).
+- **`therapeutic_group_members`**: `id`, `group_id` (FK → therapeutic_groups ON DELETE CASCADE), `patient_id` (uuid), `joined_at` (timestamptz default now()), `status` ('active'|'inactive' default 'active').
 
-### 2. Criar componente `ContractEditor`
-Novo arquivo `src/components/contracts/ContractEditor.tsx`:
-- Editor TipTap com toolbar (negrito, itálico, sublinhado, alinhamento, listas, headings)
-- Painel lateral/dropdown **"Variáveis Disponíveis"** com chips clicáveis em tom roxo
-- Ao clicar numa variável, ela é inserida no cursor como `{{nome_variavel}}` estilizada visualmente como chip inline
-- Lista de variáveis:
-  - `{{nome_paciente}}`, `{{cpf_paciente}}`, `{{rg_paciente}}`, `{{endereco_paciente}}`, `{{data_nascimento}}`
-  - `{{nome_profissional}}`, `{{registro_profissional}}`, `{{data_atual}}`, `{{cidade_atual}}`
-- Exporta HTML limpo via `editor.getHTML()`
+RLS: owner (`user_id = auth.uid()`) + org member access via `is_clinic_org_member`.
 
-### 3. Motor de Preenchimento (substituição de variáveis)
-Atualizar `ContractManager.tsx` — função `handleSaveContract`:
-- Buscar dados do paciente (`patients`: name, cpf, birthdate, address via intake_forms) e do terapeuta (`profiles`: name, professional_id; `stamps`: clinical_area/CBO; `clinics`: address/city)
-- Substituir todas as tags `{{...}}` pelos valores reais antes de salvar em `patient_contracts.template_html`
-- Manter compatibilidade com `{{patient_name}}` existente
+## 2. Componente `TherapeuticGroupsTab.tsx`
+Novo arquivo `src/components/clinics/TherapeuticGroupsTab.tsx`:
 
-### 4. Atualizar ContractManager — substituir Textarea pelo Editor Rico
-- Trocar o `<Textarea>` (linha ~495-499) pelo novo `<ContractEditor>`
-- Remover a nota sobre "HTML básico suportado" e substituir pelo painel de variáveis integrado
-- O editor receberá `value` (HTML) e emitirá `onChange` (HTML)
+- **Props**: `clinicId`, `patients` (lista de pacientes da clínica)
+- **Lista**: cards com nome do grupo, quantidade de participantes, badge ativo/arquivado
+- **Dialog de cadastro/edição**: formulário com Accordion em seções:
+  - Sobre o grupo (descrição, foco, objetivos, motivo, metas, padrões, conflitos)
+  - Estrutura dos encontros (frequência, duração, formato, estilo, aberto, máx participantes, lista espera)
+  - Plano de acompanhamento
+  - Critérios e materiais (entrada, exclusão, confidencialidade, regras, materiais, recursos)
+  - Acompanhamento clínico (avaliação, próximos tópicos, notas)
+  - Configurações de sessão (link externo, preço)
+- **Seletor de participantes**: multi-select dos pacientes da clínica com chips removíveis
+- **Ações**: criar, editar, arquivar grupo
 
-### 5. Portal do Paciente — já funcional
-A visão do paciente (`PortalContract.tsx`) já renderiza o HTML preenchido com `dangerouslySetInnerHTML`, exibe checkbox de consentimento obrigatório e bloqueia assinatura sem marcar. Não precisa de alteração significativa — o contrato já chega preenchido com dados reais.
-
-## Detalhes técnicos
-
-- **TipTap Mention extension** será customizado para renderizar variáveis como chips roxos (`bg-primary/10 text-primary border border-primary/30 rounded px-1.5 py-0.5 text-xs font-mono`)
-- Os dados para preenchimento serão carregados via queries existentes (patients, profiles, stamps, clinics, patient_intake_forms)
-- O `DEFAULT_BODY` será atualizado para usar as novas variáveis (`{{nome_paciente}}`, `{{nome_profissional}}`, etc.)
-- Campos sem dado cadastrado serão substituídos por `[não informado]`
+## 3. Integração em `ClinicDetail.tsx`
+- Importar `TherapeuticGroupsTab`
+- Adicionar tab `{ value: 'groups', icon: <UsersRound>, label: 'Grupos', color: 'text-indigo-500' }` no array de tabs (após "Serviços")
+- Adicionar `<TabsContent value="groups">` renderizando o componente
 
 ## Arquivos afetados
-
 | Arquivo | Ação |
 |---------|------|
-| `src/components/contracts/ContractEditor.tsx` | Criar — editor rico + painel de variáveis |
-| `src/components/patients/ContractManager.tsx` | Editar — trocar Textarea pelo editor, adicionar motor de preenchimento |
-| `package.json` | Editar — adicionar deps TipTap |
+| Migração SQL | Criar tabelas + RLS |
+| `src/components/clinics/TherapeuticGroupsTab.tsx` | Criar |
+| `src/pages/ClinicDetail.tsx` | Editar — nova aba |
 
