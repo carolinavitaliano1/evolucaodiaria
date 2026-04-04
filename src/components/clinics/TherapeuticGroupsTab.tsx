@@ -94,6 +94,7 @@ const emptyForm = (): Partial<TherapeuticGroup> & { name: string } => ({
 
 export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTabProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<TherapeuticGroup[]>([]);
   const [members, setMembers] = useState<Record<string, string[]>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
