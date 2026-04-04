@@ -1011,6 +1011,12 @@ export default function Patients() {
           onSuccess={() => { window.location.reload(); }}
         />
       )}
+        </TabsContent>
+
+        <TabsContent value="waitlist" className="mt-0">
+          <WaitlistManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
