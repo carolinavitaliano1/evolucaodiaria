@@ -227,7 +227,7 @@ export default function PortalFinancial() {
       let fileUrl = '';
       if (receiptFile) {
         const ext = receiptFile.name.split('.').pop() || 'bin';
-        const path = `receipts/${portalAccount.patient_id}/${Date.now()}.${ext}`;
+        const path = `${portalAccount.therapist_user_id}/${portalAccount.id}/receipts/${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from('portal-documents')
           .upload(path, receiptFile, { contentType: receiptFile.type });
