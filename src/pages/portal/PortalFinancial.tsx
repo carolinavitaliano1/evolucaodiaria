@@ -445,21 +445,62 @@ export default function PortalFinancial() {
                 Enviar comprovante ao terapeuta
               </Button>
             ) : (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-foreground">Cole o número ou descreva o comprovante:</p>
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-foreground">Anexe uma imagem/PDF do comprovante ou descreva:</p>
+
+                {/* File upload area */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+
+                {!receiptFile ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 flex flex-col items-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                  >
+                    <Paperclip className="w-5 h-5" />
+                    <span className="text-xs font-medium">Clique para anexar comprovante</span>
+                    <span className="text-[10px]">JPG, PNG, WebP ou PDF (máx. 10MB)</span>
+                  </button>
+                ) : (
+                  <div className="relative border rounded-lg p-3 bg-muted/30">
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    {receiptFilePreview ? (
+                      <img src={receiptFilePreview} alt="Comprovante" className="max-h-40 rounded-md mx-auto object-contain" />
+                    ) : (
+                      <div className="flex items-center gap-2 pr-6">
+                        <FileText className="w-5 h-5 text-primary shrink-0" />
+                        <span className="text-xs font-medium text-foreground truncate">{receiptFile.name}</span>
+                        <Badge variant="secondary" className="text-[10px] shrink-0">PDF</Badge>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Textarea
                   value={receiptText}
                   onChange={e => setReceiptText(e.target.value)}
-                  placeholder="Ex: Pix enviado às 14:32 — Cód. E00000000..."
-                  className="resize-none text-sm min-h-[70px]"
+                  placeholder="Observação opcional: Ex: Pix enviado às 14:32..."
+                  className="resize-none text-sm min-h-[60px]"
                 />
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => { setShowReceipt(false); setReceiptText(''); }}>
+                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => { setShowReceipt(false); setReceiptText(''); clearFile(); }}>
                     Cancelar
                   </Button>
-                  <Button size="sm" className="flex-1 gap-1.5 text-xs" disabled={!receiptText.trim() || sendingReceipt} onClick={handleSendReceipt}>
+                  <Button size="sm" className="flex-1 gap-1.5 text-xs" disabled={(!receiptText.trim() && !receiptFile) || sendingReceipt} onClick={handleSendReceipt}>
                     <Send className="w-3 h-3" />
-                    Enviar
+                    {sendingReceipt ? 'Enviando...' : 'Enviar'}
                   </Button>
                 </div>
               </div>
