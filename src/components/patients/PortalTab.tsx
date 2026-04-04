@@ -322,7 +322,7 @@ function AccountPanel({
       .channel(`portal-msg-${account.id}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'portal_messages',
-        filter: `patient_id=eq.${patientId}`,
+        filter: `portal_account_id=eq.${account.id}`,
       }, (payload) => {
         const m = payload.new as PortalMessage;
         if (m.sender_type === 'patient') {
