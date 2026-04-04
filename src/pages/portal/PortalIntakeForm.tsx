@@ -201,41 +201,6 @@ export default function PortalIntakeForm() {
   const [qAnswers, setQAnswers] = useState<Record<string, string>>({});
   const [savingQ, setSavingQ] = useState(false);
 
-  const handleDownloadQuestionnairePdf = async (q: PatientQuestionnaire) => {
-    if (!portalAccount) return;
-    const { generateQuestionnairePdf } = await import('@/utils/generateQuestionnairePdf');
-
-    const [{ data: patientData }, { data: clinicData }] = await Promise.all([
-      supabase.from('patients').select('name, birthdate, diagnosis, clinical_area, is_minor, guardian_name, guardian_kinship, cpf, clinic_id').eq('id', portalAccount.patient_id).single(),
-      supabase.from('patients').select('clinic_id').eq('id', portalAccount.patient_id).single().then(async ({ data }) => {
-        if (!data) return { data: null };
-        return supabase.from('clinics').select('name, address, cnpj, phone, email, letterhead').eq('id', data.clinic_id).single();
-      }),
-    ]);
-
-    const fields = (q.fields || []).map((field) => ({
-      label: field.question || '',
-      value: q.answers?.[field.id] || null,
-    }));
-
-    const doc = await generateQuestionnairePdf({
-      title: q.title,
-      sections: [{ title: 'Respostas', fields }],
-      clinicInfo: clinicData ? { name: clinicData.name, address: clinicData.address, cnpj: clinicData.cnpj, phone: clinicData.phone, email: clinicData.email, letterhead: clinicData.letterhead } : undefined,
-      patientInfo: {
-        name: patientData?.name || '',
-        birthdate: patientData?.birthdate,
-        diagnosis: patientData?.diagnosis,
-        clinicalArea: patientData?.clinical_area,
-        isMinor: patientData?.is_minor,
-        guardianName: patientData?.guardian_name,
-        guardianKinship: patientData?.guardian_kinship,
-        cpf: patientData?.cpf,
-      },
-      submittedAt: q.submitted_at,
-    });
-    doc.save(`questionario-${q.title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
-  };
 
   useEffect(() => {
     if (!portalAccount) return;
