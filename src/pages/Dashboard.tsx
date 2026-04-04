@@ -12,6 +12,7 @@ import { MuralNoticesBell } from '@/components/dashboard/MuralNoticesBell';
 import { InternalAlertsBell } from '@/components/dashboard/InternalAlertsBell';
 import { MissingEvolutionsAlert } from '@/components/dashboard/MissingEvolutionsAlert';
 import { PendingEnrollmentsCard } from '@/components/dashboard/PendingEnrollmentsCard';
+import { ClinicAlertsCard } from '@/components/dashboard/ClinicAlertsCard';
 import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
