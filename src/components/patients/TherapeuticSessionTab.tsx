@@ -1032,7 +1032,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                       <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary" disabled={creatingField === 'create_action_plans'} onClick={() => createFieldWithAI('create_action_plans', setActionPlans)}>
                         {creatingField === 'create_action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Criar com IA
                       </Button>
-                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={!actionPlans.trim() || sendingToPortal} onClick={sendActionPlansToPortal}>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={!actionPlans.trim() || sendingToPortal} onClick={() => setShowSendModal(true)}>
                         {sendingToPortal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Enviar para Portal
                       </Button>
                     </div>
