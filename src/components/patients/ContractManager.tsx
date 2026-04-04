@@ -59,10 +59,11 @@ const DEFAULT_BODY = `<h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS TERAPÊUTICOS</h2
 
 <p>Entre as partes abaixo identificadas:</p>
 
-<p><strong>TERAPEUTA:</strong> [Nome do Terapeuta]<br/>
-Registro: [CRP/Crefito número]</p>
+<p><strong>TERAPEUTA:</strong> <span data-type="variable" class="contract-variable">{{nome_profissional}}</span><br/>
+Registro: <span data-type="variable" class="contract-variable">{{registro_profissional}}</span></p>
 
-<p><strong>PACIENTE/RESPONSÁVEL:</strong> {{patient_name}}</p>
+<p><strong>PACIENTE/RESPONSÁVEL:</strong> <span data-type="variable" class="contract-variable">{{nome_paciente}}</span><br/>
+CPF: <span data-type="variable" class="contract-variable">{{cpf_paciente}}</span></p>
 
 <h3>CLÁUSULA 1 — DO OBJETO</h3>
 <p>O presente contrato tem por objeto a prestação de serviços terapêuticos, conforme acordado entre as partes.</p>
@@ -71,7 +72,7 @@ Registro: [CRP/Crefito número]</p>
 <p>As sessões terão duração de 50 (cinquenta) minutos, realizadas semanalmente, em dia e horário a ser definido.</p>
 
 <h3>CLÁUSULA 3 — DOS HONORÁRIOS</h3>
-<p>O valor por sessão será definido em acordo entre as partes, com pagamento até o dia [dia] de cada mês.</p>
+<p>O valor por sessão será de <span data-type="variable" class="contract-variable">{{valor_sessao}}</span>, com pagamento conforme acordado entre as partes.</p>
 
 <h3>CLÁUSULA 4 — DO SIGILO</h3>
 <p>O terapeuta compromete-se a manter sigilo sobre as informações obtidas durante as sessões, respeitando o Código de Ética Profissional.</p>
@@ -79,7 +80,9 @@ Registro: [CRP/Crefito número]</p>
 <h3>CLÁUSULA 5 — DO CANCELAMENTO</h3>
 <p>Cancelamentos devem ser informados com mínimo de 24 horas de antecedência. Sessões não canceladas dentro do prazo serão cobradas integralmente.</p>
 
-<p style="margin-top: 40px;">Ao assinar este contrato, as partes declaram ter lido e concordado com todos os termos acima.</p>`;
+<p style="margin-top: 40px;"><span data-type="variable" class="contract-variable">{{cidade_atual}}</span>, <span data-type="variable" class="contract-variable">{{data_atual}}</span></p>
+
+<p>Ao assinar este contrato, as partes declaram ter lido e concordado com todos os termos acima.</p>`;
 
 // ─── Template Library Panel ────────────────────────────────────────────────────
 function TemplateLibrary({
