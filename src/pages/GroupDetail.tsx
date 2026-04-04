@@ -156,6 +156,7 @@ export default function GroupDetail() {
 
   const tabs = [
     { value: 'info', label: 'Informações', icon: <ClipboardList className="w-4 h-4" /> },
+    { value: 'session', label: 'Sessão', icon: <PenLine className="w-4 h-4" /> },
     { value: 'evolutions', label: 'Evoluções', icon: <FileText className="w-4 h-4" /> },
     { value: 'portal', label: 'Portal', icon: <UserCheck className="w-4 h-4" /> },
     { value: 'mural', label: 'Mural', icon: <Newspaper className="w-4 h-4" /> },
