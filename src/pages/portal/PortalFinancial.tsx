@@ -253,7 +253,7 @@ export default function PortalFinancial() {
           patient_id: portalAccount.patient_id,
           portal_account_id: portalAccount.id,
           therapist_user_id: portalAccount.therapist_user_id,
-          uploaded_by_type: 'patient',
+          uploaded_by_type: 'portal',
           uploaded_by_user_id: user.id,
         });
         if (docError) throw docError;
