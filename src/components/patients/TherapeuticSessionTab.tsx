@@ -925,7 +925,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
             {sessionId && <Button variant="outline" onClick={() => saveSession(true)} disabled={saving}>{saving ? 'Salvando...' : 'Salvar sessão'}</Button>}
-            <Button variant="outline" onClick={generateReport} className="gap-1.5"><FileText className="w-4 h-4" /> Gerar Relatório</Button>
+            <Button variant="outline" onClick={generateReport} disabled={generatingReport} className="gap-1.5">
+              {generatingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              {generatingReport ? 'Gerando...' : 'Gerar Relatório'}
+            </Button>
             <Button variant="outline" onClick={generateAIEvolution} disabled={generatingAI} className="gap-1.5">
               {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               Gerar Evolução IA
