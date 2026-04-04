@@ -65,6 +65,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [plans, setPlans] = useState<any[]>([]);
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
+  const [activePlan, setActivePlan] = useState<any>(null);
 
   // AI Evolution
   const [aiEvolution, setAiEvolution] = useState('');
