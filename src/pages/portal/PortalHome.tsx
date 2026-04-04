@@ -20,6 +20,7 @@ export default function PortalHome() {
 
   const quickActions = [
     { to: '/portal/mensagens', icon: MessageSquare, label: 'Mensagens', desc: `${messages.length} ${messages.length === 1 ? 'mensagem' : 'mensagens'}`, badge: unreadCount },
+    { to: '/portal/atividades', icon: ClipboardList, label: 'Atividades', desc: 'Tarefas e exercícios' },
     { to: '/portal/avisos', icon: Bell, label: 'Avisos', desc: 'Comunicados do terapeuta' },
     { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro', desc: 'Pagamentos e recibos' },
     { to: '/portal/fichas', icon: FileText, label: 'Minhas Fichas', desc: 'Fichas e questionários' },
