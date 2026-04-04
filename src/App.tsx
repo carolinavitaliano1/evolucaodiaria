@@ -45,6 +45,7 @@ import PortalEvolutions from "./pages/portal/PortalEvolutions";
 import PortalFinancial from "./pages/portal/PortalFinancial";
 import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalMural from "./pages/portal/PortalMural";
+import PortalActivities from "./pages/portal/PortalActivities";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
