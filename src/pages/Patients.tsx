@@ -91,6 +91,9 @@ export default function Patients() {
     );
   }, [visiblePatients, searchTerm, canSeeClinical]);
 
+  // Active (non-archived) clinics for quick registration
+  const activeClinics = useMemo(() => clinics.filter(c => !c.isArchived), [clinics]);
+
   // Quick registration handler
   const handleQuickReg = () => {
     if (!quickRegClinicId) return;
