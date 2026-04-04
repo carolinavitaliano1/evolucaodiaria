@@ -680,7 +680,43 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             </CardContent>
           </Card>
 
-          {/* Session title */}
+          {/* Plan Summary (read-only) */}
+          {activePlan && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-primary" /> Resumo do Plano
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {activePlan.objectives && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Objetivos Terapêuticos</Label>
+                    <p className="text-foreground whitespace-pre-wrap mt-0.5 select-none pointer-events-none">{activePlan.objectives}</p>
+                  </div>
+                )}
+                {activePlan.activities && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Atividades Planejadas</Label>
+                    <p className="text-foreground whitespace-pre-wrap mt-0.5 select-none pointer-events-none">{activePlan.activities}</p>
+                  </div>
+                )}
+                {(activePlan.external_links as any[])?.length > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Links de Referência</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(activePlan.external_links as any[]).map((link: any, i: number) => (
+                        <Badge key={i} variant="secondary" className="gap-1">
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-xs hover:underline text-primary">{link.label}</a>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="border-border">
             <CardHeader className="pb-3"><CardTitle className="text-sm">Dados da Sessão</CardTitle></CardHeader>
             <CardContent>
