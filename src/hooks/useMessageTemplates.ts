@@ -28,6 +28,8 @@ export const TEMPLATE_VARIABLES = [
   { tag: '{{email_paciente}}',       label: 'E-mail do Paciente',       group: 'Paciente' },
   { tag: '{{data_nascimento}}',      label: 'Data de Nascimento',       group: 'Paciente' },
   { tag: '{{responsavel}}',          label: 'Nome do Responsável',      group: 'Paciente' },
+  { tag: '{{nome_responsavel_legal}}',      label: 'Nome do Responsável Legal',      group: 'Paciente' },
+  { tag: '{{nome_responsavel_financeiro}}', label: 'Nome do Responsável Financeiro',  group: 'Paciente' },
   // Consulta
   { tag: '{{data_consulta}}',        label: 'Data da Consulta',         group: 'Consulta' },
   { tag: '{{horario}}',              label: 'Horário',                  group: 'Consulta' },
@@ -119,6 +121,8 @@ export interface TemplateVars {
   email_paciente?: string;
   data_nascimento?: string;
   responsavel?: string;
+  nome_responsavel_legal?: string;
+  nome_responsavel_financeiro?: string;
   data_consulta?: string;
   horario?: string;
   dia_semana?: string;
@@ -138,6 +142,8 @@ export function resolveTemplate(content: string, vars: TemplateVars): string {
     .replace(/\{\{email_paciente\}\}/g,     vars.email_paciente     || '')
     .replace(/\{\{data_nascimento\}\}/g,    vars.data_nascimento    || '')
     .replace(/\{\{responsavel\}\}/g,        vars.responsavel        || '')
+    .replace(/\{\{nome_responsavel_legal\}\}/g,      vars.nome_responsavel_legal      || '')
+    .replace(/\{\{nome_responsavel_financeiro\}\}/g, vars.nome_responsavel_financeiro || '')
     .replace(/\{\{data_consulta\}\}/g,      vars.data_consulta      || '')
     .replace(/\{\{horario\}\}/g,            vars.horario            || '')
     .replace(/\{\{dia_semana\}\}/g,         vars.dia_semana         || '')
