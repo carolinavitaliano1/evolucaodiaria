@@ -290,11 +290,28 @@ export default function PortalFinancial() {
       setReceiptText('');
       clearFile();
       setShowReceipt(false);
+
+      // Reload receipt docs list
+      const { data: docs } = await supabase
+        .from('portal_documents')
+        .select('id, name, file_path, file_type, file_size, description, created_at')
+        .eq('portal_account_id', portalAccount.id)
+        .ilike('name', 'Comprovante%')
+        .order('created_at', { ascending: false });
+      setReceiptDocs((docs || []) as ReceiptDoc[]);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao enviar comprovante');
     } finally {
       setSendingReceipt(false);
     }
+  };
+
+  const handleDownloadReceipt = async (doc: ReceiptDoc) => {
+    const { data } = await supabase.storage
+      .from('portal-documents')
+      .createSignedUrl(doc.file_path, 3600);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+    else toast.error('Erro ao abrir documento');
   };
 
   const currentMonth = new Date().getMonth() + 1;
