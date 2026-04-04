@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { ContractEditor } from '@/components/contracts/ContractEditor';
 import { SignaturePad } from '@/components/ui/signature-pad';
 import { toast } from 'sonner';
 import {
@@ -59,10 +59,11 @@ const DEFAULT_BODY = `<h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS TERAPÊUTICOS</h2
 
 <p>Entre as partes abaixo identificadas:</p>
 
-<p><strong>TERAPEUTA:</strong> [Nome do Terapeuta]<br/>
-Registro: [CRP/Crefito número]</p>
+<p><strong>TERAPEUTA:</strong> <span data-type="variable" class="contract-variable">{{nome_profissional}}</span><br/>
+Registro: <span data-type="variable" class="contract-variable">{{registro_profissional}}</span></p>
 
-<p><strong>PACIENTE/RESPONSÁVEL:</strong> {{patient_name}}</p>
+<p><strong>PACIENTE/RESPONSÁVEL:</strong> <span data-type="variable" class="contract-variable">{{nome_paciente}}</span><br/>
+CPF: <span data-type="variable" class="contract-variable">{{cpf_paciente}}</span></p>
 
 <h3>CLÁUSULA 1 — DO OBJETO</h3>
 <p>O presente contrato tem por objeto a prestação de serviços terapêuticos, conforme acordado entre as partes.</p>
@@ -71,7 +72,7 @@ Registro: [CRP/Crefito número]</p>
 <p>As sessões terão duração de 50 (cinquenta) minutos, realizadas semanalmente, em dia e horário a ser definido.</p>
 
 <h3>CLÁUSULA 3 — DOS HONORÁRIOS</h3>
-<p>O valor por sessão será definido em acordo entre as partes, com pagamento até o dia [dia] de cada mês.</p>
+<p>O valor por sessão será de <span data-type="variable" class="contract-variable">{{valor_sessao}}</span>, com pagamento conforme acordado entre as partes.</p>
 
 <h3>CLÁUSULA 4 — DO SIGILO</h3>
 <p>O terapeuta compromete-se a manter sigilo sobre as informações obtidas durante as sessões, respeitando o Código de Ética Profissional.</p>
@@ -79,7 +80,9 @@ Registro: [CRP/Crefito número]</p>
 <h3>CLÁUSULA 5 — DO CANCELAMENTO</h3>
 <p>Cancelamentos devem ser informados com mínimo de 24 horas de antecedência. Sessões não canceladas dentro do prazo serão cobradas integralmente.</p>
 
-<p style="margin-top: 40px;">Ao assinar este contrato, as partes declaram ter lido e concordado com todos os termos acima.</p>`;
+<p style="margin-top: 40px;"><span data-type="variable" class="contract-variable">{{cidade_atual}}</span>, <span data-type="variable" class="contract-variable">{{data_atual}}</span></p>
+
+<p>Ao assinar este contrato, as partes declaram ter lido e concordado com todos os termos acima.</p>`;
 
 // ─── Template Library Panel ────────────────────────────────────────────────────
 function TemplateLibrary({
@@ -340,7 +343,58 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
         if (tmpl) { templateId = (tmpl as any).id; await loadTemplates(); }
       }
 
-      const filledHtml = bodyHtml.replace(/\{\{patient_name\}\}/g, patientName);
+      // Fetch all data needed for variable substitution in parallel
+      const [{ data: patientData }, { data: profile }, { data: stamp }, { data: intakeForm }] = await Promise.all([
+        supabase.from('patients').select('cpf,birthdate,payment_value,weekdays,schedule_time,clinic_id').eq('id', patientId).maybeSingle(),
+        supabase.from('profiles').select('name,professional_id,cpf').eq('user_id', user.id).maybeSingle(),
+        supabase.from('stamps').select('clinical_area,cbo').eq('user_id', user.id).limit(1).maybeSingle(),
+        supabase.from('patient_intake_forms').select('address,cpf').eq('patient_id', patientId).maybeSingle(),
+      ]);
+
+      let clinicCity = '';
+      if (patientData?.clinic_id) {
+        const { data: clinic } = await supabase.from('clinics').select('address').eq('id', patientData.clinic_id).maybeSingle();
+        if (clinic?.address) {
+          const parts = clinic.address.split(',').map((s: string) => s.trim());
+          clinicCity = parts.length >= 2 ? parts[parts.length - 2] : parts[0] || '';
+        }
+      }
+
+      const formatDate = (d?: string | null) => {
+        if (!d) return '[não informado]';
+        try { return format(new Date(d), "dd/MM/yyyy", { locale: ptBR }); } catch { return d; }
+      };
+
+      const paymentVal = patientData?.payment_value;
+
+      const variableMap: Record<string, string> = {
+        'nome_paciente': patientName || '[não informado]',
+        'patient_name': patientName || '[não informado]',
+        'cpf_paciente': patientData?.cpf || intakeForm?.cpf || '[não informado]',
+        'rg_paciente': '[não informado]',
+        'endereco_paciente': intakeForm?.address || '[não informado]',
+        'data_nascimento': formatDate(patientData?.birthdate),
+        'nome_profissional': profile?.name || '[não informado]',
+        'registro_profissional': profile?.professional_id || '[não informado]',
+        'cbo_profissional': (stamp as any)?.cbo || '[não informado]',
+        'data_atual': format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: ptBR }),
+        'cidade_atual': clinicCity || '[não informado]',
+        'valor_sessao': paymentVal ? `R$ ${Number(paymentVal).toFixed(2).replace('.', ',')}` : '[não informado]',
+        'dia_atendimento': patientData?.weekdays?.join(', ') || '[não informado]',
+        'horario_atendimento': patientData?.schedule_time || '[não informado]',
+      };
+
+      // Strip variable chip spans and replace raw {{var}} tags
+      let filledHtml = bodyHtml;
+      // First handle <span data-type="variable" class="contract-variable">{{key}}</span>
+      filledHtml = filledHtml.replace(/<span[^>]*data-type="variable"[^>]*>\{\{(\w+)\}\}<\/span>/g, (_, key) => {
+        return variableMap[key] ?? `{{${key}}}`;
+      });
+      // Then handle raw {{key}} not inside spans
+      filledHtml = filledHtml.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+        return variableMap[key] ?? `{{${key}}}`;
+      });
+
       const { error } = await supabase.from('patient_contracts').insert({
         patient_id: patientId,
         therapist_user_id: user.id,
@@ -489,15 +543,7 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
               <X className="w-3.5 h-3.5" />
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Use <code className="bg-muted px-1 rounded">{'{{patient_name}}'}</code> para inserir o nome do paciente. HTML básico é suportado.
-          </p>
-          <Textarea
-            value={bodyHtml}
-            onChange={e => setBodyHtml(e.target.value)}
-            className="min-h-[260px] font-mono text-xs resize-none"
-            placeholder="Conteúdo do contrato (HTML)..."
-          />
+          <ContractEditor value={bodyHtml} onChange={setBodyHtml} />
           {/* Save as template option */}
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
             <label className="flex items-center gap-2 cursor-pointer">
