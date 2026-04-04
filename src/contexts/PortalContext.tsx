@@ -73,14 +73,14 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
     if (data) setMessages(data as PortalMessage[]);
   }, []);
 
-  const setupRealtime = useCallback((patientId: string) => {
+  const setupRealtime = useCallback((accountId: string) => {
     // Clean up previous channel
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
 
-    const channelName = `portal-messages-${patientId}-${user?.id}`;
+    const channelName = `portal-messages-${accountId}-${user?.id}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -89,19 +89,17 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
           event: '*',
           schema: 'public',
           table: 'portal_messages',
-          filter: `patient_id=eq.${patientId}`,
+          filter: `portal_account_id=eq.${accountId}`,
         },
         () => {
-          loadMessages(patientId);
+          loadMessages(accountId);
         }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          // Reload messages once subscribed to catch anything missed
-          loadMessages(patientId);
+          loadMessages(accountId);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          // On error, attempt a fresh load as fallback
-          loadMessages(patientId);
+          loadMessages(accountId);
         }
       });
 
