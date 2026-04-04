@@ -688,17 +688,77 @@ function AccountPanel({
               )}
               {intakeForm?.needs_review && (
                 <IntakeReviewPanel intakeForm={intakeForm} patientId={patientId} onReviewed={async (approved) => {
+                  // Get the latest submitted data from review_history
+                  const latestData = intakeForm.review_history && intakeForm.review_history.length > 0
+                    ? intakeForm.review_history[intakeForm.review_history.length - 1].data
+                    : null;
+
+                  // Build intake form update
+                  const intakeUpdate: Record<string, any> = {
+                    needs_review: false,
+                    review_status: approved ? 'approved' : 'rejected',
+                    reviewed_at: new Date().toISOString(),
+                  };
+
+                  // If approved AND we have data, copy the reviewed fields into the intake form
+                  if (approved && latestData) {
+                    const fieldsToCopy = [
+                      'full_name', 'cpf', 'phone', 'whatsapp', 'email', 'address',
+                      'birthdate', 'responsible_name', 'responsible_cpf', 'responsible_phone',
+                      'financial_responsible_name', 'financial_responsible_cpf',
+                      'financial_responsible_phone', 'financial_responsible_email',
+                      'financial_responsible_address', 'financial_responsible_relation',
+                      'emergency_contact', 'emergency_contact_name', 'emergency_contact_phone',
+                      'emergency_contact_relation', 'emergency_contact_address',
+                      'observations', 'health_info', 'gender', 'how_found',
+                      'payment_due_day',
+                    ];
+                    for (const key of fieldsToCopy) {
+                      if (key in latestData) {
+                        intakeUpdate[key] = latestData[key] ?? null;
+                      }
+                    }
+                    if (latestData.custom_answers) {
+                      intakeUpdate.custom_answers = latestData.custom_answers;
+                    }
+                  }
+
                   const { error } = await supabase
                     .from('patient_intake_forms')
-                    .update({
-                      needs_review: false,
-                      review_status: approved ? 'approved' : 'rejected',
-                      reviewed_at: new Date().toISOString(),
-                    })
+                    .update(intakeUpdate)
                     .eq('patient_id', patientId);
-                  if (!error) {
-                    toast.success(approved ? 'Alterações aprovadas!' : 'Alterações rejeitadas.');
+
+                  if (error) {
+                    toast.error('Erro ao salvar revisão.');
+                    return;
                   }
+
+                  // If approved, sync relevant fields to the patients table
+                  if (approved && latestData) {
+                    const patientUpdate: Record<string, any> = {};
+                    if (latestData.full_name) patientUpdate.name = latestData.full_name;
+                    if (latestData.cpf) patientUpdate.cpf = latestData.cpf;
+                    if (latestData.phone) patientUpdate.phone = latestData.phone;
+                    if (latestData.whatsapp) patientUpdate.whatsapp = latestData.whatsapp;
+                    if (latestData.email) patientUpdate.email = latestData.email;
+                    if (latestData.birthdate) patientUpdate.birthdate = latestData.birthdate;
+                    if (latestData.responsible_name) patientUpdate.responsible_name = latestData.responsible_name;
+                    if (latestData.responsible_cpf) patientUpdate.responsible_cpf = latestData.responsible_cpf;
+                    if (latestData.responsible_phone) patientUpdate.responsible_whatsapp = latestData.responsible_phone;
+                    if (latestData.financial_responsible_name) patientUpdate.financial_responsible_name = latestData.financial_responsible_name;
+                    if (latestData.financial_responsible_cpf) patientUpdate.financial_responsible_cpf = latestData.financial_responsible_cpf;
+                    if (latestData.financial_responsible_phone) patientUpdate.financial_responsible_whatsapp = latestData.financial_responsible_phone;
+                    if (latestData.observations) patientUpdate.observations = latestData.observations;
+                    if (latestData.address) patientUpdate.observations = [patientUpdate.observations, `Endereço: ${latestData.address}`].filter(Boolean).join('\n');
+                    if (latestData.payment_due_day) patientUpdate.payment_due_day = parseInt(latestData.payment_due_day, 10) || null;
+                    if (latestData.diagnosis) patientUpdate.diagnosis = latestData.diagnosis;
+
+                    if (Object.keys(patientUpdate).length > 0) {
+                      await supabase.from('patients').update(patientUpdate).eq('id', patientId);
+                    }
+                  }
+
+                  toast.success(approved ? 'Alterações aprovadas!' : 'Alterações rejeitadas.');
                 }} />
               )}
 
