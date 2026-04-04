@@ -338,7 +338,14 @@ function AccountPanel({
       }, (payload) => {
         const m = payload.new as PortalMessage;
         if (m.sender_type === 'patient') {
-          setMessages(prev => prev.some(x => x.id === m.id) ? prev : [m, ...prev]);
+          // If messages section is open, auto-mark as read
+          if (activeSectionRef.current === 'messages') {
+            const readMsg = { ...m, read_by_therapist: true };
+            setMessages(prev => prev.some(x => x.id === m.id) ? prev : [readMsg, ...prev]);
+            supabase.from('portal_messages').update({ read_by_therapist: true }).eq('id', m.id).then();
+          } else {
+            setMessages(prev => prev.some(x => x.id === m.id) ? prev : [m, ...prev]);
+          }
         }
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
