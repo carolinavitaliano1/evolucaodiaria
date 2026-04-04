@@ -1775,6 +1775,62 @@ export default function PatientDetail() {
         </div>
       </div>
 
+      {/* Virtual consultation toggle + confirmation */}
+      <div className="bg-card rounded-xl border border-border shadow-sm p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          <div className={cn(
+            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+            isVirtual ? "bg-primary/10" : "bg-muted"
+          )}>
+            <Video className={cn("w-4 h-4", isVirtual ? "text-primary" : "text-muted-foreground")} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="virtual-toggle" className="text-sm font-medium text-foreground cursor-pointer">
+                Consulta Virtual
+              </Label>
+              <Switch id="virtual-toggle" checked={isVirtual} onCheckedChange={handleToggleVirtual} />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {isVirtual ? 'Sessões online — envie confirmação de presença' : 'Sessões presenciais'}
+            </p>
+          </div>
+        </div>
+
+        {/* Confirmation buttons */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => handleSendConfirmation('portal')}
+            disabled={sendingConfirmation}
+            title="Enviar confirmação pelo Portal"
+          >
+            <MessageSquare className="w-3 h-3" /> Portal
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs border-[#25D366]/40 text-[#25D366] hover:bg-[#25D366]/5"
+            onClick={() => handleSendConfirmation('whatsapp')}
+            disabled={sendingConfirmation}
+            title="Enviar confirmação pelo WhatsApp"
+          >
+            <WhatsAppIcon className="w-3 h-3" /> WhatsApp
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => handleSendConfirmation('both')}
+            disabled={sendingConfirmation}
+          >
+            {sendingConfirmation ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+            Ambos
+          </Button>
+        </div>
+      </div>
+
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
