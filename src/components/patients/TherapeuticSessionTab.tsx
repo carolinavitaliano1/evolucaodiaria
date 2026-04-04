@@ -62,6 +62,9 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   // Sessions history
   const [sessions, setSessions] = useState<any[]>([]);
   const [viewingSession, setViewingSession] = useState<any | null>(null);
+  const [viewLinkedEvolution, setViewLinkedEvolution] = useState<any | null>(null);
+  const [viewLinkedEvolutionText, setViewLinkedEvolutionText] = useState<string | null>(null);
+  const [loadingLinkedData, setLoadingLinkedData] = useState(false);
 
   // Plans
   const [plans, setPlans] = useState<any[]>([]);
