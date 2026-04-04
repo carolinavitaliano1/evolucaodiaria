@@ -158,7 +158,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     if (!user) return;
     const { data } = await supabase
       .from('therapy_sessions')
-      .select('id, title, created_at, duration_seconds, status, mood_score, notes_text, action_plans, next_session_notes, general_comments, positive_feelings, negative_feelings, suicidal_thoughts, started_at')
+      .select('id, title, created_at, duration_seconds, status, mood_score, notes_text, action_plans, next_session_notes, general_comments, positive_feelings, negative_feelings, suicidal_thoughts, started_at, finished_at')
       .eq('patient_id', patientId)
       .eq('user_id', user.id)
       .eq('status', 'finished')
@@ -745,38 +745,22 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     else { toast.success('Sessão excluída'); loadHistory(); }
   };
 
-  const handleDuplicateSession = async (session: any) => {
-    if (!user) return;
-    const { data, error } = await supabase.from('therapy_sessions').insert({
-      user_id: user.id,
-      patient_id: patientId,
-      clinic_id: clinicId,
-      title: `${session.title || 'Sessão'} (cópia)`,
-      notes_text: session.notes_text || '',
-      action_plans: session.action_plans || '',
-      next_session_notes: session.next_session_notes || '',
-      general_comments: session.general_comments || '',
-      positive_feelings: session.positive_feelings || [],
-      negative_feelings: session.negative_feelings || [],
-      mood_score: session.mood_score,
-      suicidal_thoughts: session.suicidal_thoughts || false,
-      price: 0,
-      payment_pending: false,
-      status: 'active',
-      duration_seconds: 0,
-    }).select('*').single();
-
-    if (error) {
-      toast.error('Erro ao duplicar sessão');
-    } else if (data) {
-      toast.success('Sessão duplicada!');
-      populateSessionForm(data);
-      setMainView('session');
-    }
-  };
-
   const handleEditSession = (session: any) => {
-    populateSessionForm(session);
+    // For finished sessions, load data but DON'T restart timer
+    setSessionId(session.id);
+    setTitle(session.title || '');
+    setMoodScore(session.mood_score);
+    setPositiveFeelings(session.positive_feelings || []);
+    setNegativeFeelings(session.negative_feelings || []);
+    setSuicidalThoughts(session.suicidal_thoughts || false);
+    setNotesText(session.notes_text || '');
+    setActionPlans(session.action_plans || '');
+    setNextSessionNotes(session.next_session_notes || '');
+    setGeneralComments(session.general_comments || '');
+    setElapsedSeconds(session.duration_seconds || 0);
+    setAiEvolution('');
+    setTimerRunning(false);
+    setStartedAt(null);
     setMainView('session');
   };
 
@@ -788,11 +772,79 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
 
-  // View session detail dialog
+  // View session detail dialog — with report & AI evolution generation
   const renderViewDialog = () => {
     if (!viewingSession) return null;
     const s = viewingSession;
     const date = new Date(s.created_at);
+
+    const handleViewGenerateReport = async () => {
+      // Temporarily load viewing session data to generate report
+      const prev = { title, moodScore, positiveFeelings, negativeFeelings, suicidalThoughts, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds };
+      setTitle(s.title || '');
+      setMoodScore(s.mood_score);
+      setPositiveFeelings(s.positive_feelings || []);
+      setNegativeFeelings(s.negative_feelings || []);
+      setSuicidalThoughts(s.suicidal_thoughts || false);
+      setNotesText(s.notes_text || '');
+      setActionPlans(s.action_plans || '');
+      setNextSessionNotes(s.next_session_notes || '');
+      setGeneralComments(s.general_comments || '');
+      setElapsedSeconds(s.duration_seconds || 0);
+      // Wait a tick then generate
+      await new Promise(r => setTimeout(r, 50));
+      await generateReport();
+      // Restore previous state
+      setTitle(prev.title);
+      setMoodScore(prev.moodScore);
+      setPositiveFeelings(prev.positiveFeelings);
+      setNegativeFeelings(prev.negativeFeelings);
+      setSuicidalThoughts(prev.suicidalThoughts);
+      setNotesText(prev.notesText);
+      setActionPlans(prev.actionPlans);
+      setNextSessionNotes(prev.nextSessionNotes);
+      setGeneralComments(prev.generalComments);
+      setElapsedSeconds(prev.elapsedSeconds);
+    };
+
+    const handleViewGenerateEvolution = async () => {
+      if (!s.notes_text && !s.action_plans && !s.general_comments) {
+        toast.error('Esta sessão não possui anotações para gerar evolução.');
+        return;
+      }
+      setGeneratingAI(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-evolution', {
+          body: {
+            patientName,
+            moodScore: s.mood_score,
+            positiveFeelings: s.positive_feelings || [],
+            negativeFeelings: s.negative_feelings || [],
+            suicidalThoughts: s.suicidal_thoughts || false,
+            notesText: s.notes_text || '',
+            actionPlans: s.action_plans || '',
+            nextSessionNotes: s.next_session_notes || '',
+            generalComments: s.general_comments || '',
+            durationSeconds: s.duration_seconds || 0,
+            planObjectives: '',
+            planActivities: '',
+          },
+        });
+        if (error) throw error;
+        if (data?.evolution) {
+          setAiEvolution(data.evolution);
+          setViewingSession(null);
+          // Load session into edit mode so user can send to prontuário
+          handleEditSession(s);
+          toast.success('Evolução IA gerada! Revise e envie ao prontuário.');
+        }
+      } catch (e: any) {
+        toast.error(e.message || 'Erro ao gerar evolução');
+      } finally {
+        setGeneratingAI(false);
+      }
+    };
+
     return (
       <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setViewingSession(null)}>
         <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
@@ -816,6 +868,18 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             {s.action_plans && <div><Label className="text-xs text-muted-foreground">Planos de Ação</Label><p className="text-sm mt-1 whitespace-pre-wrap">{s.action_plans}</p></div>}
             {s.next_session_notes && <div><Label className="text-xs text-muted-foreground">Próxima Sessão</Label><p className="text-sm mt-1 whitespace-pre-wrap">{s.next_session_notes}</p></div>}
             {s.general_comments && <div><Label className="text-xs text-muted-foreground">Comentários Gerais</Label><p className="text-sm mt-1 whitespace-pre-wrap">{s.general_comments}</p></div>}
+
+            {/* Action buttons for report & evolution */}
+            <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
+              <Button variant="outline" size="sm" onClick={handleViewGenerateReport} disabled={generatingReport} className="gap-1.5">
+                {generatingReport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                Gerar Relatório PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleViewGenerateEvolution} disabled={generatingAI} className="gap-1.5">
+                {generatingAI ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                Gerar Evolução IA
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -1127,7 +1191,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             onView={(s) => setViewingSession(s)}
             onEdit={handleEditSession}
             onDelete={handleDeleteSession}
-            onDuplicate={handleDuplicateSession}
             onNewSession={() => { resetForm(); setMainView('session'); }}
             onGenerateReport={generateReport}
           />

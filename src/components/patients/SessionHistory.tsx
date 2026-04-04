@@ -33,7 +33,6 @@ import {
   Eye,
   Pencil,
   Trash2,
-  Copy,
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -59,7 +58,6 @@ interface SessionHistoryProps {
   onView: (session: Session) => void;
   onEdit: (session: Session) => void;
   onDelete: (sessionId: string) => void;
-  onDuplicate: (session: Session) => void;
   onNewSession: () => void;
   onGenerateReport: () => void;
 }
@@ -86,7 +84,6 @@ export function SessionHistory({
   onView,
   onEdit,
   onDelete,
-  onDuplicate,
   onNewSession,
   onGenerateReport,
 }: SessionHistoryProps) {
@@ -238,10 +235,6 @@ export function SessionHistory({
                             <DropdownMenuItem onClick={() => onEdit(session)}>
                               <Pencil className="w-4 h-4 mr-2" />
                               Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDuplicate(session)}>
-                              <Copy className="w-4 h-4 mr-2" />
-                              Duplicar sessão
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => setDeleteId(session.id)}
