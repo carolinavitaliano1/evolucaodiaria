@@ -116,11 +116,10 @@ function AccessTypeBadge({ type, label }: { type: string; label?: string | null 
 }
 
 function IntakeField({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null;
   return (
     <div className="space-y-0.5">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
-      <p className="text-sm text-foreground">{value}</p>
+      <p className={cn("text-sm", value ? "text-foreground" : "text-muted-foreground/50 italic")}>{value || 'Não informado'}</p>
     </div>
   );
 }
