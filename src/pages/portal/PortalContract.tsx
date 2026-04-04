@@ -137,10 +137,39 @@ export default function PortalContract() {
     return cpf;
   };
 
+  const formatCpfInput = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  };
+
+  const validateCpf = (cpf: string) => {
+    const digits = cpf.replace(/\D/g, '');
+    return digits.length === 11;
+  };
+
   const handleSign = async (contract: Contract) => {
     let finalSig = signatureData;
     if (!finalSig && signaturePadRef.current) {
       finalSig = signaturePadRef.current.save();
+    }
+    if (!signerNameInput.trim()) {
+      toast.error('Preencha o nome completo do assinante.');
+      return;
+    }
+    if (!signerCpfInput.trim() || !validateCpf(signerCpfInput)) {
+      toast.error('Preencha um CPF válido (11 dígitos).');
+      return;
+    }
+    if (!signerCityInput.trim()) {
+      toast.error('Preencha a cidade.');
+      return;
+    }
+    if (!agreedTerms) {
+      toast.error('Você precisa concordar com os termos do contrato.');
+      return;
     }
     if (!finalSig) {
       toast.error('Por favor, assine antes de confirmar.');
@@ -154,7 +183,11 @@ export default function PortalContract() {
           signature_data: finalSig,
           signed_at: new Date().toISOString(),
           status: 'signed',
-        })
+          signer_name: signerNameInput.trim(),
+          signer_cpf: signerCpfInput.replace(/\D/g, ''),
+          signer_city: signerCityInput.trim(),
+          agreed_terms: true,
+        } as any)
         .eq('id', contract.id);
       if (error) throw error;
       await supabase
@@ -165,11 +198,17 @@ export default function PortalContract() {
       toast.success('Contrato assinado com sucesso! ✅');
       setContracts(prev => prev.map(c =>
         c.id === contract.id
-          ? { ...c, status: 'signed', signed_at: new Date().toISOString(), signature_data: finalSig }
+          ? { ...c, status: 'signed', signed_at: new Date().toISOString(), signature_data: finalSig,
+              signer_name: signerNameInput.trim(), signer_cpf: signerCpfInput.replace(/\D/g, ''),
+              signer_city: signerCityInput.trim(), agreed_terms: true }
           : c
       ));
       setSigningContractId(null);
       setSignatureData('');
+      setSignerNameInput('');
+      setSignerCpfInput('');
+      setSignerCityInput('');
+      setAgreedTerms(false);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao assinar');
     } finally {
