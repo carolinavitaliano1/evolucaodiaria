@@ -492,15 +492,7 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
               <X className="w-3.5 h-3.5" />
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Use <code className="bg-muted px-1 rounded">{'{{patient_name}}'}</code> para inserir o nome do paciente. HTML básico é suportado.
-          </p>
-          <Textarea
-            value={bodyHtml}
-            onChange={e => setBodyHtml(e.target.value)}
-            className="min-h-[260px] font-mono text-xs resize-none"
-            placeholder="Conteúdo do contrato (HTML)..."
-          />
+          <ContractEditor value={bodyHtml} onChange={setBodyHtml} />
           {/* Save as template option */}
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
             <label className="flex items-center gap-2 cursor-pointer">
