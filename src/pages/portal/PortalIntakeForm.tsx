@@ -351,6 +351,37 @@ export default function PortalIntakeForm() {
     }
   };
 
+  const openQuestionnaire = (q: PatientQuestionnaire) => {
+    setActiveQuestionnaire(q);
+    setQAnswers((q.answers as Record<string, string>) || {});
+    setActiveView('questionnaire');
+  };
+
+  const handleSubmitQuestionnaire = async () => {
+    if (!activeQuestionnaire) return;
+    const requiredMissing = activeQuestionnaire.fields.filter(f => f.required && !qAnswers[f.id]?.trim());
+    if (requiredMissing.length > 0) {
+      toast.error(`Preencha as perguntas obrigatórias: ${requiredMissing.map(f => `"${f.question}"`).join(', ')}`);
+      return;
+    }
+    setSavingQ(true);
+    try {
+      const { error } = await supabase
+        .from('patient_questionnaires')
+        .update({ answers: qAnswers as any, status: 'submitted', submitted_at: new Date().toISOString() })
+        .eq('id', activeQuestionnaire.id);
+      if (error) throw error;
+      setQuestionnaires(prev => prev.map(q => q.id === activeQuestionnaire.id ? { ...q, answers: qAnswers, status: 'submitted', submitted_at: new Date().toISOString() } : q));
+      toast.success('Questionário enviado! ✅');
+      setActiveView('list');
+      setActiveQuestionnaire(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar');
+    } finally {
+      setSavingQ(false);
+    }
+  };
+
   if (loading) return (
     <PortalLayout>
       <div className="flex items-center justify-center h-40">
@@ -359,15 +390,106 @@ export default function PortalIntakeForm() {
     </PortalLayout>
   );
 
-  return (
-    <PortalLayout>
-      <div className="space-y-5">
-        <div>
-          <h1 className="text-lg font-bold text-foreground">Minha Ficha</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Preencha seus dados para seu terapeuta</p>
-        </div>
+  // Questionnaire fill view
+  if (activeView === 'questionnaire' && activeQuestionnaire) {
+    const isSubmitted = activeQuestionnaire.status === 'submitted' || activeQuestionnaire.status === 'reviewed';
+    return (
+      <PortalLayout>
+        <div className="space-y-5">
+          <div className="flex items-center gap-2">
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setActiveView('list'); setActiveQuestionnaire(null); }}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold text-foreground">{activeQuestionnaire.title}</h1>
+              <p className="text-xs text-muted-foreground">{isSubmitted ? 'Enviado' : 'Preencha e envie ao terapeuta'}</p>
+            </div>
+          </div>
 
-        {submitted && (
+          {isSubmitted && (
+            <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span>Enviado em {activeQuestionnaire.submitted_at ? format(new Date(activeQuestionnaire.submitted_at), "d/MM/yyyy 'às' HH:mm", { locale: ptBR }) : ''}</span>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {activeQuestionnaire.fields.map((field, idx) => (
+              <SectionCard key={field.id} title={`${idx + 1}. ${field.question}${field.required ? ' *' : ''}`}>
+                {field.field_type === 'textarea' ? (
+                  <Textarea
+                    value={qAnswers[field.id] || ''}
+                    onChange={e => setQAnswers(prev => ({ ...prev, [field.id]: e.target.value }))}
+                    placeholder="Sua resposta..."
+                    className="resize-none"
+                    rows={3}
+                    disabled={isSubmitted}
+                  />
+                ) : field.field_type === 'yesno' ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Sim', 'Não'].map(opt => (
+                      <button key={opt} type="button" disabled={isSubmitted}
+                        onClick={() => setQAnswers(prev => ({ ...prev, [field.id]: opt }))}
+                        className={cn('rounded-xl border py-2 text-xs font-medium transition-colors',
+                          qAnswers[field.id] === opt ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 border-border text-foreground hover:bg-muted')}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                ) : field.field_type === 'select' ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(field.options || []).map(opt => (
+                      <button key={opt} type="button" disabled={isSubmitted}
+                        onClick={() => setQAnswers(prev => ({ ...prev, [field.id]: opt }))}
+                        className={cn('rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors',
+                          qAnswers[field.id] === opt ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 border-border text-foreground hover:bg-muted')}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                ) : field.field_type === 'number' ? (
+                  <Input type="number" value={qAnswers[field.id] || ''} disabled={isSubmitted}
+                    onChange={e => setQAnswers(prev => ({ ...prev, [field.id]: e.target.value }))} placeholder="Sua resposta..." />
+                ) : (
+                  <Input value={qAnswers[field.id] || ''} disabled={isSubmitted}
+                    onChange={e => setQAnswers(prev => ({ ...prev, [field.id]: e.target.value }))} placeholder="Sua resposta..." />
+                )}
+              </SectionCard>
+            ))}
+          </div>
+
+          {!isSubmitted && (
+            <Button className="w-full gap-1.5" onClick={handleSubmitQuestionnaire} disabled={savingQ}>
+              {savingQ ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Enviar respostas
+            </Button>
+          )}
+        </div>
+      </PortalLayout>
+    );
+  }
+
+  // Intake form view
+  if (activeView === 'intake') {
+    return (
+      <PortalLayout>
+        <div className="space-y-5">
+          <div className="flex items-center gap-2">
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setActiveView('list')}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold text-foreground">Ficha de Anamnese</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Preencha seus dados para seu terapeuta</p>
+            </div>
+          </div>
+
+          {submitted && (
+            <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span>Ficha enviada ao terapeuta. Você ainda pode atualizar seus dados.</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
             <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
             <span>Ficha enviada ao terapeuta. Você ainda pode atualizar seus dados.</span>
