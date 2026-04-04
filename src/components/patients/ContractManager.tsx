@@ -423,11 +423,24 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
             <span className="text-xs font-normal text-muted-foreground">({contracts.length})</span>
           )}
         </h3>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8"
             onClick={() => setShowLibrary(v => !v)}>
             <FileText className="w-3 h-3" /> Modelos
           </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8"
+            disabled={digitizing}
+            onClick={() => fileInputRef.current?.click()}>
+            {digitizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {digitizing ? digitizeProgress || 'Digitalizando...' : 'Digitalizar com IA'}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,image/*"
+            className="hidden"
+            onChange={handleDigitizeFile}
+          />
           <Button size="sm" className="gap-1.5 text-xs h-8" onClick={handleStartNew}>
             <Plus className="w-3 h-3" /> Novo contrato
           </Button>
