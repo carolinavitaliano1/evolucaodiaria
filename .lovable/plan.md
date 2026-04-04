@@ -1,107 +1,57 @@
 
 
-## Plano: Sistema de Fichas e Questionários Reutilizáveis
+## Plano: Download de PDF para Fichas e Questionários Preenchidos
 
-### Problema Atual
-Hoje existe apenas uma "Ficha" (anamnese fixa) com perguntas personalizadas avulsas. O terapeuta não consegue salvar conjuntos de perguntas como templates reutilizáveis, nem enviar múltiplos questionários/testes ao paciente.
+### Objetivo
+Permitir baixar PDFs profissionais das fichas (intake) e questionários preenchidos, com cabeçalho completo (clínica, terapeuta, paciente, responsável, diagnóstico).
 
-### Visão Geral da Solução
+### Mudanças
 
-Transformar a aba "Ficha" em "Fichas" — um sistema onde o terapeuta cria **templates de questionários** reutilizáveis e os **envia** para pacientes preencherem pelo portal. Inclui também a futura funcionalidade de digitalização de arquivos via IA.
+#### 1. Criar utilitário `src/utils/generateQuestionnairePdf.ts`
 
----
+Função reutilizável que gera PDF com `jsPDF` contendo:
+- **Cabeçalho**: Timbrado da clínica (se houver `letterhead`), nome da clínica/consultório, endereço, CNPJ, telefone, e-mail
+- **Dados do paciente**: Nome, data de nascimento, diagnóstico, área clínica
+- **Responsável legal** (se menor): Nome, parentesco
+- **Terapeuta**: Nome, registro profissional, área clínica
+- **Corpo**: Título do questionário/ficha, perguntas e respostas formatadas (seções, separadores)
+- **Rodapé**: Data de preenchimento, data de geração, carimbo/assinatura digital do terapeuta (se disponível)
 
-### 1. Nova Tabela: `questionnaire_templates`
+Aceita parâmetros genéricos para servir tanto a ficha de anamnese quanto questionários:
+```text
+generateQuestionnairePdf({
+  title, sections, clinicInfo, patientInfo, therapistInfo, stamps
+})
+```
 
-Armazena templates reutilizáveis criados pelo terapeuta (ex: "Anamnese Infantil", "Escala de Ansiedade", "Teste TDAH").
+#### 2. Atualizar `handleDownloadIntake` no `PortalTab.tsx`
 
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| id | uuid | PK |
-| user_id | uuid | Terapeuta dono |
-| name | text | Nome do template |
-| description | text | Descrição opcional |
-| fields | jsonb | Array de campos (mesmo formato do `intake_custom_questions`) |
-| is_active | boolean | Ativo/inativo |
-| created_at / updated_at | timestamp | Datas |
+- Carregar dados extras do paciente (`diagnosis`, `clinical_area`, `is_minor`, `guardian_name`, `guardian_kinship`, `birthdate`) e da clínica (`name`, `address`, `cnpj`, `phone`, `email`, `letterhead`) via Supabase no momento do download
+- Carregar perfil do terapeuta (`name`, `professional_id`) e stamps
+- Usar a nova função `generateQuestionnairePdf` em vez do código inline atual
 
-### 2. Nova Tabela: `patient_questionnaires`
+#### 3. Adicionar botão "Baixar PDF" nos questionários preenchidos
 
-Representa um questionário enviado a um paciente específico.
+No bloco de questionários enviados (linha ~836), adicionar um botão `Download` ao lado de "Ver" quando `status === 'submitted' || status === 'reviewed'`. Ao clicar:
+- Carrega dados do paciente/clínica/terapeuta (mesma lógica)
+- Chama `generateQuestionnairePdf` passando `q.title`, `q.fields` e `q.answers`
 
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| id | uuid | PK |
-| template_id | uuid | FK para `questionnaire_templates` |
-| patient_id | uuid | Paciente |
-| portal_account_id | uuid | Conta do portal |
-| therapist_user_id | uuid | Terapeuta |
-| title | text | Nome do questionário (copiado do template) |
-| fields | jsonb | Campos (snapshot do template no momento do envio) |
-| answers | jsonb | Respostas do paciente |
-| status | text | `pending` / `submitted` / `reviewed` |
-| submitted_at | timestamp | Quando foi preenchido |
-| created_at / updated_at | timestamp | Datas |
+#### 4. Adicionar botão "Baixar PDF" no portal do paciente (`PortalIntakeForm.tsx`)
 
-RLS: terapeuta acessa pelo `therapist_user_id`, paciente acessa via `is_portal_patient(patient_id)`.
-
----
-
-### 3. Lado do Terapeuta (PortalTab.tsx)
-
-**Seção "Fichas e Questionários"** dentro da aba Portal do paciente:
-
-- **Ficha de Anamnese** (existente) — mantém o comportamento atual como a ficha padrão
-- **Templates salvos** — lista de templates do terapeuta com botão "Enviar para este paciente"
-- **Criar novo template** — formulário para criar/editar templates de questionários reutilizáveis (nome, descrição, campos dinâmicos com tipos text/textarea/select/yesno/number)
-- **Questionários enviados** — lista de questionários já enviados ao paciente com status (Pendente/Preenchido/Revisado) e botão para ver respostas ou baixar PDF
-
-**Novo componente**: `QuestionnaireTemplatesManager.tsx` — gerenciador de templates (CRUD completo, similar ao `IntakeCustomQuestionsManager` mas para conjuntos completos de perguntas).
-
-**Funcionalidade de IA (digitalização)**: Botão "Importar de arquivo" que aceita PDF/imagem, envia para uma Edge Function que usa Lovable AI para extrair as perguntas e gerar automaticamente os campos do template.
-
----
-
-### 4. Lado do Paciente (Portal)
-
-- Renomear aba de **"Ficha"** para **"Fichas"** no `PortalLayout.tsx`, `PortalHome.tsx`
-- **Nova página** `PortalQuestionnaires.tsx` (ou expandir `PortalIntakeForm.tsx`):
-  - Lista todos os questionários pendentes e já preenchidos
-  - A ficha de anamnese aparece como item fixo no topo
-  - Cada questionário pendente tem botão "Preencher" que abre o formulário dinâmico
-  - Questionários preenchidos mostram "Enviado em DD/MM/YYYY"
-
----
-
-### 5. Edge Function: `digitize-questionnaire`
-
-- Recebe arquivo (PDF/imagem) via upload
-- Usa Lovable AI (gemini-2.5-pro, bom com imagem+texto) para extrair perguntas
-- Retorna array de campos estruturados (question, field_type, options)
-- O terapeuta revisa e ajusta antes de salvar como template
-
----
-
-### 6. Alterações em Arquivos Existentes
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `PortalLayout.tsx` | Renomear "Ficha" → "Fichas" |
-| `PortalHome.tsx` | Renomear "Minha Ficha" → "Minhas Fichas" |
-| `App.tsx` | Adicionar rota `/portal/fichas` (manter `/portal/ficha` como redirect) |
-| `PortalIntakeForm.tsx` | Expandir para listar anamnese + questionários enviados |
-| `PortalTab.tsx` | Adicionar seção de gerenciamento de templates e envio de questionários |
-
-### 7. Resumo das Migrações SQL
-
-1. Criar tabela `questionnaire_templates` com RLS (dono = user_id)
-2. Criar tabela `patient_questionnaires` com RLS (terapeuta + portal patient)
-3. Políticas de acesso para leitura pelo paciente via portal
+Na lista de questionários preenchidos pelo paciente, adicionar botão para baixar o PDF das respostas submetidas (versão simplificada sem carimbo do terapeuta).
 
 ### Detalhes Técnicos
 
-- Os campos dos templates usam o mesmo formato JSON dos `intake_custom_questions`: `{ id, question/label, field_type, options, required }`
-- Ao enviar um questionário, os campos são copiados (snapshot) para `patient_questionnaires.fields`, garantindo que edições futuras no template não afetem questionários já enviados
-- A digitalização via IA usa tool calling para extrair output estruturado (array de perguntas com tipos)
-- PDF de respostas usa jsPDF no cliente, padrão já existente no projeto
+- O PDF carrega o `letterhead` como imagem no topo (padrão já usado em `generateReportPdf.ts` e `generateEvolutionPdf.ts`)
+- Stamps/assinatura seguem o mesmo padrão de `generateEvolutionPdf.ts` (carrega da tabela `stamps`)
+- Dados do paciente/clínica são buscados sob demanda no clique do download (sem carregar previamente)
+- Perguntas do tipo `select`/`yesno` mostram a resposta formatada; `textarea` quebra em múltiplas linhas
+
+### Arquivos Afetados
+
+| Arquivo | Ação |
+|---------|------|
+| `src/utils/generateQuestionnairePdf.ts` | **Criar** — função de geração do PDF |
+| `src/components/patients/PortalTab.tsx` | **Editar** — refatorar `handleDownloadIntake`, adicionar download nos questionários |
+| `src/pages/portal/PortalIntakeForm.tsx` | **Editar** — adicionar botão de download para o paciente |
 
