@@ -203,7 +203,73 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     loadStamps();
   }, [patientId, user]);
 
-  // ─── Template library actions ─────────────────────────────────────────────
+  // ─── AI Digitize contract from uploaded file ──────────────────────────────
+  const handleDigitizeFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    setDigitizing(true);
+    try {
+      let pagesBase64: string[] = [];
+
+      if (file.type === 'application/pdf') {
+        // Use pdf.js from CDN to render pages
+        setDigitizeProgress('Lendo páginas do PDF...');
+        const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/+esm' as any);
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          setDigitizeProgress(`Renderizando página ${i} de ${pdf.numPages}...`);
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d')!;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          const dataUrl = canvas.toDataURL('image/png');
+          pagesBase64.push(dataUrl.split(',')[1]);
+        }
+      } else {
+        // Image file
+        setDigitizeProgress('Processando imagem...');
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(file);
+        });
+        pagesBase64 = [base64];
+      }
+
+      setDigitizeProgress('Digitalizando com IA...');
+      const { data, error } = await supabase.functions.invoke('digitize-contract', {
+        body: {
+          pages_base64: pagesBase64,
+          patient_name: patientName,
+        },
+      });
+
+      if (error) throw new Error(error.message || 'Erro na digitalização');
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.html_content) {
+        setBodyHtml(data.html_content);
+        setSelectedTemplateName(data.title || 'Contrato digitalizado');
+        setCreateMode(true);
+        toast.success('Contrato digitalizado com sucesso! Revise o conteúdo antes de salvar.');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao digitalizar contrato');
+    } finally {
+      setDigitizing(false);
+      setDigitizeProgress('');
+    }
+  };
+
   const handleSelectTemplate = (t: ContractTemplate) => {
     setBodyHtml(t.body_html);
     setSelectedTemplateName(t.name);
