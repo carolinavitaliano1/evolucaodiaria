@@ -490,11 +490,6 @@ export default function PortalIntakeForm() {
               <span>Ficha enviada ao terapeuta. Você ainda pode atualizar seus dados.</span>
             </div>
           )}
-          <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            <span>Ficha enviada ao terapeuta. Você ainda pode atualizar seus dados.</span>
-          </div>
-        )}
 
         {/* Dados Pessoais */}
         <SectionCard title="Dados Pessoais (Paciente)">
