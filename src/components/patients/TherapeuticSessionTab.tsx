@@ -829,31 +829,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           <FileText className="w-4 h-4" /> Gerar Relatório da Sessão
         </Button>
       </div>
-
-      {/* Session History */}
-      {sessions.length > 0 && (
-        <Card className="border-border">
-          <CardHeader className="pb-3 cursor-pointer" onClick={() => setShowHistory(!showHistory)}>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" /> Histórico de Sessões ({sessions.length})
-            </CardTitle>
-          </CardHeader>
-          {showHistory && (
-            <CardContent className="pt-0 space-y-2">
-              {sessions.map(s => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{s.title || 'Sem título'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(s.created_at).toLocaleDateString('pt-BR')} · {formatTime(s.duration_seconds || 0)}
-                      {s.mood_score && ` · Humor: ${s.mood_score}/10`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          )}
-        </Card>
+      </>
       )}
     </div>
   );
