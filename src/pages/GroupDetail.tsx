@@ -90,6 +90,8 @@ export default function GroupDetail() {
   const [evoSelectedMembers, setEvoSelectedMembers] = useState<Set<string>>(new Set());
   const [savingEvo, setSavingEvo] = useState(false);
   const [improvingEvo, setImprovingEvo] = useState(false);
+
+  useEffect(() => {
     if (!id) return;
     loadGroup();
   }, [id]);
