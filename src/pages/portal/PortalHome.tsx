@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
-import { MessageSquare, FileText, Bell, DollarSign, BookOpen, FilePenLine, ChevronRight } from 'lucide-react';
+import { MessageSquare, FileText, Bell, DollarSign, BookOpen, FilePenLine, ChevronRight, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
