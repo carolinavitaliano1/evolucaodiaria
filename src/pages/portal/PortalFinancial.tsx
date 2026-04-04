@@ -192,16 +192,61 @@ export default function PortalFinancial() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error('Arquivo muito grande. Máximo: 10MB');
+      return;
+    }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Formato não suportado. Use JPG, PNG, WebP ou PDF.');
+      return;
+    }
+    setReceiptFile(file);
+    if (file.type.startsWith('image/')) {
+      setReceiptFilePreview(URL.createObjectURL(file));
+    } else {
+      setReceiptFilePreview(null);
+    }
+  };
+
+  const clearFile = () => {
+    setReceiptFile(null);
+    if (receiptFilePreview) URL.revokeObjectURL(receiptFilePreview);
+    setReceiptFilePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSendReceipt = async () => {
-    if (!portalAccount || !receiptText.trim()) return;
+    if (!portalAccount || (!receiptText.trim() && !receiptFile)) return;
     setSendingReceipt(true);
     try {
-      await sendMessage(`🧾 Comprovante de pagamento enviado:\n\n${receiptText.trim()}`, 'message');
+      let fileUrl = '';
+      if (receiptFile) {
+        const ext = receiptFile.name.split('.').pop() || 'bin';
+        const path = `receipts/${portalAccount.patient_id}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('portal-documents')
+          .upload(path, receiptFile, { contentType: receiptFile.type });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from('portal-documents').getPublicUrl(path);
+        fileUrl = urlData.publicUrl;
+      }
+
+      const parts: string[] = ['🧾 Comprovante de pagamento enviado:'];
+      if (receiptText.trim()) parts.push(receiptText.trim());
+      if (fileUrl) parts.push(`📎 Anexo: ${fileUrl}`);
+
+      await sendMessage(parts.join('\n\n'), 'message');
       toast.success('Comprovante enviado!');
       setReceiptText('');
+      clearFile();
       setShowReceipt(false);
-    } catch {
-      toast.error('Erro ao enviar comprovante');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar comprovante');
     } finally {
       setSendingReceipt(false);
     }
