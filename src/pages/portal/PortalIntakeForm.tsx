@@ -257,6 +257,15 @@ export default function PortalIntakeForm() {
         .order('sort_order', { ascending: true });
 
       setCustomQuestions((questionsData || []) as unknown as CustomQuestion[]);
+
+      // Load patient questionnaires
+      const { data: qData } = await supabase
+        .from('patient_questionnaires')
+        .select('*')
+        .eq('patient_id', portalAccount.patient_id)
+        .order('created_at', { ascending: false });
+      setQuestionnaires((qData || []) as unknown as PatientQuestionnaire[]);
+
       setLoading(false);
     };
 
