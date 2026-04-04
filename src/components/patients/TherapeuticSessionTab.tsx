@@ -177,10 +177,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       patient_id: patientId,
       clinic_id: clinicId,
       title: plan.title,
-      notes_text: plan.activities || '',
+      notes_text: '',
       action_plans: '',
       next_session_notes: '',
-      general_comments: plan.objectives || '',
+      general_comments: '',
       started_at: now.toISOString(),
       status: 'active',
       plan_id: plan.id,
@@ -192,6 +192,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       toast.error('Erro ao iniciar sessão');
     } else if (data) {
       populateSessionForm(data);
+      setActivePlan(plan);
       setStartedAt(now);
       setTimerRunning(true);
       setMainView('session');
