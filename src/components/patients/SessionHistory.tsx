@@ -239,6 +239,12 @@ export function SessionHistory({
                               <Pencil className="w-4 h-4 mr-2" />
                               Editar
                             </DropdownMenuItem>
+                            {onGenerateDeclaration && (
+                              <DropdownMenuItem onClick={() => onGenerateDeclaration(session)}>
+                                <ScrollText className="w-4 h-4 mr-2" />
+                                Declaração de Comparecimento
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onClick={() => setDeleteId(session.id)}
                               className="text-destructive focus:text-destructive"
