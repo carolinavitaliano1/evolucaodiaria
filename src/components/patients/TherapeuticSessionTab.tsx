@@ -895,11 +895,13 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       ];
 
       const fullBody = bodyParts.map(p => p.text).join('');
-      const bodyLines = doc.splitTextToSize(fullBody, contentWidth);
-      for (const line of bodyLines) {
+      const bodyLines: string[] = doc.splitTextToSize(fullBody, contentWidth);
+      for (let li = 0; li < bodyLines.length; li++) {
         if (y > 260) { doc.addPage(); y = 20; }
         doc.setFont('helvetica', 'normal');
-        doc.text(line, margin, y, { align: 'justify', maxWidth: contentWidth });
+        // Only justify non-last lines; last line stays left-aligned
+        const isLast = li === bodyLines.length - 1;
+        doc.text(bodyLines[li], margin, y, { align: isLast ? 'left' : 'justify', maxWidth: contentWidth });
         y += 7;
       }
 
