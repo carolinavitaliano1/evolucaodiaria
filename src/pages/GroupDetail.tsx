@@ -80,7 +80,16 @@ export default function GroupDetail() {
   const [evolutions, setEvolutions] = useState<any[]>([]);
   const [loadingEvos, setLoadingEvos] = useState(false);
 
-  useEffect(() => {
+  // Group evolution form state
+  const [showEvoForm, setShowEvoForm] = useState(false);
+  const [evoDate, setEvoDate] = useState(new Date().toISOString().slice(0, 10));
+  const [evoText, setEvoText] = useState('');
+  const [evoStatus, setEvoStatus] = useState('presente');
+  const [evoStatusMode, setEvoStatusMode] = useState<'same' | 'individual'>('same');
+  const [evoIndividualStatus, setEvoIndividualStatus] = useState<Record<string, string>>({});
+  const [evoSelectedMembers, setEvoSelectedMembers] = useState<Set<string>>(new Set());
+  const [savingEvo, setSavingEvo] = useState(false);
+  const [improvingEvo, setImprovingEvo] = useState(false);
     if (!id) return;
     loadGroup();
   }, [id]);
