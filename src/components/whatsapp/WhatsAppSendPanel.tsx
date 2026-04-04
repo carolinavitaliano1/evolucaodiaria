@@ -124,6 +124,19 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
     openWhatsApp(num, buildMsg(p, template));
   }
 
+  function getAvailableNumbers(p: Patient) {
+    const numbers: { label: string; name: string; number: string }[] = [];
+    if (p.whatsapp?.trim() || p.phone?.trim())
+      numbers.push({ label: 'Paciente', name: p.name, number: (p.whatsapp || p.phone)! });
+    if (p.responsible_whatsapp?.trim())
+      numbers.push({ label: 'Responsável Legal', name: p.responsible_name || 'Responsável', number: p.responsible_whatsapp! });
+    if (p.guardian_phone?.trim() && p.guardian_phone !== p.responsible_whatsapp)
+      numbers.push({ label: 'Responsável Legal (guardião)', name: p.guardian_name || 'Guardião', number: p.guardian_phone! });
+    if (p.financial_responsible_whatsapp?.trim() && p.financial_responsible_whatsapp !== p.responsible_whatsapp)
+      numbers.push({ label: 'Responsável Financeiro', name: p.financial_responsible_name || 'Resp. Financeiro', number: p.financial_responsible_whatsapp! });
+    return numbers;
+  }
+
   function handleSend() {
     if (!selectedTemplate) return;
     const selected = eligible.filter(p => selectedIds.has(p.id));
@@ -131,17 +144,18 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
 
     if (selected.length === 1) {
       const p = selected[0];
-      const hasPatientNum = !!(p.whatsapp || p.phone);
-      const hasResponsible = !!p.responsible_whatsapp;
-      if (hasPatientNum && hasResponsible) {
+      const numbers = getAvailableNumbers(p);
+      if (numbers.length > 1) {
         setRecipientPicker({ patient: p, message: buildMsg(p, selectedTemplate) });
         return;
       }
-      const num = p.whatsapp || p.phone!;
-      sendToNumber(p, num, selectedTemplate);
-      setSelectedIds(new Set());
-      setSelectedTemplateId(null);
-      setStep('patients');
+      if (numbers.length === 1) {
+        sendToNumber(p, numbers[0].number, selectedTemplate);
+        setSelectedIds(new Set());
+        setSelectedTemplateId(null);
+        setStep('patients');
+        return;
+      }
     } else {
       // Open broadcast modal — state is reset when modal closes
       setBroadcastPatients(selected);
