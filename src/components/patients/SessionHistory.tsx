@@ -85,7 +85,6 @@ export function SessionHistory({
   onView,
   onEdit,
   onDelete,
-  onDuplicate,
   onNewSession,
   onGenerateReport,
 }: SessionHistoryProps) {
