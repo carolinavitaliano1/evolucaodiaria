@@ -403,14 +403,22 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
 
       // Strip variable chip spans and replace raw {{var}} tags
       let filledHtml = bodyHtml;
-      // First handle <span data-type="variable" class="contract-variable">{{key}}</span>
-      filledHtml = filledHtml.replace(/<span[^>]*data-type="variable"[^>]*>\{\{(\w+)\}\}<\/span>/g, (_, key) => {
+      // First handle <span data-type="variable" class="contract-variable">{{key}}</span> (any attribute order)
+      filledHtml = filledHtml.replace(/<span[^>]*class="[^"]*contract-variable[^"]*"[^>]*>\{\{(\w+)\}\}<\/span>/gi, (_, key) => {
+        return variableMap[key] ?? `{{${key}}}`;
+      });
+      filledHtml = filledHtml.replace(/<span[^>]*data-type="variable"[^>]*>\{\{(\w+)\}\}<\/span>/gi, (_, key) => {
         return variableMap[key] ?? `{{${key}}}`;
       });
       // Then handle raw {{key}} not inside spans
       filledHtml = filledHtml.replace(/\{\{(\w+)\}\}/g, (_, key) => {
         return variableMap[key] ?? `{{${key}}}`;
       });
+      // Clean up any remaining contract-variable spans that might have content instead of variable keys
+      filledHtml = filledHtml.replace(/<span[^>]*class="[^"]*contract-variable[^"]*"[^>]*>(.*?)<\/span>/gi, '$1');
+      filledHtml = filledHtml.replace(/<span[^>]*data-type="variable"[^>]*>(.*?)<\/span>/gi, '$1');
+      // Clean up stray &nbsp; left after variable spans
+      filledHtml = filledHtml.replace(/&nbsp;\s*/g, ' ');
 
       const { error } = await supabase.from('patient_contracts').insert({
         patient_id: patientId,
