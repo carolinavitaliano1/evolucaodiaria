@@ -164,9 +164,8 @@ export default function PortalFinancial() {
           if (pkgData) setPackageData(pkgData as PackageData);
         }
 
-        // Load clinic payment info
-        const patientShowPayment = (pat as any)?.show_payment_in_portal ?? false;
-        if (patientShowPayment && (pat as any)?.clinic_id) {
+        // Load clinic payment info — use clinic's own toggle
+        if ((pat as any)?.clinic_id) {
           const { data: clinicData } = await supabase
             .from('clinics')
             .select('payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
