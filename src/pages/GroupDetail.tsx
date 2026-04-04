@@ -163,6 +163,7 @@ export default function GroupDetail() {
     { value: 'tasks', label: 'Tarefas', icon: <ListTodo className="w-4 h-4" /> },
     { value: 'notes', label: 'Notas', icon: <MessageSquare className="w-4 h-4" /> },
     { value: 'attendance', label: 'Frequência', icon: <Calendar className="w-4 h-4" /> },
+    { value: 'documents', label: 'Documentos', icon: <FolderOpen className="w-4 h-4" /> },
     { value: 'financial', label: 'Financeiro', icon: <DollarSign className="w-4 h-4" /> },
   ];
 
