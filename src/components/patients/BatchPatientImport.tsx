@@ -192,9 +192,19 @@ export function BatchPatientImport({ open, onClose, clinics, defaultClinicId, on
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* Clinic info */}
-          <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            Os pacientes serão importados para: <span className="font-medium text-foreground">{clinicName}</span>
+          {/* Clinic selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Selecione o consultório / clínica</label>
+            <Select value={selectedClinicId} onValueChange={setSelectedClinicId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Escolha uma clínica..." />
+              </SelectTrigger>
+              <SelectContent>
+                {clinics.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Download template */}
