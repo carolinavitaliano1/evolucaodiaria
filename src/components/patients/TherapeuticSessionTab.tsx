@@ -19,6 +19,7 @@ import jsPDF from 'jspdf';
 import { SessionHistory } from './SessionHistory';
 import { SessionPlanForm } from './SessionPlanForm';
 import { SessionPlansList } from './SessionPlansList';
+import { SendActionPlanModal, type ActivityAttachment } from './SendActionPlanModal';
 
 interface TherapeuticSessionTabProps {
   patientId: string;
