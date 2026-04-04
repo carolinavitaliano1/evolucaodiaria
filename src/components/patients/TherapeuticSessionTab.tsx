@@ -375,8 +375,43 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       setImprovingField(null);
     }
   };
+  // Create text with AI from session context
+  const createFieldWithAI = async (field: 'create_action_plans' | 'create_next_session', setText: (v: string) => void) => {
+    const context = [
+      notesText ? `Anotações: ${notesText}` : '',
+      moodScore ? `Humor: ${moodScore}/10` : '',
+      positiveFeelings.length > 0 ? `Sentimentos positivos: ${positiveFeelings.join(', ')}` : '',
+      negativeFeelings.length > 0 ? `Sentimentos negativos: ${negativeFeelings.join(', ')}` : '',
+      suicidalThoughts ? 'ALERTA: Ideação suicida reportada' : '',
+      actionPlans && field === 'create_next_session' ? `Planos de ação: ${actionPlans}` : '',
+      activePlan?.objectives ? `Objetivos do plano: ${activePlan.objectives}` : '',
+      activePlan?.activities ? `Atividades do plano: ${activePlan.activities}` : '',
+    ].filter(Boolean).join('\n');
 
-  // Generate PDF report - Professional layout (auto-saves first)
+    if (!context.trim()) {
+      toast.error('Preencha ao menos as anotações da sessão para criar com IA.');
+      return;
+    }
+
+    setCreatingField(field);
+    try {
+      const { data, error } = await supabase.functions.invoke('improve-session-text', {
+        body: { text: context, field },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.improved) {
+        setText(data.improved);
+        toast.success('Conteúdo criado com IA!');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao criar com IA');
+    } finally {
+      setCreatingField(null);
+    }
+  };
+
+
   const generateReport = async () => {
     setGeneratingReport(true);
     try {
