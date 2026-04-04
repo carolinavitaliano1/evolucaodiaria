@@ -1478,6 +1478,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             onDelete={handleDeleteSession}
             onNewSession={() => { resetForm(); setMainView('session'); }}
             onGenerateReport={generateReport}
+            onGenerateDeclaration={generateDeclaration}
           />
           {renderViewDialog()}
         </>
