@@ -73,14 +73,17 @@ function downloadTemplate() {
   URL.revokeObjectURL(url);
 }
 
-export function BatchPatientImport({ open, onClose, clinicId, clinicName, onSuccess }: BatchPatientImportProps) {
+export function BatchPatientImport({ open, onClose, clinics, defaultClinicId, onSuccess }: BatchPatientImportProps) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [selectedClinicId, setSelectedClinicId] = useState(defaultClinicId || '');
   const [parsed, setParsed] = useState<ParsedPatient[]>([]);
   const [fileName, setFileName] = useState('');
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
   const [resultCount, setResultCount] = useState(0);
+
+  const selectedClinic = clinics.find(c => c.id === selectedClinicId);
 
   function reset() {
     setParsed([]);
