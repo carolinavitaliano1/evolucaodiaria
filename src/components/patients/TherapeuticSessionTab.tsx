@@ -356,6 +356,8 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   // Generate PDF report - Professional layout (auto-saves first)
   const generateReport = async () => {
+    setGeneratingReport(true);
+    try {
     // Auto-save before generating so nothing is lost
     if (sessionId) await saveSession(false);
     // Auto-correct text fields with AI before generating
