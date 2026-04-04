@@ -1014,12 +1014,6 @@ function AccountPanel({
             </div>
           )}
 
-          {/* Feedbacks / Timeline */}
-          {activeSection === 'feedbacks' && perms.feedbacks && (
-            <div className="p-4">
-              <SharedEvolutionsManager patientId={patientId} />
-            </div>
-          )}
 
           {/* Documents */}
           {activeSection === 'documents' && perms.documents && (
