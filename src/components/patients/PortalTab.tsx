@@ -681,84 +681,67 @@ function AccountPanel({
                 <IntakeHistoryPanel history={intakeForm.review_history} />
               )}
 
-              {!hasIntakeSubmitted ? (
-                <div className="p-6 text-center">
-                  <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {!intakeForm ? 'Ficha ainda não preenchida.' : 'Paciente ainda não enviou a ficha.'}
+              {!hasIntakeSubmitted && (
+                <div className="px-4 py-3 bg-warning/5 border-b border-warning/20">
+                  <p className="text-xs text-warning flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" />
+                    Paciente ainda não enviou a ficha. Campos padrão exibidos abaixo.
                   </p>
                 </div>
-              ) : (
-                <div className="p-4 space-y-5">
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" /> Dados Pessoais
-                    </h4>
-                    <div className="grid grid-cols-1 gap-3 pl-1">
-                      <IntakeField label="Nome completo" value={intakeForm.full_name} />
-                      <div className="grid grid-cols-2 gap-3">
-                        <IntakeField label="CPF" value={intakeForm.cpf} />
-                        <IntakeField label="Data de nascimento" value={intakeForm.birthdate ? format(new Date(intakeForm.birthdate + 'T00:00:00'), 'dd/MM/yyyy') : null} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <IntakeField label="Telefone" value={intakeForm.phone} />
-                        <IntakeField label="Contato de emergência" value={intakeForm.emergency_contact} />
-                      </div>
-                      <IntakeField label="Endereço" value={intakeForm.address} />
+              )}
+              <div className="p-4 space-y-5">
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" /> Dados Pessoais
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3 pl-1">
+                    <IntakeField label="Nome completo" value={intakeForm?.full_name} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <IntakeField label="CPF" value={intakeForm?.cpf} />
+                      <IntakeField label="Data de nascimento" value={intakeForm?.birthdate ? format(new Date(intakeForm.birthdate + 'T00:00:00'), 'dd/MM/yyyy') : null} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <IntakeField label="Telefone" value={intakeForm?.phone} />
+                      <IntakeField label="Contato de emergência" value={intakeForm?.emergency_contact} />
+                    </div>
+                    <IntakeField label="Endereço" value={intakeForm?.address} />
+                  </div>
+                </div>
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" /> Responsável (Contratante)
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3 pl-1">
+                    <IntakeField label="Nome" value={intakeForm?.responsible_name} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <IntakeField label="CPF" value={intakeForm?.responsible_cpf} />
+                      <IntakeField label="Telefone" value={intakeForm?.responsible_phone} />
                     </div>
                   </div>
-                  {(intakeForm.responsible_name || intakeForm.responsible_cpf) && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" /> Responsável (Contratante)
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3 pl-1">
-                        <IntakeField label="Nome" value={intakeForm.responsible_name} />
-                        <div className="grid grid-cols-2 gap-3">
-                          <IntakeField label="CPF" value={intakeForm.responsible_cpf} />
-                          <IntakeField label="Telefone" value={intakeForm.responsible_phone} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {intakeForm.payment_due_day && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <CreditCard className="w-3.5 h-3.5" /> Pagamento
-                      </h4>
-                      <div className="pl-1"><IntakeField label="Melhor dia" value={`Dia ${intakeForm.payment_due_day}`} /></div>
-                    </div>
-                  )}
-                  {(intakeForm.health_info || intakeForm.observations) && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <Heart className="w-3.5 h-3.5" /> Saúde & Observações
-                      </h4>
-                      <div className="space-y-3 pl-1">
-                        {intakeForm.health_info && (
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Informações médicas</p>
-                            <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.health_info}</p>
-                          </div>
-                        )}
-                        {intakeForm.observations && (
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Observações</p>
-                            <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.observations}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {/* Custom answers */}
-                  {(intakeForm as any).custom_answers && Object.keys((intakeForm as any).custom_answers).length > 0 && (
-                    <CustomAnswersSection
-                      answers={(intakeForm as any).custom_answers}
-                      therapistUserId={user!.id}
-                    />
-                  )}
                 </div>
-              )}
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" /> Pagamento
+                  </h4>
+                  <div className="pl-1"><IntakeField label="Melhor dia" value={intakeForm?.payment_due_day ? `Dia ${intakeForm.payment_due_day}` : null} /></div>
+                </div>
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <Heart className="w-3.5 h-3.5" /> Saúde & Observações
+                  </h4>
+                  <div className="space-y-3 pl-1">
+                    <IntakeField label="Informações médicas" value={intakeForm?.health_info} />
+                    <IntakeField label="Observações" value={intakeForm?.observations} />
+                  </div>
+                </div>
+                {/* Custom answers */}
+                {intakeForm && (intakeForm as any).custom_answers && Object.keys((intakeForm as any).custom_answers).length > 0 && (
+                  <CustomAnswersSection
+                    answers={(intakeForm as any).custom_answers}
+                    therapistUserId={user!.id}
+                  />
+                )}
+              </div>
             </div>
           )}
 
