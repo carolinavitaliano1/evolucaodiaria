@@ -1,57 +1,59 @@
 
 
-## Plano: Download de PDF para Fichas e Questionários Preenchidos
+## Plano: Pré-preenchimento de dados e sincronização entre cadastro, fichas, financeiro e contrato
 
-### Objetivo
-Permitir baixar PDFs profissionais das fichas (intake) e questionários preenchidos, com cabeçalho completo (clínica, terapeuta, paciente, responsável, diagnóstico).
+### Problema
+1. Quando o paciente/responsável abre a ficha (intake form) pela primeira vez no portal, todos os campos estão vazios — mesmo que já existam dados no cadastro (`patients` table)
+2. A `payment_due_day` preenchida na ficha não é refletida no financeiro do portal nem salva no cadastro do paciente
+3. A `contract_start_date` não é atualizada automaticamente quando o contrato é assinado pelo portal
 
 ### Mudanças
 
-#### 1. Criar utilitário `src/utils/generateQuestionnairePdf.ts`
+#### 1. Pré-preencher ficha com dados do cadastro (`PortalIntakeForm.tsx`)
 
-Função reutilizável que gera PDF com `jsPDF` contendo:
-- **Cabeçalho**: Timbrado da clínica (se houver `letterhead`), nome da clínica/consultório, endereço, CNPJ, telefone, e-mail
-- **Dados do paciente**: Nome, data de nascimento, diagnóstico, área clínica
-- **Responsável legal** (se menor): Nome, parentesco
-- **Terapeuta**: Nome, registro profissional, área clínica
-- **Corpo**: Título do questionário/ficha, perguntas e respostas formatadas (seções, separadores)
-- **Rodapé**: Data de preenchimento, data de geração, carimbo/assinatura digital do terapeuta (se disponível)
+No `useEffect` de carregamento, quando **não existe** registro em `patient_intake_forms`, buscar dados da tabela `patients` e preencher os campos correspondentes:
 
-Aceita parâmetros genéricos para servir tanto a ficha de anamnese quanto questionários:
+| Campo da Ficha | Campo do Patients |
+|---|---|
+| `full_name` | `name` |
+| `cpf` | `cpf` |
+| `birthdate` | `birthdate` |
+| `phone` | `phone` |
+| `whatsapp` | `whatsapp` |
+| `email` | `email` |
+| `responsible_name` | `responsible_name` |
+| `responsible_cpf` | `responsible_cpf` |
+| `responsible_phone` | `responsible_whatsapp` |
+| `financial_responsible_name` | `financial_responsible_name` |
+| `financial_responsible_cpf` | `financial_responsible_cpf` |
+| `observations` | `observations` |
+| `health_info` | `diagnosis` |
+| `payment_due_day` | `payment_due_day` |
+
+Buscar `patients` com `select(...)` usando os campos necessários quando `formData` é `null`.
+
+#### 2. Sincronizar `payment_due_day` da ficha para o cadastro (`PortalIntakeForm.tsx`)
+
+No `handleSave`, após salvar a ficha com sucesso, se `payment_due_day` foi preenchido, atualizar o campo `payment_due_day` na tabela `patients`:
+
 ```text
-generateQuestionnairePdf({
-  title, sections, clinicInfo, patientInfo, therapistInfo, stamps
-})
+supabase.from('patients').update({ payment_due_day }).eq('id', patientId)
 ```
 
-#### 2. Atualizar `handleDownloadIntake` no `PortalTab.tsx`
+Isso faz com que o portal financeiro (`PortalFinancial.tsx`) já mostre a data correta, pois ele lê de `patient.payment_due_day`.
 
-- Carregar dados extras do paciente (`diagnosis`, `clinical_area`, `is_minor`, `guardian_name`, `guardian_kinship`, `birthdate`) e da clínica (`name`, `address`, `cnpj`, `phone`, `email`, `letterhead`) via Supabase no momento do download
-- Carregar perfil do terapeuta (`name`, `professional_id`) e stamps
-- Usar a nova função `generateQuestionnairePdf` em vez do código inline atual
+#### 3. Atualizar `contract_start_date` ao assinar contrato (`PortalContract.tsx`)
 
-#### 3. Adicionar botão "Baixar PDF" nos questionários preenchidos
+No `handleSign`, após a assinatura bem-sucedida, atualizar `patients.contract_start_date` com a data atual:
 
-No bloco de questionários enviados (linha ~836), adicionar um botão `Download` ao lado de "Ver" quando `status === 'submitted' || status === 'reviewed'`. Ao clicar:
-- Carrega dados do paciente/clínica/terapeuta (mesma lógica)
-- Chama `generateQuestionnairePdf` passando `q.title`, `q.fields` e `q.answers`
-
-#### 4. Adicionar botão "Baixar PDF" no portal do paciente (`PortalIntakeForm.tsx`)
-
-Na lista de questionários preenchidos pelo paciente, adicionar botão para baixar o PDF das respostas submetidas (versão simplificada sem carimbo do terapeuta).
-
-### Detalhes Técnicos
-
-- O PDF carrega o `letterhead` como imagem no topo (padrão já usado em `generateReportPdf.ts` e `generateEvolutionPdf.ts`)
-- Stamps/assinatura seguem o mesmo padrão de `generateEvolutionPdf.ts` (carrega da tabela `stamps`)
-- Dados do paciente/clínica são buscados sob demanda no clique do download (sem carregar previamente)
-- Perguntas do tipo `select`/`yesno` mostram a resposta formatada; `textarea` quebra em múltiplas linhas
+```text
+supabase.from('patients').update({ contract_start_date: new Date().toISOString().split('T')[0] }).eq('id', patientId)
+```
 
 ### Arquivos Afetados
 
 | Arquivo | Ação |
-|---------|------|
-| `src/utils/generateQuestionnairePdf.ts` | **Criar** — função de geração do PDF |
-| `src/components/patients/PortalTab.tsx` | **Editar** — refatorar `handleDownloadIntake`, adicionar download nos questionários |
-| `src/pages/portal/PortalIntakeForm.tsx` | **Editar** — adicionar botão de download para o paciente |
+|---|---|
+| `src/pages/portal/PortalIntakeForm.tsx` | Editar — pré-preencher com dados do `patients` + sincronizar `payment_due_day` |
+| `src/pages/portal/PortalContract.tsx` | Editar — salvar `contract_start_date` ao assinar |
 
