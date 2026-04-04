@@ -1,33 +1,58 @@
 
+Diagnóstico
+- Confirmei que o erro exibido agora vem de `src/pages/Enrollment.tsx` (rota `/matricula/:clinicId`), não da ficha antiga de pré-cadastro.
+- A correção do `is_archived` já está no código em `Enrollment.tsx`, então repetir essa troca não deve resolver o problema restante.
+- Os pontos que ainda podem gerar “Link inválido” hoje são:
+  1. o link ainda é montado com domínio hardcoded antigo em `src/pages/Patients.tsx` e `src/pages/ClinicDetail.tsx`;
+  2. o seletor de “Cadastro via Link” em Pacientes usa todas as clínicas, sem excluir arquivadas;
+  3. a política de leitura da clínica para matrícula pública está só para `anon`, então um navegador com sessão já aberta pode cair em falso “Link inválido”.
 
-## Plano: Unificar "Cadastro via Link" com a ficha de matrícula completa
+Plano de correção
+1. Unificar a geração do link público
+- Criar um helper simples para montar a URL pública da matrícula com base no ambiente atual.
+- Trocar o hardcoded antigo nos dois pontos que geram/copiam link:
+  - `src/pages/Patients.tsx`
+  - `src/pages/ClinicDetail.tsx`
 
-### Problema
-O botão "Cadastro via Link" na página de Pacientes gera um link para `/cadastro-paciente/:token` (PatientIntakePublic.tsx), que é uma ficha simples. O formulário de matrícula da clínica (`/matricula/:clinicId` - Enrollment.tsx) é muito mais completo, com campos de responsável legal, responsável financeiro, menor de idade, etc. O usuário quer que ambos usem o **mesmo formulário completo**.
+2. Impedir geração de link para clínica arquivada
+- Em `Patients.tsx`, derivar uma lista de clínicas ativas (`!isArchived`) para o dialog de “Cadastro via Link”.
+- Pré-selecionar a primeira clínica ativa, em vez de usar `clinics[0]`.
+- Se não houver clínica ativa, mostrar estado vazio e desabilitar a geração do link.
 
-### Solução
-Alterar o fluxo do "Cadastro via Link" para gerar o link de matrícula da clínica (`/matricula/:clinicId`) em vez de criar um rascunho e enviar para a ficha simplificada.
+3. Tornar a matrícula pública independente do tipo de sessão
+- Ajustar a policy de `clinics` para que a leitura da clínica na matrícula pública funcione tanto para visitante deslogado quanto para navegador com sessão ativa.
+- Fazer isso via migration, sem alterar tabelas, apenas a regra de leitura.
 
-### Mudanças
+4. Melhorar o tratamento de erro em `Enrollment.tsx`
+- Separar “clínica não encontrada/arquivada” de “erro de leitura/permissão”.
+- Manter “Link inválido” só quando realmente não houver clínica válida.
+- Registrar o erro de forma clara para facilitar debug futuro.
 
-#### 1. Simplificar `handleQuickReg` em `Patients.tsx`
-- Remover a criação de paciente "rascunho" — o paciente será criado pela Edge Function `submit-enrollment` quando o responsável preencher o formulário completo
-- Gerar o link diretamente como `https://evolucaodiaria.app.br/matricula/{clinicId}`
-- Remover campos desnecessários do dialog (nome do paciente não é mais necessário, pois será preenchido pelo responsável)
-- Manter apenas: seleção de clínica e WhatsApp (para envio)
+5. Validar ponta a ponta
+- Gerar link novo pela tela Pacientes.
+- Copiar link pela tela da clínica.
+- Testar com clínica ativa.
+- Confirmar que clínica arquivada não aparece mais como opção.
+- Testar o mesmo link em aba anônima e em navegador já logado.
+- Validar abertura pelo WhatsApp e no mobile.
 
-#### 2. Atualizar o Dialog UI em `Patients.tsx`
-- Ajustar labels e texto explicativo para refletir que o link agora leva ao formulário completo de matrícula
-- O link gerado será o mesmo link que aparece dentro da clínica
+Arquivos envolvidos
+- `src/pages/Patients.tsx`
+- `src/pages/ClinicDetail.tsx`
+- `src/pages/Enrollment.tsx`
+- `src/lib/utils.ts` (ou um helper pequeno novo para URL pública)
+- `supabase/migrations/...` para ajustar a policy de leitura de `clinics`
 
-### Arquivo afetado
+Detalhes técnicos
+- `Enrollment.tsx` já usa filtro compatível com `null/false` para `is_archived`.
+- O hardcoded atual está em:
+  - `Patients.tsx` na geração do link rápido
+  - `ClinicDetail.tsx` no botão “Copiar Link de Cadastro”
+- O dialog de Pacientes hoje abre com `clinics[0]?.id` e lista `clinics.map(...)`, sem filtrar clínicas arquivadas.
+- A policy atual de matrícula pública está `TO anon`; para uma rota pública, o comportamento mais robusto é não depender de o visitante estar deslogado.
+- Essa mudança de policy é segura no contexto atual, porque a mesma leitura já é pública para visitantes sem sessão; o ajuste serve para eliminar a diferença de comportamento entre anon e authenticated.
 
-| Arquivo | Ação |
-|---|---|
-| `src/pages/Patients.tsx` | Editar — simplificar dialog e gerar link de matrícula |
-
-### Detalhes técnicos
-- O link passa de `/cadastro-paciente/:token` para `/matricula/:clinicId`
-- Não há mais criação de paciente rascunho — o `submit-enrollment` Edge Function já cria o paciente com status `pendente`
-- O formulário de matrícula (Enrollment.tsx) já possui todos os campos necessários (dados pessoais, responsável legal, responsável financeiro, diagnóstico, etc.)
-
+Resultado esperado
+- Links novos deixam de apontar para URL errada.
+- O botão de Pacientes não gera mais link morto para clínica arquivada.
+- A ficha de matrícula abre corretamente de forma consistente, inclusive quando o usuário já tiver alguma sessão salva no navegador.
