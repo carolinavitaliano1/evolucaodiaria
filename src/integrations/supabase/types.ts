@@ -1363,6 +1363,66 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_questionnaires: {
+        Row: {
+          answers: Json | null
+          created_at: string
+          fields: Json
+          id: string
+          patient_id: string
+          portal_account_id: string | null
+          status: string
+          submitted_at: string | null
+          template_id: string | null
+          therapist_user_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string
+          fields?: Json
+          id?: string
+          patient_id: string
+          portal_account_id?: string | null
+          status?: string
+          submitted_at?: string | null
+          template_id?: string | null
+          therapist_user_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string
+          fields?: Json
+          id?: string
+          patient_id?: string
+          portal_account_id?: string | null
+          status?: string
+          submitted_at?: string | null
+          template_id?: string | null
+          therapist_user_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_questionnaires_portal_account_id_fkey"
+            columns: ["portal_account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_portal_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_questionnaires_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "questionnaire_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           avatar_url: string | null
@@ -1797,6 +1857,39 @@ export type Database = {
           id?: string
           platform?: string
           token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      questionnaire_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          fields: Json
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          fields?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          fields?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
           updated_at?: string
           user_id?: string
         }
