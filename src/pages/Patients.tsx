@@ -676,7 +676,7 @@ export default function Patients() {
                     <SelectValue placeholder="Selecionar clínica..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {clinics.map(c => (
+                    {activeClinics.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
