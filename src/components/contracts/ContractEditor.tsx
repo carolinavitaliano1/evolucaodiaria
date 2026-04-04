@@ -2,11 +2,13 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-import { useEffect, useCallback } from 'react';
+import Image from '@tiptap/extension-image';
+import { useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter,
-  AlignRight, AlignJustify, List, ListOrdered, Heading2, Heading3, Tag
+  AlignRight, AlignJustify, List, ListOrdered, Heading2, Heading3, Tag,
+  ImageIcon, Minus
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +23,7 @@ const CONTRACT_VARIABLES = [
   { key: 'nome_profissional', label: 'Nome do Profissional' },
   { key: 'registro_profissional', label: 'Registro Profissional' },
   { key: 'cbo_profissional', label: 'CBO do Profissional' },
+  { key: 'area_clinica', label: 'Área Clínica (Carimbo)' },
   { key: 'data_atual', label: 'Data Atual' },
   { key: 'cidade_atual', label: 'Cidade da Clínica' },
   { key: 'valor_sessao', label: 'Valor da Sessão' },
@@ -34,11 +37,14 @@ interface ContractEditorProps {
 }
 
 export function ContractEditor({ value, onChange }: ContractEditorProps) {
+  const imgInputRef = useRef<HTMLInputElement>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Image.configure({ inline: false, allowBase64: true }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
@@ -57,12 +63,29 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
     editor.chain().focus().insertContent(`<span data-type="variable" class="contract-variable">{{${key}}}</span>&nbsp;`).run();
   }, [editor]);
 
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editor) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = reader.result as string;
+      editor.chain().focus().setImage({ src }).run();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }, [editor]);
+
+  const insertHr = useCallback(() => {
+    if (!editor) return;
+    editor.chain().focus().setHorizontalRule().run();
+  }, [editor]);
+
   if (!editor) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-0">
       {/* Toolbar */}
-      <div className="flex items-center gap-0.5 flex-wrap rounded-lg border border-border bg-muted/30 p-1">
+      <div className="flex items-center gap-0.5 flex-wrap rounded-t-lg border border-border bg-muted/30 p-1">
         <ToolBtn active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Negrito">
           <Bold className="w-3.5 h-3.5" />
         </ToolBtn>
@@ -100,6 +123,16 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
           <ListOrdered className="w-3.5 h-3.5" />
         </ToolBtn>
         <div className="w-px h-5 bg-border mx-0.5" />
+        {/* Image upload */}
+        <ToolBtn active={false} onClick={() => imgInputRef.current?.click()} title="Inserir imagem / logo">
+          <ImageIcon className="w-3.5 h-3.5" />
+        </ToolBtn>
+        <input ref={imgInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+        {/* Horizontal rule */}
+        <ToolBtn active={false} onClick={insertHr} title="Linha horizontal">
+          <Minus className="w-3.5 h-3.5" />
+        </ToolBtn>
+        <div className="w-px h-5 bg-border mx-0.5" />
         {/* Variables dropdown */}
         <Popover>
           <PopoverTrigger asChild>
@@ -121,6 +154,7 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
                       'bg-primary/10 text-primary border border-primary/20',
                       'hover:bg-primary/20 hover:border-primary/40 transition-colors cursor-pointer'
                     )}
+                    title={v.label}
                   >
                     {`{{${v.key}}}`}
                   </button>
@@ -134,12 +168,17 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
         </Popover>
       </div>
 
-      {/* Editor */}
-      <div className="rounded-lg border border-input bg-background min-h-[260px] overflow-hidden">
-        <EditorContent editor={editor} className="contract-editor prose prose-sm max-w-none p-3 text-foreground focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[240px]" />
+      {/* Editor — page-like appearance */}
+      <div className="rounded-b-lg border border-t-0 border-input bg-muted/40 p-4 sm:p-6 overflow-auto max-h-[600px]">
+        <div className="mx-auto bg-background shadow-md rounded border border-border/50" style={{ maxWidth: 720, minHeight: 800 }}>
+          <EditorContent
+            editor={editor}
+            className="contract-editor prose prose-sm max-w-none p-6 sm:p-10 text-foreground focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[700px]"
+          />
+        </div>
       </div>
 
-      {/* CSS for variable chips inside the editor */}
+      {/* CSS for variable chips and images inside the editor */}
       <style>{`
         .contract-editor .contract-variable,
         .contract-editor span[data-type="variable"] {
@@ -151,6 +190,19 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
           font-size: 11px;
           font-family: ui-monospace, monospace;
           white-space: nowrap;
+        }
+        .contract-editor img {
+          max-width: 100%;
+          height: auto;
+          max-height: 200px;
+          border-radius: 4px;
+          margin: 8px auto;
+          display: block;
+        }
+        .contract-editor hr {
+          border: none;
+          border-top: 1px solid hsl(var(--border));
+          margin: 16px 0;
         }
       `}</style>
     </div>
