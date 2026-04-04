@@ -78,7 +78,7 @@ export default function Enrollment() {
           console.error('Enrollment: clinic fetch error', error);
         }
         if (!data) setNotFound(true);
-        else setClinic(data);
+        else setClinic(data as { name: string; address: string | null });
         setLoading(false);
       });
   }, [clinicId]);
