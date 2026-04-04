@@ -292,13 +292,19 @@ export default function PatientDetail() {
 
   // Virtual consultation state
   const [isVirtual, setIsVirtual] = useState(false);
+  const [sessionLink, setSessionLink] = useState('');
   const [sendingConfirmation, setSendingConfirmation] = useState(false);
 
-  // Load is_virtual from DB
+  // Load is_virtual + session_link from DB
   useEffect(() => {
     if (!patient) return;
-    supabase.from('patients').select('is_virtual').eq('id', patient.id).maybeSingle()
-      .then(({ data }) => { if (data) setIsVirtual(!!(data as any).is_virtual); });
+    supabase.from('patients').select('is_virtual, session_link').eq('id', patient.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setIsVirtual(!!(data as any).is_virtual);
+          setSessionLink((data as any).session_link || '');
+        }
+      });
   }, [patient?.id]);
 
   const handleToggleVirtual = async (checked: boolean) => {
@@ -306,6 +312,12 @@ export default function PatientDetail() {
     setIsVirtual(checked);
     await supabase.from('patients').update({ is_virtual: checked } as any).eq('id', patient.id);
     toast.success(checked ? 'Consulta marcada como virtual' : 'Consulta marcada como presencial');
+  };
+
+  const handleSaveSessionLink = async () => {
+    if (!patient) return;
+    await supabase.from('patients').update({ session_link: sessionLink || null } as any).eq('id', patient.id);
+    toast.success('Link da sala salvo!');
   };
 
   const handleSendConfirmation = async (channel: 'portal' | 'whatsapp' | 'both') => {
