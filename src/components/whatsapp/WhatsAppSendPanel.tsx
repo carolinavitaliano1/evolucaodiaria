@@ -25,6 +25,10 @@ interface Patient {
   whatsapp?: string | null;
   responsible_name?: string | null;
   responsible_whatsapp?: string | null;
+  guardian_name?: string | null;
+  guardian_phone?: string | null;
+  financial_responsible_name?: string | null;
+  financial_responsible_whatsapp?: string | null;
   email?: string | null;
   birthdate?: string | null;
 }
