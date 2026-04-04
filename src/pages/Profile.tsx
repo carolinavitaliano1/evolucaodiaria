@@ -144,12 +144,11 @@ export default function Profile() {
         setStamps(stampsData);
       }
 
-      // Load own clinics with payment data (only 'propria' type)
+      // Load own clinics with payment data (all types)
       const { data: clinicsData } = await supabase
         .from('clinics')
         .select('id, name, type, payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
         .eq('user_id', userId)
-        .eq('type', 'propria')
         .eq('is_archived', false)
         .order('created_at', { ascending: true });
 
