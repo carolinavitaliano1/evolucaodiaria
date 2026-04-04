@@ -30,6 +30,7 @@ export function ClinicAlertsCard() {
 
   const [overduePayments, setOverduePayments] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [intakeReviews, setIntakeReviews] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const todayStr = toLocalDateString(new Date());
