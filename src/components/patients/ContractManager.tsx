@@ -44,6 +44,10 @@ interface Contract {
   status: string;
   created_at: string;
   contract_template_id: string | null;
+  signer_name: string | null;
+  signer_cpf: string | null;
+  signer_city: string | null;
+  agreed_terms: boolean;
 }
 
 interface ContractManagerProps {
@@ -689,6 +693,16 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
               {/* Patient signature */}
               {previewContract.signature_data && (
                 <div className="border-t border-border pt-4 space-y-1">
+                  {/* Signer identity */}
+                  {(previewContract.signer_name || previewContract.signer_cpf || previewContract.signer_city) && (
+                    <div className="rounded-lg bg-muted/30 border border-border p-3 mb-3 space-y-0.5">
+                      <p className="text-xs font-semibold text-foreground">Dados do assinante:</p>
+                      {previewContract.signer_name && <p className="text-xs text-muted-foreground">Nome: <strong className="text-foreground">{previewContract.signer_name}</strong></p>}
+                      {previewContract.signer_cpf && <p className="text-xs text-muted-foreground">CPF: <strong className="text-foreground">{previewContract.signer_cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</strong></p>}
+                      {previewContract.signer_city && <p className="text-xs text-muted-foreground">Cidade: <strong className="text-foreground">{previewContract.signer_city}</strong></p>}
+                      {previewContract.agreed_terms && <p className="text-[10px] text-success">✓ Declarou concordar com todos os termos</p>}
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground font-medium">Assinatura do paciente / responsável:</p>
                   <img src={previewContract.signature_data} alt="Assinatura do paciente"
                     className="max-h-20 border border-border rounded" />

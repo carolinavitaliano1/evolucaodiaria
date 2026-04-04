@@ -21,6 +21,10 @@ interface Contract {
   therapist_signed_at: string | null;
   status: string;
   created_at: string;
+  signer_name: string | null;
+  signer_cpf: string | null;
+  signer_city: string | null;
+  agreed_terms: boolean;
 }
 
 interface PatientExtra {
@@ -34,6 +38,10 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;';
 
+  const displayName = contract.signer_name || signerName;
+  const displayCpf = contract.signer_cpf || (signerCpf ? signerCpf.replace(/\D/g, '') : null);
+  const displayCity = contract.signer_city || '';
+
   const therapistSigBlock = contract.therapist_signature_data
     ? `<div style="margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;">
         <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura do terapeuta:</p>
@@ -41,15 +49,27 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
         ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:6px;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
       </div>` : '';
 
+  const formatCpfStr = (cpf: string) => {
+    const d = cpf.replace(/\D/g, '');
+    if (d.length === 11) return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`;
+    return cpf;
+  };
+
   wrapper.innerHTML = `
     <div style="margin-bottom:32px;">${contract.template_html}</div>
     ${therapistSigBlock}
     <div style="margin-top:32px;border-top:1px solid #ccc;padding-top:24px;">
-      <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital${signerName ? ` de ${signerName}` : ''}:</p>
-      ${signerCpf ? `<p style="font-size:10px;color:#777;margin-bottom:8px;">CPF: ${signerCpf}</p>` : ''}
+      <p style="font-size:12px;font-weight:bold;color:#333;margin-bottom:12px;">Dados do Assinante</p>
+      <p style="font-size:11px;color:#555;margin-bottom:2px;">Nome: <strong>${displayName}</strong></p>
+      ${displayCpf ? `<p style="font-size:11px;color:#555;margin-bottom:2px;">CPF: <strong>${formatCpfStr(displayCpf)}</strong></p>` : ''}
+      ${displayCity ? `<p style="font-size:11px;color:#555;margin-bottom:8px;">Cidade: <strong>${displayCity}</strong></p>` : ''}
+      <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital:</p>
       <img src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura" />
       <p style="font-size:10px;color:#888;margin-top:8px;">
         Assinado em ${format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+      </p>
+      <p style="font-size:9px;color:#aaa;margin-top:4px;font-style:italic;">
+        O assinante declarou ter lido e concordado com todos os termos deste contrato.
       </p>
     </div>
   `;
@@ -89,6 +109,12 @@ export default function PortalContract() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const signaturePadRef = useRef<SignaturePadRef>(null);
 
+  // Legal validity fields
+  const [signerNameInput, setSignerNameInput] = useState('');
+  const [signerCpfInput, setSignerCpfInput] = useState('');
+  const [signerCityInput, setSignerCityInput] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(false);
+
   useEffect(() => {
     if (!portalAccount) return;
     Promise.all([
@@ -127,10 +153,39 @@ export default function PortalContract() {
     return cpf;
   };
 
+  const formatCpfInput = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  };
+
+  const validateCpf = (cpf: string) => {
+    const digits = cpf.replace(/\D/g, '');
+    return digits.length === 11;
+  };
+
   const handleSign = async (contract: Contract) => {
     let finalSig = signatureData;
     if (!finalSig && signaturePadRef.current) {
       finalSig = signaturePadRef.current.save();
+    }
+    if (!signerNameInput.trim()) {
+      toast.error('Preencha o nome completo do assinante.');
+      return;
+    }
+    if (!signerCpfInput.trim() || !validateCpf(signerCpfInput)) {
+      toast.error('Preencha um CPF válido (11 dígitos).');
+      return;
+    }
+    if (!signerCityInput.trim()) {
+      toast.error('Preencha a cidade.');
+      return;
+    }
+    if (!agreedTerms) {
+      toast.error('Você precisa concordar com os termos do contrato.');
+      return;
     }
     if (!finalSig) {
       toast.error('Por favor, assine antes de confirmar.');
@@ -144,7 +199,11 @@ export default function PortalContract() {
           signature_data: finalSig,
           signed_at: new Date().toISOString(),
           status: 'signed',
-        })
+          signer_name: signerNameInput.trim(),
+          signer_cpf: signerCpfInput.replace(/\D/g, ''),
+          signer_city: signerCityInput.trim(),
+          agreed_terms: true,
+        } as any)
         .eq('id', contract.id);
       if (error) throw error;
       await supabase
@@ -155,11 +214,17 @@ export default function PortalContract() {
       toast.success('Contrato assinado com sucesso! ✅');
       setContracts(prev => prev.map(c =>
         c.id === contract.id
-          ? { ...c, status: 'signed', signed_at: new Date().toISOString(), signature_data: finalSig }
+          ? { ...c, status: 'signed', signed_at: new Date().toISOString(), signature_data: finalSig,
+              signer_name: signerNameInput.trim(), signer_cpf: signerCpfInput.replace(/\D/g, ''),
+              signer_city: signerCityInput.trim(), agreed_terms: true }
           : c
       ));
       setSigningContractId(null);
       setSignatureData('');
+      setSignerNameInput('');
+      setSignerCpfInput('');
+      setSignerCityInput('');
+      setAgreedTerms(false);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao assinar');
     } finally {
@@ -237,7 +302,22 @@ export default function PortalContract() {
                     signing={signing}
                     downloadingId={downloadingId}
                     formatCpf={formatCpf}
-                    onStartSign={() => { setSigningContractId(contract.id); setSignatureData(''); }}
+                    signerNameInput={signerNameInput}
+                    signerCpfInput={signerCpfInput}
+                    signerCityInput={signerCityInput}
+                    agreedTerms={agreedTerms}
+                    onSignerNameChange={setSignerNameInput}
+                    onSignerCpfChange={(v) => setSignerCpfInput(formatCpfInput(v))}
+                    onSignerCityChange={setSignerCityInput}
+                    onAgreedTermsChange={setAgreedTerms}
+                    onStartSign={() => {
+                      setSigningContractId(contract.id);
+                      setSignatureData('');
+                      setSignerNameInput(signerName || '');
+                      setSignerCpfInput(signerCpf ? formatCpfInput(signerCpf) : '');
+                      setSignerCityInput('');
+                      setAgreedTerms(false);
+                    }}
                     onCancelSign={() => { setSigningContractId(null); setSignatureData(''); }}
                     onSign={() => handleSign(contract)}
                     onSetSignatureData={setSignatureData}
@@ -269,6 +349,14 @@ export default function PortalContract() {
                     signing={signing}
                     downloadingId={downloadingId}
                     formatCpf={formatCpf}
+                    signerNameInput=""
+                    signerCpfInput=""
+                    signerCityInput=""
+                    agreedTerms={false}
+                    onSignerNameChange={() => {}}
+                    onSignerCpfChange={() => {}}
+                    onSignerCityChange={() => {}}
+                    onAgreedTermsChange={() => {}}
                     onStartSign={() => {}}
                     onCancelSign={() => {}}
                     onSign={() => {}}
@@ -291,6 +379,8 @@ function ContractCard({
   contract, expanded, onToggleExpand,
   signerName, signerCpf, isMinor,
   signingContractId, signatureData, signaturePadRef, signing, downloadingId, formatCpf,
+  signerNameInput, signerCpfInput, signerCityInput, agreedTerms,
+  onSignerNameChange, onSignerCpfChange, onSignerCityChange, onAgreedTermsChange,
   onStartSign, onCancelSign, onSign, onSetSignatureData, onClearPad, onDownload,
 }: {
   contract: Contract;
@@ -305,6 +395,14 @@ function ContractCard({
   signing: boolean;
   downloadingId: string | null;
   formatCpf: (cpf: string) => string;
+  signerNameInput: string;
+  signerCpfInput: string;
+  signerCityInput: string;
+  agreedTerms: boolean;
+  onSignerNameChange: (v: string) => void;
+  onSignerCpfChange: (v: string) => void;
+  onSignerCityChange: (v: string) => void;
+  onAgreedTermsChange: (v: boolean) => void;
   onStartSign: () => void;
   onCancelSign: () => void;
   onSign: () => void;
@@ -333,10 +431,10 @@ function ContractCard({
       >
         <div className={cn(
           'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-          isSigned ? 'bg-green-500/10' : 'bg-warning/10',
+          isSigned ? 'bg-success/10' : 'bg-warning/10',
         )}>
           {isSigned
-            ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+            ? <CheckCircle2 className="w-4 h-4 text-success" />
             : <PenLine className="w-4 h-4 text-warning" />
           }
         </div>
@@ -363,9 +461,32 @@ function ContractCard({
             />
           </div>
 
-          {/* Signed state: show signatures + download */}
+          {/* Signed state: show signatures + signer info + download */}
           {isSigned && (
             <div className="space-y-4">
+              {/* Signer identity info */}
+              {(contract.signer_name || contract.signer_cpf || contract.signer_city) && (
+                <div className="rounded-xl bg-muted/30 border border-border p-3 space-y-1">
+                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Dados do assinante
+                  </p>
+                  {contract.signer_name && (
+                    <p className="text-xs text-muted-foreground">Nome: <strong className="text-foreground">{contract.signer_name}</strong></p>
+                  )}
+                  {contract.signer_cpf && (
+                    <p className="text-xs text-muted-foreground">CPF: <strong className="text-foreground">{formatCpf(contract.signer_cpf)}</strong></p>
+                  )}
+                  {contract.signer_city && (
+                    <p className="text-xs text-muted-foreground">Cidade: <strong className="text-foreground">{contract.signer_city}</strong></p>
+                  )}
+                  {contract.signed_at && (
+                    <p className="text-xs text-muted-foreground">
+                      Data: <strong className="text-foreground">{format(new Date(contract.signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</strong>
+                    </p>
+                  )}
+                </div>
+              )}
+
               {contract.therapist_signature_data && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
@@ -381,9 +502,11 @@ function ContractCard({
               {contract.signature_data && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground font-medium">
-                    Assinatura de <strong>{signerName}</strong>:
+                    Assinatura de <strong>{contract.signer_name || signerName}</strong>:
                   </p>
-                  {signerCpf && <p className="text-xs text-muted-foreground">CPF: {formatCpf(signerCpf)}</p>}
+                  {(contract.signer_cpf || signerCpf) && (
+                    <p className="text-xs text-muted-foreground">CPF: {formatCpf(contract.signer_cpf || signerCpf!)}</p>
+                  )}
                   <img src={contract.signature_data} alt="Assinatura" className="max-h-16 border border-border rounded" />
                   {contract.signed_at && (
                     <p className="text-[10px] text-muted-foreground">
@@ -402,15 +525,80 @@ function ContractCard({
           {/* Pending state: signature flow */}
           {isPending && signingContractId === contract.id ? (
             <div className="space-y-4">
-              <p className="text-sm font-medium text-foreground">
-                {isMinor ? `Assinatura do responsável (${signerName}):` : 'Assine abaixo:'}
+              <p className="text-sm font-semibold text-foreground">
+                {isMinor ? `Identificação do responsável legal` : 'Identificação do assinante'}
               </p>
-              <SignaturePad
-                ref={signaturePadRef}
-                value={signatureData}
-                onChange={onSetSignatureData}
-                hideButtons
-              />
+
+              {/* Required identity fields */}
+              <div className="space-y-3 rounded-xl bg-muted/20 border border-border p-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Nome completo <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={signerNameInput}
+                    onChange={e => onSignerNameChange(e.target.value)}
+                    placeholder="Nome completo do assinante"
+                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      CPF <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={signerCpfInput}
+                      onChange={e => onSignerCpfChange(e.target.value)}
+                      placeholder="000.000.000-00"
+                      maxLength={14}
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Cidade <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={signerCityInput}
+                      onChange={e => onSignerCityChange(e.target.value)}
+                      placeholder="Cidade / UF"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Signature pad */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-foreground">
+                  Assinatura digital <span className="text-destructive">*</span>
+                </p>
+                <SignaturePad
+                  ref={signaturePadRef}
+                  value={signatureData}
+                  onChange={onSetSignatureData}
+                  hideButtons
+                />
+              </div>
+
+              {/* Agreement checkbox */}
+              <label className="flex items-start gap-2.5 cursor-pointer rounded-xl bg-muted/20 border border-border p-3">
+                <input
+                  type="checkbox"
+                  checked={agreedTerms}
+                  onChange={e => onAgreedTermsChange(e.target.checked)}
+                  className="w-4 h-4 accent-primary mt-0.5 shrink-0"
+                />
+                <span className="text-xs text-foreground leading-relaxed">
+                  <strong>Declaro</strong> que li e compreendi todos os termos deste contrato e concordo integralmente com as condições estabelecidas.
+                  {isMinor && ' Como responsável legal, assumo a responsabilidade pela contratação.'}
+                </span>
+              </label>
+
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button variant="outline" onClick={() => { onClearPad(); onCancelSign(); }} className="w-full sm:flex-1 gap-1">
                   Cancelar
