@@ -89,6 +89,12 @@ export default function PortalContract() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const signaturePadRef = useRef<SignaturePadRef>(null);
 
+  // Legal validity fields
+  const [signerNameInput, setSignerNameInput] = useState('');
+  const [signerCpfInput, setSignerCpfInput] = useState('');
+  const [signerCityInput, setSignerCityInput] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(false);
+
   useEffect(() => {
     if (!portalAccount) return;
     Promise.all([
