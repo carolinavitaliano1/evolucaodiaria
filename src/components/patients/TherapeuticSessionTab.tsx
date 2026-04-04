@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock, History, Target, Sparkles, Send, Loader2, BookOpen } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock, History, Target, Sparkles, Send, Loader2, BookOpen, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import { SessionHistory } from './SessionHistory';
@@ -71,6 +71,8 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [aiEvolution, setAiEvolution] = useState('');
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
+  const [improvingField, setImprovingField] = useState<string | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   // Sub-tab navigation: 'planning' | 'session' | 'history'
   const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
@@ -327,8 +329,71 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     else setNegativeFeelings(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Generate PDF report - Professional layout
-  const generateReport = () => {
+  // Improve text field with AI
+  const improveFieldText = async (field: 'notes' | 'action_plans' | 'next_session', getText: () => string, setText: (v: string) => void) => {
+    const text = getText();
+    if (!text.trim()) {
+      toast.error('Preencha o campo antes de melhorar com IA.');
+      return;
+    }
+    setImprovingField(field);
+    try {
+      const { data, error } = await supabase.functions.invoke('improve-session-text', {
+        body: { text, field },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.improved) {
+        setText(data.improved);
+        toast.success('Texto melhorado com IA!');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao melhorar texto');
+    } finally {
+      setImprovingField(null);
+    }
+  };
+
+  // Generate PDF report - Professional layout (auto-saves first)
+  const generateReport = async () => {
+    setGeneratingReport(true);
+    try {
+    // Auto-save before generating so nothing is lost
+    if (sessionId) await saveSession(false);
+    // Auto-correct text fields with AI before generating
+    let correctedNotes = notesText;
+    let correctedPlans = actionPlans;
+    let correctedNext = nextSessionNotes;
+    let correctedComments = generalComments;
+
+    try {
+      const textsToCorrect = [notesText, actionPlans, nextSessionNotes, generalComments].filter(t => t.trim());
+      if (textsToCorrect.length > 0) {
+        const allText = [
+          notesText ? `[ANOTAÇÕES]\n${notesText}` : '',
+          actionPlans ? `[PLANOS]\n${actionPlans}` : '',
+          nextSessionNotes ? `[PRÓXIMA]\n${nextSessionNotes}` : '',
+          generalComments ? `[COMENTÁRIOS]\n${generalComments}` : '',
+        ].filter(Boolean).join('\n---\n');
+
+        const { data } = await supabase.functions.invoke('improve-session-text', {
+          body: { text: allText, field: 'report' },
+        });
+        if (data?.improved) {
+          const sections = data.improved.split('---');
+          for (const sec of sections) {
+            const trimmed = sec.trim();
+            if (trimmed.startsWith('[ANOTAÇÕES]')) correctedNotes = trimmed.replace('[ANOTAÇÕES]', '').trim();
+            else if (trimmed.startsWith('[PLANOS]')) correctedPlans = trimmed.replace('[PLANOS]', '').trim();
+            else if (trimmed.startsWith('[PRÓXIMA]')) correctedNext = trimmed.replace('[PRÓXIMA]', '').trim();
+            else if (trimmed.startsWith('[COMENTÁRIOS]')) correctedComments = trimmed.replace('[COMENTÁRIOS]', '').trim();
+          }
+        }
+      }
+    } catch {
+      // If AI correction fails, use original text
+    }
+
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
@@ -433,10 +498,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       y += 6;
     };
 
-    addSection('Anotações da Sessão', notesText);
-    addSection('Planos de Ação', actionPlans);
-    addSection('Planejamento para Próxima Sessão', nextSessionNotes);
-    addSection('Comentários Gerais', generalComments);
+    addSection('Anotações da Sessão', correctedNotes);
+    addSection('Planos de Ação', correctedPlans);
+    addSection('Planejamento para Próxima Sessão', correctedNext);
+    addSection('Comentários Gerais', correctedComments);
 
     // Plan info if available
     if (activePlan) {
@@ -456,6 +521,11 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
     doc.save(`sessao_${patientName.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
     toast.success('Relatório gerado!');
+    } catch (e) {
+      toast.error('Erro ao gerar relatório');
+    } finally {
+      setGeneratingReport(false);
+    }
   };
 
   // Generate AI Evolution
@@ -796,14 +866,23 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                   ))}
                 </TabsList>
                 <div className="p-4">
-                  <TabsContent value="notes" className="mt-0">
+                  <TabsContent value="notes" className="mt-0 space-y-2">
                     <Textarea value={notesText} onChange={e => setNotesText(e.target.value)} placeholder="Registre observações, insights e pontos importantes da sessão atual." className="min-h-[200px] resize-y" />
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'notes' || !notesText.trim()} onClick={() => improveFieldText('notes', () => notesText, setNotesText)}>
+                      {improvingField === 'notes' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                    </Button>
                   </TabsContent>
-                  <TabsContent value="plans" className="mt-0">
+                  <TabsContent value="plans" className="mt-0 space-y-2">
                     <Textarea value={actionPlans} onChange={e => setActionPlans(e.target.value)} placeholder="Liste tarefas, exercícios ou atividades para o paciente fazer em casa." className="min-h-[200px] resize-y" />
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
+                      {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                    </Button>
                   </TabsContent>
-                  <TabsContent value="next" className="mt-0">
+                  <TabsContent value="next" className="mt-0 space-y-2">
                     <Textarea value={nextSessionNotes} onChange={e => setNextSessionNotes(e.target.value)} placeholder="O que trabalhar na próxima sessão? Planejamento e temas pendentes." className="min-h-[200px] resize-y" />
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'next_session' || !nextSessionNotes.trim()} onClick={() => improveFieldText('next_session', () => nextSessionNotes, setNextSessionNotes)}>
+                      {improvingField === 'next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                    </Button>
                   </TabsContent>
                 </div>
               </Tabs>
@@ -846,7 +925,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
             {sessionId && <Button variant="outline" onClick={() => saveSession(true)} disabled={saving}>{saving ? 'Salvando...' : 'Salvar sessão'}</Button>}
-            <Button variant="outline" onClick={generateReport} className="gap-1.5"><FileText className="w-4 h-4" /> Gerar Relatório</Button>
+            <Button variant="outline" onClick={generateReport} disabled={generatingReport} className="gap-1.5">
+              {generatingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              {generatingReport ? 'Gerando...' : 'Gerar Relatório'}
+            </Button>
             <Button variant="outline" onClick={generateAIEvolution} disabled={generatingAI} className="gap-1.5">
               {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               Gerar Evolução IA
