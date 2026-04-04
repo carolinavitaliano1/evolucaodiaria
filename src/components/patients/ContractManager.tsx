@@ -136,7 +136,7 @@ function TemplateLibrary({
 }
 
 // ─── Main ContractManager ──────────────────────────────────────────────────────
-export function ContractManager({ patientId, patientName, patientCpf, patientBirthdate, patientPaymentValue, patientWeekdays, patientScheduleTime, clinicId }: ContractManagerProps) {
+export function ContractManager({ patientId, patientName }: ContractManagerProps) {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
