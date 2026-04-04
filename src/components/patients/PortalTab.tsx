@@ -557,16 +557,18 @@ function AccountPanel({
       .map(m => m.id);
     if (unreadIds.length === 0) return;
 
+    // Update locally first to prevent re-trigger
+    setMessages(prev =>
+      prev.map(m => unreadIds.includes(m.id) ? { ...m, read_by_therapist: true } : m)
+    );
+
+    // Persist to database
     supabase
       .from('portal_messages')
       .update({ read_by_therapist: true })
       .in('id', unreadIds)
-      .then(() => {
-        setMessages(prev =>
-          prev.map(m => unreadIds.includes(m.id) ? { ...m, read_by_therapist: true } : m)
-        );
-      });
-  }, [activeSection, messages]);
+      .then();
+  }, [activeSection]); // only trigger on section change, not on messages change
 
   const handleActionClick = (id: string) => {
     setActiveSection(prev => prev === id ? null : id);
