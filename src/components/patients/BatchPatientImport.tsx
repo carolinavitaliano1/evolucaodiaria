@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import Papa from 'papaparse';
+import * as Papa from 'papaparse';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
