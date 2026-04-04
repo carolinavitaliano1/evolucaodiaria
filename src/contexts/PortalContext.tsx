@@ -178,7 +178,7 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
     await supabase
       .from('portal_messages')
       .update({ read_by_patient: true })
-      .eq('patient_id', portalAccountRef.current.patient_id)
+      .eq('portal_account_id', portalAccountRef.current.id)
       .eq('sender_type', 'therapist')
       .eq('read_by_patient', false);
     await loadMessages();
