@@ -55,12 +55,9 @@ export default function Patients() {
 
   // Quick registration via link
   const [quickRegOpen, setQuickRegOpen] = useState(false);
-  const [quickRegName, setQuickRegName] = useState('');
   const [quickRegWhatsapp, setQuickRegWhatsapp] = useState('');
   const [quickRegClinicId, setQuickRegClinicId] = useState('');
-  const [quickRegSaving, setQuickRegSaving] = useState(false);
   const [quickRegLink, setQuickRegLink] = useState('');
-  const [quickRegToken, setQuickRegToken] = useState('');
 
   // Permission-based flags
   const ownOnly = isOrgMember && hasPermission(orgPermissions, 'patients.own_only') && !isOrgOwner;
