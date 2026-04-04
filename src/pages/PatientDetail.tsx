@@ -313,6 +313,21 @@ export default function PatientDetail() {
       });
   }, [patient?.id, user, currentMonth, currentYear]);
 
+  // Load portal receipts for this patient
+  useEffect(() => {
+    if (!patient?.id) return;
+    supabase
+      .from('portal_documents')
+      .select('id, name, file_path, file_type, file_size, description, created_at')
+      .eq('patient_id', patient.id)
+      .ilike('name', 'Comprovante%')
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setPortalReceipts((data || []) as typeof portalReceipts);
+      });
+  }, [patient?.id]);
+
   const handleSavePaymentRecord = async (paid: boolean, paymentDate: string | null) => {
     if (!user || !patient) return;
     setSavingPaymentRecord(true);
