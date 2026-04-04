@@ -344,12 +344,28 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
       }
 
       // Fetch all data needed for variable substitution in parallel
-      const [{ data: patientData }, { data: profile }, { data: stamp }, { data: intakeForm }] = await Promise.all([
+      const [{ data: patientData }, { data: profile }, { data: intakeForm }] = await Promise.all([
         supabase.from('patients').select('cpf,birthdate,payment_value,weekdays,schedule_time,clinic_id').eq('id', patientId).maybeSingle(),
         supabase.from('profiles').select('name,professional_id,cpf').eq('user_id', user.id).maybeSingle(),
-        supabase.from('stamps').select('clinical_area,cbo').eq('user_id', user.id).limit(1).maybeSingle(),
         supabase.from('patient_intake_forms').select('address,cpf').eq('patient_id', patientId).maybeSingle(),
       ]);
+
+      // Use selected stamp for CBO and clinical_area
+      const chosenStamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
+      // If no stamp selected, try fetching default from DB
+      let stampCbo = '';
+      let stampArea = '';
+      if (chosenStamp) {
+        // Fetch full stamp data including cbo
+        const { data: fullStamp } = await supabase.from('stamps').select('cbo,clinical_area').eq('id', chosenStamp.id).maybeSingle();
+        stampCbo = (fullStamp as any)?.cbo || '';
+        stampArea = (fullStamp as any)?.clinical_area || chosenStamp.clinical_area || '';
+      } else {
+        // Fallback: first stamp with is_default or first stamp
+        const { data: defStamp } = await supabase.from('stamps').select('cbo,clinical_area').eq('user_id', user.id).order('is_default', { ascending: false }).limit(1).maybeSingle();
+        stampCbo = (defStamp as any)?.cbo || '';
+        stampArea = (defStamp as any)?.clinical_area || '';
+      }
 
       let clinicCity = '';
       if (patientData?.clinic_id) {
@@ -376,7 +392,8 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
         'data_nascimento': formatDate(patientData?.birthdate),
         'nome_profissional': profile?.name || '[não informado]',
         'registro_profissional': profile?.professional_id || '[não informado]',
-        'cbo_profissional': (stamp as any)?.cbo || '[não informado]',
+        'cbo_profissional': stampCbo || '[não informado]',
+        'area_clinica': stampArea || '[não informado]',
         'data_atual': format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: ptBR }),
         'cidade_atual': clinicCity || '[não informado]',
         'valor_sessao': paymentVal ? `R$ ${Number(paymentVal).toFixed(2).replace('.', ',')}` : '[não informado]',
