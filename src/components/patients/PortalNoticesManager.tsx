@@ -45,7 +45,7 @@ export function PortalNoticesManager({ patientId, patientName, portalAccountId }
     setLoading(false);
   };
 
-  useEffect(() => { loadNotices(); }, [patientId]);
+  useEffect(() => { loadNotices(); }, [patientId, portalAccountId]);
 
   const handleCreate = async () => {
     if (!title.trim() || !user) return;
