@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock, Link2, Send, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock, Link2, Send, AlertTriangle, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import { PendingEnrollmentsCard } from '@/components/dashboard/PendingEnrollmentsCard';
+import { BatchPatientImport } from '@/components/patients/BatchPatientImport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/contexts/AppContext';
@@ -59,6 +60,8 @@ export default function Patients() {
   const [quickRegWhatsapp, setQuickRegWhatsapp] = useState('');
   const [quickRegClinicId, setQuickRegClinicId] = useState('');
   const [quickRegLink, setQuickRegLink] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
+  const [importClinicId, setImportClinicId] = useState('');
 
   // Permission-based flags
   const ownOnly = isOrgMember && hasPermission(orgPermissions, 'patients.own_only') && !isOrgOwner;
@@ -635,6 +638,10 @@ export default function Patients() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs"
+            onClick={() => { setImportClinicId(activeClinics[0]?.id || ''); setImportOpen(true); }}>
+            <FileSpreadsheet className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Importar CSV</span><span className="sm:hidden">CSV</span>
+          </Button>
           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegWhatsapp(''); setQuickRegClinicId(activeClinics[0]?.id || ''); }}>
             <Link2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Cadastro via Link</span><span className="sm:hidden">Link</span>
@@ -984,6 +991,17 @@ export default function Patients() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* CSV Batch Import */}
+      {importOpen && importClinicId && (
+        <BatchPatientImport
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          clinicId={importClinicId}
+          clinicName={clinics.find(c => c.id === importClinicId)?.name || 'Clínica'}
+          onSuccess={() => { window.location.reload(); }}
+        />
+      )}
     </div>
   );
 }
