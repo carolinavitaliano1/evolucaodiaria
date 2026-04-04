@@ -232,8 +232,11 @@ export default function PortalFinancial() {
           .from('portal-documents')
           .upload(path, receiptFile, { contentType: receiptFile.type });
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from('portal-documents').getPublicUrl(path);
-        fileUrl = urlData.publicUrl;
+        const { data: signedData, error: signError } = await supabase.storage
+          .from('portal-documents')
+          .createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
+        if (signError) throw signError;
+        fileUrl = signedData.signedUrl;
       }
 
       const parts: string[] = ['🧾 Comprovante de pagamento enviado:'];
