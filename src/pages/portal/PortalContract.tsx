@@ -286,7 +286,22 @@ export default function PortalContract() {
                     signing={signing}
                     downloadingId={downloadingId}
                     formatCpf={formatCpf}
-                    onStartSign={() => { setSigningContractId(contract.id); setSignatureData(''); }}
+                    signerNameInput={signerNameInput}
+                    signerCpfInput={signerCpfInput}
+                    signerCityInput={signerCityInput}
+                    agreedTerms={agreedTerms}
+                    onSignerNameChange={setSignerNameInput}
+                    onSignerCpfChange={(v) => setSignerCpfInput(formatCpfInput(v))}
+                    onSignerCityChange={setSignerCityInput}
+                    onAgreedTermsChange={setAgreedTerms}
+                    onStartSign={() => {
+                      setSigningContractId(contract.id);
+                      setSignatureData('');
+                      setSignerNameInput(signerName || '');
+                      setSignerCpfInput(signerCpf ? formatCpfInput(signerCpf) : '');
+                      setSignerCityInput('');
+                      setAgreedTerms(false);
+                    }}
                     onCancelSign={() => { setSigningContractId(null); setSignatureData(''); }}
                     onSign={() => handleSign(contract)}
                     onSetSignatureData={setSignatureData}
