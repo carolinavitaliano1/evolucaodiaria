@@ -738,10 +738,13 @@ export default function GroupDetail() {
                   </Button>
                 ))}
               </div>
-              {muralMember && (
+              {muralMember && user && (
                 <PatientFeed
                   patientId={muralMember}
-                  groupId={group.id}
+                  therapistId={user.id}
+                  isTherapist={true}
+                  currentUserId={user.id}
+                  currentUserName=""
                 />
               )}
             </>
