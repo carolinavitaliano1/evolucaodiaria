@@ -478,6 +478,8 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           nextSessionNotes,
           generalComments,
           durationSeconds: elapsedSeconds,
+          planObjectives: activePlan?.objectives || '',
+          planActivities: activePlan?.activities || '',
         },
       });
       if (error) throw error;
