@@ -1996,6 +1996,63 @@ export type Database = {
         }
         Relationships: []
       }
+      session_plans: {
+        Row: {
+          activities: string | null
+          clinic_id: string
+          created_at: string
+          external_links: Json | null
+          id: string
+          objectives: string | null
+          patient_id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activities?: string | null
+          clinic_id: string
+          created_at?: string
+          external_links?: Json | null
+          id?: string
+          objectives?: string | null
+          patient_id: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activities?: string | null
+          clinic_id?: string
+          created_at?: string
+          external_links?: Json | null
+          id?: string
+          objectives?: string | null
+          patient_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_plans_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stamps: {
         Row: {
           cbo: string | null
@@ -2251,6 +2308,7 @@ export type Database = {
           notes_text: string
           patient_id: string
           payment_pending: boolean
+          plan_id: string | null
           positive_feelings: string[]
           price: number
           started_at: string | null
@@ -2274,6 +2332,7 @@ export type Database = {
           notes_text?: string
           patient_id: string
           payment_pending?: boolean
+          plan_id?: string | null
           positive_feelings?: string[]
           price?: number
           started_at?: string | null
@@ -2297,6 +2356,7 @@ export type Database = {
           notes_text?: string
           patient_id?: string
           payment_pending?: boolean
+          plan_id?: string | null
           positive_feelings?: string[]
           price?: number
           started_at?: string | null
@@ -2319,6 +2379,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "therapy_sessions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
             referencedColumns: ["id"]
           },
         ]
