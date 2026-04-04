@@ -34,36 +34,76 @@ interface PatientExtra {
   is_minor: boolean;
 }
 
+/** Strip contract-variable spans from stored HTML so previews/PDFs show clean text */
+function cleanContractHtml(html: string): string {
+  let clean = html;
+  clean = clean.replace(
+    /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
+    (_, inner) => inner.replace(/<[^>]*>/g, '').trim()
+  );
+  clean = clean.replace(/&nbsp;/g, ' ');
+  return clean;
+}
+
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;line-height:1.6;';
+  // A4 at 96dpi ≈ 794×1123. Use 30mm left/top, 20mm right/bottom → ~113/85px
+  wrapper.style.cssText = `
+    width: 794px;
+    padding: 113px 80px 75px 113px;
+    background: white;
+    font-family: 'Times New Roman', 'Georgia', serif;
+    font-size: 13px;
+    color: #111;
+    line-height: 1.65;
+    box-sizing: border-box;
+  `;
 
-  // Add proper styles for contract HTML structure
   const styleEl = document.createElement('style');
   styleEl.textContent = `
-    .contract-pdf-wrap h2 { font-size:18px; font-weight:bold; text-align:center; margin:24px 0 16px; color:#111; }
-    .contract-pdf-wrap h3 { font-size:14px; font-weight:bold; margin:20px 0 8px; color:#222; text-transform:uppercase; }
-    .contract-pdf-wrap p { margin:0 0 10px; text-align:justify; line-height:1.6; }
-    .contract-pdf-wrap ul, .contract-pdf-wrap ol { margin:8px 0; padding-left:24px; }
-    .contract-pdf-wrap li { margin-bottom:4px; }
-    .contract-pdf-wrap strong { font-weight:bold; }
-    .contract-pdf-wrap em { font-style:italic; }
-    .contract-pdf-wrap hr { border:none; border-top:1px solid #ccc; margin:16px 0; }
-    .contract-pdf-wrap table { width:100%; border-collapse:collapse; margin:12px 0; }
-    .contract-pdf-wrap td, .contract-pdf-wrap th { border:1px solid #ddd; padding:6px 8px; font-size:12px; }
+    .contract-pdf-wrap * { box-sizing: border-box; }
+    .contract-pdf-wrap h2 {
+      font-size: 16px; font-weight: bold; text-align: center;
+      margin: 28px 0 20px; color: #111; text-transform: uppercase;
+      letter-spacing: 0.5px; line-height: 1.4;
+    }
+    .contract-pdf-wrap h3 {
+      font-size: 13px; font-weight: bold; margin: 24px 0 10px; color: #111;
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .contract-pdf-wrap p {
+      margin: 0 0 12px; text-align: justify; line-height: 1.65;
+      text-indent: 0; orphans: 3; widows: 3;
+    }
+    .contract-pdf-wrap ul, .contract-pdf-wrap ol {
+      margin: 8px 0 12px; padding-left: 28px;
+    }
+    .contract-pdf-wrap li { margin-bottom: 4px; line-height: 1.5; }
+    .contract-pdf-wrap strong { font-weight: bold; }
+    .contract-pdf-wrap em { font-style: italic; }
+    .contract-pdf-wrap u { text-decoration: underline; }
+    .contract-pdf-wrap hr {
+      border: none; border-top: 1px solid #999; margin: 20px 0;
+    }
+    .contract-pdf-wrap table {
+      width: 100%; border-collapse: collapse; margin: 14px 0;
+    }
+    .contract-pdf-wrap td, .contract-pdf-wrap th {
+      border: 1px solid #bbb; padding: 6px 10px; font-size: 12px;
+      text-align: left; vertical-align: top;
+    }
+    .contract-pdf-wrap th {
+      background: #f5f5f5; font-weight: bold;
+    }
+    .contract-pdf-wrap img:not(.sig-img) {
+      max-width: 100%; height: auto; display: block; margin: 8px auto;
+    }
   `;
   wrapper.appendChild(styleEl);
 
   const displayName = contract.signer_name || signerName;
   const displayCpf = contract.signer_cpf || (signerCpf ? signerCpf.replace(/\D/g, '') : null);
   const displayCity = contract.signer_city || '';
-
-  const therapistSigBlock = contract.therapist_signature_data
-    ? `<div style="margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;">
-        <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura do terapeuta:</p>
-        <img src="${contract.therapist_signature_data}" style="max-height:70px;max-width:260px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura do terapeuta" />
-        ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:6px;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
-      </div>` : '';
 
   const formatCpfStr = (cpf: string) => {
     const d = cpf.replace(/\D/g, '');
@@ -73,46 +113,85 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
 
   // Clean any remaining variable span tags from the stored HTML
   let cleanHtml = contract.template_html;
-  cleanHtml = cleanHtml.replace(/<span[^>]*class="[^"]*contract-variable[^"]*"[^>]*>(.*?)<\/span>/gi, '$1');
-  cleanHtml = cleanHtml.replace(/<span[^>]*data-type="variable"[^>]*>(.*?)<\/span>/gi, '$1');
+  // Robust: handle any attribute order, nested content, extra attributes
+  cleanHtml = cleanHtml.replace(
+    /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
+    (_, inner) => inner.replace(/<[^>]*>/g, '').trim()
+  );
+  cleanHtml = cleanHtml.replace(/&nbsp;/g, ' ');
+
+  // Build therapist signature block
+  const therapistSigBlock = contract.therapist_signature_data
+    ? `<div style="margin-top:40px;padding-top:24px;border-top:2px solid #333;text-align:center;">
+        <p style="font-size:11px;color:#555;margin-bottom:8px;text-align:center;">Assinatura do(a) Profissional</p>
+        <img class="sig-img" src="${contract.therapist_signature_data}" style="max-height:70px;max-width:260px;border:1px solid #ddd;border-radius:2px;margin:0 auto;display:block;" />
+        ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:8px;text-align:center;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
+      </div>` : '';
 
   const contentDiv = document.createElement('div');
   contentDiv.className = 'contract-pdf-wrap';
   contentDiv.innerHTML = `
-    <div style="margin-bottom:32px;">${cleanHtml}</div>
+    <div style="margin-bottom:36px;">${cleanHtml}</div>
+
     ${therapistSigBlock}
-    <div style="margin-top:32px;border-top:1px solid #ccc;padding-top:24px;">
-      <p style="font-size:12px;font-weight:bold;color:#333;margin-bottom:12px;">Dados do Assinante</p>
-      <p style="font-size:11px;color:#555;margin-bottom:2px;">Nome: <strong>${displayName}</strong></p>
-      ${displayCpf ? `<p style="font-size:11px;color:#555;margin-bottom:2px;">CPF: <strong>${formatCpfStr(displayCpf)}</strong></p>` : ''}
-      ${displayCity ? `<p style="font-size:11px;color:#555;margin-bottom:8px;">Cidade: <strong>${displayCity}</strong></p>` : ''}
-      <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital:</p>
-      <img src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura" />
-      <p style="font-size:10px;color:#888;margin-top:8px;">
-        Assinado em ${format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+
+    <div style="margin-top:48px;border-top:2px solid #333;padding-top:28px;">
+      <p style="font-size:13px;font-weight:bold;color:#111;margin-bottom:16px;text-align:center;text-transform:uppercase;letter-spacing:0.5px;">
+        Dados do Assinante
       </p>
-      <p style="font-size:9px;color:#aaa;margin-top:4px;font-style:italic;">
-        O assinante declarou ter lido e concordado com todos os termos deste contrato.
-      </p>
+      <table style="width:100%;border-collapse:collapse;margin:0 auto 20px;max-width:500px;">
+        <tr>
+          <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;font-weight:bold;width:120px;background:#f9f9f9;">Nome:</td>
+          <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;">${displayName}</td>
+        </tr>
+        ${displayCpf ? `<tr>
+          <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;font-weight:bold;background:#f9f9f9;">CPF:</td>
+          <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;">${formatCpfStr(displayCpf)}</td>
+        </tr>` : ''}
+        ${displayCity ? `<tr>
+          <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;font-weight:bold;background:#f9f9f9;">Cidade:</td>
+          <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;">${displayCity}</td>
+        </tr>` : ''}
+      </table>
+
+      <div style="text-align:center;margin-top:20px;">
+        <p style="font-size:11px;color:#555;margin-bottom:8px;">Assinatura digital:</p>
+        <img class="sig-img" src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #ddd;border-radius:2px;margin:0 auto;display:block;" />
+        <p style="font-size:11px;color:#333;margin-top:14px;font-weight:bold;">
+          Assinado em ${format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+        </p>
+        <p style="font-size:10px;color:#888;margin-top:6px;font-style:italic;">
+          O assinante declarou ter lido e concordado com todos os termos deste contrato.
+        </p>
+      </div>
     </div>
   `;
   wrapper.appendChild(contentDiv);
 
   document.body.appendChild(wrapper);
   try {
-    const canvas = await html2canvas(wrapper, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
+    const canvas = await html2canvas(wrapper, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
     document.body.removeChild(wrapper);
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
     let yOffset = 0;
+    let pageNum = 0;
     while (yOffset < imgHeight) {
-      if (yOffset > 0) pdf.addPage();
+      if (pageNum > 0) pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, -yOffset, imgWidth, imgHeight);
       yOffset += pageHeight;
+      pageNum++;
     }
     pdf.save(`contrato-${signerName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   } catch (e) {
@@ -480,8 +559,8 @@ function ContractCard({
           {/* Contract content */}
           <div className="overflow-auto max-h-[50vh] rounded-xl bg-background border border-border p-4">
             <div
-              className="prose prose-sm max-w-none text-foreground text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: contract.template_html }}
+              className="prose prose-sm max-w-none text-foreground text-sm leading-relaxed [&_p]:text-justify [&_p]:leading-relaxed [&_h2]:text-center [&_h3]:uppercase [&_h3]:text-sm"
+              dangerouslySetInnerHTML={{ __html: cleanContractHtml(contract.template_html) }}
             />
           </div>
 
