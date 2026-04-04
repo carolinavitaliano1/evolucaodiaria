@@ -611,9 +611,12 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         </CardHeader>
         <CardContent>
           <FileUpload
-            files={attachedFiles}
-            onChange={setAttachedFiles}
-            maxSizeMB={20}
+            existingFiles={attachedFiles}
+            onUpload={(files) => setAttachedFiles(prev => [...prev, ...files])}
+            onRemove={(fileId) => setAttachedFiles(prev => prev.filter(f => f.id !== fileId))}
+            parentId={sessionId || 'temp'}
+            parentType="therapy_session"
+            multiple
           />
           <p className="text-xs text-muted-foreground mt-2">
             Envie qualquer tipo de arquivo (máx 20MB por arquivo).
