@@ -1,0 +1,2 @@
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public.therapeutic_groups(id) ON DELETE SET NULL;
+ALTER TABLE public.clinic_notes ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public.therapeutic_groups(id) ON DELETE SET NULL;

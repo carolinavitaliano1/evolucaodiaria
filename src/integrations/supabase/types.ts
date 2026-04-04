@@ -106,6 +106,7 @@ export type Database = {
           category: string
           clinic_id: string
           created_at: string
+          group_id: string | null
           id: string
           text: string
           title: string | null
@@ -116,6 +117,7 @@ export type Database = {
           category?: string
           clinic_id: string
           created_at?: string
+          group_id?: string | null
           id?: string
           text?: string
           title?: string | null
@@ -126,6 +128,7 @@ export type Database = {
           category?: string
           clinic_id?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           text?: string
           title?: string | null
@@ -138,6 +141,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_notes_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "therapeutic_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -2235,6 +2245,7 @@ export type Database = {
         Row: {
           completed: boolean
           created_at: string
+          group_id: string | null
           id: string
           notes: string | null
           patient_id: string | null
@@ -2245,6 +2256,7 @@ export type Database = {
         Insert: {
           completed?: boolean
           created_at?: string
+          group_id?: string | null
           id?: string
           notes?: string | null
           patient_id?: string | null
@@ -2255,6 +2267,7 @@ export type Database = {
         Update: {
           completed?: boolean
           created_at?: string
+          group_id?: string | null
           id?: string
           notes?: string | null
           patient_id?: string | null
@@ -2263,6 +2276,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "therapeutic_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_patient_id_fkey"
             columns: ["patient_id"]
