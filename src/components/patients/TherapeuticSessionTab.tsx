@@ -401,8 +401,130 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     setViewMode('session');
   };
 
+  const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
+
+  // View session detail dialog
+  const renderViewDialog = () => {
+    if (!viewingSession) return null;
+    const s = viewingSession;
+    const date = new Date(s.created_at);
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setViewingSession(null)}>
+        <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</CardTitle>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingSession(null)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Duração: {formatTime(s.duration_seconds || 0)}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {s.mood_score && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Humor</Label>
+                <p className="text-lg">{moodEmojis[s.mood_score - 1]} {s.mood_score}/10</p>
+              </div>
+            )}
+            {s.positive_feelings?.length > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Sentimentos Positivos</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {s.positive_feelings.map((f: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">{f}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {s.negative_feelings?.length > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Sentimentos Negativos</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {s.negative_feelings.map((f: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="bg-red-500/10 text-red-700 dark:text-red-400">{f}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {s.suicidal_thoughts && (
+              <div className="p-3 rounded-lg border border-red-500/50 bg-red-500/5 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span className="text-sm text-red-600 dark:text-red-400 font-semibold">Pensamentos suicidas reportados</span>
+              </div>
+            )}
+            {s.notes_text && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Anotações</Label>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{s.notes_text}</p>
+              </div>
+            )}
+            {s.action_plans && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Planos de Ação</Label>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{s.action_plans}</p>
+              </div>
+            )}
+            {s.next_session_notes && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Próxima Sessão</Label>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{s.next_session_notes}</p>
+              </div>
+            )}
+            {s.general_comments && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Comentários Gerais</Label>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{s.general_comments}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
+      {/* Toggle between session and history */}
+      <div className="flex items-center gap-2 border-b border-border pb-2">
+        <Button
+          variant={viewMode === 'session' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('session')}
+          className="gap-1.5"
+        >
+          <PenLine className="w-3.5 h-3.5" /> Sessão
+        </Button>
+        <Button
+          variant={viewMode === 'history' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('history')}
+          className="gap-1.5"
+        >
+          <History className="w-3.5 h-3.5" /> Histórico
+          {sessions.length > 0 && (
+            <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{sessions.length}</Badge>
+          )}
+        </Button>
+      </div>
+
+      {viewMode === 'history' ? (
+        <>
+          <SessionHistory
+            sessions={sessions}
+            onView={handleViewSession}
+            onEdit={handleEditSession}
+            onDelete={handleDeleteSession}
+            onDuplicate={handleDuplicateSession}
+            onNewSession={() => { resetForm(); setViewMode('session'); }}
+            onGenerateReport={generateReport}
+          />
+          {renderViewDialog()}
+        </>
+      ) : (
+        <>
       {/* Header */}
       <Card className="border-border">
         <CardContent className="p-4">
