@@ -130,15 +130,15 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
           supabase
             .from('portal_messages')
             .select('*')
-            .eq('patient_id', account.patient_id)
+            .eq('portal_account_id', account.id)
             .order('created_at', { ascending: true }),
         ]);
 
         if (patientData) setPatient(patientData as PortalPatient);
         if (msgs) setMessages(msgs as PortalMessage[]);
 
-        // Setup realtime subscription for messages
-        setupRealtime(account.patient_id);
+        // Setup realtime subscription for messages scoped to this account
+        setupRealtime(account.id);
       } else {
         setPortalAccount(null);
         portalAccountRef.current = null;
