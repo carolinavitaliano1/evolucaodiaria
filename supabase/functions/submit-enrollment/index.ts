@@ -70,8 +70,9 @@ serve(async (req) => {
       fin_whatsapp = financial_responsible_whatsapp?.trim() || null;
     }
 
-    // Build observations combining motivo + diagnosis
+    // Build observations combining address + diagnosis + observations
     const obs_parts: string[] = [];
+    if (address?.trim()) obs_parts.push(`Endereço: ${address.trim()}`);
     if (body.diagnosis?.trim()) obs_parts.push(`Diagnóstico: ${body.diagnosis.trim()}`);
     if (observations?.trim()) obs_parts.push(observations.trim());
 
