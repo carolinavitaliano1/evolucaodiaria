@@ -395,6 +395,14 @@ export default function GroupDetail() {
           </div>
         </TabsContent>
 
+        {/* Documents Tab */}
+        <TabsContent value="documents" className="mt-4">
+          <div className="text-center py-12">
+            <FolderOpen className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">Documentos do grupo — em breve</p>
+          </div>
+        </TabsContent>
+
         {/* Financial Tab */}
         <TabsContent value="financial" className="mt-4">
           <div className="text-center py-12">
