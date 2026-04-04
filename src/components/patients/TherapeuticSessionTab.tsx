@@ -413,8 +413,42 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     }
   };
 
+  // Send action plans to patient portal as activity
+  const sendActionPlansToPortal = async () => {
+    if (!user || !actionPlans.trim()) return;
+    setSendingToPortal(true);
+    try {
+      // Parse action plans into items (split by newlines, filter empty)
+      const lines = actionPlans.split('\n').map(l => l.replace(/^[\s\-\*\d\.]+/, '').trim()).filter(Boolean);
+      const items = lines.map(text => ({ text, done: false }));
 
-  const generateReport = async () => {
+      // Find portal account for this patient
+      const { data: portalAccount } = await supabase
+        .from('patient_portal_accounts')
+        .select('id')
+        .eq('patient_id', patientId)
+        .eq('therapist_user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      const { error } = await supabase.from('portal_activities').insert({
+        patient_id: patientId,
+        therapist_user_id: user.id,
+        portal_account_id: portalAccount?.id || null,
+        title: title || 'Plano de Ação',
+        items,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+      toast.success('Plano de ação enviado para o portal do paciente!');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao enviar para portal');
+    } finally {
+      setSendingToPortal(false);
+    }
+  };
+
     setGeneratingReport(true);
     try {
     // Auto-save before generating so nothing is lost
