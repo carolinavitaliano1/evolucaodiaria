@@ -28,6 +28,8 @@ export const TEMPLATE_VARIABLES = [
   { tag: '{{email_paciente}}',       label: 'E-mail do Paciente',       group: 'Paciente' },
   { tag: '{{data_nascimento}}',      label: 'Data de Nascimento',       group: 'Paciente' },
   { tag: '{{responsavel}}',          label: 'Nome do Responsável',      group: 'Paciente' },
+  { tag: '{{nome_responsavel_legal}}',      label: 'Nome do Responsável Legal',      group: 'Paciente' },
+  { tag: '{{nome_responsavel_financeiro}}', label: 'Nome do Responsável Financeiro',  group: 'Paciente' },
   // Consulta
   { tag: '{{data_consulta}}',        label: 'Data da Consulta',         group: 'Consulta' },
   { tag: '{{horario}}',              label: 'Horário',                  group: 'Consulta' },
