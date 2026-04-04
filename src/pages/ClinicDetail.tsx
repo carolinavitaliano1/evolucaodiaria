@@ -2038,6 +2038,103 @@ export default function ClinicDetail() {
                     })}
                   </div>
 
+                  {/* Attendance status mode */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <Label className="text-sm font-medium shrink-0">Status:</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          variant={batchStatusMode === 'same' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setBatchStatusMode('same')}
+                        >
+                          Mesmo para todos
+                        </Button>
+                        <Button
+                          variant={batchStatusMode === 'individual' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setBatchStatusMode('individual')}
+                        >
+                          Individual
+                        </Button>
+                      </div>
+                    </div>
+
+                    {batchStatusMode === 'same' && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant={batchGlobalStatus === 'presente' ? 'default' : 'outline'}
+                          className={cn("gap-2", batchGlobalStatus === 'presente' && "bg-success hover:bg-success/90")}
+                          size="sm" onClick={() => setBatchGlobalStatus('presente')}>
+                          <Check className="w-4 h-4" /> Presente
+                        </Button>
+                        <Button type="button" variant={batchGlobalStatus === 'falta' ? 'default' : 'outline'}
+                          className={cn("gap-2", batchGlobalStatus === 'falta' && "bg-destructive hover:bg-destructive/90")}
+                          size="sm" onClick={() => setBatchGlobalStatus('falta')}>
+                          <X className="w-4 h-4" /> Falta
+                        </Button>
+                        <Button type="button" variant={batchGlobalStatus === 'reposicao' ? 'default' : 'outline'}
+                          className={cn("gap-2", batchGlobalStatus === 'reposicao' && "bg-primary hover:bg-primary/90")}
+                          size="sm" onClick={() => setBatchGlobalStatus('reposicao')}>
+                          🔄 Reposição
+                        </Button>
+                        <Button type="button" variant={batchGlobalStatus === 'falta_remunerada' ? 'default' : 'outline'}
+                          className={cn("gap-2", batchGlobalStatus === 'falta_remunerada' && "bg-warning hover:bg-warning/90 text-warning-foreground")}
+                          size="sm" onClick={() => setBatchGlobalStatus('falta_remunerada')}>
+                          <DollarSign className="w-4 h-4" /> Falta Rem.
+                        </Button>
+                        <Button type="button" variant={batchGlobalStatus === 'feriado_remunerado' ? 'default' : 'outline'}
+                          className={cn("gap-2", batchGlobalStatus === 'feriado_remunerado' && "bg-primary hover:bg-primary/90")}
+                          size="sm" onClick={() => setBatchGlobalStatus('feriado_remunerado')}>
+                          🎉 Feriado Rem.
+                        </Button>
+                        <Button type="button" variant={batchGlobalStatus === 'feriado_nao_remunerado' ? 'default' : 'outline'}
+                          className={cn("gap-2", batchGlobalStatus === 'feriado_nao_remunerado' && "bg-muted hover:bg-muted/80 text-muted-foreground")}
+                          size="sm" onClick={() => setBatchGlobalStatus('feriado_nao_remunerado')}>
+                          📅 Feriado
+                        </Button>
+                      </div>
+                    )}
+
+                    {batchStatusMode === 'individual' && selectedPatients.length > 0 && (
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                        {selectedPatients.map(pid => {
+                          const patient = patients.find(p => p.id === pid);
+                          const st = batchAttendanceStatus[pid] || 'presente';
+                          return (
+                            <div key={pid} className="flex flex-wrap items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border">
+                              <span className="text-sm font-medium min-w-[120px]">{patient?.name}</span>
+                              <div className="flex flex-wrap gap-1">
+                                {([
+                                  { val: 'presente', label: '✅', title: 'Presente' },
+                                  { val: 'falta', label: '❌', title: 'Falta' },
+                                  { val: 'reposicao', label: '🔄', title: 'Reposição' },
+                                  { val: 'falta_remunerada', label: '💰', title: 'Falta Rem.' },
+                                  { val: 'feriado_remunerado', label: '🎉', title: 'Feriado Rem.' },
+                                  { val: 'feriado_nao_remunerado', label: '📅', title: 'Feriado' },
+                                ] as const).map(opt => (
+                                  <Button key={opt.val} type="button" size="sm"
+                                    variant={st === opt.val ? 'default' : 'outline'}
+                                    className={cn("h-7 px-2 text-xs", st === opt.val && (
+                                      opt.val === 'presente' ? "bg-success hover:bg-success/90" :
+                                      opt.val === 'falta' ? "bg-destructive hover:bg-destructive/90" :
+                                      opt.val === 'falta_remunerada' ? "bg-warning hover:bg-warning/90 text-warning-foreground" :
+                                      opt.val === 'feriado_nao_remunerado' ? "bg-muted hover:bg-muted/80 text-muted-foreground" :
+                                      "bg-primary hover:bg-primary/90"
+                                    ))}
+                                    title={opt.title}
+                                    onClick={() => setBatchAttendanceStatus(prev => ({ ...prev, [pid]: opt.val as any }))}
+                                  >
+                                    {opt.label}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Stamp mode */}
                   {stamps.length > 1 && (
                     <div className="flex items-center gap-3 pt-2">
