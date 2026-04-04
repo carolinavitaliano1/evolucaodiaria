@@ -317,6 +317,14 @@ function AccountPanel({
       .eq('portal_account_id', account.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => setDocuments((data || []) as PortalDocument[]));
+
+    // Load sent questionnaires
+    supabase.from('patient_questionnaires')
+      .select('*')
+      .eq('patient_id', patientId)
+      .eq('portal_account_id', account.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setSentQuestionnaires((data || []) as any[]));
   }, [account.id, patientId]);
 
   // Realtime messages
