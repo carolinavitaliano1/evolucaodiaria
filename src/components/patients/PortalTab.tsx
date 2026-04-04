@@ -898,6 +898,17 @@ function AccountPanel({
                           status: 'pending',
                         });
                         if (error) throw error;
+
+                        // Notify patient via portal_notices
+                        await supabase.from('portal_notices').insert({
+                          patient_id: patientId,
+                          therapist_user_id: user!.id,
+                          portal_account_id: account.id,
+                          title: '📋 Novo questionário disponível',
+                          content: `Você recebeu o questionário "${template.name}". Acesse a aba Fichas para responder.`,
+                          read_by_patient: false,
+                        });
+
                         toast.success(`"${template.name}" enviado ao paciente!`);
                         setShowQTemplates(false);
                         const { data } = await supabase.from('patient_questionnaires')
