@@ -72,6 +72,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
   const [improvingField, setImprovingField] = useState<string | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   // Sub-tab navigation: 'planning' | 'session' | 'history'
   const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
