@@ -274,7 +274,8 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{patient.name}</p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Phone className="w-2.5 h-2.5" />{patient.phone}
+                          <Phone className="w-2.5 h-2.5" />
+                          {patient.whatsapp || patient.phone || patient.responsible_whatsapp || patient.guardian_phone || patient.financial_responsible_whatsapp || '—'}
                         </p>
                       </div>
                     </div>

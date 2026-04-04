@@ -51,14 +51,18 @@ export function WhatsAppTabContent({ clinicPatients, clinic }: WhatsAppTabConten
       {subTab === 'send' && (
         <WhatsAppSendPanel
           patients={clinicPatients.map(p => ({
-            id:                   p.id,
-            name:                 p.name,
-            phone:                p.phone,
-            whatsapp:             p.whatsapp,
-            email:                p.email,
-            birthdate:            p.birthdate,
-            responsible_name:     p.responsibleName,
-            responsible_whatsapp: p.responsibleWhatsapp,
+            id:                              p.id,
+            name:                            p.name,
+            phone:                           p.phone,
+            whatsapp:                        p.whatsapp,
+            email:                           p.email,
+            birthdate:                       p.birthdate,
+            responsible_name:                p.responsibleName,
+            responsible_whatsapp:            p.responsibleWhatsapp,
+            guardian_name:                   (p as any).guardianName,
+            guardian_phone:                  (p as any).guardianPhone,
+            financial_responsible_name:      (p as any).financialResponsibleName,
+            financial_responsible_whatsapp:  (p as any).financialResponsibleWhatsapp,
           }))}
           clinic={clinic}
           onGoToTemplates={() => setSubTab('templates')}
