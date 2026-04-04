@@ -1,59 +1,33 @@
 
 
-## Plano: Pré-preenchimento de dados e sincronização entre cadastro, fichas, financeiro e contrato
+## Plano: Unificar "Cadastro via Link" com a ficha de matrícula completa
 
 ### Problema
-1. Quando o paciente/responsável abre a ficha (intake form) pela primeira vez no portal, todos os campos estão vazios — mesmo que já existam dados no cadastro (`patients` table)
-2. A `payment_due_day` preenchida na ficha não é refletida no financeiro do portal nem salva no cadastro do paciente
-3. A `contract_start_date` não é atualizada automaticamente quando o contrato é assinado pelo portal
+O botão "Cadastro via Link" na página de Pacientes gera um link para `/cadastro-paciente/:token` (PatientIntakePublic.tsx), que é uma ficha simples. O formulário de matrícula da clínica (`/matricula/:clinicId` - Enrollment.tsx) é muito mais completo, com campos de responsável legal, responsável financeiro, menor de idade, etc. O usuário quer que ambos usem o **mesmo formulário completo**.
+
+### Solução
+Alterar o fluxo do "Cadastro via Link" para gerar o link de matrícula da clínica (`/matricula/:clinicId`) em vez de criar um rascunho e enviar para a ficha simplificada.
 
 ### Mudanças
 
-#### 1. Pré-preencher ficha com dados do cadastro (`PortalIntakeForm.tsx`)
+#### 1. Simplificar `handleQuickReg` em `Patients.tsx`
+- Remover a criação de paciente "rascunho" — o paciente será criado pela Edge Function `submit-enrollment` quando o responsável preencher o formulário completo
+- Gerar o link diretamente como `https://evolucaodiaria.app.br/matricula/{clinicId}`
+- Remover campos desnecessários do dialog (nome do paciente não é mais necessário, pois será preenchido pelo responsável)
+- Manter apenas: seleção de clínica e WhatsApp (para envio)
 
-No `useEffect` de carregamento, quando **não existe** registro em `patient_intake_forms`, buscar dados da tabela `patients` e preencher os campos correspondentes:
+#### 2. Atualizar o Dialog UI em `Patients.tsx`
+- Ajustar labels e texto explicativo para refletir que o link agora leva ao formulário completo de matrícula
+- O link gerado será o mesmo link que aparece dentro da clínica
 
-| Campo da Ficha | Campo do Patients |
-|---|---|
-| `full_name` | `name` |
-| `cpf` | `cpf` |
-| `birthdate` | `birthdate` |
-| `phone` | `phone` |
-| `whatsapp` | `whatsapp` |
-| `email` | `email` |
-| `responsible_name` | `responsible_name` |
-| `responsible_cpf` | `responsible_cpf` |
-| `responsible_phone` | `responsible_whatsapp` |
-| `financial_responsible_name` | `financial_responsible_name` |
-| `financial_responsible_cpf` | `financial_responsible_cpf` |
-| `observations` | `observations` |
-| `health_info` | `diagnosis` |
-| `payment_due_day` | `payment_due_day` |
-
-Buscar `patients` com `select(...)` usando os campos necessários quando `formData` é `null`.
-
-#### 2. Sincronizar `payment_due_day` da ficha para o cadastro (`PortalIntakeForm.tsx`)
-
-No `handleSave`, após salvar a ficha com sucesso, se `payment_due_day` foi preenchido, atualizar o campo `payment_due_day` na tabela `patients`:
-
-```text
-supabase.from('patients').update({ payment_due_day }).eq('id', patientId)
-```
-
-Isso faz com que o portal financeiro (`PortalFinancial.tsx`) já mostre a data correta, pois ele lê de `patient.payment_due_day`.
-
-#### 3. Atualizar `contract_start_date` ao assinar contrato (`PortalContract.tsx`)
-
-No `handleSign`, após a assinatura bem-sucedida, atualizar `patients.contract_start_date` com a data atual:
-
-```text
-supabase.from('patients').update({ contract_start_date: new Date().toISOString().split('T')[0] }).eq('id', patientId)
-```
-
-### Arquivos Afetados
+### Arquivo afetado
 
 | Arquivo | Ação |
 |---|---|
-| `src/pages/portal/PortalIntakeForm.tsx` | Editar — pré-preencher com dados do `patients` + sincronizar `payment_due_day` |
-| `src/pages/portal/PortalContract.tsx` | Editar — salvar `contract_start_date` ao assinar |
+| `src/pages/Patients.tsx` | Editar — simplificar dialog e gerar link de matrícula |
+
+### Detalhes técnicos
+- O link passa de `/cadastro-paciente/:token` para `/matricula/:clinicId`
+- Não há mais criação de paciente rascunho — o `submit-enrollment` Edge Function já cria o paciente com status `pendente`
+- O formulário de matrícula (Enrollment.tsx) já possui todos os campos necessários (dados pessoais, responsável legal, responsável financeiro, diagnóstico, etc.)
 
