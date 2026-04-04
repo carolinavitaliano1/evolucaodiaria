@@ -143,7 +143,92 @@ export default function GroupDetail() {
     setLoadingEvos(false);
   };
 
-  const toggleArchive = async () => {
+  const initEvoForm = () => {
+    setEvoDate(new Date().toISOString().slice(0, 10));
+    setEvoText('');
+    setEvoStatus('presente');
+    setEvoStatusMode('same');
+    setEvoIndividualStatus({});
+    setEvoSelectedMembers(new Set(members.map(m => m.id)));
+    setShowEvoForm(true);
+  };
+
+  const toggleMemberSelection = (memberId: string) => {
+    setEvoSelectedMembers(prev => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  };
+
+  const handleImproveEvoText = async () => {
+    if (!evoText.trim()) return;
+    setImprovingEvo(true);
+    try {
+      const res = await supabase.functions.invoke('improve-evolution', { body: { text: evoText } });
+      if (res.data?.improved) setEvoText(res.data.improved);
+      else toast.error('Não foi possível melhorar o texto');
+    } catch { toast.error('Erro ao melhorar texto'); }
+    setImprovingEvo(false);
+  };
+
+  const ATTENDANCE_OPTIONS = [
+    { value: 'presente', label: 'Presente' },
+    { value: 'falta', label: 'Falta' },
+    { value: 'falta_remunerada', label: 'Falta remunerada' },
+    { value: 'reposicao', label: 'Reposição' },
+    { value: 'feriado_remunerado', label: 'Feriado remunerado' },
+    { value: 'feriado_nao_remunerado', label: 'Feriado não remunerado' },
+  ];
+
+  const handleSaveGroupEvolution = async () => {
+    if (!user || !group || evoSelectedMembers.size === 0) {
+      toast.error('Selecione ao menos um participante');
+      return;
+    }
+    if (!evoText.trim() && evoStatus === 'presente') {
+      toast.error('Preencha o texto da evolução');
+      return;
+    }
+
+    setSavingEvo(true);
+    try {
+      const selectedIds = Array.from(evoSelectedMembers);
+      const isFaltaOrFeriado = (status: string) => ['falta', 'falta_remunerada', 'feriado_remunerado', 'feriado_nao_remunerado'].includes(status);
+      const autoTexts: Record<string, string> = {
+        falta: 'Paciente faltou à sessão de grupo.',
+        falta_remunerada: 'Paciente faltou à sessão de grupo (falta remunerada).',
+        feriado_remunerado: 'Feriado — sessão de grupo não realizada (remunerado).',
+        feriado_nao_remunerado: 'Feriado — sessão de grupo não realizada.',
+      };
+
+      const rows = selectedIds.map(patientId => {
+        const status = evoStatusMode === 'individual' ? (evoIndividualStatus[patientId] || 'presente') : evoStatus;
+        const text = isFaltaOrFeriado(status) ? (autoTexts[status] || evoText) : evoText;
+        return {
+          patient_id: patientId,
+          clinic_id: group.clinic_id,
+          user_id: user.id,
+          group_id: group.id,
+          date: evoDate,
+          text,
+          attendance_status: status,
+        };
+      });
+
+      const { error } = await supabase.from('evolutions').insert(rows);
+      if (error) throw error;
+
+      toast.success(`Evolução registrada para ${selectedIds.length} participante(s)!`);
+      setShowEvoForm(false);
+      loadEvolutions();
+    } catch (e: any) {
+      toast.error('Erro ao salvar: ' + (e.message || ''));
+    }
+    setSavingEvo(false);
+  };
+
     if (!group) return;
     await supabase.from('therapeutic_groups').update({ is_archived: !group.is_archived } as any).eq('id', group.id);
     toast.success(group.is_archived ? 'Grupo reativado' : 'Grupo arquivado');
