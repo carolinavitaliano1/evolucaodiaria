@@ -982,6 +982,24 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
               </CardHeader>
               <CardContent className="space-y-3">
                 <Textarea value={aiEvolution} onChange={e => setAiEvolution(e.target.value)} className="min-h-[200px] resize-y text-sm" />
+                {stamps.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Stamp className="w-4 h-4 text-muted-foreground" />
+                    <Label className="text-xs text-muted-foreground">Carimbo:</Label>
+                    <Select value={selectedStampId || ''} onValueChange={(v) => setSelectedStampId(v || null)}>
+                      <SelectTrigger className="w-[250px] h-8 text-xs">
+                        <SelectValue placeholder="Selecione um carimbo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stamps.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id} className="text-xs">
+                            {s.name} — {s.clinical_area}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Button onClick={sendToProntuario} disabled={sendingToProntuario} className="gap-1.5">
                   {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Enviar para Prontuário
