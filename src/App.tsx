@@ -15,6 +15,7 @@ import Landing from "./pages/Landing";
 import Clinics from "./pages/Clinics";
 import ClinicDetail from "./pages/ClinicDetail";
 import PatientDetail from "./pages/PatientDetail";
+import GroupDetail from "./pages/GroupDetail";
 import Patients from "./pages/Patients";
 import Financial from "./pages/Financial";
 import Reports from "./pages/Reports";
@@ -107,6 +108,7 @@ const App = () => (
                   <Route path="/clinics/:id" element={<ClinicDetail />} />
                   <Route path="/patients" element={<Patients />} />
                   <Route path="/patients/:id" element={<PatientDetail />} />
+                  <Route path="/groups/:id" element={<GroupDetail />} />
                   <Route path="/financial" element={<Financial />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/ai-reports" element={<AIReports />} />

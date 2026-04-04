@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Plus, Users, Archive, ArchiveRestore, Pencil, X, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface Patient {
   id: string;
@@ -93,6 +94,7 @@ const emptyForm = (): Partial<TherapeuticGroup> & { name: string } => ({
 
 export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTabProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<TherapeuticGroup[]>([]);
   const [members, setMembers] = useState<Record<string, string[]>>({});
   const [dialogOpen, setDialogOpen] = useState(false);

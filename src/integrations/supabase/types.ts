@@ -570,6 +570,7 @@ export type Database = {
           confirmed_attendance: boolean | null
           created_at: string
           date: string
+          group_id: string | null
           id: string
           mood: string | null
           patient_id: string
@@ -588,6 +589,7 @@ export type Database = {
           confirmed_attendance?: boolean | null
           created_at?: string
           date: string
+          group_id?: string | null
           id?: string
           mood?: string | null
           patient_id: string
@@ -606,6 +608,7 @@ export type Database = {
           confirmed_attendance?: boolean | null
           created_at?: string
           date?: string
+          group_id?: string | null
           id?: string
           mood?: string | null
           patient_id?: string
@@ -624,6 +627,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolutions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "therapeutic_groups"
             referencedColumns: ["id"]
           },
           {
@@ -691,6 +701,7 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          group_id: string | null
           id: string
           link_description: string | null
           link_image: string | null
@@ -705,6 +716,7 @@ export type Database = {
         Insert: {
           content?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           link_description?: string | null
           link_image?: string | null
@@ -719,6 +731,7 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           link_description?: string | null
           link_image?: string | null
@@ -731,6 +744,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "feed_posts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "therapeutic_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "feed_posts_patient_id_fkey"
             columns: ["patient_id"]
