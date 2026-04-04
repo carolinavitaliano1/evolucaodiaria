@@ -495,10 +495,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       y += 6;
     };
 
-    addSection('Anotações da Sessão', notesText);
-    addSection('Planos de Ação', actionPlans);
-    addSection('Planejamento para Próxima Sessão', nextSessionNotes);
-    addSection('Comentários Gerais', generalComments);
+    addSection('Anotações da Sessão', correctedNotes);
+    addSection('Planos de Ação', correctedPlans);
+    addSection('Planejamento para Próxima Sessão', correctedNext);
+    addSection('Comentários Gerais', correctedComments);
 
     // Plan info if available
     if (activePlan) {
