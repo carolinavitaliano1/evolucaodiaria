@@ -46,6 +46,8 @@ import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/g
 import jsPDF from 'jspdf';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { PatientFeed } from '@/components/feed/PatientFeed';
+import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
+import { Brain } from 'lucide-react';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
