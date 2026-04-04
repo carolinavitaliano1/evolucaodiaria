@@ -42,6 +42,9 @@ export default function PortalHome() {
           </p>
         </div>
 
+        {/* Alerts widget */}
+        <PortalAlertsWidget />
+
         {/* Unread messages alert */}
         {unreadCount > 0 && (
           <div
