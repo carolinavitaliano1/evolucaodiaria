@@ -13,7 +13,7 @@ const navItems = [
   { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro' },
   { to: '/portal/mural', icon: Newspaper, label: 'Mural' },
   { to: '/portal/evolucoes', icon: BookOpen, label: 'Feedback' },
-  { to: '/portal/ficha', icon: FileText, label: 'Ficha' },
+  { to: '/portal/fichas', icon: FileText, label: 'Fichas' },
   { to: '/portal/documentos', icon: FolderOpen, label: 'Docs' },
 ];
 

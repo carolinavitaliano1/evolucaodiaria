@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, ClipboardList, ChevronRight, ArrowLeft, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface IntakeForm {
   full_name: string;
@@ -171,6 +174,16 @@ function CustomQuestionField({
   );
 }
 
+interface PatientQuestionnaire {
+  id: string;
+  title: string;
+  fields: Array<{ id: string; question: string; field_type: string; options?: string[]; required?: boolean }>;
+  answers: Record<string, string>;
+  status: string;
+  submitted_at: string | null;
+  created_at: string;
+}
+
 export default function PortalIntakeForm() {
   const { portalAccount } = usePortal();
   const [form, setForm] = useState<IntakeForm>(empty);
@@ -180,6 +193,11 @@ export default function PortalIntakeForm() {
   const [customDay, setCustomDay] = useState(false);
   const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
+  const [questionnaires, setQuestionnaires] = useState<PatientQuestionnaire[]>([]);
+  const [activeView, setActiveView] = useState<'list' | 'intake' | 'questionnaire'>('list');
+  const [activeQuestionnaire, setActiveQuestionnaire] = useState<PatientQuestionnaire | null>(null);
+  const [qAnswers, setQAnswers] = useState<Record<string, string>>({});
+  const [savingQ, setSavingQ] = useState(false);
 
   useEffect(() => {
     if (!portalAccount) return;
@@ -239,6 +257,15 @@ export default function PortalIntakeForm() {
         .order('sort_order', { ascending: true });
 
       setCustomQuestions((questionsData || []) as unknown as CustomQuestion[]);
+
+      // Load patient questionnaires
+      const { data: qData } = await supabase
+        .from('patient_questionnaires')
+        .select('*')
+        .eq('patient_id', portalAccount.patient_id)
+        .order('created_at', { ascending: false });
+      setQuestionnaires((qData || []) as unknown as PatientQuestionnaire[]);
+
       setLoading(false);
     };
 
@@ -324,6 +351,37 @@ export default function PortalIntakeForm() {
     }
   };
 
+  const openQuestionnaire = (q: PatientQuestionnaire) => {
+    setActiveQuestionnaire(q);
+    setQAnswers((q.answers as Record<string, string>) || {});
+    setActiveView('questionnaire');
+  };
+
+  const handleSubmitQuestionnaire = async () => {
+    if (!activeQuestionnaire) return;
+    const requiredMissing = activeQuestionnaire.fields.filter(f => f.required && !qAnswers[f.id]?.trim());
+    if (requiredMissing.length > 0) {
+      toast.error(`Preencha as perguntas obrigatórias: ${requiredMissing.map(f => `"${f.question}"`).join(', ')}`);
+      return;
+    }
+    setSavingQ(true);
+    try {
+      const { error } = await supabase
+        .from('patient_questionnaires')
+        .update({ answers: qAnswers as any, status: 'submitted', submitted_at: new Date().toISOString() })
+        .eq('id', activeQuestionnaire.id);
+      if (error) throw error;
+      setQuestionnaires(prev => prev.map(q => q.id === activeQuestionnaire.id ? { ...q, answers: qAnswers, status: 'submitted', submitted_at: new Date().toISOString() } : q));
+      toast.success('Questionário enviado! ✅');
+      setActiveView('list');
+      setActiveQuestionnaire(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar');
+    } finally {
+      setSavingQ(false);
+    }
+  };
+
   if (loading) return (
     <PortalLayout>
       <div className="flex items-center justify-center h-40">
@@ -332,20 +390,106 @@ export default function PortalIntakeForm() {
     </PortalLayout>
   );
 
-  return (
-    <PortalLayout>
-      <div className="space-y-5">
-        <div>
-          <h1 className="text-lg font-bold text-foreground">Minha Ficha</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Preencha seus dados para seu terapeuta</p>
-        </div>
-
-        {submitted && (
-          <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            <span>Ficha enviada ao terapeuta. Você ainda pode atualizar seus dados.</span>
+  // Questionnaire fill view
+  if (activeView === 'questionnaire' && activeQuestionnaire) {
+    const isSubmitted = activeQuestionnaire.status === 'submitted' || activeQuestionnaire.status === 'reviewed';
+    return (
+      <PortalLayout>
+        <div className="space-y-5">
+          <div className="flex items-center gap-2">
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setActiveView('list'); setActiveQuestionnaire(null); }}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold text-foreground">{activeQuestionnaire.title}</h1>
+              <p className="text-xs text-muted-foreground">{isSubmitted ? 'Enviado' : 'Preencha e envie ao terapeuta'}</p>
+            </div>
           </div>
-        )}
+
+          {isSubmitted && (
+            <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span>Enviado em {activeQuestionnaire.submitted_at ? format(new Date(activeQuestionnaire.submitted_at), "d/MM/yyyy 'às' HH:mm", { locale: ptBR }) : ''}</span>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {activeQuestionnaire.fields.map((field, idx) => (
+              <SectionCard key={field.id} title={`${idx + 1}. ${field.question}${field.required ? ' *' : ''}`}>
+                {field.field_type === 'textarea' ? (
+                  <Textarea
+                    value={qAnswers[field.id] || ''}
+                    onChange={e => setQAnswers(prev => ({ ...prev, [field.id]: e.target.value }))}
+                    placeholder="Sua resposta..."
+                    className="resize-none"
+                    rows={3}
+                    disabled={isSubmitted}
+                  />
+                ) : field.field_type === 'yesno' ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Sim', 'Não'].map(opt => (
+                      <button key={opt} type="button" disabled={isSubmitted}
+                        onClick={() => setQAnswers(prev => ({ ...prev, [field.id]: opt }))}
+                        className={cn('rounded-xl border py-2 text-xs font-medium transition-colors',
+                          qAnswers[field.id] === opt ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 border-border text-foreground hover:bg-muted')}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                ) : field.field_type === 'select' ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(field.options || []).map(opt => (
+                      <button key={opt} type="button" disabled={isSubmitted}
+                        onClick={() => setQAnswers(prev => ({ ...prev, [field.id]: opt }))}
+                        className={cn('rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors',
+                          qAnswers[field.id] === opt ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 border-border text-foreground hover:bg-muted')}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                ) : field.field_type === 'number' ? (
+                  <Input type="number" value={qAnswers[field.id] || ''} disabled={isSubmitted}
+                    onChange={e => setQAnswers(prev => ({ ...prev, [field.id]: e.target.value }))} placeholder="Sua resposta..." />
+                ) : (
+                  <Input value={qAnswers[field.id] || ''} disabled={isSubmitted}
+                    onChange={e => setQAnswers(prev => ({ ...prev, [field.id]: e.target.value }))} placeholder="Sua resposta..." />
+                )}
+              </SectionCard>
+            ))}
+          </div>
+
+          {!isSubmitted && (
+            <Button className="w-full gap-1.5" onClick={handleSubmitQuestionnaire} disabled={savingQ}>
+              {savingQ ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Enviar respostas
+            </Button>
+          )}
+        </div>
+      </PortalLayout>
+    );
+  }
+
+  // Intake form view
+  if (activeView === 'intake') {
+    return (
+      <PortalLayout>
+        <div className="space-y-5">
+          <div className="flex items-center gap-2">
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setActiveView('list')}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold text-foreground">Ficha de Anamnese</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Preencha seus dados para seu terapeuta</p>
+            </div>
+          </div>
+
+          {submitted && (
+            <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span>Ficha enviada ao terapeuta. Você ainda pode atualizar seus dados.</span>
+            </div>
+          )}
 
         {/* Dados Pessoais */}
         <SectionCard title="Dados Pessoais (Paciente)">
@@ -542,6 +686,113 @@ export default function PortalIntakeForm() {
             {submitted ? 'Atualizar ficha' : 'Enviar ao terapeuta'}
           </Button>
         </div>
+      </div>
+    </PortalLayout>
+    );
+  }
+
+  // List view (default)
+  const pendingQ = questionnaires.filter(q => q.status === 'pending');
+  const doneQ = questionnaires.filter(q => q.status !== 'pending');
+
+  return (
+    <PortalLayout>
+      <div className="space-y-5">
+        <div>
+          <h1 className="text-lg font-bold text-foreground">Minhas Fichas</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Fichas e questionários do seu terapeuta</p>
+        </div>
+
+        {/* Ficha de Anamnese - always first */}
+        <button
+          onClick={() => setActiveView('intake')}
+          className="w-full rounded-xl border border-border bg-card p-4 text-left hover:bg-muted/20 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Ficha de Anamnese</p>
+                <p className="text-xs text-muted-foreground">Dados cadastrais e clínicos</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {submitted ? (
+                <Badge className="bg-success/10 text-success border-success/20 text-[10px]">
+                  <CheckCircle2 className="w-3 h-3 mr-1" /> Enviada
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px]">Pendente</Badge>
+              )}
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </div>
+        </button>
+
+        {/* Pending questionnaires */}
+        {pendingQ.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pendentes</h2>
+            {pendingQ.map(q => (
+              <button
+                key={q.id}
+                onClick={() => openQuestionnaire(q)}
+                className="w-full rounded-xl border border-warning/30 bg-warning/5 p-4 text-left hover:bg-warning/10 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
+                      <ClipboardList className="w-5 h-5 text-warning" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{q.title}</p>
+                      <p className="text-xs text-muted-foreground">{q.fields.length} perguntas • Recebido em {format(new Date(q.created_at), "d/MM/yyyy", { locale: ptBR })}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] border-warning/40 text-warning">Preencher</Badge>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Completed questionnaires */}
+        {doneQ.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preenchidos</h2>
+            {doneQ.map(q => (
+              <button
+                key={q.id}
+                onClick={() => openQuestionnaire(q)}
+                className="w-full rounded-xl border border-border bg-card p-4 text-left hover:bg-muted/20 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-success" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{q.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Enviado em {q.submitted_at ? format(new Date(q.submitted_at), "d/MM/yyyy", { locale: ptBR }) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {questionnaires.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-4">Nenhum questionário adicional recebido.</p>
+        )}
       </div>
     </PortalLayout>
   );
