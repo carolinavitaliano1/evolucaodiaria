@@ -295,7 +295,16 @@ export default function GroupDetail() {
           )}
         </TabsContent>
 
-        {/* Evolutions Tab */}
+        {/* Session Tab */}
+        <TabsContent value="session" className="mt-4">
+          <GroupSessionTab
+            groupId={group.id}
+            groupName={group.name}
+            clinicId={group.clinic_id}
+            members={members}
+          />
+        </TabsContent>
+
         <TabsContent value="evolutions" className="mt-4">
           {loadingEvos ? (
             <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
