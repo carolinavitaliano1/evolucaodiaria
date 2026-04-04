@@ -12,9 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
+import { SessionHistory } from './SessionHistory';
 
 interface TherapeuticSessionTabProps {
   patientId: string;
@@ -58,7 +59,8 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   // Session history
   const [sessions, setSessions] = useState<any[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
+  const [viewMode, setViewMode] = useState<'session' | 'history'>('session');
+  const [viewingSession, setViewingSession] = useState<any | null>(null);
 
   // Load active session or history
   useEffect(() => {
@@ -107,12 +109,11 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     if (!user) return;
     const { data } = await supabase
       .from('therapy_sessions')
-      .select('id, title, created_at, duration_seconds, status, mood_score')
+      .select('id, title, created_at, duration_seconds, status, mood_score, notes_text, action_plans, next_session_notes, general_comments, positive_feelings, negative_feelings, suicidal_thoughts, price, payment_pending, started_at')
       .eq('patient_id', patientId)
       .eq('user_id', user.id)
       .eq('status', 'finished')
-      .order('created_at', { ascending: false })
-      .limit(20);
+      .order('created_at', { ascending: false });
     if (data) setSessions(data);
   };
 
@@ -327,10 +328,203 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     toast.success('Relatório gerado!');
   };
 
+  const handleDeleteSession = async (sessionId: string) => {
+    const { error } = await supabase.from('therapy_sessions').delete().eq('id', sessionId);
+    if (error) {
+      toast.error('Erro ao excluir sessão');
+    } else {
+      toast.success('Sessão excluída');
+      loadHistory();
+    }
+  };
+
+  const handleDuplicateSession = async (session: any) => {
+    if (!user) return;
+    const { data, error } = await supabase.from('therapy_sessions').insert({
+      user_id: user.id,
+      patient_id: patientId,
+      clinic_id: clinicId,
+      title: `${session.title || 'Sessão'} (cópia)`,
+      notes_text: session.notes_text || '',
+      action_plans: session.action_plans || '',
+      next_session_notes: session.next_session_notes || '',
+      general_comments: session.general_comments || '',
+      positive_feelings: session.positive_feelings || [],
+      negative_feelings: session.negative_feelings || [],
+      mood_score: session.mood_score,
+      suicidal_thoughts: session.suicidal_thoughts || false,
+      price: session.price || 0,
+      payment_pending: false,
+      status: 'active',
+      duration_seconds: 0,
+    }).select('id').single();
+
+    if (error) {
+      toast.error('Erro ao duplicar sessão');
+    } else if (data) {
+      toast.success('Sessão duplicada! Abrindo para edição...');
+      // Load the duplicated session as active
+      setSessionId(data.id);
+      setTitle(`${session.title || 'Sessão'} (cópia)`);
+      setNotesText(session.notes_text || '');
+      setActionPlans(session.action_plans || '');
+      setNextSessionNotes(session.next_session_notes || '');
+      setGeneralComments(session.general_comments || '');
+      setPositiveFeelings(session.positive_feelings || []);
+      setNegativeFeelings(session.negative_feelings || []);
+      setMoodScore(session.mood_score);
+      setSuicidalThoughts(session.suicidal_thoughts || false);
+      setElapsedSeconds(0);
+      setViewMode('session');
+    }
+  };
+
+  const handleViewSession = (session: any) => {
+    setViewingSession(session);
+  };
+
+  const handleEditSession = (session: any) => {
+    // Load session data into form
+    setSessionId(session.id);
+    setTitle(session.title || '');
+    setNotesText(session.notes_text || '');
+    setActionPlans(session.action_plans || '');
+    setNextSessionNotes(session.next_session_notes || '');
+    setGeneralComments(session.general_comments || '');
+    setPositiveFeelings(session.positive_feelings || []);
+    setNegativeFeelings(session.negative_feelings || []);
+    setMoodScore(session.mood_score);
+    setSuicidalThoughts(session.suicidal_thoughts || false);
+    setElapsedSeconds(session.duration_seconds || 0);
+    setPrice(session.price?.toString() || '0');
+    setPaymentPending(session.payment_pending || false);
+    setViewMode('session');
+  };
+
   const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
+
+  // View session detail dialog
+  const renderViewDialog = () => {
+    if (!viewingSession) return null;
+    const s = viewingSession;
+    const date = new Date(s.created_at);
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setViewingSession(null)}>
+        <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</CardTitle>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingSession(null)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Duração: {formatTime(s.duration_seconds || 0)}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {s.mood_score && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Humor</Label>
+                <p className="text-lg">{moodEmojis[s.mood_score - 1]} {s.mood_score}/10</p>
+              </div>
+            )}
+            {s.positive_feelings?.length > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Sentimentos Positivos</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {s.positive_feelings.map((f: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">{f}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {s.negative_feelings?.length > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Sentimentos Negativos</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {s.negative_feelings.map((f: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="bg-red-500/10 text-red-700 dark:text-red-400">{f}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {s.suicidal_thoughts && (
+              <div className="p-3 rounded-lg border border-red-500/50 bg-red-500/5 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span className="text-sm text-red-600 dark:text-red-400 font-semibold">Pensamentos suicidas reportados</span>
+              </div>
+            )}
+            {s.notes_text && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Anotações</Label>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{s.notes_text}</p>
+              </div>
+            )}
+            {s.action_plans && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Planos de Ação</Label>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{s.action_plans}</p>
+              </div>
+            )}
+            {s.next_session_notes && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Próxima Sessão</Label>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{s.next_session_notes}</p>
+              </div>
+            )}
+            {s.general_comments && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Comentários Gerais</Label>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{s.general_comments}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
+      {/* Toggle between session and history */}
+      <div className="flex items-center gap-2 border-b border-border pb-2">
+        <Button
+          variant={viewMode === 'session' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('session')}
+          className="gap-1.5"
+        >
+          <PenLine className="w-3.5 h-3.5" /> Sessão
+        </Button>
+        <Button
+          variant={viewMode === 'history' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('history')}
+          className="gap-1.5"
+        >
+          <History className="w-3.5 h-3.5" /> Histórico
+          {sessions.length > 0 && (
+            <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{sessions.length}</Badge>
+          )}
+        </Button>
+      </div>
+
+      {viewMode === 'history' ? (
+        <>
+          <SessionHistory
+            sessions={sessions}
+            onView={handleViewSession}
+            onEdit={handleEditSession}
+            onDelete={handleDeleteSession}
+            onDuplicate={handleDuplicateSession}
+            onNewSession={() => { resetForm(); setViewMode('session'); }}
+            onGenerateReport={generateReport}
+          />
+          {renderViewDialog()}
+        </>
+      ) : (
+        <>
       {/* Header */}
       <Card className="border-border">
         <CardContent className="p-4">
@@ -635,31 +829,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           <FileText className="w-4 h-4" /> Gerar Relatório da Sessão
         </Button>
       </div>
-
-      {/* Session History */}
-      {sessions.length > 0 && (
-        <Card className="border-border">
-          <CardHeader className="pb-3 cursor-pointer" onClick={() => setShowHistory(!showHistory)}>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" /> Histórico de Sessões ({sessions.length})
-            </CardTitle>
-          </CardHeader>
-          {showHistory && (
-            <CardContent className="pt-0 space-y-2">
-              {sessions.map(s => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{s.title || 'Sem título'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(s.created_at).toLocaleDateString('pt-BR')} · {formatTime(s.duration_seconds || 0)}
-                      {s.mood_score && ` · Humor: ${s.mood_score}/10`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          )}
-        </Card>
+      </>
       )}
     </div>
   );
