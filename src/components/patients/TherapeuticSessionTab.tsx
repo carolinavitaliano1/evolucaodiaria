@@ -1191,7 +1191,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             onView={(s) => setViewingSession(s)}
             onEdit={handleEditSession}
             onDelete={handleDeleteSession}
-            onDuplicate={handleDuplicateSession}
             onNewSession={() => { resetForm(); setMainView('session'); }}
             onGenerateReport={generateReport}
           />
