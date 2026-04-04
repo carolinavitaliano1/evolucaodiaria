@@ -44,6 +44,10 @@ interface Contract {
   status: string;
   created_at: string;
   contract_template_id: string | null;
+  signer_name: string | null;
+  signer_cpf: string | null;
+  signer_city: string | null;
+  agreed_terms: boolean;
 }
 
 interface ContractManagerProps {
