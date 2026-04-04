@@ -142,7 +142,7 @@ export function BatchPatientImport({ open, onClose, clinics, defaultClinicId, on
   }
 
   async function handleImport() {
-    if (!user || !clinicId) return;
+    if (!user || !selectedClinicId) return;
     const valid = parsed.filter(p => p.valid);
     if (valid.length === 0) return;
 
