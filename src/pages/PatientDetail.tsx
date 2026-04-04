@@ -46,6 +46,8 @@ import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/g
 import jsPDF from 'jspdf';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { PatientFeed } from '@/components/feed/PatientFeed';
+import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
+import { Brain } from 'lucide-react';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
@@ -1839,6 +1841,7 @@ export default function PatientDetail() {
         <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-4 sm:grid-cols-4 gap-2.5">
           {[
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
+            { value: 'session', icon: Brain, label: 'Sessão' },
             { value: 'reports', icon: BarChart3, label: 'Rel. Mensal' },
             { value: 'financial', icon: DollarSign, label: 'Financeiro' },
             { value: 'documents', icon: Paperclip, label: 'Documentos' },
@@ -2169,6 +2172,19 @@ export default function PatientDetail() {
             </div>
           </div>
         </TabsContent>
+
+        {/* Therapeutic Session Tab */}
+        {patient && clinic && (
+          <TabsContent value="session" className="space-y-4">
+            <TherapeuticSessionTab
+              patientId={patient.id}
+              patientName={patient.name}
+              patientAvatar={patient.avatarUrl}
+              clinicId={clinic.id}
+              paymentValue={patient.paymentValue}
+            />
+          </TabsContent>
+        )}
 
         {/* Monthly Report Tab */}
         <TabsContent value="reports" className="space-y-4">
