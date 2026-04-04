@@ -263,6 +263,93 @@ export function TodayAppointments() {
           </div>
         )}
       </div>
+
+      {/* Recipient selection modal for minor patients */}
+      <Dialog open={recipientModal.open} onOpenChange={(open) => setRecipientModal({ open, item: open ? recipientModal.item : null })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <WhatsAppIcon className="w-5 h-5 text-[#25D366]" />
+              Enviar confirmação de sessão
+            </DialogTitle>
+          </DialogHeader>
+
+          {recipientModal.item && (() => {
+            const p = patients.find(pt => pt.id === recipientModal.item?.patientId);
+            if (!p) return null;
+            const patientPhone = p.whatsapp || p.phone || null;
+            const guardianPhone = (p as any).guardianPhone || (p as any).guardian_phone || (p as any).responsibleWhatsapp || (p as any).responsible_whatsapp || null;
+            const guardianName = (p as any).guardianName || (p as any).guardian_name || (p as any).responsibleName || (p as any).responsible_name || 'Responsável';
+            const buildMessage = (recipientName: string) => resolveTemplate(
+              'Olá, {{nome_paciente}}! 😊 Passando para confirmar sua sessão hoje às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
+              { nome_paciente: recipientName, horario: recipientModal.item!.time.slice(0, 5), nome_terapeuta: therapistName }
+            );
+
+            return (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Paciente: <span className="font-medium text-foreground">{p.name}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Escolha para quem deseja enviar a confirmação:
+                </p>
+                <div className="space-y-2">
+                  {patientPhone && (
+                    <button
+                      onClick={() => {
+                        openWhatsApp(patientPhone, buildMessage(p.name));
+                        setRecipientModal({ open: false, item: null });
+                      }}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/60 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[hsl(142,70%,45%)/15] flex items-center justify-center shrink-0">
+                        <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">Paciente · {patientPhone}</p>
+                      </div>
+                      <Send className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    </button>
+                  )}
+                  {guardianPhone && (
+                    <button
+                      onClick={() => {
+                        openWhatsApp(guardianPhone, buildMessage(guardianName));
+                        setRecipientModal({ open: false, item: null });
+                      }}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/60 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[hsl(142,70%,45%)/15] flex items-center justify-center shrink-0">
+                        <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{guardianName}</p>
+                        <p className="text-xs text-muted-foreground">Responsável Legal · {guardianPhone}</p>
+                      </div>
+                      <Send className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    </button>
+                  )}
+                </div>
+                {patientPhone && guardianPhone && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      openWhatsApp(patientPhone, buildMessage(p.name));
+                      setTimeout(() => openWhatsApp(guardianPhone, buildMessage(guardianName)), 800);
+                      setRecipientModal({ open: false, item: null });
+                    }}
+                  >
+                    <WhatsAppIcon className="w-4 h-4 mr-2 text-[#25D366]" />
+                    Enviar para ambos
+                  </Button>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
