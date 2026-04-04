@@ -174,6 +174,15 @@ export default function PortalFinancial() {
             .single();
           if (clinicData) setClinicPayment(clinicData as ClinicPaymentData);
         }
+
+        // Load receipt documents uploaded by portal user
+        const { data: docs } = await supabase
+          .from('portal_documents')
+          .select('id, name, file_path, file_type, file_size, description, created_at')
+          .eq('portal_account_id', portalAccount.id)
+          .ilike('name', 'Comprovante%')
+          .order('created_at', { ascending: false });
+        setReceiptDocs((docs || []) as ReceiptDoc[]);
       } finally {
         setLoading(false);
       }
