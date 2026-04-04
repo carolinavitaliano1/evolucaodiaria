@@ -2977,10 +2977,14 @@ export default function ClinicDetail() {
           open={!!whatsAppRecipient}
           onClose={() => setWhatsAppRecipient(null)}
           patientName={whatsAppRecipient.patientName}
-          patientWhatsapp={whatsAppRecipient.patientWhatsapp}
-          patientPhone={whatsAppRecipient.patientPhone}
-          responsibleName={whatsAppRecipient.responsibleName}
-          responsibleWhatsapp={whatsAppRecipient.responsibleWhatsapp}
+          recipients={[
+            ...(whatsAppRecipient.patientWhatsapp || whatsAppRecipient.patientPhone
+              ? [{ label: 'Paciente', name: whatsAppRecipient.patientName, number: (whatsAppRecipient.patientWhatsapp || whatsAppRecipient.patientPhone)! }]
+              : []),
+            ...(whatsAppRecipient.responsibleWhatsapp
+              ? [{ label: 'Responsável', name: whatsAppRecipient.responsibleName || 'Responsável', number: whatsAppRecipient.responsibleWhatsapp }]
+              : []),
+          ]}
         />
       )}
 
