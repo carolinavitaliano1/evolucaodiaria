@@ -96,6 +96,7 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
       </p>
     </div>
   `;
+  wrapper.appendChild(contentDiv);
 
   document.body.appendChild(wrapper);
   try {
