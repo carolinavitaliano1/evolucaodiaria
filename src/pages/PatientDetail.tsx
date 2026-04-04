@@ -238,6 +238,7 @@ export default function PatientDetail() {
   const [savingPaymentRecord, setSavingPaymentRecord] = useState(false);
   const [financialMonth, setFinancialMonth] = useState(new Date());
   const [financialStampId, setFinancialStampId] = useState<string>('');
+  const [portalReceipts, setPortalReceipts] = useState<{ id: string; name: string; file_path: string; file_type: string; file_size: number | null; description: string | null; created_at: string }[]>([]);
   const currentMonth = financialMonth.getMonth() + 1;
   const currentYear = financialMonth.getFullYear();
 
