@@ -47,6 +47,8 @@ import { QuickWhatsAppModal } from '@/components/whatsapp/QuickWhatsAppModal';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 import { ClinicAttendanceSheet } from '@/components/attendance/ClinicAttendanceSheet';
 import { ClinicAlertsWidget } from '@/components/clinics/ClinicAlertsWidget';
+import { TherapeuticGroupsTab } from '@/components/clinics/TherapeuticGroupsTab';
+import { UsersRound } from 'lucide-react';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
