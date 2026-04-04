@@ -61,6 +61,7 @@ export function QuestionnaireTemplatesManager({ onClose, onSendToPatient }: Prop
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [digitizing, setDigitizing] = useState(false);
+  const [digitizeStep, setDigitizeStep] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
