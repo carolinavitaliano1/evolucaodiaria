@@ -249,6 +249,38 @@ export default function PortalIntakeForm() {
         if (d.custom_answers && typeof d.custom_answers === 'object') {
           setCustomAnswers(d.custom_answers as Record<string, string>);
         }
+      } else {
+        // No intake form yet — pre-fill from patient registration data
+        const { data: patData } = await supabase
+          .from('patients')
+          .select('name, cpf, birthdate, phone, whatsapp, email, responsible_name, responsible_cpf, responsible_whatsapp, financial_responsible_name, financial_responsible_cpf, financial_responsible_whatsapp, observations, diagnosis, payment_due_day')
+          .eq('id', portalAccount.patient_id)
+          .single();
+
+        if (patData) {
+          const p = patData as any;
+          const dayVal = p.payment_due_day ? String(p.payment_due_day) : '';
+          const isPreset = PAYMENT_DAY_OPTIONS.some(o => o.value === dayVal);
+          setCustomDay(!!dayVal && !isPreset);
+          setForm(prev => ({
+            ...prev,
+            full_name: p.name || '',
+            cpf: p.cpf || '',
+            birthdate: p.birthdate || '',
+            phone: p.phone || '',
+            whatsapp: p.whatsapp || '',
+            email: p.email || '',
+            responsible_name: p.responsible_name || '',
+            responsible_cpf: p.responsible_cpf || '',
+            responsible_phone: p.responsible_whatsapp || '',
+            financial_responsible_name: p.financial_responsible_name || '',
+            financial_responsible_cpf: p.financial_responsible_cpf || '',
+            financial_responsible_phone: p.financial_responsible_whatsapp || '',
+            health_info: p.diagnosis || '',
+            observations: p.observations || '',
+            payment_due_day: dayVal,
+          }));
+        }
       }
 
       // Load custom questions from therapist
