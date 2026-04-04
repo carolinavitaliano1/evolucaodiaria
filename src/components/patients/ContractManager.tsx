@@ -53,12 +53,6 @@ interface Contract {
 interface ContractManagerProps {
   patientId: string;
   patientName: string;
-  patientCpf?: string;
-  patientBirthdate?: string;
-  patientPaymentValue?: number;
-  patientWeekdays?: string[];
-  patientScheduleTime?: string;
-  clinicId?: string;
 }
 
 const DEFAULT_BODY = `<h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS TERAPÊUTICOS</h2>
