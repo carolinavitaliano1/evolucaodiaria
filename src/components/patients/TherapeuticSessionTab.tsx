@@ -536,6 +536,65 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     doc.line(margin, y, pageWidth - margin, y);
     y += 8;
 
+    // Helper: render text with **bold** markdown support
+    const renderMarkdownText = (text: string, xPos: number, maxWidth: number) => {
+      // Split by **bold** markers
+      const cleanText = text.replace(/\*\*(.*?)\*\*/g, (_, content) => content);
+      const lines = doc.splitTextToSize(cleanText, maxWidth);
+      
+      // We need to handle bold per-line by re-parsing original text
+      const originalLines = text.split('\n');
+      let lineIndex = 0;
+      
+      for (const originalLine of originalLines) {
+        // Split this line into bold and normal segments
+        const segments: { text: string; bold: boolean }[] = [];
+        let remaining = originalLine;
+        while (remaining.length > 0) {
+          const boldStart = remaining.indexOf('**');
+          if (boldStart === -1) {
+            segments.push({ text: remaining, bold: false });
+            break;
+          }
+          if (boldStart > 0) {
+            segments.push({ text: remaining.slice(0, boldStart), bold: false });
+          }
+          const boldEnd = remaining.indexOf('**', boldStart + 2);
+          if (boldEnd === -1) {
+            segments.push({ text: remaining.slice(boldStart + 2), bold: false });
+            break;
+          }
+          segments.push({ text: remaining.slice(boldStart + 2, boldEnd), bold: true });
+          remaining = remaining.slice(boldEnd + 2);
+          continue;
+        }
+        
+        // Render segments on current line, wrapping as needed
+        const fullLineText = segments.map(s => s.text).join('');
+        const wrappedLines = doc.splitTextToSize(fullLineText, maxWidth);
+        
+        for (const wLine of wrappedLines) {
+          if (y > 275) { doc.addPage(); y = 20; }
+          // Simple approach: check if any segment is bold
+          const hasBold = segments.some(s => s.bold && wLine.includes(s.text));
+          if (hasBold) {
+            // Render each segment with correct style
+            let curX = xPos;
+            for (const seg of segments) {
+              if (!seg.text) continue;
+              doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+              doc.text(seg.text, curX, y);
+              curX += doc.getTextWidth(seg.text);
+            }
+          } else {
+            doc.setFont('helvetica', 'normal');
+            doc.text(wLine, xPos, y);
+          }
+          y += 5;
+        }
+      }
+    };
+
     const addSection = (label: string, text: string) => {
       if (!text) return;
       if (y > 260) { doc.addPage(); y = 20; }
@@ -544,28 +603,22 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.setTextColor(99, 102, 241);
       doc.text(label, margin, y);
       y += 6;
-      doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
-      const lines = doc.splitTextToSize(text, contentWidth);
-      for (const line of lines) {
-        if (y > 275) { doc.addPage(); y = 20; }
-        doc.text(line, margin, y);
-        y += 5;
-      }
+      renderMarkdownText(text, margin, contentWidth);
       y += 6;
     };
+
+    // Plan info FIRST if available
+    if (activePlan) {
+      addSection('Objetivos do Plano', activePlan.objectives || '');
+      addSection('Atividades Planejadas', activePlan.activities || '');
+    }
 
     addSection('Anotações da Sessão', correctedNotes);
     addSection('Planos de Ação', correctedPlans);
     addSection('Planejamento para Próxima Sessão', correctedNext);
     addSection('Comentários Gerais', correctedComments);
-
-    // Plan info if available
-    if (activePlan) {
-      addSection('Objetivos do Plano', activePlan.objectives || '');
-      addSection('Atividades Planejadas', activePlan.activities || '');
-    }
 
     // Footer
     const pageCount = doc.getNumberOfPages();
