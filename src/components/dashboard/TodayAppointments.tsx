@@ -12,8 +12,12 @@ import type { PrivateAppointment } from '@/hooks/usePrivateAppointments';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
-import { resolveTemplate } from '@/hooks/useMessageTemplates';
+import { resolveTemplate, openWhatsApp } from '@/hooks/useMessageTemplates';
 import { format } from 'date-fns';
+import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ptBR } from 'date-fns/locale';
 
 type ScheduleItem = {
