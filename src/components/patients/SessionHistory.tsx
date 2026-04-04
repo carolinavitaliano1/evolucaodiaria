@@ -33,7 +33,6 @@ import {
   Eye,
   Pencil,
   Trash2,
-  Copy,
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
