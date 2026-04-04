@@ -97,6 +97,15 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     if (data) {
       populateSessionForm(data);
       setMainView('session');
+      // Load associated plan if exists
+      if (data.plan_id) {
+        const { data: plan } = await supabase
+          .from('session_plans')
+          .select('*')
+          .eq('id', data.plan_id)
+          .maybeSingle();
+        if (plan) setActivePlan(plan);
+      }
     }
   };
 
