@@ -578,24 +578,18 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     doc.line(margin, y, pageWidth - margin, y);
     y += 8;
 
-    // Helper: render text with **bold** markdown support
+    // Helper: render text with **bold** markdown support + justified alignment
     const renderMarkdownText = (text: string, xPos: number, maxWidth: number) => {
-      // Split by **bold** markers
-      const cleanText = text.replace(/\*\*(.*?)\*\*/g, (_, content) => content);
-      const lines = doc.splitTextToSize(cleanText, maxWidth);
-      
-      // We need to handle bold per-line by re-parsing original text
       const originalLines = text.split('\n');
-      let lineIndex = 0;
       
       for (const originalLine of originalLines) {
-        // Split this line into bold and normal segments
+        // Parse segments: bold vs normal, stripping ** markers
         const segments: { text: string; bold: boolean }[] = [];
         let remaining = originalLine;
         while (remaining.length > 0) {
           const boldStart = remaining.indexOf('**');
           if (boldStart === -1) {
-            segments.push({ text: remaining, bold: false });
+            if (remaining) segments.push({ text: remaining, bold: false });
             break;
           }
           if (boldStart > 0) {
@@ -608,29 +602,51 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           }
           segments.push({ text: remaining.slice(boldStart + 2, boldEnd), bold: true });
           remaining = remaining.slice(boldEnd + 2);
-          continue;
         }
         
-        // Render segments on current line, wrapping as needed
+        // Full clean text for wrapping
         const fullLineText = segments.map(s => s.text).join('');
+        if (!fullLineText.trim()) { y += 3; continue; }
         const wrappedLines = doc.splitTextToSize(fullLineText, maxWidth);
         
-        for (const wLine of wrappedLines) {
+        for (let wi = 0; wi < wrappedLines.length; wi++) {
+          const wLine = wrappedLines[wi];
           if (y > 275) { doc.addPage(); y = 20; }
-          // Simple approach: check if any segment is bold
-          const hasBold = segments.some(s => s.bold && wLine.includes(s.text));
-          if (hasBold) {
-            // Render each segment with correct style
-            let curX = xPos;
-            for (const seg of segments) {
-              if (!seg.text) continue;
-              doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-              doc.text(seg.text, curX, y);
-              curX += doc.getTextWidth(seg.text);
-            }
-          } else {
+          
+          // Check if this wrapped line contains bold segments
+          let curX = xPos;
+          let consumed = 0;
+          // Find how many chars we already consumed in previous wrapped lines
+          for (let pi = 0; pi < wi; pi++) consumed += wrappedLines[pi].length;
+          // Remove leading spaces from consumed count adjustments
+          const lineStart = consumed;
+          const lineEnd = consumed + wLine.length;
+          
+          // Render segment by segment for this line portion
+          let charPos = 0;
+          let rendered = false;
+          for (const seg of segments) {
+            const segStart = charPos;
+            const segEnd = charPos + seg.text.length;
+            charPos = segEnd;
+            
+            // Find overlap with current wrapped line
+            const overlapStart = Math.max(segStart, lineStart);
+            const overlapEnd = Math.min(segEnd, lineEnd);
+            if (overlapStart >= overlapEnd) continue;
+            
+            const portion = seg.text.slice(overlapStart - segStart, overlapEnd - segStart);
+            if (!portion) continue;
+            
+            doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+            doc.text(portion, curX, y);
+            curX += doc.getTextWidth(portion);
+            rendered = true;
+          }
+          
+          if (!rendered) {
             doc.setFont('helvetica', 'normal');
-            doc.text(wLine, xPos, y);
+            doc.text(wLine, xPos, y, { align: 'justify', maxWidth });
           }
           y += 5;
         }
