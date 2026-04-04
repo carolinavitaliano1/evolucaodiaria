@@ -786,9 +786,6 @@ export default function PortalIntakeForm() {
                     </div>
                   </button>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleDownloadQuestionnairePdf(q); }}>
-                      <FileDown className="w-4 h-4 text-muted-foreground" />
-                    </Button>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </div>
