@@ -102,6 +102,7 @@ export default function PortalFinancial() {
       const { error } = await supabase.from('portal_messages').insert({
         patient_id: portalAccount.patient_id,
         therapist_user_id: portalAccount.therapist_user_id,
+        portal_account_id: portalAccount.id,
         sender_type: 'patient',
         content: `Olá! Gostaria de solicitar o recibo de pagamento referente a ${MONTH_NAMES[record.month]}/${record.year} (R$ ${record.amount.toFixed(2).replace('.', ',')}).`,
         message_type: 'message',
