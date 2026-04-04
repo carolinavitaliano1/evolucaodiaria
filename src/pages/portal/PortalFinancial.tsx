@@ -107,6 +107,9 @@ export default function PortalFinancial() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptText, setReceiptText] = useState('');
   const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptFilePreview, setReceiptFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!portalAccount || !patient) return;
