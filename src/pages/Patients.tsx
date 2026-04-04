@@ -92,35 +92,12 @@ export default function Patients() {
   }, [visiblePatients, searchTerm, canSeeClinical]);
 
   // Quick registration handler
-  const handleQuickReg = async () => {
-    if (!user || !quickRegName.trim() || !quickRegClinicId) return;
-    setQuickRegSaving(true);
-    try {
-      const clinic = clinics.find(c => c.id === quickRegClinicId);
-      const { data, error } = await supabase
-        .from('patients')
-        .insert({
-          user_id: user.id,
-          clinic_id: quickRegClinicId,
-          name: quickRegName.trim(),
-          birthdate: '2000-01-01', // placeholder, to be filled by patient
-          responsible_whatsapp: quickRegWhatsapp || null,
-          status: 'rascunho',
-        } as any)
-        .select('id, intake_token')
-        .single();
-      if (error) throw error;
-      const token = (data as any).intake_token;
-      const appUrl = 'https://evolucaodiaria.app.br';
-      const link = `${appUrl}/cadastro-paciente/${token}`;
-      setQuickRegToken(token);
-      setQuickRegLink(link);
-      toast.success('Paciente criado! Compartilhe o link abaixo.');
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao criar paciente');
-    } finally {
-      setQuickRegSaving(false);
-    }
+  const handleQuickReg = () => {
+    if (!quickRegClinicId) return;
+    const appUrl = 'https://evolucaodiaria.app.br';
+    const link = `${appUrl}/matricula/${quickRegClinicId}`;
+    setQuickRegLink(link);
+    toast.success('Link gerado! Compartilhe com o responsável.');
   };
 
   const handleSendViaWhatsApp = () => {
