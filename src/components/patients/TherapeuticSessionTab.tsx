@@ -635,6 +635,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       text: aiEvolution,
       attendance_status: 'presente',
       mood: moodScore ? moodEmojis[moodScore - 1] : null,
+      stamp_id: selectedStampId || null,
     });
     setSendingToProntuario(false);
     if (error) {
