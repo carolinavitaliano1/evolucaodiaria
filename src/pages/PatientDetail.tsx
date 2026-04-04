@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
@@ -292,13 +292,19 @@ export default function PatientDetail() {
 
   // Virtual consultation state
   const [isVirtual, setIsVirtual] = useState(false);
+  const [sessionLink, setSessionLink] = useState('');
   const [sendingConfirmation, setSendingConfirmation] = useState(false);
 
-  // Load is_virtual from DB
+  // Load is_virtual + session_link from DB
   useEffect(() => {
     if (!patient) return;
-    supabase.from('patients').select('is_virtual').eq('id', patient.id).maybeSingle()
-      .then(({ data }) => { if (data) setIsVirtual(!!(data as any).is_virtual); });
+    supabase.from('patients').select('is_virtual, session_link').eq('id', patient.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setIsVirtual(!!(data as any).is_virtual);
+          setSessionLink((data as any).session_link || '');
+        }
+      });
   }, [patient?.id]);
 
   const handleToggleVirtual = async (checked: boolean) => {
@@ -306,6 +312,12 @@ export default function PatientDetail() {
     setIsVirtual(checked);
     await supabase.from('patients').update({ is_virtual: checked } as any).eq('id', patient.id);
     toast.success(checked ? 'Consulta marcada como virtual' : 'Consulta marcada como presencial');
+  };
+
+  const handleSaveSessionLink = async () => {
+    if (!patient) return;
+    await supabase.from('patients').update({ session_link: sessionLink || null } as any).eq('id', patient.id);
+    toast.success('Link da sala salvo!');
   };
 
   const handleSendConfirmation = async (channel: 'portal' | 'whatsapp' | 'both') => {
@@ -1831,7 +1843,35 @@ export default function PatientDetail() {
         </div>
       </div>
 
-      {/* Stats Row */}
+      {/* Session Link - only when virtual */}
+      {isVirtual && (
+        <div className="flex items-center gap-2 bg-card rounded-xl p-3 border border-border shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Link2 className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <Label className="text-xs font-medium text-muted-foreground mb-1 block">Link da sala de atendimento</Label>
+            <Input
+              placeholder="https://meet.google.com/... ou zoom.us/..."
+              value={sessionLink}
+              onChange={(e) => setSessionLink(e.target.value)}
+              onBlur={handleSaveSessionLink}
+              className="h-8 text-sm"
+            />
+          </div>
+          {sessionLink && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 shrink-0"
+              onClick={() => window.open(sessionLink, '_blank')}
+              title="Abrir sala"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <div className="flex items-center gap-2 mb-2">
