@@ -302,10 +302,11 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     if (error) {
       toast.error('Erro ao finalizar sessão');
     } else {
-      toast.success('Sessão finalizada!');
+      toast.success('Sessão finalizada e salva com sucesso!');
       setSessionId(null);
       resetForm();
-      loadHistory();
+      await loadHistory();
+      setMainView('history');
     }
   };
 
