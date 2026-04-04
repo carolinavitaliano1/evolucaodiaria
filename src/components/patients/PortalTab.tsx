@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import {
   Send, Loader2, Mail, RefreshCw, CheckCircle2, Clock, MessageSquare, Bell,
   FilePenLine, Eye, ExternalLink, ClipboardList, User, Heart, CreditCard,
-  Plus, Trash2, ChevronDown, ChevronRight, Users, School, Building2, UserCircle, FileUp, Download, X, Settings2, ListOrdered, BookOpen
+  Plus, Trash2, ChevronDown, ChevronRight, Users, School, Building2, UserCircle, FileUp, Download, X, Settings2, ListOrdered, BookOpen, FileDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
