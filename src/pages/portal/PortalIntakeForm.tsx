@@ -693,5 +693,112 @@ export default function PortalIntakeForm() {
         </div>
       </div>
     </PortalLayout>
+    );
+  }
+
+  // List view (default)
+  const pendingQ = questionnaires.filter(q => q.status === 'pending');
+  const doneQ = questionnaires.filter(q => q.status !== 'pending');
+
+  return (
+    <PortalLayout>
+      <div className="space-y-5">
+        <div>
+          <h1 className="text-lg font-bold text-foreground">Minhas Fichas</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Fichas e questionários do seu terapeuta</p>
+        </div>
+
+        {/* Ficha de Anamnese - always first */}
+        <button
+          onClick={() => setActiveView('intake')}
+          className="w-full rounded-xl border border-border bg-card p-4 text-left hover:bg-muted/20 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Ficha de Anamnese</p>
+                <p className="text-xs text-muted-foreground">Dados cadastrais e clínicos</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {submitted ? (
+                <Badge className="bg-success/10 text-success border-success/20 text-[10px]">
+                  <CheckCircle2 className="w-3 h-3 mr-1" /> Enviada
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px]">Pendente</Badge>
+              )}
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+          </div>
+        </button>
+
+        {/* Pending questionnaires */}
+        {pendingQ.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pendentes</h2>
+            {pendingQ.map(q => (
+              <button
+                key={q.id}
+                onClick={() => openQuestionnaire(q)}
+                className="w-full rounded-xl border border-warning/30 bg-warning/5 p-4 text-left hover:bg-warning/10 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
+                      <ClipboardList className="w-5 h-5 text-warning" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{q.title}</p>
+                      <p className="text-xs text-muted-foreground">{q.fields.length} perguntas • Recebido em {format(new Date(q.created_at), "d/MM/yyyy", { locale: ptBR })}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] border-warning/40 text-warning">Preencher</Badge>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Completed questionnaires */}
+        {doneQ.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preenchidos</h2>
+            {doneQ.map(q => (
+              <button
+                key={q.id}
+                onClick={() => openQuestionnaire(q)}
+                className="w-full rounded-xl border border-border bg-card p-4 text-left hover:bg-muted/20 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-success" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{q.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Enviado em {q.submitted_at ? format(new Date(q.submitted_at), "d/MM/yyyy", { locale: ptBR }) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {questionnaires.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-4">Nenhum questionário adicional recebido.</p>
+        )}
+      </div>
+    </PortalLayout>
   );
 }
