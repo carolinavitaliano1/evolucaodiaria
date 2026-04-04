@@ -2236,6 +2236,93 @@ export type Database = {
           },
         ]
       }
+      therapy_sessions: {
+        Row: {
+          action_plans: string
+          clinic_id: string
+          created_at: string
+          duration_seconds: number
+          finished_at: string | null
+          general_comments: string
+          id: string
+          mood_score: number | null
+          negative_feelings: string[]
+          next_session_notes: string
+          notes_text: string
+          patient_id: string
+          payment_pending: boolean
+          positive_feelings: string[]
+          price: number
+          started_at: string | null
+          status: string
+          suicidal_thoughts: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_plans?: string
+          clinic_id: string
+          created_at?: string
+          duration_seconds?: number
+          finished_at?: string | null
+          general_comments?: string
+          id?: string
+          mood_score?: number | null
+          negative_feelings?: string[]
+          next_session_notes?: string
+          notes_text?: string
+          patient_id: string
+          payment_pending?: boolean
+          positive_feelings?: string[]
+          price?: number
+          started_at?: string | null
+          status?: string
+          suicidal_thoughts?: boolean
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_plans?: string
+          clinic_id?: string
+          created_at?: string
+          duration_seconds?: number
+          finished_at?: string | null
+          general_comments?: string
+          id?: string
+          mood_score?: number | null
+          negative_feelings?: string[]
+          next_session_notes?: string
+          notes_text?: string
+          patient_id?: string
+          payment_pending?: boolean
+          positive_feelings?: string[]
+          price?: number
+          started_at?: string | null
+          status?: string
+          suicidal_thoughts?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "therapy_sessions_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "therapy_sessions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
