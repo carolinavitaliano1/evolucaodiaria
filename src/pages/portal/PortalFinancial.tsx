@@ -100,6 +100,7 @@ function formatPaymentType(type: string | null): string {
 
 export default function PortalFinancial() {
   const { portalAccount, patient, sendMessage } = usePortal();
+  const { user } = useAuth();
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [clinicPayment, setClinicPayment] = useState<ClinicPaymentData | null>(null);
   const [packageData, setPackageData] = useState<PackageData | null>(null);
