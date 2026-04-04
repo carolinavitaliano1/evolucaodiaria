@@ -237,10 +237,6 @@ export function SessionHistory({
                               <Pencil className="w-4 h-4 mr-2" />
                               Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDuplicate(session)}>
-                              <Copy className="w-4 h-4 mr-2" />
-                              Duplicar sessão
-                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => setDeleteId(session.id)}
                               className="text-destructive focus:text-destructive"
