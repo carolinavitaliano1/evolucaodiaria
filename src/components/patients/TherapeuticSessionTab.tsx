@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock, History, Target, Sparkles, Send, Loader2, BookOpen, Wand2, Stamp, Download, Eye } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import jsPDF from 'jspdf';
 import { SessionHistory } from './SessionHistory';
 import { SessionPlanForm } from './SessionPlanForm';
@@ -83,6 +84,8 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [sendingToPortal, setSendingToPortal] = useState(false);
   const [stamps, setStamps] = useState<any[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
+  const [declarationSession, setDeclarationSession] = useState<any | null>(null);
+  const [declarationStampId, setDeclarationStampId] = useState<string | null>(null);
 
   // Sub-tab navigation: 'planning' | 'session' | 'history'
   const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
@@ -792,18 +795,25 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
 
-  // Generate attendance declaration PDF
-  const generateDeclaration = async (session: any) => {
+  // Open stamp selector for declaration
+  const handleRequestDeclaration = (session: any) => {
+    const defaultStamp = stamps.find((s: any) => s.is_default) || stamps[0];
+    setDeclarationStampId(defaultStamp?.id || null);
+    setDeclarationSession(session);
+  };
+
+  // Generate attendance declaration PDF with selected stamp
+  const generateDeclaration = async () => {
+    const session = declarationSession;
+    if (!session) return;
     try {
-      // Fetch therapist profile and stamp
       const { data: profile } = await supabase
         .from('profiles')
         .select('name, cpf, professional_id')
         .eq('user_id', user!.id)
         .maybeSingle();
 
-      // Get default stamp
-      const defaultStamp = stamps.find((s: any) => s.is_default) || stamps[0];
+      const chosenStamp = declarationStampId ? stamps.find((s: any) => s.id === declarationStampId) : (stamps.find((s: any) => s.is_default) || stamps[0]);
 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -812,7 +822,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       const contentWidth = pageWidth - margin * 2;
       const centerX = pageWidth / 2;
 
-      // Fetch clinic letterhead if available
       const { data: clinic } = await supabase
         .from('clinics')
         .select('name, letterhead, address, phone, cnpj')
@@ -821,7 +830,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
       let y = 20;
 
-      // Clinic letterhead
       if (clinic?.letterhead) {
         try {
           const img = new Image();
@@ -842,7 +850,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         y = 40;
       }
 
-      // Title
       doc.setFontSize(22);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(99, 102, 241);
@@ -854,7 +861,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.text('Documento Oficial de Presença', centerX, y, { align: 'center' });
       y += 25;
 
-      // Body text
       const sessionDate = new Date(session.created_at);
       const dateStr = sessionDate.toLocaleDateString('pt-BR');
       const startTime = session.started_at
@@ -874,7 +880,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.setTextColor(50, 50, 50);
       doc.setFont('helvetica', 'normal');
 
-      // Build body paragraphs with bold segments
       const bodyParts = [
         { text: 'Declaro, para os devidos fins, que ', bold: false },
         { text: patientName, bold: true },
@@ -889,7 +894,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         { text: '.', bold: false },
       ];
 
-      // Render body with inline bold - justified
       const fullBody = bodyParts.map(p => p.text).join('');
       const bodyLines = doc.splitTextToSize(fullBody, contentWidth);
       for (const line of bodyLines) {
@@ -899,7 +903,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         y += 7;
       }
 
-      // Generated date
       y += 20;
       const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
       const now = new Date();
@@ -909,7 +912,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.setFont('helvetica', 'italic');
       doc.text(genDateStr, centerX, y, { align: 'center' });
 
-      // Therapist signature block
       y += 30;
       doc.setDrawColor(180, 180, 200);
       const lineWidth = 80;
@@ -935,22 +937,39 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         doc.text(`Registro: ${profile.professional_id}`, centerX, y, { align: 'center' });
         y += 6;
       }
-      if (defaultStamp?.cbo) {
-        doc.text(`CBO: ${defaultStamp.cbo}`, centerX, y, { align: 'center' });
+      if (chosenStamp?.cbo) {
+        doc.text(`CBO: ${chosenStamp.cbo}`, centerX, y, { align: 'center' });
         y += 6;
       }
-      if (defaultStamp?.label) {
+      if (chosenStamp?.clinical_area) {
         doc.setFontSize(9);
-        doc.text(defaultStamp.label, centerX, y, { align: 'center' });
+        doc.text(chosenStamp.clinical_area, centerX, y, { align: 'center' });
       }
 
-      // Footer
+      // Stamp image
+      if (chosenStamp?.stamp_image) {
+        try {
+          const sImg = new Image();
+          sImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            sImg.onload = () => resolve();
+            sImg.onerror = () => reject();
+            sImg.src = chosenStamp.stamp_image;
+          });
+          y += 8;
+          const sW = 50;
+          const sH = (sImg.height / sImg.width) * sW;
+          doc.addImage(sImg, 'PNG', centerX - sW / 2, y, sW, sH);
+        } catch { /* skip */ }
+      }
+
       doc.setFontSize(7);
       doc.setTextColor(180, 180, 180);
       doc.text('Documento confidencial — uso exclusivo profissional', centerX, pageHeight - 10, { align: 'center' });
 
       doc.save(`declaracao_comparecimento_${dateStr.replace(/\//g, '-')}.pdf`);
       toast.success('Declaração gerada!');
+      setDeclarationSession(null);
     } catch (e: any) {
       toast.error('Erro ao gerar declaração');
     }
@@ -1478,9 +1497,65 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             onDelete={handleDeleteSession}
             onNewSession={() => { resetForm(); setMainView('session'); }}
             onGenerateReport={generateReport}
-            onGenerateDeclaration={generateDeclaration}
+            onGenerateDeclaration={handleRequestDeclaration}
           />
           {renderViewDialog()}
+
+          {/* Stamp selector dialog for declaration */}
+          <Dialog open={!!declarationSession} onOpenChange={v => !v && setDeclarationSession(null)}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-sm">
+                  <Stamp className="w-4 h-4 text-primary" /> Declaração de Comparecimento
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Selecione o carimbo que será usado na declaração. O CBO e a área clínica serão preenchidos automaticamente.
+                </p>
+                {stamps.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Carimbo</Label>
+                    <Select value={declarationStampId || ''} onValueChange={setDeclarationStampId}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Selecionar carimbo..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stamps.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id} className="text-xs">
+                            {s.name} — {s.clinical_area} {s.cbo ? `(CBO: ${s.cbo})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {declarationStampId && (() => {
+                      const st = stamps.find((s: any) => s.id === declarationStampId);
+                      return st?.stamp_image ? (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
+                          <img src={st.stamp_image} alt="Carimbo" className="h-12 object-contain" />
+                          <div className="text-[10px] text-muted-foreground space-y-0.5">
+                            <p className="font-medium text-foreground">{st.name}</p>
+                            {st.cbo && <p>CBO: {st.cbo}</p>}
+                            <p>{st.clinical_area}</p>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Nenhum carimbo cadastrado. A declaração será gerada sem CBO.</p>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setDeclarationSession(null)}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" className="flex-1 text-xs gap-1.5" onClick={generateDeclaration}>
+                    <Download className="w-3 h-3" /> Gerar PDF
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
 
