@@ -27,9 +27,10 @@ interface TherapeuticSessionTabProps {
   patientAvatar?: string | null;
   clinicId: string;
   paymentValue?: number;
+  patientCpf?: string | null;
 }
 
-export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, clinicId, paymentValue }: TherapeuticSessionTabProps) {
+export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, clinicId, paymentValue, patientCpf }: TherapeuticSessionTabProps) {
   const { user } = useAuth();
 
   // Session state
