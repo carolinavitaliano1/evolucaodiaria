@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import jsPDF from 'jspdf';
 
 interface MemberPatient {
   id: string;
@@ -47,7 +48,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [generalComments, setGeneralComments] = useState('');
   const [activeTab, setActiveTab] = useState('notes');
 
-  // Per-participant feeling inputs
   const [newFeelings, setNewFeelings] = useState<Record<string, { positive: string; negative: string }>>({});
 
   // Timer
@@ -61,9 +61,22 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Sub-views: planning | session | history
+  const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
+
   // History
   const [sessions, setSessions] = useState<any[]>([]);
-  const [mainView, setMainView] = useState<'session' | 'history'>('session');
+  const [viewingSession, setViewingSession] = useState<any | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
+
+  // Plans
+  const [plans, setPlans] = useState<any[]>([]);
+  const [showPlanForm, setShowPlanForm] = useState(false);
+  const [planTitle, setPlanTitle] = useState('');
+  const [planObjectives, setPlanObjectives] = useState('');
+  const [planActivities, setPlanActivities] = useState('');
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [activePlan, setActivePlan] = useState<any>(null);
 
   // AI
   const [aiEvolution, setAiEvolution] = useState('');
@@ -71,7 +84,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
   const [improvingField, setImprovingField] = useState<string | null>(null);
 
-  // Init participants data when members change
+  // Init participants data
   useEffect(() => {
     const init: Record<string, ParticipantData> = {};
     const initFeelings: Record<string, { positive: string; negative: string }> = {};
@@ -87,8 +100,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (!user || !groupId) return;
     loadActiveSession();
     loadHistory();
+    loadPlans();
   }, [user, groupId]);
 
+  // ─── Data Loading ───
   const loadActiveSession = async () => {
     if (!user) return;
     const { data } = await supabase
@@ -103,6 +118,11 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
 
     if (data) {
       populateSessionForm(data);
+      setMainView('session');
+      if (data.plan_id) {
+        const { data: plan } = await supabase.from('session_plans').select('*').eq('id', data.plan_id).maybeSingle();
+        if (plan) setActivePlan(plan);
+      }
     }
   };
 
@@ -116,7 +136,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setElapsedSeconds(data.duration_seconds || 0);
     setAiEvolution('');
 
-    // Restore participants_data from JSONB
     if (data.participants_data && typeof data.participants_data === 'object') {
       const restored: Record<string, ParticipantData> = {};
       for (const [pid, pd] of Object.entries(data.participants_data as Record<string, any>)) {
@@ -133,8 +152,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (data.started_at && !data.finished_at) {
       const start = new Date(data.started_at);
       setStartedAt(start);
-      const diff = Math.floor((Date.now() - start.getTime()) / 1000);
-      setElapsedSeconds(diff);
+      setElapsedSeconds(Math.floor((Date.now() - start.getTime()) / 1000));
       setTimerRunning(true);
     }
   };
@@ -143,7 +161,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (!user) return;
     const { data } = await supabase
       .from('therapy_sessions')
-      .select('id, title, created_at, duration_seconds, status, notes_text, participants_data, started_at, finished_at')
+      .select('id, title, created_at, duration_seconds, status, notes_text, action_plans, next_session_notes, general_comments, participants_data, started_at, finished_at, plan_id')
       .eq('group_id', groupId)
       .eq('user_id', user.id)
       .eq('status', 'finished')
@@ -151,7 +169,19 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (data) setSessions(data);
   };
 
-  // Timer
+  const loadPlans = async () => {
+    if (!user) return;
+    const { data } = await (supabase.from('session_plans')
+      .select('*')
+      .eq('clinic_id', clinicId)
+      .eq('user_id', user.id) as any)
+      .is('patient_id', null)
+      .order('created_at', { ascending: false });
+    // Filter plans that have group context (stored with patient_id = null and title convention)
+    if (data) setPlans(data.filter((p: any) => p.objectives?.includes(`[grupo:${groupId}]`) || true));
+  };
+
+  // ─── Timer ───
   useEffect(() => {
     if (timerRunning) {
       intervalRef.current = setInterval(() => setElapsedSeconds(prev => prev + 1), 1000);
@@ -161,7 +191,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [timerRunning]);
 
-  // Auto-save every 60s
   useEffect(() => {
     if (!sessionId) return;
     autoSaveRef.current = setTimeout(() => saveSession(false), 60000);
@@ -188,6 +217,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     return out;
   };
 
+  // ─── Session Actions ───
   const startSession = async () => {
     if (!user) return;
     const now = new Date();
@@ -211,6 +241,36 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       } as any).select('id').single();
       if (data) setSessionId(data.id);
       if (error) toast.error('Erro ao iniciar sessão');
+    }
+    setMainView('session');
+  };
+
+  const startSessionFromPlan = async (plan: any) => {
+    if (!user) return;
+    const now = new Date();
+    const { data, error } = await supabase.from('therapy_sessions').insert({
+      user_id: user.id,
+      patient_id: members[0]?.id || user.id,
+      clinic_id: clinicId,
+      group_id: groupId,
+      title: plan.title,
+      started_at: now.toISOString(),
+      status: 'active',
+      plan_id: plan.id,
+      price: 0,
+      payment_pending: false,
+      participants_data: serializeParticipantsData(),
+    } as any).select('*').single();
+
+    if (error) {
+      toast.error('Erro ao iniciar sessão');
+    } else if (data) {
+      populateSessionForm(data);
+      setActivePlan(plan);
+      setStartedAt(now);
+      setTimerRunning(true);
+      setMainView('session');
+      toast.success('Sessão iniciada a partir do plano!');
     }
   };
 
@@ -253,7 +313,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (error) {
       toast.error('Erro ao finalizar sessão');
     } else {
-      toast.success('Sessão finalizada e salva com sucesso!');
+      toast.success('Sessão finalizada!');
       setSessionId(null);
       resetForm();
       await loadHistory();
@@ -270,6 +330,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setElapsedSeconds(0);
     setStartedAt(null);
     setAiEvolution('');
+    setActivePlan(null);
     const init: Record<string, ParticipantData> = {};
     members.forEach(m => {
       init[m.id] = { moodScore: null, positiveFeelings: [], negativeFeelings: [], suicidalThoughts: false };
@@ -277,11 +338,9 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setParticipantsData(init);
   };
 
+  // ─── Participant helpers ───
   const updateParticipant = (pid: string, updates: Partial<ParticipantData>) => {
-    setParticipantsData(prev => ({
-      ...prev,
-      [pid]: { ...prev[pid], ...updates },
-    }));
+    setParticipantsData(prev => ({ ...prev, [pid]: { ...prev[pid], ...updates } }));
   };
 
   const addFeeling = (pid: string, type: 'positive' | 'negative') => {
@@ -308,6 +367,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
+  // ─── AI ───
   const improveFieldText = async (field: 'notes' | 'action_plans' | 'next_session', getText: () => string, setText: (v: string) => void) => {
     const text = getText();
     if (!text.trim()) { toast.error('Preencha o campo antes de melhorar com IA.'); return; }
@@ -325,12 +385,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
 
   const generateAIEvolution = async () => {
     if (!notesText && !actionPlans && !generalComments) {
-      toast.error('Preencha as anotações da sessão antes de gerar a evolução.');
-      return;
+      toast.error('Preencha as anotações da sessão antes de gerar a evolução.'); return;
     }
     setGeneratingAI(true);
     try {
-      // Build per-participant summary
       const participantsSummary = members.map(m => {
         const pd = participantsData[m.id];
         if (!pd) return '';
@@ -355,8 +413,8 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           nextSessionNotes,
           generalComments,
           durationSeconds: elapsedSeconds,
-          planObjectives: '',
-          planActivities: '',
+          planObjectives: activePlan?.objectives || '',
+          planActivities: activePlan?.activities || '',
         },
       });
       if (error) throw error;
@@ -371,7 +429,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const sendToProntuario = async () => {
     if (!user || !aiEvolution) return;
     setSendingToProntuario(true);
-    // Send evolution to all members
     const inserts = members.map(m => ({
       user_id: user.id,
       patient_id: m.id,
@@ -388,14 +445,166 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     else { toast.success('Evolução salva no prontuário de todos os participantes!'); setAiEvolution(''); }
   };
 
+  // ─── Plans CRUD ───
+  const savePlan = async () => {
+    if (!user || !planTitle.trim()) { toast.error('Preencha o título do plano'); return; }
+    const payload = {
+      user_id: user.id,
+      clinic_id: clinicId,
+      patient_id: members[0]?.id || user.id,
+      title: planTitle,
+      objectives: `[grupo:${groupId}]\n${planObjectives}`,
+      activities: planActivities,
+      status: 'active',
+    };
+    if (editingPlanId) {
+      await supabase.from('session_plans').update(payload).eq('id', editingPlanId);
+    } else {
+      await supabase.from('session_plans').insert(payload);
+    }
+    toast.success('Plano salvo!');
+    setPlanTitle(''); setPlanObjectives(''); setPlanActivities('');
+    setEditingPlanId(null); setShowPlanForm(false);
+    loadPlans();
+  };
+
+  const editPlan = (plan: any) => {
+    setPlanTitle(plan.title);
+    setPlanObjectives((plan.objectives || '').replace(`[grupo:${groupId}]\n`, ''));
+    setPlanActivities(plan.activities || '');
+    setEditingPlanId(plan.id);
+    setShowPlanForm(true);
+  };
+
+  const deletePlan = async (planId: string) => {
+    await supabase.from('session_plans').delete().eq('id', planId);
+    toast.success('Plano excluído');
+    loadPlans();
+  };
+
+  // ─── History actions ───
+  const handleDeleteSession = async (id: string) => {
+    await supabase.from('therapy_sessions').delete().eq('id', id);
+    toast.success('Sessão excluída');
+    loadHistory();
+  };
+
+  const generateGroupReport = async (session: any) => {
+    setGeneratingReport(true);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      const contentWidth = pageWidth - margin * 2;
+      const centerX = pageWidth / 2;
+      let y = 20;
+      const date = new Date(session.created_at);
+      const dateStr = date.toLocaleDateString('pt-BR');
+
+      // Header
+      doc.setFillColor(99, 102, 241);
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Relatório de Sessão de Grupo', margin, 26);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${groupName} — ${dateStr}`, margin, 35);
+
+      y = 52;
+      doc.setTextColor(50, 50, 50);
+
+      // Group info
+      doc.setFillColor(245, 245, 250);
+      doc.roundedRect(margin, y, contentWidth, 20, 3, 3, 'F');
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Grupo Terapêutico', margin + 5, y + 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`${groupName} — ${members.length} participantes — Duração: ${formatTime(session.duration_seconds || 0)}`, margin + 5, y + 16);
+      y += 28;
+
+      // Participants mood
+      const pData = session.participants_data || {};
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text('Avaliação por Participante', margin, y);
+      y += 7;
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+
+      members.forEach(m => {
+        const pd = pData[m.id];
+        if (!pd) return;
+        if (y > 260) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold');
+        doc.text(m.name, margin, y);
+        doc.setFont('helvetica', 'normal');
+        const parts = [];
+        if (pd.mood_score) parts.push(`Humor: ${pd.mood_score}/10`);
+        if (pd.positive_feelings?.length) parts.push(`Positivos: ${pd.positive_feelings.join(', ')}`);
+        if (pd.negative_feelings?.length) parts.push(`Negativos: ${pd.negative_feelings.join(', ')}`);
+        if (pd.suicidal_thoughts) parts.push('⚠ Ideação suicida');
+        y += 5;
+        if (parts.length) {
+          const lines = doc.splitTextToSize(parts.join(' | '), contentWidth);
+          doc.text(lines, margin, y);
+          y += lines.length * 4 + 3;
+        } else {
+          y += 3;
+        }
+      });
+
+      y += 5;
+
+      const addSection = (label: string, text: string) => {
+        if (!text) return;
+        if (y > 260) { doc.addPage(); y = 20; }
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(99, 102, 241);
+        doc.text(label, margin, y);
+        y += 6;
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(text, contentWidth);
+        doc.text(lines, margin, y, { align: 'justify', maxWidth: contentWidth });
+        y += lines.length * 5 + 5;
+      };
+
+      addSection('Anotações da Sessão', session.notes_text || '');
+      addSection('Planos de Ação', session.action_plans || '');
+      addSection('Próxima Sessão', session.next_session_notes || '');
+      addSection('Comentários Gerais', session.general_comments || '');
+
+      doc.save(`relatorio_grupo_${dateStr.replace(/\//g, '-')}.pdf`);
+      toast.success('Relatório baixado!');
+    } catch {
+      toast.error('Erro ao gerar relatório');
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
   const hasSuicidalAlerts = Object.values(participantsData).some(pd => pd.suicidalThoughts);
+
+  // Filter plans to only show group plans
+  const groupPlans = plans.filter(p => p.objectives?.includes(`[grupo:${groupId}]`));
 
   return (
     <div className="space-y-4">
-      {/* Sub-tab navigation */}
+      {/* Sub-tab navigation — same as individual */}
       <div className="flex items-center gap-1 border-b border-border pb-2">
+        <Button variant={mainView === 'planning' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('planning')} className="gap-1.5">
+          <Target className="w-3.5 h-3.5" /> Planejamento
+        </Button>
         <Button variant={mainView === 'session' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('session')} className="gap-1.5">
-          <PenLine className="w-3.5 h-3.5" /> Sessão
+          <PenLine className="w-3.5 h-3.5" /> Sessão Ativa
           {sessionId && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
         </Button>
         <Button variant={mainView === 'history' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('history')} className="gap-1.5">
@@ -404,8 +613,99 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         </Button>
       </div>
 
+      {/* ═══ PLANNING VIEW ═══ */}
+      {mainView === 'planning' && (
+        showPlanForm ? (
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="text-base">{editingPlanId ? 'Editar plano' : 'Novo plano de sessão'}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-sm">Título do plano *</Label>
+                <Input value={planTitle} onChange={e => setPlanTitle(e.target.value)} placeholder="Ex: Dinâmica de confiança" />
+              </div>
+              <div>
+                <Label className="text-sm">Objetivos</Label>
+                <Textarea value={planObjectives} onChange={e => setPlanObjectives(e.target.value)} placeholder="O que queremos alcançar nesta sessão?" rows={3} />
+              </div>
+              <div>
+                <Label className="text-sm">Atividades planejadas</Label>
+                <Textarea value={planActivities} onChange={e => setPlanActivities(e.target.value)} placeholder="Atividades, dinâmicas, exercícios..." rows={3} />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={savePlan} className="gap-1"><Plus className="w-4 h-4" /> Salvar plano</Button>
+                <Button variant="outline" onClick={() => { setShowPlanForm(false); setEditingPlanId(null); setPlanTitle(''); setPlanObjectives(''); setPlanActivities(''); }}>Cancelar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            <Button onClick={() => setShowPlanForm(true)} className="gap-1.5">
+              <Plus className="w-4 h-4" /> Novo plano de sessão
+            </Button>
+            {groupPlans.length === 0 ? (
+              <div className="text-center py-12">
+                <Target className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">Nenhum plano de sessão criado</p>
+                <p className="text-xs text-muted-foreground mt-1">Crie um plano para organizar a próxima sessão do grupo</p>
+              </div>
+            ) : (
+              groupPlans.map(plan => (
+                <Card key={plan.id} className="border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">{plan.title}</p>
+                        {plan.objectives && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {plan.objectives.replace(`[grupo:${groupId}]\n`, '')}
+                          </p>
+                        )}
+                        {plan.activities && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{plan.activities}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 shrink-0 ml-2">
+                        <Button variant="default" size="sm" onClick={() => startSessionFromPlan(plan)} className="gap-1">
+                          <Play className="w-3.5 h-3.5" /> Iniciar
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => editPlan(plan)}>
+                          <PenLine className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deletePlan(plan.id)}>
+                          <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        )
+      )}
+
+      {/* ═══ SESSION VIEW ═══ */}
       {mainView === 'session' && (
         <>
+          {/* Active plan reference */}
+          {activePlan && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Target className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">Plano: {activePlan.title}</span>
+                </div>
+                {activePlan.objectives && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {activePlan.objectives.replace(`[grupo:${groupId}]\n`, '')}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Header Card */}
           <Card className="border-border">
             <CardContent className="p-4">
@@ -453,7 +753,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             </CardContent>
           </Card>
 
-          {/* === PER-PARTICIPANT CLINICAL ASSESSMENT === */}
+          {/* Mood per participant */}
           <Card className="border-border">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -469,22 +769,11 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                     <Label className="text-xs font-semibold text-foreground">Humor {m.name}</Label>
                     <div className="flex items-center gap-1 flex-wrap">
                       {moodEmojis.map((emoji, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => updateParticipant(m.id, { moodScore: pd.moodScore === i + 1 ? null : i + 1 })}
-                          className={cn(
-                            'text-2xl p-1.5 rounded-lg transition-all hover:scale-110',
-                            pd.moodScore === i + 1 ? 'bg-primary/15 ring-2 ring-primary scale-110' : 'hover:bg-muted'
-                          )}
-                          title={`${i + 1}/10`}
-                        >
-                          {emoji}
-                        </button>
+                        <button key={i} type="button" onClick={() => updateParticipant(m.id, { moodScore: pd.moodScore === i + 1 ? null : i + 1 })}
+                          className={cn('text-2xl p-1.5 rounded-lg transition-all hover:scale-110', pd.moodScore === i + 1 ? 'bg-primary/15 ring-2 ring-primary scale-110' : 'hover:bg-muted')}
+                          title={`${i + 1}/10`}>{emoji}</button>
                       ))}
-                      {pd.moodScore !== null && (
-                        <span className="text-sm font-semibold text-primary ml-2">{pd.moodScore}/10</span>
-                      )}
+                      {pd.moodScore !== null && <span className="text-sm font-semibold text-primary ml-2">{pd.moodScore}/10</span>}
                     </div>
                   </div>
                 );
@@ -508,11 +797,8 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                   <div key={m.id} className="space-y-3 pb-4 border-b border-border last:border-0 last:pb-0">
                     <Label className="text-xs font-semibold text-foreground">Sentimentos {m.name}</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Positive */}
                       <div>
-                        <Label className="text-xs flex items-center gap-1 mb-1.5">
-                          <Smile className="w-3 h-3 text-green-500" /> Sentimentos Positivos
-                        </Label>
+                        <Label className="text-xs flex items-center gap-1 mb-1.5"><Smile className="w-3 h-3 text-green-500" /> Positivos</Label>
                         <div className="flex flex-wrap gap-1 mb-2">
                           {pd.positiveFeelings.map((f, i) => (
                             <Badge key={i} variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400 gap-1">
@@ -521,23 +807,13 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                           ))}
                         </div>
                         <div className="flex gap-1">
-                          <Input
-                            value={nf.positive}
-                            onChange={e => setNewFeelings(prev => ({ ...prev, [m.id]: { ...prev[m.id], positive: e.target.value } }))}
-                            onKeyDown={e => e.key === 'Enter' && addFeeling(m.id, 'positive')}
-                            placeholder="Adicionar..."
-                            className="h-8 text-xs"
-                          />
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => addFeeling(m.id, 'positive')}>
-                            <Plus className="w-3.5 h-3.5" />
-                          </Button>
+                          <Input value={nf.positive} onChange={e => setNewFeelings(prev => ({ ...prev, [m.id]: { ...prev[m.id], positive: e.target.value } }))}
+                            onKeyDown={e => e.key === 'Enter' && addFeeling(m.id, 'positive')} placeholder="Adicionar..." className="h-8 text-xs" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => addFeeling(m.id, 'positive')}><Plus className="w-3.5 h-3.5" /></Button>
                         </div>
                       </div>
-                      {/* Negative */}
                       <div>
-                        <Label className="text-xs flex items-center gap-1 mb-1.5">
-                          <Frown className="w-3 h-3 text-red-500" /> Sentimentos Negativos
-                        </Label>
+                        <Label className="text-xs flex items-center gap-1 mb-1.5"><Frown className="w-3 h-3 text-red-500" /> Negativos</Label>
                         <div className="flex flex-wrap gap-1 mb-2">
                           {pd.negativeFeelings.map((f, i) => (
                             <Badge key={i} variant="secondary" className="bg-red-500/10 text-red-700 dark:text-red-400 gap-1">
@@ -546,35 +822,18 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                           ))}
                         </div>
                         <div className="flex gap-1">
-                          <Input
-                            value={nf.negative}
-                            onChange={e => setNewFeelings(prev => ({ ...prev, [m.id]: { ...prev[m.id], negative: e.target.value } }))}
-                            onKeyDown={e => e.key === 'Enter' && addFeeling(m.id, 'negative')}
-                            placeholder="Adicionar..."
-                            className="h-8 text-xs"
-                          />
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => addFeeling(m.id, 'negative')}>
-                            <Plus className="w-3.5 h-3.5" />
-                          </Button>
+                          <Input value={nf.negative} onChange={e => setNewFeelings(prev => ({ ...prev, [m.id]: { ...prev[m.id], negative: e.target.value } }))}
+                            onKeyDown={e => e.key === 'Enter' && addFeeling(m.id, 'negative')} placeholder="Adicionar..." className="h-8 text-xs" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => addFeeling(m.id, 'negative')}><Plus className="w-3.5 h-3.5" /></Button>
                         </div>
                       </div>
                     </div>
-
-                    {/* Suicidal toggle per participant */}
-                    <div className={cn(
-                      'flex items-center gap-3 p-3 rounded-lg border transition-colors',
-                      pd.suicidalThoughts ? 'border-red-500/50 bg-red-500/5' : 'border-border'
-                    )}>
-                      <Switch
-                        checked={pd.suicidalThoughts}
-                        onCheckedChange={v => updateParticipant(m.id, { suicidalThoughts: v })}
-                        className={pd.suicidalThoughts ? 'data-[state=checked]:bg-red-500' : ''}
-                      />
+                    <div className={cn('flex items-center gap-3 p-3 rounded-lg border transition-colors', pd.suicidalThoughts ? 'border-red-500/50 bg-red-500/5' : 'border-border')}>
+                      <Switch checked={pd.suicidalThoughts} onCheckedChange={v => updateParticipant(m.id, { suicidalThoughts: v })}
+                        className={pd.suicidalThoughts ? 'data-[state=checked]:bg-red-500' : ''} />
                       <div className="flex items-center gap-2">
                         {pd.suicidalThoughts && <AlertTriangle className="w-4 h-4 text-red-500" />}
-                        <Label className={cn('text-sm', pd.suicidalThoughts ? 'text-red-600 dark:text-red-400 font-semibold' : '')}>
-                          Pensamentos suicidas
-                        </Label>
+                        <Label className={cn('text-sm', pd.suicidalThoughts ? 'text-red-600 dark:text-red-400 font-semibold' : '')}>Pensamentos suicidas</Label>
                       </div>
                     </div>
                   </div>
@@ -583,7 +842,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             </CardContent>
           </Card>
 
-          {/* Global alert banner */}
           {hasSuicidalAlerts && (
             <div className="p-3 rounded-lg border border-destructive/50 bg-destructive/5 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-destructive" />
@@ -610,7 +868,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                 </TabsList>
                 <div className="p-4">
                   <TabsContent value="notes" className="mt-0 space-y-2">
-                    <Textarea value={notesText} onChange={e => setNotesText(e.target.value)} placeholder="Registre observações, insights e pontos importantes da sessão do grupo." className="min-h-[200px] resize-y" />
+                    <Textarea value={notesText} onChange={e => setNotesText(e.target.value)} placeholder="Observações, insights e pontos importantes da sessão do grupo." className="min-h-[200px] resize-y" />
                     <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'notes' || !notesText.trim()} onClick={() => improveFieldText('notes', () => notesText, setNotesText)}>
                       {improvingField === 'notes' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
                     </Button>
@@ -633,7 +891,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           <Card className="border-border">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Comentários gerais</CardTitle></CardHeader>
             <CardContent>
-              <Textarea value={generalComments} onChange={e => setGeneralComments(e.target.value)} placeholder="Observações adicionais sobre a dinâmica do grupo." className="min-h-[100px] resize-y" />
+              <Textarea value={generalComments} onChange={e => setGeneralComments(e.target.value)} placeholder="Observações sobre a dinâmica do grupo." className="min-h-[100px] resize-y" />
             </CardContent>
           </Card>
 
@@ -659,7 +917,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             </CardContent>
           </Card>
 
-          {/* Save button */}
           {sessionId && (
             <Button onClick={() => saveSession(true)} disabled={saving} className="w-full gap-1.5">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -669,7 +926,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         </>
       )}
 
-      {/* History View */}
+      {/* ═══ HISTORY VIEW ═══ */}
       {mainView === 'history' && (
         <div className="space-y-3">
           {sessions.length === 0 ? (
@@ -684,15 +941,19 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
               return (
                 <Card key={s.id} className="border-border">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between">
                       <div>
                         <p className="font-medium text-foreground text-sm">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</p>
                         <p className="text-xs text-muted-foreground">
-                          {date.toLocaleDateString('pt-BR')} · Duração: {formatTime(s.duration_seconds || 0)}
+                          {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Duração: {formatTime(s.duration_seconds || 0)}
                         </p>
                       </div>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDeleteSession(s.id)}>
+                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      </Button>
                     </div>
-                    {/* Summary of moods */}
+
+                    {/* Mood summary */}
                     <div className="flex flex-wrap gap-2 mt-2">
                       {members.map(m => {
                         const pd = pData[m.id];
@@ -704,12 +965,92 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                         );
                       })}
                     </div>
+
                     {s.notes_text && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.notes_text}</p>}
+
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
+                      <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setViewingSession(s)}>
+                        <Eye className="w-3.5 h-3.5" /> Ver detalhes
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => generateGroupReport(s)} disabled={generatingReport}>
+                        {generatingReport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        Relatório PDF
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               );
             })
           )}
+        </div>
+      )}
+
+      {/* ═══ Session Detail Modal ═══ */}
+      {viewingSession && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setViewingSession(null)}>
+          <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">{viewingSession.title || 'Sessão de Grupo'}</CardTitle>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingSession(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {new Date(viewingSession.created_at).toLocaleDateString('pt-BR')} · Duração: {formatTime(viewingSession.duration_seconds || 0)}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Per-participant data */}
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">Avaliação por Participante</Label>
+                <div className="space-y-3">
+                  {members.map(m => {
+                    const pd = (viewingSession.participants_data || {})[m.id];
+                    if (!pd) return null;
+                    return (
+                      <div key={m.id} className="bg-muted/30 rounded-lg p-3 space-y-1">
+                        <p className="text-sm font-medium text-foreground">{m.name}</p>
+                        {pd.mood_score && <p className="text-sm">{moodEmojis[(pd.mood_score || 5) - 1]} Humor: {pd.mood_score}/10</p>}
+                        {pd.positive_feelings?.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {pd.positive_feelings.map((f: string, i: number) => (
+                              <Badge key={i} variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400 text-xs">{f}</Badge>
+                            ))}
+                          </div>
+                        )}
+                        {pd.negative_feelings?.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {pd.negative_feelings.map((f: string, i: number) => (
+                              <Badge key={i} variant="secondary" className="bg-red-500/10 text-red-700 dark:text-red-400 text-xs">{f}</Badge>
+                            ))}
+                          </div>
+                        )}
+                        {pd.suicidal_thoughts && (
+                          <div className="flex items-center gap-1 text-red-500 text-xs font-semibold">
+                            <AlertTriangle className="w-3 h-3" /> Ideação suicida
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {viewingSession.notes_text && <div><Label className="text-xs text-muted-foreground">Anotações</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.notes_text}</p></div>}
+              {viewingSession.action_plans && <div><Label className="text-xs text-muted-foreground">Planos de Ação</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.action_plans}</p></div>}
+              {viewingSession.next_session_notes && <div><Label className="text-xs text-muted-foreground">Próxima Sessão</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.next_session_notes}</p></div>}
+              {viewingSession.general_comments && <div><Label className="text-xs text-muted-foreground">Comentários Gerais</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.general_comments}</p></div>}
+
+              <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
+                <Button variant="outline" size="sm" onClick={() => generateGroupReport(viewingSession)} disabled={generatingReport} className="gap-1.5">
+                  {generatingReport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  Baixar Relatório PDF
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
