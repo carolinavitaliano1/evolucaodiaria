@@ -1849,6 +1849,7 @@ export default function PatientDetail() {
             { value: 'notes', icon: PenLine, label: 'Notas' },
             { value: 'portal', icon: Users, label: 'Portal' },
             { value: 'mural', icon: Newspaper, label: 'Mural' },
+            { value: 'attendance', icon: ClipboardList, label: 'Frequência' },
             ...(isOrg ? [{ value: 'therapists', icon: UserCheck, label: 'Terapeutas' }] : []),
           ].map(({ value, icon: Icon, label }) => (
             <TabsTrigger
@@ -1864,20 +1865,8 @@ export default function PatientDetail() {
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
-          {/* Attendance Sheet Print */}
-          {patient && clinic && (
-            <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
-              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
-                <ClipboardList className="w-4 h-4 text-primary" /> Lista de Frequência
-              </h3>
-              <PatientAttendanceButton
-                patient={patient}
-                clinicName={clinic.name}
-                evolutions={patientEvolutions}
-              />
-            </div>
-          )}
-          {/* New Evolution Form */}
+
+
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-primary" /> Nova Evolução
@@ -2867,7 +2856,22 @@ export default function PatientDetail() {
           />
         </TabsContent>
 
-        {/* Terapeutas Responsáveis Tab */}
+        {/* Frequência Tab */}
+        <TabsContent value="attendance">
+          {patient && clinic && (
+            <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+                <ClipboardList className="w-4 h-4 text-primary" /> Lista de Frequência
+              </h3>
+              <PatientAttendanceButton
+                patient={patient}
+                clinicName={clinic.name}
+                evolutions={patientEvolutions}
+              />
+            </div>
+          )}
+        </TabsContent>
+
         {isOrg && (
           <TabsContent value="therapists" className="space-y-4">
             <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
