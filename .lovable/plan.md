@@ -1,55 +1,50 @@
 
 
-# Página de Detalhe do Grupo Terapêutico
+# Sessão Terapêutica em Grupo — Humor e Sentimentos por Participante
 
 ## Resumo
-Criar uma página dedicada `/groups/:id` (similar a `/patients/:id`) para cada grupo terapêutico, com visualização completa das informações do grupo e todas as abas funcionais que existem no paciente individual (Evoluções, Sessão, Financeiro, Portal, Mural, Frequência, Documentos, Tarefas, Notas).
+Criar um componente dedicado `GroupSessionTab` para a página de detalhe do grupo que replique a funcionalidade da sessão individual (`TherapeuticSessionTab`) mas com avaliação clínica **por participante**: humor, sentimentos positivos e negativos individualizados, além de campos compartilhados do grupo (notas, planos, comentários).
 
 ## O que muda para o usuário
-- Ao clicar em um grupo na aba "Grupos" da clínica, abre a página de detalhe do grupo
-- Cabeçalho com nome do grupo, participantes (chips clicáveis), badge ativo/arquivado, botão editar
-- Seção "Informações do grupo" com todas as informações organizadas em cards (Visão geral, Estrutura, Critérios, Acompanhamento) — exibindo "—" quando vazio
-- Abas idênticas ao paciente individual: Evoluções, Sessão, Rel. Mensal, Financeiro, Documentos, Tarefas, Notas, Portal, Mural, Frequência
-- Evoluções/sessões do grupo mostram evoluções vinculadas a todos os participantes (filtradas por grupo)
+- Na aba "Sessão" do grupo, ao iniciar sessão, aparece:
+  - **"Humor do grupo"** — seção com um bloco por participante: "Humor [Nome]" com seletor de emoji 1-10
+  - **"Sentimentos do grupo"** — seção com um bloco por participante: "Sentimentos [Nome]" com positivos e negativos separados
+  - Pensamentos suicidas — toggle individual por participante
+- Campos compartilhados: título da sessão, cronômetro, anotações, planos de ação, próxima sessão, comentários gerais, arquivos, evolução IA
+- O save/auto-save persiste os dados por participante em JSONB na sessão
 
 ## Arquivos a criar/editar
 
 ### 1. Migração SQL
-- Adicionar coluna `group_id uuid` (nullable, FK → therapeutic_groups) nas tabelas `evolutions`, `tasks`, `feed_posts` para vincular registros ao grupo
-- Isto permite que evoluções, tarefas e posts do mural sejam criados "para o grupo"
+Adicionar colunas à tabela `therapeutic_sessions` (ou criar se não existir para grupos):
+- `group_id uuid` (nullable, FK → therapeutic_groups) para vincular sessões ao grupo
+- `participants_data jsonb` — armazena humor/sentimentos/suicidal por participante:
+```json
+{
+  "patient-uuid-1": { "mood_score": 7, "positive_feelings": ["esperança"], "negative_feelings": ["ansiedade"], "suicidal_thoughts": false },
+  "patient-uuid-2": { "mood_score": 5, "positive_feelings": [], "negative_feelings": ["tristeza"], "suicidal_thoughts": false }
+}
+```
 
-### 2. `src/pages/GroupDetail.tsx` (novo — ~800 linhas)
-Página completa inspirada em `PatientDetail.tsx`:
-- **Header**: nome do grupo, lista de participantes com avatares/chips (link para cada `/patients/:id`), botões de ação (editar, WhatsApp grupo, arquivar)
-- **Info Section**: cards read-only com todos os campos do grupo organizados em 4 blocos (Visão geral, Estrutura, Critérios e combinados, Acompanhamento) — valor "—" quando null
-- **Tabs** (mesma estrutura visual do PatientDetail):
-  - `evolutions` — lista evoluções dos participantes (filtro por group_id ou por patient_ids do grupo)
-  - `session` — reutiliza `TherapeuticSessionTab` adaptado para grupo
-  - `reports` — relatório mensal consolidado
-  - `financial` — financeiro por participante
-  - `documents` — documentos do grupo
-  - `tasks` — tarefas vinculadas ao grupo
-  - `notes` — notas do grupo (reutiliza padrão de notas)
-  - `portal` — portal consolidado dos participantes
-  - `mural` — feed/mural do grupo
-  - `attendance` — frequência consolidada
+### 2. `src/components/clinics/GroupSessionTab.tsx` (novo)
+Componente inspirado no `TherapeuticSessionTab` com:
+- **Props**: `groupId`, `groupName`, `clinicId`, `members: MemberPatient[]`
+- **State**: `participantsData: Record<string, { moodScore, positiveFeelings, negativeFeelings, suicidalThoughts }>` — inicializado com um entry por membro
+- **UI da avaliação clínica**:
+  - Card "Humor do grupo" — itera `members`, renderiza "Humor [nome]" + emoji selector por participante
+  - Card "Sentimentos do grupo" — itera `members`, renderiza "Sentimentos [nome]" com sub-seções positivos/negativos
+  - Toggle de pensamentos suicidas por participante (com alerta visual)
+- Timer, notas, planos de ação, próxima sessão, comentários gerais, arquivos, evolução IA — campos compartilhados (mesma lógica do individual)
+- Save: persiste `participants_data` como JSONB + campos compartilhados
+- Histórico: lista sessões do grupo com resumo de humor por participante
 
-### 3. `src/App.tsx`
-- Importar `GroupDetail`
-- Adicionar rota `/groups/:id` no bloco protegido (ao lado de `/patients/:id`)
+### 3. `src/pages/GroupDetail.tsx`
+- Adicionar tab "Sessão" (ícone `PenLine`) no array de tabs
+- Renderizar `<GroupSessionTab>` passando `groupId`, `groupName`, `clinicId`, `members`
 
-### 4. `src/components/clinics/TherapeuticGroupsTab.tsx`
-- Tornar o card do grupo clicável → `navigate(/groups/${g.id})`
-
-### 5. Componentes auxiliares reutilizados
-- `TherapeuticSessionTab` — recebe prop opcional `groupId` + array de `patientIds` para sessão em grupo
-- `PatientFeed` — recebe `groupId` opcional
-- `PortalTab` — iteração sobre participantes do grupo
-
-## Escopo da primeira entrega
-Dado o tamanho, a implementação será focada em:
-1. Página com header + informações completas do grupo (todos os campos)
-2. Todas as abas com funcionalidade básica (evoluções agregadas, financeiro, portal, mural, etc.)
-3. Navegação da listagem de grupos para a página de detalhe
-4. Migração para `group_id` nas tabelas necessárias
+## Fluxo de dados
+1. Terapeuta abre grupo → aba Sessão → "Iniciar Sessão"
+2. Timer inicia, form exibe blocos por participante para humor e sentimentos
+3. Auto-save a cada 60s persiste JSONB com dados individualizados
+4. "Finalizar Sessão" salva e gera evolução IA consolidada
 
