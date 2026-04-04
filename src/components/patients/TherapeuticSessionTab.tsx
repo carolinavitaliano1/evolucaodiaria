@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock, History, Target, Sparkles, Send, Loader2, BookOpen, Wand2 } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock, History, Target, Sparkles, Send, Loader2, BookOpen, Wand2, Stamp } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import { SessionHistory } from './SessionHistory';
@@ -72,7 +73,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
   const [improvingField, setImprovingField] = useState<string | null>(null);
+  const [creatingField, setCreatingField] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [stamps, setStamps] = useState<any[]>([]);
+  const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
 
   // Sub-tab navigation: 'planning' | 'session' | 'history'
   const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
@@ -82,7 +86,22 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     loadActiveSession();
     loadHistory();
     loadPlans();
+    loadStamps();
   }, [user, patientId]);
+
+  const loadStamps = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('stamps')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('is_default', { ascending: false });
+    if (data) {
+      setStamps(data);
+      const defaultStamp = data.find((s: any) => s.is_default);
+      if (defaultStamp) setSelectedStampId(defaultStamp.id);
+    }
+  };
 
   const loadActiveSession = async () => {
     if (!user) return;
@@ -283,18 +302,22 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     if (error) {
       toast.error('Erro ao finalizar sessão');
     } else {
-      toast.success('Sessão finalizada!');
+      toast.success('Sessão finalizada e salva com sucesso!');
       setSessionId(null);
       resetForm();
-      loadHistory();
+      await loadHistory();
+      setMainView('history');
     }
   };
 
-  const exitSession = () => {
-    if (sessionId) saveSession(false);
+  const exitSession = async () => {
+    if (sessionId) {
+      await saveSession(false);
+      toast.info('Sessão salva. Você pode retomá-la depois.');
+    }
     setTimerRunning(false);
-    setSessionId(null);
-    resetForm();
+    setMainView('planning');
+    // Don't reset - keep session active in DB for resuming
   };
 
   const resetForm = () => {
@@ -353,8 +376,43 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       setImprovingField(null);
     }
   };
+  // Create text with AI from session context
+  const createFieldWithAI = async (field: 'create_action_plans' | 'create_next_session', setText: (v: string) => void) => {
+    const context = [
+      notesText ? `Anotações: ${notesText}` : '',
+      moodScore ? `Humor: ${moodScore}/10` : '',
+      positiveFeelings.length > 0 ? `Sentimentos positivos: ${positiveFeelings.join(', ')}` : '',
+      negativeFeelings.length > 0 ? `Sentimentos negativos: ${negativeFeelings.join(', ')}` : '',
+      suicidalThoughts ? 'ALERTA: Ideação suicida reportada' : '',
+      actionPlans && field === 'create_next_session' ? `Planos de ação: ${actionPlans}` : '',
+      activePlan?.objectives ? `Objetivos do plano: ${activePlan.objectives}` : '',
+      activePlan?.activities ? `Atividades do plano: ${activePlan.activities}` : '',
+    ].filter(Boolean).join('\n');
 
-  // Generate PDF report - Professional layout (auto-saves first)
+    if (!context.trim()) {
+      toast.error('Preencha ao menos as anotações da sessão para criar com IA.');
+      return;
+    }
+
+    setCreatingField(field);
+    try {
+      const { data, error } = await supabase.functions.invoke('improve-session-text', {
+        body: { text: context, field },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.improved) {
+        setText(data.improved);
+        toast.success('Conteúdo criado com IA!');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao criar com IA');
+    } finally {
+      setCreatingField(null);
+    }
+  };
+
+
   const generateReport = async () => {
     setGeneratingReport(true);
     try {
@@ -578,6 +636,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       text: aiEvolution,
       attendance_status: 'presente',
       mood: moodScore ? moodEmojis[moodScore - 1] : null,
+      stamp_id: selectedStampId || null,
     });
     setSendingToProntuario(false);
     if (error) {
@@ -874,15 +933,25 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                   </TabsContent>
                   <TabsContent value="plans" className="mt-0 space-y-2">
                     <Textarea value={actionPlans} onChange={e => setActionPlans(e.target.value)} placeholder="Liste tarefas, exercícios ou atividades para o paciente fazer em casa." className="min-h-[200px] resize-y" />
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
-                      {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
+                        {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary" disabled={creatingField === 'create_action_plans'} onClick={() => createFieldWithAI('create_action_plans', setActionPlans)}>
+                        {creatingField === 'create_action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                    </div>
                   </TabsContent>
                   <TabsContent value="next" className="mt-0 space-y-2">
                     <Textarea value={nextSessionNotes} onChange={e => setNextSessionNotes(e.target.value)} placeholder="O que trabalhar na próxima sessão? Planejamento e temas pendentes." className="min-h-[200px] resize-y" />
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'next_session' || !nextSessionNotes.trim()} onClick={() => improveFieldText('next_session', () => nextSessionNotes, setNextSessionNotes)}>
-                      {improvingField === 'next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'next_session' || !nextSessionNotes.trim()} onClick={() => improveFieldText('next_session', () => nextSessionNotes, setNextSessionNotes)}>
+                        {improvingField === 'next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary" disabled={creatingField === 'create_next_session'} onClick={() => createFieldWithAI('create_next_session', setNextSessionNotes)}>
+                        {creatingField === 'create_next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                    </div>
                   </TabsContent>
                 </div>
               </Tabs>
@@ -914,6 +983,24 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
               </CardHeader>
               <CardContent className="space-y-3">
                 <Textarea value={aiEvolution} onChange={e => setAiEvolution(e.target.value)} className="min-h-[200px] resize-y text-sm" />
+                {stamps.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Stamp className="w-4 h-4 text-muted-foreground" />
+                    <Label className="text-xs text-muted-foreground">Carimbo:</Label>
+                    <Select value={selectedStampId || ''} onValueChange={(v) => setSelectedStampId(v || null)}>
+                      <SelectTrigger className="w-[250px] h-8 text-xs">
+                        <SelectValue placeholder="Selecione um carimbo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stamps.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id} className="text-xs">
+                            {s.name} — {s.clinical_area}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Button onClick={sendToProntuario} disabled={sendingToProntuario} className="gap-1.5">
                   {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Enviar para Prontuário
