@@ -160,8 +160,19 @@ export function ClinicAlertsCard() {
       });
     }
 
+    if (intakeReviews > 0) {
+      items.push({
+        key: 'intake-reviews',
+        icon: <FileText className="w-4 h-4" />,
+        label: `${intakeReviews} ficha${intakeReviews > 1 ? 's' : ''} atualizada${intakeReviews > 1 ? 's' : ''} aguardando revisão`,
+        count: intakeReviews,
+        color: 'text-teal-500',
+        onClick: () => navigate('/patients'),
+      });
+    }
+
     return items;
-  }, [overduePayments, missingEvolutions, unreadMessages, pendingTasks, pendingEnrollments, navigate]);
+  }, [overduePayments, missingEvolutions, unreadMessages, pendingTasks, pendingEnrollments, intakeReviews, navigate]);
 
   const allClear = alerts.length === 0 && !loading;
 
