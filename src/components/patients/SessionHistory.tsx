@@ -88,6 +88,7 @@ export function SessionHistory({
   onDelete,
   onNewSession,
   onGenerateReport,
+  onGenerateDeclaration,
 }: SessionHistoryProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
