@@ -1,10 +1,11 @@
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   DollarSign, CheckCircle2, Clock, Receipt,
   Copy, AlertCircle, Bell, Send, QrCode, CreditCard, CalendarDays,
+  Paperclip, X, FileText, Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
