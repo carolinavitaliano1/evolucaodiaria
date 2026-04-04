@@ -1,0 +1,1 @@
+ALTER TABLE public.portal_activities ADD COLUMN attachments jsonb NOT NULL DEFAULT '[]'::jsonb;

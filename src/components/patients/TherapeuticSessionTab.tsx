@@ -19,6 +19,7 @@ import jsPDF from 'jspdf';
 import { SessionHistory } from './SessionHistory';
 import { SessionPlanForm } from './SessionPlanForm';
 import { SessionPlansList } from './SessionPlansList';
+import { SendActionPlanModal, type ActivityAttachment } from './SendActionPlanModal';
 
 interface TherapeuticSessionTabProps {
   patientId: string;
@@ -413,16 +414,16 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     }
   };
 
+  const [showSendModal, setShowSendModal] = useState(false);
+
   // Send action plans to patient portal as activity
-  const sendActionPlansToPortal = async () => {
+  const sendActionPlansToPortal = async (title: string, dueDate: string, attachments: ActivityAttachment[]) => {
     if (!user || !actionPlans.trim()) return;
     setSendingToPortal(true);
     try {
-      // Parse action plans into items (split by newlines, filter empty)
       const lines = actionPlans.split('\n').map(l => l.replace(/^[\s\-\*\d\.]+/, '').trim()).filter(Boolean);
       const items = lines.map(text => ({ text, done: false }));
 
-      // Find portal account for this patient
       const { data: portalAccount } = await supabase
         .from('patient_portal_accounts')
         .select('id')
@@ -435,8 +436,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         patient_id: patientId,
         therapist_user_id: user.id,
         portal_account_id: portalAccount?.id || null,
-        title: 'Plano de Ação',
+        title: title || 'Plano de Ação',
         items: items as any,
+        due_date: dueDate || null,
+        attachments: attachments as any,
         status: 'pending',
       });
 
@@ -1029,7 +1032,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                       <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary" disabled={creatingField === 'create_action_plans'} onClick={() => createFieldWithAI('create_action_plans', setActionPlans)}>
                         {creatingField === 'create_action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Criar com IA
                       </Button>
-                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={!actionPlans.trim() || sendingToPortal} onClick={sendActionPlansToPortal}>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={!actionPlans.trim() || sendingToPortal} onClick={() => setShowSendModal(true)}>
                         {sendingToPortal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Enviar para Portal
                       </Button>
                     </div>
@@ -1131,6 +1134,13 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           {renderViewDialog()}
         </>
       )}
+
+      <SendActionPlanModal
+        open={showSendModal}
+        onOpenChange={setShowSendModal}
+        actionPlansText={actionPlans}
+        onSend={sendActionPlansToPortal}
+      />
     </div>
   );
 }

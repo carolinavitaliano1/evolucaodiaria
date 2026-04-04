@@ -1575,6 +1575,7 @@ export type Database = {
       }
       portal_activities: {
         Row: {
+          attachments: Json
           created_at: string
           due_date: string | null
           id: string
@@ -1587,6 +1588,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachments?: Json
           created_at?: string
           due_date?: string | null
           id?: string
@@ -1599,6 +1601,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachments?: Json
           created_at?: string
           due_date?: string | null
           id?: string
