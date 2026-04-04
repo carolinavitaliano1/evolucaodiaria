@@ -275,10 +275,10 @@ export default function GroupDetail() {
   const loadNotes = async () => {
     if (!user || !group) return;
     setLoadingNotes(true);
-    const { data } = await supabase.from('clinic_notes')
+    const { data } = await (supabase.from('clinic_notes')
       .select('*')
-      .eq('user_id', user.id)
-      .eq('group_id' as any, id!)
+      .eq('user_id', user.id) as any)
+      .eq('group_id', id!)
       .order('created_at', { ascending: false });
     if (data) setNotes(data);
     setLoadingNotes(false);
