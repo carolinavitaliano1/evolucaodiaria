@@ -121,6 +121,8 @@ export interface TemplateVars {
   email_paciente?: string;
   data_nascimento?: string;
   responsavel?: string;
+  nome_responsavel_legal?: string;
+  nome_responsavel_financeiro?: string;
   data_consulta?: string;
   horario?: string;
   dia_semana?: string;
