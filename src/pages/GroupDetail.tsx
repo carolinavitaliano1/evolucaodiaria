@@ -117,11 +117,10 @@ export default function GroupDetail() {
   const loadEvolutions = async () => {
     if (members.length === 0) return;
     setLoadingEvos(true);
-    const patientIds = members.map(m => m.id);
     const { data } = await supabase
       .from('evolutions')
       .select('*')
-      .in('patient_id', patientIds)
+      .eq('group_id', id!)
       .order('date', { ascending: false })
       .limit(100);
     if (data) setEvolutions(data);
