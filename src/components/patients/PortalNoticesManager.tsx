@@ -54,6 +54,7 @@ export function PortalNoticesManager({ patientId, patientName, portalAccountId }
       const { error } = await supabase.from('portal_notices').insert({
         patient_id: patientId,
         therapist_user_id: user.id,
+        portal_account_id: portalAccountId,
         title: title.trim(),
         content: content.trim() || null,
         read_by_patient: false,
