@@ -60,6 +60,8 @@ export default function Patients() {
   const [quickRegWhatsapp, setQuickRegWhatsapp] = useState('');
   const [quickRegClinicId, setQuickRegClinicId] = useState('');
   const [quickRegLink, setQuickRegLink] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
+  const [importClinicId, setImportClinicId] = useState('');
 
   // Permission-based flags
   const ownOnly = isOrgMember && hasPermission(orgPermissions, 'patients.own_only') && !isOrgOwner;
