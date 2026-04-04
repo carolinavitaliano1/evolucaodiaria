@@ -549,6 +549,25 @@ function AccountPanel({
 
   const [activeSection, setActiveSection] = useState<string | null>(actions[0]?.id || null);
 
+  // Mark unread patient messages as read when therapist opens messages section
+  useEffect(() => {
+    if (activeSection !== 'messages') return;
+    const unreadIds = messages
+      .filter(m => m.sender_type === 'patient' && !m.read_by_therapist)
+      .map(m => m.id);
+    if (unreadIds.length === 0) return;
+
+    supabase
+      .from('portal_messages')
+      .update({ read_by_therapist: true })
+      .in('id', unreadIds)
+      .then(() => {
+        setMessages(prev =>
+          prev.map(m => unreadIds.includes(m.id) ? { ...m, read_by_therapist: true } : m)
+        );
+      });
+  }, [activeSection, messages]);
+
   const handleActionClick = (id: string) => {
     setActiveSection(prev => prev === id ? null : id);
   };
