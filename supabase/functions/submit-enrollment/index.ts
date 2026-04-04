@@ -21,7 +21,7 @@ serve(async (req) => {
     const {
       clinic_id,
       // Patient
-      name, birthdate, cpf, phone, whatsapp, email,
+      name, birthdate, cpf, phone, whatsapp, email, address,
       // Minor / guardian
       is_minor,
       guardian_name, guardian_email, guardian_phone, guardian_kinship,
