@@ -880,6 +880,8 @@ export default function ClinicDetail() {
     setBatchEvolutionText('');
     setBatchIndividualStamps({});
     setBatchAttendanceStatus({});
+    setBatchGlobalStatus('presente');
+    setBatchStatusMode('same');
     setBatchSelectedTemplateId('none');
     setBatchTemplateFormValues({});
   };
