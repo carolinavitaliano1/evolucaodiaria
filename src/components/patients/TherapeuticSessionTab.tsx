@@ -300,6 +300,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     setStartedAt(null);
     setAttachedFiles([]);
     setAiEvolution('');
+    setActivePlan(null);
   };
 
   const addFeeling = (type: 'positive' | 'negative') => {
