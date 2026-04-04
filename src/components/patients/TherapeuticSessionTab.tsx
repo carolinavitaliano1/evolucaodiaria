@@ -521,6 +521,11 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
     doc.save(`sessao_${patientName.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
     toast.success('Relatório gerado!');
+    } catch (e) {
+      toast.error('Erro ao gerar relatório');
+    } finally {
+      setGeneratingReport(false);
+    }
   };
 
   // Generate AI Evolution
