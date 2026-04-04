@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle2, Circle, Clock, CalendarDays } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, CalendarDays, Link2, Image, FileText, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -12,13 +12,36 @@ interface ActivityItem {
   done: boolean;
 }
 
+interface ActivityAttachment {
+  type: 'link' | 'image' | 'document';
+  url: string;
+  name: string;
+}
+
 interface Activity {
   id: string;
   title: string;
   items: ActivityItem[];
+  attachments: ActivityAttachment[];
   due_date: string | null;
   status: string;
   created_at: string;
+}
+
+// Renders **bold** markdown as actual <strong> elements
+function renderBoldText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return text;
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i}>{part.slice(2, -2)}</strong>;
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
 }
 
 export default function PortalActivities() {
@@ -33,7 +56,7 @@ export default function PortalActivities() {
       .select('*')
       .eq('patient_id', portalAccount.patient_id)
       .order('created_at', { ascending: false });
-    if (data) setActivities(data as Activity[]);
+    if (data) setActivities(data.map(d => ({ ...d, attachments: (d as any).attachments || [] })) as Activity[]);
     setLoading(false);
   };
 
@@ -41,7 +64,6 @@ export default function PortalActivities() {
     loadActivities();
   }, [portalAccount]);
 
-  // Setup realtime
   useEffect(() => {
     if (!portalAccount) return;
     const channel = supabase
@@ -75,6 +97,12 @@ export default function PortalActivities() {
   };
 
   const completedCount = (items: ActivityItem[]) => items.filter(i => i.done).length;
+
+  const attachIcon = (type: string) => {
+    if (type === 'link') return <Link2 className="w-3.5 h-3.5 text-primary" />;
+    if (type === 'image') return <Image className="w-3.5 h-3.5 text-primary" />;
+    return <FileText className="w-3.5 h-3.5 text-primary" />;
+  };
 
   return (
     <PortalLayout>
@@ -158,11 +186,31 @@ export default function PortalActivities() {
                         'text-sm leading-relaxed',
                         item.done ? 'line-through text-muted-foreground' : 'text-foreground'
                       )}>
-                        {item.text}
+                        {renderBoldText(item.text)}
                       </span>
                     </button>
                   ))}
                 </div>
+
+                {/* Attachments */}
+                {activity.attachments && activity.attachments.length > 0 && (
+                  <div className="border-t border-border pt-3 space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Materiais anexados</p>
+                    {activity.attachments.map((att, i) => (
+                      <a
+                        key={i}
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 text-xs hover:bg-muted transition-colors"
+                      >
+                        {attachIcon(att.type)}
+                        <span className="truncate flex-1 text-foreground">{att.name}</span>
+                        <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })

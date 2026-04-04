@@ -1134,6 +1134,13 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           {renderViewDialog()}
         </>
       )}
+
+      <SendActionPlanModal
+        open={showSendModal}
+        onOpenChange={setShowSendModal}
+        actionPlansText={actionPlans}
+        onSend={sendActionPlansToPortal}
+      />
     </div>
   );
 }
