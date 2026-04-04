@@ -229,6 +229,7 @@ export default function GroupDetail() {
     setSavingEvo(false);
   };
 
+  const toggleArchive = async () => {
     if (!group) return;
     await supabase.from('therapeutic_groups').update({ is_archived: !group.is_archived } as any).eq('id', group.id);
     toast.success(group.is_archived ? 'Grupo reativado' : 'Grupo arquivado');
