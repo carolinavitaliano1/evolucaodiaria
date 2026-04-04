@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,9 +7,11 @@ import { toLocalDateString } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
+import { toast } from 'sonner';
 import {
   AlertTriangle, DollarSign, FileText, MessageSquare,
   ClipboardList, UserPlus, ChevronRight, ChevronDown, Sparkles,
+  CheckCircle2, X,
 } from 'lucide-react';
 
 interface PatientRef {
@@ -27,6 +29,25 @@ interface AlertGroup {
   fallbackClick?: () => void;
 }
 
+const DISMISSED_KEY = 'clinipro_dismissed_alerts';
+
+function getDismissedAlerts(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISSED_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function dismissAlert(key: string) {
+  const current = getDismissedAlerts();
+  current[key] = toLocalDateString(new Date());
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify(current));
+}
+
+function isAlertDismissed(key: string): boolean {
+  const current = getDismissedAlerts();
+  return current[key] === toLocalDateString(new Date());
+}
+
 export function ClinicAlertsCard() {
   const { patients, tasks, evolutions } = useApp();
   const { user } = useAuth();
@@ -39,13 +60,12 @@ export function ClinicAlertsCard() {
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<Record<string, string>>(getDismissedAlerts());
 
   const todayStr = toLocalDateString(new Date());
 
-  // Pending tasks
   const pendingTasks = useMemo(() => tasks.filter(t => !t.completed).length, [tasks]);
 
-  // Missing evolutions with patient details
   const missingEvolutionPatients = useMemo(() => {
     if (!user) return [];
     const today = new Date();
@@ -73,7 +93,6 @@ export function ClinicAlertsCard() {
     return Array.from(patientSet.values());
   }, [patients, evolutions, user]);
 
-  // Fetch detailed data
   useEffect(() => {
     if (!user) return;
     setLoading(true);
@@ -141,6 +160,53 @@ export function ClinicAlertsCard() {
         navigate(`/patients/${patientId}`);
     }
   };
+
+  const handleDismiss = useCallback((alertKey: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dismissAlert(alertKey);
+    setDismissed({ ...getDismissedAlerts() });
+    toast.success('Alerta ocultado por hoje');
+  }, []);
+
+  const handleMarkRead = useCallback(async (alertKey: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+
+    if (alertKey === 'messages') {
+      const patientIds = unreadMessagePatients.map(p => p.id);
+      if (patientIds.length > 0) {
+        await supabase
+          .from('portal_messages')
+          .update({ read_by_therapist: true })
+          .eq('therapist_user_id', user.id)
+          .eq('sender_type', 'patient')
+          .eq('read_by_therapist', false)
+          .in('patient_id', patientIds);
+        setUnreadMessagePatients([]);
+        toast.success('Mensagens marcadas como lidas');
+        return;
+      }
+    }
+
+    if (alertKey === 'intake-reviews') {
+      const patientIds = intakeReviewPatients.map(p => p.id);
+      if (patientIds.length > 0) {
+        await supabase
+          .from('patient_intake_forms')
+          .update({ needs_review: false })
+          .eq('therapist_user_id', user.id)
+          .in('patient_id', patientIds);
+        setIntakeReviewPatients([]);
+        toast.success('Fichas marcadas como revisadas');
+        return;
+      }
+    }
+
+    // For other types, just dismiss for today
+    dismissAlert(alertKey);
+    setDismissed({ ...getDismissedAlerts() });
+    toast.success('Alerta marcado como lido');
+  }, [user, unreadMessagePatients, intakeReviewPatients]);
 
   const alerts: AlertGroup[] = useMemo(() => {
     const items: AlertGroup[] = [];
@@ -212,8 +278,8 @@ export function ClinicAlertsCard() {
       });
     }
 
-    return items;
-  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, intakeReviewPatients, navigate]);
+    return items.filter(a => !isAlertDismissed(a.key));
+  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, intakeReviewPatients, navigate, dismissed]);
 
   const allClear = alerts.length === 0 && !loading;
 
@@ -247,31 +313,46 @@ export function ClinicAlertsCard() {
         <div className="space-y-1.5">
           {alerts.map(alert => (
             <div key={alert.key}>
-              <button
-                onClick={() => {
-                  if (alert.patients.length === 1) {
-                    handlePatientClick(alert.patients[0].id, alert.key);
-                  } else if (alert.patients.length > 1) {
-                    setExpanded(expanded === alert.key ? null : alert.key);
-                  } else if (alert.fallbackClick) {
-                    alert.fallbackClick();
-                  }
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors text-left group"
-              >
-                <span className={cn("shrink-0", alert.color)}>{alert.icon}</span>
-                <span className="text-sm text-foreground flex-1">{alert.label}</span>
-                {alert.patients.length === 1 || alert.fallbackClick ? (
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                ) : alert.patients.length > 1 ? (
-                  <ChevronDown className={cn(
-                    "w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0",
-                    expanded === alert.key && "rotate-180"
-                  )} />
-                ) : null}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    if (alert.patients.length === 1) {
+                      handlePatientClick(alert.patients[0].id, alert.key);
+                    } else if (alert.patients.length > 1) {
+                      setExpanded(expanded === alert.key ? null : alert.key);
+                    } else if (alert.fallbackClick) {
+                      alert.fallbackClick();
+                    }
+                  }}
+                  className="flex-1 flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors text-left group min-w-0"
+                >
+                  <span className={cn("shrink-0", alert.color)}>{alert.icon}</span>
+                  <span className="text-sm text-foreground flex-1 truncate">{alert.label}</span>
+                  {alert.patients.length === 1 || alert.fallbackClick ? (
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  ) : alert.patients.length > 1 ? (
+                    <ChevronDown className={cn(
+                      "w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0",
+                      expanded === alert.key && "rotate-180"
+                    )} />
+                  ) : null}
+                </button>
+                <button
+                  onClick={(e) => handleMarkRead(alert.key, e)}
+                  title="Marcar como lido"
+                  className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={(e) => handleDismiss(alert.key, e)}
+                  title="Ocultar alerta"
+                  className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
-              {/* Expanded patient list */}
               {expanded === alert.key && alert.patients.length > 1 && (
                 <div className="ml-7 mt-0.5 mb-1 space-y-0.5">
                   {alert.patients.map(p => (
