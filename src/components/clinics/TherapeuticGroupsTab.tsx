@@ -221,13 +221,17 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {visibleGroups.map(g => (
-            <div key={g.id} className="bg-card rounded-xl border border-border p-4 flex flex-col gap-2">
+            <div
+              key={g.id}
+              className="bg-card rounded-xl border border-border p-4 flex flex-col gap-2 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all"
+              onClick={() => navigate(`/groups/${g.id}`)}
+            >
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-semibold text-foreground">{g.name}</h3>
                   {g.therapeutic_focus && <p className="text-xs text-muted-foreground">{g.therapeutic_focus}</p>}
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(g)}>
                     <Pencil className="w-3.5 h-3.5" />
                   </Button>
@@ -244,7 +248,7 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
                 {g.meeting_frequency && <Badge variant="outline" className="text-xs">{g.meeting_frequency}</Badge>}
                 {g.duration_minutes && <Badge variant="outline" className="text-xs">{g.duration_minutes} min</Badge>}
                 {g.session_link && (
-                  <Badge variant="outline" className="text-xs cursor-pointer" onClick={() => window.open(g.session_link!, '_blank')}>
+                  <Badge variant="outline" className="text-xs cursor-pointer" onClick={e => { e.stopPropagation(); window.open(g.session_link!, '_blank'); }}>
                     <Link2 className="w-3 h-3 mr-1" /> Link
                   </Badge>
                 )}
