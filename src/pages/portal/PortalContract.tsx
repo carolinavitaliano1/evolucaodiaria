@@ -333,6 +333,14 @@ export default function PortalContract() {
                     signing={signing}
                     downloadingId={downloadingId}
                     formatCpf={formatCpf}
+                    signerNameInput=""
+                    signerCpfInput=""
+                    signerCityInput=""
+                    agreedTerms={false}
+                    onSignerNameChange={() => {}}
+                    onSignerCpfChange={() => {}}
+                    onSignerCityChange={() => {}}
+                    onAgreedTermsChange={() => {}}
                     onStartSign={() => {}}
                     onCancelSign={() => {}}
                     onSign={() => {}}
