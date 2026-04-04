@@ -223,30 +223,50 @@ export default function PortalFinancial() {
   };
 
   const handleSendReceipt = async () => {
-    if (!portalAccount || (!receiptText.trim() && !receiptFile)) return;
+    if (!portalAccount || !user || (!receiptText.trim() && !receiptFile)) return;
     setSendingReceipt(true);
     try {
-      let fileUrl = '';
+      let filePath = '';
+      let fileName = '';
+      let fileType = '';
+      let fileSize: number | null = null;
+
       if (receiptFile) {
         const ext = receiptFile.name.split('.').pop() || 'bin';
-        const path = `${portalAccount.therapist_user_id}/${portalAccount.id}/receipts/${Date.now()}.${ext}`;
+        filePath = `${portalAccount.therapist_user_id}/${portalAccount.id}/receipts/${Date.now()}.${ext}`;
+        fileName = receiptFile.name;
+        fileType = receiptFile.type;
+        fileSize = receiptFile.size;
+
         const { error: uploadError } = await supabase.storage
           .from('portal-documents')
-          .upload(path, receiptFile, { contentType: receiptFile.type });
+          .upload(filePath, receiptFile, { contentType: receiptFile.type });
         if (uploadError) throw uploadError;
-        const { data: signedData, error: signError } = await supabase.storage
-          .from('portal-documents')
-          .createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
-        if (signError) throw signError;
-        fileUrl = signedData.signedUrl;
+
+        // Save to portal_documents so it appears in the Documents tab
+        const { error: docError } = await supabase.from('portal_documents').insert({
+          name: `Comprovante - ${fileName}`,
+          file_path: filePath,
+          file_type: fileType,
+          file_size: fileSize,
+          description: receiptText.trim() || 'Comprovante de pagamento',
+          patient_id: portalAccount.patient_id,
+          portal_account_id: portalAccount.id,
+          therapist_user_id: portalAccount.therapist_user_id,
+          uploaded_by_type: 'patient',
+          uploaded_by_user_id: user.id,
+        });
+        if (docError) throw docError;
       }
 
-      const parts: string[] = ['🧾 Comprovante de pagamento enviado:'];
-      if (receiptText.trim()) parts.push(receiptText.trim());
-      if (fileUrl) parts.push(`📎 Anexo: ${fileUrl}`);
+      // Send notification message to therapist
+      const label = portalAccount.access_label || 'Paciente';
+      const msgContent = receiptFile
+        ? `🧾 ${label} enviou um comprovante de pagamento${receiptText.trim() ? `: ${receiptText.trim()}` : ''}. O documento está disponível na aba Documentos.`
+        : `🧾 ${label} enviou informações de pagamento:\n\n${receiptText.trim()}`;
 
-      await sendMessage(parts.join('\n\n'), 'message');
-      toast.success('Comprovante enviado!');
+      await sendMessage(msgContent, 'message');
+      toast.success('Comprovante enviado com sucesso!');
       setReceiptText('');
       clearFile();
       setShowReceipt(false);
