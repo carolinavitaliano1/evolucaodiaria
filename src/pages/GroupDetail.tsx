@@ -176,8 +176,8 @@ export default function GroupDetail() {
         </Button>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-              <Users className="w-6 h-6 text-indigo-500" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Users className="w-6 h-6 text-primary" />
             </div>
             <div>
               <div className="flex items-center gap-2">
