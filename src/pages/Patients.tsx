@@ -22,6 +22,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import { useMyAssignedPatientIds } from '@/hooks/usePatientAssignments';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WaitlistManager } from '@/components/patients/WaitlistManager';
 
 function calculateAge(birthdate: string | null | undefined): number | null {
   if (!birthdate) return null;
