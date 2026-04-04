@@ -171,14 +171,12 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
 
   const loadPlans = async () => {
     if (!user) return;
-    const { data } = await (supabase.from('session_plans')
+    const { data } = await supabase.from('session_plans')
       .select('*')
       .eq('clinic_id', clinicId)
-      .eq('user_id', user.id) as any)
-      .is('patient_id', null)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    // Filter plans that have group context (stored with patient_id = null and title convention)
-    if (data) setPlans(data.filter((p: any) => p.objectives?.includes(`[grupo:${groupId}]`) || true));
+    if (data) setPlans(data.filter((p: any) => p.objectives?.includes(`[grupo:${groupId}]`)));
   };
 
   // ─── Timer ───
