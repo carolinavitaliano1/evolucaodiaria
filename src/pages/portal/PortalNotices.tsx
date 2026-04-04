@@ -27,6 +27,7 @@ export default function PortalNotices() {
       .from('portal_notices')
       .select('*')
       .eq('patient_id', portalAccount.patient_id)
+      .eq('portal_account_id', portalAccount.id)
       .not('title', 'ilike', '%Mural%')
       .order('created_at', { ascending: false });
 
