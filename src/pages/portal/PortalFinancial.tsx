@@ -570,6 +570,42 @@ export default function PortalFinancial() {
           </CardContent>
         </Card>
 
+        {/* Uploaded receipts list */}
+        {receiptDocs.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Paperclip className="h-4 w-4 text-primary" />
+                Comprovantes Enviados
+              </CardTitle>
+              <CardDescription className="text-xs">Seus comprovantes de pagamento anexados</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-2">
+              {receiptDocs.map(doc => (
+                <div key={doc.id} className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/30">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    {doc.file_type?.startsWith('image/') ? (
+                      <ImageIcon className="w-4 h-4 text-primary" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{doc.name}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {format(new Date(doc.created_at), "d/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {doc.file_size ? ` • ${(doc.file_size / 1024).toFixed(0)} KB` : ''}
+                    </p>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0" onClick={() => handleDownloadReceipt(doc)}>
+                    <Receipt className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3">
           <Card className="border-emerald-500/20 bg-emerald-500/5">
