@@ -849,10 +849,16 @@ function AccountPanel({
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
                               {(q.status === 'submitted' || q.status === 'reviewed') && (
-                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                                  onClick={() => setViewingQAnswers(viewingQAnswers?.id === q.id ? null : q)}>
-                                  <Eye className="w-3 h-3" /> {viewingQAnswers?.id === q.id ? 'Fechar' : 'Ver'}
-                                </Button>
+                                <>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                    onClick={() => setViewingQAnswers(viewingQAnswers?.id === q.id ? null : q)}>
+                                    <Eye className="w-3 h-3" /> {viewingQAnswers?.id === q.id ? 'Fechar' : 'Ver'}
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                    onClick={() => handleDownloadQuestionnaire(q)}>
+                                    <FileDown className="w-3 h-3" /> PDF
+                                  </Button>
+                                </>
                               )}
                               {q.status === 'submitted' && (
                                 <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
