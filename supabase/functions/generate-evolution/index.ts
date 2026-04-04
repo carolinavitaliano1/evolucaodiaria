@@ -45,7 +45,7 @@ Gere APENAS o corpo da evolução clínica, sem cabeçalhos de identificação:`
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: "Você é um psicólogo clínico especialista em redigir evoluções técnicas de sessões terapêuticas. Escreva de forma profissional, com vocabulário técnico-clínico. O texto deve ser conciso, objetivo e entre 200 a 400 palavras." },
+          { role: "system", content: "Você é um psicólogo clínico especialista em redigir evoluções técnicas de sessões terapêuticas. Escreva de forma profissional, com vocabulário técnico-clínico. NÃO inclua cabeçalhos como 'Evolução Psicológica', 'Paciente:', 'Modalidade:' ou dados de identificação. Comece direto com o conteúdo clínico. O texto deve ser conciso, objetivo e entre 200 a 400 palavras." },
           { role: "user", content: prompt },
         ],
         temperature: 0.4,
