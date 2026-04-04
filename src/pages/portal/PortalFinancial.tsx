@@ -164,14 +164,22 @@ export default function PortalFinancial() {
           if (pkgData) setPackageData(pkgData as PackageData);
         }
 
-        // Load clinic payment info — use clinic's own toggle
+        // Load clinic payment info — show if clinic OR patient toggle is on
+        const patientShowPayment = (pat as any)?.show_payment_in_portal ?? false;
         if ((pat as any)?.clinic_id) {
           const { data: clinicData } = await supabase
             .from('clinics')
             .select('payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
             .eq('id', (pat as any).clinic_id)
             .single();
-          if (clinicData) setClinicPayment(clinicData as ClinicPaymentData);
+          if (clinicData) {
+            // If patient-level toggle is on, force show_payment_in_portal to true
+            const merged = {
+              ...clinicData,
+              show_payment_in_portal: clinicData.show_payment_in_portal || patientShowPayment,
+            };
+            setClinicPayment(merged as ClinicPaymentData);
+          }
         }
 
         // Load receipt documents uploaded by portal user
