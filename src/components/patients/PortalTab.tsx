@@ -168,6 +168,133 @@ function CustomAnswersSection({
   );
 }
 
+          {/* Questionnaires */}
+          {activeSection === 'questionnaires' && (
+            <div>
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/20">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-indigo-500" /> Questionários
+                </h3>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setShowQTemplates(true)}>
+                  <Plus className="w-3 h-3" /> Enviar questionário
+                </Button>
+              </div>
+
+              {showQTemplates && (
+                <div className="p-4 border-b border-border bg-muted/10">
+                  <QuestionnaireTemplatesManager
+                    onClose={() => setShowQTemplates(false)}
+                    onSendToPatient={async (template: QuestionnaireTemplate) => {
+                      try {
+                        const { error } = await supabase.from('patient_questionnaires').insert({
+                          template_id: template.id,
+                          patient_id: patientId,
+                          portal_account_id: account.id,
+                          therapist_user_id: user!.id,
+                          title: template.name,
+                          fields: template.fields as any,
+                          status: 'pending',
+                        });
+                        if (error) throw error;
+                        toast.success(`"${template.name}" enviado ao paciente!`);
+                        setShowQTemplates(false);
+                        // Refresh
+                        const { data } = await supabase.from('patient_questionnaires')
+                          .select('*').eq('patient_id', patientId).eq('portal_account_id', account.id)
+                          .order('created_at', { ascending: false });
+                        setSentQuestionnaires((data || []) as any[]);
+                      } catch (err: any) {
+                        toast.error(err.message || 'Erro ao enviar');
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Sent questionnaires list */}
+              <div className="p-4">
+                {sentQuestionnaires.length === 0 ? (
+                  <div className="text-center py-6">
+                    <BookOpen className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">Nenhum questionário enviado ainda.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Use "Enviar questionário" para selecionar um template.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {sentQuestionnaires.map((q: any) => {
+                      const statusCfg = q.status === 'submitted'
+                        ? { label: 'Preenchido', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 }
+                        : q.status === 'reviewed'
+                        ? { label: 'Revisado', color: 'bg-primary/10 text-primary border-primary/20', icon: CheckCircle2 }
+                        : { label: 'Pendente', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock };
+                      return (
+                        <div key={q.id} className="rounded-xl border border-border p-3 bg-card">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium">{q.title}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <Badge variant="outline" className={cn('text-[10px] h-5', statusCfg.color)}>
+                                  <statusCfg.icon className="w-3 h-3 mr-1" />{statusCfg.label}
+                                </Badge>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {format(new Date(q.created_at), "d/MM/yyyy", { locale: ptBR })}
+                                </span>
+                                {q.submitted_at && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    • Resposta: {format(new Date(q.submitted_at), "d/MM/yyyy", { locale: ptBR })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {(q.status === 'submitted' || q.status === 'reviewed') && (
+                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                  onClick={() => setViewingQAnswers(viewingQAnswers?.id === q.id ? null : q)}>
+                                  <Eye className="w-3 h-3" /> {viewingQAnswers?.id === q.id ? 'Fechar' : 'Ver respostas'}
+                                </Button>
+                              )}
+                              {q.status === 'submitted' && (
+                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                  onClick={async () => {
+                                    await supabase.from('patient_questionnaires').update({ status: 'reviewed' }).eq('id', q.id);
+                                    setSentQuestionnaires(prev => prev.map(x => x.id === q.id ? { ...x, status: 'reviewed' } : x));
+                                    toast.success('Marcado como revisado');
+                                  }}>
+                                  <CheckCircle2 className="w-3 h-3" /> Revisar
+                                </Button>
+                              )}
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
+                                onClick={async () => {
+                                  await supabase.from('patient_questionnaires').delete().eq('id', q.id);
+                                  setSentQuestionnaires(prev => prev.filter(x => x.id !== q.id));
+                                  toast.success('Questionário removido');
+                                }}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          {/* Answers view */}
+                          {viewingQAnswers?.id === q.id && q.answers && (
+                            <div className="mt-3 pt-3 border-t border-border space-y-2">
+                              {(q.fields || []).map((field: any) => (
+                                <div key={field.id} className="space-y-0.5">
+                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{field.question}</p>
+                                  <p className={cn("text-sm", q.answers[field.id] ? "bg-muted/30 rounded-lg p-2 leading-relaxed" : "text-muted-foreground/50 italic")}>
+                                    {q.answers[field.id] || 'Não respondido'}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
 
 function IntakeReviewPanel({
   intakeForm, patientId, onReviewed,
