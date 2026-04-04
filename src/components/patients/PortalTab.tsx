@@ -302,6 +302,7 @@ function AccountPanel({
   const [sentQuestionnaires, setSentQuestionnaires] = useState<any[]>([]);
   const [viewingQAnswers, setViewingQAnswers] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeSectionRef = useRef<string | null>(null);
   const perms = account.permissions || DEFAULT_PERMISSIONS;
 
   useEffect(() => {
