@@ -59,7 +59,8 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   // Session history
   const [sessions, setSessions] = useState<any[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
+  const [viewMode, setViewMode] = useState<'session' | 'history'>('session');
+  const [viewingSession, setViewingSession] = useState<any | null>(null);
 
   // Load active session or history
   useEffect(() => {
