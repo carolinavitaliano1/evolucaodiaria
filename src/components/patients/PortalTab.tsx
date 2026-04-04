@@ -302,9 +302,9 @@ function AccountPanel({
   const perms = account.permissions || DEFAULT_PERMISSIONS;
 
   useEffect(() => {
-    // Load messages
+    // Load messages scoped to this portal account
     supabase.from('portal_messages').select('*')
-      .eq('patient_id', patientId)
+      .eq('portal_account_id', account.id)
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data }) => setMessages((data || []) as PortalMessage[]));
@@ -322,7 +322,7 @@ function AccountPanel({
       .channel(`portal-msg-${account.id}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'portal_messages',
-        filter: `patient_id=eq.${patientId}`,
+        filter: `portal_account_id=eq.${account.id}`,
       }, (payload) => {
         const m = payload.new as PortalMessage;
         if (m.sender_type === 'patient') {
@@ -339,6 +339,7 @@ function AccountPanel({
       const { data, error } = await supabase.from('portal_messages').insert({
         patient_id: patientId,
         therapist_user_id: user!.id,
+        portal_account_id: account.id,
         sender_type: 'therapist',
         content: newMessage.trim(),
         message_type: messageType,

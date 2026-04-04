@@ -1578,6 +1578,7 @@ export type Database = {
           id: string
           message_type: string
           patient_id: string
+          portal_account_id: string | null
           read_by_patient: boolean
           read_by_therapist: boolean
           sender_type: string
@@ -1591,6 +1592,7 @@ export type Database = {
           id?: string
           message_type?: string
           patient_id: string
+          portal_account_id?: string | null
           read_by_patient?: boolean
           read_by_therapist?: boolean
           sender_type?: string
@@ -1604,12 +1606,21 @@ export type Database = {
           id?: string
           message_type?: string
           patient_id?: string
+          portal_account_id?: string | null
           read_by_patient?: boolean
           read_by_therapist?: boolean
           sender_type?: string
           therapist_user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "portal_messages_portal_account_id_fkey"
+            columns: ["portal_account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_portal_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portal_notices: {
         Row: {
