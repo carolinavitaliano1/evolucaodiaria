@@ -654,22 +654,18 @@ export default function Patients() {
       )}
 
       {/* Quick Registration Dialog */}
-      <Dialog open={quickRegOpen} onOpenChange={(v) => { setQuickRegOpen(v); if (!v) setQuickRegLink(''); }}>
+      <Dialog open={quickRegOpen} onOpenChange={(v) => { setQuickRegOpen(v); if (!v) { setQuickRegLink(''); setQuickRegWhatsapp(''); setQuickRegClinicId(''); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-primary" /> Cadastro Rápido via Link
+              <Link2 className="w-4 h-4 text-primary" /> Cadastro via Link
             </DialogTitle>
           </DialogHeader>
           {!quickRegLink ? (
             <div className="space-y-4 pt-1">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Crie um paciente em <strong>rascunho</strong> e gere um link seguro para o responsável preencher a ficha completa.
+                Gere um link de matrícula para o responsável preencher a <strong>ficha completa de cadastro</strong> do paciente.
               </p>
-              <div className="space-y-1">
-                <Label className="text-xs">Nome do Paciente <span className="text-destructive">*</span></Label>
-                <Input placeholder="Nome completo" value={quickRegName} onChange={e => setQuickRegName(e.target.value)} />
-              </div>
               <div className="space-y-1">
                 <Label className="text-xs">Clínica <span className="text-destructive">*</span></Label>
                 <Select value={quickRegClinicId} onValueChange={setQuickRegClinicId}>
@@ -690,8 +686,8 @@ export default function Patients() {
               <div className="flex gap-2 pt-1">
                 <Button variant="outline" className="flex-1" onClick={() => setQuickRegOpen(false)}>Cancelar</Button>
                 <Button className="flex-1 gap-1.5" onClick={handleQuickReg}
-                  disabled={quickRegSaving || !quickRegName.trim() || !quickRegClinicId}>
-                  {quickRegSaving ? <><span className="w-3 h-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /></> : <Link2 className="w-3.5 h-3.5" />}
+                  disabled={!quickRegClinicId}>
+                  <Link2 className="w-3.5 h-3.5" />
                   Gerar Link
                 </Button>
               </div>
@@ -699,10 +695,10 @@ export default function Patients() {
           ) : (
             <div className="space-y-4 pt-1">
               <div className="flex items-center gap-2 text-success text-sm">
-                <CheckCircle2 className="w-4 h-4" /> Paciente criado em rascunho!
+                <CheckCircle2 className="w-4 h-4" /> Link de matrícula gerado!
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Link de pré-cadastro</Label>
+                <Label className="text-xs">Link de cadastro completo</Label>
                 <div className="flex gap-2">
                   <Input readOnly value={quickRegLink} className="text-xs" />
                   <Button variant="outline" size="icon" className="shrink-0"
@@ -718,7 +714,7 @@ export default function Patients() {
                 </Button>
               )}
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                O paciente ficará como <strong>Rascunho</strong> até que o responsável preencha a ficha e envie. Após o envio, será marcado como <strong>Pendente de Revisão</strong>.
+                O responsável preencherá a ficha completa de matrícula. Após o envio, o paciente aparecerá como <strong>Pendente</strong> para sua aprovação.
               </p>
               <Button variant="outline" className="w-full" onClick={() => setQuickRegOpen(false)}>Fechar</Button>
             </div>
