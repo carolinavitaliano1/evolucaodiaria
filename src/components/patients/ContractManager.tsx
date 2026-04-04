@@ -131,6 +131,7 @@ function TemplateLibrary({
 // ─── Main ContractManager ──────────────────────────────────────────────────────
 export function ContractManager({ patientId, patientName }: ContractManagerProps) {
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Contract state
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -149,6 +150,10 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
   const [bodyHtml, setBodyHtml] = useState('');
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
+
+  // AI digitize state
+  const [digitizing, setDigitizing] = useState(false);
+  const [digitizeProgress, setDigitizeProgress] = useState('');
 
   // Therapist signature per contract
   const [signingContractId, setSigningContractId] = useState<string | null>(null);
