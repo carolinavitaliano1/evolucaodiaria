@@ -309,11 +309,14 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     }
   };
 
-  const exitSession = () => {
-    if (sessionId) saveSession(false);
+  const exitSession = async () => {
+    if (sessionId) {
+      await saveSession(false);
+      toast.info('Sessão salva. Você pode retomá-la depois.');
+    }
     setTimerRunning(false);
-    setSessionId(null);
-    resetForm();
+    setMainView('planning');
+    // Don't reset - keep session active in DB for resuming
   };
 
   const resetForm = () => {
