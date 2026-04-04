@@ -1573,6 +1573,53 @@ export type Database = {
           },
         ]
       }
+      portal_activities: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          id: string
+          items: Json
+          patient_id: string
+          portal_account_id: string | null
+          status: string
+          therapist_user_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          items?: Json
+          patient_id: string
+          portal_account_id?: string | null
+          status?: string
+          therapist_user_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          items?: Json
+          patient_id?: string
+          portal_account_id?: string | null
+          status?: string
+          therapist_user_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_activities_portal_account_id_fkey"
+            columns: ["portal_account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_portal_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_documents: {
         Row: {
           created_at: string
