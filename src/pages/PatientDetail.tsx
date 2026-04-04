@@ -2171,6 +2171,7 @@ export default function PatientDetail() {
               patientAvatar={patient.avatarUrl}
               clinicId={clinic.id}
               paymentValue={patient.paymentValue}
+              patientCpf={(patient as any).cpf}
             />
           </TabsContent>
         )}
