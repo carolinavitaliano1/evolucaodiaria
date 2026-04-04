@@ -483,14 +483,14 @@ export default function PortalFinancial() {
               )}
               {clinicPayment.payment_pix_key && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Chave PIX</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex-1 bg-card rounded-lg px-3 py-2 border font-mono text-sm break-all">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Chave PIX</p>
+                  <div className="flex items-stretch gap-2">
+                    <div className="flex-1 bg-card rounded-lg px-3 py-2.5 border font-mono text-sm break-all min-h-[40px] flex items-center">
                       {clinicPayment.payment_pix_key}
                     </div>
                     <Button
                       size="icon"
-                      className="h-9 w-9 shrink-0"
+                      className="h-10 w-10 shrink-0 self-center"
                       onClick={() => {
                         navigator.clipboard.writeText(clinicPayment.payment_pix_key!);
                         toast.success('Chave PIX copiada!');
