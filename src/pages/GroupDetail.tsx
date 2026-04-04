@@ -2,7 +2,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck } from 'lucide-react';
+import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine } from 'lucide-react';
+import { GroupSessionTab } from '@/components/clinics/GroupSessionTab';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -155,6 +156,7 @@ export default function GroupDetail() {
 
   const tabs = [
     { value: 'info', label: 'Informações', icon: <ClipboardList className="w-4 h-4" /> },
+    { value: 'session', label: 'Sessão', icon: <PenLine className="w-4 h-4" /> },
     { value: 'evolutions', label: 'Evoluções', icon: <FileText className="w-4 h-4" /> },
     { value: 'portal', label: 'Portal', icon: <UserCheck className="w-4 h-4" /> },
     { value: 'mural', label: 'Mural', icon: <Newspaper className="w-4 h-4" /> },
@@ -293,7 +295,16 @@ export default function GroupDetail() {
           )}
         </TabsContent>
 
-        {/* Evolutions Tab */}
+        {/* Session Tab */}
+        <TabsContent value="session" className="mt-4">
+          <GroupSessionTab
+            groupId={group.id}
+            groupName={group.name}
+            clinicId={group.clinic_id}
+            members={members}
+          />
+        </TabsContent>
+
         <TabsContent value="evolutions" className="mt-4">
           {loadingEvos ? (
             <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>

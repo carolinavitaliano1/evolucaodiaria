@@ -2540,11 +2540,13 @@ export type Database = {
           duration_seconds: number
           finished_at: string | null
           general_comments: string
+          group_id: string | null
           id: string
           mood_score: number | null
           negative_feelings: string[]
           next_session_notes: string
           notes_text: string
+          participants_data: Json | null
           patient_id: string
           payment_pending: boolean
           plan_id: string | null
@@ -2564,11 +2566,13 @@ export type Database = {
           duration_seconds?: number
           finished_at?: string | null
           general_comments?: string
+          group_id?: string | null
           id?: string
           mood_score?: number | null
           negative_feelings?: string[]
           next_session_notes?: string
           notes_text?: string
+          participants_data?: Json | null
           patient_id: string
           payment_pending?: boolean
           plan_id?: string | null
@@ -2588,11 +2592,13 @@ export type Database = {
           duration_seconds?: number
           finished_at?: string | null
           general_comments?: string
+          group_id?: string | null
           id?: string
           mood_score?: number | null
           negative_feelings?: string[]
           next_session_notes?: string
           notes_text?: string
+          participants_data?: Json | null
           patient_id?: string
           payment_pending?: boolean
           plan_id?: string | null
@@ -2611,6 +2617,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "therapy_sessions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "therapeutic_groups"
             referencedColumns: ["id"]
           },
           {
