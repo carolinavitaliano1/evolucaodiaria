@@ -369,19 +369,25 @@ export default function PortalFinancial() {
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Pacote</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Tipo</p>
                 <p className="font-semibold text-foreground">
-                  {packageData?.name || formatPaymentType(patient?.payment_type || null)}
+                  {formatPaymentType(patient?.payment_type || null)}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Mensalidade</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Valor</p>
                 <p className="font-semibold text-foreground">
                   {patient?.payment_value
                     ? `R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}`
                     : 'Não definido'}
                 </p>
               </div>
+              {packageData?.name && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Pacote</p>
+                  <p className="font-semibold text-foreground">{packageData.name}</p>
+                </div>
+              )}
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Vencimento</p>
                 <p className="font-semibold text-foreground flex items-center gap-1">
