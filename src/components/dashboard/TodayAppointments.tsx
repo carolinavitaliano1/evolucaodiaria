@@ -169,24 +169,52 @@ export function TodayAppointments() {
                       <span className="text-xs bg-success/10 text-success px-1.5 py-0.5 rounded-full">✓</span>
                     )}
                     {/* WhatsApp quick confirmation for regular patients */}
-                    {!item.isPrivate && (
-                      <QuickWhatsAppButton
-                        phone={(() => {
-                          const p = patients.find(pt => pt.id === item.patientId);
-                          return p?.whatsapp || p?.phone || p?.responsibleWhatsapp || null;
-                        })()}
-                        size="xs"
-                        tooltip="Confirmar sessão via WhatsApp"
-                        message={resolveTemplate(
-                          'Olá, {{nome_paciente}}! 😊 Passando para confirmar sua sessão hoje às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
-                          {
-                            nome_paciente: item.name,
-                            horario: item.time.slice(0, 5),
-                            nome_terapeuta: therapistName,
-                          }
-                        )}
-                      />
-                    )}
+                    {!item.isPrivate && (() => {
+                      const p = patients.find(pt => pt.id === item.patientId);
+                      if (!p) return null;
+                      const patientPhone = p.whatsapp || p.phone || null;
+                      const guardianPhone = (p as any).guardianPhone || (p as any).guardian_phone || (p as any).responsibleWhatsapp || (p as any).responsible_whatsapp || null;
+                      const isMinor = (p as any).isMinor ?? (p as any).is_minor ?? false;
+                      const hasMultiple = isMinor && patientPhone && guardianPhone;
+                      const anyPhone = patientPhone || guardianPhone;
+
+                      if (!anyPhone) return null;
+
+                      if (hasMultiple) {
+                        return (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRecipientModal({ open: true, item });
+                            }}
+                            className={cn(
+                              'flex items-center justify-center rounded-full transition-colors shrink-0 w-6 h-6',
+                              'bg-[hsl(142,70%,45%)/15] hover:bg-[hsl(142,70%,45%)/25] text-[hsl(142,70%,45%)]',
+                            )}
+                            aria-label="Confirmar sessão via WhatsApp"
+                          >
+                            <WhatsAppIcon className="w-3.5 h-3.5" />
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <QuickWhatsAppButton
+                          phone={isMinor ? (guardianPhone || patientPhone) : (patientPhone || guardianPhone)}
+                          size="xs"
+                          tooltip="Confirmar sessão via WhatsApp"
+                          message={resolveTemplate(
+                            'Olá, {{nome_paciente}}! 😊 Passando para confirmar sua sessão hoje às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
+                            {
+                              nome_paciente: isMinor ? ((p as any).guardianName || (p as any).guardian_name || (p as any).responsibleName || (p as any).responsible_name || item.name) : item.name,
+                              horario: item.time.slice(0, 5),
+                              nome_terapeuta: therapistName,
+                            }
+                          )}
+                        />
+                      );
+                    })()}
                     {/* WhatsApp for private appointments */}
                     {item.isPrivate && item.privateAppointment?.client_phone && (
                       <QuickWhatsAppButton
