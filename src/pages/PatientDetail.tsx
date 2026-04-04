@@ -238,6 +238,7 @@ export default function PatientDetail() {
   const [savingPaymentRecord, setSavingPaymentRecord] = useState(false);
   const [financialMonth, setFinancialMonth] = useState(new Date());
   const [financialStampId, setFinancialStampId] = useState<string>('');
+  const [portalReceipts, setPortalReceipts] = useState<{ id: string; name: string; file_path: string; file_type: string; file_size: number | null; description: string | null; created_at: string }[]>([]);
   const currentMonth = financialMonth.getMonth() + 1;
   const currentYear = financialMonth.getFullYear();
 
@@ -311,6 +312,21 @@ export default function PatientDetail() {
         setPaymentRecord(data ? { id: data.id, paid: data.paid, payment_date: data.payment_date, amount: data.amount } : null);
       });
   }, [patient?.id, user, currentMonth, currentYear]);
+
+  // Load portal receipts for this patient
+  useEffect(() => {
+    if (!patient?.id) return;
+    supabase
+      .from('portal_documents')
+      .select('id, name, file_path, file_type, file_size, description, created_at')
+      .eq('patient_id', patient.id)
+      .ilike('name', 'Comprovante%')
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setPortalReceipts((data || []) as typeof portalReceipts);
+      });
+  }, [patient?.id]);
 
   const handleSavePaymentRecord = async (paid: boolean, paymentDate: string | null) => {
     if (!user || !patient) return;
@@ -2621,6 +2637,50 @@ export default function PatientDetail() {
               </button>
             </div>
           </div>
+
+          {/* Portal receipts uploaded by patient/guardian */}
+          {portalReceipts.length > 0 && (
+            <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+              <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+                <Paperclip className="w-4 h-4 text-primary" /> Comprovantes do Portal
+                <span className="text-xs font-normal text-muted-foreground ml-1">— enviados pelo paciente/responsável</span>
+              </h2>
+              <div className="space-y-2">
+                {portalReceipts.map(doc => (
+                  <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-secondary/20">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      {doc.file_type?.startsWith('image/') ? (
+                        <Image className="w-4 h-4 text-primary" />
+                      ) : (
+                        <FileText className="w-4 h-4 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{doc.name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(doc.created_at), "d/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        {doc.description && doc.description !== 'Comprovante de pagamento' ? ` — ${doc.description}` : ''}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-xs h-8 flex-shrink-0"
+                      onClick={async () => {
+                        const { data } = await supabase.storage
+                          .from('portal-documents')
+                          .createSignedUrl(doc.file_path, 3600);
+                        if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                        else toast.error('Erro ao abrir documento');
+                      }}
+                    >
+                      <Download className="w-3 h-3" /> Abrir
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Monthly summary */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">

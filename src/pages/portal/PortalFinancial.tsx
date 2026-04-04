@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect, useRef } from 'react';
 import {
-  DollarSign, CheckCircle2, Clock, Receipt,
+  DollarSign, CheckCircle2, Clock, Receipt, Download,
   Copy, AlertCircle, Bell, Send, QrCode, CreditCard, CalendarDays,
   Paperclip, X, FileText, Image as ImageIcon,
 } from 'lucide-react';
@@ -98,6 +98,16 @@ function formatPaymentType(type: string | null): string {
   return type ? (map[type] || type) : 'Não definido';
 }
 
+interface ReceiptDoc {
+  id: string;
+  name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number | null;
+  description: string | null;
+  created_at: string;
+}
+
 export default function PortalFinancial() {
   const { portalAccount, patient, sendMessage } = usePortal();
   const { user } = useAuth();
@@ -111,6 +121,7 @@ export default function PortalFinancial() {
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptFilePreview, setReceiptFilePreview] = useState<string | null>(null);
+  const [receiptDocs, setReceiptDocs] = useState<ReceiptDoc[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -163,6 +174,15 @@ export default function PortalFinancial() {
             .single();
           if (clinicData) setClinicPayment(clinicData as ClinicPaymentData);
         }
+
+        // Load receipt documents uploaded by portal user
+        const { data: docs } = await supabase
+          .from('portal_documents')
+          .select('id, name, file_path, file_type, file_size, description, created_at')
+          .eq('portal_account_id', portalAccount.id)
+          .ilike('name', 'Comprovante%')
+          .order('created_at', { ascending: false });
+        setReceiptDocs((docs || []) as ReceiptDoc[]);
       } finally {
         setLoading(false);
       }
@@ -270,11 +290,28 @@ export default function PortalFinancial() {
       setReceiptText('');
       clearFile();
       setShowReceipt(false);
+
+      // Reload receipt docs list
+      const { data: docs } = await supabase
+        .from('portal_documents')
+        .select('id, name, file_path, file_type, file_size, description, created_at')
+        .eq('portal_account_id', portalAccount.id)
+        .ilike('name', 'Comprovante%')
+        .order('created_at', { ascending: false });
+      setReceiptDocs((docs || []) as ReceiptDoc[]);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao enviar comprovante');
     } finally {
       setSendingReceipt(false);
     }
+  };
+
+  const handleDownloadReceipt = async (doc: ReceiptDoc) => {
+    const { data } = await supabase.storage
+      .from('portal-documents')
+      .createSignedUrl(doc.file_path, 3600);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+    else toast.error('Erro ao abrir documento');
   };
 
   const currentMonth = new Date().getMonth() + 1;
@@ -532,6 +569,42 @@ export default function PortalFinancial() {
             )}
           </CardContent>
         </Card>
+
+        {/* Uploaded receipts list */}
+        {receiptDocs.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Paperclip className="h-4 w-4 text-primary" />
+                Comprovantes Enviados
+              </CardTitle>
+              <CardDescription className="text-xs">Seus comprovantes de pagamento anexados</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-2">
+              {receiptDocs.map(doc => (
+                <div key={doc.id} className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/30">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    {doc.file_type?.startsWith('image/') ? (
+                      <ImageIcon className="w-4 h-4 text-primary" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{doc.name}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {format(new Date(doc.created_at), "d/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {doc.file_size ? ` • ${(doc.file_size / 1024).toFixed(0)} KB` : ''}
+                    </p>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0" onClick={() => handleDownloadReceipt(doc)}>
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3">
