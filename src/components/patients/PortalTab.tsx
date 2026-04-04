@@ -911,7 +911,7 @@ function AccountPanel({
           {/* Notices */}
           {activeSection === 'notices' && perms.notices && (
             <div className="p-4">
-              <PortalNoticesManager patientId={patientId} patientName={patientName} />
+              <PortalNoticesManager patientId={patientId} patientName={patientName} portalAccountId={account.id} />
             </div>
           )}
 

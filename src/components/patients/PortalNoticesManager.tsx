@@ -39,6 +39,7 @@ export function PortalNoticesManager({ patientId, patientName, portalAccountId }
       .from('portal_notices')
       .select('*')
       .eq('patient_id', patientId)
+      .eq('portal_account_id', portalAccountId)
       .order('created_at', { ascending: false });
     setNotices((data || []) as Notice[]);
     setLoading(false);
