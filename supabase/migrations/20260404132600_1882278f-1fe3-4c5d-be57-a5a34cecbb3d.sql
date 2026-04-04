@@ -1,0 +1,1 @@
+ALTER TABLE public.portal_notices ADD COLUMN portal_account_id uuid REFERENCES public.patient_portal_accounts(id) ON DELETE CASCADE;
