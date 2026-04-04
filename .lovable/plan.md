@@ -1,58 +1,52 @@
 
-Diagnóstico
-- Confirmei que o erro exibido agora vem de `src/pages/Enrollment.tsx` (rota `/matricula/:clinicId`), não da ficha antiga de pré-cadastro.
-- A correção do `is_archived` já está no código em `Enrollment.tsx`, então repetir essa troca não deve resolver o problema restante.
-- Os pontos que ainda podem gerar “Link inválido” hoje são:
-  1. o link ainda é montado com domínio hardcoded antigo em `src/pages/Patients.tsx` e `src/pages/ClinicDetail.tsx`;
-  2. o seletor de “Cadastro via Link” em Pacientes usa todas as clínicas, sem excluir arquivadas;
-  3. a política de leitura da clínica para matrícula pública está só para `anon`, então um navegador com sessão já aberta pode cair em falso “Link inválido”.
 
-Plano de correção
-1. Unificar a geração do link público
-- Criar um helper simples para montar a URL pública da matrícula com base no ambiente atual.
-- Trocar o hardcoded antigo nos dois pontos que geram/copiam link:
-  - `src/pages/Patients.tsx`
-  - `src/pages/ClinicDetail.tsx`
+# Plano: Editor Rico de Contratos com Variáveis Dinâmicas
 
-2. Impedir geração de link para clínica arquivada
-- Em `Patients.tsx`, derivar uma lista de clínicas ativas (`!isArchived`) para o dialog de “Cadastro via Link”.
-- Pré-selecionar a primeira clínica ativa, em vez de usar `clinics[0]`.
-- Se não houver clínica ativa, mostrar estado vazio e desabilitar a geração do link.
+## Contexto
 
-3. Tornar a matrícula pública independente do tipo de sessão
-- Ajustar a policy de `clinics` para que a leitura da clínica na matrícula pública funcione tanto para visitante deslogado quanto para navegador com sessão ativa.
-- Fazer isso via migration, sem alterar tabelas, apenas a regra de leitura.
+O sistema atual de contratos usa um `<Textarea>` para edição de HTML bruto e suporta apenas `{{patient_name}}`. O pedido é evoluir para um editor de texto rico (Rich Text Editor) com variáveis clicáveis como "chips" e preenchimento automático no momento de gerar/enviar o contrato.
 
-4. Melhorar o tratamento de erro em `Enrollment.tsx`
-- Separar “clínica não encontrada/arquivada” de “erro de leitura/permissão”.
-- Manter “Link inválido” só quando realmente não houver clínica válida.
-- Registrar o erro de forma clara para facilitar debug futuro.
+## O que será feito
 
-5. Validar ponta a ponta
-- Gerar link novo pela tela Pacientes.
-- Copiar link pela tela da clínica.
-- Testar com clínica ativa.
-- Confirmar que clínica arquivada não aparece mais como opção.
-- Testar o mesmo link em aba anônima e em navegador já logado.
-- Validar abertura pelo WhatsApp e no mobile.
+### 1. Instalar TipTap (Rich Text Editor)
+Adicionar `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-underline`, `@tiptap/extension-text-align`, `@tiptap/extension-mention` (para inserir variáveis como nodes inline).
 
-Arquivos envolvidos
-- `src/pages/Patients.tsx`
-- `src/pages/ClinicDetail.tsx`
-- `src/pages/Enrollment.tsx`
-- `src/lib/utils.ts` (ou um helper pequeno novo para URL pública)
-- `supabase/migrations/...` para ajustar a policy de leitura de `clinics`
+### 2. Criar componente `ContractEditor`
+Novo arquivo `src/components/contracts/ContractEditor.tsx`:
+- Editor TipTap com toolbar (negrito, itálico, sublinhado, alinhamento, listas, headings)
+- Painel lateral/dropdown **"Variáveis Disponíveis"** com chips clicáveis em tom roxo
+- Ao clicar numa variável, ela é inserida no cursor como `{{nome_variavel}}` estilizada visualmente como chip inline
+- Lista de variáveis:
+  - `{{nome_paciente}}`, `{{cpf_paciente}}`, `{{rg_paciente}}`, `{{endereco_paciente}}`, `{{data_nascimento}}`
+  - `{{nome_profissional}}`, `{{registro_profissional}}`, `{{data_atual}}`, `{{cidade_atual}}`
+- Exporta HTML limpo via `editor.getHTML()`
 
-Detalhes técnicos
-- `Enrollment.tsx` já usa filtro compatível com `null/false` para `is_archived`.
-- O hardcoded atual está em:
-  - `Patients.tsx` na geração do link rápido
-  - `ClinicDetail.tsx` no botão “Copiar Link de Cadastro”
-- O dialog de Pacientes hoje abre com `clinics[0]?.id` e lista `clinics.map(...)`, sem filtrar clínicas arquivadas.
-- A policy atual de matrícula pública está `TO anon`; para uma rota pública, o comportamento mais robusto é não depender de o visitante estar deslogado.
-- Essa mudança de policy é segura no contexto atual, porque a mesma leitura já é pública para visitantes sem sessão; o ajuste serve para eliminar a diferença de comportamento entre anon e authenticated.
+### 3. Motor de Preenchimento (substituição de variáveis)
+Atualizar `ContractManager.tsx` — função `handleSaveContract`:
+- Buscar dados do paciente (`patients`: name, cpf, birthdate, address via intake_forms) e do terapeuta (`profiles`: name, professional_id; `stamps`: clinical_area/CBO; `clinics`: address/city)
+- Substituir todas as tags `{{...}}` pelos valores reais antes de salvar em `patient_contracts.template_html`
+- Manter compatibilidade com `{{patient_name}}` existente
 
-Resultado esperado
-- Links novos deixam de apontar para URL errada.
-- O botão de Pacientes não gera mais link morto para clínica arquivada.
-- A ficha de matrícula abre corretamente de forma consistente, inclusive quando o usuário já tiver alguma sessão salva no navegador.
+### 4. Atualizar ContractManager — substituir Textarea pelo Editor Rico
+- Trocar o `<Textarea>` (linha ~495-499) pelo novo `<ContractEditor>`
+- Remover a nota sobre "HTML básico suportado" e substituir pelo painel de variáveis integrado
+- O editor receberá `value` (HTML) e emitirá `onChange` (HTML)
+
+### 5. Portal do Paciente — já funcional
+A visão do paciente (`PortalContract.tsx`) já renderiza o HTML preenchido com `dangerouslySetInnerHTML`, exibe checkbox de consentimento obrigatório e bloqueia assinatura sem marcar. Não precisa de alteração significativa — o contrato já chega preenchido com dados reais.
+
+## Detalhes técnicos
+
+- **TipTap Mention extension** será customizado para renderizar variáveis como chips roxos (`bg-primary/10 text-primary border border-primary/30 rounded px-1.5 py-0.5 text-xs font-mono`)
+- Os dados para preenchimento serão carregados via queries existentes (patients, profiles, stamps, clinics, patient_intake_forms)
+- O `DEFAULT_BODY` será atualizado para usar as novas variáveis (`{{nome_paciente}}`, `{{nome_profissional}}`, etc.)
+- Campos sem dado cadastrado serão substituídos por `[não informado]`
+
+## Arquivos afetados
+
+| Arquivo | Ação |
+|---------|------|
+| `src/components/contracts/ContractEditor.tsx` | Criar — editor rico + painel de variáveis |
+| `src/components/patients/ContractManager.tsx` | Editar — trocar Textarea pelo editor, adicionar motor de preenchimento |
+| `package.json` | Editar — adicionar deps TipTap |
+
