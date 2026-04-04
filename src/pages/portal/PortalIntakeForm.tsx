@@ -174,6 +174,16 @@ function CustomQuestionField({
   );
 }
 
+interface PatientQuestionnaire {
+  id: string;
+  title: string;
+  fields: Array<{ id: string; question: string; field_type: string; options?: string[]; required?: boolean }>;
+  answers: Record<string, string>;
+  status: string;
+  submitted_at: string | null;
+  created_at: string;
+}
+
 export default function PortalIntakeForm() {
   const { portalAccount } = usePortal();
   const [form, setForm] = useState<IntakeForm>(empty);
@@ -183,6 +193,11 @@ export default function PortalIntakeForm() {
   const [customDay, setCustomDay] = useState(false);
   const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
+  const [questionnaires, setQuestionnaires] = useState<PatientQuestionnaire[]>([]);
+  const [activeView, setActiveView] = useState<'list' | 'intake' | 'questionnaire'>('list');
+  const [activeQuestionnaire, setActiveQuestionnaire] = useState<PatientQuestionnaire | null>(null);
+  const [qAnswers, setQAnswers] = useState<Record<string, string>>({});
+  const [savingQ, setSavingQ] = useState(false);
 
   useEffect(() => {
     if (!portalAccount) return;
