@@ -349,7 +349,58 @@ export function ContractManager({ patientId, patientName, patientCpf, patientBir
         if (tmpl) { templateId = (tmpl as any).id; await loadTemplates(); }
       }
 
-      const filledHtml = bodyHtml.replace(/\{\{patient_name\}\}/g, patientName);
+      // Fetch therapist profile, stamp & clinic data for variable substitution
+      const { data: profile } = await supabase.from('profiles').select('name,professional_id,cpf').eq('user_id', user.id).maybeSingle();
+      const { data: stamp } = await supabase.from('stamps').select('clinical_area,cbo').eq('user_id', user.id).limit(1).maybeSingle();
+      
+      let clinicAddress = '';
+      let clinicCity = '';
+      if (clinicId) {
+        const { data: clinic } = await supabase.from('clinics').select('address').eq('id', clinicId).maybeSingle();
+        if (clinic?.address) {
+          clinicAddress = clinic.address;
+          // Extract city: try last part before state abbreviation or just use full address
+          const parts = clinic.address.split(',').map((s: string) => s.trim());
+          clinicCity = parts.length >= 2 ? parts[parts.length - 2] : parts[0] || '';
+        }
+      }
+
+      // Fetch patient intake form for address/rg
+      const { data: intakeForm } = await supabase.from('patient_intake_forms').select('address,cpf').eq('patient_id', patientId).maybeSingle();
+
+      const formatDate = (d?: string) => {
+        if (!d) return '[não informado]';
+        try { return format(new Date(d), "dd/MM/yyyy", { locale: ptBR }); } catch { return d; }
+      };
+
+      const variableMap: Record<string, string> = {
+        'nome_paciente': patientName || '[não informado]',
+        'patient_name': patientName || '[não informado]', // backward compat
+        'cpf_paciente': patientCpf || intakeForm?.cpf || '[não informado]',
+        'rg_paciente': '[não informado]',
+        'endereco_paciente': intakeForm?.address || '[não informado]',
+        'data_nascimento': formatDate(patientBirthdate),
+        'nome_profissional': profile?.name || '[não informado]',
+        'registro_profissional': profile?.professional_id || '[não informado]',
+        'cbo_profissional': (stamp as any)?.cbo || '[não informado]',
+        'data_atual': format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: ptBR }),
+        'cidade_atual': clinicCity || '[não informado]',
+        'valor_sessao': patientPaymentValue ? `R$ ${patientPaymentValue.toFixed(2).replace('.', ',')}` : '[não informado]',
+        'dia_atendimento': patientWeekdays?.join(', ') || '[não informado]',
+        'horario_atendimento': patientScheduleTime || '[não informado]',
+      };
+
+      // Strip variable chip spans and replace raw {{var}} tags
+      let filledHtml = bodyHtml;
+      // First handle <span data-type="variable" class="contract-variable">{{key}}</span>
+      filledHtml = filledHtml.replace(/<span[^>]*data-type="variable"[^>]*>\{\{(\w+)\}\}<\/span>/g, (_, key) => {
+        return variableMap[key] ?? `{{${key}}}`;
+      });
+      // Then handle raw {{key}} not inside spans
+      filledHtml = filledHtml.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+        return variableMap[key] ?? `{{${key}}}`;
+      });
+
       const { error } = await supabase.from('patient_contracts').insert({
         patient_id: patientId,
         therapist_user_id: user.id,
