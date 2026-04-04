@@ -39,6 +39,7 @@ export function TodayAppointments() {
   const navigate = useNavigate();
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
   const [therapistName, setTherapistName] = useState('');
+  const [recipientModal, setRecipientModal] = useState<{ open: boolean; item: ScheduleItem | null }>({ open: false, item: null });
 
   const todayStr = toLocalDateString(new Date());
   const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
