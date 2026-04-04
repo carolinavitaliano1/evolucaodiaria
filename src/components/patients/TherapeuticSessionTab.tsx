@@ -847,21 +847,67 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           y += 8;
         }
 
+        // Helper: render markdown bold + justified text
+        const renderMdText = (text: string) => {
+          const originalLines = text.split('\n');
+          for (const originalLine of originalLines) {
+            const segments: { text: string; bold: boolean }[] = [];
+            let rem = originalLine;
+            while (rem.length > 0) {
+              const bs = rem.indexOf('**');
+              if (bs === -1) { if (rem) segments.push({ text: rem, bold: false }); break; }
+              if (bs > 0) segments.push({ text: rem.slice(0, bs), bold: false });
+              const be = rem.indexOf('**', bs + 2);
+              if (be === -1) { segments.push({ text: rem.slice(bs + 2), bold: false }); break; }
+              segments.push({ text: rem.slice(bs + 2, be), bold: true });
+              rem = rem.slice(be + 2);
+            }
+            const fullText = segments.map(s => s.text).join('');
+            if (!fullText.trim()) { y += 3; continue; }
+            const wrappedLines = doc.splitTextToSize(fullText, contentWidth);
+            let consumed = 0;
+            for (const wLine of wrappedLines) {
+              if (y > 280) { doc.addPage(); y = 20; }
+              const lineStart = consumed;
+              const lineEnd = consumed + wLine.length;
+              consumed = lineEnd;
+              let curX = margin;
+              let charPos = 0;
+              let didRender = false;
+              for (const seg of segments) {
+                const segStart = charPos;
+                const segEnd = charPos + seg.text.length;
+                charPos = segEnd;
+                const oStart = Math.max(segStart, lineStart);
+                const oEnd = Math.min(segEnd, lineEnd);
+                if (oStart >= oEnd) continue;
+                const portion = seg.text.slice(oStart - segStart, oEnd - segStart);
+                if (!portion) continue;
+                doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+                doc.text(portion, curX, y);
+                curX += doc.getTextWidth(portion);
+                didRender = true;
+              }
+              if (!didRender) {
+                doc.setFont('helvetica', 'normal');
+                doc.text(wLine, margin, y, { align: 'justify', maxWidth: contentWidth });
+              }
+              y += 5;
+            }
+          }
+        };
+
         const addSection = (label: string, text: string) => {
           if (!text) return;
           if (y > 260) { doc.addPage(); y = 20; }
           doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
+          doc.setTextColor(99, 102, 241);
           doc.text(label, margin, y);
           y += 6;
-          doc.setFont('helvetica', 'normal');
           doc.setFontSize(10);
-          const lines = doc.splitTextToSize(text, contentWidth);
-          for (const line of lines) {
-            if (y > 280) { doc.addPage(); y = 20; }
-            doc.text(line, margin, y);
-            y += 5;
-          }
+          doc.setTextColor(60, 60, 60);
+          renderMdText(text);
           y += 4;
         };
 
