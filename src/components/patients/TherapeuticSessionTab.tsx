@@ -981,7 +981,11 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             {viewLinkedEvolutionText && (
               <div className="border border-border rounded-lg p-3 bg-muted/30 space-y-2">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1"><Sparkles className="w-3 h-3" /> Evolução Gerada</Label>
-                <p className="text-sm whitespace-pre-wrap">{viewLinkedEvolutionText}</p>
+                <div className="text-sm whitespace-pre-wrap text-justify">{viewLinkedEvolutionText.split(/(\*\*.*?\*\*)/).map((part, i) => 
+                  part.startsWith('**') && part.endsWith('**') 
+                    ? <strong key={i}>{part.slice(2, -2)}</strong> 
+                    : part
+                )}</div>
               </div>
             )}
 
