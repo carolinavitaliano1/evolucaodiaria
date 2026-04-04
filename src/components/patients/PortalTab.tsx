@@ -302,9 +302,9 @@ function AccountPanel({
   const perms = account.permissions || DEFAULT_PERMISSIONS;
 
   useEffect(() => {
-    // Load messages
+    // Load messages scoped to this portal account
     supabase.from('portal_messages').select('*')
-      .eq('patient_id', patientId)
+      .eq('portal_account_id', account.id)
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data }) => setMessages((data || []) as PortalMessage[]));
