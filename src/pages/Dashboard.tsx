@@ -171,6 +171,9 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Alerts & Pending */}
+          <ClinicAlertsCard />
+
           {/* Birthdays */}
           <BirthdayCard />
         </div>
