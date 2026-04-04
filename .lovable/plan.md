@@ -1,43 +1,55 @@
 
 
-# Grupos Terapêuticos — Implementação
+# Página de Detalhe do Grupo Terapêutico
 
 ## Resumo
-Criar a funcionalidade completa de Grupos Terapêuticos como nova aba na clínica/consultório, com tabelas no banco, componente de gestão e formulário de cadastro/edição.
+Criar uma página dedicada `/groups/:id` (similar a `/patients/:id`) para cada grupo terapêutico, com visualização completa das informações do grupo e todas as abas funcionais que existem no paciente individual (Evoluções, Sessão, Financeiro, Portal, Mural, Frequência, Documentos, Tarefas, Notas).
 
-## 1. Migração SQL
-Criar duas tabelas:
+## O que muda para o usuário
+- Ao clicar em um grupo na aba "Grupos" da clínica, abre a página de detalhe do grupo
+- Cabeçalho com nome do grupo, participantes (chips clicáveis), badge ativo/arquivado, botão editar
+- Seção "Informações do grupo" com todas as informações organizadas em cards (Visão geral, Estrutura, Critérios, Acompanhamento) — exibindo "—" quando vazio
+- Abas idênticas ao paciente individual: Evoluções, Sessão, Rel. Mensal, Financeiro, Documentos, Tarefas, Notas, Portal, Mural, Frequência
+- Evoluções/sessões do grupo mostram evoluções vinculadas a todos os participantes (filtradas por grupo)
 
-- **`therapeutic_groups`**: `id`, `user_id`, `clinic_id`, `name` (obrigatório), campos opcionais de texto (description, therapeutic_focus, objectives, support_reason, shared_goals, communication_patterns, conflict_areas, meeting_frequency, meeting_format, facilitation_style, waitlist_policy, entry_criteria, exclusion_criteria, confidentiality_agreement, group_rules, materials, support_resources, assessment_method, next_topics, facilitation_notes, supervision_notes, general_notes, follow_up_plan, session_link), `duration_minutes` (int), `max_participants` (int), `open_to_new` (boolean default false), `default_price` (numeric), `is_archived` (boolean default false), timestamps.
+## Arquivos a criar/editar
 
-- **`therapeutic_group_members`**: `id`, `group_id` (FK → therapeutic_groups ON DELETE CASCADE), `patient_id` (uuid), `joined_at` (timestamptz default now()), `status` ('active'|'inactive' default 'active').
+### 1. Migração SQL
+- Adicionar coluna `group_id uuid` (nullable, FK → therapeutic_groups) nas tabelas `evolutions`, `tasks`, `feed_posts` para vincular registros ao grupo
+- Isto permite que evoluções, tarefas e posts do mural sejam criados "para o grupo"
 
-RLS: owner (`user_id = auth.uid()`) + org member access via `is_clinic_org_member`.
+### 2. `src/pages/GroupDetail.tsx` (novo — ~800 linhas)
+Página completa inspirada em `PatientDetail.tsx`:
+- **Header**: nome do grupo, lista de participantes com avatares/chips (link para cada `/patients/:id`), botões de ação (editar, WhatsApp grupo, arquivar)
+- **Info Section**: cards read-only com todos os campos do grupo organizados em 4 blocos (Visão geral, Estrutura, Critérios e combinados, Acompanhamento) — valor "—" quando null
+- **Tabs** (mesma estrutura visual do PatientDetail):
+  - `evolutions` — lista evoluções dos participantes (filtro por group_id ou por patient_ids do grupo)
+  - `session` — reutiliza `TherapeuticSessionTab` adaptado para grupo
+  - `reports` — relatório mensal consolidado
+  - `financial` — financeiro por participante
+  - `documents` — documentos do grupo
+  - `tasks` — tarefas vinculadas ao grupo
+  - `notes` — notas do grupo (reutiliza padrão de notas)
+  - `portal` — portal consolidado dos participantes
+  - `mural` — feed/mural do grupo
+  - `attendance` — frequência consolidada
 
-## 2. Componente `TherapeuticGroupsTab.tsx`
-Novo arquivo `src/components/clinics/TherapeuticGroupsTab.tsx`:
+### 3. `src/App.tsx`
+- Importar `GroupDetail`
+- Adicionar rota `/groups/:id` no bloco protegido (ao lado de `/patients/:id`)
 
-- **Props**: `clinicId`, `patients` (lista de pacientes da clínica)
-- **Lista**: cards com nome do grupo, quantidade de participantes, badge ativo/arquivado
-- **Dialog de cadastro/edição**: formulário com Accordion em seções:
-  - Sobre o grupo (descrição, foco, objetivos, motivo, metas, padrões, conflitos)
-  - Estrutura dos encontros (frequência, duração, formato, estilo, aberto, máx participantes, lista espera)
-  - Plano de acompanhamento
-  - Critérios e materiais (entrada, exclusão, confidencialidade, regras, materiais, recursos)
-  - Acompanhamento clínico (avaliação, próximos tópicos, notas)
-  - Configurações de sessão (link externo, preço)
-- **Seletor de participantes**: multi-select dos pacientes da clínica com chips removíveis
-- **Ações**: criar, editar, arquivar grupo
+### 4. `src/components/clinics/TherapeuticGroupsTab.tsx`
+- Tornar o card do grupo clicável → `navigate(/groups/${g.id})`
 
-## 3. Integração em `ClinicDetail.tsx`
-- Importar `TherapeuticGroupsTab`
-- Adicionar tab `{ value: 'groups', icon: <UsersRound>, label: 'Grupos', color: 'text-indigo-500' }` no array de tabs (após "Serviços")
-- Adicionar `<TabsContent value="groups">` renderizando o componente
+### 5. Componentes auxiliares reutilizados
+- `TherapeuticSessionTab` — recebe prop opcional `groupId` + array de `patientIds` para sessão em grupo
+- `PatientFeed` — recebe `groupId` opcional
+- `PortalTab` — iteração sobre participantes do grupo
 
-## Arquivos afetados
-| Arquivo | Ação |
-|---------|------|
-| Migração SQL | Criar tabelas + RLS |
-| `src/components/clinics/TherapeuticGroupsTab.tsx` | Criar |
-| `src/pages/ClinicDetail.tsx` | Editar — nova aba |
+## Escopo da primeira entrega
+Dado o tamanho, a implementação será focada em:
+1. Página com header + informações completas do grupo (todos os campos)
+2. Todas as abas com funcionalidade básica (evoluções agregadas, financeiro, portal, mural, etc.)
+3. Navegação da listagem de grupos para a página de detalhe
+4. Migração para `group_id` nas tabelas necessárias
 
