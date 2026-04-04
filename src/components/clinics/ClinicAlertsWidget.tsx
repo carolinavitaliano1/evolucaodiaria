@@ -4,10 +4,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toLocalDateString } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, DollarSign, FileText, MessageSquare,
-  UserPlus, Sparkles,
+  UserPlus, Sparkles, ChevronDown, ChevronRight,
 } from 'lucide-react';
+
+interface PatientRef {
+  id: string;
+  name: string;
+}
+
+interface AlertGroup {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+  color: string;
+  patients: PatientRef[];
+}
 
 interface ClinicAlertsWidgetProps {
   clinicId: string;
@@ -16,23 +31,25 @@ interface ClinicAlertsWidgetProps {
 export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
   const { patients, evolutions } = useApp();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const [overduePayments, setOverduePayments] = useState(0);
-  const [pendingEnrollments, setPendingEnrollments] = useState(0);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [intakeReviews, setIntakeReviews] = useState(0);
+  const [overduePaymentPatients, setOverduePaymentPatients] = useState<PatientRef[]>([]);
+  const [pendingEnrollmentPatients, setPendingEnrollmentPatients] = useState<PatientRef[]>([]);
+  const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
+  const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const clinicPatients = useMemo(
     () => patients.filter(p => p.clinicId === clinicId && !p.isArchived),
     [patients, clinicId]
   );
 
-  // Missing evolutions for this clinic (last 7 days)
-  const missingEvolutions = useMemo(() => {
+  // Missing evolutions for this clinic (last 7 days) — with patient details
+  const missingEvolutionPatients = useMemo(() => {
     const today = new Date();
     const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    let missing = 0;
+    const patientSet = new Map<string, PatientRef>();
 
     for (let i = 0; i < 7; i++) {
       const d = new Date(today);
@@ -46,13 +63,15 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
         const hasEvolution = evolutions.some(
           e => e.patientId === p.id && e.clinicId === clinicId && e.date === dateStr
         );
-        if (!hasEvolution) missing++;
+        if (!hasEvolution) {
+          patientSet.set(p.id, { id: p.id, name: p.name });
+        }
       }
     }
-    return missing;
+    return Array.from(patientSet.values());
   }, [clinicPatients, evolutions, clinicId]);
 
-  // Fetch clinic-specific counts
+  // Fetch clinic-specific detailed data
   useEffect(() => {
     if (!user) return;
     setLoading(true);
@@ -63,107 +82,155 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
     const clinicPatientIds = clinicPatients.map(p => p.id);
 
     Promise.all([
-      // Overdue payments for this clinic
+      // Overdue payments — get patient_ids
       clinicPatientIds.length > 0
         ? supabase
             .from('patient_payment_records')
-            .select('id', { count: 'exact', head: true })
+            .select('patient_id')
             .eq('clinic_id', clinicId)
             .eq('month', currentMonth)
             .eq('year', currentYear)
             .eq('paid', false)
-        : Promise.resolve({ count: 0 }),
-      // Pending enrollments for this clinic
+        : Promise.resolve({ data: [] }),
+      // Pending enrollments
       supabase
         .from('patients')
-        .select('id', { count: 'exact', head: true })
+        .select('id, name')
         .eq('clinic_id', clinicId)
         .eq('status', 'pendente'),
-      // Unread portal messages from patients in this clinic
+      // Unread portal messages — get patient_ids
       clinicPatientIds.length > 0
         ? supabase
             .from('portal_messages')
-            .select('id', { count: 'exact', head: true })
+            .select('patient_id')
             .eq('therapist_user_id', user.id)
             .eq('sender_type', 'patient')
             .eq('read_by_therapist', false)
             .in('patient_id', clinicPatientIds)
-        : Promise.resolve({ count: 0 }),
-      // Intake forms needing review for patients in this clinic
+        : Promise.resolve({ data: [] }),
+      // Intake forms needing review
       clinicPatientIds.length > 0
         ? supabase
             .from('patient_intake_forms')
-            .select('id', { count: 'exact', head: true })
+            .select('patient_id')
             .eq('therapist_user_id', user.id)
             .eq('needs_review', true)
             .in('patient_id', clinicPatientIds)
-        : Promise.resolve({ count: 0 }),
-    ]).then(([payments, enrollments, messages, intakes]) => {
-      setOverduePayments((payments as any).count ?? 0);
-      setPendingEnrollments((enrollments as any).count ?? 0);
-      setUnreadMessages((messages as any).count ?? 0);
-      setIntakeReviews((intakes as any).count ?? 0);
+        : Promise.resolve({ data: [] }),
+    ]).then(([paymentsRes, enrollmentsRes, messagesRes, intakesRes]) => {
+      // Map patient_ids to names
+      const findPatient = (pid: string): PatientRef => {
+        const p = clinicPatients.find(cp => cp.id === pid);
+        return { id: pid, name: p?.name || 'Paciente' };
+      };
+
+      // Deduplicate by patient_id
+      const uniqueByPatient = (items: { patient_id: string }[]): PatientRef[] => {
+        const seen = new Set<string>();
+        return items.filter(i => {
+          if (seen.has(i.patient_id)) return false;
+          seen.add(i.patient_id);
+          return true;
+        }).map(i => findPatient(i.patient_id));
+      };
+
+      setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as any[]) || []));
+      setPendingEnrollmentPatients(
+        ((enrollmentsRes.data as any[]) || []).map((p: any) => ({ id: p.id, name: p.name }))
+      );
+      setUnreadMessagePatients(uniqueByPatient((messagesRes.data as any[]) || []));
+      setIntakeReviewPatients(uniqueByPatient((intakesRes.data as any[]) || []));
       setLoading(false);
     });
   }, [user, clinicId, clinicPatients.length]);
 
   const alerts = useMemo(() => {
-    const items: { key: string; icon: React.ReactNode; label: string; count: number; color: string }[] = [];
+    const items: AlertGroup[] = [];
 
-    if (overduePayments > 0) {
+    if (overduePaymentPatients.length > 0) {
       items.push({
         key: 'payments',
         icon: <DollarSign className="w-3.5 h-3.5" />,
-        label: `${overduePayments} pagamento${overduePayments > 1 ? 's' : ''} pendente${overduePayments > 1 ? 's' : ''}`,
-        count: overduePayments,
+        label: `${overduePaymentPatients.length} pagamento${overduePaymentPatients.length > 1 ? 's' : ''} pendente${overduePaymentPatients.length > 1 ? 's' : ''}`,
+        count: overduePaymentPatients.length,
         color: 'text-orange-500',
+        patients: overduePaymentPatients,
       });
     }
 
-    if (missingEvolutions > 0) {
+    if (missingEvolutionPatients.length > 0) {
       items.push({
         key: 'evolutions',
         icon: <FileText className="w-3.5 h-3.5" />,
-        label: `${missingEvolutions} evolução${missingEvolutions > 1 ? 'ões' : ''} em atraso`,
-        count: missingEvolutions,
+        label: `${missingEvolutionPatients.length} paciente${missingEvolutionPatients.length > 1 ? 's' : ''} com evolução em atraso`,
+        count: missingEvolutionPatients.length,
         color: 'text-red-500',
+        patients: missingEvolutionPatients,
       });
     }
 
-    if (unreadMessages > 0) {
+    if (unreadMessagePatients.length > 0) {
       items.push({
         key: 'messages',
         icon: <MessageSquare className="w-3.5 h-3.5" />,
-        label: `${unreadMessages} mensagem${unreadMessages > 1 ? 'ns' : ''} não lida${unreadMessages > 1 ? 's' : ''}`,
-        count: unreadMessages,
+        label: `${unreadMessagePatients.length} mensagem${unreadMessagePatients.length > 1 ? 'ns' : ''} não lida${unreadMessagePatients.length > 1 ? 's' : ''}`,
+        count: unreadMessagePatients.length,
         color: 'text-blue-500',
+        patients: unreadMessagePatients,
       });
     }
 
-    if (pendingEnrollments > 0) {
+    if (pendingEnrollmentPatients.length > 0) {
       items.push({
         key: 'enrollments',
         icon: <UserPlus className="w-3.5 h-3.5" />,
-        label: `${pendingEnrollments} matrícula${pendingEnrollments > 1 ? 's' : ''} pendente${pendingEnrollments > 1 ? 's' : ''}`,
-        count: pendingEnrollments,
+        label: `${pendingEnrollmentPatients.length} matrícula${pendingEnrollmentPatients.length > 1 ? 's' : ''} pendente${pendingEnrollmentPatients.length > 1 ? 's' : ''}`,
+        count: pendingEnrollmentPatients.length,
         color: 'text-purple-500',
+        patients: pendingEnrollmentPatients,
       });
     }
 
-    if (intakeReviews > 0) {
+    if (intakeReviewPatients.length > 0) {
       items.push({
         key: 'intake-reviews',
         icon: <FileText className="w-3.5 h-3.5" />,
-        label: `${intakeReviews} ficha${intakeReviews > 1 ? 's' : ''} atualizada${intakeReviews > 1 ? 's' : ''} p/ revisão`,
-        count: intakeReviews,
+        label: `${intakeReviewPatients.length} ficha${intakeReviewPatients.length > 1 ? 's' : ''} atualizada${intakeReviewPatients.length > 1 ? 's' : ''} p/ revisão`,
+        count: intakeReviewPatients.length,
         color: 'text-teal-500',
+        patients: intakeReviewPatients,
       });
     }
 
     return items;
-  }, [overduePayments, missingEvolutions, unreadMessages, pendingEnrollments, intakeReviews]);
+  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingEnrollmentPatients, intakeReviewPatients]);
 
   const allClear = alerts.length === 0 && !loading;
+
+  const handlePatientClick = (patientId: string, alertKey: string) => {
+    // Navigate directly to the patient detail page
+    // The hash helps indicate which section to focus on
+    switch (alertKey) {
+      case 'payments':
+        navigate(`/patients/${patientId}#financeiro`);
+        break;
+      case 'messages':
+        navigate(`/patients/${patientId}#portal`);
+        break;
+      case 'intake-reviews':
+        navigate(`/patients/${patientId}#portal`);
+        break;
+      case 'evolutions':
+        navigate(`/patients/${patientId}`);
+        break;
+      case 'enrollments':
+        // Pending enrollments aren't active patients yet
+        navigate(`/patients`);
+        break;
+      default:
+        navigate(`/patients/${patientId}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -203,12 +270,44 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       </div>
       <div className="space-y-1">
         {alerts.map(alert => (
-          <div
-            key={alert.key}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-left"
-          >
-            <span className={cn("shrink-0", alert.color)}>{alert.icon}</span>
-            <span className="text-xs text-foreground">{alert.label}</span>
+          <div key={alert.key}>
+            <button
+              onClick={() => {
+                if (alert.patients.length === 1) {
+                  handlePatientClick(alert.patients[0].id, alert.key);
+                } else {
+                  setExpanded(expanded === alert.key ? null : alert.key);
+                }
+              }}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/60 transition-colors text-left group"
+            >
+              <span className={cn("shrink-0", alert.color)}>{alert.icon}</span>
+              <span className="text-xs text-foreground flex-1">{alert.label}</span>
+              {alert.patients.length === 1 ? (
+                <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              ) : (
+                <ChevronDown className={cn(
+                  "w-3 h-3 text-muted-foreground transition-transform shrink-0",
+                  expanded === alert.key && "rotate-180"
+                )} />
+              )}
+            </button>
+
+            {/* Expanded patient list */}
+            {expanded === alert.key && alert.patients.length > 1 && (
+              <div className="ml-6 mt-0.5 mb-1 space-y-0.5">
+                {alert.patients.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => handlePatientClick(p.id, alert.key)}
+                    className="w-full flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/80 transition-colors text-left group"
+                  >
+                    <span className="text-xs text-foreground truncate flex-1">{p.name}</span>
+                    <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
