@@ -298,6 +298,9 @@ function AccountPanel({
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [docDescription, setDocDescription] = useState('');
   const [showCustomQuestionsManager, setShowCustomQuestionsManager] = useState(false);
+  const [showQTemplates, setShowQTemplates] = useState(false);
+  const [sentQuestionnaires, setSentQuestionnaires] = useState<any[]>([]);
+  const [viewingQAnswers, setViewingQAnswers] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const perms = account.permissions || DEFAULT_PERMISSIONS;
 
