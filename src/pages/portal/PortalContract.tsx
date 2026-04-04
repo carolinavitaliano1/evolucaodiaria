@@ -2,12 +2,13 @@ import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, FileText, CheckCircle2, PenLine, Download, User, ShieldCheck } from 'lucide-react';
+import { Loader2, FileText, CheckCircle2, PenLine, Download, User, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { SignaturePad, type SignaturePadRef } from '@/components/ui/signature-pad';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -19,6 +20,7 @@ interface Contract {
   therapist_signature_data: string | null;
   therapist_signed_at: string | null;
   status: string;
+  created_at: string;
 }
 
 interface PatientExtra {
@@ -40,9 +42,7 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
       </div>` : '';
 
   wrapper.innerHTML = `
-    <div style="margin-bottom:32px;">
-      ${contract.template_html}
-    </div>
+    <div style="margin-bottom:32px;">${contract.template_html}</div>
     ${therapistSigBlock}
     <div style="margin-top:32px;border-top:1px solid #ccc;padding-top:24px;">
       <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital${signerName ? ` de ${signerName}` : ''}:</p>
@@ -58,21 +58,18 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   try {
     const canvas = await html2canvas(wrapper, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
     document.body.removeChild(wrapper);
-
     const imgData = canvas.toDataURL('image/jpeg', 0.92);
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
     let yOffset = 0;
     while (yOffset < imgHeight) {
       if (yOffset > 0) pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, -yOffset, imgWidth, imgHeight);
       yOffset += pageHeight;
     }
-
     pdf.save(`contrato-${signerName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   } catch (e) {
     document.body.removeChild(wrapper);
@@ -82,13 +79,14 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
 
 export default function PortalContract() {
   const { portalAccount, patient } = usePortal();
-  const [contract, setContract] = useState<Contract | null>(null);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [patientExtra, setPatientExtra] = useState<PatientExtra | null>(null);
   const [loading, setLoading] = useState(true);
-  const [signing, setSigning] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [signatureMode, setSignatureMode] = useState(false);
+  const [signingContractId, setSigningContractId] = useState<string | null>(null);
   const [signatureData, setSignatureData] = useState('');
+  const [signing, setSigning] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const signaturePadRef = useRef<SignaturePadRef>(null);
 
   useEffect(() => {
@@ -99,16 +97,19 @@ export default function PortalContract() {
         .select('*')
         .eq('patient_id', portalAccount.patient_id)
         .in('status', ['sent', 'signed'])
-        .maybeSingle(),
+        .order('created_at', { ascending: false }),
       supabase
         .from('patients')
         .select('cpf, responsible_name, responsible_cpf, is_minor')
         .eq('id', portalAccount.patient_id)
         .single(),
-    ]).then(([{ data: c }, { data: pData }]) => {
-      setContract(c as Contract | null);
+    ]).then(([{ data: cData }, { data: pData }]) => {
+      setContracts((cData || []) as Contract[]);
       setPatientExtra(pData as PatientExtra | null);
       setLoading(false);
+      // Auto-expand first pending
+      const firstPending = (cData || []).find((c: any) => c.status === 'sent');
+      if (firstPending) setExpandedId((firstPending as any).id);
     });
   }, [portalAccount]);
 
@@ -120,9 +121,13 @@ export default function PortalContract() {
     ? (patientExtra?.responsible_cpf || null)
     : (patientExtra?.cpf || null);
 
-  const handleSign = async () => {
-    if (!contract) return;
-    // Save from pad if not yet saved
+  const formatCpf = (cpf: string) => {
+    const digits = cpf.replace(/\D/g, '');
+    if (digits.length === 11) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    return cpf;
+  };
+
+  const handleSign = async (contract: Contract) => {
     let finalSig = signatureData;
     if (!finalSig && signaturePadRef.current) {
       finalSig = signaturePadRef.current.save();
@@ -142,16 +147,19 @@ export default function PortalContract() {
         })
         .eq('id', contract.id);
       if (error) throw error;
-      // Update contract_start_date on patient record
       await supabase
         .from('patients')
         .update({ contract_start_date: new Date().toISOString().split('T')[0] })
-        .eq('id', portalAccount.patient_id);
+        .eq('id', portalAccount!.patient_id);
 
       toast.success('Contrato assinado com sucesso! ✅');
-      const updated = { ...contract, status: 'signed', signed_at: new Date().toISOString(), signature_data: finalSig };
-      setContract(updated);
-      setSignatureMode(false);
+      setContracts(prev => prev.map(c =>
+        c.id === contract.id
+          ? { ...c, status: 'signed', signed_at: new Date().toISOString(), signature_data: finalSig }
+          : c
+      ));
+      setSigningContractId(null);
+      setSignatureData('');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao assinar');
     } finally {
@@ -159,60 +167,42 @@ export default function PortalContract() {
     }
   };
 
-  const handleDownloadPDF = async () => {
-    if (!contract || !contract.signature_data) return;
-    setDownloading(true);
+  const handleDownloadPDF = async (contract: Contract) => {
+    if (!contract.signature_data) return;
+    setDownloadingId(contract.id);
     try {
       await generateContractPDF(contract, signerName, signerCpf);
       toast.success('PDF gerado com sucesso!');
     } catch {
       toast.error('Erro ao gerar PDF');
     } finally {
-      setDownloading(false);
+      setDownloadingId(null);
     }
   };
 
-  const formatCpf = (cpf: string) => {
-    const digits = cpf.replace(/\D/g, '');
-    if (digits.length === 11) {
-      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-    }
-    return cpf;
-  };
+  const pendingContracts = contracts.filter(c => c.status === 'sent');
+  const signedContracts = contracts.filter(c => c.status === 'signed');
 
   return (
     <PortalLayout>
       <div className="space-y-5">
         <div>
-          <h1 className="text-lg font-bold text-foreground">Contrato</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Contrato terapêutico</p>
+          <h1 className="text-lg font-bold text-foreground">Contratos</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Contratos terapêuticos para assinatura</p>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
-        ) : !contract ? (
+        ) : contracts.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border p-8 text-center">
             <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
             <p className="font-semibold text-sm text-foreground">Nenhum contrato disponível</p>
-            <p className="text-xs text-muted-foreground mt-1">Seu terapeuta ainda não enviou o contrato.</p>
+            <p className="text-xs text-muted-foreground mt-1">Seu terapeuta ainda não enviou contratos.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Status */}
-            {contract.status === 'signed' ? (
-              <div className="flex items-center gap-2 bg-success/10 text-success border border-success/20 rounded-xl px-4 py-3 text-sm">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                <span>Assinado em {format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 bg-warning/10 text-warning border border-warning/20 rounded-xl px-4 py-3 text-sm">
-                <PenLine className="w-4 h-4 flex-shrink-0" />
-                <span>Aguardando assinatura</span>
-              </div>
-            )}
-
             {/* Signer info card */}
             <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -221,119 +211,227 @@ export default function PortalContract() {
               </div>
               <div className="pl-6 space-y-1">
                 <p className="text-sm text-foreground font-semibold">{signerName}</p>
-                {signerCpf && (
-                  <p className="text-xs text-muted-foreground">CPF: {formatCpf(signerCpf)}</p>
-                )}
-                {isMinor && patient?.name && (
-                  <p className="text-xs text-muted-foreground">Paciente: {patient.name}</p>
-                )}
+                {signerCpf && <p className="text-xs text-muted-foreground">CPF: {formatCpf(signerCpf)}</p>}
+                {isMinor && patient?.name && <p className="text-xs text-muted-foreground">Paciente: {patient.name}</p>}
               </div>
             </div>
 
-            {/* Contract content */}
-            <div className="bg-card rounded-2xl border border-border p-4 overflow-auto max-h-[50vh]">
-              <div
-                className="prose prose-sm max-w-none text-foreground text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: contract.template_html }}
-              />
-            </div>
-
-            {/* Signature section — signed */}
-            {contract.status === 'signed' && (
-              <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
-                {contract.therapist_signature_data && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
-                    <img src={contract.therapist_signature_data} alt="Assinatura do terapeuta"
-                      className="max-h-16 border border-border rounded" />
-                    {contract.therapist_signed_at && (
-                      <p className="text-[10px] text-muted-foreground">
-                        {format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    )}
-                  </div>
-                )}
-                {contract.signature_data && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground font-medium">
-                      Assinatura de <strong>{signerName}</strong>:
-                    </p>
-                    {signerCpf && <p className="text-xs text-muted-foreground">CPF: {formatCpf(signerCpf)}</p>}
-                    <img src={contract.signature_data} alt="Assinatura" className="max-h-16 border border-border rounded" />
-                    {contract.signed_at && (
-                      <p className="text-[10px] text-muted-foreground">
-                        {format(new Date(contract.signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    )}
-                  </div>
-                )}
-                <Button
-                  className="w-full gap-2"
-                  variant="outline"
-                  onClick={handleDownloadPDF}
-                  disabled={downloading}
-                >
-                  {downloading
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <Download className="w-4 h-4" />
-                  }
-                  Baixar contrato assinado (PDF)
-                </Button>
+            {/* Pending contracts */}
+            {pendingContracts.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <PenLine className="w-3 h-3" /> Aguardando assinatura ({pendingContracts.length})
+                </p>
+                {pendingContracts.map(contract => (
+                  <ContractCard
+                    key={contract.id}
+                    contract={contract}
+                    expanded={expandedId === contract.id}
+                    onToggleExpand={() => setExpandedId(expandedId === contract.id ? null : contract.id)}
+                    signerName={signerName}
+                    signerCpf={signerCpf}
+                    isMinor={isMinor}
+                    signingContractId={signingContractId}
+                    signatureData={signatureData}
+                    signaturePadRef={signaturePadRef}
+                    signing={signing}
+                    downloadingId={downloadingId}
+                    formatCpf={formatCpf}
+                    onStartSign={() => { setSigningContractId(contract.id); setSignatureData(''); }}
+                    onCancelSign={() => { setSigningContractId(null); setSignatureData(''); }}
+                    onSign={() => handleSign(contract)}
+                    onSetSignatureData={setSignatureData}
+                    onClearPad={() => signaturePadRef.current?.clear()}
+                    onDownload={() => handleDownloadPDF(contract)}
+                  />
+                ))}
               </div>
             )}
 
-            {/* Signature section — pending */}
-            {contract.status === 'sent' && (
-              signatureMode ? (
-                <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
-                  <p className="text-sm font-medium text-foreground">
-                    {isMinor ? `Assinatura do responsável (${signerName}):` : 'Assine abaixo:'}
-                  </p>
-                  <SignaturePad
-                    ref={signaturePadRef}
-                    value={signatureData}
-                    onChange={setSignatureData}
-                    hideButtons
+            {/* Signed contracts */}
+            {signedContracts.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <CheckCircle2 className="w-3 h-3" /> Assinados ({signedContracts.length})
+                </p>
+                {signedContracts.map(contract => (
+                  <ContractCard
+                    key={contract.id}
+                    contract={contract}
+                    expanded={expandedId === contract.id}
+                    onToggleExpand={() => setExpandedId(expandedId === contract.id ? null : contract.id)}
+                    signerName={signerName}
+                    signerCpf={signerCpf}
+                    isMinor={isMinor}
+                    signingContractId={signingContractId}
+                    signatureData={signatureData}
+                    signaturePadRef={signaturePadRef}
+                    signing={signing}
+                    downloadingId={downloadingId}
+                    formatCpf={formatCpf}
+                    onStartSign={() => {}}
+                    onCancelSign={() => {}}
+                    onSign={() => {}}
+                    onSetSignatureData={setSignatureData}
+                    onClearPad={() => {}}
+                    onDownload={() => handleDownloadPDF(contract)}
                   />
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        signaturePadRef.current?.clear();
-                        setSignatureMode(false);
-                        setSignatureData('');
-                      }}
-                      className="w-full sm:flex-1 gap-1"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => signaturePadRef.current?.clear()}
-                      className="w-full sm:flex-1 gap-1"
-                    >
-                      Limpar assinatura
-                    </Button>
-                    <Button
-                      onClick={handleSign}
-                      disabled={signing}
-                      className="w-full sm:flex-1 gap-1"
-                    >
-                      {signing ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
-                      Confirmar assinatura
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button className="w-full gap-2" onClick={() => setSignatureMode(true)}>
-                  <PenLine className="w-4 h-4" />
-                  {isMinor ? `Assinar como responsável (${signerName})` : 'Assinar contrato'}
-                </Button>
-              )
+                ))}
+              </div>
             )}
           </div>
         )}
       </div>
     </PortalLayout>
+  );
+}
+
+// ─── Contract Card Component ─────────────────────────────────────────────────
+function ContractCard({
+  contract, expanded, onToggleExpand,
+  signerName, signerCpf, isMinor,
+  signingContractId, signatureData, signaturePadRef, signing, downloadingId, formatCpf,
+  onStartSign, onCancelSign, onSign, onSetSignatureData, onClearPad, onDownload,
+}: {
+  contract: Contract;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  signerName: string;
+  signerCpf: string | null;
+  isMinor: boolean;
+  signingContractId: string | null;
+  signatureData: string;
+  signaturePadRef: React.RefObject<SignaturePadRef>;
+  signing: boolean;
+  downloadingId: string | null;
+  formatCpf: (cpf: string) => string;
+  onStartSign: () => void;
+  onCancelSign: () => void;
+  onSign: () => void;
+  onSetSignatureData: (v: string) => void;
+  onClearPad: () => void;
+  onDownload: () => void;
+}) {
+  const isSigned = contract.status === 'signed';
+  const isPending = contract.status === 'sent';
+
+  // Extract title from HTML
+  const titleMatch = contract.template_html.match(/<h[12][^>]*>(.*?)<\/h[12]>/i);
+  const contractTitle = titleMatch
+    ? titleMatch[1].replace(/<[^>]*>/g, '').trim()
+    : `Contrato de ${format(new Date(contract.created_at), "d MMM yyyy", { locale: ptBR })}`;
+
+  return (
+    <div className={cn(
+      'bg-card rounded-2xl border overflow-hidden transition-colors',
+      isPending ? 'border-warning/30' : 'border-border',
+    )}>
+      {/* Header - always visible */}
+      <button
+        onClick={onToggleExpand}
+        className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+      >
+        <div className={cn(
+          'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+          isSigned ? 'bg-green-500/10' : 'bg-warning/10',
+        )}>
+          {isSigned
+            ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+            : <PenLine className="w-4 h-4 text-warning" />
+          }
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground truncate">{contractTitle}</p>
+          <p className="text-xs text-muted-foreground">
+            {isSigned
+              ? `Assinado em ${format(new Date(contract.signed_at!), "d MMM yyyy", { locale: ptBR })}`
+              : 'Aguardando assinatura'
+            }
+          </p>
+        </div>
+        {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+      </button>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div className="border-t border-border p-4 space-y-4 animate-fade-in">
+          {/* Contract content */}
+          <div className="overflow-auto max-h-[50vh] rounded-xl bg-background border border-border p-4">
+            <div
+              className="prose prose-sm max-w-none text-foreground text-sm leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: contract.template_html }}
+            />
+          </div>
+
+          {/* Signed state: show signatures + download */}
+          {isSigned && (
+            <div className="space-y-4">
+              {contract.therapist_signature_data && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
+                  <img src={contract.therapist_signature_data} alt="Assinatura do terapeuta"
+                    className="max-h-16 border border-border rounded" />
+                  {contract.therapist_signed_at && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  )}
+                </div>
+              )}
+              {contract.signature_data && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    Assinatura de <strong>{signerName}</strong>:
+                  </p>
+                  {signerCpf && <p className="text-xs text-muted-foreground">CPF: {formatCpf(signerCpf)}</p>}
+                  <img src={contract.signature_data} alt="Assinatura" className="max-h-16 border border-border rounded" />
+                  {contract.signed_at && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {format(new Date(contract.signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  )}
+                </div>
+              )}
+              <Button className="w-full gap-2" variant="outline" onClick={onDownload} disabled={downloadingId === contract.id}>
+                {downloadingId === contract.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Baixar contrato assinado (PDF)
+              </Button>
+            </div>
+          )}
+
+          {/* Pending state: signature flow */}
+          {isPending && signingContractId === contract.id ? (
+            <div className="space-y-4">
+              <p className="text-sm font-medium text-foreground">
+                {isMinor ? `Assinatura do responsável (${signerName}):` : 'Assine abaixo:'}
+              </p>
+              <SignaturePad
+                ref={signaturePadRef}
+                value={signatureData}
+                onChange={onSetSignatureData}
+                hideButtons
+              />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => { onClearPad(); onCancelSign(); }} className="w-full sm:flex-1 gap-1">
+                  Cancelar
+                </Button>
+                <Button variant="outline" onClick={onClearPad} className="w-full sm:flex-1 gap-1">
+                  Limpar assinatura
+                </Button>
+                <Button onClick={onSign} disabled={signing} className="w-full sm:flex-1 gap-1">
+                  {signing ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
+                  Confirmar assinatura
+                </Button>
+              </div>
+            </div>
+          ) : isPending ? (
+            <Button className="w-full gap-2" onClick={onStartSign}>
+              <PenLine className="w-4 h-4" />
+              {isMinor ? `Assinar como responsável (${signerName})` : 'Assinar contrato'}
+            </Button>
+          ) : null}
+        </div>
+      )}
+    </div>
   );
 }
