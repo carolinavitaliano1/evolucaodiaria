@@ -339,6 +339,7 @@ function AccountPanel({
       const { data, error } = await supabase.from('portal_messages').insert({
         patient_id: patientId,
         therapist_user_id: user!.id,
+        portal_account_id: account.id,
         sender_type: 'therapist',
         content: newMessage.trim(),
         message_type: messageType,
