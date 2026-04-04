@@ -21,7 +21,7 @@ serve(async (req) => {
     const {
       clinic_id,
       // Patient
-      name, birthdate, cpf, phone, whatsapp, email,
+      name, birthdate, cpf, phone, whatsapp, email, address,
       // Minor / guardian
       is_minor,
       guardian_name, guardian_email, guardian_phone, guardian_kinship,
@@ -70,8 +70,9 @@ serve(async (req) => {
       fin_whatsapp = financial_responsible_whatsapp?.trim() || null;
     }
 
-    // Build observations combining motivo + diagnosis
+    // Build observations combining address + diagnosis + observations
     const obs_parts: string[] = [];
+    if (address?.trim()) obs_parts.push(`Endereço: ${address.trim()}`);
     if (body.diagnosis?.trim()) obs_parts.push(`Diagnóstico: ${body.diagnosis.trim()}`);
     if (observations?.trim()) obs_parts.push(observations.trim());
 

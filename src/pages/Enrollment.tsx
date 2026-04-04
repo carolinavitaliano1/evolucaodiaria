@@ -16,6 +16,7 @@ const GUARDIAN_KINSHIP_OPTIONS = ['Mãe','Pai','Avó','Avô','Tia','Tio','Respon
 
 interface FormState {
   name: string; birthdate: string; cpf: string; phone: string; whatsapp: string; email: string;
+  address: string;
   is_minor: boolean;
   guardian_name: string; guardian_email: string; guardian_phone: string; guardian_kinship: string;
   responsible_name: string; responsible_cpf: string; responsible_whatsapp: string;
@@ -27,6 +28,7 @@ interface FormState {
 
 const empty: FormState = {
   name: '', birthdate: '', cpf: '', phone: '', whatsapp: '', email: '',
+  address: '',
   is_minor: true,
   guardian_name: '', guardian_email: '', guardian_phone: '', guardian_kinship: '',
   responsible_name: '', responsible_cpf: '', responsible_whatsapp: '', responsible_email: '', responsible_relation: '',
@@ -209,6 +211,9 @@ export default function Enrollment() {
               </div>
               <Field id="email_patient" label="E-mail">
                 <Input id="email_patient" type="email" value={form.email} onChange={set('email')} placeholder="email@exemplo.com" />
+              </Field>
+              <Field id="address" label="Endereço Completo">
+                <Input id="address" value={form.address} onChange={set('address')} placeholder="Rua, número, bairro, cidade - UF" />
               </Field>
             </SectionCard>
 
