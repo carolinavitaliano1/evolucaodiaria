@@ -38,6 +38,10 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;';
 
+  const displayName = contract.signer_name || signerName;
+  const displayCpf = contract.signer_cpf || (signerCpf ? signerCpf.replace(/\D/g, '') : null);
+  const displayCity = contract.signer_city || '';
+
   const therapistSigBlock = contract.therapist_signature_data
     ? `<div style="margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;">
         <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura do terapeuta:</p>
@@ -45,15 +49,27 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
         ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:6px;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
       </div>` : '';
 
+  const formatCpfStr = (cpf: string) => {
+    const d = cpf.replace(/\D/g, '');
+    if (d.length === 11) return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`;
+    return cpf;
+  };
+
   wrapper.innerHTML = `
     <div style="margin-bottom:32px;">${contract.template_html}</div>
     ${therapistSigBlock}
     <div style="margin-top:32px;border-top:1px solid #ccc;padding-top:24px;">
-      <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital${signerName ? ` de ${signerName}` : ''}:</p>
-      ${signerCpf ? `<p style="font-size:10px;color:#777;margin-bottom:8px;">CPF: ${signerCpf}</p>` : ''}
+      <p style="font-size:12px;font-weight:bold;color:#333;margin-bottom:12px;">Dados do Assinante</p>
+      <p style="font-size:11px;color:#555;margin-bottom:2px;">Nome: <strong>${displayName}</strong></p>
+      ${displayCpf ? `<p style="font-size:11px;color:#555;margin-bottom:2px;">CPF: <strong>${formatCpfStr(displayCpf)}</strong></p>` : ''}
+      ${displayCity ? `<p style="font-size:11px;color:#555;margin-bottom:8px;">Cidade: <strong>${displayCity}</strong></p>` : ''}
+      <p style="font-size:11px;color:#555;margin-bottom:4px;">Assinatura digital:</p>
       <img src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #e5e7eb;border-radius:4px;" alt="Assinatura" />
       <p style="font-size:10px;color:#888;margin-top:8px;">
         Assinado em ${format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+      </p>
+      <p style="font-size:9px;color:#aaa;margin-top:4px;font-style:italic;">
+        O assinante declarou ter lido e concordado com todos os termos deste contrato.
       </p>
     </div>
   `;
