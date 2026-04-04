@@ -912,41 +912,14 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.setFont('helvetica', 'italic');
       doc.text(genDateStr, centerX, y, { align: 'center' });
 
-      y += 30;
-      doc.setDrawColor(180, 180, 200);
-      const lineWidth = 80;
-      doc.line(centerX - lineWidth / 2, y, centerX + lineWidth / 2, y);
-      y += 8;
+      // --- Signature block: stamp image → line → professional info ---
+      // Calculate total block height to position it at bottom of page
+      const lineWidth = pageWidth * 0.4;
+      const signBlockStartY = pageHeight - 70; // anchor near bottom
 
-      doc.setFontSize(11);
-      doc.setTextColor(80, 80, 80);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Terapeuta:', centerX, y, { align: 'center' });
-      y += 6;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(99, 102, 241);
-      doc.text(therapistName, centerX, y, { align: 'center' });
-      y += 6;
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(80, 80, 80);
-      if (profile?.cpf) {
-        doc.text(`CPF: ${profile.cpf}`, centerX, y, { align: 'center' });
-        y += 6;
-      }
-      if (profile?.professional_id) {
-        doc.text(`Registro: ${profile.professional_id}`, centerX, y, { align: 'center' });
-        y += 6;
-      }
-      if (chosenStamp?.cbo) {
-        doc.text(`CBO: ${chosenStamp.cbo}`, centerX, y, { align: 'center' });
-        y += 6;
-      }
-      if (chosenStamp?.clinical_area) {
-        doc.setFontSize(9);
-        doc.text(chosenStamp.clinical_area, centerX, y, { align: 'center' });
-      }
+      let sy = signBlockStartY;
 
-      // Stamp image
+      // 1. Stamp image (above the line, max 30mm tall, max 40mm wide)
       if (chosenStamp?.stamp_image) {
         try {
           const sImg = new Image();
@@ -956,11 +929,36 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             sImg.onerror = () => reject();
             sImg.src = chosenStamp.stamp_image;
           });
-          y += 8;
-          const sW = 50;
-          const sH = (sImg.height / sImg.width) * sW;
-          doc.addImage(sImg, 'PNG', centerX - sW / 2, y, sW, sH);
+          const maxW = 40;
+          const maxH = 25;
+          let sW = maxW;
+          let sH = (sImg.height / sImg.width) * sW;
+          if (sH > maxH) { sH = maxH; sW = (sImg.width / sImg.height) * sH; }
+          doc.addImage(sImg, 'PNG', centerX - sW / 2, sy - sH, sW, sH);
         } catch { /* skip */ }
+      }
+
+      // 2. Signature line
+      doc.setDrawColor(80, 80, 80);
+      doc.line(centerX - lineWidth / 2, sy, centerX + lineWidth / 2, sy);
+
+      // 3. Professional info below the line
+      sy += 5;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text(therapistName, centerX, sy, { align: 'center' });
+      sy += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(9);
+      if (chosenStamp?.clinical_area) {
+        doc.text(chosenStamp.clinical_area, centerX, sy, { align: 'center' });
+        sy += 5;
+      }
+      if (chosenStamp?.cbo) {
+        doc.text(`CBO: ${chosenStamp.cbo}`, centerX, sy, { align: 'center' });
       }
 
       doc.setFontSize(7);
