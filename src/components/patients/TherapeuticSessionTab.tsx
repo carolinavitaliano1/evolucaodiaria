@@ -357,6 +357,40 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const generateReport = async () => {
     // Auto-save before generating so nothing is lost
     if (sessionId) await saveSession(false);
+    // Auto-correct text fields with AI before generating
+    let correctedNotes = notesText;
+    let correctedPlans = actionPlans;
+    let correctedNext = nextSessionNotes;
+    let correctedComments = generalComments;
+
+    try {
+      const textsToCorrect = [notesText, actionPlans, nextSessionNotes, generalComments].filter(t => t.trim());
+      if (textsToCorrect.length > 0) {
+        const allText = [
+          notesText ? `[ANOTAÇÕES]\n${notesText}` : '',
+          actionPlans ? `[PLANOS]\n${actionPlans}` : '',
+          nextSessionNotes ? `[PRÓXIMA]\n${nextSessionNotes}` : '',
+          generalComments ? `[COMENTÁRIOS]\n${generalComments}` : '',
+        ].filter(Boolean).join('\n---\n');
+
+        const { data } = await supabase.functions.invoke('improve-session-text', {
+          body: { text: allText, field: 'report' },
+        });
+        if (data?.improved) {
+          const sections = data.improved.split('---');
+          for (const sec of sections) {
+            const trimmed = sec.trim();
+            if (trimmed.startsWith('[ANOTAÇÕES]')) correctedNotes = trimmed.replace('[ANOTAÇÕES]', '').trim();
+            else if (trimmed.startsWith('[PLANOS]')) correctedPlans = trimmed.replace('[PLANOS]', '').trim();
+            else if (trimmed.startsWith('[PRÓXIMA]')) correctedNext = trimmed.replace('[PRÓXIMA]', '').trim();
+            else if (trimmed.startsWith('[COMENTÁRIOS]')) correctedComments = trimmed.replace('[COMENTÁRIOS]', '').trim();
+          }
+        }
+      }
+    } catch {
+      // If AI correction fails, use original text
+    }
+
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
