@@ -163,6 +163,7 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('portal_messages').insert({
       patient_id: portalAccountRef.current.patient_id,
       therapist_user_id: portalAccountRef.current.therapist_user_id,
+      portal_account_id: portalAccountRef.current.id,
       sender_type: 'patient',
       content,
       message_type: type,
