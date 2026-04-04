@@ -9,11 +9,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
+interface ClinicOption {
+  id: string;
+  name: string;
+}
+
 interface BatchPatientImportProps {
   open: boolean;
   onClose: () => void;
-  clinicId: string;
-  clinicName: string;
+  clinics: ClinicOption[];
+  defaultClinicId?: string;
   onSuccess: () => void;
 }
 
