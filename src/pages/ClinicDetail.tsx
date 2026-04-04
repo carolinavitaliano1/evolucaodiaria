@@ -2584,6 +2584,13 @@ export default function ClinicDetail() {
             )}
           </TabsContent>
         )}
+        {/* Grupos Terapêuticos Tab */}
+        <TabsContent value="groups" className="space-y-4">
+          <TherapeuticGroupsTab
+            clinicId={clinic.id}
+            patients={clinicPatients.map(p => ({ id: p.id, name: p.name }))}
+          />
+        </TabsContent>
       </Tabs>
 
 
