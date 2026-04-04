@@ -55,6 +55,17 @@ interface ContractManagerProps {
   patientName: string;
 }
 
+/** Strip contract-variable spans from stored HTML so previews show clean text */
+function cleanContractHtml(html: string): string {
+  let clean = html;
+  clean = clean.replace(
+    /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
+    (_, inner) => inner.replace(/<[^>]*>/g, '').trim()
+  );
+  clean = clean.replace(/&nbsp;/g, ' ');
+  return clean;
+}
+
 const DEFAULT_BODY = `<h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS TERAPÊUTICOS</h2>
 
 <p>Entre as partes abaixo identificadas:</p>
