@@ -62,9 +62,14 @@ export function WhatsAppSendPanel({ patients, clinic, onGoToTemplates }: WhatsAp
   const [broadcastPatients, setBroadcastPatients] = useState<Patient[]>([]);
   const [broadcastTemplate, setBroadcastTemplate] = useState<typeof displayTemplates[0] | null>(null);
 
-  // Only patients with a phone or whatsapp number
+  // All patients with any reachable phone number (own, responsible, guardian, financial)
   const eligible = useMemo(
-    () => patients.filter(p => p.whatsapp?.trim() || p.phone?.trim()),
+    () => patients.filter(p =>
+      p.whatsapp?.trim() || p.phone?.trim() ||
+      p.responsible_whatsapp?.trim() ||
+      p.guardian_phone?.trim() ||
+      p.financial_responsible_whatsapp?.trim()
+    ),
     [patients]
   );
 
