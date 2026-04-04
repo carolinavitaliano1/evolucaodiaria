@@ -369,6 +369,14 @@ export default function PortalIntakeForm() {
         .upsert(payload, { onConflict: 'patient_id' });
       if (error) throw error;
 
+      // Sync payment_due_day back to patients table
+      if (paymentDueDay) {
+        await supabase
+          .from('patients')
+          .update({ payment_due_day: paymentDueDay })
+          .eq('id', portalAccount.patient_id);
+      }
+
       if (submit) {
         setSubmitted(true);
         if (submitted) {
