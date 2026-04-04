@@ -36,7 +36,23 @@ interface PatientExtra {
 
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;';
+  wrapper.style.cssText = 'width:794px;padding:48px;background:white;font-family:sans-serif;font-size:13px;color:#111;line-height:1.6;';
+
+  // Add proper styles for contract HTML structure
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    .contract-pdf-wrap h2 { font-size:18px; font-weight:bold; text-align:center; margin:24px 0 16px; color:#111; }
+    .contract-pdf-wrap h3 { font-size:14px; font-weight:bold; margin:20px 0 8px; color:#222; text-transform:uppercase; }
+    .contract-pdf-wrap p { margin:0 0 10px; text-align:justify; line-height:1.6; }
+    .contract-pdf-wrap ul, .contract-pdf-wrap ol { margin:8px 0; padding-left:24px; }
+    .contract-pdf-wrap li { margin-bottom:4px; }
+    .contract-pdf-wrap strong { font-weight:bold; }
+    .contract-pdf-wrap em { font-style:italic; }
+    .contract-pdf-wrap hr { border:none; border-top:1px solid #ccc; margin:16px 0; }
+    .contract-pdf-wrap table { width:100%; border-collapse:collapse; margin:12px 0; }
+    .contract-pdf-wrap td, .contract-pdf-wrap th { border:1px solid #ddd; padding:6px 8px; font-size:12px; }
+  `;
+  wrapper.appendChild(styleEl);
 
   const displayName = contract.signer_name || signerName;
   const displayCpf = contract.signer_cpf || (signerCpf ? signerCpf.replace(/\D/g, '') : null);
@@ -55,8 +71,15 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
     return cpf;
   };
 
-  wrapper.innerHTML = `
-    <div style="margin-bottom:32px;">${contract.template_html}</div>
+  // Clean any remaining variable span tags from the stored HTML
+  let cleanHtml = contract.template_html;
+  cleanHtml = cleanHtml.replace(/<span[^>]*class="[^"]*contract-variable[^"]*"[^>]*>(.*?)<\/span>/gi, '$1');
+  cleanHtml = cleanHtml.replace(/<span[^>]*data-type="variable"[^>]*>(.*?)<\/span>/gi, '$1');
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'contract-pdf-wrap';
+  contentDiv.innerHTML = `
+    <div style="margin-bottom:32px;">${cleanHtml}</div>
     ${therapistSigBlock}
     <div style="margin-top:32px;border-top:1px solid #ccc;padding-top:24px;">
       <p style="font-size:12px;font-weight:bold;color:#333;margin-bottom:12px;">Dados do Assinante</p>
@@ -73,6 +96,7 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
       </p>
     </div>
   `;
+  wrapper.appendChild(contentDiv);
 
   document.body.appendChild(wrapper);
   try {
