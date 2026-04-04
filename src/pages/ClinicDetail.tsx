@@ -809,7 +809,10 @@ export default function ClinicDetail() {
 
     const batchTemplate = batchSelectedTemplateId !== 'none' ? clinicTemplates.find(t => t.id === batchSelectedTemplateId) : null;
 
-    if (!batchTemplate && !batchEvolutionText.trim()) {
+    const globalStatus = batchStatusMode === 'same' ? batchGlobalStatus : 'presente';
+    const isNonPresentGlobal = batchStatusMode === 'same' && ['falta', 'falta_remunerada', 'feriado_remunerado', 'feriado_nao_remunerado'].includes(globalStatus);
+
+    if (!batchTemplate && !batchEvolutionText.trim() && !isNonPresentGlobal) {
       toast.error('Digite o texto da evolução');
       return;
     }
