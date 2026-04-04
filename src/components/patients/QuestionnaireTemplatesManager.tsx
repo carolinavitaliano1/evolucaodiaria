@@ -341,6 +341,13 @@ export function QuestionnaireTemplatesManager({ onClose, onSendToPatient }: Prop
         </Button>
       </div>
 
+      {digitizing && digitizeStep && (
+        <div className="flex items-center gap-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
+          <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+          <span className="text-xs text-primary font-medium">{digitizeStep}</span>
+        </div>
+      )}
+
       {templates.length === 0 ? (
         <div className="text-center py-8">
           <FileUp className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
