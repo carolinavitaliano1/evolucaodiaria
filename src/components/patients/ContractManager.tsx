@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,14 @@ import { SignaturePad } from '@/components/ui/signature-pad';
 import { toast } from 'sonner';
 import {
   Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2,
-  PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X, Stamp
+  PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X, Stamp, Upload, Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import * as pdfjsLib from 'pdfjs-dist';
 
 interface StampOption {
   id: string;
