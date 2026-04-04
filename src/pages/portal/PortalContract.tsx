@@ -548,8 +548,8 @@ function ContractCard({
           {/* Contract content */}
           <div className="overflow-auto max-h-[50vh] rounded-xl bg-background border border-border p-4">
             <div
-              className="prose prose-sm max-w-none text-foreground text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: contract.template_html }}
+              className="prose prose-sm max-w-none text-foreground text-sm leading-relaxed [&_p]:text-justify [&_p]:leading-relaxed [&_h2]:text-center [&_h3]:uppercase [&_h3]:text-sm"
+              dangerouslySetInnerHTML={{ __html: cleanContractHtml(contract.template_html) }}
             />
           </div>
 

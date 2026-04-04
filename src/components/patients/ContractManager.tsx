@@ -775,8 +775,8 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
           {previewContract && (
             <div className="space-y-4">
               <div
-                className="prose prose-sm max-w-none text-foreground"
-                dangerouslySetInnerHTML={{ __html: previewContract.template_html }}
+                className="prose prose-sm max-w-none text-foreground [&_p]:text-justify [&_p]:leading-relaxed [&_h2]:text-center [&_h3]:uppercase [&_h3]:text-sm"
+                dangerouslySetInnerHTML={{ __html: cleanContractHtml(previewContract.template_html) }}
               />
               {/* Therapist signature */}
               {previewContract.therapist_signature_data && (
