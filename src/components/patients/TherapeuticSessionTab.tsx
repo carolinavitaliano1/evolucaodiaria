@@ -328,8 +328,35 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     else setNegativeFeelings(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Generate PDF report - Professional layout
-  const generateReport = () => {
+  // Improve text field with AI
+  const improveFieldText = async (field: 'notes' | 'action_plans' | 'next_session', getText: () => string, setText: (v: string) => void) => {
+    const text = getText();
+    if (!text.trim()) {
+      toast.error('Preencha o campo antes de melhorar com IA.');
+      return;
+    }
+    setImprovingField(field);
+    try {
+      const { data, error } = await supabase.functions.invoke('improve-session-text', {
+        body: { text, field },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.improved) {
+        setText(data.improved);
+        toast.success('Texto melhorado com IA!');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao melhorar texto');
+    } finally {
+      setImprovingField(null);
+    }
+  };
+
+  // Generate PDF report - Professional layout (auto-saves first)
+  const generateReport = async () => {
+    // Auto-save before generating so nothing is lost
+    if (sessionId) await saveSession(false);
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
