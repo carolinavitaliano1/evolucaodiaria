@@ -176,13 +176,25 @@ export function FeedPostCreator({ patientId, therapistId, therapistName, onPostC
             ? 'Seu terapeuta compartilhou um vídeo no mural.'
             : 'Seu terapeuta publicou algo novo no mural.';
 
-      await supabase.from('portal_notices').insert({
-        patient_id: patientId,
-        therapist_user_id: therapistId,
-        title: noticeTitle,
-        content: noticeContent,
-        read_by_patient: false,
-      });
+      // Send notice to all active portal accounts for this patient
+      const { data: accounts } = await supabase
+        .from('patient_portal_accounts')
+        .select('id')
+        .eq('patient_id', patientId)
+        .eq('status', 'active');
+
+      if (accounts && accounts.length > 0) {
+        await supabase.from('portal_notices').insert(
+          accounts.map(acc => ({
+            patient_id: patientId,
+            therapist_user_id: therapistId,
+            portal_account_id: acc.id,
+            title: noticeTitle,
+            content: noticeContent,
+            read_by_patient: false,
+          }))
+        );
+      }
 
       setUploadProgress(100);
       toast.success('Postagem publicada!');

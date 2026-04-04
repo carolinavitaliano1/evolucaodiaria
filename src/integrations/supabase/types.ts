@@ -1688,6 +1688,7 @@ export type Database = {
           created_at: string
           id: string
           patient_id: string
+          portal_account_id: string | null
           read_by_patient: boolean
           therapist_user_id: string
           title: string
@@ -1698,6 +1699,7 @@ export type Database = {
           created_at?: string
           id?: string
           patient_id: string
+          portal_account_id?: string | null
           read_by_patient?: boolean
           therapist_user_id: string
           title: string
@@ -1708,12 +1710,21 @@ export type Database = {
           created_at?: string
           id?: string
           patient_id?: string
+          portal_account_id?: string | null
           read_by_patient?: boolean
           therapist_user_id?: string
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "portal_notices_portal_account_id_fkey"
+            columns: ["portal_account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_portal_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       private_appointments: {
         Row: {

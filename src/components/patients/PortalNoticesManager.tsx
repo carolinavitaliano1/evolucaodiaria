@@ -21,9 +21,10 @@ interface Notice {
 interface PortalNoticesManagerProps {
   patientId: string;
   patientName: string;
+  portalAccountId: string;
 }
 
-export function PortalNoticesManager({ patientId, patientName }: PortalNoticesManagerProps) {
+export function PortalNoticesManager({ patientId, patientName, portalAccountId }: PortalNoticesManagerProps) {
   const { user } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,12 +39,13 @@ export function PortalNoticesManager({ patientId, patientName }: PortalNoticesMa
       .from('portal_notices')
       .select('*')
       .eq('patient_id', patientId)
+      .eq('portal_account_id', portalAccountId)
       .order('created_at', { ascending: false });
     setNotices((data || []) as Notice[]);
     setLoading(false);
   };
 
-  useEffect(() => { loadNotices(); }, [patientId]);
+  useEffect(() => { loadNotices(); }, [patientId, portalAccountId]);
 
   const handleCreate = async () => {
     if (!title.trim() || !user) return;
@@ -52,6 +54,7 @@ export function PortalNoticesManager({ patientId, patientName }: PortalNoticesMa
       const { error } = await supabase.from('portal_notices').insert({
         patient_id: patientId,
         therapist_user_id: user.id,
+        portal_account_id: portalAccountId,
         title: title.trim(),
         content: content.trim() || null,
         read_by_patient: false,
