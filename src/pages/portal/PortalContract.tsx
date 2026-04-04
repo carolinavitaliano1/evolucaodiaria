@@ -21,6 +21,10 @@ interface Contract {
   therapist_signed_at: string | null;
   status: string;
   created_at: string;
+  signer_name: string | null;
+  signer_cpf: string | null;
+  signer_city: string | null;
+  agreed_terms: boolean;
 }
 
 interface PatientExtra {
