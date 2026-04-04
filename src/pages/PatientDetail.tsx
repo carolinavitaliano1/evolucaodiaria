@@ -3654,10 +3654,14 @@ export default function PatientDetail() {
         open={whatsAppRecipientOpen}
         onClose={() => setWhatsAppRecipientOpen(false)}
         patientName={patient.name}
-        patientWhatsapp={patient.whatsapp}
-        patientPhone={patient.phone}
-        responsibleName={patient.responsibleName}
-        responsibleWhatsapp={patient.responsibleWhatsapp!}
+        recipients={[
+          ...(patient.whatsapp || patient.phone
+            ? [{ label: 'Paciente', name: patient.name, number: (patient.whatsapp || patient.phone)! }]
+            : []),
+          ...(patient.responsibleWhatsapp
+            ? [{ label: 'Responsável Legal', name: patient.responsibleName || 'Responsável', number: patient.responsibleWhatsapp }]
+            : []),
+        ]}
       />
     </div>
   );
