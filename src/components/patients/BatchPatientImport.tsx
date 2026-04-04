@@ -307,7 +307,7 @@ export function BatchPatientImport({ open, onClose, clinics, defaultClinicId, on
               <Button
                 size="sm"
                 className="gap-2"
-                disabled={validCount === 0 || importing}
+                disabled={validCount === 0 || importing || !selectedClinicId}
                 onClick={handleImport}
               >
                 {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}

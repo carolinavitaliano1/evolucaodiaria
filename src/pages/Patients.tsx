@@ -994,12 +994,12 @@ export default function Patients() {
       </Dialog>
 
       {/* CSV Batch Import */}
-      {importOpen && importClinicId && (
+      {importOpen && (
         <BatchPatientImport
           open={importOpen}
           onClose={() => setImportOpen(false)}
-          clinicId={importClinicId}
-          clinicName={clinics.find(c => c.id === importClinicId)?.name || 'Clínica'}
+          clinics={activeClinics.map(c => ({ id: c.id, name: c.name }))}
+          defaultClinicId={activeClinics[0]?.id}
           onSuccess={() => { window.location.reload(); }}
         />
       )}
