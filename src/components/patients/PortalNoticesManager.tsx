@@ -21,9 +21,10 @@ interface Notice {
 interface PortalNoticesManagerProps {
   patientId: string;
   patientName: string;
+  portalAccountId: string;
 }
 
-export function PortalNoticesManager({ patientId, patientName }: PortalNoticesManagerProps) {
+export function PortalNoticesManager({ patientId, patientName, portalAccountId }: PortalNoticesManagerProps) {
   const { user } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
