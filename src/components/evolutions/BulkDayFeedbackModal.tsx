@@ -124,12 +124,24 @@ export function BulkDayFeedbackModal({ open, onOpenChange, items, selectedDate }
     setFeedbackItems(prev => prev.map((fi, i) => i === idx ? { ...fi, sending: true } : fi));
     try {
       const dateLabel = format(new Date(item.evolution.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-      await supabase.from('portal_notices').insert({
-        patient_id: item.patient.id,
-        therapist_user_id: user.id,
-        title: `💬 Feedback da sessão — ${dateLabel}`,
-        content: item.content,
-      });
+      // Send notice to all active portal accounts for this patient
+      const { data: accounts } = await supabase
+        .from('patient_portal_accounts')
+        .select('id')
+        .eq('patient_id', item.patient.id)
+        .eq('status', 'active');
+
+      if (accounts && accounts.length > 0) {
+        await supabase.from('portal_notices').insert(
+          accounts.map(acc => ({
+            patient_id: item.patient.id,
+            therapist_user_id: user.id,
+            portal_account_id: acc.id,
+            title: `💬 Feedback da sessão — ${dateLabel}`,
+            content: item.content,
+          }))
+        );
+      }
       await supabase.from('evolution_feedbacks').insert({
         user_id: user.id,
         patient_id: item.patient.id,
