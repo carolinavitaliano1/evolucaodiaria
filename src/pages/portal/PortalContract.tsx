@@ -363,6 +363,8 @@ function ContractCard({
   contract, expanded, onToggleExpand,
   signerName, signerCpf, isMinor,
   signingContractId, signatureData, signaturePadRef, signing, downloadingId, formatCpf,
+  signerNameInput, signerCpfInput, signerCityInput, agreedTerms,
+  onSignerNameChange, onSignerCpfChange, onSignerCityChange, onAgreedTermsChange,
   onStartSign, onCancelSign, onSign, onSetSignatureData, onClearPad, onDownload,
 }: {
   contract: Contract;
@@ -377,6 +379,14 @@ function ContractCard({
   signing: boolean;
   downloadingId: string | null;
   formatCpf: (cpf: string) => string;
+  signerNameInput: string;
+  signerCpfInput: string;
+  signerCityInput: string;
+  agreedTerms: boolean;
+  onSignerNameChange: (v: string) => void;
+  onSignerCpfChange: (v: string) => void;
+  onSignerCityChange: (v: string) => void;
+  onAgreedTermsChange: (v: boolean) => void;
   onStartSign: () => void;
   onCancelSign: () => void;
   onSign: () => void;
@@ -405,10 +415,10 @@ function ContractCard({
       >
         <div className={cn(
           'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-          isSigned ? 'bg-green-500/10' : 'bg-warning/10',
+          isSigned ? 'bg-success/10' : 'bg-warning/10',
         )}>
           {isSigned
-            ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+            ? <CheckCircle2 className="w-4 h-4 text-success" />
             : <PenLine className="w-4 h-4 text-warning" />
           }
         </div>
@@ -435,9 +445,32 @@ function ContractCard({
             />
           </div>
 
-          {/* Signed state: show signatures + download */}
+          {/* Signed state: show signatures + signer info + download */}
           {isSigned && (
             <div className="space-y-4">
+              {/* Signer identity info */}
+              {(contract.signer_name || contract.signer_cpf || contract.signer_city) && (
+                <div className="rounded-xl bg-muted/30 border border-border p-3 space-y-1">
+                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Dados do assinante
+                  </p>
+                  {contract.signer_name && (
+                    <p className="text-xs text-muted-foreground">Nome: <strong className="text-foreground">{contract.signer_name}</strong></p>
+                  )}
+                  {contract.signer_cpf && (
+                    <p className="text-xs text-muted-foreground">CPF: <strong className="text-foreground">{formatCpf(contract.signer_cpf)}</strong></p>
+                  )}
+                  {contract.signer_city && (
+                    <p className="text-xs text-muted-foreground">Cidade: <strong className="text-foreground">{contract.signer_city}</strong></p>
+                  )}
+                  {contract.signed_at && (
+                    <p className="text-xs text-muted-foreground">
+                      Data: <strong className="text-foreground">{format(new Date(contract.signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</strong>
+                    </p>
+                  )}
+                </div>
+              )}
+
               {contract.therapist_signature_data && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
@@ -453,9 +486,11 @@ function ContractCard({
               {contract.signature_data && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground font-medium">
-                    Assinatura de <strong>{signerName}</strong>:
+                    Assinatura de <strong>{contract.signer_name || signerName}</strong>:
                   </p>
-                  {signerCpf && <p className="text-xs text-muted-foreground">CPF: {formatCpf(signerCpf)}</p>}
+                  {(contract.signer_cpf || signerCpf) && (
+                    <p className="text-xs text-muted-foreground">CPF: {formatCpf(contract.signer_cpf || signerCpf!)}</p>
+                  )}
                   <img src={contract.signature_data} alt="Assinatura" className="max-h-16 border border-border rounded" />
                   {contract.signed_at && (
                     <p className="text-[10px] text-muted-foreground">
@@ -474,15 +509,80 @@ function ContractCard({
           {/* Pending state: signature flow */}
           {isPending && signingContractId === contract.id ? (
             <div className="space-y-4">
-              <p className="text-sm font-medium text-foreground">
-                {isMinor ? `Assinatura do responsável (${signerName}):` : 'Assine abaixo:'}
+              <p className="text-sm font-semibold text-foreground">
+                {isMinor ? `Identificação do responsável legal` : 'Identificação do assinante'}
               </p>
-              <SignaturePad
-                ref={signaturePadRef}
-                value={signatureData}
-                onChange={onSetSignatureData}
-                hideButtons
-              />
+
+              {/* Required identity fields */}
+              <div className="space-y-3 rounded-xl bg-muted/20 border border-border p-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Nome completo <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={signerNameInput}
+                    onChange={e => onSignerNameChange(e.target.value)}
+                    placeholder="Nome completo do assinante"
+                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      CPF <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={signerCpfInput}
+                      onChange={e => onSignerCpfChange(e.target.value)}
+                      placeholder="000.000.000-00"
+                      maxLength={14}
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Cidade <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={signerCityInput}
+                      onChange={e => onSignerCityChange(e.target.value)}
+                      placeholder="Cidade / UF"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Signature pad */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-foreground">
+                  Assinatura digital <span className="text-destructive">*</span>
+                </p>
+                <SignaturePad
+                  ref={signaturePadRef}
+                  value={signatureData}
+                  onChange={onSetSignatureData}
+                  hideButtons
+                />
+              </div>
+
+              {/* Agreement checkbox */}
+              <label className="flex items-start gap-2.5 cursor-pointer rounded-xl bg-muted/20 border border-border p-3">
+                <input
+                  type="checkbox"
+                  checked={agreedTerms}
+                  onChange={e => onAgreedTermsChange(e.target.checked)}
+                  className="w-4 h-4 accent-primary mt-0.5 shrink-0"
+                />
+                <span className="text-xs text-foreground leading-relaxed">
+                  <strong>Declaro</strong> que li e compreendi todos os termos deste contrato e concordo integralmente com as condições estabelecidas.
+                  {isMinor && ' Como responsável legal, assumo a responsabilidade pela contratação.'}
+                </span>
+              </label>
+
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button variant="outline" onClick={() => { onClearPad(); onCancelSign(); }} className="w-full sm:flex-1 gap-1">
                   Cancelar
