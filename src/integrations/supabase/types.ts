@@ -2306,6 +2306,160 @@ export type Database = {
           },
         ]
       }
+      therapeutic_group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          patient_id: string
+          status: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          patient_id: string
+          status?: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          patient_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "therapeutic_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "therapeutic_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      therapeutic_groups: {
+        Row: {
+          assessment_method: string | null
+          clinic_id: string
+          communication_patterns: string | null
+          confidentiality_agreement: string | null
+          conflict_areas: string | null
+          created_at: string
+          default_price: number | null
+          description: string | null
+          duration_minutes: number | null
+          entry_criteria: string | null
+          exclusion_criteria: string | null
+          facilitation_notes: string | null
+          facilitation_style: string | null
+          follow_up_plan: string | null
+          general_notes: string | null
+          group_rules: string | null
+          id: string
+          is_archived: boolean
+          materials: string | null
+          max_participants: number | null
+          meeting_format: string | null
+          meeting_frequency: string | null
+          name: string
+          next_topics: string | null
+          objectives: string | null
+          open_to_new: boolean
+          session_link: string | null
+          shared_goals: string | null
+          supervision_notes: string | null
+          support_reason: string | null
+          support_resources: string | null
+          therapeutic_focus: string | null
+          updated_at: string
+          user_id: string
+          waitlist_policy: string | null
+        }
+        Insert: {
+          assessment_method?: string | null
+          clinic_id: string
+          communication_patterns?: string | null
+          confidentiality_agreement?: string | null
+          conflict_areas?: string | null
+          created_at?: string
+          default_price?: number | null
+          description?: string | null
+          duration_minutes?: number | null
+          entry_criteria?: string | null
+          exclusion_criteria?: string | null
+          facilitation_notes?: string | null
+          facilitation_style?: string | null
+          follow_up_plan?: string | null
+          general_notes?: string | null
+          group_rules?: string | null
+          id?: string
+          is_archived?: boolean
+          materials?: string | null
+          max_participants?: number | null
+          meeting_format?: string | null
+          meeting_frequency?: string | null
+          name: string
+          next_topics?: string | null
+          objectives?: string | null
+          open_to_new?: boolean
+          session_link?: string | null
+          shared_goals?: string | null
+          supervision_notes?: string | null
+          support_reason?: string | null
+          support_resources?: string | null
+          therapeutic_focus?: string | null
+          updated_at?: string
+          user_id: string
+          waitlist_policy?: string | null
+        }
+        Update: {
+          assessment_method?: string | null
+          clinic_id?: string
+          communication_patterns?: string | null
+          confidentiality_agreement?: string | null
+          conflict_areas?: string | null
+          created_at?: string
+          default_price?: number | null
+          description?: string | null
+          duration_minutes?: number | null
+          entry_criteria?: string | null
+          exclusion_criteria?: string | null
+          facilitation_notes?: string | null
+          facilitation_style?: string | null
+          follow_up_plan?: string | null
+          general_notes?: string | null
+          group_rules?: string | null
+          id?: string
+          is_archived?: boolean
+          materials?: string | null
+          max_participants?: number | null
+          meeting_format?: string | null
+          meeting_frequency?: string | null
+          name?: string
+          next_topics?: string | null
+          objectives?: string | null
+          open_to_new?: boolean
+          session_link?: string | null
+          shared_goals?: string | null
+          supervision_notes?: string | null
+          support_reason?: string | null
+          support_resources?: string | null
+          therapeutic_focus?: string | null
+          updated_at?: string
+          user_id?: string
+          waitlist_policy?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "therapeutic_groups_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       therapist_patient_assignments: {
         Row: {
           created_at: string

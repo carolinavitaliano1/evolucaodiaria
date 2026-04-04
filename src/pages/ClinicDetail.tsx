@@ -47,6 +47,8 @@ import { QuickWhatsAppModal } from '@/components/whatsapp/QuickWhatsAppModal';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 import { ClinicAttendanceSheet } from '@/components/attendance/ClinicAttendanceSheet';
 import { ClinicAlertsWidget } from '@/components/clinics/ClinicAlertsWidget';
+import { TherapeuticGroupsTab } from '@/components/clinics/TherapeuticGroupsTab';
+import { UsersRound } from 'lucide-react';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -1055,6 +1057,7 @@ export default function ClinicDetail() {
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
             ...(isPropria ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
+            { value: 'groups', icon: <UsersRound className="w-5 h-5" />, label: 'Grupos', color: 'text-indigo-500' },
           ].map(tab => (
             <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
               <TabsTrigger
@@ -2581,6 +2584,13 @@ export default function ClinicDetail() {
             )}
           </TabsContent>
         )}
+        {/* Grupos Terapêuticos Tab */}
+        <TabsContent value="groups" className="space-y-4">
+          <TherapeuticGroupsTab
+            clinicId={clinic.id}
+            patients={clinicPatients.map(p => ({ id: p.id, name: p.name }))}
+          />
+        </TabsContent>
       </Tabs>
 
 
