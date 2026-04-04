@@ -13,7 +13,7 @@ export interface OrgMemberProfile {
   remunerationValue: number | null;
 }
 
-export function useClinicOrg(clinicId: string) {
+export function useClinicOrg(clinicId: string | undefined) {
   const { user } = useAuth();
   const [members, setMembers] = useState<OrgMemberProfile[]>([]);
   const [isOrg, setIsOrg] = useState(false);
