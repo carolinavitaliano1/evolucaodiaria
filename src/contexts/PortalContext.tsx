@@ -62,13 +62,13 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const portalAccountRef = useRef<PortalAccount | null>(null);
 
-  const loadMessages = useCallback(async (patientId?: string) => {
-    const pid = patientId || portalAccountRef.current?.patient_id;
-    if (!pid) return;
+  const loadMessages = useCallback(async (accountId?: string) => {
+    const aid = accountId || portalAccountRef.current?.id;
+    if (!aid) return;
     const { data } = await supabase
       .from('portal_messages')
       .select('*')
-      .eq('patient_id', pid)
+      .eq('portal_account_id', aid)
       .order('created_at', { ascending: true });
     if (data) setMessages(data as PortalMessage[]);
   }, []);
