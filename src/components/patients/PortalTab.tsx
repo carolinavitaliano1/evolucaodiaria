@@ -302,7 +302,10 @@ function AccountPanel({
   const [sentQuestionnaires, setSentQuestionnaires] = useState<any[]>([]);
   const [viewingQAnswers, setViewingQAnswers] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeSectionRef = useRef<string | null>(null);
   const perms = account.permissions || DEFAULT_PERMISSIONS;
+
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
 
   useEffect(() => {
     // Load messages scoped to this portal account
@@ -310,7 +313,10 @@ function AccountPanel({
       .eq('portal_account_id', account.id)
       .order('created_at', { ascending: false })
       .limit(50)
-      .then(({ data }) => setMessages((data || []) as PortalMessage[]));
+      .then(({ data }) => {
+        setMessages((data || []) as PortalMessage[]);
+        setMessagesLoaded(true);
+      });
 
     // Load documents for this account
     supabase.from('portal_documents').select('*')
@@ -337,7 +343,14 @@ function AccountPanel({
       }, (payload) => {
         const m = payload.new as PortalMessage;
         if (m.sender_type === 'patient') {
-          setMessages(prev => prev.some(x => x.id === m.id) ? prev : [m, ...prev]);
+          // If messages section is open, auto-mark as read
+          if (activeSectionRef.current === 'messages') {
+            const readMsg = { ...m, read_by_therapist: true };
+            setMessages(prev => prev.some(x => x.id === m.id) ? prev : [readMsg, ...prev]);
+            supabase.from('portal_messages').update({ read_by_therapist: true }).eq('id', m.id).then();
+          } else {
+            setMessages(prev => prev.some(x => x.id === m.id) ? prev : [m, ...prev]);
+          }
         }
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -548,6 +561,32 @@ function AccountPanel({
   ].filter(Boolean) as { id: string; icon: React.ElementType; label: string; color: string; bg: string; badge?: number; dot?: boolean }[];
 
   const [activeSection, setActiveSection] = useState<string | null>(actions[0]?.id || null);
+
+  // Keep ref in sync
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+  }, [activeSection]);
+
+  // Mark unread patient messages as read when therapist opens messages section
+  useEffect(() => {
+    if (activeSection !== 'messages' || !messagesLoaded) return;
+    const unreadIds = messages
+      .filter(m => m.sender_type === 'patient' && !m.read_by_therapist)
+      .map(m => m.id);
+    if (unreadIds.length === 0) return;
+
+    // Update locally first to prevent re-trigger
+    setMessages(prev =>
+      prev.map(m => unreadIds.includes(m.id) ? { ...m, read_by_therapist: true } : m)
+    );
+
+    // Persist to database
+    supabase
+      .from('portal_messages')
+      .update({ read_by_therapist: true })
+      .in('id', unreadIds)
+      .then();
+  }, [activeSection, messagesLoaded]);
 
   const handleActionClick = (id: string) => {
     setActiveSection(prev => prev === id ? null : id);
