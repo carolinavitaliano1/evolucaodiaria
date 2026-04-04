@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,14 @@ import { SignaturePad } from '@/components/ui/signature-pad';
 import { toast } from 'sonner';
 import {
   Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2,
-  PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X, Stamp
+  PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X, Stamp, Upload, Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+
 
 interface StampOption {
   id: string;
@@ -130,6 +131,7 @@ function TemplateLibrary({
 // ─── Main ContractManager ──────────────────────────────────────────────────────
 export function ContractManager({ patientId, patientName }: ContractManagerProps) {
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Contract state
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -148,6 +150,10 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
   const [bodyHtml, setBodyHtml] = useState('');
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
+
+  // AI digitize state
+  const [digitizing, setDigitizing] = useState(false);
+  const [digitizeProgress, setDigitizeProgress] = useState('');
 
   // Therapist signature per contract
   const [signingContractId, setSigningContractId] = useState<string | null>(null);
@@ -197,7 +203,73 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     loadStamps();
   }, [patientId, user]);
 
-  // ─── Template library actions ─────────────────────────────────────────────
+  // ─── AI Digitize contract from uploaded file ──────────────────────────────
+  const handleDigitizeFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    setDigitizing(true);
+    try {
+      let pagesBase64: string[] = [];
+
+      if (file.type === 'application/pdf') {
+        // Use pdf.js from CDN to render pages
+        setDigitizeProgress('Lendo páginas do PDF...');
+        const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/+esm' as any);
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          setDigitizeProgress(`Renderizando página ${i} de ${pdf.numPages}...`);
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d')!;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          const dataUrl = canvas.toDataURL('image/png');
+          pagesBase64.push(dataUrl.split(',')[1]);
+        }
+      } else {
+        // Image file
+        setDigitizeProgress('Processando imagem...');
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(file);
+        });
+        pagesBase64 = [base64];
+      }
+
+      setDigitizeProgress('Digitalizando com IA...');
+      const { data, error } = await supabase.functions.invoke('digitize-contract', {
+        body: {
+          pages_base64: pagesBase64,
+          patient_name: patientName,
+        },
+      });
+
+      if (error) throw new Error(error.message || 'Erro na digitalização');
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.html_content) {
+        setBodyHtml(data.html_content);
+        setSelectedTemplateName(data.title || 'Contrato digitalizado');
+        setCreateMode(true);
+        toast.success('Contrato digitalizado com sucesso! Revise o conteúdo antes de salvar.');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao digitalizar contrato');
+    } finally {
+      setDigitizing(false);
+      setDigitizeProgress('');
+    }
+  };
+
   const handleSelectTemplate = (t: ContractTemplate) => {
     setBodyHtml(t.body_html);
     setSelectedTemplateName(t.name);
@@ -351,11 +423,24 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
             <span className="text-xs font-normal text-muted-foreground">({contracts.length})</span>
           )}
         </h3>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8"
             onClick={() => setShowLibrary(v => !v)}>
             <FileText className="w-3 h-3" /> Modelos
           </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8"
+            disabled={digitizing}
+            onClick={() => fileInputRef.current?.click()}>
+            {digitizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {digitizing ? digitizeProgress || 'Digitalizando...' : 'Digitalizar com IA'}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,image/*"
+            className="hidden"
+            onChange={handleDigitizeFile}
+          />
           <Button size="sm" className="gap-1.5 text-xs h-8" onClick={handleStartNew}>
             <Plus className="w-3 h-3" /> Novo contrato
           </Button>
