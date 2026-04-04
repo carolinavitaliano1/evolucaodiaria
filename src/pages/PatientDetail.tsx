@@ -1849,6 +1849,7 @@ export default function PatientDetail() {
             { value: 'notes', icon: PenLine, label: 'Notas' },
             { value: 'portal', icon: Users, label: 'Portal' },
             { value: 'mural', icon: Newspaper, label: 'Mural' },
+            { value: 'attendance', icon: ClipboardList, label: 'Frequência' },
             ...(isOrg ? [{ value: 'therapists', icon: UserCheck, label: 'Terapeutas' }] : []),
           ].map(({ value, icon: Icon, label }) => (
             <TabsTrigger
