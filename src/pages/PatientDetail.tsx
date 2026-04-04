@@ -2856,7 +2856,22 @@ export default function PatientDetail() {
           />
         </TabsContent>
 
-        {/* Terapeutas Responsáveis Tab */}
+        {/* Frequência Tab */}
+        <TabsContent value="attendance">
+          {patient && clinic && (
+            <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+                <ClipboardList className="w-4 h-4 text-primary" /> Lista de Frequência
+              </h3>
+              <PatientAttendanceButton
+                patient={patient}
+                clinicName={clinic.name}
+                evolutions={patientEvolutions}
+              />
+            </div>
+          )}
+        </TabsContent>
+
         {isOrg && (
           <TabsContent value="therapists" className="space-y-4">
             <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
