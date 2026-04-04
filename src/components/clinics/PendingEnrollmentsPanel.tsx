@@ -105,10 +105,19 @@ export function PendingEnrollmentsPanel({ clinicId, pendingPatients, onActivated
     if (!selectedPatient || !user) return;
     setSaving(true);
     try {
+      // Build schedule_by_day from weekdays + scheduleTime
+      const scheduleByDay: Record<string, { start: string; end: string }> = {};
+      if (form.weekdays.length > 0 && form.scheduleTime) {
+        for (const day of form.weekdays) {
+          scheduleByDay[day] = { start: form.scheduleTime, end: '' };
+        }
+      }
+
       const updates: Record<string, any> = {
         status: 'ativo',
         weekdays: form.weekdays.length > 0 ? form.weekdays : null,
         schedule_time: form.scheduleTime || null,
+        schedule_by_day: Object.keys(scheduleByDay).length > 0 ? scheduleByDay : null,
         payment_value: form.paymentValue ? parseFloat(form.paymentValue) : null,
         payment_type: form.paymentType,
         package_id: form.packageId || null,
