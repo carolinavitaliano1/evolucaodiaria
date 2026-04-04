@@ -639,8 +639,9 @@ export default function Patients() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" className="gap-1.5 text-xs"
-            onClick={() => { setImportClinicId(activeClinics[0]?.id || ''); setImportOpen(true); }}>
+            onClick={() => setImportOpen(true)}>
             <FileSpreadsheet className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Importar CSV</span><span className="sm:hidden">CSV</span>
+          </Button>
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegWhatsapp(''); setQuickRegClinicId(activeClinics[0]?.id || ''); }}>
