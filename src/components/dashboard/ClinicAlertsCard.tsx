@@ -30,6 +30,7 @@ export function ClinicAlertsCard() {
 
   const [overduePayments, setOverduePayments] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [intakeReviews, setIntakeReviews] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const todayStr = toLocalDateString(new Date());
@@ -75,7 +76,6 @@ export function ClinicAlertsCard() {
     const todayDay = today.getDate();
 
     Promise.all([
-      // Overdue / upcoming payments (due within 3 days or already overdue this month)
       supabase
         .from('patient_payment_records')
         .select('id', { count: 'exact', head: true })
@@ -83,16 +83,21 @@ export function ClinicAlertsCard() {
         .eq('month', currentMonth)
         .eq('year', currentYear)
         .eq('paid', false),
-      // Unread portal messages
       supabase
         .from('portal_messages')
         .select('id', { count: 'exact', head: true })
         .eq('therapist_user_id', user.id)
         .eq('sender_type', 'patient')
         .eq('read_by_therapist', false),
-    ]).then(([payments, messages]) => {
+      supabase
+        .from('patient_intake_forms')
+        .select('id', { count: 'exact', head: true })
+        .eq('therapist_user_id', user.id)
+        .eq('needs_review', true),
+    ]).then(([payments, messages, intakes]) => {
       setOverduePayments(payments.count ?? 0);
       setUnreadMessages(messages.count ?? 0);
+      setIntakeReviews(intakes.count ?? 0);
       setLoading(false);
     });
   }, [user, todayStr]);
@@ -155,8 +160,19 @@ export function ClinicAlertsCard() {
       });
     }
 
+    if (intakeReviews > 0) {
+      items.push({
+        key: 'intake-reviews',
+        icon: <FileText className="w-4 h-4" />,
+        label: `${intakeReviews} ficha${intakeReviews > 1 ? 's' : ''} atualizada${intakeReviews > 1 ? 's' : ''} aguardando revisão`,
+        count: intakeReviews,
+        color: 'text-teal-500',
+        onClick: () => navigate('/patients'),
+      });
+    }
+
     return items;
-  }, [overduePayments, missingEvolutions, unreadMessages, pendingTasks, pendingEnrollments, navigate]);
+  }, [overduePayments, missingEvolutions, unreadMessages, pendingTasks, pendingEnrollments, intakeReviews, navigate]);
 
   const allClear = alerts.length === 0 && !loading;
 
