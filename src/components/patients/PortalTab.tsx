@@ -92,12 +92,12 @@ const ACCESS_TYPES = [
 ];
 
 const DEFAULT_PERMISSIONS: Record<string, boolean> = {
-  messages: true, feedbacks: true, financial: true,
+  messages: true, financial: true,
   contract: true, intake: true, notices: true, documents: true,
 };
 
 const PERM_LABELS: Record<string, string> = {
-  messages: 'Mensagens', feedbacks: 'Feedbacks da sessão', financial: 'Financeiro',
+  messages: 'Mensagens', financial: 'Financeiro',
   contract: 'Contrato', intake: 'Ficha cadastral', notices: 'Avisos', documents: 'Documentos',
 };
 
