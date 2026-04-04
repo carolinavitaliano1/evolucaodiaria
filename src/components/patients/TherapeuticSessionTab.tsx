@@ -328,7 +328,78 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     toast.success('Relatório gerado!');
   };
 
-  const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
+  const handleDeleteSession = async (sessionId: string) => {
+    const { error } = await supabase.from('therapy_sessions').delete().eq('id', sessionId);
+    if (error) {
+      toast.error('Erro ao excluir sessão');
+    } else {
+      toast.success('Sessão excluída');
+      loadHistory();
+    }
+  };
+
+  const handleDuplicateSession = async (session: any) => {
+    if (!user) return;
+    const { data, error } = await supabase.from('therapy_sessions').insert({
+      user_id: user.id,
+      patient_id: patientId,
+      clinic_id: clinicId,
+      title: `${session.title || 'Sessão'} (cópia)`,
+      notes_text: session.notes_text || '',
+      action_plans: session.action_plans || '',
+      next_session_notes: session.next_session_notes || '',
+      general_comments: session.general_comments || '',
+      positive_feelings: session.positive_feelings || [],
+      negative_feelings: session.negative_feelings || [],
+      mood_score: session.mood_score,
+      suicidal_thoughts: session.suicidal_thoughts || false,
+      price: session.price || 0,
+      payment_pending: false,
+      status: 'active',
+      duration_seconds: 0,
+    }).select('id').single();
+
+    if (error) {
+      toast.error('Erro ao duplicar sessão');
+    } else if (data) {
+      toast.success('Sessão duplicada! Abrindo para edição...');
+      // Load the duplicated session as active
+      setSessionId(data.id);
+      setTitle(`${session.title || 'Sessão'} (cópia)`);
+      setNotesText(session.notes_text || '');
+      setActionPlans(session.action_plans || '');
+      setNextSessionNotes(session.next_session_notes || '');
+      setGeneralComments(session.general_comments || '');
+      setPositiveFeelings(session.positive_feelings || []);
+      setNegativeFeelings(session.negative_feelings || []);
+      setMoodScore(session.mood_score);
+      setSuicidalThoughts(session.suicidal_thoughts || false);
+      setElapsedSeconds(0);
+      setViewMode('session');
+    }
+  };
+
+  const handleViewSession = (session: any) => {
+    setViewingSession(session);
+  };
+
+  const handleEditSession = (session: any) => {
+    // Load session data into form
+    setSessionId(session.id);
+    setTitle(session.title || '');
+    setNotesText(session.notes_text || '');
+    setActionPlans(session.action_plans || '');
+    setNextSessionNotes(session.next_session_notes || '');
+    setGeneralComments(session.general_comments || '');
+    setPositiveFeelings(session.positive_feelings || []);
+    setNegativeFeelings(session.negative_feelings || []);
+    setMoodScore(session.mood_score);
+    setSuicidalThoughts(session.suicidal_thoughts || false);
+    setElapsedSeconds(session.duration_seconds || 0);
+    setPrice(session.price?.toString() || '0');
+    setPaymentPending(session.payment_pending || false);
+    setViewMode('session');
+  };
 
   return (
     <div className="space-y-4">
