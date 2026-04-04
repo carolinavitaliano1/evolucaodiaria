@@ -45,7 +45,7 @@ interface ClinicPaymentRecord {
   notes: string | null;
 }
 
-export default function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
+export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { clinics, patients, evolutions, updateClinic, clinicPackages } = useApp();
   const { user } = useAuth();
   const { isOrg } = useClinicOrg(clinicId);
