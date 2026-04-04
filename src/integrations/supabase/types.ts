@@ -1457,6 +1457,7 @@ export type Database = {
           intake_token: string | null
           is_archived: boolean | null
           is_minor: boolean
+          is_virtual: boolean
           name: string
           observations: string | null
           package_id: string | null
@@ -1501,6 +1502,7 @@ export type Database = {
           intake_token?: string | null
           is_archived?: boolean | null
           is_minor?: boolean
+          is_virtual?: boolean
           name: string
           observations?: string | null
           package_id?: string | null
@@ -1545,6 +1547,7 @@ export type Database = {
           intake_token?: string | null
           is_archived?: boolean | null
           is_minor?: boolean
+          is_virtual?: boolean
           name?: string
           observations?: string | null
           package_id?: string | null

@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
@@ -289,6 +289,65 @@ export default function PatientDetail() {
   const [prUseResponsible, setPrUseResponsible] = useState(false);
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
+
+  // Virtual consultation state
+  const [isVirtual, setIsVirtual] = useState(false);
+  const [sendingConfirmation, setSendingConfirmation] = useState(false);
+
+  // Load is_virtual from DB
+  useEffect(() => {
+    if (!patient) return;
+    supabase.from('patients').select('is_virtual').eq('id', patient.id).maybeSingle()
+      .then(({ data }) => { if (data) setIsVirtual(!!(data as any).is_virtual); });
+  }, [patient?.id]);
+
+  const handleToggleVirtual = async (checked: boolean) => {
+    if (!patient) return;
+    setIsVirtual(checked);
+    await supabase.from('patients').update({ is_virtual: checked } as any).eq('id', patient.id);
+    toast.success(checked ? 'Consulta marcada como virtual' : 'Consulta marcada como presencial');
+  };
+
+  const handleSendConfirmation = async (channel: 'portal' | 'whatsapp' | 'both') => {
+    if (!patient || !user) return;
+    setSendingConfirmation(true);
+    try {
+      const msg = `Olá ${patient.name.split(' ')[0]}! 👋\n\nSua próxima sessão está ${isVirtual ? 'agendada online' : 'confirmada'}. Você poderá comparecer? Por favor, confirme sua presença.`;
+
+      // Send via portal
+      if (channel === 'portal' || channel === 'both') {
+        const portalAccount = await supabase.from('patient_portal_accounts')
+          .select('id').eq('patient_id', patient.id).eq('status', 'active').maybeSingle();
+        if (portalAccount.data) {
+          await supabase.from('portal_messages').insert({
+            patient_id: patient.id,
+            therapist_user_id: user.id,
+            portal_account_id: portalAccount.data.id,
+            content: msg,
+            message_type: 'message',
+            sender_type: 'therapist',
+          });
+          toast.success('Confirmação enviada pelo Portal!');
+        } else if (channel === 'portal') {
+          toast.error('Paciente não possui conta no portal ativa.');
+        }
+      }
+
+      // Send via WhatsApp
+      if (channel === 'whatsapp' || channel === 'both') {
+        const phoneNum = patient.whatsapp || patient.phone || patient.guardianPhone;
+        if (phoneNum) {
+          const cleaned = phoneNum.replace(/\D/g, '');
+          const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+          window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+        } else {
+          toast.error('Paciente sem telefone cadastrado.');
+        }
+      }
+    } finally {
+      setSendingConfirmation(false);
+    }
+  };
 
   // Therapist profile for fiscal receipt
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
@@ -1713,6 +1772,62 @@ export default function PatientDetail() {
               </Button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Virtual consultation toggle + confirmation */}
+      <div className="bg-card rounded-xl border border-border shadow-sm p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          <div className={cn(
+            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+            isVirtual ? "bg-primary/10" : "bg-muted"
+          )}>
+            <Video className={cn("w-4 h-4", isVirtual ? "text-primary" : "text-muted-foreground")} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="virtual-toggle" className="text-sm font-medium text-foreground cursor-pointer">
+                Consulta Virtual
+              </Label>
+              <Switch id="virtual-toggle" checked={isVirtual} onCheckedChange={handleToggleVirtual} />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {isVirtual ? 'Sessões online — envie confirmação de presença' : 'Sessões presenciais'}
+            </p>
+          </div>
+        </div>
+
+        {/* Confirmation buttons */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => handleSendConfirmation('portal')}
+            disabled={sendingConfirmation}
+            title="Enviar confirmação pelo Portal"
+          >
+            <MessageSquare className="w-3 h-3" /> Portal
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs border-[#25D366]/40 text-[#25D366] hover:bg-[#25D366]/5"
+            onClick={() => handleSendConfirmation('whatsapp')}
+            disabled={sendingConfirmation}
+            title="Enviar confirmação pelo WhatsApp"
+          >
+            <WhatsAppIcon className="w-3 h-3" /> WhatsApp
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => handleSendConfirmation('both')}
+            disabled={sendingConfirmation}
+          >
+            {sendingConfirmation ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+            Ambos
+          </Button>
         </div>
       </div>
 
