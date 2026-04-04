@@ -932,15 +932,25 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                   </TabsContent>
                   <TabsContent value="plans" className="mt-0 space-y-2">
                     <Textarea value={actionPlans} onChange={e => setActionPlans(e.target.value)} placeholder="Liste tarefas, exercícios ou atividades para o paciente fazer em casa." className="min-h-[200px] resize-y" />
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
-                      {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
+                        {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary" disabled={creatingField === 'create_action_plans'} onClick={() => createFieldWithAI('create_action_plans', setActionPlans)}>
+                        {creatingField === 'create_action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                    </div>
                   </TabsContent>
                   <TabsContent value="next" className="mt-0 space-y-2">
                     <Textarea value={nextSessionNotes} onChange={e => setNextSessionNotes(e.target.value)} placeholder="O que trabalhar na próxima sessão? Planejamento e temas pendentes." className="min-h-[200px] resize-y" />
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'next_session' || !nextSessionNotes.trim()} onClick={() => improveFieldText('next_session', () => nextSessionNotes, setNextSessionNotes)}>
-                      {improvingField === 'next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'next_session' || !nextSessionNotes.trim()} onClick={() => improveFieldText('next_session', () => nextSessionNotes, setNextSessionNotes)}>
+                        {improvingField === 'next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary" disabled={creatingField === 'create_next_session'} onClick={() => createFieldWithAI('create_next_session', setNextSessionNotes)}>
+                        {creatingField === 'create_next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                    </div>
                   </TabsContent>
                 </div>
               </Tabs>
