@@ -73,7 +73,7 @@ export default function Enrollment() {
       .from('clinics')
       .select('name, address')
       .eq('id', clinicId)
-      .neq('is_archived', true)
+      .or('is_archived.is.null,is_archived.eq.false')
       .maybeSingle()
       .then(({ data }) => {
         if (!data) setNotFound(true);
