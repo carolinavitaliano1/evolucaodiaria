@@ -449,6 +449,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     }
   };
 
+  const generateReport = async () => {
     setGeneratingReport(true);
     try {
     // Auto-save before generating so nothing is lost
