@@ -435,8 +435,8 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         patient_id: patientId,
         therapist_user_id: user.id,
         portal_account_id: portalAccount?.id || null,
-        title: title || 'Plano de Ação',
-        items,
+        title: 'Plano de Ação',
+        items: items as any,
         status: 'pending',
       });
 
