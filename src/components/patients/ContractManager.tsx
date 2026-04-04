@@ -543,6 +543,27 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
               <X className="w-3.5 h-3.5" />
             </Button>
           </div>
+          {/* Stamp selector for variable substitution */}
+          {stamps.length > 0 && (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
+              <Label className="text-[11px] text-muted-foreground flex items-center gap-1 whitespace-nowrap">
+                <Stamp className="w-3 h-3" /> Carimbo para variáveis:
+              </Label>
+              <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <SelectValue placeholder="Selecionar carimbo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum carimbo</SelectItem>
+                  {stamps.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} — {s.clinical_area}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <ContractEditor value={bodyHtml} onChange={setBodyHtml} />
           {/* Save as template option */}
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
