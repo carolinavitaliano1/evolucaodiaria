@@ -466,11 +466,7 @@ export default function PortalIntakeForm() {
               {savingQ ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Enviar respostas
             </Button>
-          ) : (
-            <Button variant="outline" className="w-full gap-1.5" onClick={() => handleDownloadQuestionnairePdf(activeQuestionnaire)}>
-              <FileDown className="w-4 h-4" /> Baixar PDF
-            </Button>
-          )}
+          ) : null}
         </div>
       </PortalLayout>
     );
