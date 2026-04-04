@@ -991,6 +991,17 @@ export default function Patients() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* CSV Batch Import */}
+      {importOpen && importClinicId && (
+        <BatchPatientImport
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          clinicId={importClinicId}
+          clinicName={clinics.find(c => c.id === importClinicId)?.name || 'Clínica'}
+          onSuccess={() => { window.location.reload(); }}
+        />
+      )}
     </div>
   );
 }
