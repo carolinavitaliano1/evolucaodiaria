@@ -808,26 +808,30 @@ export default function PortalIntakeForm() {
           <div className="space-y-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preenchidos</h2>
             {doneQ.map(q => (
-              <button
+            <div
                 key={q.id}
-                onClick={() => openQuestionnaire(q)}
                 className="w-full rounded-xl border border-border bg-card p-4 text-left hover:bg-muted/20 transition-colors"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                  <button className="flex items-center gap-3 flex-1 min-w-0" onClick={() => openQuestionnaire(q)}>
+                    <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
                       <CheckCircle2 className="w-5 h-5 text-success" />
                     </div>
-                    <div>
+                    <div className="text-left">
                       <p className="text-sm font-semibold text-foreground">{q.title}</p>
                       <p className="text-xs text-muted-foreground">
                         Enviado em {q.submitted_at ? format(new Date(q.submitted_at), "d/MM/yyyy", { locale: ptBR }) : '—'}
                       </p>
                     </div>
+                  </button>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleDownloadQuestionnairePdf(q); }}>
+                      <FileDown className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
