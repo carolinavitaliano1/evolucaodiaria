@@ -850,7 +850,7 @@ export default function ClinicDetail() {
         patientId,
         clinicId: clinic.id,
         date: dateStr,
-        text: fullText,
+        text: autoText,
         attendanceStatus: status,
         stampId,
       });
