@@ -98,6 +98,16 @@ function formatPaymentType(type: string | null): string {
   return type ? (map[type] || type) : 'Não definido';
 }
 
+interface ReceiptDoc {
+  id: string;
+  name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number | null;
+  description: string | null;
+  created_at: string;
+}
+
 export default function PortalFinancial() {
   const { portalAccount, patient, sendMessage } = usePortal();
   const { user } = useAuth();
@@ -111,6 +121,7 @@ export default function PortalFinancial() {
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptFilePreview, setReceiptFilePreview] = useState<string | null>(null);
+  const [receiptDocs, setReceiptDocs] = useState<ReceiptDoc[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
