@@ -305,13 +305,18 @@ function AccountPanel({
   const activeSectionRef = useRef<string | null>(null);
   const perms = account.permissions || DEFAULT_PERMISSIONS;
 
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
+
   useEffect(() => {
     // Load messages scoped to this portal account
     supabase.from('portal_messages').select('*')
       .eq('portal_account_id', account.id)
       .order('created_at', { ascending: false })
       .limit(50)
-      .then(({ data }) => setMessages((data || []) as PortalMessage[]));
+      .then(({ data }) => {
+        setMessages((data || []) as PortalMessage[]);
+        setMessagesLoaded(true);
+      });
 
     // Load documents for this account
     supabase.from('portal_documents').select('*')
