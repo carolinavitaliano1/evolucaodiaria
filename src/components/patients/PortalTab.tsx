@@ -641,16 +641,14 @@ function AccountPanel({
                       {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
                     </span>
                   ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
-                  {hasIntakeSubmitted && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1.5"
-                      onClick={() => handleDownloadIntake(intakeForm!, patientName)}
-                    >
-                      <Download className="w-3 h-3" /> Baixar PDF
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => handleDownloadIntake(intakeForm || {} as IntakeForm, patientName)}
+                  >
+                    <Download className="w-3 h-3" /> Baixar PDF
+                  </Button>
                 </div>
               </div>
 
