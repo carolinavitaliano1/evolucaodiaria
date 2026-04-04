@@ -557,6 +557,11 @@ function AccountPanel({
 
   const [activeSection, setActiveSection] = useState<string | null>(actions[0]?.id || null);
 
+  // Keep ref in sync
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+  }, [activeSection]);
+
   // Mark unread patient messages as read when therapist opens messages section
   useEffect(() => {
     if (activeSection !== 'messages') return;
