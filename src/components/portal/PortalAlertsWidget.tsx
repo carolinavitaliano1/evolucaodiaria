@@ -112,12 +112,13 @@ export function PortalAlertsWidget() {
         }
       }
 
-      // 3. Unread notices
+      // 3. Unread notices (scoped to this portal account)
       const { data: notices } = await supabase
         .from('portal_notices')
         .select('id')
         .eq('patient_id', portalAccount.patient_id)
-        .eq('read_by_patient', false);
+        .eq('read_by_patient', false)
+        .not('title', 'ilike', '%Mural%');
 
       if (notices && notices.length > 0) {
         newAlerts.push({
@@ -132,16 +133,22 @@ export function PortalAlertsWidget() {
         });
       }
 
-      // 4. Unread messages
-      if (unreadCount > 0) {
+      // 4. Pending questionnaires
+      const { data: pendingQ } = await supabase
+        .from('patient_questionnaires')
+        .select('id')
+        .eq('patient_id', portalAccount.patient_id)
+        .eq('status', 'pending');
+
+      if (pendingQ && pendingQ.length > 0) {
         newAlerts.push({
-          id: 'messages',
-          type: 'messages',
-          title: 'Mensagens não lidas',
-          description: `${unreadCount} mensagem(ns) nova(s) do terapeuta.`,
-          icon: MessageSquare,
+          id: 'questionnaires',
+          type: 'notices',
+          title: 'Questionários pendentes',
+          description: `Você tem ${pendingQ.length} questionário(s) para responder.`,
+          icon: ClipboardList,
           color: 'text-primary',
-          route: '/portal/mensagens',
+          route: '/portal/fichas',
           priority: 4,
         });
       }
