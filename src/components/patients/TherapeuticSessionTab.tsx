@@ -86,7 +86,22 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     loadActiveSession();
     loadHistory();
     loadPlans();
+    loadStamps();
   }, [user, patientId]);
+
+  const loadStamps = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('stamps')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('is_default', { ascending: false });
+    if (data) {
+      setStamps(data);
+      const defaultStamp = data.find((s: any) => s.is_default);
+      if (defaultStamp) setSelectedStampId(defaultStamp.id);
+    }
+  };
 
   const loadActiveSession = async () => {
     if (!user) return;
