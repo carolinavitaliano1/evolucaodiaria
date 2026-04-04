@@ -569,7 +569,7 @@ function AccountPanel({
 
   // Mark unread patient messages as read when therapist opens messages section
   useEffect(() => {
-    if (activeSection !== 'messages') return;
+    if (activeSection !== 'messages' || !messagesLoaded) return;
     const unreadIds = messages
       .filter(m => m.sender_type === 'patient' && !m.read_by_therapist)
       .map(m => m.id);
@@ -586,7 +586,7 @@ function AccountPanel({
       .update({ read_by_therapist: true })
       .in('id', unreadIds)
       .then();
-  }, [activeSection]); // only trigger on section change, not on messages change
+  }, [activeSection, messagesLoaded]);
 
   const handleActionClick = (id: string) => {
     setActiveSection(prev => prev === id ? null : id);
