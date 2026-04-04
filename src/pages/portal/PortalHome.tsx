@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
-import { MessageSquare, FileText, Bell, DollarSign, BookOpen, FilePenLine, ChevronRight } from 'lucide-react';
+import { MessageSquare, FileText, Bell, DollarSign, BookOpen, FilePenLine, ChevronRight, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -20,6 +20,7 @@ export default function PortalHome() {
 
   const quickActions = [
     { to: '/portal/mensagens', icon: MessageSquare, label: 'Mensagens', desc: `${messages.length} ${messages.length === 1 ? 'mensagem' : 'mensagens'}`, badge: unreadCount },
+    { to: '/portal/atividades', icon: ClipboardList, label: 'Atividades', desc: 'Tarefas e exercícios' },
     { to: '/portal/avisos', icon: Bell, label: 'Avisos', desc: 'Comunicados do terapeuta' },
     { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro', desc: 'Pagamentos e recibos' },
     { to: '/portal/fichas', icon: FileText, label: 'Minhas Fichas', desc: 'Fichas e questionários' },

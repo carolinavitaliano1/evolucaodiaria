@@ -75,6 +75,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [improvingField, setImprovingField] = useState<string | null>(null);
   const [creatingField, setCreatingField] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [sendingToPortal, setSendingToPortal] = useState(false);
   const [stamps, setStamps] = useState<any[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
 
@@ -412,6 +413,41 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     }
   };
 
+  // Send action plans to patient portal as activity
+  const sendActionPlansToPortal = async () => {
+    if (!user || !actionPlans.trim()) return;
+    setSendingToPortal(true);
+    try {
+      // Parse action plans into items (split by newlines, filter empty)
+      const lines = actionPlans.split('\n').map(l => l.replace(/^[\s\-\*\d\.]+/, '').trim()).filter(Boolean);
+      const items = lines.map(text => ({ text, done: false }));
+
+      // Find portal account for this patient
+      const { data: portalAccount } = await supabase
+        .from('patient_portal_accounts')
+        .select('id')
+        .eq('patient_id', patientId)
+        .eq('therapist_user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      const { error } = await supabase.from('portal_activities').insert({
+        patient_id: patientId,
+        therapist_user_id: user.id,
+        portal_account_id: portalAccount?.id || null,
+        title: title || 'Plano de Ação',
+        items,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+      toast.success('Plano de ação enviado para o portal do paciente!');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao enviar para portal');
+    } finally {
+      setSendingToPortal(false);
+    }
+  };
 
   const generateReport = async () => {
     setGeneratingReport(true);
@@ -536,6 +572,65 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     doc.line(margin, y, pageWidth - margin, y);
     y += 8;
 
+    // Helper: render text with **bold** markdown support
+    const renderMarkdownText = (text: string, xPos: number, maxWidth: number) => {
+      // Split by **bold** markers
+      const cleanText = text.replace(/\*\*(.*?)\*\*/g, (_, content) => content);
+      const lines = doc.splitTextToSize(cleanText, maxWidth);
+      
+      // We need to handle bold per-line by re-parsing original text
+      const originalLines = text.split('\n');
+      let lineIndex = 0;
+      
+      for (const originalLine of originalLines) {
+        // Split this line into bold and normal segments
+        const segments: { text: string; bold: boolean }[] = [];
+        let remaining = originalLine;
+        while (remaining.length > 0) {
+          const boldStart = remaining.indexOf('**');
+          if (boldStart === -1) {
+            segments.push({ text: remaining, bold: false });
+            break;
+          }
+          if (boldStart > 0) {
+            segments.push({ text: remaining.slice(0, boldStart), bold: false });
+          }
+          const boldEnd = remaining.indexOf('**', boldStart + 2);
+          if (boldEnd === -1) {
+            segments.push({ text: remaining.slice(boldStart + 2), bold: false });
+            break;
+          }
+          segments.push({ text: remaining.slice(boldStart + 2, boldEnd), bold: true });
+          remaining = remaining.slice(boldEnd + 2);
+          continue;
+        }
+        
+        // Render segments on current line, wrapping as needed
+        const fullLineText = segments.map(s => s.text).join('');
+        const wrappedLines = doc.splitTextToSize(fullLineText, maxWidth);
+        
+        for (const wLine of wrappedLines) {
+          if (y > 275) { doc.addPage(); y = 20; }
+          // Simple approach: check if any segment is bold
+          const hasBold = segments.some(s => s.bold && wLine.includes(s.text));
+          if (hasBold) {
+            // Render each segment with correct style
+            let curX = xPos;
+            for (const seg of segments) {
+              if (!seg.text) continue;
+              doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+              doc.text(seg.text, curX, y);
+              curX += doc.getTextWidth(seg.text);
+            }
+          } else {
+            doc.setFont('helvetica', 'normal');
+            doc.text(wLine, xPos, y);
+          }
+          y += 5;
+        }
+      }
+    };
+
     const addSection = (label: string, text: string) => {
       if (!text) return;
       if (y > 260) { doc.addPage(); y = 20; }
@@ -544,28 +639,22 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.setTextColor(99, 102, 241);
       doc.text(label, margin, y);
       y += 6;
-      doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
-      const lines = doc.splitTextToSize(text, contentWidth);
-      for (const line of lines) {
-        if (y > 275) { doc.addPage(); y = 20; }
-        doc.text(line, margin, y);
-        y += 5;
-      }
+      renderMarkdownText(text, margin, contentWidth);
       y += 6;
     };
+
+    // Plan info FIRST if available
+    if (activePlan) {
+      addSection('Objetivos do Plano', activePlan.objectives || '');
+      addSection('Atividades Planejadas', activePlan.activities || '');
+    }
 
     addSection('Anotações da Sessão', correctedNotes);
     addSection('Planos de Ação', correctedPlans);
     addSection('Planejamento para Próxima Sessão', correctedNext);
     addSection('Comentários Gerais', correctedComments);
-
-    // Plan info if available
-    if (activePlan) {
-      addSection('Objetivos do Plano', activePlan.objectives || '');
-      addSection('Atividades Planejadas', activePlan.activities || '');
-    }
 
     // Footer
     const pageCount = doc.getNumberOfPages();
@@ -939,6 +1028,9 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                       </Button>
                       <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-primary" disabled={creatingField === 'create_action_plans'} onClick={() => createFieldWithAI('create_action_plans', setActionPlans)}>
                         {creatingField === 'create_action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={!actionPlans.trim() || sendingToPortal} onClick={sendActionPlansToPortal}>
+                        {sendingToPortal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Enviar para Portal
                       </Button>
                     </div>
                   </TabsContent>

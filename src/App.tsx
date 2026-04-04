@@ -45,6 +45,7 @@ import PortalEvolutions from "./pages/portal/PortalEvolutions";
 import PortalFinancial from "./pages/portal/PortalFinancial";
 import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalMural from "./pages/portal/PortalMural";
+import PortalActivities from "./pages/portal/PortalActivities";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -89,6 +90,7 @@ const App = () => (
                 <Route path="/portal/financeiro" element={<PortalRoute><PortalFinancial /></PortalRoute>} />
                 <Route path="/portal/documentos" element={<PortalRoute><PortalDocuments /></PortalRoute>} />
                 <Route path="/portal/mural" element={<PortalRoute><PortalMural /></PortalRoute>} />
+                <Route path="/portal/atividades" element={<PortalRoute><PortalActivities /></PortalRoute>} />
                 {/* Public intake form — no auth required */}
                 <Route path="/cadastro-paciente/:token" element={<PatientIntakePublic />} />
                 {/* Self-service enrollment — no auth required */}
