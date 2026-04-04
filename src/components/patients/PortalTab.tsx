@@ -20,7 +20,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ContractManager } from './ContractManager';
 import { PortalNoticesManager } from './PortalNoticesManager';
-import { SharedEvolutionsManager } from './SharedEvolutionsManager';
+
 import { IntakeCustomQuestionsManager, type CustomQuestion } from './IntakeCustomQuestionsManager';
 import { QuestionnaireTemplatesManager, type QuestionnaireTemplate } from './QuestionnaireTemplatesManager';
 
