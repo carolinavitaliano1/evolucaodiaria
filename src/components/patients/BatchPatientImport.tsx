@@ -154,7 +154,7 @@ export function BatchPatientImport({ open, onClose, clinics, defaultClinicId, on
         phone: p.phone,
         birthdate: p.birthdate,
         cpf: p.cpf,
-        clinic_id: clinicId,
+        clinic_id: selectedClinicId,
         user_id: user.id,
         status: 'ativo',
       }));
