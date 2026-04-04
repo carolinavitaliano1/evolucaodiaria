@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { patientName, moodScore, positiveFeelings, negativeFeelings, suicidalThoughts, notesText, actionPlans, nextSessionNotes, generalComments, durationSeconds } = await req.json();
+    const { patientName, moodScore, positiveFeelings, negativeFeelings, suicidalThoughts, notesText, actionPlans, nextSessionNotes, generalComments, durationSeconds, planObjectives, planActivities } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -28,6 +28,8 @@ DADOS DA SESSÃO:
 - Sentimentos positivos: ${positiveFeelings?.length > 0 ? positiveFeelings.join(', ') : 'Nenhum registrado'}
 - Sentimentos negativos: ${negativeFeelings?.length > 0 ? negativeFeelings.join(', ') : 'Nenhum registrado'}
 - Ideação suicida: ${suicidalThoughts ? 'SIM - ALERTA' : 'Não reportada'}
+- Objetivos terapêuticos do plano: ${planObjectives || 'Não definidos'}
+- Atividades planejadas: ${planActivities || 'Não definidas'}
 - Anotações da sessão: ${notesText || 'Sem anotações'}
 - Planos de ação: ${actionPlans || 'Sem planos'}
 - Próxima sessão: ${nextSessionNotes || 'Sem planejamento'}
