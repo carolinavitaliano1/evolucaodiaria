@@ -403,20 +403,31 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
 
       // Strip variable chip spans and replace raw {{var}} tags
       let filledHtml = bodyHtml;
-      // First handle <span data-type="variable" class="contract-variable">{{key}}</span> (any attribute order)
-      filledHtml = filledHtml.replace(/<span[^>]*class="[^"]*contract-variable[^"]*"[^>]*>\{\{(\w+)\}\}<\/span>/gi, (_, key) => {
-        return variableMap[key] ?? `{{${key}}}`;
-      });
-      filledHtml = filledHtml.replace(/<span[^>]*data-type="variable"[^>]*>\{\{(\w+)\}\}<\/span>/gi, (_, key) => {
-        return variableMap[key] ?? `{{${key}}}`;
-      });
+
+      // Helper: strip all HTML tags from inside a match to get pure text content
+      const stripInnerHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
+
+      // Handle any <span> with data-type="variable" OR class="contract-variable" — regardless of attribute order,
+      // extra attributes (contenteditable, style, etc.), or nested tags inside the span.
+      // Uses a greedy approach: match the entire span, extract inner text, check if it's a {{key}}.
+      filledHtml = filledHtml.replace(
+        /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
+        (fullMatch, innerContent) => {
+          const textContent = stripInnerHtml(innerContent).replace(/&nbsp;/g, ' ').trim();
+          const varMatch = textContent.match(/^\{\{(\w+)\}\}$/);
+          if (varMatch) {
+            return variableMap[varMatch[1]] ?? textContent;
+          }
+          // Not a variable pattern — just unwrap the span, keep inner content
+          return innerContent;
+        }
+      );
+
       // Then handle raw {{key}} not inside spans
       filledHtml = filledHtml.replace(/\{\{(\w+)\}\}/g, (_, key) => {
         return variableMap[key] ?? `{{${key}}}`;
       });
-      // Clean up any remaining contract-variable spans that might have content instead of variable keys
-      filledHtml = filledHtml.replace(/<span[^>]*class="[^"]*contract-variable[^"]*"[^>]*>(.*?)<\/span>/gi, '$1');
-      filledHtml = filledHtml.replace(/<span[^>]*data-type="variable"[^>]*>(.*?)<\/span>/gi, '$1');
+
       // Clean up stray &nbsp; left after variable spans
       filledHtml = filledHtml.replace(/&nbsp;\s*/g, ' ');
 
