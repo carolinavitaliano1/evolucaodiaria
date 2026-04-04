@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine } from 'lucide-react';
+import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine, FolderOpen } from 'lucide-react';
 import { GroupSessionTab } from '@/components/clinics/GroupSessionTab';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -163,6 +163,7 @@ export default function GroupDetail() {
     { value: 'tasks', label: 'Tarefas', icon: <ListTodo className="w-4 h-4" /> },
     { value: 'notes', label: 'Notas', icon: <MessageSquare className="w-4 h-4" /> },
     { value: 'attendance', label: 'Frequência', icon: <Calendar className="w-4 h-4" /> },
+    { value: 'documents', label: 'Documentos', icon: <FolderOpen className="w-4 h-4" /> },
     { value: 'financial', label: 'Financeiro', icon: <DollarSign className="w-4 h-4" /> },
   ];
 
@@ -175,8 +176,8 @@ export default function GroupDetail() {
         </Button>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-              <Users className="w-6 h-6 text-indigo-500" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Users className="w-6 h-6 text-primary" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -391,6 +392,14 @@ export default function GroupDetail() {
           <div className="text-center py-12">
             <Calendar className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground">Frequência do grupo — em breve</p>
+          </div>
+        </TabsContent>
+
+        {/* Documents Tab */}
+        <TabsContent value="documents" className="mt-4">
+          <div className="text-center py-12">
+            <FolderOpen className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">Documentos do grupo — em breve</p>
           </div>
         </TabsContent>
 
