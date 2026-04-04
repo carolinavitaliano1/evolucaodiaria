@@ -525,6 +525,7 @@ function AccountPanel({
   const actions = [
     perms.messages && { id: 'messages', icon: MessageSquare, label: 'Mensagens', color: 'text-primary', bg: 'bg-primary/10 hover:bg-primary/20', badge: unreadFromPatient },
     perms.intake && { id: 'intake', icon: ClipboardList, label: 'Ficha Clínica', color: 'text-success', bg: 'bg-success/10 hover:bg-success/20', dot: hasIntakeSubmitted },
+    { id: 'questionnaires', icon: BookOpen, label: 'Questionários', color: 'text-indigo-500', bg: 'bg-indigo-500/10 hover:bg-indigo-500/20', badge: sentQuestionnaires.filter(q => q.status === 'submitted').length },
     perms.contract && { id: 'contract', icon: FilePenLine, label: 'Contratos', color: 'text-warning', bg: 'bg-warning/10 hover:bg-warning/20' },
     perms.notices && { id: 'notices', icon: Bell, label: 'Avisos', color: 'text-destructive', bg: 'bg-destructive/10 hover:bg-destructive/20' },
     perms.feedbacks && { id: 'feedbacks', icon: Eye, label: 'Linha do Tempo', color: 'text-accent-foreground', bg: 'bg-accent/30 hover:bg-accent/50' },
