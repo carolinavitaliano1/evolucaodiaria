@@ -318,36 +318,133 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     else setNegativeFeelings(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Generate PDF report
+  // Generate PDF report - Professional layout
   const generateReport = () => {
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
     let y = 20;
-    doc.setFontSize(16);
-    doc.text('Relatório da Sessão', 20, y); y += 10;
+
+    // Header bar
+    doc.setFillColor(99, 102, 241); // primary purple
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatório de Sessão Terapêutica', margin, 26);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, margin, 35);
+    
+    y = 52;
+    doc.setTextColor(50, 50, 50);
+
+    // Patient info box
+    doc.setFillColor(245, 245, 250);
+    doc.roundedRect(margin, y, contentWidth, 28, 3, 3, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Paciente', margin + 5, y + 8);
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
-    doc.text(`Paciente: ${patientName}`, 20, y); y += 7;
-    doc.text(`Título: ${title || 'Sem título'}`, 20, y); y += 7;
-    doc.text(`Duração: ${formatTime(elapsedSeconds)}`, 20, y); y += 10;
-    if (moodScore !== null) { doc.text(`Humor: ${moodScore}/10`, 20, y); y += 7; }
-    if (positiveFeelings.length > 0) { doc.text(`Sentimentos positivos: ${positiveFeelings.join(', ')}`, 20, y); y += 7; }
-    if (negativeFeelings.length > 0) { doc.text(`Sentimentos negativos: ${negativeFeelings.join(', ')}`, 20, y); y += 7; }
-    if (suicidalThoughts) {
-      doc.setTextColor(220, 38, 38);
-      doc.text('⚠ ALERTA: Pensamentos suicidas reportados', 20, y); y += 7;
-      doc.setTextColor(0, 0, 0);
+    doc.text(patientName, margin + 5, y + 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Sessão: ${title || 'Sem título'}  |  Duração: ${formatTime(elapsedSeconds)}`, margin + 5, y + 23);
+    y += 35;
+
+    doc.setTextColor(50, 50, 50);
+
+    // Mood section
+    if (moodScore !== null) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Avaliação de Humor', margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`${moodEmojis[moodScore - 1]}  ${moodScore}/10`, margin, y);
+      y += 8;
     }
-    y += 5;
+
+    if (positiveFeelings.length > 0) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Sentimentos Positivos:', margin, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(positiveFeelings.join(', '), margin + 45, y);
+      y += 6;
+    }
+    if (negativeFeelings.length > 0) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Sentimentos Negativos:', margin, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(negativeFeelings.join(', '), margin + 45, y);
+      y += 6;
+    }
+
+    if (suicidalThoughts) {
+      y += 2;
+      doc.setFillColor(254, 226, 226);
+      doc.roundedRect(margin, y, contentWidth, 10, 2, 2, 'F');
+      doc.setTextColor(185, 28, 28);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('⚠ ALERTA: Pensamentos suicidas reportados nesta sessão', margin + 5, y + 7);
+      doc.setTextColor(50, 50, 50);
+      y += 15;
+    }
+
+    y += 4;
+
+    // Separator
+    doc.setDrawColor(200, 200, 220);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+
     const addSection = (label: string, text: string) => {
       if (!text) return;
-      doc.setFontSize(13); doc.text(`${label}:`, 20, y); y += 7;
+      if (y > 260) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text(label, margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
-      const lines = doc.splitTextToSize(text, 170);
-      doc.text(lines, 20, y); y += lines.length * 5 + 5;
+      doc.setTextColor(60, 60, 60);
+      const lines = doc.splitTextToSize(text, contentWidth);
+      for (const line of lines) {
+        if (y > 275) { doc.addPage(); y = 20; }
+        doc.text(line, margin, y);
+        y += 5;
+      }
+      y += 6;
     };
-    addSection('Anotações', notesText);
+
+    addSection('Anotações da Sessão', notesText);
     addSection('Planos de Ação', actionPlans);
-    addSection('Próxima Sessão', nextSessionNotes);
+    addSection('Planejamento para Próxima Sessão', nextSessionNotes);
     addSection('Comentários Gerais', generalComments);
+
+    // Plan info if available
+    if (activePlan) {
+      addSection('Objetivos do Plano', activePlan.objectives || '');
+      addSection('Atividades Planejadas', activePlan.activities || '');
+    }
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, 290, { align: 'center' });
+      doc.text('Documento confidencial — uso exclusivo profissional', pageWidth / 2, 295, { align: 'center' });
+    }
+
     doc.save(`sessao_${patientName.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
     toast.success('Relatório gerado!');
   };
