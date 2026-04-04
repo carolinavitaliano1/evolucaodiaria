@@ -69,18 +69,16 @@ export default function Enrollment() {
 
   useEffect(() => {
     if (!clinicId) { setNotFound(true); setLoading(false); return; }
+    // Use RPC to fetch clinic (works for both anon and authenticated)
     supabase
-      .from('clinics')
-      .select('name, address')
-      .eq('id', clinicId)
-      .or('is_archived.is.null,is_archived.eq.false')
+      .rpc('get_clinic_for_enrollment', { _clinic_id: clinicId })
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) {
           console.error('Enrollment: clinic fetch error', error);
         }
         if (!data) setNotFound(true);
-        else setClinic(data);
+        else setClinic(data as { name: string; address: string | null });
         setLoading(false);
       });
   }, [clinicId]);
