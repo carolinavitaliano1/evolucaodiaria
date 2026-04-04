@@ -772,86 +772,132 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
 
-  // View session detail dialog — with report & AI evolution generation
+  // View session detail dialog — shows session data + links to already generated content
+  const [viewLinkedEvolution, setViewLinkedEvolution] = useState<any | null>(null);
+  const [viewLinkedEvolutionText, setViewLinkedEvolutionText] = useState<string | null>(null);
+  const [loadingLinkedData, setLoadingLinkedData] = useState(false);
+
   const renderViewDialog = () => {
     if (!viewingSession) return null;
     const s = viewingSession;
     const date = new Date(s.created_at);
 
-    const handleViewGenerateReport = async () => {
-      // Temporarily load viewing session data to generate report
-      const prev = { title, moodScore, positiveFeelings, negativeFeelings, suicidalThoughts, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds };
-      setTitle(s.title || '');
-      setMoodScore(s.mood_score);
-      setPositiveFeelings(s.positive_feelings || []);
-      setNegativeFeelings(s.negative_feelings || []);
-      setSuicidalThoughts(s.suicidal_thoughts || false);
-      setNotesText(s.notes_text || '');
-      setActionPlans(s.action_plans || '');
-      setNextSessionNotes(s.next_session_notes || '');
-      setGeneralComments(s.general_comments || '');
-      setElapsedSeconds(s.duration_seconds || 0);
-      // Wait a tick then generate
-      await new Promise(r => setTimeout(r, 50));
-      await generateReport();
-      // Restore previous state
-      setTitle(prev.title);
-      setMoodScore(prev.moodScore);
-      setPositiveFeelings(prev.positiveFeelings);
-      setNegativeFeelings(prev.negativeFeelings);
-      setSuicidalThoughts(prev.suicidalThoughts);
-      setNotesText(prev.notesText);
-      setActionPlans(prev.actionPlans);
-      setNextSessionNotes(prev.nextSessionNotes);
-      setGeneralComments(prev.generalComments);
-      setElapsedSeconds(prev.elapsedSeconds);
+    const handleDownloadReport = async () => {
+      // Generate PDF from the session's saved data (on-the-fly, no state mutation)
+      setGeneratingReport(true);
+      try {
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 20;
+        const contentWidth = pageWidth - margin * 2;
+        let y = 20;
+
+        doc.setFillColor(99, 102, 241);
+        doc.rect(0, 0, pageWidth, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Relatório de Sessão Terapêutica', margin, 26);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const sessionDate = date.toLocaleDateString('pt-BR');
+        doc.text(`Sessão em: ${sessionDate}`, margin, 35);
+
+        y = 52;
+        doc.setTextColor(50, 50, 50);
+
+        doc.setFillColor(245, 245, 250);
+        doc.roundedRect(margin, y, contentWidth, 28, 3, 3, 'F');
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Paciente', margin + 5, y + 8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.text(patientName, margin + 5, y + 16);
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Sessão: ${s.title || 'Sem título'}  |  Duração: ${formatTime(s.duration_seconds || 0)}`, margin + 5, y + 23);
+        y += 35;
+        doc.setTextColor(50, 50, 50);
+
+        if (s.mood_score) {
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Avaliação de Humor', margin, y);
+          y += 6;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          doc.text(`${moodEmojis[s.mood_score - 1]}  ${s.mood_score}/10`, margin, y);
+          y += 8;
+        }
+
+        const addSection = (label: string, text: string) => {
+          if (!text) return;
+          if (y > 260) { doc.addPage(); y = 20; }
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.text(label, margin, y);
+          y += 6;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          const lines = doc.splitTextToSize(text, contentWidth);
+          for (const line of lines) {
+            if (y > 280) { doc.addPage(); y = 20; }
+            doc.text(line, margin, y);
+            y += 5;
+          }
+          y += 4;
+        };
+
+        addSection('Anotações da Sessão', s.notes_text || '');
+        addSection('Planos de Ação', s.action_plans || '');
+        addSection('Próxima Sessão', s.next_session_notes || '');
+        addSection('Comentários Gerais', s.general_comments || '');
+
+        doc.save(`relatorio_sessao_${sessionDate.replace(/\//g, '-')}.pdf`);
+        toast.success('Relatório baixado!');
+      } catch {
+        toast.error('Erro ao gerar relatório');
+      } finally {
+        setGeneratingReport(false);
+      }
     };
 
-    const handleViewGenerateEvolution = async () => {
-      if (!s.notes_text && !s.action_plans && !s.general_comments) {
-        toast.error('Esta sessão não possui anotações para gerar evolução.');
-        return;
-      }
-      setGeneratingAI(true);
+    const handleViewEvolution = async () => {
+      if (viewLinkedEvolutionText !== null) return; // already loaded
+      setLoadingLinkedData(true);
       try {
-        const { data, error } = await supabase.functions.invoke('generate-evolution', {
-          body: {
-            patientName,
-            moodScore: s.mood_score,
-            positiveFeelings: s.positive_feelings || [],
-            negativeFeelings: s.negative_feelings || [],
-            suicidalThoughts: s.suicidal_thoughts || false,
-            notesText: s.notes_text || '',
-            actionPlans: s.action_plans || '',
-            nextSessionNotes: s.next_session_notes || '',
-            generalComments: s.general_comments || '',
-            durationSeconds: s.duration_seconds || 0,
-            planObjectives: '',
-            planActivities: '',
-          },
-        });
-        if (error) throw error;
-        if (data?.evolution) {
-          setAiEvolution(data.evolution);
-          setViewingSession(null);
-          // Load session into edit mode so user can send to prontuário
-          handleEditSession(s);
-          toast.success('Evolução IA gerada! Revise e envie ao prontuário.');
+        const sessionDate = s.created_at.slice(0, 10);
+        const { data } = await supabase
+          .from('evolutions')
+          .select('id, text, date, created_at')
+          .eq('patient_id', patientId)
+          .eq('clinic_id', clinicId)
+          .eq('date', sessionDate)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data) {
+          setViewLinkedEvolution(data);
+          setViewLinkedEvolutionText(data.text);
+        } else {
+          setViewLinkedEvolutionText('');
+          toast.info('Nenhuma evolução encontrada para esta sessão.');
         }
-      } catch (e: any) {
-        toast.error(e.message || 'Erro ao gerar evolução');
+      } catch {
+        toast.error('Erro ao buscar evolução');
       } finally {
-        setGeneratingAI(false);
+        setLoadingLinkedData(false);
       }
     };
 
     return (
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setViewingSession(null)}>
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => { setViewingSession(null); setViewLinkedEvolutionText(null); setViewLinkedEvolution(null); }}>
         <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</CardTitle>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingSession(null)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setViewingSession(null); setViewLinkedEvolutionText(null); setViewLinkedEvolution(null); }}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -863,21 +909,29 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             {s.mood_score && <div><Label className="text-xs text-muted-foreground">Humor</Label><p className="text-lg">{moodEmojis[s.mood_score - 1]} {s.mood_score}/10</p></div>}
             {s.positive_feelings?.length > 0 && <div><Label className="text-xs text-muted-foreground">Sentimentos Positivos</Label><div className="flex flex-wrap gap-1 mt-1">{s.positive_feelings.map((f: string, i: number) => <Badge key={i} variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">{f}</Badge>)}</div></div>}
             {s.negative_feelings?.length > 0 && <div><Label className="text-xs text-muted-foreground">Sentimentos Negativos</Label><div className="flex flex-wrap gap-1 mt-1">{s.negative_feelings.map((f: string, i: number) => <Badge key={i} variant="secondary" className="bg-red-500/10 text-red-700 dark:text-red-400">{f}</Badge>)}</div></div>}
-            {s.suicidal_thoughts && <div className="p-3 rounded-lg border border-red-500/50 bg-red-500/5 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-red-500" /><span className="text-sm text-red-600 dark:text-red-400 font-semibold">Pensamentos suicidas reportados</span></div>}
+            {s.suicidal_thoughts && <div className="p-3 rounded-lg border border-destructive/50 bg-destructive/5 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-destructive" /><span className="text-sm text-destructive font-semibold">Pensamentos suicidas reportados</span></div>}
             {s.notes_text && <div><Label className="text-xs text-muted-foreground">Anotações</Label><p className="text-sm mt-1 whitespace-pre-wrap">{s.notes_text}</p></div>}
             {s.action_plans && <div><Label className="text-xs text-muted-foreground">Planos de Ação</Label><p className="text-sm mt-1 whitespace-pre-wrap">{s.action_plans}</p></div>}
             {s.next_session_notes && <div><Label className="text-xs text-muted-foreground">Próxima Sessão</Label><p className="text-sm mt-1 whitespace-pre-wrap">{s.next_session_notes}</p></div>}
             {s.general_comments && <div><Label className="text-xs text-muted-foreground">Comentários Gerais</Label><p className="text-sm mt-1 whitespace-pre-wrap">{s.general_comments}</p></div>}
 
-            {/* Action buttons for report & evolution */}
+            {/* Linked evolution preview */}
+            {viewLinkedEvolutionText && (
+              <div className="border border-border rounded-lg p-3 bg-muted/30 space-y-2">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Sparkles className="w-3 h-3" /> Evolução Gerada</Label>
+                <p className="text-sm whitespace-pre-wrap">{viewLinkedEvolutionText}</p>
+              </div>
+            )}
+
+            {/* Action buttons: view/download already generated content */}
             <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
-              <Button variant="outline" size="sm" onClick={handleViewGenerateReport} disabled={generatingReport} className="gap-1.5">
-                {generatingReport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                Gerar Relatório PDF
+              <Button variant="outline" size="sm" onClick={handleDownloadReport} disabled={generatingReport} className="gap-1.5">
+                {generatingReport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                Baixar Relatório PDF
               </Button>
-              <Button variant="outline" size="sm" onClick={handleViewGenerateEvolution} disabled={generatingAI} className="gap-1.5">
-                {generatingAI ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                Gerar Evolução IA
+              <Button variant="outline" size="sm" onClick={handleViewEvolution} disabled={loadingLinkedData || viewLinkedEvolutionText !== null} className="gap-1.5">
+                {loadingLinkedData ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                {viewLinkedEvolutionText !== null ? 'Evolução exibida' : 'Ver Evolução'}
               </Button>
             </div>
           </CardContent>
