@@ -24,6 +24,8 @@ serve(async (req) => {
       action_plans: `Você é um psicólogo clínico. Melhore o texto abaixo que são planos de ação/tarefas para um paciente. Torne as instruções mais claras e profissionais, corrija gramática e ortografia. Pode reorganizar em formato de lista se apropriado. Preserve fielmente o conteúdo original. Retorne APENAS o texto melhorado.`,
       next_session: `Você é um psicólogo clínico. Melhore o texto abaixo que é um planejamento para a próxima sessão terapêutica. Eleve o vocabulário técnico, corrija gramática e ortografia. Torne o planejamento mais estruturado e objetivo. Preserve fielmente o conteúdo original. Retorne APENAS o texto melhorado.`,
       report: `Você é um revisor especializado em textos clínicos de saúde mental. Corrija TODOS os erros de ortografia, gramática, pontuação e concordância do texto abaixo. Melhore a clareza e fluidez sem alterar o conteúdo. Retorne APENAS o texto corrigido.`,
+      create_action_plans: `Você é um psicólogo clínico. Com base no contexto clínico fornecido abaixo (anotações de sessão, humor, sentimentos), crie um plano de ação terapêutico estruturado para o paciente. Inclua de 3 a 6 tarefas ou exercícios práticos que o paciente possa fazer entre sessões. Use linguagem clara, direta e empática. Retorne APENAS o plano de ação em formato de lista.`,
+      create_next_session: `Você é um psicólogo clínico. Com base no contexto clínico fornecido abaixo (anotações de sessão, humor, sentimentos, planos de ação), crie um planejamento estruturado para a próxima sessão terapêutica. Inclua temas a abordar, técnicas sugeridas e pontos de acompanhamento. Use vocabulário técnico-clínico. Retorne APENAS o planejamento.`,
     };
 
     const systemPrompt = fieldPrompts[field] || fieldPrompts.notes;
