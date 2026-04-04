@@ -71,8 +71,15 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
     return cpf;
   };
 
-  wrapper.innerHTML = `
-    <div style="margin-bottom:32px;">${contract.template_html}</div>
+  // Clean any remaining variable span tags from the stored HTML
+  let cleanHtml = contract.template_html;
+  cleanHtml = cleanHtml.replace(/<span[^>]*class="[^"]*contract-variable[^"]*"[^>]*>(.*?)<\/span>/gi, '$1');
+  cleanHtml = cleanHtml.replace(/<span[^>]*data-type="variable"[^>]*>(.*?)<\/span>/gi, '$1');
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'contract-pdf-wrap';
+  contentDiv.innerHTML = `
+    <div style="margin-bottom:32px;">${cleanHtml}</div>
     ${therapistSigBlock}
     <div style="margin-top:32px;border-top:1px solid #ccc;padding-top:24px;">
       <p style="font-size:12px;font-weight:bold;color:#333;margin-bottom:12px;">Dados do Assinante</p>
