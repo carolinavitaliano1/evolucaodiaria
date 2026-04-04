@@ -598,7 +598,7 @@ export default function PortalFinancial() {
                     </p>
                   </div>
                   <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0" onClick={() => handleDownloadReceipt(doc)}>
-                    <Receipt className="w-4 h-4" />
+                    <Download className="w-4 h-4" />
                   </Button>
                 </div>
               ))}
