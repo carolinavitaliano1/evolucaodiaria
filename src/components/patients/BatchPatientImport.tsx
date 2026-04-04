@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import * as Papa from 'papaparse';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,11 +10,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
+interface ClinicOption {
+  id: string;
+  name: string;
+}
+
 interface BatchPatientImportProps {
   open: boolean;
   onClose: () => void;
-  clinicId: string;
-  clinicName: string;
+  clinics: ClinicOption[];
+  defaultClinicId?: string;
   onSuccess: () => void;
 }
 
@@ -68,14 +74,17 @@ function downloadTemplate() {
   URL.revokeObjectURL(url);
 }
 
-export function BatchPatientImport({ open, onClose, clinicId, clinicName, onSuccess }: BatchPatientImportProps) {
+export function BatchPatientImport({ open, onClose, clinics, defaultClinicId, onSuccess }: BatchPatientImportProps) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [selectedClinicId, setSelectedClinicId] = useState(defaultClinicId || '');
   const [parsed, setParsed] = useState<ParsedPatient[]>([]);
   const [fileName, setFileName] = useState('');
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
   const [resultCount, setResultCount] = useState(0);
+
+  const selectedClinic = clinics.find(c => c.id === selectedClinicId);
 
   function reset() {
     setParsed([]);
@@ -133,7 +142,7 @@ export function BatchPatientImport({ open, onClose, clinicId, clinicName, onSucc
   }
 
   async function handleImport() {
-    if (!user || !clinicId) return;
+    if (!user || !selectedClinicId) return;
     const valid = parsed.filter(p => p.valid);
     if (valid.length === 0) return;
 
@@ -145,7 +154,7 @@ export function BatchPatientImport({ open, onClose, clinicId, clinicName, onSucc
         phone: p.phone,
         birthdate: p.birthdate,
         cpf: p.cpf,
-        clinic_id: clinicId,
+        clinic_id: selectedClinicId,
         user_id: user.id,
         status: 'ativo',
       }));
@@ -183,9 +192,19 @@ export function BatchPatientImport({ open, onClose, clinicId, clinicName, onSucc
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* Clinic info */}
-          <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            Os pacientes serão importados para: <span className="font-medium text-foreground">{clinicName}</span>
+          {/* Clinic selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Selecione o consultório / clínica</label>
+            <Select value={selectedClinicId} onValueChange={setSelectedClinicId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Escolha uma clínica..." />
+              </SelectTrigger>
+              <SelectContent>
+                {clinics.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Download template */}
@@ -288,7 +307,7 @@ export function BatchPatientImport({ open, onClose, clinicId, clinicName, onSucc
               <Button
                 size="sm"
                 className="gap-2"
-                disabled={validCount === 0 || importing}
+                disabled={validCount === 0 || importing || !selectedClinicId}
                 onClick={handleImport}
               >
                 {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
