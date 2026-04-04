@@ -61,6 +61,7 @@ export function QuestionnaireTemplatesManager({ onClose, onSendToPatient }: Prop
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [digitizing, setDigitizing] = useState(false);
+  const [digitizeStep, setDigitizeStep] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
@@ -148,44 +149,91 @@ export function QuestionnaireTemplatesManager({ onClose, onSendToPatient }: Prop
   const addField = () => setFormFields(prev => [...prev, emptyField()]);
   const removeField = (idx: number) => setFormFields(prev => prev.filter((_, i) => i !== idx));
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const renderPdfPagesToBase64 = async (file: File): Promise<string[]> => {
+    // For PDFs, we convert each page to a canvas image using pdf.js from CDN
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/+esm' as any);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+    
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      setDigitizeStep(`Lendo página ${i} de ${pdf.numPages}...`);
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 2.0 }); // High res for better OCR
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d')!;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const dataUrl = canvas.toDataURL('image/png');
+      pages.push(dataUrl.split(',')[1]);
+    }
+    
+    return pages;
+  };
+
   const handleDigitize = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast.error('Máximo 10MB'); return; }
+    if (file.size > 20 * 1024 * 1024) { toast.error('Máximo 20MB'); return; }
 
     setDigitizing(true);
     try {
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      let body: any;
 
-      const { data, error } = await supabase.functions.invoke('digitize-questionnaire', {
-        body: { file_base64: base64, file_type: file.type, file_name: file.name },
-      });
+      if (file.type === 'application/pdf') {
+        // PDF: render all pages to images for complete extraction
+        setDigitizeStep('Convertendo páginas do PDF...');
+        const pagesBase64 = await renderPdfPagesToBase64(file);
+        setDigitizeStep(`Extraindo perguntas com IA (${pagesBase64.length} páginas)...`);
+        body = { pages_base64: pagesBase64, file_type: 'application/pdf', file_name: file.name };
+      } else {
+        // Image: send directly
+        setDigitizeStep('Lendo imagem...');
+        const base64 = await fileToBase64(file);
+        setDigitizeStep('Extraindo perguntas com IA...');
+        body = { file_base64: base64, file_type: file.type, file_name: file.name };
+      }
+
+      setDigitizeStep('Processando com IA... Isso pode levar alguns segundos.');
+      const { data, error } = await supabase.functions.invoke('digitize-questionnaire', { body });
+      
       if (error) throw error;
-      if (data?.fields && Array.isArray(data.fields)) {
+
+      setDigitizeStep('Montando formulário...');
+      if (data?.fields && Array.isArray(data.fields) && data.fields.length > 0) {
         const newFields: QuestionnaireField[] = data.fields.map((f: any) => ({
           id: generateId(),
-          question: f.question || f.title || '',
+          question: f.question || '',
           field_type: f.field_type || 'text',
           options: f.options || [],
           required: f.required || false,
         }));
-        setFormFields(newFields.length > 0 ? newFields : [emptyField()]);
+        setFormFields(newFields);
         setFormName(data.title || file.name.replace(/\.[^.]+$/, ''));
         setFormDescription(data.description || '');
         setCreating(true);
-        toast.success(`${newFields.length} perguntas extraídas! Revise antes de salvar.`);
+        toast.success(`${newFields.length} perguntas extraídas com sucesso! Revise antes de salvar.`);
       } else {
-        toast.error('Não foi possível extrair perguntas do arquivo');
+        toast.error('Não foi possível extrair perguntas do arquivo. Tente com uma imagem mais nítida.');
       }
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao digitalizar');
+      console.error('Digitize error:', err);
+      toast.error(err.message || 'Erro ao digitalizar arquivo');
     } finally {
       setDigitizing(false);
+      setDigitizeStep('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -292,6 +340,13 @@ export function QuestionnaireTemplatesManager({ onClose, onSendToPatient }: Prop
           {digitizing ? 'Digitalizando...' : 'Importar de arquivo (IA)'}
         </Button>
       </div>
+
+      {digitizing && digitizeStep && (
+        <div className="flex items-center gap-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
+          <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" />
+          <span className="text-xs text-primary font-medium">{digitizeStep}</span>
+        </div>
+      )}
 
       {templates.length === 0 ? (
         <div className="text-center py-8">
