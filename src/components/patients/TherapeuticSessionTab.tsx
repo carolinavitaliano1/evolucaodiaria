@@ -794,18 +794,25 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
 
-  // Generate attendance declaration PDF
-  const generateDeclaration = async (session: any) => {
+  // Open stamp selector for declaration
+  const handleRequestDeclaration = (session: any) => {
+    const defaultStamp = stamps.find((s: any) => s.is_default) || stamps[0];
+    setDeclarationStampId(defaultStamp?.id || null);
+    setDeclarationSession(session);
+  };
+
+  // Generate attendance declaration PDF with selected stamp
+  const generateDeclaration = async () => {
+    const session = declarationSession;
+    if (!session) return;
     try {
-      // Fetch therapist profile and stamp
       const { data: profile } = await supabase
         .from('profiles')
         .select('name, cpf, professional_id')
         .eq('user_id', user!.id)
         .maybeSingle();
 
-      // Get default stamp
-      const defaultStamp = stamps.find((s: any) => s.is_default) || stamps[0];
+      const chosenStamp = declarationStampId ? stamps.find((s: any) => s.id === declarationStampId) : (stamps.find((s: any) => s.is_default) || stamps[0]);
 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -814,7 +821,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       const contentWidth = pageWidth - margin * 2;
       const centerX = pageWidth / 2;
 
-      // Fetch clinic letterhead if available
       const { data: clinic } = await supabase
         .from('clinics')
         .select('name, letterhead, address, phone, cnpj')
@@ -823,7 +829,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
       let y = 20;
 
-      // Clinic letterhead
       if (clinic?.letterhead) {
         try {
           const img = new Image();
@@ -844,7 +849,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         y = 40;
       }
 
-      // Title
       doc.setFontSize(22);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(99, 102, 241);
@@ -856,7 +860,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.text('Documento Oficial de Presença', centerX, y, { align: 'center' });
       y += 25;
 
-      // Body text
       const sessionDate = new Date(session.created_at);
       const dateStr = sessionDate.toLocaleDateString('pt-BR');
       const startTime = session.started_at
@@ -876,7 +879,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.setTextColor(50, 50, 50);
       doc.setFont('helvetica', 'normal');
 
-      // Build body paragraphs with bold segments
       const bodyParts = [
         { text: 'Declaro, para os devidos fins, que ', bold: false },
         { text: patientName, bold: true },
@@ -891,7 +893,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         { text: '.', bold: false },
       ];
 
-      // Render body with inline bold - justified
       const fullBody = bodyParts.map(p => p.text).join('');
       const bodyLines = doc.splitTextToSize(fullBody, contentWidth);
       for (const line of bodyLines) {
@@ -901,7 +902,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         y += 7;
       }
 
-      // Generated date
       y += 20;
       const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
       const now = new Date();
@@ -911,7 +911,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.setFont('helvetica', 'italic');
       doc.text(genDateStr, centerX, y, { align: 'center' });
 
-      // Therapist signature block
       y += 30;
       doc.setDrawColor(180, 180, 200);
       const lineWidth = 80;
@@ -937,22 +936,39 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         doc.text(`Registro: ${profile.professional_id}`, centerX, y, { align: 'center' });
         y += 6;
       }
-      if (defaultStamp?.cbo) {
-        doc.text(`CBO: ${defaultStamp.cbo}`, centerX, y, { align: 'center' });
+      if (chosenStamp?.cbo) {
+        doc.text(`CBO: ${chosenStamp.cbo}`, centerX, y, { align: 'center' });
         y += 6;
       }
-      if (defaultStamp?.label) {
+      if (chosenStamp?.clinical_area) {
         doc.setFontSize(9);
-        doc.text(defaultStamp.label, centerX, y, { align: 'center' });
+        doc.text(chosenStamp.clinical_area, centerX, y, { align: 'center' });
       }
 
-      // Footer
+      // Stamp image
+      if (chosenStamp?.stamp_image) {
+        try {
+          const sImg = new Image();
+          sImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            sImg.onload = () => resolve();
+            sImg.onerror = () => reject();
+            sImg.src = chosenStamp.stamp_image;
+          });
+          y += 8;
+          const sW = 50;
+          const sH = (sImg.height / sImg.width) * sW;
+          doc.addImage(sImg, 'PNG', centerX - sW / 2, y, sW, sH);
+        } catch { /* skip */ }
+      }
+
       doc.setFontSize(7);
       doc.setTextColor(180, 180, 180);
       doc.text('Documento confidencial — uso exclusivo profissional', centerX, pageHeight - 10, { align: 'center' });
 
       doc.save(`declaracao_comparecimento_${dateStr.replace(/\//g, '-')}.pdf`);
       toast.success('Declaração gerada!');
+      setDeclarationSession(null);
     } catch (e: any) {
       toast.error('Erro ao gerar declaração');
     }
