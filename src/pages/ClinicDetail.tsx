@@ -1008,7 +1008,7 @@ export default function ClinicDetail() {
           <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-accent lg:mb-2 shrink-0" />
           <div className="min-w-0">
             <p className="text-muted-foreground text-xs">Hoje ({todayWeekday})</p>
-            <p className="text-xl lg:text-2xl font-bold text-foreground">{todaySchedule.length > 0 ? todaySchedule.length : '—'}</p>
+            <p className="text-xl lg:text-2xl font-bold text-foreground">{todaySchedule.length}</p>
           </div>
         </div>
 
