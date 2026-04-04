@@ -20,7 +20,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ContractManager } from './ContractManager';
 import { PortalNoticesManager } from './PortalNoticesManager';
-import { SharedEvolutionsManager } from './SharedEvolutionsManager';
+
 import { IntakeCustomQuestionsManager, type CustomQuestion } from './IntakeCustomQuestionsManager';
 import { QuestionnaireTemplatesManager, type QuestionnaireTemplate } from './QuestionnaireTemplatesManager';
 
@@ -92,12 +92,12 @@ const ACCESS_TYPES = [
 ];
 
 const DEFAULT_PERMISSIONS: Record<string, boolean> = {
-  messages: true, feedbacks: true, financial: true,
+  messages: true, financial: true,
   contract: true, intake: true, notices: true, documents: true,
 };
 
 const PERM_LABELS: Record<string, string> = {
-  messages: 'Mensagens', feedbacks: 'Feedbacks da sessão', financial: 'Financeiro',
+  messages: 'Mensagens', financial: 'Financeiro',
   contract: 'Contrato', intake: 'Ficha cadastral', notices: 'Avisos', documents: 'Documentos',
 };
 
@@ -556,7 +556,7 @@ function AccountPanel({
     { id: 'questionnaires', icon: BookOpen, label: 'Questionários', color: 'text-indigo-500', bg: 'bg-indigo-500/10 hover:bg-indigo-500/20', badge: sentQuestionnaires.filter(q => q.status === 'submitted').length },
     perms.contract && { id: 'contract', icon: FilePenLine, label: 'Contratos', color: 'text-warning', bg: 'bg-warning/10 hover:bg-warning/20' },
     perms.notices && { id: 'notices', icon: Bell, label: 'Avisos', color: 'text-destructive', bg: 'bg-destructive/10 hover:bg-destructive/20' },
-    perms.feedbacks && { id: 'feedbacks', icon: Eye, label: 'Linha do Tempo', color: 'text-accent-foreground', bg: 'bg-accent/30 hover:bg-accent/50' },
+    
     perms.documents && { id: 'documents', icon: FileUp, label: 'Documentos', color: 'text-muted-foreground', bg: 'bg-muted/50 hover:bg-muted' },
   ].filter(Boolean) as { id: string; icon: React.ElementType; label: string; color: string; bg: string; badge?: number; dot?: boolean }[];
 
@@ -1014,12 +1014,6 @@ function AccountPanel({
             </div>
           )}
 
-          {/* Feedbacks / Timeline */}
-          {activeSection === 'feedbacks' && perms.feedbacks && (
-            <div className="p-4">
-              <SharedEvolutionsManager patientId={patientId} />
-            </div>
-          )}
 
           {/* Documents */}
           {activeSection === 'documents' && perms.documents && (
