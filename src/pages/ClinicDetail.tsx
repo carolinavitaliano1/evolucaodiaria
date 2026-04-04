@@ -1074,6 +1074,9 @@ export default function ClinicDetail() {
         </div>
 
         <TabsContent value="today" className="space-y-4">
+          {/* Alerts widget for this clinic */}
+          <ClinicAlertsWidget clinicId={id!} />
+
           <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
             <h2 className="text-lg lg:text-xl font-bold text-foreground mb-3 lg:mb-4 flex items-center gap-2">
               <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
