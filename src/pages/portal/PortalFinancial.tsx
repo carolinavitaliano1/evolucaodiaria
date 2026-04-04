@@ -1,10 +1,11 @@
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   DollarSign, CheckCircle2, Clock, Receipt,
   Copy, AlertCircle, Bell, Send, QrCode, CreditCard, CalendarDays,
+  Paperclip, X, FileText, Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -106,6 +107,9 @@ export default function PortalFinancial() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptText, setReceiptText] = useState('');
   const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptFilePreview, setReceiptFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!portalAccount || !patient) return;
@@ -188,16 +192,64 @@ export default function PortalFinancial() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error('Arquivo muito grande. Máximo: 10MB');
+      return;
+    }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Formato não suportado. Use JPG, PNG, WebP ou PDF.');
+      return;
+    }
+    setReceiptFile(file);
+    if (file.type.startsWith('image/')) {
+      setReceiptFilePreview(URL.createObjectURL(file));
+    } else {
+      setReceiptFilePreview(null);
+    }
+  };
+
+  const clearFile = () => {
+    setReceiptFile(null);
+    if (receiptFilePreview) URL.revokeObjectURL(receiptFilePreview);
+    setReceiptFilePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSendReceipt = async () => {
-    if (!portalAccount || !receiptText.trim()) return;
+    if (!portalAccount || (!receiptText.trim() && !receiptFile)) return;
     setSendingReceipt(true);
     try {
-      await sendMessage(`🧾 Comprovante de pagamento enviado:\n\n${receiptText.trim()}`, 'message');
+      let fileUrl = '';
+      if (receiptFile) {
+        const ext = receiptFile.name.split('.').pop() || 'bin';
+        const path = `${portalAccount.therapist_user_id}/${portalAccount.id}/receipts/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('portal-documents')
+          .upload(path, receiptFile, { contentType: receiptFile.type });
+        if (uploadError) throw uploadError;
+        const { data: signedData, error: signError } = await supabase.storage
+          .from('portal-documents')
+          .createSignedUrl(path, 60 * 60 * 24 * 365); // 1 year
+        if (signError) throw signError;
+        fileUrl = signedData.signedUrl;
+      }
+
+      const parts: string[] = ['🧾 Comprovante de pagamento enviado:'];
+      if (receiptText.trim()) parts.push(receiptText.trim());
+      if (fileUrl) parts.push(`📎 Anexo: ${fileUrl}`);
+
+      await sendMessage(parts.join('\n\n'), 'message');
       toast.success('Comprovante enviado!');
       setReceiptText('');
+      clearFile();
       setShowReceipt(false);
-    } catch {
-      toast.error('Erro ao enviar comprovante');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar comprovante');
     } finally {
       setSendingReceipt(false);
     }
@@ -396,21 +448,62 @@ export default function PortalFinancial() {
                 Enviar comprovante ao terapeuta
               </Button>
             ) : (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-foreground">Cole o número ou descreva o comprovante:</p>
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-foreground">Anexe uma imagem/PDF do comprovante ou descreva:</p>
+
+                {/* File upload area */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+
+                {!receiptFile ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 flex flex-col items-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                  >
+                    <Paperclip className="w-5 h-5" />
+                    <span className="text-xs font-medium">Clique para anexar comprovante</span>
+                    <span className="text-[10px]">JPG, PNG, WebP ou PDF (máx. 10MB)</span>
+                  </button>
+                ) : (
+                  <div className="relative border rounded-lg p-3 bg-muted/30">
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    {receiptFilePreview ? (
+                      <img src={receiptFilePreview} alt="Comprovante" className="max-h-40 rounded-md mx-auto object-contain" />
+                    ) : (
+                      <div className="flex items-center gap-2 pr-6">
+                        <FileText className="w-5 h-5 text-primary shrink-0" />
+                        <span className="text-xs font-medium text-foreground truncate">{receiptFile.name}</span>
+                        <Badge variant="secondary" className="text-[10px] shrink-0">PDF</Badge>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Textarea
                   value={receiptText}
                   onChange={e => setReceiptText(e.target.value)}
-                  placeholder="Ex: Pix enviado às 14:32 — Cód. E00000000..."
-                  className="resize-none text-sm min-h-[70px]"
+                  placeholder="Observação opcional: Ex: Pix enviado às 14:32..."
+                  className="resize-none text-sm min-h-[60px]"
                 />
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => { setShowReceipt(false); setReceiptText(''); }}>
+                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => { setShowReceipt(false); setReceiptText(''); clearFile(); }}>
                     Cancelar
                   </Button>
-                  <Button size="sm" className="flex-1 gap-1.5 text-xs" disabled={!receiptText.trim() || sendingReceipt} onClick={handleSendReceipt}>
+                  <Button size="sm" className="flex-1 gap-1.5 text-xs" disabled={(!receiptText.trim() && !receiptFile) || sendingReceipt} onClick={handleSendReceipt}>
                     <Send className="w-3 h-3" />
-                    Enviar
+                    {sendingReceipt ? 'Enviando...' : 'Enviar'}
                   </Button>
                 </div>
               </div>
