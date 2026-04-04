@@ -55,12 +55,9 @@ export default function Patients() {
 
   // Quick registration via link
   const [quickRegOpen, setQuickRegOpen] = useState(false);
-  const [quickRegName, setQuickRegName] = useState('');
   const [quickRegWhatsapp, setQuickRegWhatsapp] = useState('');
   const [quickRegClinicId, setQuickRegClinicId] = useState('');
-  const [quickRegSaving, setQuickRegSaving] = useState(false);
   const [quickRegLink, setQuickRegLink] = useState('');
-  const [quickRegToken, setQuickRegToken] = useState('');
 
   // Permission-based flags
   const ownOnly = isOrgMember && hasPermission(orgPermissions, 'patients.own_only') && !isOrgOwner;
@@ -95,35 +92,12 @@ export default function Patients() {
   }, [visiblePatients, searchTerm, canSeeClinical]);
 
   // Quick registration handler
-  const handleQuickReg = async () => {
-    if (!user || !quickRegName.trim() || !quickRegClinicId) return;
-    setQuickRegSaving(true);
-    try {
-      const clinic = clinics.find(c => c.id === quickRegClinicId);
-      const { data, error } = await supabase
-        .from('patients')
-        .insert({
-          user_id: user.id,
-          clinic_id: quickRegClinicId,
-          name: quickRegName.trim(),
-          birthdate: '2000-01-01', // placeholder, to be filled by patient
-          responsible_whatsapp: quickRegWhatsapp || null,
-          status: 'rascunho',
-        } as any)
-        .select('id, intake_token')
-        .single();
-      if (error) throw error;
-      const token = (data as any).intake_token;
-      const appUrl = 'https://evolucaodiaria.app.br';
-      const link = `${appUrl}/cadastro-paciente/${token}`;
-      setQuickRegToken(token);
-      setQuickRegLink(link);
-      toast.success('Paciente criado! Compartilhe o link abaixo.');
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao criar paciente');
-    } finally {
-      setQuickRegSaving(false);
-    }
+  const handleQuickReg = () => {
+    if (!quickRegClinicId) return;
+    const appUrl = 'https://evolucaodiaria.app.br';
+    const link = `${appUrl}/matricula/${quickRegClinicId}`;
+    setQuickRegLink(link);
+    toast.success('Link gerado! Compartilhe com o responsável.');
   };
 
   const handleSendViaWhatsApp = () => {
@@ -132,8 +106,8 @@ export default function Patients() {
     const phone = num.startsWith('55') ? num : `55${num}`;
     const cleanLink = quickRegLink.trim();
     const message = [
-      `Olá, ${quickRegName}!`,
-      'Por favor, preencha a ficha da clínica pelo link abaixo:',
+      'Olá!',
+      'Por favor, preencha a ficha de matrícula pelo link abaixo:',
       cleanLink,
     ].join('\n\n');
 
@@ -658,7 +632,7 @@ export default function Patients() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
-            onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegName(''); setQuickRegWhatsapp(''); setQuickRegClinicId(clinics[0]?.id || ''); }}>
+            onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegWhatsapp(''); setQuickRegClinicId(clinics[0]?.id || ''); }}>
             <Link2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Cadastro via Link</span><span className="sm:hidden">Link</span>
           </Button>
           <Button onClick={() => navigate('/clinics')} className="gap-2" size="sm">
@@ -680,22 +654,18 @@ export default function Patients() {
       )}
 
       {/* Quick Registration Dialog */}
-      <Dialog open={quickRegOpen} onOpenChange={(v) => { setQuickRegOpen(v); if (!v) setQuickRegLink(''); }}>
+      <Dialog open={quickRegOpen} onOpenChange={(v) => { setQuickRegOpen(v); if (!v) { setQuickRegLink(''); setQuickRegWhatsapp(''); setQuickRegClinicId(''); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-primary" /> Cadastro Rápido via Link
+              <Link2 className="w-4 h-4 text-primary" /> Cadastro via Link
             </DialogTitle>
           </DialogHeader>
           {!quickRegLink ? (
             <div className="space-y-4 pt-1">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Crie um paciente em <strong>rascunho</strong> e gere um link seguro para o responsável preencher a ficha completa.
+                Gere um link de matrícula para o responsável preencher a <strong>ficha completa de cadastro</strong> do paciente.
               </p>
-              <div className="space-y-1">
-                <Label className="text-xs">Nome do Paciente <span className="text-destructive">*</span></Label>
-                <Input placeholder="Nome completo" value={quickRegName} onChange={e => setQuickRegName(e.target.value)} />
-              </div>
               <div className="space-y-1">
                 <Label className="text-xs">Clínica <span className="text-destructive">*</span></Label>
                 <Select value={quickRegClinicId} onValueChange={setQuickRegClinicId}>
@@ -716,8 +686,8 @@ export default function Patients() {
               <div className="flex gap-2 pt-1">
                 <Button variant="outline" className="flex-1" onClick={() => setQuickRegOpen(false)}>Cancelar</Button>
                 <Button className="flex-1 gap-1.5" onClick={handleQuickReg}
-                  disabled={quickRegSaving || !quickRegName.trim() || !quickRegClinicId}>
-                  {quickRegSaving ? <><span className="w-3 h-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /></> : <Link2 className="w-3.5 h-3.5" />}
+                  disabled={!quickRegClinicId}>
+                  <Link2 className="w-3.5 h-3.5" />
                   Gerar Link
                 </Button>
               </div>
@@ -725,10 +695,10 @@ export default function Patients() {
           ) : (
             <div className="space-y-4 pt-1">
               <div className="flex items-center gap-2 text-success text-sm">
-                <CheckCircle2 className="w-4 h-4" /> Paciente criado em rascunho!
+                <CheckCircle2 className="w-4 h-4" /> Link de matrícula gerado!
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Link de pré-cadastro</Label>
+                <Label className="text-xs">Link de cadastro completo</Label>
                 <div className="flex gap-2">
                   <Input readOnly value={quickRegLink} className="text-xs" />
                   <Button variant="outline" size="icon" className="shrink-0"
@@ -744,7 +714,7 @@ export default function Patients() {
                 </Button>
               )}
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                O paciente ficará como <strong>Rascunho</strong> até que o responsável preencha a ficha e envie. Após o envio, será marcado como <strong>Pendente de Revisão</strong>.
+                O responsável preencherá a ficha completa de matrícula. Após o envio, o paciente aparecerá como <strong>Pendente</strong> para sua aprovação.
               </p>
               <Button variant="outline" className="w-full" onClick={() => setQuickRegOpen(false)}>Fechar</Button>
             </div>
