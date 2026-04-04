@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock, Link2, Send, AlertTriangle, CheckCircle2, FileSpreadsheet } from 'lucide-react';
+import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock, Link2, Send, AlertTriangle, CheckCircle2, FileSpreadsheet, Clock } from 'lucide-react';
 import { PendingEnrollmentsCard } from '@/components/dashboard/PendingEnrollmentsCard';
 import { BatchPatientImport } from '@/components/patients/BatchPatientImport';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import { useMyAssignedPatientIds } from '@/hooks/usePatientAssignments';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WaitlistManager } from '@/components/patients/WaitlistManager';
 
 function calculateAge(birthdate: string | null | undefined): number | null {
   if (!birthdate) return null;
@@ -653,9 +655,16 @@ export default function Patients() {
         </div>
       </div>
 
+      {/* Tabs: Pacientes | Lista de Espera */}
+      <Tabs defaultValue="patients" className="space-y-4">
+        <TabsList className="h-9">
+          <TabsTrigger value="patients" className="gap-1.5 text-xs"><Users className="w-3.5 h-3.5" /> Pacientes</TabsTrigger>
+          <TabsTrigger value="waitlist" className="gap-1.5 text-xs"><Clock className="w-3.5 h-3.5" /> Lista de Espera</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="patients" className="space-y-4 mt-0">
       {/* Pending Enrollments - same card as dashboard */}
       <PendingEnrollmentsCard />
-
       {/* Pending review banner */}
       {visiblePatients.some((p: any) => p.status === 'pendente_revisao') && (
         <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning mb-4">
@@ -1002,6 +1011,12 @@ export default function Patients() {
           onSuccess={() => { window.location.reload(); }}
         />
       )}
+        </TabsContent>
+
+        <TabsContent value="waitlist" className="mt-0">
+          <WaitlistManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

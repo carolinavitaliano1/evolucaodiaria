@@ -2452,6 +2452,74 @@ export type Database = {
           },
         ]
       }
+      waitlist_entries: {
+        Row: {
+          address: string | null
+          birthdate: string | null
+          clinic_id: string
+          created_at: string
+          email: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          preferred_days: string[] | null
+          preferred_time: string | null
+          reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          birthdate?: string | null
+          clinic_id: string
+          created_at?: string
+          email?: string | null
+          first_name: string
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          preferred_days?: string[] | null
+          preferred_time?: string | null
+          reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          birthdate?: string | null
+          clinic_id?: string
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          preferred_days?: string[] | null
+          preferred_time?: string | null
+          reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_entries_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
