@@ -28,6 +28,7 @@ interface FormState {
 
 const empty: FormState = {
   name: '', birthdate: '', cpf: '', phone: '', whatsapp: '', email: '',
+  address: '',
   is_minor: true,
   guardian_name: '', guardian_email: '', guardian_phone: '', guardian_kinship: '',
   responsible_name: '', responsible_cpf: '', responsible_whatsapp: '', responsible_email: '', responsible_relation: '',
