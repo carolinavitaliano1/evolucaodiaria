@@ -210,7 +210,7 @@ export default function ClinicDetail() {
   }, [id]);
 
   // Load pending enrollments
-  useEffect(() => {
+  const fetchPendingEnrollments = () => {
     if (!id || !user) return;
     supabase
       .from('patients')
@@ -219,6 +219,22 @@ export default function ClinicDetail() {
       .eq('status', 'pendente')
       .order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setPendingPatients(data); });
+  };
+
+  useEffect(() => {
+    fetchPendingEnrollments();
+  }, [id, user]);
+
+  // Realtime: listen for new pending enrollments in this clinic
+  useEffect(() => {
+    if (!id || !user) return;
+    const channel = supabase
+      .channel(`clinic-pending-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'patients', filter: `clinic_id=eq.${id}` },
+        () => fetchPendingEnrollments()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [id, user]);
 
 
