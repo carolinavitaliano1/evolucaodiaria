@@ -1008,19 +1008,19 @@ export default function ClinicDetail() {
           <Calendar className="w-6 h-6 lg:w-8 lg:h-8 text-accent lg:mb-2 shrink-0" />
           <div className="min-w-0">
             <p className="text-muted-foreground text-xs">Hoje ({todayWeekday})</p>
-            <p className="text-xl lg:text-2xl font-bold text-foreground">{todaySchedule.length > 0 ? todaySchedule.length : '—'}</p>
+            <p className="text-xl lg:text-2xl font-bold text-foreground">{todaySchedule.length}</p>
           </div>
         </div>
 
-        {clinic.weekdays?.length && (
-          <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
+        <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
             <Clock className="w-6 h-6 lg:w-8 lg:h-8 text-warning lg:mb-2 shrink-0" />
             <div className="min-w-0">
               <p className="text-muted-foreground text-xs">Dias</p>
-              <p className="text-xs lg:text-sm font-bold text-foreground truncate">{clinic.weekdays.join(', ')}</p>
+              <p className="text-xs lg:text-sm font-bold text-foreground truncate">
+                {clinic.weekdays?.length ? clinic.weekdays.join(', ') : '—'}
+              </p>
             </div>
           </div>
-        )}
 
         {(clinic.paymentAmount || clinic.paymentType === 'variado') && (
           <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
