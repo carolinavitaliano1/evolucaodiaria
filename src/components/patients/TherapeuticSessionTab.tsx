@@ -75,6 +75,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [improvingField, setImprovingField] = useState<string | null>(null);
   const [creatingField, setCreatingField] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [sendingToPortal, setSendingToPortal] = useState(false);
   const [stamps, setStamps] = useState<any[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
 
