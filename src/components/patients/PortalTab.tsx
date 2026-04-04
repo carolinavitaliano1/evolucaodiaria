@@ -116,11 +116,10 @@ function AccessTypeBadge({ type, label }: { type: string; label?: string | null 
 }
 
 function IntakeField({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null;
   return (
     <div className="space-y-0.5">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
-      <p className="text-sm text-foreground">{value}</p>
+      <p className={cn("text-sm", value ? "text-foreground" : "text-muted-foreground/50 italic")}>{value || 'Não informado'}</p>
     </div>
   );
 }
@@ -411,46 +410,100 @@ function AccountPanel({
     toast.success('Documento removido');
   };
 
-  const handleDownloadIntake = (form: IntakeForm, name: string) => {
-    const lines: string[] = [];
-    const add = (label: string, val: string | number | null | undefined) => {
-      if (val) lines.push(`${label}: ${val}`);
+  const handleDownloadIntake = async (form: IntakeForm, name: string) => {
+    const { default: jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentW = pageW - margin * 2;
+    let y = 25;
+
+    const checkPage = (needed: number) => {
+      if (y + needed > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        y = 20;
+      }
     };
-    lines.push(`FICHA DO PACIENTE — ${name.toUpperCase()}`);
-    lines.push(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`);
-    lines.push('');
-    lines.push('=== DADOS PESSOAIS ===');
-    add('Nome completo', form.full_name);
-    add('CPF', form.cpf);
-    add('Data de nascimento', form.birthdate ? new Date(form.birthdate + 'T00:00:00').toLocaleDateString('pt-BR') : null);
-    add('Telefone', form.phone);
-    add('Endereço', form.address);
-    add('Contato de emergência', form.emergency_contact);
-    if (form.responsible_name || form.responsible_cpf) {
-      lines.push('');
-      lines.push('=== RESPONSÁVEL ===');
-      add('Nome', form.responsible_name);
-      add('CPF', form.responsible_cpf);
-      add('Telefone', form.responsible_phone);
+
+    // Title
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Ficha do Paciente`, margin, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(120);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, margin, y);
+    doc.setTextColor(0);
+    y += 10;
+
+    const addSection = (title: string) => {
+      checkPage(15);
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageW - margin, y);
+      y += 6;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, margin, y);
+      y += 7;
+    };
+
+    const addField = (label: string, value: string | number | null | undefined) => {
+      checkPage(12);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(120);
+      doc.text(label.toUpperCase(), margin, y);
+      y += 4;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0);
+      const val = value ? String(value) : 'Não informado';
+      const lines = doc.splitTextToSize(val, contentW);
+      doc.text(lines, margin, y);
+      y += lines.length * 5 + 3;
+    };
+
+    // Name header
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(name, margin, y);
+    y += 10;
+
+    addSection('Dados Pessoais');
+    addField('Nome completo', form.full_name);
+    addField('CPF', form.cpf);
+    addField('Data de nascimento', form.birthdate ? new Date(form.birthdate + 'T00:00:00').toLocaleDateString('pt-BR') : null);
+    addField('Telefone', form.phone);
+    addField('Contato de emergência', form.emergency_contact);
+    addField('Endereço', form.address);
+
+    addSection('Responsável (Contratante)');
+    addField('Nome', form.responsible_name);
+    addField('CPF', form.responsible_cpf);
+    addField('Telefone', form.responsible_phone);
+
+    addSection('Pagamento');
+    addField('Melhor dia para pagamento', form.payment_due_day ? `Dia ${form.payment_due_day}` : null);
+
+    addSection('Saúde & Observações');
+    addField('Informações médicas', form.health_info);
+    addField('Observações', form.observations);
+
+    // Custom answers
+    if ((form as any).custom_answers && Object.keys((form as any).custom_answers).length > 0) {
+      addSection('Perguntas Personalizadas');
+      const { data: qs } = await supabase
+        .from('intake_custom_questions' as any)
+        .select('id, question')
+        .eq('user_id', user!.id);
+      const qMap = new Map((qs || []).map((q: any) => [q.id, q.question]));
+      for (const [qId, answer] of Object.entries((form as any).custom_answers)) {
+        if (answer) addField(qMap.get(qId) || qId, answer as string);
+      }
     }
-    if (form.payment_due_day) {
-      lines.push('');
-      lines.push('=== PAGAMENTO ===');
-      add('Melhor dia', `Dia ${form.payment_due_day}`);
-    }
-    if (form.health_info || form.observations) {
-      lines.push('');
-      lines.push('=== SAÚDE & OBSERVAÇÕES ===');
-      if (form.health_info) { lines.push('Informações médicas:'); lines.push(form.health_info); }
-      if (form.observations) { lines.push('Observações:'); lines.push(form.observations); }
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ficha-${name.toLowerCase().replace(/\s+/g, '-')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    doc.save(`ficha-${name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   };
 
   const unreadFromPatient = messages.filter(m => m.sender_type === 'patient' && !m.read_by_therapist).length;
@@ -588,16 +641,14 @@ function AccountPanel({
                       {format(new Date(intakeForm!.submitted_at!), "d/MM/yyyy", { locale: ptBR })}
                     </span>
                   ) : <span className="text-xs text-muted-foreground">Não enviada</span>}
-                  {hasIntakeSubmitted && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1.5"
-                      onClick={() => handleDownloadIntake(intakeForm!, patientName)}
-                    >
-                      <Download className="w-3 h-3" /> Baixar PDF
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={() => handleDownloadIntake(intakeForm || {} as IntakeForm, patientName)}
+                  >
+                    <Download className="w-3 h-3" /> Baixar PDF
+                  </Button>
                 </div>
               </div>
 
@@ -628,84 +679,67 @@ function AccountPanel({
                 <IntakeHistoryPanel history={intakeForm.review_history} />
               )}
 
-              {!hasIntakeSubmitted ? (
-                <div className="p-6 text-center">
-                  <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {!intakeForm ? 'Ficha ainda não preenchida.' : 'Paciente ainda não enviou a ficha.'}
+              {!hasIntakeSubmitted && (
+                <div className="px-4 py-3 bg-warning/5 border-b border-warning/20">
+                  <p className="text-xs text-warning flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" />
+                    Paciente ainda não enviou a ficha. Campos padrão exibidos abaixo.
                   </p>
                 </div>
-              ) : (
-                <div className="p-4 space-y-5">
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" /> Dados Pessoais
-                    </h4>
-                    <div className="grid grid-cols-1 gap-3 pl-1">
-                      <IntakeField label="Nome completo" value={intakeForm.full_name} />
-                      <div className="grid grid-cols-2 gap-3">
-                        <IntakeField label="CPF" value={intakeForm.cpf} />
-                        <IntakeField label="Data de nascimento" value={intakeForm.birthdate ? format(new Date(intakeForm.birthdate + 'T00:00:00'), 'dd/MM/yyyy') : null} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <IntakeField label="Telefone" value={intakeForm.phone} />
-                        <IntakeField label="Contato de emergência" value={intakeForm.emergency_contact} />
-                      </div>
-                      <IntakeField label="Endereço" value={intakeForm.address} />
+              )}
+              <div className="p-4 space-y-5">
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" /> Dados Pessoais
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3 pl-1">
+                    <IntakeField label="Nome completo" value={intakeForm?.full_name} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <IntakeField label="CPF" value={intakeForm?.cpf} />
+                      <IntakeField label="Data de nascimento" value={intakeForm?.birthdate ? format(new Date(intakeForm.birthdate + 'T00:00:00'), 'dd/MM/yyyy') : null} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <IntakeField label="Telefone" value={intakeForm?.phone} />
+                      <IntakeField label="Contato de emergência" value={intakeForm?.emergency_contact} />
+                    </div>
+                    <IntakeField label="Endereço" value={intakeForm?.address} />
+                  </div>
+                </div>
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" /> Responsável (Contratante)
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3 pl-1">
+                    <IntakeField label="Nome" value={intakeForm?.responsible_name} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <IntakeField label="CPF" value={intakeForm?.responsible_cpf} />
+                      <IntakeField label="Telefone" value={intakeForm?.responsible_phone} />
                     </div>
                   </div>
-                  {(intakeForm.responsible_name || intakeForm.responsible_cpf) && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" /> Responsável (Contratante)
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3 pl-1">
-                        <IntakeField label="Nome" value={intakeForm.responsible_name} />
-                        <div className="grid grid-cols-2 gap-3">
-                          <IntakeField label="CPF" value={intakeForm.responsible_cpf} />
-                          <IntakeField label="Telefone" value={intakeForm.responsible_phone} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {intakeForm.payment_due_day && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <CreditCard className="w-3.5 h-3.5" /> Pagamento
-                      </h4>
-                      <div className="pl-1"><IntakeField label="Melhor dia" value={`Dia ${intakeForm.payment_due_day}`} /></div>
-                    </div>
-                  )}
-                  {(intakeForm.health_info || intakeForm.observations) && (
-                    <div className="space-y-3 pt-3 border-t border-border">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                        <Heart className="w-3.5 h-3.5" /> Saúde & Observações
-                      </h4>
-                      <div className="space-y-3 pl-1">
-                        {intakeForm.health_info && (
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Informações médicas</p>
-                            <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.health_info}</p>
-                          </div>
-                        )}
-                        {intakeForm.observations && (
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Observações</p>
-                            <p className="text-sm bg-muted/30 rounded-lg p-3 leading-relaxed">{intakeForm.observations}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {/* Custom answers */}
-                  {(intakeForm as any).custom_answers && Object.keys((intakeForm as any).custom_answers).length > 0 && (
-                    <CustomAnswersSection
-                      answers={(intakeForm as any).custom_answers}
-                      therapistUserId={user!.id}
-                    />
-                  )}
                 </div>
-              )}
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" /> Pagamento
+                  </h4>
+                  <div className="pl-1"><IntakeField label="Melhor dia" value={intakeForm?.payment_due_day ? `Dia ${intakeForm.payment_due_day}` : null} /></div>
+                </div>
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <Heart className="w-3.5 h-3.5" /> Saúde & Observações
+                  </h4>
+                  <div className="space-y-3 pl-1">
+                    <IntakeField label="Informações médicas" value={intakeForm?.health_info} />
+                    <IntakeField label="Observações" value={intakeForm?.observations} />
+                  </div>
+                </div>
+                {/* Custom answers */}
+                {intakeForm && (intakeForm as any).custom_answers && Object.keys((intakeForm as any).custom_answers).length > 0 && (
+                  <CustomAnswersSection
+                    answers={(intakeForm as any).custom_answers}
+                    therapistUserId={user!.id}
+                  />
+                )}
+              </div>
             </div>
           )}
 
