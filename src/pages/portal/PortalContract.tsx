@@ -142,6 +142,12 @@ export default function PortalContract() {
         })
         .eq('id', contract.id);
       if (error) throw error;
+      // Update contract_start_date on patient record
+      await supabase
+        .from('patients')
+        .update({ contract_start_date: new Date().toISOString().split('T')[0] })
+        .eq('id', portalAccount.patient_id);
+
       toast.success('Contrato assinado com sucesso! ✅');
       const updated = { ...contract, status: 'signed', signed_at: new Date().toISOString(), signature_data: finalSig };
       setContract(updated);
