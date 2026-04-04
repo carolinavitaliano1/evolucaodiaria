@@ -410,46 +410,100 @@ function AccountPanel({
     toast.success('Documento removido');
   };
 
-  const handleDownloadIntake = (form: IntakeForm, name: string) => {
-    const lines: string[] = [];
-    const add = (label: string, val: string | number | null | undefined) => {
-      if (val) lines.push(`${label}: ${val}`);
+  const handleDownloadIntake = async (form: IntakeForm, name: string) => {
+    const { default: jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentW = pageW - margin * 2;
+    let y = 25;
+
+    const checkPage = (needed: number) => {
+      if (y + needed > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        y = 20;
+      }
     };
-    lines.push(`FICHA DO PACIENTE — ${name.toUpperCase()}`);
-    lines.push(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`);
-    lines.push('');
-    lines.push('=== DADOS PESSOAIS ===');
-    add('Nome completo', form.full_name);
-    add('CPF', form.cpf);
-    add('Data de nascimento', form.birthdate ? new Date(form.birthdate + 'T00:00:00').toLocaleDateString('pt-BR') : null);
-    add('Telefone', form.phone);
-    add('Endereço', form.address);
-    add('Contato de emergência', form.emergency_contact);
-    if (form.responsible_name || form.responsible_cpf) {
-      lines.push('');
-      lines.push('=== RESPONSÁVEL ===');
-      add('Nome', form.responsible_name);
-      add('CPF', form.responsible_cpf);
-      add('Telefone', form.responsible_phone);
+
+    // Title
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Ficha do Paciente`, margin, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(120);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, margin, y);
+    doc.setTextColor(0);
+    y += 10;
+
+    const addSection = (title: string) => {
+      checkPage(15);
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageW - margin, y);
+      y += 6;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, margin, y);
+      y += 7;
+    };
+
+    const addField = (label: string, value: string | number | null | undefined) => {
+      checkPage(12);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(120);
+      doc.text(label.toUpperCase(), margin, y);
+      y += 4;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0);
+      const val = value ? String(value) : 'Não informado';
+      const lines = doc.splitTextToSize(val, contentW);
+      doc.text(lines, margin, y);
+      y += lines.length * 5 + 3;
+    };
+
+    // Name header
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(name, margin, y);
+    y += 10;
+
+    addSection('Dados Pessoais');
+    addField('Nome completo', form.full_name);
+    addField('CPF', form.cpf);
+    addField('Data de nascimento', form.birthdate ? new Date(form.birthdate + 'T00:00:00').toLocaleDateString('pt-BR') : null);
+    addField('Telefone', form.phone);
+    addField('Contato de emergência', form.emergency_contact);
+    addField('Endereço', form.address);
+
+    addSection('Responsável (Contratante)');
+    addField('Nome', form.responsible_name);
+    addField('CPF', form.responsible_cpf);
+    addField('Telefone', form.responsible_phone);
+
+    addSection('Pagamento');
+    addField('Melhor dia para pagamento', form.payment_due_day ? `Dia ${form.payment_due_day}` : null);
+
+    addSection('Saúde & Observações');
+    addField('Informações médicas', form.health_info);
+    addField('Observações', form.observations);
+
+    // Custom answers
+    if ((form as any).custom_answers && Object.keys((form as any).custom_answers).length > 0) {
+      addSection('Perguntas Personalizadas');
+      const { data: qs } = await supabase
+        .from('intake_custom_questions' as any)
+        .select('id, question')
+        .eq('user_id', user!.id);
+      const qMap = new Map((qs || []).map((q: any) => [q.id, q.question]));
+      for (const [qId, answer] of Object.entries((form as any).custom_answers)) {
+        if (answer) addField(qMap.get(qId) || qId, answer as string);
+      }
     }
-    if (form.payment_due_day) {
-      lines.push('');
-      lines.push('=== PAGAMENTO ===');
-      add('Melhor dia', `Dia ${form.payment_due_day}`);
-    }
-    if (form.health_info || form.observations) {
-      lines.push('');
-      lines.push('=== SAÚDE & OBSERVAÇÕES ===');
-      if (form.health_info) { lines.push('Informações médicas:'); lines.push(form.health_info); }
-      if (form.observations) { lines.push('Observações:'); lines.push(form.observations); }
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ficha-${name.toLowerCase().replace(/\s+/g, '-')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    doc.save(`ficha-${name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   };
 
   const unreadFromPatient = messages.filter(m => m.sender_type === 'patient' && !m.read_by_therapist).length;
