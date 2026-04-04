@@ -1843,7 +1843,35 @@ export default function PatientDetail() {
         </div>
       </div>
 
-      {/* Stats Row */}
+      {/* Session Link - only when virtual */}
+      {isVirtual && (
+        <div className="flex items-center gap-2 bg-card rounded-xl p-3 border border-border shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Link2 className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <Label className="text-xs font-medium text-muted-foreground mb-1 block">Link da sala de atendimento</Label>
+            <Input
+              placeholder="https://meet.google.com/... ou zoom.us/..."
+              value={sessionLink}
+              onChange={(e) => setSessionLink(e.target.value)}
+              onBlur={handleSaveSessionLink}
+              className="h-8 text-sm"
+            />
+          </div>
+          {sessionLink && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 shrink-0"
+              onClick={() => window.open(sessionLink, '_blank')}
+              title="Abrir sala"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <div className="flex items-center gap-2 mb-2">
