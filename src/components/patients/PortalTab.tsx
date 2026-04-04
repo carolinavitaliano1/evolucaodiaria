@@ -556,7 +556,7 @@ function AccountPanel({
     { id: 'questionnaires', icon: BookOpen, label: 'Questionários', color: 'text-indigo-500', bg: 'bg-indigo-500/10 hover:bg-indigo-500/20', badge: sentQuestionnaires.filter(q => q.status === 'submitted').length },
     perms.contract && { id: 'contract', icon: FilePenLine, label: 'Contratos', color: 'text-warning', bg: 'bg-warning/10 hover:bg-warning/20' },
     perms.notices && { id: 'notices', icon: Bell, label: 'Avisos', color: 'text-destructive', bg: 'bg-destructive/10 hover:bg-destructive/20' },
-    perms.feedbacks && { id: 'feedbacks', icon: Eye, label: 'Linha do Tempo', color: 'text-accent-foreground', bg: 'bg-accent/30 hover:bg-accent/50' },
+    
     perms.documents && { id: 'documents', icon: FileUp, label: 'Documentos', color: 'text-muted-foreground', bg: 'bg-muted/50 hover:bg-muted' },
   ].filter(Boolean) as { id: string; icon: React.ElementType; label: string; color: string; bg: string; badge?: number; dot?: boolean }[];
 
