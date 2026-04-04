@@ -2,12 +2,17 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine, FolderOpen, Plus, Save, Wand2, Trash2 } from 'lucide-react';
 import { GroupSessionTab } from '@/components/clinics/GroupSessionTab';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -75,6 +80,17 @@ export default function GroupDetail() {
   const [evolutions, setEvolutions] = useState<any[]>([]);
   const [loadingEvos, setLoadingEvos] = useState(false);
 
+  // Group evolution form state
+  const [showEvoForm, setShowEvoForm] = useState(false);
+  const [evoDate, setEvoDate] = useState(new Date().toISOString().slice(0, 10));
+  const [evoText, setEvoText] = useState('');
+  const [evoStatus, setEvoStatus] = useState('presente');
+  const [evoStatusMode, setEvoStatusMode] = useState<'same' | 'individual'>('same');
+  const [evoIndividualStatus, setEvoIndividualStatus] = useState<Record<string, string>>({});
+  const [evoSelectedMembers, setEvoSelectedMembers] = useState<Set<string>>(new Set());
+  const [savingEvo, setSavingEvo] = useState(false);
+  const [improvingEvo, setImprovingEvo] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     loadGroup();
@@ -125,6 +141,92 @@ export default function GroupDetail() {
       .limit(100);
     if (data) setEvolutions(data);
     setLoadingEvos(false);
+  };
+
+  const initEvoForm = () => {
+    setEvoDate(new Date().toISOString().slice(0, 10));
+    setEvoText('');
+    setEvoStatus('presente');
+    setEvoStatusMode('same');
+    setEvoIndividualStatus({});
+    setEvoSelectedMembers(new Set(members.map(m => m.id)));
+    setShowEvoForm(true);
+  };
+
+  const toggleMemberSelection = (memberId: string) => {
+    setEvoSelectedMembers(prev => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  };
+
+  const handleImproveEvoText = async () => {
+    if (!evoText.trim()) return;
+    setImprovingEvo(true);
+    try {
+      const res = await supabase.functions.invoke('improve-evolution', { body: { text: evoText } });
+      if (res.data?.improved) setEvoText(res.data.improved);
+      else toast.error('Não foi possível melhorar o texto');
+    } catch { toast.error('Erro ao melhorar texto'); }
+    setImprovingEvo(false);
+  };
+
+  const ATTENDANCE_OPTIONS = [
+    { value: 'presente', label: 'Presente' },
+    { value: 'falta', label: 'Falta' },
+    { value: 'falta_remunerada', label: 'Falta remunerada' },
+    { value: 'reposicao', label: 'Reposição' },
+    { value: 'feriado_remunerado', label: 'Feriado remunerado' },
+    { value: 'feriado_nao_remunerado', label: 'Feriado não remunerado' },
+  ];
+
+  const handleSaveGroupEvolution = async () => {
+    if (!user || !group || evoSelectedMembers.size === 0) {
+      toast.error('Selecione ao menos um participante');
+      return;
+    }
+    if (!evoText.trim() && evoStatus === 'presente') {
+      toast.error('Preencha o texto da evolução');
+      return;
+    }
+
+    setSavingEvo(true);
+    try {
+      const selectedIds = Array.from(evoSelectedMembers);
+      const isFaltaOrFeriado = (status: string) => ['falta', 'falta_remunerada', 'feriado_remunerado', 'feriado_nao_remunerado'].includes(status);
+      const autoTexts: Record<string, string> = {
+        falta: 'Paciente faltou à sessão de grupo.',
+        falta_remunerada: 'Paciente faltou à sessão de grupo (falta remunerada).',
+        feriado_remunerado: 'Feriado — sessão de grupo não realizada (remunerado).',
+        feriado_nao_remunerado: 'Feriado — sessão de grupo não realizada.',
+      };
+
+      const rows = selectedIds.map(patientId => {
+        const status = evoStatusMode === 'individual' ? (evoIndividualStatus[patientId] || 'presente') : evoStatus;
+        const text = isFaltaOrFeriado(status) ? (autoTexts[status] || evoText) : evoText;
+        return {
+          patient_id: patientId,
+          clinic_id: group.clinic_id,
+          user_id: user.id,
+          group_id: group.id,
+          date: evoDate,
+          text,
+          attendance_status: status,
+        };
+      });
+
+      const { error } = await supabase.from('evolutions').insert(rows);
+      if (error) throw error;
+
+      toast.success(`Evolução registrada para ${selectedIds.length} participante(s)!`);
+      setShowEvoForm(false);
+      loadEvolutions();
+    } catch (e: any) {
+      toast.error('Erro ao salvar: ' + (e.message || ''));
+    }
+    setSavingEvo(false);
   };
 
   const toggleArchive = async () => {
@@ -305,37 +407,157 @@ export default function GroupDetail() {
           />
         </TabsContent>
 
-        <TabsContent value="evolutions" className="mt-4">
-          {loadingEvos ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-          ) : evolutions.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">Nenhuma evolução registrada para os participantes deste grupo</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {evolutions.map(evo => {
-                const patient = members.find(m => m.id === evo.patient_id);
-                return (
-                  <div key={evo.id} className="bg-card border rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">{patient?.name || 'Paciente'}</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(evo.date).toLocaleDateString('pt-BR')}
-                        </span>
+        <TabsContent value="evolutions" className="mt-4 space-y-4">
+          {/* New evolution button */}
+          {!showEvoForm && (
+            <Button onClick={initEvoForm} className="gap-2">
+              <Plus className="w-4 h-4" /> Nova evolução em grupo
+            </Button>
+          )}
+
+          {/* Group evolution form */}
+          {showEvoForm && (
+            <div className="bg-card border rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground">Registrar evolução do grupo</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowEvoForm(false)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Date */}
+              <div>
+                <Label className="text-sm font-medium">Data</Label>
+                <Input type="date" value={evoDate} onChange={e => setEvoDate(e.target.value)} className="mt-1 max-w-xs" />
+              </div>
+
+              {/* Participants */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Participantes</Label>
+                <div className="flex flex-wrap gap-2">
+                  {members.map(m => (
+                    <label key={m.id} className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors",
+                      evoSelectedMembers.has(m.id) ? "bg-primary/10 border-primary text-foreground" : "bg-card border-border text-muted-foreground"
+                    )}>
+                      <Checkbox checked={evoSelectedMembers.has(m.id)} onCheckedChange={() => toggleMemberSelection(m.id)} />
+                      {m.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Attendance status */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Status de presença</Label>
+                <div className="flex gap-2 mb-2">
+                  <Button size="sm" variant={evoStatusMode === 'same' ? 'default' : 'outline'} onClick={() => setEvoStatusMode('same')}>
+                    Mesmo para todos
+                  </Button>
+                  <Button size="sm" variant={evoStatusMode === 'individual' ? 'default' : 'outline'} onClick={() => setEvoStatusMode('individual')}>
+                    Individual
+                  </Button>
+                </div>
+                {evoStatusMode === 'same' ? (
+                  <Select value={evoStatus} onValueChange={setEvoStatus}>
+                    <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ATTENDANCE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="space-y-2">
+                    {members.filter(m => evoSelectedMembers.has(m.id)).map(m => (
+                      <div key={m.id} className="flex items-center gap-3">
+                        <span className="text-sm w-40 truncate">{m.name}</span>
+                        <Select value={evoIndividualStatus[m.id] || 'presente'} onValueChange={v => setEvoIndividualStatus(prev => ({ ...prev, [m.id]: v }))}>
+                          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {ATTENDANCE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Badge variant={evo.attendance_status === 'presente' ? 'default' : 'secondary'} className="text-xs">
-                        {evo.attendance_status}
-                      </Badge>
-                    </div>
-                    {evo.text && <p className="text-sm text-foreground line-clamp-3 mt-1">{evo.text}</p>}
+                    ))}
                   </div>
-                );
-              })}
+                )}
+              </div>
+
+              {/* Evolution text */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label className="text-sm font-medium">Texto da evolução</Label>
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-7" onClick={handleImproveEvoText} disabled={improvingEvo || !evoText.trim()}>
+                    {improvingEvo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                    Melhorar com IA
+                  </Button>
+                </div>
+                <Textarea
+                  placeholder="Descreva a sessão em grupo, dinâmicas, observações clínicas..."
+                  value={evoText}
+                  onChange={e => setEvoText(e.target.value)}
+                  rows={6}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  O mesmo texto será registrado para todos os participantes com status "presente". Para faltas/feriados, um texto automático será usado.
+                </p>
+              </div>
+
+              {/* Save */}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowEvoForm(false)}>Cancelar</Button>
+                <Button onClick={handleSaveGroupEvolution} disabled={savingEvo} className="gap-2">
+                  {savingEvo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Salvar para {evoSelectedMembers.size} participante(s)
+                </Button>
+              </div>
             </div>
           )}
+
+          {/* Evolutions list */}
+          {loadingEvos ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+          ) : evolutions.length === 0 && !showEvoForm ? (
+            <div className="text-center py-12">
+              <FileText className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">Nenhuma evolução registrada neste grupo</p>
+            </div>
+          ) : evolutions.length > 0 ? (
+            <div className="space-y-3">
+              {/* Group evolutions by date */}
+              {Object.entries(
+                evolutions.reduce((acc, evo) => {
+                  const d = evo.date;
+                  if (!acc[d]) acc[d] = [];
+                  acc[d].push(evo);
+                  return acc;
+                }, {} as Record<string, any[]>)
+              ).map(([date, evosByDate]) => (
+                <div key={date} className="bg-card border rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">
+                      {new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                    </span>
+                    <Badge variant="outline" className="text-xs">{(evosByDate as any[]).length} registro(s)</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {(evosByDate as any[]).map((evo: any) => {
+                      const patient = members.find(m => m.id === evo.patient_id);
+                      return (
+                        <div key={evo.id} className="flex items-start gap-3 pl-2 border-l-2 border-primary/20 py-1">
+                          <Badge variant="outline" className="text-xs shrink-0">{patient?.name || 'Paciente'}</Badge>
+                          <Badge variant={evo.attendance_status === 'presente' ? 'default' : 'secondary'} className="text-xs shrink-0">
+                            {evo.attendance_status}
+                          </Badge>
+                          {evo.text && <p className="text-sm text-muted-foreground line-clamp-2">{evo.text}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </TabsContent>
 
         {/* Portal Tab */}
