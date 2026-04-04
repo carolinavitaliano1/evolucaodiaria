@@ -59,7 +59,6 @@ interface SessionHistoryProps {
   onView: (session: Session) => void;
   onEdit: (session: Session) => void;
   onDelete: (sessionId: string) => void;
-  onDuplicate: (session: Session) => void;
   onNewSession: () => void;
   onGenerateReport: () => void;
 }
