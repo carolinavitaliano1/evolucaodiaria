@@ -76,7 +76,6 @@ export function ClinicAlertsCard() {
     const todayDay = today.getDate();
 
     Promise.all([
-      // Overdue / upcoming payments (due within 3 days or already overdue this month)
       supabase
         .from('patient_payment_records')
         .select('id', { count: 'exact', head: true })
@@ -84,16 +83,21 @@ export function ClinicAlertsCard() {
         .eq('month', currentMonth)
         .eq('year', currentYear)
         .eq('paid', false),
-      // Unread portal messages
       supabase
         .from('portal_messages')
         .select('id', { count: 'exact', head: true })
         .eq('therapist_user_id', user.id)
         .eq('sender_type', 'patient')
         .eq('read_by_therapist', false),
-    ]).then(([payments, messages]) => {
+      supabase
+        .from('patient_intake_forms')
+        .select('id', { count: 'exact', head: true })
+        .eq('therapist_user_id', user.id)
+        .eq('needs_review', true),
+    ]).then(([payments, messages, intakes]) => {
       setOverduePayments(payments.count ?? 0);
       setUnreadMessages(messages.count ?? 0);
+      setIntakeReviews(intakes.count ?? 0);
       setLoading(false);
     });
   }, [user, todayStr]);
