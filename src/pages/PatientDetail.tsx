@@ -1865,20 +1865,8 @@ export default function PatientDetail() {
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
-          {/* Attendance Sheet Print */}
-          {patient && clinic && (
-            <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
-              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
-                <ClipboardList className="w-4 h-4 text-primary" /> Lista de Frequência
-              </h3>
-              <PatientAttendanceButton
-                patient={patient}
-                clinicName={clinic.name}
-                evolutions={patientEvolutions}
-              />
-            </div>
-          )}
-          {/* New Evolution Form */}
+
+
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-primary" /> Nova Evolução
