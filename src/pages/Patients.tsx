@@ -632,7 +632,7 @@ export default function Patients() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
-            onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegName(''); setQuickRegWhatsapp(''); setQuickRegClinicId(clinics[0]?.id || ''); }}>
+            onClick={() => { setQuickRegOpen(true); setQuickRegLink(''); setQuickRegWhatsapp(''); setQuickRegClinicId(clinics[0]?.id || ''); }}>
             <Link2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Cadastro via Link</span><span className="sm:hidden">Link</span>
           </Button>
           <Button onClick={() => navigate('/clinics')} className="gap-2" size="sm">
