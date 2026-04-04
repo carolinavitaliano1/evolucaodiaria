@@ -15,6 +15,7 @@ import Landing from "./pages/Landing";
 import Clinics from "./pages/Clinics";
 import ClinicDetail from "./pages/ClinicDetail";
 import PatientDetail from "./pages/PatientDetail";
+import GroupDetail from "./pages/GroupDetail";
 import Patients from "./pages/Patients";
 import Financial from "./pages/Financial";
 import Reports from "./pages/Reports";
