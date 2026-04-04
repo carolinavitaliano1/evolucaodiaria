@@ -46,6 +46,7 @@ import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
 import { QuickWhatsAppModal } from '@/components/whatsapp/QuickWhatsAppModal';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 import { ClinicAttendanceSheet } from '@/components/attendance/ClinicAttendanceSheet';
+import { ClinicAlertsWidget } from '@/components/clinics/ClinicAlertsWidget';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
