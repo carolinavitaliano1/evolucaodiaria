@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock, History, Target, Sparkles, Send, Loader2, BookOpen, Wand2, Stamp, Download, Eye } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import jsPDF from 'jspdf';
 import { SessionHistory } from './SessionHistory';
 import { SessionPlanForm } from './SessionPlanForm';
