@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, ClipboardList, ChevronRight, ArrowLeft, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface IntakeForm {
   full_name: string;
