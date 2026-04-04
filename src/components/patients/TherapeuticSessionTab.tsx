@@ -27,9 +27,10 @@ interface TherapeuticSessionTabProps {
   patientAvatar?: string | null;
   clinicId: string;
   paymentValue?: number;
+  patientCpf?: string | null;
 }
 
-export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, clinicId, paymentValue }: TherapeuticSessionTabProps) {
+export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, clinicId, paymentValue, patientCpf }: TherapeuticSessionTabProps) {
   const { user } = useAuth();
 
   // Session state
@@ -791,6 +792,170 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
 
+  // Generate attendance declaration PDF
+  const generateDeclaration = async (session: any) => {
+    try {
+      // Fetch therapist profile and stamp
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name, cpf, professional_id')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      // Get default stamp
+      const defaultStamp = stamps.find((s: any) => s.is_default) || stamps[0];
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 25;
+      const contentWidth = pageWidth - margin * 2;
+      const centerX = pageWidth / 2;
+
+      // Fetch clinic letterhead if available
+      const { data: clinic } = await supabase
+        .from('clinics')
+        .select('name, letterhead, address, phone, cnpj')
+        .eq('id', clinicId)
+        .maybeSingle();
+
+      let y = 20;
+
+      // Clinic letterhead
+      if (clinic?.letterhead) {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject();
+            img.src = clinic.letterhead;
+          });
+          const imgWidth = 160;
+          const imgHeight = (img.height / img.width) * imgWidth;
+          doc.addImage(img, 'PNG', (pageWidth - imgWidth) / 2, y, imgWidth, imgHeight);
+          y += imgHeight + 10;
+        } catch {
+          y = 30;
+        }
+      } else {
+        y = 40;
+      }
+
+      // Title
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text('Declaração', centerX, y, { align: 'center' });
+      y += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      doc.text('Documento Oficial de Presença', centerX, y, { align: 'center' });
+      y += 25;
+
+      // Body text
+      const sessionDate = new Date(session.created_at);
+      const dateStr = sessionDate.toLocaleDateString('pt-BR');
+      const startTime = session.started_at
+        ? new Date(session.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : sessionDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const endTime = session.finished_at
+        ? new Date(session.finished_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : (() => {
+            const end = new Date(sessionDate.getTime() + (session.duration_seconds || 0) * 1000);
+            return end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          })();
+
+      const cpfStr = patientCpf || 'Não Informado';
+      const therapistName = profile?.name || 'Profissional';
+
+      doc.setFontSize(12);
+      doc.setTextColor(50, 50, 50);
+      doc.setFont('helvetica', 'normal');
+
+      // Build body paragraphs with bold segments
+      const bodyParts = [
+        { text: 'Declaro, para os devidos fins, que ', bold: false },
+        { text: patientName, bold: true },
+        { text: ', portador do CPF ', bold: false },
+        { text: cpfStr, bold: true },
+        { text: ', está em tratamento psicológico sob meus cuidados, e compareceu à sessão realizada no dia ', bold: false },
+        { text: dateStr, bold: true },
+        { text: ' das ', bold: false },
+        { text: startTime, bold: true },
+        { text: ' às ', bold: false },
+        { text: endTime, bold: true },
+        { text: '.', bold: false },
+      ];
+
+      // Render body with inline bold - justified
+      const fullBody = bodyParts.map(p => p.text).join('');
+      const bodyLines = doc.splitTextToSize(fullBody, contentWidth);
+      for (const line of bodyLines) {
+        if (y > 260) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'normal');
+        doc.text(line, margin, y, { align: 'justify', maxWidth: contentWidth });
+        y += 7;
+      }
+
+      // Generated date
+      y += 20;
+      const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const now = new Date();
+      const genDateStr = `Documento gerado em: ${String(now.getDate()).padStart(2, '0')} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont('helvetica', 'italic');
+      doc.text(genDateStr, centerX, y, { align: 'center' });
+
+      // Therapist signature block
+      y += 30;
+      doc.setDrawColor(180, 180, 200);
+      const lineWidth = 80;
+      doc.line(centerX - lineWidth / 2, y, centerX + lineWidth / 2, y);
+      y += 8;
+
+      doc.setFontSize(11);
+      doc.setTextColor(80, 80, 80);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Terapeuta:', centerX, y, { align: 'center' });
+      y += 6;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text(therapistName, centerX, y, { align: 'center' });
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      if (profile?.cpf) {
+        doc.text(`CPF: ${profile.cpf}`, centerX, y, { align: 'center' });
+        y += 6;
+      }
+      if (profile?.professional_id) {
+        doc.text(`Registro: ${profile.professional_id}`, centerX, y, { align: 'center' });
+        y += 6;
+      }
+      if (defaultStamp?.cbo) {
+        doc.text(`CBO: ${defaultStamp.cbo}`, centerX, y, { align: 'center' });
+        y += 6;
+      }
+      if (defaultStamp?.label) {
+        doc.setFontSize(9);
+        doc.text(defaultStamp.label, centerX, y, { align: 'center' });
+      }
+
+      // Footer
+      doc.setFontSize(7);
+      doc.setTextColor(180, 180, 180);
+      doc.text('Documento confidencial — uso exclusivo profissional', centerX, pageHeight - 10, { align: 'center' });
+
+      doc.save(`declaracao_comparecimento_${dateStr.replace(/\//g, '-')}.pdf`);
+      toast.success('Declaração gerada!');
+    } catch (e: any) {
+      toast.error('Erro ao gerar declaração');
+    }
+  };
+
   // View session detail dialog — shows session data + links to already generated content
 
   const renderViewDialog = () => {
@@ -1313,6 +1478,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             onDelete={handleDeleteSession}
             onNewSession={() => { resetForm(); setMainView('session'); }}
             onGenerateReport={generateReport}
+            onGenerateDeclaration={generateDeclaration}
           />
           {renderViewDialog()}
         </>

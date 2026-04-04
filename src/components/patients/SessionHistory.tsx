@@ -34,6 +34,7 @@ import {
   Pencil,
   Trash2,
   Clock,
+  ScrollText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +61,7 @@ interface SessionHistoryProps {
   onDelete: (sessionId: string) => void;
   onNewSession: () => void;
   onGenerateReport: () => void;
+  onGenerateDeclaration?: (session: Session) => void;
 }
 
 const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
@@ -86,6 +88,7 @@ export function SessionHistory({
   onDelete,
   onNewSession,
   onGenerateReport,
+  onGenerateDeclaration,
 }: SessionHistoryProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -236,6 +239,12 @@ export function SessionHistory({
                               <Pencil className="w-4 h-4 mr-2" />
                               Editar
                             </DropdownMenuItem>
+                            {onGenerateDeclaration && (
+                              <DropdownMenuItem onClick={() => onGenerateDeclaration(session)}>
+                                <ScrollText className="w-4 h-4 mr-2" />
+                                Declaração de Comparecimento
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onClick={() => setDeleteId(session.id)}
                               className="text-destructive focus:text-destructive"
