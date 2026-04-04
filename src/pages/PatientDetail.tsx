@@ -2173,6 +2173,19 @@ export default function PatientDetail() {
           </div>
         </TabsContent>
 
+        {/* Therapeutic Session Tab */}
+        {patient && clinic && (
+          <TabsContent value="session" className="space-y-4">
+            <TherapeuticSessionTab
+              patientId={patient.id}
+              patientName={patient.name}
+              patientAvatar={patient.avatarUrl}
+              clinicId={clinic.id}
+              paymentValue={patient.paymentValue}
+            />
+          </TabsContent>
+        )}
+
         {/* Monthly Report Tab */}
         <TabsContent value="reports" className="space-y-4">
           <div className="bg-card rounded-xl shadow-sm border border-border">
