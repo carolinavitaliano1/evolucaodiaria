@@ -106,8 +106,8 @@ export default function Patients() {
     const phone = num.startsWith('55') ? num : `55${num}`;
     const cleanLink = quickRegLink.trim();
     const message = [
-      `Olá, ${quickRegName}!`,
-      'Por favor, preencha a ficha da clínica pelo link abaixo:',
+      'Olá!',
+      'Por favor, preencha a ficha de matrícula pelo link abaixo:',
       cleanLink,
     ].join('\n\n');
 
