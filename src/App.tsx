@@ -33,6 +33,7 @@ import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
 import PatientIntakePublic from "./pages/PatientIntakePublic";
 import Enrollment from "./pages/Enrollment";
+import WaitlistPublic from "./pages/WaitlistPublic";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfUse from "./pages/TermsOfUse";
 import PortalAuth from "./pages/portal/PortalAuth";
