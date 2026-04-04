@@ -90,6 +90,7 @@ const App = () => (
                 <Route path="/portal/financeiro" element={<PortalRoute><PortalFinancial /></PortalRoute>} />
                 <Route path="/portal/documentos" element={<PortalRoute><PortalDocuments /></PortalRoute>} />
                 <Route path="/portal/mural" element={<PortalRoute><PortalMural /></PortalRoute>} />
+                <Route path="/portal/atividades" element={<PortalRoute><PortalActivities /></PortalRoute>} />
                 {/* Public intake form — no auth required */}
                 <Route path="/cadastro-paciente/:token" element={<PatientIntakePublic />} />
                 {/* Self-service enrollment — no auth required */}
