@@ -1183,7 +1183,7 @@ export default function ClinicDetail() {
                   size="sm"
                   className="gap-2 text-xs"
                   onClick={() => {
-                    const link = `https://evolucaodiaria.app.br/matricula/${id}`;
+                    const link = `https://evolucaodiaria.app.br/matricula/${id}`; // Production domain for external sharing
                     navigator.clipboard.writeText(link);
                     toast.success('Link de cadastro copiado!');
                   }}

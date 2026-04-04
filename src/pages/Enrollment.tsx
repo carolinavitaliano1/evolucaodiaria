@@ -75,7 +75,10 @@ export default function Enrollment() {
       .eq('id', clinicId)
       .or('is_archived.is.null,is_archived.eq.false')
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Enrollment: clinic fetch error', error);
+        }
         if (!data) setNotFound(true);
         else setClinic(data);
         setLoading(false);
