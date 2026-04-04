@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle2, ClipboardList, ChevronRight, ArrowLeft, Send, FileDown } from 'lucide-react';
+import { Loader2, CheckCircle2, ClipboardList, ChevronRight, ArrowLeft, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -201,41 +201,6 @@ export default function PortalIntakeForm() {
   const [qAnswers, setQAnswers] = useState<Record<string, string>>({});
   const [savingQ, setSavingQ] = useState(false);
 
-  const handleDownloadQuestionnairePdf = async (q: PatientQuestionnaire) => {
-    if (!portalAccount) return;
-    const { generateQuestionnairePdf } = await import('@/utils/generateQuestionnairePdf');
-
-    const [{ data: patientData }, { data: clinicData }] = await Promise.all([
-      supabase.from('patients').select('name, birthdate, diagnosis, clinical_area, is_minor, guardian_name, guardian_kinship, cpf, clinic_id').eq('id', portalAccount.patient_id).single(),
-      supabase.from('patients').select('clinic_id').eq('id', portalAccount.patient_id).single().then(async ({ data }) => {
-        if (!data) return { data: null };
-        return supabase.from('clinics').select('name, address, cnpj, phone, email, letterhead').eq('id', data.clinic_id).single();
-      }),
-    ]);
-
-    const fields = (q.fields || []).map((field) => ({
-      label: field.question || '',
-      value: q.answers?.[field.id] || null,
-    }));
-
-    const doc = await generateQuestionnairePdf({
-      title: q.title,
-      sections: [{ title: 'Respostas', fields }],
-      clinicInfo: clinicData ? { name: clinicData.name, address: clinicData.address, cnpj: clinicData.cnpj, phone: clinicData.phone, email: clinicData.email, letterhead: clinicData.letterhead } : undefined,
-      patientInfo: {
-        name: patientData?.name || '',
-        birthdate: patientData?.birthdate,
-        diagnosis: patientData?.diagnosis,
-        clinicalArea: patientData?.clinical_area,
-        isMinor: patientData?.is_minor,
-        guardianName: patientData?.guardian_name,
-        guardianKinship: patientData?.guardian_kinship,
-        cpf: patientData?.cpf,
-      },
-      submittedAt: q.submitted_at,
-    });
-    doc.save(`questionario-${q.title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
-  };
 
   useEffect(() => {
     if (!portalAccount) return;
@@ -501,11 +466,7 @@ export default function PortalIntakeForm() {
               {savingQ ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Enviar respostas
             </Button>
-          ) : (
-            <Button variant="outline" className="w-full gap-1.5" onClick={() => handleDownloadQuestionnairePdf(activeQuestionnaire)}>
-              <FileDown className="w-4 h-4" /> Baixar PDF
-            </Button>
-          )}
+          ) : null}
         </div>
       </PortalLayout>
     );
@@ -825,9 +786,6 @@ export default function PortalIntakeForm() {
                     </div>
                   </button>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleDownloadQuestionnairePdf(q); }}>
-                      <FileDown className="w-4 h-4 text-muted-foreground" />
-                    </Button>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </div>
