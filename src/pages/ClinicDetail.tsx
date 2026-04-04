@@ -841,7 +841,10 @@ export default function ClinicDetail() {
         ? (batchGlobalStampId !== 'none' ? batchGlobalStampId : undefined)
         : (batchIndividualStamps[patientId] && batchIndividualStamps[patientId] !== 'none' ? batchIndividualStamps[patientId] : undefined);
       
-      const status = batchAttendanceStatus[patientId] || 'presente';
+      const status = batchStatusMode === 'same' ? batchGlobalStatus : (batchAttendanceStatus[patientId] || 'presente');
+      const autoText = ['falta', 'falta_remunerada'].includes(status) && !fullText ? 'Paciente faltou à sessão.' 
+        : ['feriado_remunerado', 'feriado_nao_remunerado'].includes(status) && !fullText ? 'Feriado.' 
+        : fullText;
       
       await addEvolution({
         patientId,
