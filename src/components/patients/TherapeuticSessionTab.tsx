@@ -12,9 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, FileText, Smile, Frown, PenLine, ListTodo, CalendarPlus, MessageSquare, Upload, Clock, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
+import { SessionHistory } from './SessionHistory';
 
 interface TherapeuticSessionTabProps {
   patientId: string;
