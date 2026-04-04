@@ -290,6 +290,65 @@ export default function PatientDetail() {
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
 
+  // Virtual consultation state
+  const [isVirtual, setIsVirtual] = useState(false);
+  const [sendingConfirmation, setSendingConfirmation] = useState(false);
+
+  // Load is_virtual from DB
+  useEffect(() => {
+    if (!patient) return;
+    supabase.from('patients').select('is_virtual').eq('id', patient.id).maybeSingle()
+      .then(({ data }) => { if (data) setIsVirtual(!!(data as any).is_virtual); });
+  }, [patient?.id]);
+
+  const handleToggleVirtual = async (checked: boolean) => {
+    if (!patient) return;
+    setIsVirtual(checked);
+    await supabase.from('patients').update({ is_virtual: checked } as any).eq('id', patient.id);
+    toast.success(checked ? 'Consulta marcada como virtual' : 'Consulta marcada como presencial');
+  };
+
+  const handleSendConfirmation = async (channel: 'portal' | 'whatsapp' | 'both') => {
+    if (!patient || !user) return;
+    setSendingConfirmation(true);
+    try {
+      const msg = `Olá ${patient.name.split(' ')[0]}! 👋\n\nSua próxima sessão está ${isVirtual ? 'agendada online' : 'confirmada'}. Você poderá comparecer? Por favor, confirme sua presença.`;
+
+      // Send via portal
+      if (channel === 'portal' || channel === 'both') {
+        const portalAccount = await supabase.from('patient_portal_accounts')
+          .select('id').eq('patient_id', patient.id).eq('status', 'active').maybeSingle();
+        if (portalAccount.data) {
+          await supabase.from('portal_messages').insert({
+            patient_id: patient.id,
+            therapist_user_id: user.id,
+            portal_account_id: portalAccount.data.id,
+            content: msg,
+            message_type: 'message',
+            sender_type: 'therapist',
+          });
+          toast.success('Confirmação enviada pelo Portal!');
+        } else if (channel === 'portal') {
+          toast.error('Paciente não possui conta no portal ativa.');
+        }
+      }
+
+      // Send via WhatsApp
+      if (channel === 'whatsapp' || channel === 'both') {
+        const phoneNum = patient.whatsapp || patient.phone || patient.guardianPhone;
+        if (phoneNum) {
+          const cleaned = phoneNum.replace(/\D/g, '');
+          const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+          window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+        } else {
+          toast.error('Paciente sem telefone cadastrado.');
+        }
+      }
+    } finally {
+      setSendingConfirmation(false);
+    }
+  };
+
   // Therapist profile for fiscal receipt
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null; cbo?: string | null } | null>(null);
 
