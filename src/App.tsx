@@ -96,6 +96,7 @@ const App = () => (
                 <Route path="/cadastro-paciente/:token" element={<PatientIntakePublic />} />
                 {/* Self-service enrollment — no auth required */}
                 <Route path="/matricula/:clinicId" element={<Enrollment />} />
+                <Route path="/lista-espera/:clinicId" element={<WaitlistPublic />} />
                 <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/pricing" element={<Pricing />} />
