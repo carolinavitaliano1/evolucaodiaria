@@ -776,9 +776,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
 
   // View session detail dialog — shows session data + links to already generated content
-  const [viewLinkedEvolution, setViewLinkedEvolution] = useState<any | null>(null);
-  const [viewLinkedEvolutionText, setViewLinkedEvolutionText] = useState<string | null>(null);
-  const [loadingLinkedData, setLoadingLinkedData] = useState(false);
 
   const renderViewDialog = () => {
     if (!viewingSession) return null;
