@@ -16,6 +16,7 @@ const GUARDIAN_KINSHIP_OPTIONS = ['Mãe','Pai','Avó','Avô','Tia','Tio','Respon
 
 interface FormState {
   name: string; birthdate: string; cpf: string; phone: string; whatsapp: string; email: string;
+  address: string;
   is_minor: boolean;
   guardian_name: string; guardian_email: string; guardian_phone: string; guardian_kinship: string;
   responsible_name: string; responsible_cpf: string; responsible_whatsapp: string;
