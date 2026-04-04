@@ -1,15 +1,22 @@
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Loader2, DollarSign, CheckCircle2, Clock, Receipt,
-  Copy, AlertCircle, Bell, Paperclip, Send, X, ChevronDown, ChevronUp, QrCode,
+  DollarSign, CheckCircle2, Clock, Receipt,
+  Copy, AlertCircle, Bell, Send, QrCode, CreditCard, CalendarDays,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { toast } from 'sonner';
-import { format, differenceInDays, setDate, startOfDay } from 'date-fns';
+import { format, differenceInDays, setDate, startOfDay, addMonths, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -21,20 +28,7 @@ interface PaymentRecord {
   paid: boolean;
   payment_date: string | null;
   notes: string | null;
-}
-
-const MONTH_NAMES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-
-function getDueDateAlert(paymentDueDay: number | null): { type: 'today' | 'soon' | 'overdue' | null; daysLeft: number } {
-  if (!paymentDueDay) return { type: null, daysLeft: 0 };
-  const today = startOfDay(new Date());
-  const dueDate = startOfDay(setDate(new Date(), paymentDueDay));
-  const diff = differenceInDays(dueDate, today);
-
-  if (diff === 0) return { type: 'today', daysLeft: 0 };
-  if (diff > 0 && diff <= 3) return { type: 'soon', daysLeft: diff };
-  if (diff < 0) return { type: 'overdue', daysLeft: Math.abs(diff) };
-  return { type: null, daysLeft: diff };
+  due_date: string | null;
 }
 
 interface ClinicPaymentData {
@@ -44,56 +38,132 @@ interface ClinicPaymentData {
   show_payment_in_portal: boolean;
 }
 
+interface PackageData {
+  name: string;
+  package_type: string;
+  price: number;
+  session_limit: number | null;
+}
+
+const MONTH_NAMES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+function getPaymentDueDate(paymentDueDay: number | null): Date | null {
+  if (!paymentDueDay) return null;
+  const today = startOfDay(new Date());
+  let dueDate = startOfDay(setDate(new Date(), paymentDueDay));
+  // If due date already passed this month, next relevant is next month
+  if (isBefore(dueDate, today)) {
+    dueDate = startOfDay(setDate(addMonths(new Date(), 1), paymentDueDay));
+  }
+  return dueDate;
+}
+
+function getPaymentAlert(paymentDueDay: number | null, currentPaid: boolean) {
+  if (currentPaid) return { type: 'paid' as const, daysLeft: 0 };
+  if (!paymentDueDay) return null;
+
+  const today = startOfDay(new Date());
+  const thisMonthDue = startOfDay(setDate(new Date(), paymentDueDay));
+  const diff = differenceInDays(thisMonthDue, today);
+
+  if (diff < 0) return { type: 'overdue' as const, daysLeft: Math.abs(diff) };
+  if (diff === 0) return { type: 'today' as const, daysLeft: 0 };
+  if (diff <= 5) return { type: 'soon' as const, daysLeft: diff };
+  return { type: 'ok' as const, daysLeft: diff };
+}
+
+function getRecordStatus(record: PaymentRecord, paymentDueDay: number | null): 'paid' | 'pending' | 'overdue' {
+  if (record.paid) return 'paid';
+  const today = startOfDay(new Date());
+  if (record.due_date) {
+    return isBefore(new Date(record.due_date + 'T00:00:00'), today) ? 'overdue' : 'pending';
+  }
+  if (paymentDueDay) {
+    const due = new Date(record.year, record.month - 1, paymentDueDay);
+    return isBefore(due, today) ? 'overdue' : 'pending';
+  }
+  return 'pending';
+}
+
+function formatPaymentType(type: string | null): string {
+  const map: Record<string, string> = {
+    mensal: 'Mensal',
+    por_sessao: 'Por Sessão',
+    fixo_diaria: 'Fixo Diária',
+    personalizado: 'Personalizado',
+    variado: 'Variado',
+  };
+  return type ? (map[type] || type) : 'Não definido';
+}
+
 export default function PortalFinancial() {
   const { portalAccount, patient, sendMessage } = usePortal();
   const [records, setRecords] = useState<PaymentRecord[]>([]);
-  const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
   const [clinicPayment, setClinicPayment] = useState<ClinicPaymentData | null>(null);
+  const [packageData, setPackageData] = useState<PackageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<string | null>(null);
-  const [showReceiptUpload, setShowReceiptUpload] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
   const [receiptText, setReceiptText] = useState('');
   const [sendingReceipt, setSendingReceipt] = useState(false);
-  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!portalAccount) return;
-    Promise.all([
-      supabase
-        .from('patient_payment_records')
-        .select('*')
-        .eq('patient_id', portalAccount.patient_id)
-        .order('year', { ascending: false })
-        .order('month', { ascending: false })
-        .limit(12),
-      supabase
-        .from('patients')
-        .select('payment_info, clinic_id, show_payment_in_portal')
-        .eq('id', portalAccount.patient_id)
-        .single(),
-    ]).then(async ([{ data: recs }, { data: pat }]) => {
-      setRecords((recs || []) as PaymentRecord[]);
-      setPaymentInfo((pat as any)?.payment_info || null);
-      // Load clinic payment data only if patient-level toggle is also on
-      const patientShowPayment = (pat as any)?.show_payment_in_portal ?? false;
-      if (patientShowPayment && (pat as any)?.clinic_id) {
-        const { data: clinicData } = await supabase
-          .from('clinics')
-          .select('payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
-          .eq('id', (pat as any).clinic_id)
-          .single();
-        if (clinicData) setClinicPayment(clinicData as ClinicPaymentData);
-      }
-      setLoading(false);
-    });
-  }, [portalAccount]);
+    if (!portalAccount || !patient) return;
 
-  const handleCopyPaymentInfo = () => {
-    if (!paymentInfo) return;
-    navigator.clipboard.writeText(paymentInfo);
-    toast.success('Copiado! 📋');
-  };
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [{ data: recs }, { data: pat }, { data: pkg }] = await Promise.all([
+          supabase
+            .from('patient_payment_records')
+            .select('id, month, year, amount, paid, payment_date, notes, due_date')
+            .eq('patient_id', portalAccount.patient_id)
+            .order('year', { ascending: false })
+            .order('month', { ascending: false })
+            .limit(24),
+          supabase
+            .from('patients')
+            .select('payment_info, clinic_id, show_payment_in_portal, package_id')
+            .eq('id', portalAccount.patient_id)
+            .single(),
+          patient.clinic_id
+            ? supabase
+                .from('clinic_packages')
+                .select('name, package_type, price, session_limit')
+                .eq('clinic_id', patient.clinic_id)
+                .limit(1)
+            : Promise.resolve({ data: null }),
+        ]);
+
+        setRecords((recs || []) as PaymentRecord[]);
+
+        // Load package if patient has one
+        if ((pat as any)?.package_id) {
+          const { data: pkgData } = await supabase
+            .from('clinic_packages')
+            .select('name, package_type, price, session_limit')
+            .eq('id', (pat as any).package_id)
+            .single();
+          if (pkgData) setPackageData(pkgData as PackageData);
+        }
+
+        // Load clinic payment info
+        const patientShowPayment = (pat as any)?.show_payment_in_portal ?? false;
+        if (patientShowPayment && (pat as any)?.clinic_id) {
+          const { data: clinicData } = await supabase
+            .from('clinics')
+            .select('payment_pix_key, payment_pix_name, payment_bank_details, show_payment_in_portal')
+            .eq('id', (pat as any).clinic_id)
+            .single();
+          if (clinicData) setClinicPayment(clinicData as ClinicPaymentData);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [portalAccount, patient]);
 
   const handleRequestReceipt = async (record: PaymentRecord) => {
     if (!portalAccount) return;
@@ -104,13 +174,13 @@ export default function PortalFinancial() {
         therapist_user_id: portalAccount.therapist_user_id,
         portal_account_id: portalAccount.id,
         sender_type: 'patient',
-        content: `Olá! Gostaria de solicitar o recibo de pagamento referente a ${MONTH_NAMES[record.month]}/${record.year} (R$ ${record.amount.toFixed(2).replace('.', ',')}).`,
+        content: `Olá! Gostaria de solicitar o recibo de pagamento referente a ${MONTH_NAMES[record.month]}/${record.year} (R$ ${Number(record.amount).toFixed(2).replace('.', ',')}).`,
         message_type: 'message',
         read_by_patient: true,
         read_by_therapist: false,
       });
       if (error) throw error;
-      toast.success('Solicitação de recibo enviada! ✉️');
+      toast.success('Solicitação de recibo enviada!');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao solicitar recibo');
     } finally {
@@ -123,10 +193,10 @@ export default function PortalFinancial() {
     setSendingReceipt(true);
     try {
       await sendMessage(`🧾 Comprovante de pagamento enviado:\n\n${receiptText.trim()}`, 'message');
-      toast.success('Comprovante enviado ao terapeuta! ✅');
+      toast.success('Comprovante enviado!');
       setReceiptText('');
-      setShowReceiptUpload(false);
-    } catch (err: any) {
+      setShowReceipt(false);
+    } catch {
       toast.error('Erro ao enviar comprovante');
     } finally {
       setSendingReceipt(false);
@@ -136,273 +206,381 @@ export default function PortalFinancial() {
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
   const currentRecord = records.find(r => r.month === currentMonth && r.year === currentYear);
+  const alert = getPaymentAlert(patient?.payment_due_day || null, !!currentRecord?.paid);
   const totalPaid = records.filter(r => r.paid).reduce((s, r) => s + Number(r.amount), 0);
   const totalPending = records.filter(r => !r.paid).reduce((s, r) => s + Number(r.amount), 0);
-  const dueDateAlert = getDueDateAlert(patient?.payment_due_day || null);
+
+  if (loading) {
+    return (
+      <PortalLayout>
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-28 w-full rounded-lg" />
+          <Skeleton className="h-20 w-full rounded-lg" />
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-24 rounded-lg" />
+          </div>
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      </PortalLayout>
+    );
+  }
 
   return (
     <PortalLayout>
       <div className="space-y-5">
         <div>
           <h1 className="text-lg font-bold text-foreground">Financeiro</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Acompanhe seus pagamentos</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Acompanhe seus pagamentos e situação financeira</p>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : (
-          <>
-            {/* Due date alert */}
-            {dueDateAlert.type && !currentRecord?.paid && (
-              <div className={cn(
-                'rounded-2xl border px-4 py-3 flex items-start gap-3',
-                dueDateAlert.type === 'today' && 'bg-destructive/10 border-destructive/20 text-destructive',
-                dueDateAlert.type === 'soon' && 'bg-warning/10 border-warning/20 text-warning',
-                dueDateAlert.type === 'overdue' && 'bg-destructive/10 border-destructive/20 text-destructive',
-              )}>
-                <Bell className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">
-                    {dueDateAlert.type === 'today' && '⚠️ Vencimento hoje!'}
-                    {dueDateAlert.type === 'soon' && `⏰ Vence em ${dueDateAlert.daysLeft} dia${dueDateAlert.daysLeft > 1 ? 's' : ''}!`}
-                    {dueDateAlert.type === 'overdue' && `❗ Pagamento em atraso há ${dueDateAlert.daysLeft} dia${dueDateAlert.daysLeft > 1 ? 's' : ''}`}
-                  </p>
-                  <p className="text-xs mt-0.5 opacity-80">
-                    Dia {patient?.payment_due_day} de cada mês
-                    {patient?.payment_value ? ` — R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}` : ''}
-                  </p>
-                </div>
+        {/* 1. Plan/Contract Summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <CreditCard className="h-4 w-4 text-primary" />
               </div>
-            )}
-
-            {/* PIX / Payment data card — from clinic settings */}
-            {clinicPayment?.show_payment_in_portal && (clinicPayment.payment_pix_key || clinicPayment.payment_bank_details) && (
-              <div className="rounded-2xl border-2 border-success/30 bg-success/5 overflow-hidden shadow-sm">
-                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-success/15 flex items-center justify-center">
-                    <QrCode className="w-4 h-4 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Como Pagar</p>
-                    <p className="text-[10px] text-muted-foreground">Dados de pagamento do seu terapeuta</p>
-                  </div>
-                </div>
-                <div className="px-4 pb-4 space-y-3">
-                  {clinicPayment.payment_pix_name && (
-                    <div>
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Titular</p>
-                      <p className="text-sm font-semibold text-foreground">{clinicPayment.payment_pix_name}</p>
-                    </div>
-                  )}
-                  {clinicPayment.payment_pix_key && (
-                    <div>
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Chave PIX</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 bg-card rounded-xl px-3 py-2 border border-success/20">
-                          <p className="text-sm font-mono font-semibold text-foreground break-all">{clinicPayment.payment_pix_key}</p>
-                        </div>
-                        <Button
-                          size="icon"
-                          className="h-9 w-9 shrink-0 bg-success hover:bg-success/90 text-success-foreground border-0"
-                          onClick={() => {
-                            navigator.clipboard.writeText(clinicPayment.payment_pix_key!);
-                            toast.success('Chave PIX copiada! ✅');
-                          }}
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {clinicPayment.payment_bank_details && (
-                    <div className="pt-1 border-t border-success/20">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Outros dados bancários</p>
-                      <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{clinicPayment.payment_bank_details}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Payment method card (legacy - from patient payment_info) */}
-            {paymentInfo && (
-              <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                <button
-                  className="w-full flex items-center justify-between px-4 py-3 text-left"
-                  onClick={() => setShowPaymentInfo(v => !v)}
-                >
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-semibold text-foreground">Dados para pagamento</span>
-                  </div>
-                  {showPaymentInfo ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                {showPaymentInfo && (
-                  <div className="px-4 pb-4 space-y-3">
-                    <div className="bg-muted rounded-xl p-3">
-                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{paymentInfo}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full gap-2 text-xs"
-                      onClick={handleCopyPaymentInfo}
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      Copiar dados de pagamento
-                    </Button>
-                    {/* Send receipt */}
-                    {!showReceiptUpload ? (
-                      <Button
-                        size="sm"
-                        className="w-full gap-2 text-xs"
-                        onClick={() => setShowReceiptUpload(true)}
-                      >
-                        <Paperclip className="w-3.5 h-3.5" />
-                        Enviar comprovante ao terapeuta
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-medium text-foreground">Cole o número do comprovante ou descreva:</p>
-                          <button onClick={() => setShowReceiptUpload(false)}>
-                            <X className="w-3.5 h-3.5 text-muted-foreground" />
-                          </button>
-                        </div>
-                        <Textarea
-                          value={receiptText}
-                          onChange={e => setReceiptText(e.target.value)}
-                          placeholder="Ex: Pix enviado às 14:32 — Cód. E00000000..."
-                          className="resize-none text-sm min-h-[70px]"
-                        />
-                        <Button
-                          size="sm"
-                          className="w-full gap-2 text-xs"
-                          disabled={!receiptText.trim() || sendingReceipt}
-                          onClick={handleSendReceipt}
-                        >
-                          {sendingReceipt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                          Enviar comprovante
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* No payment info but has due date — show reminder to send receipt */}
-            {!paymentInfo && patient?.payment_due_day && (
-              <div className="bg-card rounded-2xl border border-border p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Paperclip className="w-4 h-4 text-primary" />
-                  <p className="text-sm font-semibold text-foreground">Enviar comprovante</p>
-                </div>
-                {!showReceiptUpload ? (
-                  <Button size="sm" className="w-full gap-2 text-xs" onClick={() => setShowReceiptUpload(true)}>
-                    <Paperclip className="w-3.5 h-3.5" />
-                    Enviar comprovante ao terapeuta
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <Textarea
-                      value={receiptText}
-                      onChange={e => setReceiptText(e.target.value)}
-                      placeholder="Descreva ou cole o código do comprovante..."
-                      className="resize-none text-sm min-h-[70px]"
-                    />
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setShowReceiptUpload(false)}>
-                        Cancelar
-                      </Button>
-                      <Button size="sm" className="flex-1 gap-1.5 text-xs" disabled={!receiptText.trim() || sendingReceipt} onClick={handleSendReceipt}>
-                        {sendingReceipt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                        Enviar
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Summary cards */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-success/10 rounded-2xl border border-success/20 p-4">
-                <CheckCircle2 className="w-5 h-5 text-success mb-2" />
-                <p className="text-xs text-success font-medium">Pagos</p>
-                <p className="text-lg font-bold text-success">
-                  R$ {totalPaid.toFixed(2).replace('.', ',')}
-                </p>
-              </div>
-              <div className={cn('rounded-2xl border p-4', totalPending > 0 ? 'bg-warning/10 border-warning/20' : 'bg-muted border-border')}>
-                <Clock className={cn('w-5 h-5 mb-2', totalPending > 0 ? 'text-warning' : 'text-muted-foreground')} />
-                <p className={cn('text-xs font-medium', totalPending > 0 ? 'text-warning' : 'text-muted-foreground')}>Pendente</p>
-                <p className={cn('text-lg font-bold', totalPending > 0 ? 'text-warning' : 'text-muted-foreground')}>
-                  R$ {totalPending.toFixed(2).replace('.', ',')}
-                </p>
+              <div>
+                <CardTitle className="text-sm">Resumo do Plano</CardTitle>
+                <CardDescription className="text-xs">Detalhes do seu contrato</CardDescription>
               </div>
             </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Pacote</p>
+                <p className="font-semibold text-foreground">
+                  {packageData?.name || formatPaymentType(patient?.payment_type || null)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Mensalidade</p>
+                <p className="font-semibold text-foreground">
+                  {patient?.payment_value
+                    ? `R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}`
+                    : 'Não definido'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Vencimento</p>
+                <p className="font-semibold text-foreground flex items-center gap-1">
+                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                  {patient?.payment_due_day ? `Dia ${patient.payment_due_day}` : 'Não definido'}
+                </p>
+              </div>
+              {packageData?.session_limit && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Sessões/mês</p>
+                  <p className="font-semibold text-foreground">{packageData.session_limit}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-            {/* Records */}
+        {/* 2. Payment Status Alert */}
+        {alert && (
+          <>
+            {alert.type === 'paid' && (
+              <Alert className="border-emerald-500/30 bg-emerald-500/5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <AlertTitle className="text-emerald-700 dark:text-emerald-400">Pagamento em dia ✅</AlertTitle>
+                <AlertDescription className="text-emerald-600/80 dark:text-emerald-400/70 text-xs">
+                  O pagamento de {MONTH_NAMES[currentMonth]} está quitado. Obrigado!
+                </AlertDescription>
+              </Alert>
+            )}
+            {alert.type === 'ok' && (
+              <Alert className="border-emerald-500/30 bg-emerald-500/5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <AlertTitle className="text-emerald-700 dark:text-emerald-400">Situação regular</AlertTitle>
+                <AlertDescription className="text-emerald-600/80 dark:text-emerald-400/70 text-xs">
+                  Próximo vencimento em {alert.daysLeft} dias (dia {patient?.payment_due_day}).
+                </AlertDescription>
+              </Alert>
+            )}
+            {alert.type === 'soon' && (
+              <Alert className="border-amber-500/40 bg-amber-500/5">
+                <Bell className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-700 dark:text-amber-400">
+                  Atenção: Falt{alert.daysLeft === 1 ? 'a 1 dia' : `am ${alert.daysLeft} dias`} para o vencimento
+                </AlertTitle>
+                <AlertDescription className="text-amber-600/80 dark:text-amber-400/70 text-xs">
+                  Vencimento dia {patient?.payment_due_day}
+                  {patient?.payment_value ? ` — R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}` : ''}
+                </AlertDescription>
+              </Alert>
+            )}
+            {alert.type === 'today' && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Vencimento hoje!</AlertTitle>
+                <AlertDescription className="text-xs">
+                  O pagamento de {MONTH_NAMES[currentMonth]} vence hoje.
+                  {patient?.payment_value ? ` Valor: R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}` : ''}
+                </AlertDescription>
+              </Alert>
+            )}
+            {alert.type === 'overdue' && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Pagamento atrasado</AlertTitle>
+                <AlertDescription className="text-xs">
+                  Em atraso há {alert.daysLeft} dia{alert.daysLeft > 1 ? 's' : ''}. Por favor, regularize sua situação.
+                </AlertDescription>
+              </Alert>
+            )}
+          </>
+        )}
+
+        {/* PIX / Payment Info */}
+        {clinicPayment?.show_payment_in_portal && (clinicPayment.payment_pix_key || clinicPayment.payment_bank_details) && (
+          <Card className="border-emerald-500/20 bg-emerald-500/5">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-emerald-500/15 flex items-center justify-center">
+                  <QrCode className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm">Como Pagar</CardTitle>
+                  <CardDescription className="text-xs">Dados de pagamento</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              {clinicPayment.payment_pix_name && (
+                <div>
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Titular</p>
+                  <p className="text-sm font-semibold text-foreground">{clinicPayment.payment_pix_name}</p>
+                </div>
+              )}
+              {clinicPayment.payment_pix_key && (
+                <div>
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Chave PIX</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 bg-card rounded-lg px-3 py-2 border font-mono text-sm break-all">
+                      {clinicPayment.payment_pix_key}
+                    </div>
+                    <Button
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(clinicPayment.payment_pix_key!);
+                        toast.success('Chave PIX copiada!');
+                      }}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {clinicPayment.payment_bank_details && (
+                <div className="pt-2 border-t">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Dados bancários</p>
+                  <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{clinicPayment.payment_bank_details}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Send receipt */}
+        <Card>
+          <CardContent className="p-4">
+            {!showReceipt ? (
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => setShowReceipt(true)}>
+                <Send className="w-3.5 h-3.5" />
+                Enviar comprovante ao terapeuta
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">Cole o número ou descreva o comprovante:</p>
+                <Textarea
+                  value={receiptText}
+                  onChange={e => setReceiptText(e.target.value)}
+                  placeholder="Ex: Pix enviado às 14:32 — Cód. E00000000..."
+                  className="resize-none text-sm min-h-[70px]"
+                />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => { setShowReceipt(false); setReceiptText(''); }}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" className="flex-1 gap-1.5 text-xs" disabled={!receiptText.trim() || sendingReceipt} onClick={handleSendReceipt}>
+                    <Send className="w-3 h-3" />
+                    Enviar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="border-emerald-500/20 bg-emerald-500/5">
+            <CardContent className="p-4">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 mb-2" />
+              <p className="text-xs text-emerald-600 font-medium">Total Pago</p>
+              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                R$ {totalPaid.toFixed(2).replace('.', ',')}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className={cn(
+            totalPending > 0
+              ? 'border-amber-500/20 bg-amber-500/5'
+              : 'border-border'
+          )}>
+            <CardContent className="p-4">
+              <Clock className={cn('w-5 h-5 mb-2', totalPending > 0 ? 'text-amber-600' : 'text-muted-foreground')} />
+              <p className={cn('text-xs font-medium', totalPending > 0 ? 'text-amber-600' : 'text-muted-foreground')}>Pendente</p>
+              <p className={cn('text-lg font-bold', totalPending > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}>
+                R$ {totalPending.toFixed(2).replace('.', ',')}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 3. Payment History Table */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-primary" />
+              Histórico de Pagamentos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 px-0 md:px-6">
             {records.length === 0 ? (
-              <div className="bg-card rounded-2xl border border-border p-8 text-center">
+              <div className="text-center py-8 px-4">
                 <DollarSign className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
                 <p className="font-semibold text-sm text-foreground">Sem registros financeiros</p>
                 <p className="text-xs text-muted-foreground mt-1">Nenhum lançamento disponível ainda.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {records.map(record => (
-                  <div key={record.id} className="bg-card rounded-2xl border border-border p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-foreground">
-                            {MONTH_NAMES[record.month]} {record.year}
-                          </p>
-                          {record.paid ? (
-                            <span className="text-[10px] font-medium text-success flex items-center gap-0.5">
-                              <CheckCircle2 className="w-3 h-3" /> Pago
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-medium text-warning flex items-center gap-0.5">
-                              <Clock className="w-3 h-3" /> Pendente
-                            </span>
+              <>
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Referência</TableHead>
+                        <TableHead>Pagamento</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {records.map(record => {
+                        const status = getRecordStatus(record, patient?.payment_due_day || null);
+                        return (
+                          <TableRow key={record.id}>
+                            <TableCell className="font-medium">
+                              {MONTH_NAMES[record.month]} {record.year}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {record.paid && record.payment_date
+                                ? format(new Date(record.payment_date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })
+                                : '—'}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              R$ {Number(record.amount).toFixed(2).replace('.', ',')}
+                            </TableCell>
+                            <TableCell>
+                              {status === 'paid' && (
+                                <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20">
+                                  Pago
+                                </Badge>
+                              )}
+                              {status === 'pending' && (
+                                <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20">
+                                  Pendente
+                                </Badge>
+                              )}
+                              {status === 'overdue' && (
+                                <Badge variant="destructive">Atrasado</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {record.paid && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1.5 text-xs h-8"
+                                  onClick={() => handleRequestReceipt(record)}
+                                  disabled={requesting === record.id}
+                                >
+                                  <Receipt className="w-3 h-3" />
+                                  Recibo
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile card list */}
+                <div className="md:hidden space-y-2 px-4">
+                  {records.map(record => {
+                    const status = getRecordStatus(record, patient?.payment_due_day || null);
+                    return (
+                      <div key={record.id} className="bg-card rounded-lg border p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-foreground">
+                                {MONTH_NAMES[record.month]} {record.year}
+                              </p>
+                              {status === 'paid' && (
+                                <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 text-[10px] px-1.5 py-0">
+                                  Pago
+                                </Badge>
+                              )}
+                              {status === 'pending' && (
+                                <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 text-[10px] px-1.5 py-0">
+                                  Pendente
+                                </Badge>
+                              )}
+                              {status === 'overdue' && (
+                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Atrasado</Badge>
+                              )}
+                            </div>
+                            <p className="text-base font-bold text-foreground mt-0.5">
+                              R$ {Number(record.amount).toFixed(2).replace('.', ',')}
+                            </p>
+                            {record.paid && record.payment_date && (
+                              <p className="text-[10px] text-muted-foreground">
+                                Pago em {format(new Date(record.payment_date + 'T12:00:00'), "d 'de' MMM", { locale: ptBR })}
+                              </p>
+                            )}
+                          </div>
+                          {record.paid && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 text-xs h-8 flex-shrink-0"
+                              onClick={() => handleRequestReceipt(record)}
+                              disabled={requesting === record.id}
+                            >
+                              <Receipt className="w-3 h-3" />
+                              Recibo
+                            </Button>
                           )}
                         </div>
-                        <p className="text-base font-bold text-foreground">
-                          R$ {Number(record.amount).toFixed(2).replace('.', ',')}
-                        </p>
-                        {record.paid && record.payment_date && (
-                          <p className="text-[10px] text-muted-foreground">
-                            Pago em {format(new Date(record.payment_date + 'T12:00:00'), "d 'de' MMM", { locale: ptBR })}
-                          </p>
-                        )}
                       </div>
-                      {record.paid && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5 text-xs h-8 flex-shrink-0"
-                          onClick={() => handleRequestReceipt(record)}
-                          disabled={requesting === record.id}
-                        >
-                          {requesting === record.id
-                            ? <Loader2 className="w-3 h-3 animate-spin" />
-                            : <Receipt className="w-3 h-3" />
-                          }
-                          Recibo
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
-          </>
-        )}
+          </CardContent>
+        </Card>
       </div>
     </PortalLayout>
   );
