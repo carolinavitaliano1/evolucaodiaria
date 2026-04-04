@@ -1075,12 +1075,16 @@ export type Database = {
       }
       patient_contracts: {
         Row: {
+          agreed_terms: boolean
           contract_template_id: string | null
           created_at: string
           id: string
           patient_id: string
           signature_data: string | null
           signed_at: string | null
+          signer_city: string | null
+          signer_cpf: string | null
+          signer_name: string | null
           status: string
           template_html: string
           therapist_signature_data: string | null
@@ -1089,12 +1093,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agreed_terms?: boolean
           contract_template_id?: string | null
           created_at?: string
           id?: string
           patient_id: string
           signature_data?: string | null
           signed_at?: string | null
+          signer_city?: string | null
+          signer_cpf?: string | null
+          signer_name?: string | null
           status?: string
           template_html?: string
           therapist_signature_data?: string | null
@@ -1103,12 +1111,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agreed_terms?: boolean
           contract_template_id?: string | null
           created_at?: string
           id?: string
           patient_id?: string
           signature_data?: string | null
           signed_at?: string | null
+          signer_city?: string | null
+          signer_cpf?: string | null
+          signer_name?: string | null
           status?: string
           template_html?: string
           therapist_signature_data?: string | null
