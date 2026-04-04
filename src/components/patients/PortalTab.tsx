@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import {
   Send, Loader2, Mail, RefreshCw, CheckCircle2, Clock, MessageSquare, Bell,
   FilePenLine, Eye, ExternalLink, ClipboardList, User, Heart, CreditCard,
-  Plus, Trash2, ChevronDown, ChevronRight, Users, School, Building2, UserCircle, FileUp, Download, X, Settings2, ListOrdered, BookOpen
+  Plus, Trash2, ChevronDown, ChevronRight, Users, School, Building2, UserCircle, FileUp, Download, X, Settings2, ListOrdered, BookOpen, FileDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -422,100 +422,115 @@ function AccountPanel({
     toast.success('Documento removido');
   };
 
+  const fetchPdfContext = async () => {
+    const [{ data: patientData }, { data: clinicData }, { data: profileData }, { data: stampData }] = await Promise.all([
+      supabase.from('patients').select('name, birthdate, diagnosis, clinical_area, is_minor, guardian_name, guardian_kinship, cpf, clinic_id').eq('id', patientId).single(),
+      supabase.from('patients').select('clinic_id').eq('id', patientId).single().then(async ({ data }) => {
+        if (!data) return { data: null };
+        return supabase.from('clinics').select('name, address, cnpj, phone, email, letterhead').eq('id', data.clinic_id).single();
+      }),
+      supabase.from('profiles').select('name, professional_id').eq('user_id', user!.id).single(),
+      supabase.from('stamps').select('name, clinical_area, cbo, stamp_image, signature_image').eq('user_id', user!.id).eq('is_default', true).maybeSingle(),
+    ]);
+    return { patientData, clinicData, profileData, stampData };
+  };
+
   const handleDownloadIntake = async (form: IntakeForm, name: string) => {
-    const { default: jsPDF } = await import('jspdf');
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const margin = 20;
-    const contentW = pageW - margin * 2;
-    let y = 25;
+    const { generateQuestionnairePdf } = await import('@/utils/generateQuestionnairePdf');
+    const { patientData, clinicData, profileData, stampData } = await fetchPdfContext();
 
-    const checkPage = (needed: number) => {
-      if (y + needed > doc.internal.pageSize.getHeight() - 20) {
-        doc.addPage();
-        y = 20;
-      }
-    };
-
-    // Title
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Ficha do Paciente`, margin, y);
-    y += 7;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, margin, y);
-    doc.setTextColor(0);
-    y += 10;
-
-    const addSection = (title: string) => {
-      checkPage(15);
-      doc.setDrawColor(200);
-      doc.line(margin, y, pageW - margin, y);
-      y += 6;
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text(title, margin, y);
-      y += 7;
-    };
-
-    const addField = (label: string, value: string | number | null | undefined) => {
-      checkPage(12);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(120);
-      doc.text(label.toUpperCase(), margin, y);
-      y += 4;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0);
-      const val = value ? String(value) : 'Não informado';
-      const lines = doc.splitTextToSize(val, contentW);
-      doc.text(lines, margin, y);
-      y += lines.length * 5 + 3;
-    };
-
-    // Name header
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text(name, margin, y);
-    y += 10;
-
-    addSection('Dados Pessoais');
-    addField('Nome completo', form.full_name);
-    addField('CPF', form.cpf);
-    addField('Data de nascimento', form.birthdate ? new Date(form.birthdate + 'T00:00:00').toLocaleDateString('pt-BR') : null);
-    addField('Telefone', form.phone);
-    addField('Contato de emergência', form.emergency_contact);
-    addField('Endereço', form.address);
-
-    addSection('Responsável (Contratante)');
-    addField('Nome', form.responsible_name);
-    addField('CPF', form.responsible_cpf);
-    addField('Telefone', form.responsible_phone);
-
-    addSection('Pagamento');
-    addField('Melhor dia para pagamento', form.payment_due_day ? `Dia ${form.payment_due_day}` : null);
-
-    addSection('Saúde & Observações');
-    addField('Informações médicas', form.health_info);
-    addField('Observações', form.observations);
+    const sections = [
+      {
+        title: 'Dados Pessoais',
+        fields: [
+          { label: 'Nome completo', value: form.full_name },
+          { label: 'CPF', value: form.cpf },
+          { label: 'Data de nascimento', value: form.birthdate ? new Date(form.birthdate + 'T00:00:00').toLocaleDateString('pt-BR') : null },
+          { label: 'Telefone', value: form.phone },
+          { label: 'Contato de emergência', value: form.emergency_contact },
+          { label: 'Endereço', value: form.address },
+        ].filter(f => f.value),
+      },
+      {
+        title: 'Responsável (Contratante)',
+        fields: [
+          { label: 'Nome', value: form.responsible_name },
+          { label: 'CPF', value: form.responsible_cpf },
+          { label: 'Telefone', value: form.responsible_phone },
+        ].filter(f => f.value),
+      },
+      {
+        title: 'Pagamento',
+        fields: [{ label: 'Dia de pagamento', value: form.payment_due_day ? `Dia ${form.payment_due_day}` : null }].filter(f => f.value),
+      },
+      {
+        title: 'Saúde & Observações',
+        fields: [
+          { label: 'Informações médicas', value: form.health_info },
+          { label: 'Observações', value: form.observations },
+        ].filter(f => f.value),
+      },
+    ].filter(s => s.fields.length > 0);
 
     // Custom answers
     if ((form as any).custom_answers && Object.keys((form as any).custom_answers).length > 0) {
-      addSection('Perguntas Personalizadas');
-      const { data: qs } = await supabase
-        .from('intake_custom_questions' as any)
-        .select('id, question')
-        .eq('user_id', user!.id);
+      const { data: qs } = await supabase.from('intake_custom_questions' as any).select('id, question').eq('user_id', user!.id);
       const qMap = new Map((qs || []).map((q: any) => [q.id, q.question]));
-      for (const [qId, answer] of Object.entries((form as any).custom_answers)) {
-        if (answer) addField(qMap.get(qId) || qId, answer as string);
-      }
+      const customFields = Object.entries((form as any).custom_answers)
+        .filter(([, v]) => !!v)
+        .map(([qId, answer]) => ({ label: qMap.get(qId) || qId, value: answer as string }));
+      if (customFields.length > 0) sections.push({ title: 'Perguntas Personalizadas', fields: customFields });
     }
 
+    const doc = await generateQuestionnairePdf({
+      title: 'Ficha do Paciente',
+      sections,
+      clinicInfo: clinicData ? { name: clinicData.name, address: clinicData.address, cnpj: clinicData.cnpj, phone: clinicData.phone, email: clinicData.email, letterhead: clinicData.letterhead } : undefined,
+      patientInfo: {
+        name: patientData?.name || name,
+        birthdate: patientData?.birthdate,
+        diagnosis: patientData?.diagnosis,
+        clinicalArea: patientData?.clinical_area,
+        isMinor: patientData?.is_minor,
+        guardianName: patientData?.guardian_name,
+        guardianKinship: patientData?.guardian_kinship,
+        cpf: patientData?.cpf,
+      },
+      therapistInfo: profileData ? { name: profileData.name, professionalId: profileData.professional_id } : undefined,
+      stamp: stampData ? { name: stampData.name, clinicalArea: stampData.clinical_area, cbo: stampData.cbo, stampImage: stampData.stamp_image, signatureImage: stampData.signature_image } : null,
+      submittedAt: form.submitted_at || null,
+    });
     doc.save(`ficha-${name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+  };
+
+  const handleDownloadQuestionnaire = async (q: any) => {
+    const { generateQuestionnairePdf } = await import('@/utils/generateQuestionnairePdf');
+    const { patientData, clinicData, profileData, stampData } = await fetchPdfContext();
+
+    const fields = (q.fields || []).map((field: any) => ({
+      label: field.question || field.label || '',
+      value: q.answers?.[field.id] || null,
+    }));
+
+    const doc = await generateQuestionnairePdf({
+      title: q.title,
+      sections: [{ title: 'Respostas', fields }],
+      clinicInfo: clinicData ? { name: clinicData.name, address: clinicData.address, cnpj: clinicData.cnpj, phone: clinicData.phone, email: clinicData.email, letterhead: clinicData.letterhead } : undefined,
+      patientInfo: {
+        name: patientData?.name || patientName,
+        birthdate: patientData?.birthdate,
+        diagnosis: patientData?.diagnosis,
+        clinicalArea: patientData?.clinical_area,
+        isMinor: patientData?.is_minor,
+        guardianName: patientData?.guardian_name,
+        guardianKinship: patientData?.guardian_kinship,
+        cpf: patientData?.cpf,
+      },
+      therapistInfo: profileData ? { name: profileData.name, professionalId: profileData.professional_id } : undefined,
+      stamp: stampData ? { name: stampData.name, clinicalArea: stampData.clinical_area, cbo: stampData.cbo, stampImage: stampData.stamp_image, signatureImage: stampData.signature_image } : null,
+      submittedAt: q.submitted_at,
+    });
+    doc.save(`questionario-${q.title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   };
 
   const unreadFromPatient = messages.filter(m => m.sender_type === 'patient' && !m.read_by_therapist).length;
@@ -834,10 +849,16 @@ function AccountPanel({
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
                               {(q.status === 'submitted' || q.status === 'reviewed') && (
-                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                                  onClick={() => setViewingQAnswers(viewingQAnswers?.id === q.id ? null : q)}>
-                                  <Eye className="w-3 h-3" /> {viewingQAnswers?.id === q.id ? 'Fechar' : 'Ver'}
-                                </Button>
+                                <>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                    onClick={() => setViewingQAnswers(viewingQAnswers?.id === q.id ? null : q)}>
+                                    <Eye className="w-3 h-3" /> {viewingQAnswers?.id === q.id ? 'Fechar' : 'Ver'}
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                    onClick={() => handleDownloadQuestionnaire(q)}>
+                                    <FileDown className="w-3 h-3" /> PDF
+                                  </Button>
+                                </>
                               )}
                               {q.status === 'submitted' && (
                                 <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
