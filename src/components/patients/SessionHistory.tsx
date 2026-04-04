@@ -61,6 +61,7 @@ interface SessionHistoryProps {
   onDelete: (sessionId: string) => void;
   onNewSession: () => void;
   onGenerateReport: () => void;
+  onGenerateDeclaration?: (session: Session) => void;
 }
 
 const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '😄', '😁', '🤩'];
