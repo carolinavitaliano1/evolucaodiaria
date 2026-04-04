@@ -109,12 +109,11 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     if (!user) return;
     const { data } = await supabase
       .from('therapy_sessions')
-      .select('id, title, created_at, duration_seconds, status, mood_score')
+      .select('id, title, created_at, duration_seconds, status, mood_score, notes_text, action_plans, next_session_notes, general_comments, positive_feelings, negative_feelings, suicidal_thoughts, price, payment_pending, started_at')
       .eq('patient_id', patientId)
       .eq('user_id', user.id)
       .eq('status', 'finished')
-      .order('created_at', { ascending: false })
-      .limit(20);
+      .order('created_at', { ascending: false });
     if (data) setSessions(data);
   };
 
