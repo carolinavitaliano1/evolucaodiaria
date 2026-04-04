@@ -646,6 +646,9 @@ export default function Patients() {
         </div>
       </div>
 
+      {/* Pending Enrollments - same card as dashboard */}
+      <PendingEnrollmentsCard />
+
       {/* Pending review banner */}
       {visiblePatients.some((p: any) => p.status === 'pendente_revisao') && (
         <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning mb-4">
