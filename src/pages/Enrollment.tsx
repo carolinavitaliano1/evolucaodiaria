@@ -212,6 +212,9 @@ export default function Enrollment() {
               <Field id="email_patient" label="E-mail">
                 <Input id="email_patient" type="email" value={form.email} onChange={set('email')} placeholder="email@exemplo.com" />
               </Field>
+              <Field id="address" label="Endereço Completo">
+                <Input id="address" value={form.address} onChange={set('address')} placeholder="Rua, número, bairro, cidade - UF" />
+              </Field>
             </SectionCard>
 
             {/* 2. Dados do Responsável Legal (obrigatório para menores) */}
