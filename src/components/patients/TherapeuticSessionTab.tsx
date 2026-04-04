@@ -1499,6 +1499,62 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             onGenerateDeclaration={handleRequestDeclaration}
           />
           {renderViewDialog()}
+
+          {/* Stamp selector dialog for declaration */}
+          <Dialog open={!!declarationSession} onOpenChange={v => !v && setDeclarationSession(null)}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-sm">
+                  <Stamp className="w-4 h-4 text-primary" /> Declaração de Comparecimento
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Selecione o carimbo que será usado na declaração. O CBO e a área clínica serão preenchidos automaticamente.
+                </p>
+                {stamps.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Carimbo</Label>
+                    <Select value={declarationStampId || ''} onValueChange={setDeclarationStampId}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Selecionar carimbo..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stamps.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id} className="text-xs">
+                            {s.name} — {s.clinical_area} {s.cbo ? `(CBO: ${s.cbo})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {declarationStampId && (() => {
+                      const st = stamps.find((s: any) => s.id === declarationStampId);
+                      return st?.stamp_image ? (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
+                          <img src={st.stamp_image} alt="Carimbo" className="h-12 object-contain" />
+                          <div className="text-[10px] text-muted-foreground space-y-0.5">
+                            <p className="font-medium text-foreground">{st.name}</p>
+                            {st.cbo && <p>CBO: {st.cbo}</p>}
+                            <p>{st.clinical_area}</p>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Nenhum carimbo cadastrado. A declaração será gerada sem CBO.</p>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setDeclarationSession(null)}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" className="flex-1 text-xs gap-1.5" onClick={generateDeclaration}>
+                    <Download className="w-3 h-3" /> Gerar PDF
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
 
