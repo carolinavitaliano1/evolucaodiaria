@@ -144,6 +144,15 @@ export default function GroupDetail() {
     if (!g) { setLoading(false); return; }
     setGroup(g as unknown as GroupData);
 
+    // Load clinic packages
+    const { data: pkgs } = await supabase
+      .from('clinic_packages')
+      .select('*')
+      .eq('clinic_id', g.clinic_id)
+      .eq('is_active', true)
+      .order('name');
+    if (pkgs) setClinicPackages(pkgs);
+
     const { data: memberRows } = await supabase
       .from('therapeutic_group_members')
       .select('patient_id')
