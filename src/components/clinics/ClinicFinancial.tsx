@@ -272,20 +272,30 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       )
     );
 
-    if (patient.paymentType === 'fixo') {
-      // For fixo patients, calculate per-session value dynamically
-      const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
-      const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
-      if (dynamic.occurrences > 0) {
-        return billableEvolutions.length * dynamic.perSession;
+    // Separate group and individual evolutions
+    const groupEvos = billableEvolutions.filter(e => e.groupId && groupPrices[e.groupId]);
+    const individualEvos = billableEvolutions.filter(e => !e.groupId || !groupPrices[e.groupId!]);
+
+    // Group revenue
+    const groupRevenue = groupEvos.reduce((sum, e) => sum + (groupPrices[e.groupId!] || 0), 0);
+
+    // Individual revenue
+    let individualRevenue = 0;
+    if (individualEvos.length > 0 && patient.paymentValue) {
+      if (patient.paymentType === 'fixo') {
+        const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
+        const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+        if (dynamic.occurrences > 0) {
+          individualRevenue = individualEvos.length * dynamic.perSession;
+        } else {
+          individualRevenue = individualEvos.length * patient.paymentValue;
+        }
+      } else {
+        individualRevenue = individualEvos.length * getEffectiveSessionValue(patient);
       }
-      // Fallback: single session patient
-      return billableEvolutions.length * patient.paymentValue;
     }
 
-    // Per-session / personalizado / variado
-    const effectiveValue = getEffectiveSessionValue(patient);
-    return billableEvolutions.length * effectiveValue;
+    return groupRevenue + individualRevenue;
   };
 
   // Total patient revenue — for fixed models this is a single global amount
