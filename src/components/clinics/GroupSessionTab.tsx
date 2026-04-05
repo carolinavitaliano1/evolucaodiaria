@@ -159,6 +159,9 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setGeneralComments(data.general_comments || '');
     setElapsedSeconds(data.duration_seconds || 0);
     setAiEvolution(data.ai_evolution || '');
+    if (data.ai_individual_evolutions && typeof data.ai_individual_evolutions === 'object') {
+      setAiIndividualEvolutions(data.ai_individual_evolutions);
+    }
 
     if (data.participants_data && typeof data.participants_data === 'object') {
       const restored: Record<string, ParticipantData> = {};
