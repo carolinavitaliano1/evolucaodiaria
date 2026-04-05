@@ -311,6 +311,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       duration_seconds: elapsedSeconds,
       participants_data: serializeParticipantsData(),
       ai_evolution: aiEvolution,
+      ai_individual_evolutions: aiIndividualEvolutions,
     } as any).eq('id', sessionId);
     setSaving(false);
     if (error) {
