@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2 } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit } from 'lucide-react';
+import { SendActionPlanModal, type ActivityAttachment } from '@/components/patients/SendActionPlanModal';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 
@@ -83,7 +84,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
   const [improvingField, setImprovingField] = useState<string | null>(null);
-
+  const [creatingField, setCreatingField] = useState<string | null>(null);
+  const [sendingToPortal, setSendingToPortal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendTargetMemberId, setSendTargetMemberId] = useState<string | null>(null);
   // Init participants data
   useEffect(() => {
     const init: Record<string, ParticipantData> = {};
@@ -381,7 +385,91 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
-  const generateAIEvolution = async () => {
+  // Create text with AI from session context
+  const createFieldWithAI = async (field: 'create_action_plans' | 'create_next_session', setText: (v: string) => void) => {
+    const participantsSummary = members.map(m => {
+      const pd = participantsData[m.id];
+      if (!pd) return '';
+      return [
+        `Participante: ${m.name}`,
+        pd.moodScore ? `Humor: ${pd.moodScore}/10` : '',
+        pd.positiveFeelings.length > 0 ? `Sentimentos positivos: ${pd.positiveFeelings.join(', ')}` : '',
+        pd.negativeFeelings.length > 0 ? `Sentimentos negativos: ${pd.negativeFeelings.join(', ')}` : '',
+        pd.suicidalThoughts ? 'ALERTA: Ideação suicida reportada' : '',
+      ].filter(Boolean).join('\n');
+    }).filter(Boolean).join('\n---\n');
+
+    const context = [
+      notesText ? `Anotações: ${notesText}` : '',
+      participantsSummary ? `Dados dos participantes:\n${participantsSummary}` : '',
+      actionPlans && field === 'create_next_session' ? `Planos de ação: ${actionPlans}` : '',
+      activePlan?.objectives ? `Objetivos do plano: ${activePlan.objectives}` : '',
+      activePlan?.activities ? `Atividades do plano: ${activePlan.activities}` : '',
+    ].filter(Boolean).join('\n');
+
+    if (!context.trim()) {
+      toast.error('Preencha ao menos as anotações da sessão para criar com IA.');
+      return;
+    }
+
+    setCreatingField(field);
+    try {
+      const { data, error } = await supabase.functions.invoke('improve-session-text', {
+        body: { text: context, field },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.improved) {
+        setText(data.improved);
+        toast.success('Conteúdo criado com IA!');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao criar com IA');
+    } finally {
+      setCreatingField(null);
+    }
+  };
+
+  // Send action plans to individual patient portal
+  const sendActionPlansToPortal = async (title: string, dueDate: string, attachments: ActivityAttachment[]) => {
+    if (!user || !actionPlans.trim() || !sendTargetMemberId) return;
+    setSendingToPortal(true);
+    try {
+      const lines = actionPlans.split('\n').map(l => l.replace(/^[\s\-\*\d\.]+/, '').trim()).filter(Boolean);
+      const items = lines.map(text => ({ text, done: false }));
+
+      const { data: portalAccount } = await supabase
+        .from('patient_portal_accounts')
+        .select('id')
+        .eq('patient_id', sendTargetMemberId)
+        .eq('therapist_user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      const { error } = await supabase.from('portal_activities').insert({
+        patient_id: sendTargetMemberId,
+        therapist_user_id: user.id,
+        portal_account_id: portalAccount?.id || null,
+        title: title || 'Plano de Ação',
+        items: items as any,
+        due_date: dueDate || null,
+        attachments: attachments as any,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+      const memberName = members.find(m => m.id === sendTargetMemberId)?.name || 'paciente';
+      toast.success(`Plano de ação enviado para o portal de ${memberName}!`);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao enviar para portal');
+    } finally {
+      setSendingToPortal(false);
+      setShowSendModal(false);
+      setSendTargetMemberId(null);
+    }
+  };
+
+
     if (!notesText && !actionPlans && !generalComments) {
       toast.error('Preencha as anotações da sessão antes de gerar a evolução.'); return;
     }
@@ -873,12 +961,40 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                   </TabsContent>
                   <TabsContent value="plans" className="mt-0 space-y-2">
                     <Textarea value={actionPlans} onChange={e => setActionPlans(e.target.value)} placeholder="Planos de ação definidos para o grupo." className="min-h-[150px] resize-y" />
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
-                      {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={creatingField === 'create_action_plans'} onClick={() => createFieldWithAI('create_action_plans', setActionPlans)}>
+                        {creatingField === 'create_action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
+                        {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                      </Button>
+                    </div>
+                    {actionPlans.trim() && (
+                      <div className="pt-2 border-t border-border space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Enviar plano de ação para portal individual:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {members.map(m => (
+                            <Button key={m.id} variant="outline" size="sm" className="gap-1.5 text-xs" disabled={sendingToPortal}
+                              onClick={() => { setSendTargetMemberId(m.id); setShowSendModal(true); }}>
+                              <Send className="w-3 h-3" /> {m.name}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </TabsContent>
                   <TabsContent value="next" className="mt-0 space-y-2">
                     <Textarea value={nextSessionNotes} onChange={e => setNextSessionNotes(e.target.value)} placeholder="Planejamento para a próxima sessão do grupo." className="min-h-[150px] resize-y" />
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={creatingField === 'create_next_session'} onClick={() => createFieldWithAI('create_next_session', setNextSessionNotes)}>
+                        {creatingField === 'create_next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                      {nextSessionNotes.trim() && (
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'next_session' || !nextSessionNotes.trim()} onClick={() => improveFieldText('next_session', () => nextSessionNotes, setNextSessionNotes)}>
+                          {improvingField === 'next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                        </Button>
+                      )}
+                    </div>
                   </TabsContent>
                 </div>
               </Tabs>
@@ -1050,6 +1166,14 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             </CardContent>
           </Card>
         </div>
+      )}
+      {showSendModal && sendTargetMemberId && (
+        <SendActionPlanModal
+          open={showSendModal}
+          onOpenChange={(open) => { setShowSendModal(open); if (!open) setSendTargetMemberId(null); }}
+          onSend={sendActionPlansToPortal}
+          sending={sendingToPortal}
+        />
       )}
     </div>
   );
