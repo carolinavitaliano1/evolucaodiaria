@@ -687,7 +687,149 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     loadHistory();
   };
 
-  const generateGroupReport = async (session: any) => {
+  const handleEditSession = (session: any) => {
+    populateSessionForm(session);
+    setTimerRunning(false);
+    setStartedAt(null);
+    setMainView('session');
+  };
+
+  const handleRequestDeclaration = (session: any) => {
+    const defaultStamp = stamps.find((s: any) => s.is_default) || stamps[0];
+    setDeclarationStampId(defaultStamp?.id || null);
+    setDeclarationMemberId(null);
+    setDeclarationSession(session);
+  };
+
+  const generateDeclaration = async () => {
+    const session = declarationSession;
+    if (!session || !declarationMemberId) return;
+    try {
+      const member = members.find(m => m.id === declarationMemberId);
+      if (!member) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name, cpf, professional_id')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      const chosenStamp = declarationStampId ? stamps.find((s: any) => s.id === declarationStampId) : (stamps.find((s: any) => s.is_default) || stamps[0]);
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 25;
+      const contentWidth = pageWidth - margin * 2;
+      const centerX = pageWidth / 2;
+
+      const { data: clinic } = await supabase
+        .from('clinics')
+        .select('name, letterhead, address, phone, cnpj')
+        .eq('id', clinicId)
+        .maybeSingle();
+
+      let y = 20;
+      if (clinic?.letterhead) {
+        try {
+          const img = new window.Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(); img.src = clinic.letterhead; });
+          const imgWidth = 160;
+          const imgHeight = (img.height / img.width) * imgWidth;
+          doc.addImage(img, 'PNG', (pageWidth - imgWidth) / 2, y, imgWidth, imgHeight);
+          y += imgHeight + 10;
+        } catch { y = 30; }
+      } else { y = 40; }
+
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text('Declaração', centerX, y, { align: 'center' });
+      y += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      doc.text('Documento Oficial de Presença', centerX, y, { align: 'center' });
+      y += 25;
+
+      const sessionDate = new Date(session.created_at);
+      const dateStr = sessionDate.toLocaleDateString('pt-BR');
+      const startTime = session.started_at
+        ? new Date(session.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : sessionDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const endTime = session.finished_at
+        ? new Date(session.finished_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : (() => { const end = new Date(sessionDate.getTime() + (session.duration_seconds || 0) * 1000); return end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); })();
+
+      const therapistName = profile?.name || 'Profissional';
+
+      doc.setFontSize(12);
+      doc.setTextColor(50, 50, 50);
+      doc.setFont('helvetica', 'normal');
+
+      const bodyText = `Declaro, para os devidos fins, que ${member.name} está em atendimento terapêutico de grupo ("${groupName}") sob meus cuidados, e compareceu à sessão realizada no dia ${dateStr} das ${startTime} às ${endTime}.`;
+      const bodyLines: string[] = doc.splitTextToSize(bodyText, contentWidth);
+      for (let li = 0; li < bodyLines.length; li++) {
+        if (y > 260) { doc.addPage(); y = 20; }
+        const isLast = li === bodyLines.length - 1;
+        doc.text(bodyLines[li], margin, y, { align: isLast ? 'left' : 'justify', maxWidth: contentWidth });
+        y += 7;
+      }
+
+      y += 20;
+      const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const now = new Date();
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont('helvetica', 'italic');
+      doc.text(`Documento gerado em: ${String(now.getDate()).padStart(2, '0')} de ${months[now.getMonth()]} de ${now.getFullYear()}`, centerX, y, { align: 'center' });
+
+      // Signature block
+      const lineWidth = pageWidth * 0.4;
+      const signBlockStartY = pageHeight - 70;
+      let sy = signBlockStartY;
+
+      if (chosenStamp?.stamp_image) {
+        try {
+          const sImg = new window.Image();
+          sImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => { sImg.onload = () => resolve(); sImg.onerror = () => reject(); sImg.src = chosenStamp.stamp_image; });
+          const maxW = 40; const maxH = 25;
+          let sW = maxW; let sH = (sImg.height / sImg.width) * sW;
+          if (sH > maxH) { sH = maxH; sW = (sImg.width / sImg.height) * sH; }
+          doc.addImage(sImg, 'PNG', centerX - sW / 2, sy - sH, sW, sH);
+        } catch { /* skip */ }
+      }
+
+      doc.setDrawColor(80, 80, 80);
+      doc.line(centerX - lineWidth / 2, sy, centerX + lineWidth / 2, sy);
+      sy += 5;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text(therapistName, centerX, sy, { align: 'center' });
+      sy += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(9);
+      if (chosenStamp?.clinical_area) { doc.text(chosenStamp.clinical_area, centerX, sy, { align: 'center' }); sy += 5; }
+      if (chosenStamp?.cbo) { doc.text(`CBO: ${chosenStamp.cbo}`, centerX, sy, { align: 'center' }); }
+
+      doc.setFontSize(7);
+      doc.setTextColor(180, 180, 180);
+      doc.text('Documento confidencial — uso exclusivo profissional', centerX, pageHeight - 10, { align: 'center' });
+
+      doc.save(`declaracao_grupo_${member.name.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '-')}.pdf`);
+      toast.success('Declaração gerada!');
+      setDeclarationSession(null);
+      setDeclarationMemberId(null);
+    } catch (e: any) {
+      toast.error('Erro ao gerar declaração');
+    }
+  };
+
+
     setGeneratingReport(true);
     try {
       const doc = new jsPDF();
