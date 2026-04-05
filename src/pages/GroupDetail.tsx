@@ -2,7 +2,12 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine, FolderOpen, Plus, Save, Wand2, Trash2, CheckCircle2, Circle, Upload, Download, X } from 'lucide-react';
+import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine, FolderOpen, Plus, Save, Wand2, Trash2, CheckCircle2, Circle, Upload, Download, X, Filter } from 'lucide-react';
+import { generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { GroupSessionTab } from '@/components/clinics/GroupSessionTab';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -84,6 +89,14 @@ export default function GroupDetail() {
   // Evolutions state
   const [evolutions, setEvolutions] = useState<any[]>([]);
   const [loadingEvos, setLoadingEvos] = useState(false);
+  const [evoFilterMember, setEvoFilterMember] = useState('all');
+  const [evoFilterType, setEvoFilterType] = useState<'all' | 'group' | 'individual'>('all');
+  const [evoFilterStartDate, setEvoFilterStartDate] = useState<Date | undefined>(undefined);
+  const [evoFilterEndDate, setEvoFilterEndDate] = useState<Date | undefined>(undefined);
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
+  const [exportingEvos, setExportingEvos] = useState(false);
+  const [stamps, setStamps] = useState<any[]>([]);
 
   // Group evolution form state
   const [showEvoForm, setShowEvoForm] = useState(false);
@@ -126,7 +139,15 @@ export default function GroupDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (activeTab === 'evolutions') loadEvolutions();
+    if (user) {
+      supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
+        if (data) setStamps(data);
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (activeTab === 'evolutions' && members.length > 0) loadEvolutions();
     if (activeTab === 'tasks') loadTasks();
     if (activeTab === 'notes') loadNotes();
     if (activeTab === 'documents') loadDocuments();
@@ -172,15 +193,119 @@ export default function GroupDetail() {
 
   // ─── Evolutions ───
   const loadEvolutions = async () => {
+    if (!user || members.length === 0) { setLoadingEvos(false); return; }
     setLoadingEvos(true);
-    const { data } = await supabase
+    const patientIds = members.map(m => m.id);
+    
+    // Load group evolutions
+    const { data: groupEvos } = await supabase
       .from('evolutions')
       .select('*')
       .eq('group_id', id!)
       .order('date', { ascending: false })
-      .limit(200);
-    if (data) setEvolutions(data);
+      .limit(500);
+    
+    // Load individual evolutions for members
+    const { data: individualEvos } = await supabase
+      .from('evolutions')
+      .select('*')
+      .in('patient_id', patientIds)
+      .is('group_id', null)
+      .order('date', { ascending: false })
+      .limit(500);
+    
+    const all = [
+      ...(groupEvos || []).map((e: any) => ({ ...e, _evoType: 'group' })),
+      ...(individualEvos || []).map((e: any) => ({ ...e, _evoType: 'individual' })),
+    ];
+    all.sort((a, b) => b.date.localeCompare(a.date));
+    setEvolutions(all);
     setLoadingEvos(false);
+  };
+
+  const filteredEvolutions = evolutions.filter(evo => {
+    if (evoFilterMember !== 'all' && evo.patient_id !== evoFilterMember) return false;
+    if (evoFilterType === 'group' && evo._evoType !== 'group') return false;
+    if (evoFilterType === 'individual' && evo._evoType !== 'individual') return false;
+    if (evoFilterStartDate && evo.date < format(evoFilterStartDate, 'yyyy-MM-dd')) return false;
+    if (evoFilterEndDate && evo.date > format(evoFilterEndDate, 'yyyy-MM-dd')) return false;
+    return true;
+  });
+
+  const handleExportFilteredEvolutions = async () => {
+    if (filteredEvolutions.length === 0) { toast.error('Nenhuma evolução para exportar com os filtros selecionados'); return; }
+    setExportingEvos(true);
+    try {
+      // Group by patient
+      const byPatient: Record<string, any[]> = {};
+      for (const evo of filteredEvolutions) {
+        if (!byPatient[evo.patient_id]) byPatient[evo.patient_id] = [];
+        byPatient[evo.patient_id].push(evo);
+      }
+      
+      // Load clinic data
+      let clinicData: any = null;
+      if (group) {
+        const { data: c } = await supabase.from('clinics').select('*').eq('id', group.clinic_id).single();
+        clinicData = c;
+      }
+      
+      for (const [patientId, patientEvos] of Object.entries(byPatient)) {
+        const member = members.find(m => m.id === patientId);
+        if (!member) continue;
+        
+        // Load full patient data for PDF
+        const { data: fullPatient } = await supabase.from('patients').select('*').eq('id', patientId).single();
+        if (!fullPatient) continue;
+        
+        const mappedPatient = {
+          id: fullPatient.id,
+          name: fullPatient.name,
+          clinicId: fullPatient.clinic_id,
+          birthdate: fullPatient.birthdate,
+          clinicalArea: fullPatient.clinical_area,
+          diagnosis: fullPatient.diagnosis,
+          whatsapp: fullPatient.whatsapp,
+          responsibleWhatsapp: fullPatient.responsible_whatsapp,
+          isArchived: fullPatient.is_archived,
+        } as any;
+        
+        const mappedEvos = patientEvos.map((e: any) => ({
+          id: e.id,
+          patientId: e.patient_id,
+          clinicId: e.clinic_id,
+          date: e.date,
+          text: e.text,
+          attendanceStatus: e.attendance_status,
+          mood: e.mood,
+          templateData: e.template_data,
+          groupId: e.group_id,
+          signature: e.signature,
+          stampId: e.stamp_id,
+        })) as any[];
+
+        const mappedClinic = clinicData ? {
+          id: clinicData.id,
+          name: clinicData.name,
+          address: clinicData.address,
+          letterhead: clinicData.letterhead,
+        } as any : undefined;
+        
+        await generateMultipleEvolutionsPdf({
+          evolutions: mappedEvos,
+          patient: mappedPatient,
+          clinic: mappedClinic,
+          stamps,
+          startDate: evoFilterStartDate,
+          endDate: evoFilterEndDate,
+        });
+      }
+      
+      toast.success(`PDF(s) exportados para ${Object.keys(byPatient).length} participante(s)!`);
+    } catch (e: any) {
+      toast.error('Erro ao exportar: ' + (e.message || ''));
+    }
+    setExportingEvos(false);
   };
 
   const initEvoForm = () => {
@@ -692,6 +817,132 @@ export default function GroupDetail() {
 
         {/* ═══ Evolutions Tab ═══ */}
         <TabsContent value="evolutions" className="mt-4 space-y-4">
+          {/* Filters */}
+          <div className="bg-card border rounded-xl p-4 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Filter className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Filtros</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Member filter */}
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Participante</Label>
+                <Select value={evoFilterMember} onValueChange={setEvoFilterMember}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os participantes</SelectItem>
+                    {members.map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Type filter */}
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Tipo de evolução</Label>
+                <Select value={evoFilterType} onValueChange={(v: any) => setEvoFilterType(v)}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="group">👥 Grupo</SelectItem>
+                    <SelectItem value="individual">👤 Individual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Start date */}
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Data início</Label>
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('w-full h-9 justify-start text-sm font-normal', !evoFilterStartDate && 'text-muted-foreground')}>
+                      <Calendar className="w-3.5 h-3.5 mr-2" />
+                      {evoFilterStartDate ? format(evoFilterStartDate, 'dd/MM/yyyy') : 'Sem limite'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={evoFilterStartDate}
+                      onSelect={(d) => { setEvoFilterStartDate(d || undefined); setStartDateOpen(false); }}
+                      locale={ptBR}
+                      className="p-3 pointer-events-auto"
+                    />
+                    {evoFilterStartDate && (
+                      <div className="p-2 border-t border-border">
+                        <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => { setEvoFilterStartDate(undefined); setStartDateOpen(false); }}>
+                          Limpar data
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* End date */}
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Data fim</Label>
+                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('w-full h-9 justify-start text-sm font-normal', !evoFilterEndDate && 'text-muted-foreground')}>
+                      <Calendar className="w-3.5 h-3.5 mr-2" />
+                      {evoFilterEndDate ? format(evoFilterEndDate, 'dd/MM/yyyy') : 'Sem limite'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={evoFilterEndDate}
+                      onSelect={(d) => { setEvoFilterEndDate(d || undefined); setEndDateOpen(false); }}
+                      locale={ptBR}
+                      className="p-3 pointer-events-auto"
+                    />
+                    {evoFilterEndDate && (
+                      <div className="p-2 border-t border-border">
+                        <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => { setEvoFilterEndDate(undefined); setEndDateOpen(false); }}>
+                          Limpar data
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                {filteredEvolutions.length} evolução(ões) encontrada(s)
+              </p>
+              <div className="flex gap-2">
+                {(evoFilterMember !== 'all' || evoFilterType !== 'all' || evoFilterStartDate || evoFilterEndDate) && (
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
+                    setEvoFilterMember('all');
+                    setEvoFilterType('all');
+                    setEvoFilterStartDate(undefined);
+                    setEvoFilterEndDate(undefined);
+                  }}>
+                    <X className="w-3 h-3 mr-1" /> Limpar filtros
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  className="gap-2 h-8"
+                  onClick={handleExportFilteredEvolutions}
+                  disabled={exportingEvos || filteredEvolutions.length === 0}
+                >
+                  {exportingEvos ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Baixar PDF
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* New evolution form */}
           {!showEvoForm && (
             <Button onClick={initEvoForm} className="gap-2">
               <Plus className="w-4 h-4" /> Nova evolução em grupo
@@ -772,17 +1023,18 @@ export default function GroupDetail() {
             </div>
           )}
 
+          {/* Evolutions list */}
           {loadingEvos ? (
             <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-          ) : evolutions.length === 0 && !showEvoForm ? (
+          ) : filteredEvolutions.length === 0 && !showEvoForm ? (
             <div className="text-center py-12">
               <FileText className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">Nenhuma evolução registrada neste grupo</p>
+              <p className="text-muted-foreground">Nenhuma evolução encontrada com os filtros selecionados</p>
             </div>
-          ) : evolutions.length > 0 ? (
+          ) : filteredEvolutions.length > 0 ? (
             <div className="space-y-3">
               {Object.entries(
-                evolutions.reduce((acc, evo) => {
+                filteredEvolutions.reduce((acc, evo) => {
                   const d = evo.date;
                   if (!acc[d]) acc[d] = [];
                   acc[d].push(evo);
@@ -805,6 +1057,9 @@ export default function GroupDetail() {
                           <Badge variant="outline" className="text-xs shrink-0">{patient?.name || 'Paciente'}</Badge>
                           <Badge variant={evo.attendance_status === 'presente' ? 'default' : 'secondary'} className="text-xs shrink-0">
                             {evo.attendance_status}
+                          </Badge>
+                          <Badge variant="outline" className={cn("text-[10px] shrink-0", evo._evoType === 'group' ? 'border-primary/30 text-primary' : 'border-muted-foreground/30 text-muted-foreground')}>
+                            {evo._evoType === 'group' ? '👥 Grupo' : '👤 Individual'}
                           </Badge>
                           {evo.text && <p className="text-sm text-muted-foreground line-clamp-2">{evo.text}</p>}
                         </div>
