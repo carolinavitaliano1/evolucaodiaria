@@ -961,12 +961,40 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                   </TabsContent>
                   <TabsContent value="plans" className="mt-0 space-y-2">
                     <Textarea value={actionPlans} onChange={e => setActionPlans(e.target.value)} placeholder="Planos de ação definidos para o grupo." className="min-h-[150px] resize-y" />
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
-                      {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={creatingField === 'create_action_plans'} onClick={() => createFieldWithAI('create_action_plans', setActionPlans)}>
+                        {creatingField === 'create_action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'action_plans' || !actionPlans.trim()} onClick={() => improveFieldText('action_plans', () => actionPlans, setActionPlans)}>
+                        {improvingField === 'action_plans' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                      </Button>
+                    </div>
+                    {actionPlans.trim() && (
+                      <div className="pt-2 border-t border-border space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Enviar plano de ação para portal individual:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {members.map(m => (
+                            <Button key={m.id} variant="outline" size="sm" className="gap-1.5 text-xs" disabled={sendingToPortal}
+                              onClick={() => { setSendTargetMemberId(m.id); setShowSendModal(true); }}>
+                              <Send className="w-3 h-3" /> {m.name}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </TabsContent>
                   <TabsContent value="next" className="mt-0 space-y-2">
                     <Textarea value={nextSessionNotes} onChange={e => setNextSessionNotes(e.target.value)} placeholder="Planejamento para a próxima sessão do grupo." className="min-h-[150px] resize-y" />
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={creatingField === 'create_next_session'} onClick={() => createFieldWithAI('create_next_session', setNextSessionNotes)}>
+                        {creatingField === 'create_next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />} Criar com IA
+                      </Button>
+                      {nextSessionNotes.trim() && (
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled={improvingField === 'next_session' || !nextSessionNotes.trim()} onClick={() => improveFieldText('next_session', () => nextSessionNotes, setNextSessionNotes)}>
+                          {improvingField === 'next_session' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                        </Button>
+                      )}
+                    </div>
                   </TabsContent>
                 </div>
               </Tabs>
