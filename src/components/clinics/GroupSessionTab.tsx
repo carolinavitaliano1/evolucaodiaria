@@ -155,7 +155,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setNextSessionNotes(data.next_session_notes || '');
     setGeneralComments(data.general_comments || '');
     setElapsedSeconds(data.duration_seconds || 0);
-    setAiEvolution('');
+    setAiEvolution(data.ai_evolution || '');
 
     if (data.participants_data && typeof data.participants_data === 'object') {
       const restored: Record<string, ParticipantData> = {};
@@ -304,6 +304,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       general_comments: generalComments,
       duration_seconds: elapsedSeconds,
       participants_data: serializeParticipantsData(),
+      ai_evolution: aiEvolution,
     } as any).eq('id', sessionId);
     setSaving(false);
     if (error) {
@@ -312,7 +313,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       setLastSaved(new Date());
       if (showToast) toast.success('Sessão salva!');
     }
-  }, [user, sessionId, title, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds, participantsData]);
+  }, [user, sessionId, title, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds, participantsData, aiEvolution]);
 
   const finishSession = async () => {
     if (!user || !sessionId) return;
@@ -327,6 +328,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       participants_data: serializeParticipantsData(),
       finished_at: new Date().toISOString(),
       status: 'finished',
+      ai_evolution: aiEvolution,
     } as any).eq('id', sessionId);
 
     if (error) {
