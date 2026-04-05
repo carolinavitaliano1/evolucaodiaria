@@ -88,6 +88,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [sendingToPortal, setSendingToPortal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendTargetMemberId, setSendTargetMemberId] = useState<string | null>(null);
+  const [sendIndividualMemberId, setSendIndividualMemberId] = useState<string | null>(null);
   // Init participants data
   useEffect(() => {
     const init: Record<string, ParticipantData> = {};
