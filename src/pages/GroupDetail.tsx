@@ -115,6 +115,7 @@ export default function GroupDetail() {
   // Financial state
   const [payments, setPayments] = useState<any[]>([]);
   const [loadingFinancial, setLoadingFinancial] = useState(false);
+  const [clinicPackages, setClinicPackages] = useState<any[]>([]);
 
   // Mural state
   const [muralMember, setMuralMember] = useState<string | null>(null);
