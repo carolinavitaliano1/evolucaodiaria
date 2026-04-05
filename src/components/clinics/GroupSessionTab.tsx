@@ -1167,6 +1167,14 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           </Card>
         </div>
       )}
+      {showSendModal && sendTargetMemberId && (
+        <SendActionPlanModal
+          open={showSendModal}
+          onOpenChange={(open) => { setShowSendModal(open); if (!open) setSendTargetMemberId(null); }}
+          onSend={sendActionPlansToPortal}
+          sending={sendingToPortal}
+        />
+      )}
     </div>
   );
 }
