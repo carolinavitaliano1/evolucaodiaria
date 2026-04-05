@@ -469,7 +469,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
-
+  const generateAIEvolution = async () => {
     if (!notesText && !actionPlans && !generalComments) {
       toast.error('Preencha as anotações da sessão antes de gerar a evolução.'); return;
     }
@@ -1171,8 +1171,8 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         <SendActionPlanModal
           open={showSendModal}
           onOpenChange={(open) => { setShowSendModal(open); if (!open) setSendTargetMemberId(null); }}
+          actionPlansText={actionPlans}
           onSend={sendActionPlansToPortal}
-          sending={sendingToPortal}
         />
       )}
     </div>
