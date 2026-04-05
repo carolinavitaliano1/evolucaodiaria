@@ -85,7 +85,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
 
   // AI
   const [aiEvolution, setAiEvolution] = useState('');
+  const [aiEvoMode, setAiEvoMode] = useState<'group' | 'individual'>('group');
+  const [aiIndividualEvolutions, setAiIndividualEvolutions] = useState<Record<string, string>>({});
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [generatingIndividualFor, setGeneratingIndividualFor] = useState<string | null>(null);
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
   const [improvingField, setImprovingField] = useState<string | null>(null);
   const [creatingField, setCreatingField] = useState<string | null>(null);
