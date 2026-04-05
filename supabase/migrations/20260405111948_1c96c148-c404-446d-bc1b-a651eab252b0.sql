@@ -1,0 +1,1 @@
+ALTER TABLE public.therapy_sessions ADD COLUMN IF NOT EXISTS ai_individual_evolutions jsonb DEFAULT '{}'::jsonb;

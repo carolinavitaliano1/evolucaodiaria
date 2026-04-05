@@ -85,7 +85,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
 
   // AI
   const [aiEvolution, setAiEvolution] = useState('');
+  const [aiEvoMode, setAiEvoMode] = useState<'group' | 'individual'>('group');
+  const [aiIndividualEvolutions, setAiIndividualEvolutions] = useState<Record<string, string>>({});
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [generatingIndividualFor, setGeneratingIndividualFor] = useState<string | null>(null);
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
   const [improvingField, setImprovingField] = useState<string | null>(null);
   const [creatingField, setCreatingField] = useState<string | null>(null);
@@ -156,6 +159,9 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setGeneralComments(data.general_comments || '');
     setElapsedSeconds(data.duration_seconds || 0);
     setAiEvolution(data.ai_evolution || '');
+    if (data.ai_individual_evolutions && typeof data.ai_individual_evolutions === 'object') {
+      setAiIndividualEvolutions(data.ai_individual_evolutions);
+    }
 
     if (data.participants_data && typeof data.participants_data === 'object') {
       const restored: Record<string, ParticipantData> = {};
@@ -182,7 +188,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (!user) return;
     const { data } = await supabase
       .from('therapy_sessions')
-      .select('id, title, created_at, duration_seconds, status, notes_text, action_plans, next_session_notes, general_comments, participants_data, started_at, finished_at, plan_id, ai_evolution')
+      .select('id, title, created_at, duration_seconds, status, notes_text, action_plans, next_session_notes, general_comments, participants_data, started_at, finished_at, plan_id, ai_evolution, ai_individual_evolutions')
       .eq('group_id', groupId)
       .eq('user_id', user.id)
       .eq('status', 'finished')
@@ -305,6 +311,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       duration_seconds: elapsedSeconds,
       participants_data: serializeParticipantsData(),
       ai_evolution: aiEvolution,
+      ai_individual_evolutions: aiIndividualEvolutions,
     } as any).eq('id', sessionId);
     setSaving(false);
     if (error) {
@@ -313,7 +320,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       setLastSaved(new Date());
       if (showToast) toast.success('Sessão salva!');
     }
-  }, [user, sessionId, title, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds, participantsData, aiEvolution]);
+  }, [user, sessionId, title, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds, participantsData, aiEvolution, aiIndividualEvolutions]);
 
   const finishSession = async () => {
     if (!user || !sessionId) return;
@@ -329,6 +336,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       finished_at: new Date().toISOString(),
       status: 'finished',
       ai_evolution: aiEvolution,
+      ai_individual_evolutions: aiIndividualEvolutions,
     } as any).eq('id', sessionId);
 
     if (error) {
@@ -531,37 +539,98 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
+  // Generate individual AI evolutions for each member
+  const generateIndividualEvolutions = async () => {
+    if (!user) return;
+    setGeneratingAI(true);
+    try {
+      const results: Record<string, string> = {};
+      for (const m of members) {
+        setGeneratingIndividualFor(m.id);
+        const pd = participantsData[m.id];
+        const { data, error } = await supabase.functions.invoke('generate-evolution', {
+          body: {
+            patientName: m.name,
+            moodScore: pd?.moodScore || null,
+            positiveFeelings: pd?.positiveFeelings || [],
+            negativeFeelings: pd?.negativeFeelings || [],
+            suicidalThoughts: pd?.suicidalThoughts || false,
+            notesText: notesText,
+            actionPlans,
+            nextSessionNotes,
+            generalComments,
+            durationSeconds: elapsedSeconds,
+            planObjectives: activePlan?.objectives || '',
+            planActivities: activePlan?.activities || '',
+          },
+        });
+        if (error) throw error;
+        if (data?.evolution) results[m.id] = data.evolution;
+      }
+      setAiIndividualEvolutions(results);
+      setGeneratingIndividualFor(null);
+      toast.success(`Evoluções individuais geradas para ${Object.keys(results).length} participante(s)!`);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao gerar evoluções individuais');
+    } finally {
+      setGeneratingAI(false);
+      setGeneratingIndividualFor(null);
+    }
+  };
+
   const sendToGroupProntuario = async () => {
-    if (!user || !aiEvolution) return;
+    if (!user) return;
     setSendingToProntuario(true);
-    const inserts = members.map(m => ({
-      user_id: user.id,
-      patient_id: m.id,
-      clinic_id: clinicId,
-      group_id: groupId,
-      date: new Date().toISOString().slice(0, 10),
-      text: aiEvolution,
-      attendance_status: 'presente',
-      mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
-    }));
-    const { error } = await supabase.from('evolutions').insert(inserts);
-    setSendingToProntuario(false);
-    if (error) toast.error('Erro ao enviar para prontuário');
-    else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
+    if (aiEvoMode === 'individual') {
+      // Send each individual evolution
+      const inserts = members.filter(m => aiIndividualEvolutions[m.id]).map(m => ({
+        user_id: user.id,
+        patient_id: m.id,
+        clinic_id: clinicId,
+        group_id: groupId,
+        date: new Date().toISOString().slice(0, 10),
+        text: aiIndividualEvolutions[m.id],
+        attendance_status: 'presente',
+        mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
+      }));
+      if (inserts.length === 0) { setSendingToProntuario(false); return; }
+      const { error } = await supabase.from('evolutions').insert(inserts);
+      setSendingToProntuario(false);
+      if (error) toast.error('Erro ao enviar para prontuário');
+      else { toast.success('Evoluções individuais salvas no prontuário do grupo!'); setAiIndividualEvolutions({}); }
+    } else {
+      if (!aiEvolution) { setSendingToProntuario(false); return; }
+      const inserts = members.map(m => ({
+        user_id: user.id,
+        patient_id: m.id,
+        clinic_id: clinicId,
+        group_id: groupId,
+        date: new Date().toISOString().slice(0, 10),
+        text: aiEvolution,
+        attendance_status: 'presente',
+        mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
+      }));
+      const { error } = await supabase.from('evolutions').insert(inserts);
+      setSendingToProntuario(false);
+      if (error) toast.error('Erro ao enviar para prontuário');
+      else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
+    }
   };
 
   // sendIndividualMemberId state moved to top-level state block
 
   const sendToIndividualProntuario = async (memberId: string) => {
-    if (!user || !aiEvolution) return;
+    if (!user) return;
     setSendingToProntuario(true);
     const pd = participantsData[memberId];
+    const text = aiEvoMode === 'individual' ? aiIndividualEvolutions[memberId] : aiEvolution;
+    if (!text) { setSendingToProntuario(false); return; }
     const { error } = await supabase.from('evolutions').insert({
       user_id: user.id,
       patient_id: memberId,
       clinic_id: clinicId,
       date: new Date().toISOString().slice(0, 10),
-      text: aiEvolution,
+      text,
       attendance_status: 'presente',
       mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
     });
@@ -1319,52 +1388,97 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
               <CardTitle className="text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Evolução IA</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button onClick={generateAIEvolution} disabled={generatingAI} className="gap-1.5 w-full">
-                {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                Gerar evolução IA do grupo
-              </Button>
-              {aiEvolution && (
-                <div className="space-y-3">
-                  <Textarea value={aiEvolution} onChange={e => setAiEvolution(e.target.value)} className="min-h-[200px] resize-y text-sm" />
-                  
-                  {/* Option 1: Save to group prontuário */}
-                  <Button onClick={sendToGroupProntuario} disabled={sendingToProntuario} variant="outline" className="gap-1.5 w-full">
-                    {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                    Enviar para prontuário do grupo
+              {/* Mode selector */}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={aiEvoMode === 'group' ? 'default' : 'outline'}
+                  onClick={() => setAiEvoMode('group')}
+                  className="gap-1.5 flex-1"
+                >
+                  <Users className="w-3.5 h-3.5" /> Evolução única (grupo)
+                </Button>
+                <Button
+                  size="sm"
+                  variant={aiEvoMode === 'individual' ? 'default' : 'outline'}
+                  onClick={() => setAiEvoMode('individual')}
+                  className="gap-1.5 flex-1"
+                >
+                  <PenLine className="w-3.5 h-3.5" /> Evolução por participante
+                </Button>
+              </div>
+
+              {aiEvoMode === 'group' ? (
+                <>
+                  <Button onClick={generateAIEvolution} disabled={generatingAI} className="gap-1.5 w-full">
+                    {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    Gerar evolução IA do grupo
+                  </Button>
+                  {aiEvolution && (
+                    <div className="space-y-3">
+                      <Textarea value={aiEvolution} onChange={e => setAiEvolution(e.target.value)} className="min-h-[200px] resize-y text-sm" />
+                      
+                      <Button onClick={sendToGroupProntuario} disabled={sendingToProntuario} variant="outline" className="gap-1.5 w-full">
+                        {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                        Enviar para prontuário do grupo
+                      </Button>
+
+                      <div className="border border-border rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Enviar para prontuário individual:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {members.map(m => (
+                            <Button key={m.id} variant="outline" size="sm" className="gap-1.5 text-xs" disabled={sendingToProntuario}
+                              onClick={() => sendToIndividualProntuario(m.id)}>
+                              <Send className="w-3 h-3" /> {m.name}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Button onClick={generateIndividualEvolutions} disabled={generatingAI} className="gap-1.5 w-full">
+                    {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {generatingAI && generatingIndividualFor
+                      ? `Gerando para ${members.find(m => m.id === generatingIndividualFor)?.name || '...'}...`
+                      : 'Gerar evolução individual para cada participante'}
                   </Button>
 
-                  {/* Option 2: Save to individual prontuário */}
-                  <div className="border border-border rounded-lg p-3 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Enviar para prontuário individual:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {members.map(m => (
-                        <Button key={m.id} variant="outline" size="sm" className="gap-1.5 text-xs" disabled={sendingToProntuario}
-                          onClick={() => sendToIndividualProntuario(m.id)}>
-                          <Send className="w-3 h-3" /> {m.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Download evolutions */}
-                  <div className="border border-border rounded-lg p-3 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Baixar evoluções por paciente:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {members.map(m => (
-                        <div key={m.id} className="flex gap-1">
-                          <Button variant="ghost" size="sm" className="gap-1 text-xs" disabled={generatingReport}
-                            onClick={() => downloadMemberEvolutions(m.id, 'group')}>
-                            <Download className="w-3 h-3" /> {m.name} (Grupo)
-                          </Button>
-                          <Button variant="ghost" size="sm" className="gap-1 text-xs" disabled={generatingReport}
-                            onClick={() => downloadMemberEvolutions(m.id, 'individual')}>
-                            <Download className="w-3 h-3" /> (Individual)
-                          </Button>
+                  {Object.keys(aiIndividualEvolutions).length > 0 && (
+                    <div className="space-y-4">
+                      {members.filter(m => aiIndividualEvolutions[m.id]).map(m => (
+                        <div key={m.id} className="border border-border rounded-lg p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                                {m.name.charAt(0).toUpperCase()}
+                              </span>
+                              {m.name}
+                            </p>
+                            <Button
+                              variant="outline" size="sm" className="gap-1 text-xs h-7" disabled={sendingToProntuario}
+                              onClick={() => sendToIndividualProntuario(m.id)}
+                            >
+                              <Send className="w-3 h-3" /> Enviar ao prontuário
+                            </Button>
+                          </div>
+                          <Textarea
+                            value={aiIndividualEvolutions[m.id]}
+                            onChange={e => setAiIndividualEvolutions(prev => ({ ...prev, [m.id]: e.target.value }))}
+                            className="min-h-[120px] resize-y text-sm"
+                          />
                         </div>
                       ))}
+
+                      <Button onClick={sendToGroupProntuario} disabled={sendingToProntuario} variant="outline" className="gap-1.5 w-full">
+                        {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                        Enviar todas para prontuário do grupo
+                      </Button>
                     </div>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
