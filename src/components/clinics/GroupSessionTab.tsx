@@ -118,6 +118,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     loadActiveSession();
     loadHistory();
     loadPlans();
+    // Load stamps
+    supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
+      if (data) setStamps(data);
+    });
   }, [user, groupId]);
 
   // ─── Data Loading ───
