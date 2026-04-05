@@ -181,7 +181,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       .eq('patient_id', patientId)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    if (data) setPlans(data);
+    if (data) setPlans(data.filter((p: any) => !p.objectives?.includes('[grupo:')));
   };
 
   // Timer logic
