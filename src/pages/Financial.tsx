@@ -24,8 +24,22 @@ export default function Financial() {
   const { getMonthlyAppointments } = usePrivateAppointments();
   const { user } = useAuth();
 
+  // Group prices for group evolutions
+  const [groupPrices, setGroupPrices] = useState<Record<string, number>>({});
+
   useEffect(() => {
-    if (user) loadAllEvolutions();
+    if (user) {
+      loadAllEvolutions();
+      supabase.from('therapeutic_groups').select('id, default_price, financial_enabled')
+        .eq('financial_enabled', true)
+        .then(({ data }) => {
+          if (data) {
+            const map: Record<string, number> = {};
+            data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
+            setGroupPrices(map);
+          }
+        });
+    }
   }, [user]);
 
   const [isExporting, setIsExporting] = useState(false);
