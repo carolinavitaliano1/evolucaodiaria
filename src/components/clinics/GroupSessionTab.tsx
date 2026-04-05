@@ -534,37 +534,98 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
+  // Generate individual AI evolutions for each member
+  const generateIndividualEvolutions = async () => {
+    if (!user) return;
+    setGeneratingAI(true);
+    try {
+      const results: Record<string, string> = {};
+      for (const m of members) {
+        setGeneratingIndividualFor(m.id);
+        const pd = participantsData[m.id];
+        const { data, error } = await supabase.functions.invoke('generate-evolution', {
+          body: {
+            patientName: m.name,
+            moodScore: pd?.moodScore || null,
+            positiveFeelings: pd?.positiveFeelings || [],
+            negativeFeelings: pd?.negativeFeelings || [],
+            suicidalThoughts: pd?.suicidalThoughts || false,
+            notesText: notesText,
+            actionPlans,
+            nextSessionNotes,
+            generalComments,
+            durationSeconds: elapsedSeconds,
+            planObjectives: activePlan?.objectives || '',
+            planActivities: activePlan?.activities || '',
+          },
+        });
+        if (error) throw error;
+        if (data?.evolution) results[m.id] = data.evolution;
+      }
+      setAiIndividualEvolutions(results);
+      setGeneratingIndividualFor(null);
+      toast.success(`Evoluções individuais geradas para ${Object.keys(results).length} participante(s)!`);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao gerar evoluções individuais');
+    } finally {
+      setGeneratingAI(false);
+      setGeneratingIndividualFor(null);
+    }
+  };
+
   const sendToGroupProntuario = async () => {
-    if (!user || !aiEvolution) return;
+    if (!user) return;
     setSendingToProntuario(true);
-    const inserts = members.map(m => ({
-      user_id: user.id,
-      patient_id: m.id,
-      clinic_id: clinicId,
-      group_id: groupId,
-      date: new Date().toISOString().slice(0, 10),
-      text: aiEvolution,
-      attendance_status: 'presente',
-      mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
-    }));
-    const { error } = await supabase.from('evolutions').insert(inserts);
-    setSendingToProntuario(false);
-    if (error) toast.error('Erro ao enviar para prontuário');
-    else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
+    if (aiEvoMode === 'individual') {
+      // Send each individual evolution
+      const inserts = members.filter(m => aiIndividualEvolutions[m.id]).map(m => ({
+        user_id: user.id,
+        patient_id: m.id,
+        clinic_id: clinicId,
+        group_id: groupId,
+        date: new Date().toISOString().slice(0, 10),
+        text: aiIndividualEvolutions[m.id],
+        attendance_status: 'presente',
+        mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
+      }));
+      if (inserts.length === 0) { setSendingToProntuario(false); return; }
+      const { error } = await supabase.from('evolutions').insert(inserts);
+      setSendingToProntuario(false);
+      if (error) toast.error('Erro ao enviar para prontuário');
+      else { toast.success('Evoluções individuais salvas no prontuário do grupo!'); setAiIndividualEvolutions({}); }
+    } else {
+      if (!aiEvolution) { setSendingToProntuario(false); return; }
+      const inserts = members.map(m => ({
+        user_id: user.id,
+        patient_id: m.id,
+        clinic_id: clinicId,
+        group_id: groupId,
+        date: new Date().toISOString().slice(0, 10),
+        text: aiEvolution,
+        attendance_status: 'presente',
+        mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
+      }));
+      const { error } = await supabase.from('evolutions').insert(inserts);
+      setSendingToProntuario(false);
+      if (error) toast.error('Erro ao enviar para prontuário');
+      else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
+    }
   };
 
   // sendIndividualMemberId state moved to top-level state block
 
   const sendToIndividualProntuario = async (memberId: string) => {
-    if (!user || !aiEvolution) return;
+    if (!user) return;
     setSendingToProntuario(true);
     const pd = participantsData[memberId];
+    const text = aiEvoMode === 'individual' ? aiIndividualEvolutions[memberId] : aiEvolution;
+    if (!text) { setSendingToProntuario(false); return; }
     const { error } = await supabase.from('evolutions').insert({
       user_id: user.id,
       patient_id: memberId,
       clinic_id: clinicId,
       date: new Date().toISOString().slice(0, 10),
-      text: aiEvolution,
+      text,
       attendance_status: 'presente',
       mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
     });
