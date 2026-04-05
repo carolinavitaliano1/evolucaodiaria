@@ -336,6 +336,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       finished_at: new Date().toISOString(),
       status: 'finished',
       ai_evolution: aiEvolution,
+      ai_individual_evolutions: aiIndividualEvolutions,
     } as any).eq('id', sessionId);
 
     if (error) {
