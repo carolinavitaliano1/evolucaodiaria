@@ -49,6 +49,7 @@ interface GroupData {
   general_notes: string | null;
   session_link: string | null;
   default_price: number | null;
+  financial_enabled: boolean;
   is_archived: boolean;
   created_at: string;
 }
