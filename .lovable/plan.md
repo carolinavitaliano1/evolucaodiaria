@@ -1,50 +1,58 @@
 
 
-# Sessão Terapêutica em Grupo — Humor e Sentimentos por Participante
+## Plano: Módulo Financeiro de Grupo com Toggle e Contabilização Individual
 
-## Resumo
-Criar um componente dedicado `GroupSessionTab` para a página de detalhe do grupo que replique a funcionalidade da sessão individual (`TherapeuticSessionTab`) mas com avaliação clínica **por participante**: humor, sentimentos positivos e negativos individualizados, além de campos compartilhados do grupo (notas, planos, comentários).
+### Problema Atual
+1. A aba "Financeiro" do grupo está sempre visível, mesmo quando o grupo não é pago
+2. Evoluções de grupo (com `group_id`) não são contabilizadas no financeiro individual do paciente
 
-## O que muda para o usuário
-- Na aba "Sessão" do grupo, ao iniciar sessão, aparece:
-  - **"Humor do grupo"** — seção com um bloco por participante: "Humor [Nome]" com seletor de emoji 1-10
-  - **"Sentimentos do grupo"** — seção com um bloco por participante: "Sentimentos [Nome]" com positivos e negativos separados
-  - Pensamentos suicidas — toggle individual por participante
-- Campos compartilhados: título da sessão, cronômetro, anotações, planos de ação, próxima sessão, comentários gerais, arquivos, evolução IA
-- O save/auto-save persiste os dados por participante em JSONB na sessão
+### Solução
 
-## Arquivos a criar/editar
+#### 1. Toggle para habilitar/desabilitar financeiro no grupo
 
-### 1. Migração SQL
-Adicionar colunas à tabela `therapeutic_sessions` (ou criar se não existir para grupos):
-- `group_id uuid` (nullable, FK → therapeutic_groups) para vincular sessões ao grupo
-- `participants_data jsonb` — armazena humor/sentimentos/suicidal por participante:
-```json
-{
-  "patient-uuid-1": { "mood_score": 7, "positive_feelings": ["esperança"], "negative_feelings": ["ansiedade"], "suicidal_thoughts": false },
-  "patient-uuid-2": { "mood_score": 5, "positive_feelings": [], "negative_feelings": ["tristeza"], "suicidal_thoughts": false }
-}
+**Migração DB**: Adicionar coluna `financial_enabled` (boolean, default false) na tabela `therapeutic_groups`.
+
+**GroupDetail.tsx**:
+- Na aba "Informações", adicionar um Switch "Habilitar módulo financeiro" que atualiza `financial_enabled` no banco
+- Condicionar a exibição da aba "Financeiro" no array `tabs` ao valor de `group.financial_enabled`
+- Quando habilitado, mostrar campo para editar `default_price` (valor por sessão do grupo)
+
+#### 2. Evoluções de grupo contabilizadas no financeiro individual
+
+**Financial.tsx** (página financeira global):
+- Atualmente `calculatePatientRevenue` filtra `monthlyEvolutions` por `patientId` e status faturável — isso já inclui evoluções com `group_id` pois são salvas com o `patient_id` do membro
+- Verificar se o `default_price` do grupo é usado como valor da sessão quando a evolução tem `group_id`
+- Lógica: se evolução tem `group_id`, usar o `default_price` do grupo como valor; se não, usar o `paymentValue` do paciente
+
+**AppContext.tsx / mapEvolution**:
+- Garantir que `group_id` é mapeado no objeto `Evolution` para que possa ser utilizado na lógica de cálculo
+
+**ClinicFinancial.tsx**:
+- Mesma lógica: ao calcular receita por paciente, considerar evoluções de grupo com o valor do grupo
+
+### Detalhes Técnicos
+
+**Migração SQL:**
+```sql
+ALTER TABLE public.therapeutic_groups 
+ADD COLUMN financial_enabled boolean DEFAULT false;
 ```
 
-### 2. `src/components/clinics/GroupSessionTab.tsx` (novo)
-Componente inspirado no `TherapeuticSessionTab` com:
-- **Props**: `groupId`, `groupName`, `clinicId`, `members: MemberPatient[]`
-- **State**: `participantsData: Record<string, { moodScore, positiveFeelings, negativeFeelings, suicidalThoughts }>` — inicializado com um entry por membro
-- **UI da avaliação clínica**:
-  - Card "Humor do grupo" — itera `members`, renderiza "Humor [nome]" + emoji selector por participante
-  - Card "Sentimentos do grupo" — itera `members`, renderiza "Sentimentos [nome]" com sub-seções positivos/negativos
-  - Toggle de pensamentos suicidas por participante (com alerta visual)
-- Timer, notas, planos de ação, próxima sessão, comentários gerais, arquivos, evolução IA — campos compartilhados (mesma lógica do individual)
-- Save: persiste `participants_data` como JSONB + campos compartilhados
-- Histórico: lista sessões do grupo com resumo de humor por participante
+**Lógica de receita (Financial.tsx):**
+```typescript
+// Para cada evolução faturável do paciente:
+// - Se tem group_id → usar default_price do grupo
+// - Se não → usar paymentValue do paciente (lógica atual)
+```
 
-### 3. `src/pages/GroupDetail.tsx`
-- Adicionar tab "Sessão" (ícone `PenLine`) no array de tabs
-- Renderizar `<GroupSessionTab>` passando `groupId`, `groupName`, `clinicId`, `members`
+**Tipo Evolution (types/index.ts):**
+- Adicionar campo `groupId?: string` ao interface `Evolution`
 
-## Fluxo de dados
-1. Terapeuta abre grupo → aba Sessão → "Iniciar Sessão"
-2. Timer inicia, form exibe blocos por participante para humor e sentimentos
-3. Auto-save a cada 60s persiste JSONB com dados individualizados
-4. "Finalizar Sessão" salva e gera evolução IA consolidada
+### Arquivos a Editar
+1. **Migração** — adicionar `financial_enabled` à tabela `therapeutic_groups`
+2. **src/types/index.ts** — adicionar `groupId` ao `Evolution`
+3. **src/contexts/AppContext.tsx** — mapear `group_id` no `mapEvolution`
+4. **src/pages/GroupDetail.tsx** — toggle do financeiro + condicionar aba
+5. **src/pages/Financial.tsx** — carregar preços de grupos e usar na receita quando evolução tem `group_id`
+6. **src/components/clinics/ClinicFinancial.tsx** — mesma lógica de grupo no financeiro da clínica
 
