@@ -147,7 +147,7 @@ export default function GroupDetail() {
   }, [user]);
 
   useEffect(() => {
-    if (activeTab === 'evolutions') loadEvolutions();
+    if (activeTab === 'evolutions' && members.length > 0) loadEvolutions();
     if (activeTab === 'tasks') loadTasks();
     if (activeTab === 'notes') loadNotes();
     if (activeTab === 'documents') loadDocuments();
