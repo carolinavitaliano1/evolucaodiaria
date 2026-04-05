@@ -51,6 +51,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { isOrg } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
+  const [groupPrices, setGroupPrices] = useState<Record<string, number>>({});
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
@@ -104,6 +105,18 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             client_name: d.client_name,
             service_name: d.services?.name ?? null,
           })));
+        }
+      });
+
+    // Load group prices for this clinic
+    supabase.from('therapeutic_groups').select('id, default_price, financial_enabled')
+      .eq('clinic_id', clinicId)
+      .eq('financial_enabled', true)
+      .then(({ data }) => {
+        if (data) {
+          const map: Record<string, number> = {};
+          data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
+          setGroupPrices(map);
         }
       });
   }, [clinicId]);
@@ -259,20 +272,30 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       )
     );
 
-    if (patient.paymentType === 'fixo') {
-      // For fixo patients, calculate per-session value dynamically
-      const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
-      const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
-      if (dynamic.occurrences > 0) {
-        return billableEvolutions.length * dynamic.perSession;
+    // Separate group and individual evolutions
+    const groupEvos = billableEvolutions.filter(e => e.groupId && groupPrices[e.groupId]);
+    const individualEvos = billableEvolutions.filter(e => !e.groupId || !groupPrices[e.groupId!]);
+
+    // Group revenue
+    const groupRevenue = groupEvos.reduce((sum, e) => sum + (groupPrices[e.groupId!] || 0), 0);
+
+    // Individual revenue
+    let individualRevenue = 0;
+    if (individualEvos.length > 0 && patient.paymentValue) {
+      if (patient.paymentType === 'fixo') {
+        const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
+        const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+        if (dynamic.occurrences > 0) {
+          individualRevenue = individualEvos.length * dynamic.perSession;
+        } else {
+          individualRevenue = individualEvos.length * patient.paymentValue;
+        }
+      } else {
+        individualRevenue = individualEvos.length * getEffectiveSessionValue(patient);
       }
-      // Fallback: single session patient
-      return billableEvolutions.length * patient.paymentValue;
     }
 
-    // Per-session / personalizado / variado
-    const effectiveValue = getEffectiveSessionValue(patient);
-    return billableEvolutions.length * effectiveValue;
+    return groupRevenue + individualRevenue;
   };
 
   // Total patient revenue — for fixed models this is a single global amount

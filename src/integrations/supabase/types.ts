@@ -2396,6 +2396,7 @@ export type Database = {
           exclusion_criteria: string | null
           facilitation_notes: string | null
           facilitation_style: string | null
+          financial_enabled: boolean
           follow_up_plan: string | null
           general_notes: string | null
           group_rules: string | null
@@ -2433,6 +2434,7 @@ export type Database = {
           exclusion_criteria?: string | null
           facilitation_notes?: string | null
           facilitation_style?: string | null
+          financial_enabled?: boolean
           follow_up_plan?: string | null
           general_notes?: string | null
           group_rules?: string | null
@@ -2470,6 +2472,7 @@ export type Database = {
           exclusion_criteria?: string | null
           facilitation_notes?: string | null
           facilitation_style?: string | null
+          financial_enabled?: boolean
           follow_up_plan?: string | null
           general_notes?: string | null
           group_rules?: string | null

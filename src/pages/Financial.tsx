@@ -24,8 +24,22 @@ export default function Financial() {
   const { getMonthlyAppointments } = usePrivateAppointments();
   const { user } = useAuth();
 
+  // Group prices for group evolutions
+  const [groupPrices, setGroupPrices] = useState<Record<string, number>>({});
+
   useEffect(() => {
-    if (user) loadAllEvolutions();
+    if (user) {
+      loadAllEvolutions();
+      supabase.from('therapeutic_groups').select('id, default_price, financial_enabled')
+        .eq('financial_enabled', true)
+        .then(({ data }) => {
+          if (data) {
+            const map: Record<string, number> = {};
+            data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
+            setGroupPrices(map);
+          }
+        });
+    }
   }, [user]);
 
   const [isExporting, setIsExporting] = useState(false);
@@ -140,18 +154,30 @@ export default function Financial() {
       )
     );
 
-    if (patient.paymentType === 'fixo') {
-      const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
-      const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+    // Separate group and individual evolutions
+    const groupEvos = billableEvolutions.filter(e => e.groupId && groupPrices[e.groupId]);
+    const individualEvos = billableEvolutions.filter(e => !e.groupId || !groupPrices[e.groupId!]);
 
-      if (dynamic.occurrences > 0) {
-        return billableEvolutions.length * dynamic.perSession;
+    // Group revenue: sum by group price
+    const groupRevenue = groupEvos.reduce((sum, e) => sum + (groupPrices[e.groupId!] || 0), 0);
+
+    // Individual revenue (original logic)
+    let individualRevenue = 0;
+    if (individualEvos.length > 0 && patient.paymentValue) {
+      if (patient.paymentType === 'fixo') {
+        const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
+        const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+        if (dynamic.occurrences > 0) {
+          individualRevenue = individualEvos.length * dynamic.perSession;
+        } else {
+          individualRevenue = individualEvos.length * patient.paymentValue;
+        }
+      } else {
+        individualRevenue = individualEvos.length * getEffectiveSessionValue(patient);
       }
-
-      return billableEvolutions.length * patient.paymentValue;
     }
 
-    return billableEvolutions.length * getEffectiveSessionValue(patient);
+    return groupRevenue + individualRevenue;
   };
 
   const calculatePatientLoss = (patientId: string) => {

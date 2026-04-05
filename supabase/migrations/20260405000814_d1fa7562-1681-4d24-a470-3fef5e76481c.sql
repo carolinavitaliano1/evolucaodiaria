@@ -1,0 +1,1 @@
+ALTER TABLE public.therapeutic_groups ADD COLUMN financial_enabled boolean NOT NULL DEFAULT false;

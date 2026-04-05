@@ -129,6 +129,7 @@ function mapEvolution(e: Record<string, unknown>): Evolution {
     confirmedAttendance: (e.confirmed_attendance as boolean) || false,
     mood: (e.mood as Evolution['mood']) || undefined, signature: (e.signature as string) || undefined,
     stampId: (e.stamp_id as string) || undefined, createdAt: e.created_at as string,
+    groupId: (e.group_id as string) || undefined,
   };
 }
 

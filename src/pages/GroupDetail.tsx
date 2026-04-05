@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PatientFeed } from '@/components/feed/PatientFeed';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,7 @@ interface GroupData {
   general_notes: string | null;
   session_link: string | null;
   default_price: number | null;
+  financial_enabled: boolean;
   is_archived: boolean;
   created_at: string;
 }
@@ -422,7 +424,7 @@ export default function GroupDetail() {
     { value: 'notes', label: 'Notas', icon: <MessageSquare className="w-4 h-4" /> },
     { value: 'attendance', label: 'Frequência', icon: <Calendar className="w-4 h-4" /> },
     { value: 'documents', label: 'Documentos', icon: <FolderOpen className="w-4 h-4" /> },
-    { value: 'financial', label: 'Financeiro', icon: <DollarSign className="w-4 h-4" /> },
+    ...(group.financial_enabled ? [{ value: 'financial', label: 'Financeiro', icon: <DollarSign className="w-4 h-4" /> }] : []),
   ];
 
   const attendanceData = getAttendanceData();
@@ -556,12 +558,43 @@ export default function GroupDetail() {
             </AccordionItem>
           </Accordion>
 
-          {group.default_price != null && (
-            <div className="bg-card border rounded-xl p-4">
-              <span className="text-sm font-medium text-muted-foreground">Preço padrão por paciente: </span>
-              <span className="text-sm font-semibold text-foreground">R$ {Number(group.default_price).toFixed(2)}</span>
+          {/* Financial toggle & price */}
+          <div className="bg-card border rounded-xl p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Módulo financeiro</p>
+                <p className="text-xs text-muted-foreground">Habilite para acompanhar pagamentos dos participantes do grupo</p>
+              </div>
+              <Switch
+                checked={group.financial_enabled}
+                onCheckedChange={async (checked) => {
+                  await supabase.from('therapeutic_groups').update({ financial_enabled: checked } as any).eq('id', group.id);
+                  setGroup(prev => prev ? { ...prev, financial_enabled: checked } : prev);
+                  toast.success(checked ? 'Financeiro habilitado' : 'Financeiro desabilitado');
+                }}
+              />
             </div>
-          )}
+            {group.financial_enabled && (
+              <div>
+                <Label className="text-sm font-medium">Valor por sessão do grupo (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={group.default_price ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? parseFloat(e.target.value) : null;
+                    setGroup(prev => prev ? { ...prev, default_price: val } : prev);
+                  }}
+                  onBlur={async () => {
+                    await supabase.from('therapeutic_groups').update({ default_price: group.default_price } as any).eq('id', group.id);
+                  }}
+                  className="mt-1 max-w-xs"
+                />
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         {/* ═══ Session Tab ═══ */}
