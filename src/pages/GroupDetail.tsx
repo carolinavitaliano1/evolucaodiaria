@@ -89,6 +89,14 @@ export default function GroupDetail() {
   // Evolutions state
   const [evolutions, setEvolutions] = useState<any[]>([]);
   const [loadingEvos, setLoadingEvos] = useState(false);
+  const [evoFilterMember, setEvoFilterMember] = useState('all');
+  const [evoFilterType, setEvoFilterType] = useState<'all' | 'group' | 'individual'>('all');
+  const [evoFilterStartDate, setEvoFilterStartDate] = useState<Date | undefined>(undefined);
+  const [evoFilterEndDate, setEvoFilterEndDate] = useState<Date | undefined>(undefined);
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
+  const [exportingEvos, setExportingEvos] = useState(false);
+  const [stamps, setStamps] = useState<any[]>([]);
 
   // Group evolution form state
   const [showEvoForm, setShowEvoForm] = useState(false);
