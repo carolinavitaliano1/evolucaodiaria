@@ -1,0 +1,1 @@
+ALTER TABLE public.therapy_sessions ADD COLUMN ai_evolution text DEFAULT '';

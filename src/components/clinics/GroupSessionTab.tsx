@@ -155,7 +155,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setNextSessionNotes(data.next_session_notes || '');
     setGeneralComments(data.general_comments || '');
     setElapsedSeconds(data.duration_seconds || 0);
-    setAiEvolution('');
+    setAiEvolution(data.ai_evolution || '');
 
     if (data.participants_data && typeof data.participants_data === 'object') {
       const restored: Record<string, ParticipantData> = {};
@@ -182,7 +182,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (!user) return;
     const { data } = await supabase
       .from('therapy_sessions')
-      .select('id, title, created_at, duration_seconds, status, notes_text, action_plans, next_session_notes, general_comments, participants_data, started_at, finished_at, plan_id')
+      .select('id, title, created_at, duration_seconds, status, notes_text, action_plans, next_session_notes, general_comments, participants_data, started_at, finished_at, plan_id, ai_evolution')
       .eq('group_id', groupId)
       .eq('user_id', user.id)
       .eq('status', 'finished')
@@ -304,6 +304,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       general_comments: generalComments,
       duration_seconds: elapsedSeconds,
       participants_data: serializeParticipantsData(),
+      ai_evolution: aiEvolution,
     } as any).eq('id', sessionId);
     setSaving(false);
     if (error) {
@@ -312,7 +313,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       setLastSaved(new Date());
       if (showToast) toast.success('Sessão salva!');
     }
-  }, [user, sessionId, title, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds, participantsData]);
+  }, [user, sessionId, title, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds, participantsData, aiEvolution]);
 
   const finishSession = async () => {
     if (!user || !sessionId) return;
@@ -327,6 +328,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       participants_data: serializeParticipantsData(),
       finished_at: new Date().toISOString(),
       status: 'finished',
+      ai_evolution: aiEvolution,
     } as any).eq('id', sessionId);
 
     if (error) {
