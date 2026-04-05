@@ -51,6 +51,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { isOrg } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
+  const [groupPrices, setGroupPrices] = useState<Record<string, number>>({});
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
