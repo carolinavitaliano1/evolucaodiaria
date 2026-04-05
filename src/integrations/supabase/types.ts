@@ -2410,6 +2410,8 @@ export type Database = {
           next_topics: string | null
           objectives: string | null
           open_to_new: boolean
+          package_id: string | null
+          payment_type: string | null
           session_link: string | null
           shared_goals: string | null
           supervision_notes: string | null
@@ -2448,6 +2450,8 @@ export type Database = {
           next_topics?: string | null
           objectives?: string | null
           open_to_new?: boolean
+          package_id?: string | null
+          payment_type?: string | null
           session_link?: string | null
           shared_goals?: string | null
           supervision_notes?: string | null
@@ -2486,6 +2490,8 @@ export type Database = {
           next_topics?: string | null
           objectives?: string | null
           open_to_new?: boolean
+          package_id?: string | null
+          payment_type?: string | null
           session_link?: string | null
           shared_goals?: string | null
           supervision_notes?: string | null
@@ -2502,6 +2508,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "therapeutic_groups_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_packages"
             referencedColumns: ["id"]
           },
         ]
