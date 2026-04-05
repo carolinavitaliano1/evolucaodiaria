@@ -1389,18 +1389,39 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
               const date = new Date(s.created_at);
               const pData = s.participants_data || {};
               return (
-                <Card key={s.id} className="border-border">
+                <Card key={s.id} className="border-border hover:shadow-sm transition-shadow group">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground text-sm">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</p>
                         <p className="text-xs text-muted-foreground">
                           {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Duração: {formatTime(s.duration_seconds || 0)}
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDeleteSession(s.id)}>
-                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setViewingSession(s)}>
+                            <Eye className="w-4 h-4 mr-2" /> Visualizar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditSession(s)}>
+                            <Pencil className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => generateGroupReport(s)}>
+                            <FileText className="w-4 h-4 mr-2" /> Relatório PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRequestDeclaration(s)}>
+                            <ScrollText className="w-4 h-4 mr-2" /> Declaração de Comparecimento
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDeleteSessionId(s.id)} className="text-destructive focus:text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     {/* Mood summary */}
@@ -1417,17 +1438,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                     </div>
 
                     {s.notes_text && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.notes_text}</p>}
-
-                    {/* Action buttons */}
-                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
-                      <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setViewingSession(s)}>
-                        <Eye className="w-3.5 h-3.5" /> Ver detalhes
-                      </Button>
-                      <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => generateGroupReport(s)} disabled={generatingReport}>
-                        {generatingReport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        Relatório PDF
-                      </Button>
-                    </div>
                   </CardContent>
                 </Card>
               );
