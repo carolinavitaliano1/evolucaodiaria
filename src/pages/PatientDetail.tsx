@@ -2233,6 +2233,11 @@ export default function PatientDetail() {
                                 {moodInfo.emoji} {moodInfo.label}
                               </span>
                             )}
+                            {evo.groupId && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                👥 Grupo
+                              </span>
+                            )}
                             {authorLabel && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
                                 👤 {authorLabel}{evoAuthorId === user?.id ? ' (você)' : ''}
