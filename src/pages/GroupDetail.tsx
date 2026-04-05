@@ -139,6 +139,14 @@ export default function GroupDetail() {
   }, [id]);
 
   useEffect(() => {
+    if (user) {
+      supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
+        if (data) setStamps(data);
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (activeTab === 'evolutions') loadEvolutions();
     if (activeTab === 'tasks') loadTasks();
     if (activeTab === 'notes') loadNotes();
@@ -185,15 +193,119 @@ export default function GroupDetail() {
 
   // ─── Evolutions ───
   const loadEvolutions = async () => {
+    if (!user || members.length === 0) { setLoadingEvos(false); return; }
     setLoadingEvos(true);
-    const { data } = await supabase
+    const patientIds = members.map(m => m.id);
+    
+    // Load group evolutions
+    const { data: groupEvos } = await supabase
       .from('evolutions')
       .select('*')
       .eq('group_id', id!)
       .order('date', { ascending: false })
-      .limit(200);
-    if (data) setEvolutions(data);
+      .limit(500);
+    
+    // Load individual evolutions for members
+    const { data: individualEvos } = await supabase
+      .from('evolutions')
+      .select('*')
+      .in('patient_id', patientIds)
+      .is('group_id', null)
+      .order('date', { ascending: false })
+      .limit(500);
+    
+    const all = [
+      ...(groupEvos || []).map((e: any) => ({ ...e, _evoType: 'group' })),
+      ...(individualEvos || []).map((e: any) => ({ ...e, _evoType: 'individual' })),
+    ];
+    all.sort((a, b) => b.date.localeCompare(a.date));
+    setEvolutions(all);
     setLoadingEvos(false);
+  };
+
+  const filteredEvolutions = evolutions.filter(evo => {
+    if (evoFilterMember !== 'all' && evo.patient_id !== evoFilterMember) return false;
+    if (evoFilterType === 'group' && evo._evoType !== 'group') return false;
+    if (evoFilterType === 'individual' && evo._evoType !== 'individual') return false;
+    if (evoFilterStartDate && evo.date < format(evoFilterStartDate, 'yyyy-MM-dd')) return false;
+    if (evoFilterEndDate && evo.date > format(evoFilterEndDate, 'yyyy-MM-dd')) return false;
+    return true;
+  });
+
+  const handleExportFilteredEvolutions = async () => {
+    if (filteredEvolutions.length === 0) { toast.error('Nenhuma evolução para exportar com os filtros selecionados'); return; }
+    setExportingEvos(true);
+    try {
+      // Group by patient
+      const byPatient: Record<string, any[]> = {};
+      for (const evo of filteredEvolutions) {
+        if (!byPatient[evo.patient_id]) byPatient[evo.patient_id] = [];
+        byPatient[evo.patient_id].push(evo);
+      }
+      
+      // Load clinic data
+      let clinicData: any = null;
+      if (group) {
+        const { data: c } = await supabase.from('clinics').select('*').eq('id', group.clinic_id).single();
+        clinicData = c;
+      }
+      
+      for (const [patientId, patientEvos] of Object.entries(byPatient)) {
+        const member = members.find(m => m.id === patientId);
+        if (!member) continue;
+        
+        // Load full patient data for PDF
+        const { data: fullPatient } = await supabase.from('patients').select('*').eq('id', patientId).single();
+        if (!fullPatient) continue;
+        
+        const mappedPatient = {
+          id: fullPatient.id,
+          name: fullPatient.name,
+          clinicId: fullPatient.clinic_id,
+          birthdate: fullPatient.birthdate,
+          clinicalArea: fullPatient.clinical_area,
+          diagnosis: fullPatient.diagnosis,
+          whatsapp: fullPatient.whatsapp,
+          responsibleWhatsapp: fullPatient.responsible_whatsapp,
+          isArchived: fullPatient.is_archived,
+        } as any;
+        
+        const mappedEvos = patientEvos.map((e: any) => ({
+          id: e.id,
+          patientId: e.patient_id,
+          clinicId: e.clinic_id,
+          date: e.date,
+          text: e.text,
+          attendanceStatus: e.attendance_status,
+          mood: e.mood,
+          templateData: e.template_data,
+          groupId: e.group_id,
+          signature: e.signature,
+          stampId: e.stamp_id,
+        })) as any[];
+
+        const mappedClinic = clinicData ? {
+          id: clinicData.id,
+          name: clinicData.name,
+          address: clinicData.address,
+          letterhead: clinicData.letterhead,
+        } as any : undefined;
+        
+        await generateMultipleEvolutionsPdf({
+          evolutions: mappedEvos,
+          patient: mappedPatient,
+          clinic: mappedClinic,
+          stamps,
+          startDate: evoFilterStartDate,
+          endDate: evoFilterEndDate,
+        });
+      }
+      
+      toast.success(`PDF(s) exportados para ${Object.keys(byPatient).length} participante(s)!`);
+    } catch (e: any) {
+      toast.error('Erro ao exportar: ' + (e.message || ''));
+    }
+    setExportingEvos(false);
   };
 
   const initEvoForm = () => {
