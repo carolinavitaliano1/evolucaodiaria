@@ -512,7 +512,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
-  const sendToProntuario = async () => {
+  const sendToGroupProntuario = async () => {
     if (!user || !aiEvolution) return;
     setSendingToProntuario(true);
     const inserts = members.map(m => ({
@@ -528,7 +528,102 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     const { error } = await supabase.from('evolutions').insert(inserts);
     setSendingToProntuario(false);
     if (error) toast.error('Erro ao enviar para prontuário');
-    else { toast.success('Evolução salva no prontuário de todos os participantes!'); setAiEvolution(''); }
+    else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
+  };
+
+  const [sendIndividualMemberId, setSendIndividualMemberId] = useState<string | null>(null);
+
+  const sendToIndividualProntuario = async (memberId: string) => {
+    if (!user || !aiEvolution) return;
+    setSendingToProntuario(true);
+    const pd = participantsData[memberId];
+    const { error } = await supabase.from('evolutions').insert({
+      user_id: user.id,
+      patient_id: memberId,
+      clinic_id: clinicId,
+      date: new Date().toISOString().slice(0, 10),
+      text: aiEvolution,
+      attendance_status: 'presente',
+      mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
+    });
+    setSendingToProntuario(false);
+    if (error) toast.error('Erro ao enviar para prontuário individual');
+    else {
+      const name = members.find(m => m.id === memberId)?.name || 'paciente';
+      toast.success(`Evolução salva no prontuário individual de ${name}!`);
+    }
+  };
+
+  // Download evolutions for a specific member (group or individual)
+  const downloadMemberEvolutions = async (memberId: string, type: 'group' | 'individual') => {
+    if (!user) return;
+    setGeneratingReport(true);
+    try {
+      let query = supabase
+        .from('evolutions')
+        .select('*')
+        .eq('patient_id', memberId)
+        .eq('clinic_id', clinicId)
+        .order('date', { ascending: false });
+
+      if (type === 'group') {
+        query = query.eq('group_id', groupId);
+      } else {
+        query = query.is('group_id', null);
+      }
+
+      const { data: evos } = await query;
+      if (!evos || evos.length === 0) {
+        toast.error('Nenhuma evolução encontrada');
+        return;
+      }
+
+      const memberName = members.find(m => m.id === memberId)?.name || 'Paciente';
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      let y = 20;
+
+      // Header
+      doc.setFillColor(99, 102, 241);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(type === 'group' ? `Evoluções de Grupo - ${memberName}` : `Evoluções Individuais - ${memberName}`, margin, 22);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(type === 'group' ? `Grupo: ${groupName}` : 'Prontuário Individual', margin, 30);
+
+      y = 45;
+      doc.setTextColor(0, 0, 0);
+
+      for (const evo of evos) {
+        if (y > 260) { doc.addPage(); y = 20; }
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text(new Date(evo.date).toLocaleDateString('pt-BR'), margin, y);
+        y += 6;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(evo.text || '', pageWidth - margin * 2);
+        for (const line of lines) {
+          if (y > 275) { doc.addPage(); y = 20; }
+          doc.text(line, margin, y);
+          y += 5.5;
+        }
+        y += 6;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, y - 3, pageWidth - margin, y - 3);
+      }
+
+      doc.save(`evolucoes_${type === 'group' ? 'grupo' : 'individual'}_${memberName.replace(/\s+/g, '_')}.pdf`);
+      toast.success('PDF gerado!');
+    } catch (e: any) {
+      toast.error('Erro ao gerar PDF');
+    } finally {
+      setGeneratingReport(false);
+    }
   };
 
   // ─── Plans CRUD ───
