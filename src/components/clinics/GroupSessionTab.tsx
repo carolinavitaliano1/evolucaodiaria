@@ -320,7 +320,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       setLastSaved(new Date());
       if (showToast) toast.success('Sessão salva!');
     }
-  }, [user, sessionId, title, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds, participantsData, aiEvolution]);
+  }, [user, sessionId, title, notesText, actionPlans, nextSessionNotes, generalComments, elapsedSeconds, participantsData, aiEvolution, aiIndividualEvolutions]);
 
   const finishSession = async () => {
     if (!user || !sessionId) return;
