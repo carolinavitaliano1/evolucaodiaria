@@ -107,6 +107,18 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           })));
         }
       });
+
+    // Load group prices for this clinic
+    supabase.from('therapeutic_groups').select('id, default_price, financial_enabled')
+      .eq('clinic_id', clinicId)
+      .eq('financial_enabled', true)
+      .then(({ data }) => {
+        if (data) {
+          const map: Record<string, number> = {};
+          data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
+          setGroupPrices(map);
+        }
+      });
   }, [clinicId]);
 
   // Load patient payment records for selected month
