@@ -84,7 +84,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
   const [improvingField, setImprovingField] = useState<string | null>(null);
-
+  const [creatingField, setCreatingField] = useState<string | null>(null);
+  const [sendingToPortal, setSendingToPortal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendTargetMemberId, setSendTargetMemberId] = useState<string | null>(null);
   // Init participants data
   useEffect(() => {
     const init: Record<string, ParticipantData> = {};
