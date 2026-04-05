@@ -93,6 +93,14 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendTargetMemberId, setSendTargetMemberId] = useState<string | null>(null);
   const [sendIndividualMemberId, setSendIndividualMemberId] = useState<string | null>(null);
+
+  // Stamps & Declaration
+  const [stamps, setStamps] = useState<any[]>([]);
+  const [declarationSession, setDeclarationSession] = useState<any | null>(null);
+  const [declarationStampId, setDeclarationStampId] = useState<string | null>(null);
+  const [declarationMemberId, setDeclarationMemberId] = useState<string | null>(null);
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+
   // Init participants data
   useEffect(() => {
     const init: Record<string, ParticipantData> = {};
