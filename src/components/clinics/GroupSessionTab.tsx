@@ -385,7 +385,91 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
-  const generateAIEvolution = async () => {
+  // Create text with AI from session context
+  const createFieldWithAI = async (field: 'create_action_plans' | 'create_next_session', setText: (v: string) => void) => {
+    const participantsSummary = members.map(m => {
+      const pd = participantsData[m.id];
+      if (!pd) return '';
+      return [
+        `Participante: ${m.name}`,
+        pd.moodScore ? `Humor: ${pd.moodScore}/10` : '',
+        pd.positiveFeelings.length > 0 ? `Sentimentos positivos: ${pd.positiveFeelings.join(', ')}` : '',
+        pd.negativeFeelings.length > 0 ? `Sentimentos negativos: ${pd.negativeFeelings.join(', ')}` : '',
+        pd.suicidalThoughts ? 'ALERTA: Ideação suicida reportada' : '',
+      ].filter(Boolean).join('\n');
+    }).filter(Boolean).join('\n---\n');
+
+    const context = [
+      notesText ? `Anotações: ${notesText}` : '',
+      participantsSummary ? `Dados dos participantes:\n${participantsSummary}` : '',
+      actionPlans && field === 'create_next_session' ? `Planos de ação: ${actionPlans}` : '',
+      activePlan?.objectives ? `Objetivos do plano: ${activePlan.objectives}` : '',
+      activePlan?.activities ? `Atividades do plano: ${activePlan.activities}` : '',
+    ].filter(Boolean).join('\n');
+
+    if (!context.trim()) {
+      toast.error('Preencha ao menos as anotações da sessão para criar com IA.');
+      return;
+    }
+
+    setCreatingField(field);
+    try {
+      const { data, error } = await supabase.functions.invoke('improve-session-text', {
+        body: { text: context, field },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.improved) {
+        setText(data.improved);
+        toast.success('Conteúdo criado com IA!');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao criar com IA');
+    } finally {
+      setCreatingField(null);
+    }
+  };
+
+  // Send action plans to individual patient portal
+  const sendActionPlansToPortal = async (title: string, dueDate: string, attachments: ActivityAttachment[]) => {
+    if (!user || !actionPlans.trim() || !sendTargetMemberId) return;
+    setSendingToPortal(true);
+    try {
+      const lines = actionPlans.split('\n').map(l => l.replace(/^[\s\-\*\d\.]+/, '').trim()).filter(Boolean);
+      const items = lines.map(text => ({ text, done: false }));
+
+      const { data: portalAccount } = await supabase
+        .from('patient_portal_accounts')
+        .select('id')
+        .eq('patient_id', sendTargetMemberId)
+        .eq('therapist_user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      const { error } = await supabase.from('portal_activities').insert({
+        patient_id: sendTargetMemberId,
+        therapist_user_id: user.id,
+        portal_account_id: portalAccount?.id || null,
+        title: title || 'Plano de Ação',
+        items: items as any,
+        due_date: dueDate || null,
+        attachments: attachments as any,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+      const memberName = members.find(m => m.id === sendTargetMemberId)?.name || 'paciente';
+      toast.success(`Plano de ação enviado para o portal de ${memberName}!`);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao enviar para portal');
+    } finally {
+      setSendingToPortal(false);
+      setShowSendModal(false);
+      setSendTargetMemberId(null);
+    }
+  };
+
+
     if (!notesText && !actionPlans && !generalComments) {
       toast.error('Preencha as anotações da sessão antes de gerar a evolução.'); return;
     }
