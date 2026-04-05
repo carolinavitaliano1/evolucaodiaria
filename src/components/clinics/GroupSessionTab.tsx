@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2 } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit } from 'lucide-react';
+import { SendActionPlanModal, type ActivityAttachment } from '@/components/patients/SendActionPlanModal';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 
