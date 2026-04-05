@@ -10,7 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit, MoreVertical, Pencil, ScrollText, FileText } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { SendActionPlanModal, type ActivityAttachment } from '@/components/patients/SendActionPlanModal';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
@@ -89,6 +93,14 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendTargetMemberId, setSendTargetMemberId] = useState<string | null>(null);
   const [sendIndividualMemberId, setSendIndividualMemberId] = useState<string | null>(null);
+
+  // Stamps & Declaration
+  const [stamps, setStamps] = useState<any[]>([]);
+  const [declarationSession, setDeclarationSession] = useState<any | null>(null);
+  const [declarationStampId, setDeclarationStampId] = useState<string | null>(null);
+  const [declarationMemberId, setDeclarationMemberId] = useState<string | null>(null);
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+
   // Init participants data
   useEffect(() => {
     const init: Record<string, ParticipantData> = {};
@@ -106,6 +118,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     loadActiveSession();
     loadHistory();
     loadPlans();
+    // Load stamps
+    supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
+      if (data) setStamps(data);
+    });
   }, [user, groupId]);
 
   // ─── Data Loading ───
@@ -671,52 +687,195 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     loadHistory();
   };
 
-  const generateGroupReport = async (session: any) => {
+  const handleEditSession = (session: any) => {
+    populateSessionForm(session);
+    setTimerRunning(false);
+    setStartedAt(null);
+    setMainView('session');
+  };
+
+  const handleRequestDeclaration = (session: any) => {
+    const defaultStamp = stamps.find((s: any) => s.is_default) || stamps[0];
+    setDeclarationStampId(defaultStamp?.id || null);
+    setDeclarationMemberId(null);
+    setDeclarationSession(session);
+  };
+
+  const generateDeclaration = async () => {
+    const session = declarationSession;
+    if (!session || !declarationMemberId) return;
+    try {
+      const member = members.find(m => m.id === declarationMemberId);
+      if (!member) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name, cpf, professional_id')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      const chosenStamp = declarationStampId ? stamps.find((s: any) => s.id === declarationStampId) : (stamps.find((s: any) => s.is_default) || stamps[0]);
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 25;
+      const contentWidth = pageWidth - margin * 2;
+      const centerX = pageWidth / 2;
+
+      const { data: clinic } = await supabase
+        .from('clinics')
+        .select('name, letterhead, address, phone, cnpj')
+        .eq('id', clinicId)
+        .maybeSingle();
+
+      let y = 20;
+      if (clinic?.letterhead) {
+        try {
+          const img = new window.Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(); img.src = clinic.letterhead; });
+          const imgWidth = 160;
+          const imgHeight = (img.height / img.width) * imgWidth;
+          doc.addImage(img, 'PNG', (pageWidth - imgWidth) / 2, y, imgWidth, imgHeight);
+          y += imgHeight + 10;
+        } catch { y = 30; }
+      } else { y = 40; }
+
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text('Declaração', centerX, y, { align: 'center' });
+      y += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      doc.text('Documento Oficial de Presença', centerX, y, { align: 'center' });
+      y += 25;
+
+      const sessionDate = new Date(session.created_at);
+      const dateStr = sessionDate.toLocaleDateString('pt-BR');
+      const startTime = session.started_at
+        ? new Date(session.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : sessionDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const endTime = session.finished_at
+        ? new Date(session.finished_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : (() => { const end = new Date(sessionDate.getTime() + (session.duration_seconds || 0) * 1000); return end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); })();
+
+      const therapistName = profile?.name || 'Profissional';
+
+      doc.setFontSize(12);
+      doc.setTextColor(50, 50, 50);
+      doc.setFont('helvetica', 'normal');
+
+      const bodyText = `Declaro, para os devidos fins, que ${member.name} está em atendimento terapêutico de grupo ("${groupName}") sob meus cuidados, e compareceu à sessão realizada no dia ${dateStr} das ${startTime} às ${endTime}.`;
+      const bodyLines: string[] = doc.splitTextToSize(bodyText, contentWidth);
+      for (let li = 0; li < bodyLines.length; li++) {
+        if (y > 260) { doc.addPage(); y = 20; }
+        const isLast = li === bodyLines.length - 1;
+        doc.text(bodyLines[li], margin, y, { align: isLast ? 'left' : 'justify', maxWidth: contentWidth });
+        y += 7;
+      }
+
+      y += 20;
+      const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const now = new Date();
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont('helvetica', 'italic');
+      doc.text(`Documento gerado em: ${String(now.getDate()).padStart(2, '0')} de ${months[now.getMonth()]} de ${now.getFullYear()}`, centerX, y, { align: 'center' });
+
+      // Signature block
+      const lineWidth = pageWidth * 0.4;
+      const signBlockStartY = pageHeight - 70;
+      let sy = signBlockStartY;
+
+      if (chosenStamp?.stamp_image) {
+        try {
+          const sImg = new window.Image();
+          sImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => { sImg.onload = () => resolve(); sImg.onerror = () => reject(); sImg.src = chosenStamp.stamp_image; });
+          const maxW = 40; const maxH = 25;
+          let sW = maxW; let sH = (sImg.height / sImg.width) * sW;
+          if (sH > maxH) { sH = maxH; sW = (sImg.width / sImg.height) * sH; }
+          doc.addImage(sImg, 'PNG', centerX - sW / 2, sy - sH, sW, sH);
+        } catch { /* skip */ }
+      }
+
+      doc.setDrawColor(80, 80, 80);
+      doc.line(centerX - lineWidth / 2, sy, centerX + lineWidth / 2, sy);
+      sy += 5;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(99, 102, 241);
+      doc.text(therapistName, centerX, sy, { align: 'center' });
+      sy += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(9);
+      if (chosenStamp?.clinical_area) { doc.text(chosenStamp.clinical_area, centerX, sy, { align: 'center' }); sy += 5; }
+      if (chosenStamp?.cbo) { doc.text(`CBO: ${chosenStamp.cbo}`, centerX, sy, { align: 'center' }); }
+
+      doc.setFontSize(7);
+      doc.setTextColor(180, 180, 180);
+      doc.text('Documento confidencial — uso exclusivo profissional', centerX, pageHeight - 10, { align: 'center' });
+
+      doc.save(`declaracao_grupo_${member.name.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '-')}.pdf`);
+      toast.success('Declaração gerada!');
+      setDeclarationSession(null);
+      setDeclarationMemberId(null);
+    } catch (e: any) {
+      toast.error('Erro ao gerar declaração');
+    }
+  };
+
+
     setGeneratingReport(true);
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 20;
       const contentWidth = pageWidth - margin * 2;
-      const centerX = pageWidth / 2;
       let y = 20;
       const date = new Date(session.created_at);
       const dateStr = date.toLocaleDateString('pt-BR');
 
-      // Header
+      // Header bar — same as individual
       doc.setFillColor(99, 102, 241);
       doc.rect(0, 0, pageWidth, 40, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('Relatório de Sessão de Grupo', margin, 26);
+      doc.text('Relatório de Sessão Terapêutica', margin, 26);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${groupName} — ${dateStr}`, margin, 35);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, margin, 35);
 
       y = 52;
       doc.setTextColor(50, 50, 50);
 
-      // Group info
+      // Group info box
       doc.setFillColor(245, 245, 250);
-      doc.roundedRect(margin, y, contentWidth, 20, 3, 3, 'F');
-      doc.setFontSize(11);
+      doc.roundedRect(margin, y, contentWidth, 28, 3, 3, 'F');
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Grupo Terapêutico', margin + 5, y + 8);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text(`${groupName} — ${members.length} participantes — Duração: ${formatTime(session.duration_seconds || 0)}`, margin + 5, y + 16);
-      y += 28;
+      doc.setFontSize(11);
+      doc.text(groupName, margin + 5, y + 16);
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      doc.text(`${members.length} participantes  |  Sessão: ${session.title || 'Sem título'}  |  Duração: ${formatTime(session.duration_seconds || 0)}`, margin + 5, y + 23);
+      y += 35;
+      doc.setTextColor(50, 50, 50);
 
       // Participants mood
       const pData = session.participants_data || {};
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(99, 102, 241);
-      doc.text('Avaliação por Participante', margin, y);
+      doc.text('Avaliação de Humor por Participante', margin, y);
       y += 7;
-      doc.setTextColor(50, 50, 50);
-      doc.setFontSize(9);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
 
       members.forEach(m => {
@@ -724,48 +883,95 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         if (!pd) return;
         if (y > 260) { doc.addPage(); y = 20; }
         doc.setFont('helvetica', 'bold');
-        doc.text(m.name, margin, y);
-        doc.setFont('helvetica', 'normal');
-        const parts = [];
-        if (pd.mood_score) parts.push(`Humor: ${pd.mood_score}/10`);
-        if (pd.positive_feelings?.length) parts.push(`Positivos: ${pd.positive_feelings.join(', ')}`);
-        if (pd.negative_feelings?.length) parts.push(`Negativos: ${pd.negative_feelings.join(', ')}`);
-        if (pd.suicidal_thoughts) parts.push('⚠ Ideação suicida');
+        const moodStr = pd.mood_score ? `${pd.mood_score}/10` : '';
+        doc.text(`${m.name}  ${moodStr}`, margin, y);
         y += 5;
-        if (parts.length) {
-          const lines = doc.splitTextToSize(parts.join(' | '), contentWidth);
-          doc.text(lines, margin, y);
-          y += lines.length * 4 + 3;
-        } else {
-          y += 3;
+        doc.setFont('helvetica', 'normal');
+        if (pd.positive_feelings?.length) {
+          doc.setFont('helvetica', 'bold'); doc.text('Positivos:', margin, y);
+          doc.setFont('helvetica', 'normal'); doc.text(pd.positive_feelings.join(', '), margin + 25, y); y += 5;
         }
+        if (pd.negative_feelings?.length) {
+          doc.setFont('helvetica', 'bold'); doc.text('Negativos:', margin, y);
+          doc.setFont('helvetica', 'normal'); doc.text(pd.negative_feelings.join(', '), margin + 25, y); y += 5;
+        }
+        if (pd.suicidal_thoughts) {
+          doc.setFillColor(254, 226, 226);
+          doc.roundedRect(margin, y, contentWidth, 8, 2, 2, 'F');
+          doc.setTextColor(185, 28, 28); doc.setFont('helvetica', 'bold');
+          doc.text(`ALERTA: Ideacao suicida - ${m.name}`, margin + 3, y + 6);
+          doc.setTextColor(50, 50, 50); y += 12;
+        }
+        y += 3;
       });
 
-      y += 5;
+      doc.setDrawColor(200, 200, 220);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      // Markdown renderer
+      const renderMarkdownText = (text: string, xPos: number, maxWidth: number) => {
+        const originalLines = text.split('\n');
+        for (const originalLine of originalLines) {
+          const segments: { text: string; bold: boolean }[] = [];
+          let rem = originalLine;
+          while (rem.length > 0) {
+            const bs = rem.indexOf('**');
+            if (bs === -1) { if (rem) segments.push({ text: rem, bold: false }); break; }
+            if (bs > 0) segments.push({ text: rem.slice(0, bs), bold: false });
+            const be = rem.indexOf('**', bs + 2);
+            if (be === -1) { segments.push({ text: rem.slice(bs + 2), bold: false }); break; }
+            segments.push({ text: rem.slice(bs + 2, be), bold: true });
+            rem = rem.slice(be + 2);
+          }
+          const fullLineText = segments.map(s => s.text).join('');
+          if (!fullLineText.trim()) { y += 3; continue; }
+          const wrappedLines = doc.splitTextToSize(fullLineText, maxWidth);
+          for (let wi = 0; wi < wrappedLines.length; wi++) {
+            if (y > 275) { doc.addPage(); y = 20; }
+            let curX = xPos; let consumed = 0;
+            for (let pi = 0; pi < wi; pi++) consumed += wrappedLines[pi].length;
+            const lineStart = consumed; const lineEnd = consumed + wrappedLines[wi].length;
+            let charPos = 0; let rendered = false;
+            for (const seg of segments) {
+              const segStart = charPos; const segEnd = charPos + seg.text.length; charPos = segEnd;
+              const os = Math.max(segStart, lineStart); const oe = Math.min(segEnd, lineEnd);
+              if (os >= oe) continue;
+              const portion = seg.text.slice(os - segStart, oe - segStart);
+              if (!portion) continue;
+              doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+              doc.text(portion, curX, y); curX += doc.getTextWidth(portion); rendered = true;
+            }
+            if (!rendered) { doc.setFont('helvetica', 'normal'); doc.text(wrappedLines[wi], xPos, y, { align: 'justify', maxWidth }); }
+            y += 5;
+          }
+        }
+      };
 
       const addSection = (label: string, text: string) => {
         if (!text) return;
         if (y > 260) { doc.addPage(); y = 20; }
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(99, 102, 241);
-        doc.text(label, margin, y);
-        y += 6;
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        doc.setFont('helvetica', 'normal');
-        const lines = doc.splitTextToSize(text, contentWidth);
-        doc.text(lines, margin, y, { align: 'justify', maxWidth: contentWidth });
-        y += lines.length * 5 + 5;
+        doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(99, 102, 241);
+        doc.text(label, margin, y); y += 6;
+        doc.setFontSize(10); doc.setTextColor(60, 60, 60);
+        renderMarkdownText(text, margin, contentWidth); y += 6;
       };
 
       addSection('Anotações da Sessão', session.notes_text || '');
       addSection('Planos de Ação', session.action_plans || '');
-      addSection('Próxima Sessão', session.next_session_notes || '');
+      addSection('Planejamento para Próxima Sessão', session.next_session_notes || '');
       addSection('Comentários Gerais', session.general_comments || '');
 
-      doc.save(`relatorio_grupo_${dateStr.replace(/\//g, '-')}.pdf`);
-      toast.success('Relatório baixado!');
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+        doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, 290, { align: 'center' });
+        doc.text('Documento confidencial — uso exclusivo profissional', pageWidth / 2, 295, { align: 'center' });
+      }
+
+      doc.save(`relatorio_grupo_${groupName.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '-')}.pdf`);
+      toast.success('Relatório gerado!');
     } catch {
       toast.error('Erro ao gerar relatório');
     } finally {
@@ -1183,18 +1389,39 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
               const date = new Date(s.created_at);
               const pData = s.participants_data || {};
               return (
-                <Card key={s.id} className="border-border">
+                <Card key={s.id} className="border-border hover:shadow-sm transition-shadow group">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground text-sm">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</p>
                         <p className="text-xs text-muted-foreground">
                           {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Duração: {formatTime(s.duration_seconds || 0)}
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDeleteSession(s.id)}>
-                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setViewingSession(s)}>
+                            <Eye className="w-4 h-4 mr-2" /> Visualizar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditSession(s)}>
+                            <Pencil className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => generateGroupReport(s)}>
+                            <FileText className="w-4 h-4 mr-2" /> Relatório PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRequestDeclaration(s)}>
+                            <ScrollText className="w-4 h-4 mr-2" /> Declaração de Comparecimento
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDeleteSessionId(s.id)} className="text-destructive focus:text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     {/* Mood summary */}
@@ -1211,17 +1438,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                     </div>
 
                     {s.notes_text && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.notes_text}</p>}
-
-                    {/* Action buttons */}
-                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
-                      <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setViewingSession(s)}>
-                        <Eye className="w-3.5 h-3.5" /> Ver detalhes
-                      </Button>
-                      <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => generateGroupReport(s)} disabled={generatingReport}>
-                        {generatingReport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        Relatório PDF
-                      </Button>
-                    </div>
                   </CardContent>
                 </Card>
               );
@@ -1330,6 +1546,63 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           actionPlansText={actionPlans}
           onSend={sendActionPlansToPortal}
         />
+      )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteSessionId} onOpenChange={(open) => !open && setDeleteSessionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir sessão</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir esta sessão? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteSessionId) { handleDeleteSession(deleteSessionId); setDeleteSessionId(null); } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Declaration dialog — select member + stamp */}
+      {declarationSession && (
+        <Dialog open={!!declarationSession} onOpenChange={(open) => { if (!open) { setDeclarationSession(null); setDeclarationMemberId(null); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><ScrollText className="w-4 h-4 text-primary" /> Declaração de Comparecimento</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs">Selecione o participante</Label>
+                <Select value={declarationMemberId || ''} onValueChange={setDeclarationMemberId}>
+                  <SelectTrigger><SelectValue placeholder="Escolha o participante" /></SelectTrigger>
+                  <SelectContent>
+                    {members.map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {stamps.length > 0 && (
+                <div>
+                  <Label className="text-xs">Carimbo / Assinatura</Label>
+                  <Select value={declarationStampId || ''} onValueChange={setDeclarationStampId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
+                    <SelectContent>
+                      {stamps.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setDeclarationSession(null); setDeclarationMemberId(null); }}>Cancelar</Button>
+              <Button onClick={generateDeclaration} disabled={!declarationMemberId} className="gap-1.5">
+                <Download className="w-4 h-4" /> Gerar Declaração
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
