@@ -1547,6 +1547,63 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           onSend={sendActionPlansToPortal}
         />
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteSessionId} onOpenChange={(open) => !open && setDeleteSessionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir sessão</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir esta sessão? Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteSessionId) { handleDeleteSession(deleteSessionId); setDeleteSessionId(null); } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Declaration dialog — select member + stamp */}
+      {declarationSession && (
+        <Dialog open={!!declarationSession} onOpenChange={(open) => { if (!open) { setDeclarationSession(null); setDeclarationMemberId(null); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><ScrollText className="w-4 h-4 text-primary" /> Declaração de Comparecimento</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs">Selecione o participante</Label>
+                <Select value={declarationMemberId || ''} onValueChange={setDeclarationMemberId}>
+                  <SelectTrigger><SelectValue placeholder="Escolha o participante" /></SelectTrigger>
+                  <SelectContent>
+                    {members.map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {stamps.length > 0 && (
+                <div>
+                  <Label className="text-xs">Carimbo / Assinatura</Label>
+                  <Select value={declarationStampId || ''} onValueChange={setDeclarationStampId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
+                    <SelectContent>
+                      {stamps.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setDeclarationSession(null); setDeclarationMemberId(null); }}>Cancelar</Button>
+              <Button onClick={generateDeclaration} disabled={!declarationMemberId} className="gap-1.5">
+                <Download className="w-4 h-4" /> Gerar Declaração
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
