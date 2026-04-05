@@ -829,7 +829,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
-
+  const generateGroupReport = async (session: any) => {
     setGeneratingReport(true);
     try {
       const doc = new jsPDF();
