@@ -2574,6 +2574,7 @@ export type Database = {
       therapy_sessions: {
         Row: {
           action_plans: string
+          ai_evolution: string | null
           clinic_id: string
           created_at: string
           duration_seconds: number
@@ -2600,6 +2601,7 @@ export type Database = {
         }
         Insert: {
           action_plans?: string
+          ai_evolution?: string | null
           clinic_id: string
           created_at?: string
           duration_seconds?: number
@@ -2626,6 +2628,7 @@ export type Database = {
         }
         Update: {
           action_plans?: string
+          ai_evolution?: string | null
           clinic_id?: string
           created_at?: string
           duration_seconds?: number
