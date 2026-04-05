@@ -50,6 +50,8 @@ interface GroupData {
   general_notes: string | null;
   session_link: string | null;
   default_price: number | null;
+  payment_type: string | null;
+  package_id: string | null;
   financial_enabled: boolean;
   is_archived: boolean;
   created_at: string;
@@ -113,6 +115,7 @@ export default function GroupDetail() {
   // Financial state
   const [payments, setPayments] = useState<any[]>([]);
   const [loadingFinancial, setLoadingFinancial] = useState(false);
+  const [clinicPackages, setClinicPackages] = useState<any[]>([]);
 
   // Mural state
   const [muralMember, setMuralMember] = useState<string | null>(null);
@@ -140,6 +143,15 @@ export default function GroupDetail() {
       .single();
     if (!g) { setLoading(false); return; }
     setGroup(g as unknown as GroupData);
+
+    // Load clinic packages
+    const { data: pkgs } = await supabase
+      .from('clinic_packages')
+      .select('*')
+      .eq('clinic_id', g.clinic_id)
+      .eq('is_active', true)
+      .order('name');
+    if (pkgs) setClinicPackages(pkgs);
 
     const { data: memberRows } = await supabase
       .from('therapeutic_group_members')
@@ -558,7 +570,7 @@ export default function GroupDetail() {
             </AccordionItem>
           </Accordion>
 
-          {/* Financial toggle & price */}
+          {/* Financial toggle & pricing */}
           <div className="bg-card border rounded-xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -575,23 +587,99 @@ export default function GroupDetail() {
               />
             </div>
             {group.financial_enabled && (
-              <div>
-                <Label className="text-sm font-medium">Valor por sessão do grupo (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={group.default_price ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value ? parseFloat(e.target.value) : null;
-                    setGroup(prev => prev ? { ...prev, default_price: val } : prev);
-                  }}
-                  onBlur={async () => {
-                    await supabase.from('therapeutic_groups').update({ default_price: group.default_price } as any).eq('id', group.id);
-                  }}
-                  className="mt-1 max-w-xs"
-                />
+              <div className="space-y-4 pt-2 border-t border-border">
+                {/* Payment type selector */}
+                <div>
+                  <Label className="text-sm font-medium">Tipo de cobrança</Label>
+                  <Select
+                    value={group.payment_type || 'por_sessao'}
+                    onValueChange={async (val) => {
+                      const updates: any = { payment_type: val };
+                      if (val === 'pacote') {
+                        // keep package_id
+                      } else {
+                        updates.package_id = null;
+                      }
+                      await supabase.from('therapeutic_groups').update(updates).eq('id', group.id);
+                      setGroup(prev => prev ? { ...prev, payment_type: val, ...(val !== 'pacote' ? { package_id: null } : {}) } : prev);
+                    }}
+                  >
+                    <SelectTrigger className="mt-1 max-w-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="por_sessao">Por Sessão</SelectItem>
+                      <SelectItem value="mensal">Mensal</SelectItem>
+                      <SelectItem value="pacote">Pacote</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Package selector (when type is pacote) */}
+                {group.payment_type === 'pacote' && (
+                  <div>
+                    <Label className="text-sm font-medium">Pacote da clínica</Label>
+                    {clinicPackages.length === 0 ? (
+                      <p className="text-xs text-muted-foreground mt-1">Nenhum pacote ativo nesta clínica. Crie pacotes na página da clínica.</p>
+                    ) : (
+                      <Select
+                        value={group.package_id || ''}
+                        onValueChange={async (val) => {
+                          const pkg = clinicPackages.find(p => p.id === val);
+                          const updates: any = { package_id: val, default_price: pkg?.price ?? group.default_price };
+                          await supabase.from('therapeutic_groups').update(updates).eq('id', group.id);
+                          setGroup(prev => prev ? { ...prev, package_id: val, default_price: pkg?.price ?? prev.default_price } : prev);
+                        }}
+                      >
+                        <SelectTrigger className="mt-1 max-w-xs">
+                          <SelectValue placeholder="Selecione um pacote" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clinicPackages.map(pkg => (
+                            <SelectItem key={pkg.id} value={pkg.id}>
+                              {pkg.name} — R$ {Number(pkg.price).toFixed(2)}
+                              {pkg.session_limit ? ` (${pkg.session_limit} sessões)` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {group.package_id && (() => {
+                      const pkg = clinicPackages.find(p => p.id === group.package_id);
+                      if (!pkg || !pkg.session_limit) return null;
+                      const perSession = (Number(pkg.price) / pkg.session_limit).toFixed(2);
+                      return (
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                          Valor por sessão: R$ {perSession} ({pkg.session_limit} sessões)
+                        </p>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Fixed price (for por_sessao and mensal) */}
+                {(group.payment_type !== 'pacote') && (
+                  <div>
+                    <Label className="text-sm font-medium">
+                      {group.payment_type === 'mensal' ? 'Valor mensal do grupo (R$)' : 'Valor por sessão do grupo (R$)'}
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={group.default_price ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseFloat(e.target.value) : null;
+                        setGroup(prev => prev ? { ...prev, default_price: val } : prev);
+                      }}
+                      onBlur={async () => {
+                        await supabase.from('therapeutic_groups').update({ default_price: group.default_price } as any).eq('id', group.id);
+                      }}
+                      className="mt-1 max-w-xs"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
