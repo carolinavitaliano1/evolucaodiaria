@@ -531,7 +531,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
   };
 
-  const [sendIndividualMemberId, setSendIndividualMemberId] = useState<string | null>(null);
+  // sendIndividualMemberId state moved to top-level state block
 
   const sendToIndividualProntuario = async (memberId: string) => {
     if (!user || !aiEvolution) return;
