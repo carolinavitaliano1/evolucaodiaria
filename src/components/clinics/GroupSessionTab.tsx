@@ -646,6 +646,23 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       return;
     }
 
+    // Check for duplicates - check first patient
+    const firstInsert = inserts[0];
+    const { data: existing } = await supabase
+      .from('evolutions')
+      .select('id')
+      .eq('patient_id', firstInsert.patient_id)
+      .eq('clinic_id', clinicId)
+      .eq('date', evolutionDate)
+      .eq('group_id', groupId)
+      .eq('text', firstInsert.text)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      toast.error('Essas evoluções já foram salvas no prontuário.');
+      return;
+    }
+
     setSendingToProntuario(true);
     try {
       const { error } = await supabase.from('evolutions').insert(inserts);
