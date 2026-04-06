@@ -371,12 +371,16 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setElapsedSeconds(0);
     setStartedAt(null);
     setAiEvolution('');
+    setAiIndividualEvolutions({});
     setActivePlan(null);
     const init: Record<string, ParticipantData> = {};
+    const initAtt: Record<string, string> = {};
     members.forEach(m => {
       init[m.id] = { moodScore: null, positiveFeelings: [], negativeFeelings: [], suicidalThoughts: false };
+      initAtt[m.id] = 'presente';
     });
     setParticipantsData(init);
+    setParticipantAttendance(initAtt);
   };
 
   // ─── Participant helpers ───
