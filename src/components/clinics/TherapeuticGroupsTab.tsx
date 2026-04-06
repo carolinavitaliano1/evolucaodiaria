@@ -166,7 +166,12 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
         await supabase.from('therapeutic_group_members').delete().eq('group_id', editingId);
         if (selectedPatients.length > 0) {
           await supabase.from('therapeutic_group_members').insert(
-            selectedPatients.map(pid => ({ group_id: editingId, patient_id: pid }))
+            selectedPatients.map(pid => ({
+              group_id: editingId,
+              patient_id: pid,
+              is_paying: selectedPaymentConfigs[pid]?.isPaying ?? true,
+              member_payment_value: selectedPaymentConfigs[pid]?.memberPaymentValue ?? null,
+            }))
           );
         }
         toast.success('Grupo atualizado');
@@ -178,7 +183,12 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
         } as any).select('id').single();
         if (data && selectedPatients.length > 0) {
           await supabase.from('therapeutic_group_members').insert(
-            selectedPatients.map(pid => ({ group_id: data.id, patient_id: pid }))
+            selectedPatients.map(pid => ({
+              group_id: data.id,
+              patient_id: pid,
+              is_paying: selectedPaymentConfigs[pid]?.isPaying ?? true,
+              member_payment_value: selectedPaymentConfigs[pid]?.memberPaymentValue ?? null,
+            }))
           );
         }
         toast.success('Grupo criado');
