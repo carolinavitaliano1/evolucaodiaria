@@ -852,12 +852,29 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       doc.setTextColor(50, 50, 50);
       doc.setFont('helvetica', 'normal');
 
-      const bodyText = `Declaro, para os devidos fins, que ${member.name} está em atendimento terapêutico de grupo ("${groupName}") sob meus cuidados, e compareceu à sessão realizada no dia ${dateStr} das ${startTime} às ${endTime}.`;
-      const bodyLines: string[] = doc.splitTextToSize(bodyText, contentWidth);
+      // Build declaration text with bold group name inline
+      const textBefore = `Declaro, para os devidos fins, que ${member.name} está em atendimento terapêutico de grupo `;
+      const textAfter = ` sob meus cuidados, e compareceu à sessão realizada no dia ${dateStr} das ${startTime} às ${endTime}.`;
+      const fullBodyText = textBefore + groupName + textAfter;
+      const bodyLines: string[] = doc.splitTextToSize(fullBodyText, contentWidth);
+
       for (let li = 0; li < bodyLines.length; li++) {
         if (y > 260) { doc.addPage(); y = 20; }
-        const isLast = li === bodyLines.length - 1;
-        doc.text(bodyLines[li], margin, y, { align: isLast ? 'left' : 'justify', maxWidth: contentWidth });
+        // Find if this line contains the group name to render it bold
+        const lineText = bodyLines[li];
+        const gnIdx = lineText.indexOf(groupName);
+        if (gnIdx !== -1) {
+          // Render segments: before (normal), group name (bold), after (normal)
+          const beforePart = lineText.substring(0, gnIdx);
+          const afterPart = lineText.substring(gnIdx + groupName.length);
+          let curX = margin;
+          if (beforePart) { doc.setFont('helvetica', 'normal'); doc.text(beforePart, curX, y); curX += doc.getTextWidth(beforePart); }
+          doc.setFont('helvetica', 'bold'); doc.text(groupName, curX, y); curX += doc.getTextWidth(groupName);
+          if (afterPart) { doc.setFont('helvetica', 'normal'); doc.text(afterPart, curX, y); }
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.text(lineText, margin, y, { align: 'justify', maxWidth: contentWidth });
+        }
         y += 7;
       }
 
