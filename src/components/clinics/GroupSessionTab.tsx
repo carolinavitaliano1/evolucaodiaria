@@ -673,13 +673,32 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       return;
     }
 
+    const evolutionDate = new Date().toISOString().slice(0, 10);
+
+    // Check for duplicates
+    const { data: existing } = await supabase
+      .from('evolutions')
+      .select('id')
+      .eq('patient_id', memberId)
+      .eq('clinic_id', clinicId)
+      .eq('date', evolutionDate)
+      .eq('group_id', groupId)
+      .eq('text', text)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      toast.error('Essa evolução já foi salva no prontuário.');
+      return;
+    }
+
     setSendingToProntuario(true);
     try {
       const { error } = await supabase.from('evolutions').insert({
         user_id: user.id,
         patient_id: memberId,
         clinic_id: clinicId,
-        date: new Date().toISOString().slice(0, 10),
+        group_id: groupId,
+        date: evolutionDate,
         text,
         attendance_status: participantAttendance[memberId] || 'presente',
         mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
