@@ -220,6 +220,7 @@ export default function PatientDetail() {
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
   const [feedbackEvolution, setFeedbackEvolution] = useState<Evolution | null>(null);
   const [feedbackBulkOpen, setFeedbackBulkOpen] = useState(false);
+  const [evoTypeFilter, setEvoTypeFilter] = useState<'all' | 'group' | 'individual'>('all');
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [archivePatientOpen, setArchivePatientOpen] = useState(false);
