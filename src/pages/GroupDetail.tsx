@@ -88,6 +88,7 @@ export default function GroupDetail() {
   const { user } = useAuth();
   const [group, setGroup] = useState<GroupData | null>(null);
   const [members, setMembers] = useState<MemberPatient[]>([]);
+  const [memberPaymentConfigs, setMemberPaymentConfigs] = useState<Record<string, MemberPaymentConfig>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
 
