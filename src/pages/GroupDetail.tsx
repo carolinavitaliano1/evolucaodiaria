@@ -68,6 +68,11 @@ interface MemberPatient {
   avatar_url: string | null;
 }
 
+interface MemberPaymentConfig {
+  isPaying: boolean;
+  memberPaymentValue: number | null;
+}
+
 function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-start gap-1 py-2 border-b border-border last:border-0">
@@ -83,6 +88,7 @@ export default function GroupDetail() {
   const { user } = useAuth();
   const [group, setGroup] = useState<GroupData | null>(null);
   const [members, setMembers] = useState<MemberPatient[]>([]);
+  const [memberPaymentConfigs, setMemberPaymentConfigs] = useState<Record<string, MemberPaymentConfig>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
 
@@ -176,7 +182,7 @@ export default function GroupDetail() {
 
     const { data: memberRows } = await supabase
       .from('therapeutic_group_members')
-      .select('patient_id')
+      .select('patient_id, is_paying, member_payment_value')
       .eq('group_id', id!)
       .eq('status', 'active');
 
@@ -187,6 +193,16 @@ export default function GroupDetail() {
         .select('id, name, avatar_url')
         .in('id', patientIds);
       if (patients) setMembers(patients as MemberPatient[]);
+
+      // Build payment config map
+      const configMap: Record<string, MemberPaymentConfig> = {};
+      memberRows.forEach((m: any) => {
+        configMap[m.patient_id] = {
+          isPaying: m.is_paying ?? true,
+          memberPaymentValue: m.member_payment_value ?? null,
+        };
+      });
+      setMemberPaymentConfigs(configMap);
     }
     setLoading(false);
   };
@@ -791,6 +807,63 @@ export default function GroupDetail() {
               </div>
             )}
           </div>
+
+          {/* Member payment configuration */}
+          {group.financial_enabled && members.length > 0 && (
+            <div className="bg-card border rounded-xl p-4 space-y-3">
+              <p className="text-sm font-medium text-foreground">💰 Configuração de pagamento por participante</p>
+              <p className="text-xs text-muted-foreground">Defina quem é pagante e o valor individual (ou use o valor padrão do grupo).</p>
+              <div className="space-y-2">
+                {members.map(m => {
+                  const config = memberPaymentConfigs[m.id] || { isPaying: true, memberPaymentValue: null };
+                  const updateMemberConfig = async (updates: Partial<MemberPaymentConfig>) => {
+                    const newConfig = { ...config, ...updates };
+                    setMemberPaymentConfigs(prev => ({ ...prev, [m.id]: newConfig }));
+                    await supabase.from('therapeutic_group_members').update({
+                      is_paying: newConfig.isPaying,
+                      member_payment_value: newConfig.memberPaymentValue,
+                    } as any).eq('group_id', group.id).eq('patient_id', m.id);
+                  };
+                  return (
+                    <div key={m.id} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border border-border bg-background">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-sm font-medium text-foreground truncate">{m.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={config.isPaying}
+                            onCheckedChange={(checked) => updateMemberConfig({ isPaying: checked })}
+                          />
+                          <Label className="text-xs whitespace-nowrap">
+                            {config.isPaying ? '💲 Pagante' : '🚫 Não pagante'}
+                          </Label>
+                        </div>
+                        {config.isPaying && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground">R$</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder={group.default_price ? `${group.default_price}` : '0.00'}
+                              value={config.memberPaymentValue ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseFloat(e.target.value) : null;
+                                setMemberPaymentConfigs(prev => ({ ...prev, [m.id]: { ...config, memberPaymentValue: val } }));
+                              }}
+                              onBlur={() => updateMemberConfig({ memberPaymentValue: config.memberPaymentValue })}
+                              className="w-24 h-8 text-sm"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* ═══ Session Tab ═══ */}

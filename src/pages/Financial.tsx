@@ -26,10 +26,13 @@ export default function Financial() {
 
   // Group prices for group evolutions
   const [groupPrices, setGroupPrices] = useState<Record<string, number>>({});
+  // Member payment configs: memberPaymentMap[groupId][patientId] = { isPaying, value }
+  const [memberPaymentMap, setMemberPaymentMap] = useState<Record<string, Record<string, { isPaying: boolean; value: number | null }>>>({});
 
   useEffect(() => {
     if (user) {
       loadAllEvolutions();
+      // Load group prices
       supabase.from('therapeutic_groups').select('id, default_price, financial_enabled')
         .eq('financial_enabled', true)
         .then(({ data }) => {
@@ -37,6 +40,22 @@ export default function Financial() {
             const map: Record<string, number> = {};
             data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
             setGroupPrices(map);
+          }
+        });
+      // Load member payment configs
+      supabase.from('therapeutic_group_members').select('group_id, patient_id, is_paying, member_payment_value')
+        .eq('status', 'active')
+        .then(({ data }) => {
+          if (data) {
+            const map: Record<string, Record<string, { isPaying: boolean; value: number | null }>> = {};
+            data.forEach((m: any) => {
+              if (!map[m.group_id]) map[m.group_id] = {};
+              map[m.group_id][m.patient_id] = {
+                isPaying: m.is_paying ?? true,
+                value: m.member_payment_value ?? null,
+              };
+            });
+            setMemberPaymentMap(map);
           }
         });
     }
@@ -143,7 +162,7 @@ export default function Financial() {
 
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue) return 0;
+    if (!patient) return 0;
 
     const billableEvolutions = monthlyEvolutions.filter(
       e => e.patientId === patientId && (
@@ -158,8 +177,16 @@ export default function Financial() {
     const groupEvos = billableEvolutions.filter(e => e.groupId && groupPrices[e.groupId]);
     const individualEvos = billableEvolutions.filter(e => !e.groupId || !groupPrices[e.groupId!]);
 
-    // Group revenue: sum by group price
-    const groupRevenue = groupEvos.reduce((sum, e) => sum + (groupPrices[e.groupId!] || 0), 0);
+    // Group revenue: check member payment config
+    const groupRevenue = groupEvos.reduce((sum, e) => {
+      const groupId = e.groupId!;
+      const memberConfig = memberPaymentMap[groupId]?.[patientId];
+      // If member is not paying, skip
+      if (memberConfig && !memberConfig.isPaying) return sum;
+      // Use member-specific value, or fallback to group default price
+      const value = memberConfig?.value ?? groupPrices[groupId] ?? 0;
+      return sum + value;
+    }, 0);
 
     // Individual revenue (original logic)
     let individualRevenue = 0;
@@ -256,7 +283,7 @@ export default function Financial() {
     const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
     const pr = patientPaymentRecords[patient.id];
     return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0, pr };
-  }).filter(p => p.paymentValue > 0);
+  }).filter(p => p.paymentValue > 0 || p.revenue > 0);
 
   // Apply filters
   const patientStats = allPatientStats.filter(({ pr, patient }) => {

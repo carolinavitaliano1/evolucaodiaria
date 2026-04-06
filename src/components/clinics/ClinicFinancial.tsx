@@ -52,6 +52,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
   const [groupPrices, setGroupPrices] = useState<Record<string, number>>({});
+  const [memberPaymentMap, setMemberPaymentMap] = useState<Record<string, Record<string, { isPaying: boolean; value: number | null }>>>({});
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
@@ -117,6 +118,27 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           const map: Record<string, number> = {};
           data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
           setGroupPrices(map);
+
+          // Load member payment configs for these groups
+          if (data.length > 0) {
+            const groupIds = data.map((g: any) => g.id);
+            supabase.from('therapeutic_group_members').select('group_id, patient_id, is_paying, member_payment_value')
+              .in('group_id', groupIds)
+              .eq('status', 'active')
+              .then(({ data: membersData }) => {
+                if (membersData) {
+                  const mmap: Record<string, Record<string, { isPaying: boolean; value: number | null }>> = {};
+                  membersData.forEach((m: any) => {
+                    if (!mmap[m.group_id]) mmap[m.group_id] = {};
+                    mmap[m.group_id][m.patient_id] = {
+                      isPaying: m.is_paying ?? true,
+                      value: m.member_payment_value ?? null,
+                    };
+                  });
+                  setMemberPaymentMap(mmap);
+                }
+              });
+          }
         }
       });
   }, [clinicId]);
@@ -276,8 +298,14 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     const groupEvos = billableEvolutions.filter(e => e.groupId && groupPrices[e.groupId]);
     const individualEvos = billableEvolutions.filter(e => !e.groupId || !groupPrices[e.groupId!]);
 
-    // Group revenue
-    const groupRevenue = groupEvos.reduce((sum, e) => sum + (groupPrices[e.groupId!] || 0), 0);
+    // Group revenue: check member payment config
+    const groupRevenue = groupEvos.reduce((sum, e) => {
+      const groupId = e.groupId!;
+      const memberConfig = memberPaymentMap[groupId]?.[patient.id];
+      if (memberConfig && !memberConfig.isPaying) return sum;
+      const value = memberConfig?.value ?? groupPrices[groupId] ?? 0;
+      return sum + value;
+    }, 0);
 
     // Individual revenue
     let individualRevenue = 0;

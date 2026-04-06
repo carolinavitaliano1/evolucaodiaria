@@ -97,10 +97,12 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
   const navigate = useNavigate();
   const [groups, setGroups] = useState<TherapeuticGroup[]>([]);
   const [members, setMembers] = useState<Record<string, string[]>>({});
+  const [memberConfigs, setMemberConfigs] = useState<Record<string, Record<string, { isPaying: boolean; memberPaymentValue: number | null }>>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
+  const [selectedPaymentConfigs, setSelectedPaymentConfigs] = useState<Record<string, { isPaying: boolean; memberPaymentValue: number | null }>>({});
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -115,15 +117,22 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
 
     const { data: membersData } = await supabase
       .from('therapeutic_group_members')
-      .select('group_id, patient_id')
+      .select('group_id, patient_id, is_paying, member_payment_value')
       .eq('status', 'active');
     if (membersData) {
       const map: Record<string, string[]> = {};
+      const configs: Record<string, Record<string, { isPaying: boolean; memberPaymentValue: number | null }>> = {};
       membersData.forEach((m: any) => {
         if (!map[m.group_id]) map[m.group_id] = [];
         map[m.group_id].push(m.patient_id);
+        if (!configs[m.group_id]) configs[m.group_id] = {};
+        configs[m.group_id][m.patient_id] = {
+          isPaying: m.is_paying ?? true,
+          memberPaymentValue: m.member_payment_value ?? null,
+        };
       });
       setMembers(map);
+      setMemberConfigs(configs);
     }
   };
 
@@ -133,6 +142,7 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
     setEditingId(null);
     setForm(emptyForm());
     setSelectedPatients([]);
+    setSelectedPaymentConfigs({});
     setDialogOpen(true);
   };
 
@@ -140,6 +150,7 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
     setEditingId(g.id);
     setForm({ ...g });
     setSelectedPatients(members[g.id] || []);
+    setSelectedPaymentConfigs(memberConfigs[g.id] || {});
     setDialogOpen(true);
   };
 
@@ -155,7 +166,12 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
         await supabase.from('therapeutic_group_members').delete().eq('group_id', editingId);
         if (selectedPatients.length > 0) {
           await supabase.from('therapeutic_group_members').insert(
-            selectedPatients.map(pid => ({ group_id: editingId, patient_id: pid }))
+            selectedPatients.map(pid => ({
+              group_id: editingId,
+              patient_id: pid,
+              is_paying: selectedPaymentConfigs[pid]?.isPaying ?? true,
+              member_payment_value: selectedPaymentConfigs[pid]?.memberPaymentValue ?? null,
+            }))
           );
         }
         toast.success('Grupo atualizado');
@@ -167,7 +183,12 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
         } as any).select('id').single();
         if (data && selectedPatients.length > 0) {
           await supabase.from('therapeutic_group_members').insert(
-            selectedPatients.map(pid => ({ group_id: data.id, patient_id: pid }))
+            selectedPatients.map(pid => ({
+              group_id: data.id,
+              patient_id: pid,
+              is_paying: selectedPaymentConfigs[pid]?.isPaying ?? true,
+              member_payment_value: selectedPaymentConfigs[pid]?.memberPaymentValue ?? null,
+            }))
           );
         }
         toast.success('Grupo criado');
@@ -276,17 +297,47 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
             {/* Participantes */}
             <div>
               <Label>Participantes *</Label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
+              <div className="space-y-2 mb-2">
                 {selectedPatients.map(pid => {
                   const p = patients.find(pt => pt.id === pid);
-                  return p ? (
-                    <Badge key={pid} variant="secondary" className="gap-1 pr-1">
-                      {p.name}
-                      <button onClick={() => setSelectedPatients(prev => prev.filter(x => x !== pid))} className="ml-0.5 hover:text-destructive">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ) : null;
+                  const config = selectedPaymentConfigs[pid] || { isPaying: true, memberPaymentValue: null };
+                  if (!p) return null;
+                  return (
+                    <div key={pid} className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 rounded-lg border border-border bg-background">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-sm font-medium truncate">{p.name}</span>
+                        <button onClick={() => setSelectedPatients(prev => prev.filter(x => x !== pid))} className="hover:text-destructive">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <Switch
+                            checked={config.isPaying}
+                            onCheckedChange={(checked) => setSelectedPaymentConfigs(prev => ({
+                              ...prev,
+                              [pid]: { ...config, isPaying: checked }
+                            }))}
+                          />
+                          <span className="text-xs text-muted-foreground">{config.isPaying ? 'Pagante' : 'Não paga'}</span>
+                        </div>
+                        {config.isPaying && (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Valor (R$)"
+                            value={config.memberPaymentValue ?? ''}
+                            onChange={(e) => setSelectedPaymentConfigs(prev => ({
+                              ...prev,
+                              [pid]: { ...config, memberPaymentValue: e.target.value ? parseFloat(e.target.value) : null }
+                            }))}
+                            className="w-28 h-7 text-xs"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
                 })}
               </div>
               <Input placeholder="Buscar paciente..." value={search} onChange={e => setSearch(e.target.value)} className="mb-1" />

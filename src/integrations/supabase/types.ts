@@ -2353,21 +2353,27 @@ export type Database = {
         Row: {
           group_id: string
           id: string
+          is_paying: boolean
           joined_at: string
+          member_payment_value: number | null
           patient_id: string
           status: string
         }
         Insert: {
           group_id: string
           id?: string
+          is_paying?: boolean
           joined_at?: string
+          member_payment_value?: number | null
           patient_id: string
           status?: string
         }
         Update: {
           group_id?: string
           id?: string
+          is_paying?: boolean
           joined_at?: string
+          member_payment_value?: number | null
           patient_id?: string
           status?: string
         }
