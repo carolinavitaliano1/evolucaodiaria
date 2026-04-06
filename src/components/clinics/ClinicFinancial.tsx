@@ -298,8 +298,14 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     const groupEvos = billableEvolutions.filter(e => e.groupId && groupPrices[e.groupId]);
     const individualEvos = billableEvolutions.filter(e => !e.groupId || !groupPrices[e.groupId!]);
 
-    // Group revenue
-    const groupRevenue = groupEvos.reduce((sum, e) => sum + (groupPrices[e.groupId!] || 0), 0);
+    // Group revenue: check member payment config
+    const groupRevenue = groupEvos.reduce((sum, e) => {
+      const groupId = e.groupId!;
+      const memberConfig = memberPaymentMap[groupId]?.[patient.id];
+      if (memberConfig && !memberConfig.isPaying) return sum;
+      const value = memberConfig?.value ?? groupPrices[groupId] ?? 0;
+      return sum + value;
+    }, 0);
 
     // Individual revenue
     let individualRevenue = 0;
