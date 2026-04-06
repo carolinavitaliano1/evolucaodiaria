@@ -415,6 +415,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       setSessionId(null);
       resetForm();
       await loadHistory();
+      await loadSavedNextSessions();
       setMainView('history');
     }
   };
