@@ -68,6 +68,11 @@ interface MemberPatient {
   avatar_url: string | null;
 }
 
+interface MemberPaymentConfig {
+  isPaying: boolean;
+  memberPaymentValue: number | null;
+}
+
 function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-start gap-1 py-2 border-b border-border last:border-0">
