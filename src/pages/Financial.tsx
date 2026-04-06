@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDynamicSessionValue } from '@/utils/dateHelpers';
+import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 
 type PaymentStatusFilter = 'all' | 'paid' | 'pending';
 
@@ -24,30 +25,32 @@ export default function Financial() {
   const { getMonthlyAppointments } = usePrivateAppointments();
   const { user } = useAuth();
 
-  // Group prices for group evolutions
-  const [groupPrices, setGroupPrices] = useState<Record<string, number>>({});
-  // Member payment configs: memberPaymentMap[groupId][patientId] = { isPaying, value }
-  const [memberPaymentMap, setMemberPaymentMap] = useState<Record<string, Record<string, { isPaying: boolean; value: number | null }>>>({});
+  const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
+  const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
 
   useEffect(() => {
     if (user) {
       loadAllEvolutions();
-      // Load group prices
-      supabase.from('therapeutic_groups').select('id, default_price, financial_enabled')
-        .eq('financial_enabled', true)
+      supabase.from('therapeutic_groups').select('id, default_price, financial_enabled, payment_type, package_id')
         .then(({ data }) => {
           if (data) {
-            const map: Record<string, number> = {};
-            data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
-            setGroupPrices(map);
+            const map: GroupBillingMap = {};
+            data.forEach((g: any) => {
+              map[g.id] = {
+                defaultPrice: g.default_price ?? null,
+                paymentType: g.payment_type ?? null,
+                packageId: g.package_id ?? null,
+                financialEnabled: g.financial_enabled ?? false,
+              };
+            });
+            setGroupBillingMap(map);
           }
         });
-      // Load member payment configs
       supabase.from('therapeutic_group_members').select('group_id, patient_id, is_paying, member_payment_value')
         .eq('status', 'active')
         .then(({ data }) => {
           if (data) {
-            const map: Record<string, Record<string, { isPaying: boolean; value: number | null }>> = {};
+            const map: GroupMemberPaymentMap = {};
             data.forEach((m: any) => {
               if (!map[m.group_id]) map[m.group_id] = {};
               map[m.group_id][m.patient_id] = {
@@ -160,6 +163,18 @@ export default function Financial() {
     return isPersonalizado ? patient.paymentValue / pkg!.sessionLimit! : patient.paymentValue;
   };
 
+  const getPatientGroupValue = (patientId: string, groupId?: string) => getGroupSessionValue({
+    groupId,
+    patientId,
+    groupBillingMap,
+    memberPaymentMap,
+    packages: clinicPackages.map(pkg => ({
+      id: pkg.id,
+      price: pkg.price,
+      sessionLimit: pkg.sessionLimit,
+    })),
+  });
+
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
     if (!patient) return 0;
@@ -173,22 +188,13 @@ export default function Financial() {
       )
     );
 
-    // Separate group and individual evolutions
-    const groupEvos = billableEvolutions.filter(e => e.groupId && groupPrices[e.groupId]);
-    const individualEvos = billableEvolutions.filter(e => !e.groupId || !groupPrices[e.groupId!]);
+    const groupEvos = billableEvolutions.filter(e => e.groupId);
+    const individualEvos = billableEvolutions.filter(e => !e.groupId);
 
-    // Group revenue: check member payment config
     const groupRevenue = groupEvos.reduce((sum, e) => {
-      const groupId = e.groupId!;
-      const memberConfig = memberPaymentMap[groupId]?.[patientId];
-      // If member is not paying, skip
-      if (memberConfig && !memberConfig.isPaying) return sum;
-      // Use member-specific value, or fallback to group default price
-      const value = memberConfig?.value ?? groupPrices[groupId] ?? 0;
-      return sum + value;
+      return sum + getPatientGroupValue(patientId, e.groupId);
     }, 0);
 
-    // Individual revenue (original logic)
     let individualRevenue = 0;
     if (individualEvos.length > 0 && patient.paymentValue) {
       if (patient.paymentType === 'fixo') {
@@ -209,23 +215,30 @@ export default function Financial() {
 
   const calculatePatientLoss = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue) return 0;
+    if (!patient) return 0;
 
-    const deductibleAbsences = absentEvolutions.filter(e => e.patientId === patientId).length;
-    if (deductibleAbsences === 0) return 0;
+    const deductibleAbsences = absentEvolutions.filter(e => e.patientId === patientId);
+    if (deductibleAbsences.length === 0) return 0;
+
+    const groupLoss = deductibleAbsences
+      .filter(e => e.groupId)
+      .reduce((sum, e) => sum + getPatientGroupValue(patientId, e.groupId), 0);
+
+    const individualAbsences = deductibleAbsences.filter(e => !e.groupId);
+    if (individualAbsences.length === 0 || !patient.paymentValue) return groupLoss;
 
     if (patient.paymentType === 'fixo') {
       const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
       const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
 
       if (dynamic.occurrences > 0) {
-        return deductibleAbsences * dynamic.perSession;
+        return groupLoss + (individualAbsences.length * dynamic.perSession);
       }
 
-      return deductibleAbsences * patient.paymentValue;
+      return groupLoss + (individualAbsences.length * patient.paymentValue);
     }
 
-    return deductibleAbsences * getEffectiveSessionValue(patient);
+    return groupLoss + (individualAbsences.length * getEffectiveSessionValue(patient));
   };
 
   const monthlyPrivateAppointments = getMonthlyAppointments(selectedMonth, selectedYear);
@@ -283,7 +296,7 @@ export default function Financial() {
     const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
     const pr = patientPaymentRecords[patient.id];
     return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0, pr };
-  }).filter(p => p.paymentValue > 0 || p.revenue > 0);
+  }).filter(p => p.sessions > 0 || p.paidAbsences > 0 || p.absences > 0 || p.revenue > 0 || p.loss > 0);
 
   // Apply filters
   const patientStats = allPatientStats.filter(({ pr, patient }) => {
@@ -317,7 +330,7 @@ export default function Financial() {
           clinic_id: patient?.clinicId,
           month: m,
           year: y,
-          amount: revenue || (patient?.paymentValue ?? 0),
+          amount: revenue,
           paid: newPaid,
           payment_date: newDate,
         };
@@ -905,25 +918,33 @@ export default function Financial() {
         const patientName = patient.name.substring(0, 20);
         let statusLabel = '';
         let sessionValue = 0;
+        const groupSessionValue = evo.groupId ? getPatientGroupValue(patient.id, evo.groupId) : 0;
 
         if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao') {
           statusLabel = evo.attendanceStatus === 'reposicao' ? 'Reposição' : 'Presente';
           totalSessions++;
-          if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
+          if (evo.groupId) sessionValue = groupSessionValue;
+          else if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
         } else if (evo.attendanceStatus === 'falta_remunerada') {
           statusLabel = 'Falta Rem.';
           totalPaidAbsences++;
-          if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
+          if (evo.groupId) sessionValue = groupSessionValue;
+          else if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
         } else if (evo.attendanceStatus === 'feriado_remunerado') {
           statusLabel = 'Feriado Rem.';
-          if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
+          if (evo.groupId) sessionValue = groupSessionValue;
+          else if (patient.paymentType === 'sessao' && patient.paymentValue) sessionValue = patient.paymentValue;
         } else if (evo.attendanceStatus === 'feriado_nao_remunerado') {
           statusLabel = 'Feriado';
         } else if (evo.attendanceStatus === 'falta') {
           statusLabel = 'Falta';
           totalAbsences++;
           const absenceType = clinic.absencePaymentType || (clinic.paysOnAbsence === false ? 'never' : 'always');
-          if (patient.paymentType === 'sessao' && patient.paymentValue) {
+          if (evo.groupId) {
+            if (absenceType === 'always' || (absenceType === 'confirmed_only' && evo.confirmedAttendance)) {
+              sessionValue = groupSessionValue;
+            }
+          } else if (patient.paymentType === 'sessao' && patient.paymentValue) {
             if (absenceType === 'always') sessionValue = patient.paymentValue;
             else if (absenceType === 'confirmed_only' && evo.confirmedAttendance) sessionValue = patient.paymentValue;
           }

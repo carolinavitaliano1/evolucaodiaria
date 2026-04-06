@@ -107,7 +107,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [sendingToPortal, setSendingToPortal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendTargetMemberId, setSendTargetMemberId] = useState<string | null>(null);
-  const [sendIndividualMemberId, setSendIndividualMemberId] = useState<string | null>(null);
 
   // Stamps & Declaration
   const [stamps, setStamps] = useState<any[]>([]);
@@ -698,92 +697,44 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         : [];
 
     if (inserts.length === 0) {
-      toast.error('Preencha a evolução antes de enviar para o prontuário do grupo.');
+      toast.error('Preencha a evolução antes de enviar para o prontuário.');
       return;
     }
 
-    // Check for duplicates - check first patient
-    const firstInsert = inserts[0];
     const { data: existing } = await supabase
       .from('evolutions')
-      .select('id')
-      .eq('patient_id', firstInsert.patient_id)
+      .select('patient_id, text')
       .eq('clinic_id', clinicId)
       .eq('date', evolutionDate)
       .eq('group_id', groupId)
-      .eq('text', firstInsert.text)
-      .limit(1);
+      .in('patient_id', [...new Set(inserts.map(item => item.patient_id))]);
 
-    if (existing && existing.length > 0) {
+    const existingKeys = new Set(
+      (existing || []).map((item: any) => `${item.patient_id}::${String(item.text || '').trim()}`)
+    );
+
+    const pendingInserts = inserts.filter(item => !existingKeys.has(`${item.patient_id}::${item.text.trim()}`));
+
+    if (pendingInserts.length === 0) {
       toast.error('Essas evoluções já foram salvas no prontuário.');
       return;
     }
 
     setSendingToProntuario(true);
     try {
-      const { error } = await supabase.from('evolutions').insert(inserts);
+      const { error } = await supabase.from('evolutions').insert(pendingInserts);
       if (error) throw error;
 
       await syncSavedEvolutions();
-      toast.success(aiEvoMode === 'individual'
-        ? 'Evoluções individuais salvas no prontuário do grupo!'
-        : 'Evolução salva no prontuário do grupo!');
+      const skippedCount = inserts.length - pendingInserts.length;
+      toast.success(
+        skippedCount > 0
+          ? `Prontuário atualizado (${pendingInserts.length} salva(s), ${skippedCount} já existente(s)).`
+          : 'Evolução salva no prontuário!'
+      );
     } catch (error: any) {
-      console.error('Erro ao enviar evoluções para prontuário do grupo:', error);
-      toast.error(error?.message || 'Erro ao enviar para prontuário do grupo');
-    } finally {
-      setSendingToProntuario(false);
-    }
-  };
-
-  const sendToIndividualProntuario = async (memberId: string) => {
-    if (!user) return;
-    const pd = participantsData[memberId];
-    const text = (aiEvoMode === 'individual' ? aiIndividualEvolutions[memberId] : aiEvolution)?.trim();
-
-    if (!text) {
-      toast.error('Preencha a evolução antes de enviar para o prontuário individual.');
-      return;
-    }
-
-    const evolutionDate = new Date().toISOString().slice(0, 10);
-
-    // Check for duplicates
-    const { data: existing } = await supabase
-      .from('evolutions')
-      .select('id')
-      .eq('patient_id', memberId)
-      .eq('clinic_id', clinicId)
-      .eq('date', evolutionDate)
-      .eq('group_id', groupId)
-      .eq('text', text)
-      .limit(1);
-
-    if (existing && existing.length > 0) {
-      toast.error('Essa evolução já foi salva no prontuário.');
-      return;
-    }
-
-    setSendingToProntuario(true);
-    try {
-      const { error } = await supabase.from('evolutions').insert({
-        user_id: user.id,
-        patient_id: memberId,
-        clinic_id: clinicId,
-        group_id: groupId,
-        date: evolutionDate,
-        text,
-        attendance_status: participantAttendance[memberId] || 'presente',
-        mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
-      });
-      if (error) throw error;
-
-      await syncSavedEvolutions();
-      const name = members.find(m => m.id === memberId)?.name || 'paciente';
-      toast.success(`Evolução salva no prontuário individual de ${name}!`);
-    } catch (error: any) {
-      console.error('Erro ao enviar evolução para prontuário individual:', error);
-      toast.error(error?.message || 'Erro ao enviar para prontuário individual');
+      console.error('Erro ao enviar evoluções para prontuário:', error);
+      toast.error(error?.message || 'Erro ao enviar para prontuário');
     } finally {
       setSendingToProntuario(false);
     }
@@ -1716,24 +1667,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                       )}
 
                       {aiEvolution.trim() && (
-                        <>
-                          <Button onClick={sendToGroupProntuario} disabled={sendingToProntuario} variant="outline" className="gap-1.5 w-full">
-                            {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                            Enviar para prontuário do grupo
-                          </Button>
-
-                          <div className="border border-border rounded-lg p-3 space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground">Enviar para prontuário individual:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {members.map(m => (
-                                <Button key={m.id} variant="outline" size="sm" className="gap-1.5 text-xs" disabled={sendingToProntuario}
-                                  onClick={() => sendToIndividualProntuario(m.id)}>
-                                  <Send className="w-3 h-3" /> {m.name}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
+                        <Button onClick={sendToGroupProntuario} disabled={sendingToProntuario} variant="outline" className="gap-1.5 w-full">
+                          {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                          Enviar para prontuário
+                        </Button>
                       )}
                     </div>
                   )}
@@ -1788,12 +1725,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                                   {improvingField === `individual_${m.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Melhorar
                                 </Button>
                               )}
-                              <Button
-                                variant="outline" size="sm" className="gap-1 text-xs h-7" disabled={sendingToProntuario || !aiIndividualEvolutions[m.id]?.trim()}
-                                onClick={() => sendToIndividualProntuario(m.id)}
-                              >
-                                <Send className="w-3 h-3" /> Prontuário individual
-                              </Button>
                             </div>
                           </div>
                           <Textarea
@@ -1807,7 +1738,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
 
                       <Button onClick={sendToGroupProntuario} disabled={sendingToProntuario} variant="outline" className="gap-1.5 w-full">
                         {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                        Enviar todas para prontuário do grupo
+                        Enviar para prontuário
                       </Button>
                     </div>
                   )}
