@@ -1022,7 +1022,10 @@ export default function PatientDetail() {
     if (!startDate || !endDate) return;
     const filtered = patientEvolutions.filter(evo => {
       const d = new Date(evo.date + 'T12:00:00');
-      return d >= startDate && d <= endDate;
+      if (d < startDate || d > endDate) return false;
+      if (evoTypeFilter === 'group') return !!evo.groupId;
+      if (evoTypeFilter === 'individual') return !evo.groupId;
+      return true;
     });
     if (filtered.length === 0) { toast.error('Nenhuma evolução no período.'); return; }
     generateMultipleEvolutionsPdf({
