@@ -1043,7 +1043,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
               doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
               doc.text(portion, curX, y); curX += doc.getTextWidth(portion); rendered = true;
             }
-            if (!rendered) { doc.setFont('helvetica', 'normal'); doc.text(wrappedLines[wi], xPos, y, { align: 'justify', maxWidth }); }
+            if (!rendered) { doc.setFont('helvetica', 'normal'); doc.text(wrappedLines[wi], xPos, y, { align: wi < wrappedLines.length - 1 ? 'justify' : 'left', maxWidth }); }
             y += 5;
           }
         }
