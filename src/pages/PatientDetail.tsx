@@ -41,6 +41,7 @@ import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { generateReportPdf } from '@/utils/generateReportPdf';
 import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
+import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import jsPDF from 'jspdf';
@@ -245,6 +246,10 @@ export default function PatientDetail() {
   const currentMonth = financialMonth.getMonth() + 1;
   const currentYear = financialMonth.getFullYear();
 
+  // Group billing data for accurate group session pricing
+  const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
+  const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
+
   // Patient notes state
   const [patientNotes, setPatientNotes] = useState<{ id: string; title: string; content: string; created_at: string; updated_at: string }[]>([]);
   const [newNoteTitle, setNewNoteTitle] = useState('');
@@ -371,7 +376,46 @@ export default function PatientDetail() {
       .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
 
-  // Load payment record for current month (Financial tab)
+  // Load group billing data for accurate financial calculations
+  useEffect(() => {
+    if (!user || !patient?.id) return;
+    // Get all groups this patient belongs to
+    supabase.from('therapeutic_group_members').select('group_id, is_paying, member_payment_value')
+      .eq('patient_id', patient.id)
+      .eq('status', 'active')
+      .then(({ data: membersData }) => {
+        if (!membersData || membersData.length === 0) return;
+        const mmap: GroupMemberPaymentMap = {};
+        const groupIds = [...new Set(membersData.map((m: any) => m.group_id))];
+        membersData.forEach((m: any) => {
+          if (!mmap[m.group_id]) mmap[m.group_id] = {};
+          mmap[m.group_id][patient.id] = {
+            isPaying: m.is_paying ?? true,
+            value: m.member_payment_value ?? null,
+          };
+        });
+        setMemberPaymentMap(mmap);
+
+        supabase.from('therapeutic_groups').select('id, default_price, financial_enabled, payment_type, package_id')
+          .in('id', groupIds)
+          .then(({ data: groupsData }) => {
+            if (groupsData) {
+              const gmap: GroupBillingMap = {};
+              groupsData.forEach((g: any) => {
+                gmap[g.id] = {
+                  defaultPrice: g.default_price ?? null,
+                  paymentType: g.payment_type ?? null,
+                  packageId: g.package_id ?? null,
+                  financialEnabled: g.financial_enabled ?? false,
+                };
+              });
+              setGroupBillingMap(gmap);
+            }
+          });
+      });
+  }, [user, patient?.id]);
+
+
   useEffect(() => {
     if (!patient?.id || !user) return;
     supabase
@@ -590,11 +634,31 @@ export default function PatientDetail() {
     ? paymentValue / (patientPackage!.sessionLimit!)
     : paymentValue;
   const totalBillableCount = totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem;
+
+  // Helper: compute group revenue from a set of billable evolutions
+  const computeGroupRevenue = (evos: typeof patientEvolutions) => {
+    if (!patient) return 0;
+    return evos.filter(e => e.groupId).reduce((sum, e) => {
+      return sum + getGroupSessionValue({
+        groupId: e.groupId,
+        patientId: patient.id,
+        groupBillingMap,
+        memberPaymentMap,
+        packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
+      });
+    }, 0);
+  };
+
+  const totalGroupBillableEvos = totalBillableEvos.filter(e => e.groupId);
+  const totalIndividualBillableEvos = totalBillableEvos.filter(e => !e.groupId);
+  const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
+  const totalIndividualBillableCount = totalIndividualBillableEvos.length;
+  const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const totalFinancial = isFixoMensal
-    ? paymentValue
+    ? paymentValue + totalGroupRevenue
     : isFixoDiario
-      ? totalUniqueDays * perSessionValue
-      : totalBillableCount * perSessionValue;
+      ? totalIndividualUniqueDays * perSessionValue + totalGroupRevenue
+      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue;
   const totalFinancialSubtitle = isFixoMensal
     ? 'Valor Fixo Mensal'
     : isFixoDiario
@@ -661,13 +725,18 @@ export default function PatientDetail() {
     return null;
   }, [monthlyDynamic, paymentValue, monthlyDeductibleAbsences]);
 
+  const monthlyBillableEvos = monthlyEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const monthlyGroupRevenue = computeGroupRevenue(monthlyBillableEvos);
+  const monthlyIndividualBillable = monthlyBillableEvos.filter(e => !e.groupId);
+  const monthlyIndividualBillableCount = monthlyIndividualBillable.length;
+  const monthlyIndividualUniqueDays = new Set(monthlyIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const monthlyRevenue = monthlyMensalDeduction
-    ? monthlyMensalDeduction.finalRevenue
+    ? monthlyMensalDeduction.finalRevenue + monthlyGroupRevenue
     : isFixoMensal
-      ? paymentValue
+      ? paymentValue + monthlyGroupRevenue
       : isFixoDiario
-        ? monthlyUniqueDays * perSessionValue
-        : monthlyBillableCount * perSessionValue;
+        ? monthlyIndividualUniqueDays * perSessionValue + monthlyGroupRevenue
+        : monthlyIndividualBillableCount * perSessionValue + monthlyGroupRevenue;
   const monthlyRevenueSubtitle = monthlyMensalDeduction
     ? `${monthlyDynamic!.occurrences} sessões previstas`
     : isFixoMensal
@@ -716,13 +785,18 @@ export default function PatientDetail() {
     return null;
   }, [finDynamic, paymentValue, finDeductibleAbsences]);
 
+  const finBillableEvos = financialEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const finGroupRevenue = computeGroupRevenue(finBillableEvos);
+  const finIndividualBillable = finBillableEvos.filter(e => !e.groupId);
+  const finIndividualBillableCount = finIndividualBillable.length;
+  const finIndividualUniqueDays = new Set(finIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const finRevenue = finMensalDeduction
-    ? finMensalDeduction.finalRevenue
+    ? finMensalDeduction.finalRevenue + finGroupRevenue
     : isFixoMensal
-      ? paymentValue
+      ? paymentValue + finGroupRevenue
       : isFixoDiario
-        ? finUniqueDays * perSessionValue
-        : finBillableCount * perSessionValue;
+        ? finIndividualUniqueDays * perSessionValue + finGroupRevenue
+        : finIndividualBillableCount * perSessionValue + finGroupRevenue;
   const finRegistros = financialEvolutions.length;
   const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
 
