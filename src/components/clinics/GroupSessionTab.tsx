@@ -555,7 +555,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
-  // Generate individual AI evolutions for each member
+  // Generate individual AI evolutions for each member with per-participant context
   const generateIndividualEvolutions = async () => {
     if (!user) return;
     setGeneratingAI(true);
@@ -564,6 +564,14 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       for (const m of members) {
         setGeneratingIndividualFor(m.id);
         const pd = participantsData[m.id];
+        // Build per-participant summary with their specific data
+        const participantContext = [
+          pd?.moodScore ? `Humor do paciente: ${pd.moodScore}/10` : '',
+          pd?.positiveFeelings?.length ? `Sentimentos positivos: ${pd.positiveFeelings.join(', ')}` : '',
+          pd?.negativeFeelings?.length ? `Sentimentos negativos: ${pd.negativeFeelings.join(', ')}` : '',
+          pd?.suicidalThoughts ? 'ALERTA: Paciente reportou ideação suicida' : '',
+        ].filter(Boolean).join('\n');
+
         const { data, error } = await supabase.functions.invoke('generate-evolution', {
           body: {
             patientName: m.name,
@@ -571,7 +579,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             positiveFeelings: pd?.positiveFeelings || [],
             negativeFeelings: pd?.negativeFeelings || [],
             suicidalThoughts: pd?.suicidalThoughts || false,
-            notesText: notesText,
+            notesText: `Contexto individual de ${m.name}:\n${participantContext}\n\nAnotações gerais da sessão de grupo:\n${notesText}`,
             actionPlans,
             nextSessionNotes,
             generalComments,
@@ -612,7 +620,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       const { error } = await supabase.from('evolutions').insert(inserts);
       setSendingToProntuario(false);
       if (error) toast.error('Erro ao enviar para prontuário');
-      else { toast.success('Evoluções individuais salvas no prontuário do grupo!'); setAiIndividualEvolutions({}); }
+      else { toast.success('Evoluções individuais salvas no prontuário do grupo!'); }
     } else {
       if (!aiEvolution) { setSendingToProntuario(false); return; }
       const inserts = members.map(m => ({
@@ -628,7 +636,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       const { error } = await supabase.from('evolutions').insert(inserts);
       setSendingToProntuario(false);
       if (error) toast.error('Erro ao enviar para prontuário');
-      else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
+      else { toast.success('Evolução salva no prontuário do grupo!'); }
     }
   };
 
@@ -1250,9 +1258,9 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                   {!sessionId ? (
                     <Button size="sm" onClick={startSession} className="gap-1.5"><Play className="w-3.5 h-3.5" /> Iniciar sessão</Button>
                   ) : (
-                    <Button size="sm" variant="destructive" onClick={finishSession} className="gap-1.5">
-                      <Square className="w-3.5 h-3.5" /> Finalizar {formatTime(elapsedSeconds)}
-                    </Button>
+                    <Badge variant="secondary" className="gap-1.5 text-xs">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Em andamento
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -1667,10 +1675,15 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           </Card>
 
           {sessionId && (
-            <Button onClick={() => saveSession(true)} disabled={saving} className="w-full gap-1.5">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Salvar sessão
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => saveSession(true)} disabled={saving} variant="outline" className="flex-1 gap-1.5">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                💾 Salvar sessão
+              </Button>
+              <Button onClick={finishSession} variant="destructive" className="flex-1 gap-1.5">
+                <Square className="w-3.5 h-3.5" /> Finalizar sessão
+              </Button>
+            </div>
           )}
         </>
       )}
