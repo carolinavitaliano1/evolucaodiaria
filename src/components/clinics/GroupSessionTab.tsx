@@ -941,34 +941,40 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       const date = new Date(session.created_at);
       const dateStr = date.toLocaleDateString('pt-BR');
 
-      // Header bar — same as individual
+      // Header — professional gradient bar
+      doc.setFillColor(79, 70, 229);
+      doc.rect(0, 0, pageWidth, 18, 'F');
       doc.setFillColor(99, 102, 241);
-      doc.rect(0, 0, pageWidth, 40, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Relatório de Sessão Terapêutica', margin, 26);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, margin, 35);
+      doc.rect(0, 18, pageWidth, 6, 'F');
 
-      y = 52;
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RELATÓRIO DE SESSÃO TERAPÊUTICA', pageWidth / 2, 12, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 22, { align: 'right' });
+
+      y = 32;
       doc.setTextColor(50, 50, 50);
 
       // Group info box
       doc.setFillColor(245, 245, 250);
-      doc.roundedRect(margin, y, contentWidth, 28, 3, 3, 'F');
-      doc.setFontSize(12);
+      doc.setDrawColor(200, 200, 220);
+      doc.roundedRect(margin, y, contentWidth, 30, 3, 3, 'FD');
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.text('Grupo Terapêutico', margin + 5, y + 8);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text(groupName, margin + 5, y + 16);
+      doc.setTextColor(79, 70, 229);
+      doc.text(groupName, margin + 6, y + 10);
       doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Sessão: ${session.title || 'Sem título'}`, margin + 6, y + 17);
       doc.setTextColor(120, 120, 120);
-      doc.text(`${members.length} participantes  |  Sessão: ${session.title || 'Sem título'}  |  Duração: ${formatTime(session.duration_seconds || 0)}`, margin + 5, y + 23);
-      y += 35;
+      doc.text(`${members.length} participantes  |  Data: ${dateStr}  |  Duração: ${formatTime(session.duration_seconds || 0)}`, margin + 6, y + 24);
+      y += 38;
       doc.setTextColor(50, 50, 50);
+      doc.setDrawColor(0, 0, 0);
 
       // Participants mood
       const pData = session.participants_data || {};
@@ -982,26 +988,26 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       members.forEach(m => {
         const pd = pData[m.id];
         if (!pd) return;
-        if (y > 260) { doc.addPage(); y = 20; }
+        if (y > 255) { doc.addPage(); y = 20; }
         doc.setFont('helvetica', 'bold');
-        const moodStr = pd.mood_score ? `${pd.mood_score}/10` : '';
-        doc.text(`${m.name}  ${moodStr}`, margin, y);
+        doc.setFontSize(10);
+        const moodStr = pd.mood_score ? ` (${pd.mood_score}/10)` : '';
+        doc.text(`${m.name}${moodStr}`, margin + 2, y);
         y += 5;
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
         if (pd.positive_feelings?.length) {
-          doc.setFont('helvetica', 'bold'); doc.text('Positivos:', margin, y);
-          doc.setFont('helvetica', 'normal'); doc.text(pd.positive_feelings.join(', '), margin + 25, y); y += 5;
+          doc.text(`Positivos: ${pd.positive_feelings.join(', ')}`, margin + 4, y); y += 4.5;
         }
         if (pd.negative_feelings?.length) {
-          doc.setFont('helvetica', 'bold'); doc.text('Negativos:', margin, y);
-          doc.setFont('helvetica', 'normal'); doc.text(pd.negative_feelings.join(', '), margin + 25, y); y += 5;
+          doc.text(`Negativos: ${pd.negative_feelings.join(', ')}`, margin + 4, y); y += 4.5;
         }
         if (pd.suicidal_thoughts) {
           doc.setFillColor(254, 226, 226);
-          doc.roundedRect(margin, y, contentWidth, 8, 2, 2, 'F');
+          doc.roundedRect(margin, y - 1, contentWidth, 7, 2, 2, 'F');
           doc.setTextColor(185, 28, 28); doc.setFont('helvetica', 'bold');
-          doc.text(`ALERTA: Ideacao suicida - ${m.name}`, margin + 3, y + 6);
-          doc.setTextColor(50, 50, 50); y += 12;
+          doc.text(`ALERTA: Ideação suicida — ${m.name}`, margin + 3, y + 4);
+          doc.setTextColor(50, 50, 50); y += 10;
         }
         y += 3;
       });
@@ -1027,23 +1033,29 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           }
           const fullLineText = segments.map(s => s.text).join('');
           if (!fullLineText.trim()) { y += 3; continue; }
+          const hasBold = segments.some(s => s.bold);
           const wrappedLines = doc.splitTextToSize(fullLineText, maxWidth);
           for (let wi = 0; wi < wrappedLines.length; wi++) {
             if (y > 275) { doc.addPage(); y = 20; }
-            let curX = xPos; let consumed = 0;
-            for (let pi = 0; pi < wi; pi++) consumed += wrappedLines[pi].length;
-            const lineStart = consumed; const lineEnd = consumed + wrappedLines[wi].length;
-            let charPos = 0; let rendered = false;
-            for (const seg of segments) {
-              const segStart = charPos; const segEnd = charPos + seg.text.length; charPos = segEnd;
-              const os = Math.max(segStart, lineStart); const oe = Math.min(segEnd, lineEnd);
-              if (os >= oe) continue;
-              const portion = seg.text.slice(os - segStart, oe - segStart);
-              if (!portion) continue;
-              doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-              doc.text(portion, curX, y); curX += doc.getTextWidth(portion); rendered = true;
+            const isLastLine = wi === wrappedLines.length - 1;
+            if (!hasBold) {
+              doc.setFont('helvetica', 'normal');
+              doc.text(wrappedLines[wi], xPos, y, { align: isLastLine ? 'left' : 'justify', maxWidth });
+            } else {
+              let curX = xPos; let consumed = 0;
+              for (let pi = 0; pi < wi; pi++) consumed += wrappedLines[pi].length;
+              const lineStart = consumed; const lineEnd = consumed + wrappedLines[wi].length;
+              let charPos = 0;
+              for (const seg of segments) {
+                const segStart = charPos; const segEnd = charPos + seg.text.length; charPos = segEnd;
+                const os = Math.max(segStart, lineStart); const oe = Math.min(segEnd, lineEnd);
+                if (os >= oe) continue;
+                const portion = seg.text.slice(os - segStart, oe - segStart);
+                if (!portion) continue;
+                doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+                doc.text(portion, curX, y); curX += doc.getTextWidth(portion);
+              }
             }
-            if (!rendered) { doc.setFont('helvetica', 'normal'); doc.text(wrappedLines[wi], xPos, y, { align: wi < wrappedLines.length - 1 ? 'justify' : 'left', maxWidth }); }
             y += 5;
           }
         }
