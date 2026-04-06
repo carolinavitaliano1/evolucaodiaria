@@ -131,11 +131,61 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setParticipantAttendance(initAttendance);
   }, [members.map(m => m.id).join(',')]); 
 
+  const loadSavedNextSessions = async () => {
+    if (!user) return;
+    // Load finished sessions that have next_session_notes
+    const { data } = await supabase
+      .from('therapy_sessions')
+      .select('id, title, created_at, next_session_notes')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .eq('status', 'finished')
+      .not('next_session_notes', 'is', null)
+      .order('created_at', { ascending: false });
+    if (data) setSavedNextSessions(data.filter((s: any) => s.next_session_notes?.trim()));
+  };
+
+  const downloadNextSessionWord = async (session: any) => {
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: `Planejamento - ${groupName}`, bold: true, size: 32 })],
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Sessão: ${session.title || 'Sem título'}`, size: 22, color: '666666' })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Data: ${new Date(session.created_at).toLocaleDateString('pt-BR')}`, size: 20, color: '999999' })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+          }),
+          ...session.next_session_notes.split('\n').map((line: string) => 
+            new Paragraph({
+              children: [new TextRun({ text: line, size: 24 })],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 120 },
+            })
+          ),
+        ],
+      }],
+    });
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `proxima_sessao_${groupName.replace(/\s+/g, '_')}_${new Date(session.created_at).toLocaleDateString('pt-BR').replace(/\//g, '-')}.docx`);
+    toast.success('Documento Word gerado!');
+  };
+
   useEffect(() => {
     if (!user || !groupId) return;
     loadActiveSession();
     loadHistory();
     loadPlans();
+    loadSavedNextSessions();
     // Load stamps
     supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
       if (data) setStamps(data);
