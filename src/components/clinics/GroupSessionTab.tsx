@@ -1769,10 +1769,36 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                 </div>
               </div>
 
-              {viewingSession.notes_text && <div><Label className="text-xs text-muted-foreground">Anotações</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.notes_text}</p></div>}
-              {viewingSession.action_plans && <div><Label className="text-xs text-muted-foreground">Planos de Ação</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.action_plans}</p></div>}
-              {viewingSession.next_session_notes && <div><Label className="text-xs text-muted-foreground">Próxima Sessão</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.next_session_notes}</p></div>}
-              {viewingSession.general_comments && <div><Label className="text-xs text-muted-foreground">Comentários Gerais</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.general_comments}</p></div>}
+              {viewingSession.notes_text && <div><Label className="text-xs text-muted-foreground">Anotações</Label><p className="text-sm mt-1 whitespace-pre-wrap text-justify">{viewingSession.notes_text}</p></div>}
+              {viewingSession.action_plans && <div><Label className="text-xs text-muted-foreground">Planos de Ação</Label><p className="text-sm mt-1 whitespace-pre-wrap text-justify">{viewingSession.action_plans}</p></div>}
+              {viewingSession.next_session_notes && <div><Label className="text-xs text-muted-foreground">Próxima Sessão</Label><p className="text-sm mt-1 whitespace-pre-wrap text-justify">{viewingSession.next_session_notes}</p></div>}
+              {viewingSession.general_comments && <div><Label className="text-xs text-muted-foreground">Comentários Gerais</Label><p className="text-sm mt-1 whitespace-pre-wrap text-justify">{viewingSession.general_comments}</p></div>}
+
+              {/* Evolução do grupo */}
+              {viewingSession.ai_evolution && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Evolução da Sessão</Label>
+                  <p className="text-sm mt-1 whitespace-pre-wrap text-justify bg-muted/30 rounded-lg p-3">{viewingSession.ai_evolution}</p>
+                </div>
+              )}
+
+              {/* Evoluções individuais */}
+              {viewingSession.ai_individual_evolutions && typeof viewingSession.ai_individual_evolutions === 'object' && Object.keys(viewingSession.ai_individual_evolutions).length > 0 && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Evoluções Individuais</Label>
+                  <div className="space-y-2 mt-1">
+                    {Object.entries(viewingSession.ai_individual_evolutions as Record<string, string>).map(([memberId, text]) => {
+                      const memberName = members.find(m => m.id === memberId)?.name || 'Participante';
+                      return text ? (
+                        <div key={memberId} className="bg-muted/30 rounded-lg p-3">
+                          <p className="text-xs font-medium text-primary mb-1">{memberName}</p>
+                          <p className="text-sm whitespace-pre-wrap text-justify">{text}</p>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
                 <Button variant="outline" size="sm" onClick={() => generateGroupReport(viewingSession)} disabled={generatingReport} className="gap-1.5">
