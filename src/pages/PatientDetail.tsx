@@ -2203,7 +2203,11 @@ export default function PatientDetail() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {patientEvolutions.map((evo) => {
+                  {patientEvolutions.filter(evo => {
+                    if (evoTypeFilter === 'group') return !!evo.groupId;
+                    if (evoTypeFilter === 'individual') return !evo.groupId;
+                    return true;
+                  }).map((evo) => {
                     const moodInfo = getMoodInfo(evo.mood, customMoods);
                     const evoAuthorId = (evo as any).user_id;
                     const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
