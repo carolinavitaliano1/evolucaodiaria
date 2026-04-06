@@ -173,6 +173,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
 
     if (data.participants_data && typeof data.participants_data === 'object') {
       const restored: Record<string, ParticipantData> = {};
+      const restoredAttendance: Record<string, string> = {};
       for (const [pid, pd] of Object.entries(data.participants_data as Record<string, any>)) {
         restored[pid] = {
           moodScore: pd.mood_score ?? null,
@@ -180,8 +181,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           negativeFeelings: pd.negative_feelings || [],
           suicidalThoughts: pd.suicidal_thoughts || false,
         };
+        restoredAttendance[pid] = pd.attendance_status || 'presente';
       }
       setParticipantsData(prev => ({ ...prev, ...restored }));
+      setParticipantAttendance(prev => ({ ...prev, ...restoredAttendance }));
     }
 
     if (data.started_at && !data.finished_at) {
