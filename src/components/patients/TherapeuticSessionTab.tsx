@@ -101,7 +101,56 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     loadHistory();
     loadPlans();
     loadStamps();
+    loadSavedNextSessions();
   }, [user, patientId]);
+
+  const loadSavedNextSessions = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('therapy_sessions')
+      .select('id, title, created_at, next_session_notes')
+      .eq('patient_id', patientId)
+      .eq('user_id', user.id)
+      .eq('status', 'finished')
+      .not('next_session_notes', 'is', null)
+      .order('created_at', { ascending: false });
+    if (data) setSavedNextSessions(data.filter((s: any) => s.next_session_notes?.trim()));
+  };
+
+  const downloadNextSessionWord = async (session: any) => {
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: `Planejamento - ${patientName}`, bold: true, size: 32 })],
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Sessão: ${session.title || 'Sem título'}`, size: 22, color: '666666' })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Data: ${new Date(session.created_at).toLocaleDateString('pt-BR')}`, size: 20, color: '999999' })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+          }),
+          ...session.next_session_notes.split('\n').map((line: string) =>
+            new Paragraph({
+              children: [new TextRun({ text: line, size: 24 })],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 120 },
+            })
+          ),
+        ],
+      }],
+    });
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `proxima_sessao_${patientName.replace(/\s+/g, '_')}_${new Date(session.created_at).toLocaleDateString('pt-BR').replace(/\//g, '-')}.docx`);
+    toast.success('Documento Word gerado!');
+  };
 
   const loadStamps = async () => {
     if (!user) return;
