@@ -1436,73 +1436,122 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             </CardContent>
           </Card>
 
-          {/* AI Evolution */}
+          {/* Evolução */}
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Evolução IA</CardTitle>
+              <CardTitle className="text-sm flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Evolução</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Mode selector */}
+              {/* Group vs Individual mode */}
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant={aiEvoMode === 'group' ? 'default' : 'outline'}
-                  onClick={() => setAiEvoMode('group')}
-                  className="gap-1.5 flex-1"
-                >
+                <Button size="sm" variant={aiEvoMode === 'group' ? 'default' : 'outline'} onClick={() => setAiEvoMode('group')} className="gap-1.5 flex-1">
                   <Users className="w-3.5 h-3.5" /> Evolução única (grupo)
                 </Button>
-                <Button
-                  size="sm"
-                  variant={aiEvoMode === 'individual' ? 'default' : 'outline'}
-                  onClick={() => setAiEvoMode('individual')}
-                  className="gap-1.5 flex-1"
-                >
+                <Button size="sm" variant={aiEvoMode === 'individual' ? 'default' : 'outline'} onClick={() => setAiEvoMode('individual')} className="gap-1.5 flex-1">
                   <PenLine className="w-3.5 h-3.5" /> Evolução por participante
                 </Button>
               </div>
 
               {aiEvoMode === 'group' ? (
                 <>
-                  <Button onClick={generateAIEvolution} disabled={generatingAI} className="gap-1.5 w-full">
-                    {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    Gerar evolução IA do grupo
-                  </Button>
-                  {aiEvolution && (
-                    <div className="space-y-3">
-                      <Textarea value={aiEvolution} onChange={e => setAiEvolution(e.target.value)} className="min-h-[200px] resize-y text-sm" />
-                      
-                      <Button onClick={sendToGroupProntuario} disabled={sendingToProntuario} variant="outline" className="gap-1.5 w-full">
-                        {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                        Enviar para prontuário do grupo
-                      </Button>
+                  {/* Creation mode: manual or AI */}
+                  <div className="flex gap-2">
+                    <Button size="sm" variant={aiEvoCreationMode === 'manual' ? 'secondary' : 'ghost'} onClick={() => setAiEvoCreationMode('manual')} className="gap-1 text-xs">
+                      <PenLine className="w-3 h-3" /> Escrever manualmente
+                    </Button>
+                    <Button size="sm" variant={aiEvoCreationMode === 'ai' ? 'secondary' : 'ghost'} onClick={() => setAiEvoCreationMode('ai')} className="gap-1 text-xs">
+                      <Sparkles className="w-3 h-3" /> Gerar com IA
+                    </Button>
+                  </div>
 
-                      <div className="border border-border rounded-lg p-3 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Enviar para prontuário individual:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {members.map(m => (
-                            <Button key={m.id} variant="outline" size="sm" className="gap-1.5 text-xs" disabled={sendingToProntuario}
-                              onClick={() => sendToIndividualProntuario(m.id)}>
-                              <Send className="w-3 h-3" /> {m.name}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
+                  {aiEvoCreationMode === 'ai' && (
+                    <Button onClick={generateAIEvolution} disabled={generatingAI} className="gap-1.5 w-full">
+                      {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      Gerar evolução IA do grupo
+                    </Button>
+                  )}
+
+                  {/* Text area always visible when there's text or in manual mode */}
+                  {(aiEvolution || aiEvoCreationMode === 'manual') && (
+                    <div className="space-y-3">
+                      <Textarea
+                        value={aiEvolution}
+                        onChange={e => setAiEvolution(e.target.value)}
+                        className="min-h-[200px] resize-y text-sm"
+                        placeholder={aiEvoCreationMode === 'manual' ? 'Escreva a evolução clínica do grupo...' : 'A evolução gerada aparecerá aqui...'}
+                      />
+                      
+                      {aiEvolution.trim() && (
+                        <Button
+                          variant="ghost" size="sm" className="gap-1.5 text-xs"
+                          disabled={improvingField === 'ai_evolution'}
+                          onClick={() => improveFieldText('ai_evolution' as any, () => aiEvolution, setAiEvolution)}
+                        >
+                          {improvingField === 'ai_evolution' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Melhorar com IA
+                        </Button>
+                      )}
+
+                      {aiEvolution.trim() && (
+                        <>
+                          <Button onClick={sendToGroupProntuario} disabled={sendingToProntuario} variant="outline" className="gap-1.5 w-full">
+                            {sendingToProntuario ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                            Enviar para prontuário do grupo
+                          </Button>
+
+                          <div className="border border-border rounded-lg p-3 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">Enviar para prontuário individual:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {members.map(m => (
+                                <Button key={m.id} variant="outline" size="sm" className="gap-1.5 text-xs" disabled={sendingToProntuario}
+                                  onClick={() => sendToIndividualProntuario(m.id)}>
+                                  <Send className="w-3 h-3" /> {m.name}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </>
               ) : (
                 <>
-                  <Button onClick={generateIndividualEvolutions} disabled={generatingAI} className="gap-1.5 w-full">
-                    {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    {generatingAI && generatingIndividualFor
-                      ? `Gerando para ${members.find(m => m.id === generatingIndividualFor)?.name || '...'}...`
-                      : 'Gerar evolução individual para cada participante'}
-                  </Button>
+                  {/* Individual mode: manual or AI */}
+                  <div className="flex gap-2">
+                    <Button size="sm" variant={aiIndividualCreationMode === 'manual' ? 'secondary' : 'ghost'} onClick={() => setAiIndividualCreationMode('manual')} className="gap-1 text-xs">
+                      <PenLine className="w-3 h-3" /> Escrever manualmente
+                    </Button>
+                    <Button size="sm" variant={aiIndividualCreationMode === 'ai' ? 'secondary' : 'ghost'} onClick={() => setAiIndividualCreationMode('ai')} className="gap-1 text-xs">
+                      <Sparkles className="w-3 h-3" /> Gerar com IA
+                    </Button>
+                  </div>
+
+                  {aiIndividualCreationMode === 'ai' && (
+                    <Button onClick={generateIndividualEvolutions} disabled={generatingAI} className="gap-1.5 w-full">
+                      {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      {generatingAI && generatingIndividualFor
+                        ? `Gerando para ${members.find(m => m.id === generatingIndividualFor)?.name || '...'}...`
+                        : 'Gerar evolução individual para cada participante'}
+                    </Button>
+                  )}
+
+                  {/* Manual mode: show empty fields for all members */}
+                  {aiIndividualCreationMode === 'manual' && Object.keys(aiIndividualEvolutions).length === 0 && (
+                    <Button
+                      variant="outline" size="sm" className="gap-1.5 text-xs"
+                      onClick={() => {
+                        const init: Record<string, string> = {};
+                        members.forEach(m => { init[m.id] = ''; });
+                        setAiIndividualEvolutions(init);
+                      }}
+                    >
+                      <Plus className="w-3 h-3" /> Criar campos para cada participante
+                    </Button>
+                  )}
 
                   {Object.keys(aiIndividualEvolutions).length > 0 && (
                     <div className="space-y-4">
-                      {members.filter(m => aiIndividualEvolutions[m.id]).map(m => (
+                      {members.filter(m => aiIndividualEvolutions[m.id] !== undefined).map(m => (
                         <div key={m.id} className="border border-border rounded-lg p-3 space-y-2">
                           <div className="flex items-center justify-between">
                             <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -1511,17 +1560,42 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                               </span>
                               {m.name}
                             </p>
-                            <Button
-                              variant="outline" size="sm" className="gap-1 text-xs h-7" disabled={sendingToProntuario}
-                              onClick={() => sendToIndividualProntuario(m.id)}
-                            >
-                              <Send className="w-3 h-3" /> Enviar ao prontuário
-                            </Button>
+                            <div className="flex gap-1">
+                              {aiIndividualEvolutions[m.id]?.trim() && (
+                                <Button
+                                  variant="ghost" size="sm" className="gap-1 text-xs h-7"
+                                  disabled={improvingField === `individual_${m.id}`}
+                                  onClick={async () => {
+                                    const text = aiIndividualEvolutions[m.id];
+                                    if (!text?.trim()) return;
+                                    setImprovingField(`individual_${m.id}`);
+                                    try {
+                                      const { data, error } = await supabase.functions.invoke('improve-session-text', { body: { text, field: 'notes' } });
+                                      if (error) throw error;
+                                      if (data?.improved) {
+                                        setAiIndividualEvolutions(prev => ({ ...prev, [m.id]: data.improved }));
+                                        toast.success(`Texto de ${m.name} melhorado!`);
+                                      }
+                                    } catch (e: any) { toast.error(e.message || 'Erro'); }
+                                    finally { setImprovingField(null); }
+                                  }}
+                                >
+                                  {improvingField === `individual_${m.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Melhorar
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline" size="sm" className="gap-1 text-xs h-7" disabled={sendingToProntuario || !aiIndividualEvolutions[m.id]?.trim()}
+                                onClick={() => sendToIndividualProntuario(m.id)}
+                              >
+                                <Send className="w-3 h-3" /> Prontuário
+                              </Button>
+                            </div>
                           </div>
                           <Textarea
-                            value={aiIndividualEvolutions[m.id]}
+                            value={aiIndividualEvolutions[m.id] || ''}
                             onChange={e => setAiIndividualEvolutions(prev => ({ ...prev, [m.id]: e.target.value }))}
                             className="min-h-[120px] resize-y text-sm"
+                            placeholder={`Escreva a evolução de ${m.name}...`}
                           />
                         </div>
                       ))}
