@@ -852,12 +852,29 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       doc.setTextColor(50, 50, 50);
       doc.setFont('helvetica', 'normal');
 
-      const bodyText = `Declaro, para os devidos fins, que ${member.name} está em atendimento terapêutico de grupo ("${groupName}") sob meus cuidados, e compareceu à sessão realizada no dia ${dateStr} das ${startTime} às ${endTime}.`;
-      const bodyLines: string[] = doc.splitTextToSize(bodyText, contentWidth);
+      // Build declaration text with bold group name inline
+      const textBefore = `Declaro, para os devidos fins, que ${member.name} está em atendimento terapêutico de grupo `;
+      const textAfter = ` sob meus cuidados, e compareceu à sessão realizada no dia ${dateStr} das ${startTime} às ${endTime}.`;
+      const fullBodyText = textBefore + groupName + textAfter;
+      const bodyLines: string[] = doc.splitTextToSize(fullBodyText, contentWidth);
+
       for (let li = 0; li < bodyLines.length; li++) {
         if (y > 260) { doc.addPage(); y = 20; }
-        const isLast = li === bodyLines.length - 1;
-        doc.text(bodyLines[li], margin, y, { align: isLast ? 'left' : 'justify', maxWidth: contentWidth });
+        // Find if this line contains the group name to render it bold
+        const lineText = bodyLines[li];
+        const gnIdx = lineText.indexOf(groupName);
+        if (gnIdx !== -1) {
+          // Render segments: before (normal), group name (bold), after (normal)
+          const beforePart = lineText.substring(0, gnIdx);
+          const afterPart = lineText.substring(gnIdx + groupName.length);
+          let curX = margin;
+          if (beforePart) { doc.setFont('helvetica', 'normal'); doc.text(beforePart, curX, y); curX += doc.getTextWidth(beforePart); }
+          doc.setFont('helvetica', 'bold'); doc.text(groupName, curX, y); curX += doc.getTextWidth(groupName);
+          if (afterPart) { doc.setFont('helvetica', 'normal'); doc.text(afterPart, curX, y); }
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.text(lineText, margin, y, { align: 'justify', maxWidth: contentWidth });
+        }
         y += 7;
       }
 
@@ -1026,7 +1043,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
               doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
               doc.text(portion, curX, y); curX += doc.getTextWidth(portion); rendered = true;
             }
-            if (!rendered) { doc.setFont('helvetica', 'normal'); doc.text(wrappedLines[wi], xPos, y, { align: 'justify', maxWidth }); }
+            if (!rendered) { doc.setFont('helvetica', 'normal'); doc.text(wrappedLines[wi], xPos, y, { align: wi < wrappedLines.length - 1 ? 'justify' : 'left', maxWidth }); }
             y += 5;
           }
         }
@@ -1045,6 +1062,31 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       addSection('Planos de Ação', session.action_plans || '');
       addSection('Planejamento para Próxima Sessão', session.next_session_notes || '');
       addSection('Comentários Gerais', session.general_comments || '');
+
+      // Evolução da sessão (grupo)
+      if (session.ai_evolution) {
+        addSection('Evolução da Sessão', session.ai_evolution);
+      }
+
+      // Evoluções individuais
+      if (session.ai_individual_evolutions && typeof session.ai_individual_evolutions === 'object') {
+        const indivEvos = session.ai_individual_evolutions as Record<string, string>;
+        const entries = Object.entries(indivEvos).filter(([, text]) => !!text);
+        if (entries.length > 0) {
+          if (y > 260) { doc.addPage(); y = 20; }
+          doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(99, 102, 241);
+          doc.text('Evoluções Individuais', margin, y); y += 7;
+          for (const [memberId, text] of entries) {
+            if (y > 260) { doc.addPage(); y = 20; }
+            const memberName = members.find(m => m.id === memberId)?.name || 'Participante';
+            doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(50, 50, 50);
+            doc.text(memberName, margin, y); y += 5;
+            doc.setTextColor(60, 60, 60);
+            renderMarkdownText(text, margin, contentWidth); y += 4;
+          }
+          y += 4;
+        }
+      }
 
       // Footer
       const pageCount = doc.getNumberOfPages();
@@ -1769,10 +1811,36 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                 </div>
               </div>
 
-              {viewingSession.notes_text && <div><Label className="text-xs text-muted-foreground">Anotações</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.notes_text}</p></div>}
-              {viewingSession.action_plans && <div><Label className="text-xs text-muted-foreground">Planos de Ação</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.action_plans}</p></div>}
-              {viewingSession.next_session_notes && <div><Label className="text-xs text-muted-foreground">Próxima Sessão</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.next_session_notes}</p></div>}
-              {viewingSession.general_comments && <div><Label className="text-xs text-muted-foreground">Comentários Gerais</Label><p className="text-sm mt-1 whitespace-pre-wrap">{viewingSession.general_comments}</p></div>}
+              {viewingSession.notes_text && <div><Label className="text-xs text-muted-foreground">Anotações</Label><p className="text-sm mt-1 whitespace-pre-wrap text-justify">{viewingSession.notes_text}</p></div>}
+              {viewingSession.action_plans && <div><Label className="text-xs text-muted-foreground">Planos de Ação</Label><p className="text-sm mt-1 whitespace-pre-wrap text-justify">{viewingSession.action_plans}</p></div>}
+              {viewingSession.next_session_notes && <div><Label className="text-xs text-muted-foreground">Próxima Sessão</Label><p className="text-sm mt-1 whitespace-pre-wrap text-justify">{viewingSession.next_session_notes}</p></div>}
+              {viewingSession.general_comments && <div><Label className="text-xs text-muted-foreground">Comentários Gerais</Label><p className="text-sm mt-1 whitespace-pre-wrap text-justify">{viewingSession.general_comments}</p></div>}
+
+              {/* Evolução do grupo */}
+              {viewingSession.ai_evolution && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Evolução da Sessão</Label>
+                  <p className="text-sm mt-1 whitespace-pre-wrap text-justify bg-muted/30 rounded-lg p-3">{viewingSession.ai_evolution}</p>
+                </div>
+              )}
+
+              {/* Evoluções individuais */}
+              {viewingSession.ai_individual_evolutions && typeof viewingSession.ai_individual_evolutions === 'object' && Object.keys(viewingSession.ai_individual_evolutions).length > 0 && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Evoluções Individuais</Label>
+                  <div className="space-y-2 mt-1">
+                    {Object.entries(viewingSession.ai_individual_evolutions as Record<string, string>).map(([memberId, text]) => {
+                      const memberName = members.find(m => m.id === memberId)?.name || 'Participante';
+                      return text ? (
+                        <div key={memberId} className="bg-muted/30 rounded-lg p-3">
+                          <p className="text-xs font-medium text-primary mb-1">{memberName}</p>
+                          <p className="text-sm whitespace-pre-wrap text-justify">{text}</p>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
                 <Button variant="outline" size="sm" onClick={() => generateGroupReport(viewingSession)} disabled={generatingReport} className="gap-1.5">
