@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { saveAs } from 'file-saver';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit, MoreVertical, Pencil, ScrollText, FileText, CheckCircle, XCircle, UserCheck } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit, MoreVertical, Pencil, ScrollText, FileText, CheckCircle, XCircle, UserCheck, Upload } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -89,6 +90,8 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [planActivities, setPlanActivities] = useState('');
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<any>(null);
+  const [planAttachedFiles, setPlanAttachedFiles] = useState<UploadedFile[]>([]);
+  const [sessionAttachedFiles, setSessionAttachedFiles] = useState<UploadedFile[]>([]);
 
   // Attendance per participant
   const [participantAttendance, setParticipantAttendance] = useState<Record<string, string>>({});
@@ -1296,9 +1299,21 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                 <Label className="text-sm">Atividades planejadas</Label>
                 <Textarea value={planActivities} onChange={e => setPlanActivities(e.target.value)} placeholder="Atividades, dinâmicas, exercícios..." rows={3} />
               </div>
+              <div>
+                <Label className="text-sm flex items-center gap-1.5"><Upload className="w-3.5 h-3.5" /> Materiais (Anexos)</Label>
+                <FileUpload
+                  existingFiles={planAttachedFiles}
+                  onUpload={(files) => setPlanAttachedFiles(prev => [...prev, ...files])}
+                  onRemove={(fileId) => setPlanAttachedFiles(prev => prev.filter(f => f.id !== fileId))}
+                  parentId={editingPlanId || 'temp-group-plan'}
+                  parentType="session_plan"
+                  multiple
+                />
+                <p className="text-xs text-muted-foreground mt-1">PDFs, imagens ou vídeos (máx 20MB por arquivo).</p>
+              </div>
               <div className="flex gap-2">
                 <Button onClick={savePlan} className="gap-1"><Plus className="w-4 h-4" /> Salvar plano</Button>
-                <Button variant="outline" onClick={() => { setShowPlanForm(false); setEditingPlanId(null); setPlanTitle(''); setPlanObjectives(''); setPlanActivities(''); }}>Cancelar</Button>
+                <Button variant="outline" onClick={() => { setShowPlanForm(false); setEditingPlanId(null); setPlanTitle(''); setPlanObjectives(''); setPlanActivities(''); setPlanAttachedFiles([]); }}>Cancelar</Button>
               </div>
             </CardContent>
           </Card>
@@ -1625,6 +1640,22 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             <CardHeader className="pb-2"><CardTitle className="text-sm">Comentários gerais</CardTitle></CardHeader>
             <CardContent>
               <Textarea value={generalComments} onChange={e => setGeneralComments(e.target.value)} placeholder="Observações sobre a dinâmica do grupo." className="min-h-[100px] resize-y" />
+            </CardContent>
+          </Card>
+
+          {/* File Upload */}
+          <Card className="border-border">
+            <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Upload className="w-4 h-4 text-primary" /> Arquivos da Sessão</CardTitle></CardHeader>
+            <CardContent>
+              <FileUpload
+                existingFiles={sessionAttachedFiles}
+                onUpload={(files) => setSessionAttachedFiles(prev => [...prev, ...files])}
+                onRemove={(fileId) => setSessionAttachedFiles(prev => prev.filter(f => f.id !== fileId))}
+                parentId={sessionId || 'temp-group-session'}
+                parentType="therapy_session"
+                multiple
+              />
+              <p className="text-xs text-muted-foreground mt-2">Envie até 5 arquivos (máx 20MB por arquivo).</p>
             </CardContent>
           </Card>
 

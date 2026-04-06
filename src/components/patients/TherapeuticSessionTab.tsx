@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { saveAs } from 'file-saver';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -87,8 +89,11 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [declarationSession, setDeclarationSession] = useState<any | null>(null);
   const [declarationStampId, setDeclarationStampId] = useState<string | null>(null);
 
-  // Sub-tab navigation: 'planning' | 'session' | 'history'
-  const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
+  // Sub-tab navigation: 'planning' | 'session' | 'history' | 'next_sessions'
+  const [mainView, setMainView] = useState<'planning' | 'session' | 'history' | 'next_sessions'>('planning');
+
+  // Saved next sessions
+  const [savedNextSessions, setSavedNextSessions] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user || !patientId) return;
@@ -96,7 +101,56 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
     loadHistory();
     loadPlans();
     loadStamps();
+    loadSavedNextSessions();
   }, [user, patientId]);
+
+  const loadSavedNextSessions = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('therapy_sessions')
+      .select('id, title, created_at, next_session_notes')
+      .eq('patient_id', patientId)
+      .eq('user_id', user.id)
+      .eq('status', 'finished')
+      .not('next_session_notes', 'is', null)
+      .order('created_at', { ascending: false });
+    if (data) setSavedNextSessions(data.filter((s: any) => s.next_session_notes?.trim()));
+  };
+
+  const downloadNextSessionWord = async (session: any) => {
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: `Planejamento - ${patientName}`, bold: true, size: 32 })],
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Sessão: ${session.title || 'Sem título'}`, size: 22, color: '666666' })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Data: ${new Date(session.created_at).toLocaleDateString('pt-BR')}`, size: 20, color: '999999' })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+          }),
+          ...session.next_session_notes.split('\n').map((line: string) =>
+            new Paragraph({
+              children: [new TextRun({ text: line, size: 24 })],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 120 },
+            })
+          ),
+        ],
+      }],
+    });
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `proxima_sessao_${patientName.replace(/\s+/g, '_')}_${new Date(session.created_at).toLocaleDateString('pt-BR').replace(/\//g, '-')}.docx`);
+    toast.success('Documento Word gerado!');
+  };
 
   const loadStamps = async () => {
     if (!user) return;
@@ -315,6 +369,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       setSessionId(null);
       resetForm();
       await loadHistory();
+      await loadSavedNextSessions();
       setMainView('history');
     }
   };
@@ -1193,7 +1248,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   return (
     <div className="space-y-4">
       {/* Sub-tab navigation */}
-      <div className="flex items-center gap-1 border-b border-border pb-2">
+      <div className="flex items-center gap-1 border-b border-border pb-2 flex-wrap">
         <Button variant={mainView === 'planning' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('planning')} className="gap-1.5">
           <Target className="w-3.5 h-3.5" /> Planejamento
         </Button>
@@ -1204,6 +1259,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         <Button variant={mainView === 'history' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('history')} className="gap-1.5">
           <History className="w-3.5 h-3.5" /> Realizadas
           {sessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{sessions.length}</Badge>}
+        </Button>
+        <Button variant={mainView === 'next_sessions' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('next_sessions')} className="gap-1.5">
+          <CalendarPlus className="w-3.5 h-3.5" /> Próximas Sessões
+          {savedNextSessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{savedNextSessions.length}</Badge>}
         </Button>
       </div>
 
@@ -1557,6 +1616,39 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
             </DialogContent>
           </Dialog>
         </>
+      )}
+
+      {/* ===== NEXT SESSIONS VIEW ===== */}
+      {mainView === 'next_sessions' && (
+        <div className="space-y-3">
+          {savedNextSessions.length === 0 ? (
+            <div className="text-center py-12">
+              <CalendarPlus className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">Nenhum planejamento de próxima sessão salvo</p>
+              <p className="text-xs text-muted-foreground mt-1">Os planejamentos são salvos automaticamente ao finalizar uma sessão com a aba &quot;Próxima Sessão&quot; preenchida.</p>
+            </div>
+          ) : (
+            savedNextSessions.map(s => {
+              const date = new Date(s.created_at);
+              return (
+                <Card key={s.id} className="border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-sm">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</p>
+                        <p className="text-xs text-muted-foreground">{date.toLocaleDateString('pt-BR')}</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs shrink-0" onClick={() => downloadNextSessionWord(s)}>
+                        <Download className="w-3.5 h-3.5" /> Word
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap line-clamp-4">{s.next_session_notes}</p>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
       )}
 
       <SendActionPlanModal
