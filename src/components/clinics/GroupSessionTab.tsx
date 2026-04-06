@@ -248,6 +248,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         positive_feelings: pd.positiveFeelings,
         negative_feelings: pd.negativeFeelings,
         suicidal_thoughts: pd.suicidalThoughts,
+        attendance_status: participantAttendance[pid] || 'presente',
       };
     }
     return out;
