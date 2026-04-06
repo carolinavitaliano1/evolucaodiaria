@@ -210,8 +210,6 @@ export default function GroupDetail() {
 
   const filteredEvolutions = evolutions.filter(evo => {
     if (evoFilterMember !== 'all' && evo.patient_id !== evoFilterMember) return false;
-    if (evoFilterType === 'group' && evo._evoType !== 'group') return false;
-    if (evoFilterType === 'individual' && evo._evoType !== 'individual') return false;
     if (evoFilterStartDate && evo.date < format(evoFilterStartDate, 'yyyy-MM-dd')) return false;
     if (evoFilterEndDate && evo.date > format(evoFilterEndDate, 'yyyy-MM-dd')) return false;
     return true;
