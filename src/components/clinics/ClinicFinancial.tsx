@@ -118,6 +118,27 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           const map: Record<string, number> = {};
           data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
           setGroupPrices(map);
+
+          // Load member payment configs for these groups
+          if (data.length > 0) {
+            const groupIds = data.map((g: any) => g.id);
+            supabase.from('therapeutic_group_members').select('group_id, patient_id, is_paying, member_payment_value')
+              .in('group_id', groupIds)
+              .eq('status', 'active')
+              .then(({ data: membersData }) => {
+                if (membersData) {
+                  const mmap: Record<string, Record<string, { isPaying: boolean; value: number | null }>> = {};
+                  membersData.forEach((m: any) => {
+                    if (!mmap[m.group_id]) mmap[m.group_id] = {};
+                    mmap[m.group_id][m.patient_id] = {
+                      isPaying: m.is_paying ?? true,
+                      value: m.member_payment_value ?? null,
+                    };
+                  });
+                  setMemberPaymentMap(mmap);
+                }
+              });
+          }
         }
       });
   }, [clinicId]);
