@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Sparkles, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit, MoreVertical, Pencil, ScrollText, FileText, CheckCircle, XCircle, UserCheck } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit, MoreVertical, Pencil, ScrollText, FileText, CheckCircle, XCircle, UserCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -43,6 +44,7 @@ const moodEmojis = ['😭', '😢', '😟', '😕', '😐', '🙂', '😊', '�
 
 export function GroupSessionTab({ groupId, groupName, clinicId, members }: GroupSessionTabProps) {
   const { user } = useAuth();
+  const { loadAllEvolutions } = useApp();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -89,9 +91,9 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   // AI
   const [aiEvolution, setAiEvolution] = useState('');
   const [aiEvoMode, setAiEvoMode] = useState<'group' | 'individual'>('group');
-  const [aiEvoCreationMode, setAiEvoCreationMode] = useState<'manual' | 'ai'>('ai');
+  const [aiEvoCreationMode] = useState<'manual' | 'ai'>('manual');
   const [aiIndividualEvolutions, setAiIndividualEvolutions] = useState<Record<string, string>>({});
-  const [aiIndividualCreationMode, setAiIndividualCreationMode] = useState<'manual' | 'ai'>('ai');
+  const [aiIndividualCreationMode] = useState<'manual' | 'ai'>('manual');
   const [generatingAI, setGeneratingAI] = useState(false);
   const [generatingIndividualFor, setGeneratingIndividualFor] = useState<string | null>(null);
   const [sendingToProntuario, setSendingToProntuario] = useState(false);
@@ -231,7 +233,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (!sessionId) return;
     autoSaveRef.current = setTimeout(() => saveSession(false), 60000);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
-  }, [notesText, actionPlans, nextSessionNotes, generalComments, title, participantsData, sessionId]);
+  }, [notesText, actionPlans, nextSessionNotes, generalComments, title, participantsData, participantAttendance, sessionId, aiEvolution, aiIndividualEvolutions]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -602,64 +604,96 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
+  const syncSavedEvolutions = async () => {
+    try {
+      await loadAllEvolutions();
+    } catch (error) {
+      console.error('Erro ao sincronizar evoluções salvas:', error);
+    }
+  };
+
   const sendToGroupProntuario = async () => {
     if (!user) return;
+    const evolutionDate = new Date().toISOString().slice(0, 10);
+    const inserts = aiEvoMode === 'individual'
+      ? members
+          .filter(m => aiIndividualEvolutions[m.id]?.trim())
+          .map(m => ({
+            user_id: user.id,
+            patient_id: m.id,
+            clinic_id: clinicId,
+            group_id: groupId,
+            date: evolutionDate,
+            text: aiIndividualEvolutions[m.id].trim(),
+            attendance_status: participantAttendance[m.id] || 'presente',
+            mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
+          }))
+      : aiEvolution.trim()
+        ? members.map(m => ({
+            user_id: user.id,
+            patient_id: m.id,
+            clinic_id: clinicId,
+            group_id: groupId,
+            date: evolutionDate,
+            text: aiEvolution.trim(),
+            attendance_status: participantAttendance[m.id] || 'presente',
+            mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
+          }))
+        : [];
+
+    if (inserts.length === 0) {
+      toast.error('Preencha a evolução antes de enviar para o prontuário do grupo.');
+      return;
+    }
+
     setSendingToProntuario(true);
-    if (aiEvoMode === 'individual') {
-      const inserts = members.filter(m => aiIndividualEvolutions[m.id]?.trim()).map(m => ({
-        user_id: user.id,
-        patient_id: m.id,
-        clinic_id: clinicId,
-        group_id: groupId,
-        date: new Date().toISOString().slice(0, 10),
-        text: aiIndividualEvolutions[m.id],
-        attendance_status: participantAttendance[m.id] || 'presente',
-        mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
-      }));
-      if (inserts.length === 0) { setSendingToProntuario(false); return; }
+    try {
       const { error } = await supabase.from('evolutions').insert(inserts);
+      if (error) throw error;
+
+      await syncSavedEvolutions();
+      toast.success(aiEvoMode === 'individual'
+        ? 'Evoluções individuais salvas no prontuário do grupo!'
+        : 'Evolução salva no prontuário do grupo!');
+    } catch (error: any) {
+      console.error('Erro ao enviar evoluções para prontuário do grupo:', error);
+      toast.error(error?.message || 'Erro ao enviar para prontuário do grupo');
+    } finally {
       setSendingToProntuario(false);
-      if (error) toast.error('Erro ao enviar para prontuário');
-      else { toast.success('Evoluções individuais salvas no prontuário do grupo!'); }
-    } else {
-      if (!aiEvolution) { setSendingToProntuario(false); return; }
-      const inserts = members.map(m => ({
-        user_id: user.id,
-        patient_id: m.id,
-        clinic_id: clinicId,
-        group_id: groupId,
-        date: new Date().toISOString().slice(0, 10),
-        text: aiEvolution,
-        attendance_status: participantAttendance[m.id] || 'presente',
-        mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
-      }));
-      const { error } = await supabase.from('evolutions').insert(inserts);
-      setSendingToProntuario(false);
-      if (error) toast.error('Erro ao enviar para prontuário');
-      else { toast.success('Evolução salva no prontuário do grupo!'); }
     }
   };
 
   const sendToIndividualProntuario = async (memberId: string) => {
     if (!user) return;
-    setSendingToProntuario(true);
     const pd = participantsData[memberId];
-    const text = aiEvoMode === 'individual' ? aiIndividualEvolutions[memberId] : aiEvolution;
-    if (!text) { setSendingToProntuario(false); return; }
-    const { error } = await supabase.from('evolutions').insert({
-      user_id: user.id,
-      patient_id: memberId,
-      clinic_id: clinicId,
-      date: new Date().toISOString().slice(0, 10),
-      text,
-      attendance_status: participantAttendance[memberId] || 'presente',
-      mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
-    });
-    setSendingToProntuario(false);
-    if (error) toast.error('Erro ao enviar para prontuário individual');
-    else {
+    const text = (aiEvoMode === 'individual' ? aiIndividualEvolutions[memberId] : aiEvolution)?.trim();
+
+    if (!text) {
+      toast.error('Preencha a evolução antes de enviar para o prontuário individual.');
+      return;
+    }
+
+    setSendingToProntuario(true);
+    try {
+      const { error } = await supabase.from('evolutions').insert({
+        user_id: user.id,
+        patient_id: memberId,
+        clinic_id: clinicId,
+        date: new Date().toISOString().slice(0, 10),
+        text,
+        attendance_status: participantAttendance[memberId] || 'presente',
+        mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
+      });
+      if (error) throw error;
+
+      await syncSavedEvolutions();
       const name = members.find(m => m.id === memberId)?.name || 'paciente';
       toast.success(`Evolução salva no prontuário individual de ${name}!`);
+    } catch (error: any) {
+      console.error('Erro ao enviar evolução para prontuário individual:', error);
+      toast.error(error?.message || 'Erro ao enviar para prontuário individual');
+    } finally {
+      setSendingToProntuario(false);
     }
   };
 
@@ -1557,23 +1591,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
 
               {aiEvoMode === 'group' ? (
                 <>
-                  {/* Creation mode: manual or AI */}
-                  <div className="flex gap-2">
-                    <Button size="sm" variant={aiEvoCreationMode === 'manual' ? 'secondary' : 'ghost'} onClick={() => setAiEvoCreationMode('manual')} className="gap-1 text-xs">
-                      <PenLine className="w-3 h-3" /> Escrever manualmente
-                    </Button>
-                    <Button size="sm" variant={aiEvoCreationMode === 'ai' ? 'secondary' : 'ghost'} onClick={() => setAiEvoCreationMode('ai')} className="gap-1 text-xs">
-                      <Sparkles className="w-3 h-3" /> Gerar com IA
-                    </Button>
-                  </div>
-
-                  {aiEvoCreationMode === 'ai' && (
-                    <Button onClick={generateAIEvolution} disabled={generatingAI} className="gap-1.5 w-full">
-                      {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      Gerar evolução IA do grupo
-                    </Button>
-                  )}
-
                   {/* Text area always visible when there's text or in manual mode */}
                   {(aiEvolution || aiEvoCreationMode === 'manual') && (
                     <div className="space-y-3">
@@ -1619,25 +1636,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                 </>
               ) : (
                 <>
-                  {/* Individual mode: manual or AI */}
-                  <div className="flex gap-2">
-                    <Button size="sm" variant={aiIndividualCreationMode === 'manual' ? 'secondary' : 'ghost'} onClick={() => setAiIndividualCreationMode('manual')} className="gap-1 text-xs">
-                      <PenLine className="w-3 h-3" /> Escrever manualmente
-                    </Button>
-                    <Button size="sm" variant={aiIndividualCreationMode === 'ai' ? 'secondary' : 'ghost'} onClick={() => setAiIndividualCreationMode('ai')} className="gap-1 text-xs">
-                      <Sparkles className="w-3 h-3" /> Gerar com IA
-                    </Button>
-                  </div>
-
-                  {aiIndividualCreationMode === 'ai' && (
-                    <Button onClick={generateIndividualEvolutions} disabled={generatingAI} className="gap-1.5 w-full">
-                      {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      {generatingAI && generatingIndividualFor
-                        ? `Gerando para ${members.find(m => m.id === generatingIndividualFor)?.name || '...'}...`
-                        : 'Gerar evolução individual para cada participante'}
-                    </Button>
-                  )}
-
                   {/* Manual mode: show empty fields for all members */}
                   {aiIndividualCreationMode === 'manual' && Object.keys(aiIndividualEvolutions).length === 0 && (
                     <Button
@@ -1690,7 +1688,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                                 variant="outline" size="sm" className="gap-1 text-xs h-7" disabled={sendingToProntuario || !aiIndividualEvolutions[m.id]?.trim()}
                                 onClick={() => sendToIndividualProntuario(m.id)}
                               >
-                                <Send className="w-3 h-3" /> Prontuário
+                                <Send className="w-3 h-3" /> Prontuário individual
                               </Button>
                             </div>
                           </div>
