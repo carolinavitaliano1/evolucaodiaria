@@ -871,17 +871,27 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         // Find if this line contains the group name to render it bold
         const lineText = bodyLines[li];
         const gnIdx = lineText.indexOf(groupName);
+        const isLast = li === bodyLines.length - 1;
+        const justAlign = isLast ? 'left' : 'justify';
+        // Render full line justified in normal font
+        doc.setFont('helvetica', 'normal');
+        doc.text(lineText, margin, y, { align: justAlign, maxWidth: contentWidth });
+        // Overlay bold group name if present
         if (gnIdx !== -1) {
-          // Render segments: before (normal), group name (bold), after (normal)
           const beforePart = lineText.substring(0, gnIdx);
-          const afterPart = lineText.substring(gnIdx + groupName.length);
-          let curX = margin;
-          if (beforePart) { doc.setFont('helvetica', 'normal'); doc.text(beforePart, curX, y); curX += doc.getTextWidth(beforePart); }
-          doc.setFont('helvetica', 'bold'); doc.text(groupName, curX, y); curX += doc.getTextWidth(groupName);
-          if (afterPart) { doc.setFont('helvetica', 'normal'); doc.text(afterPart, curX, y); }
-        } else {
           doc.setFont('helvetica', 'normal');
-          doc.text(lineText, margin, y, { align: 'justify', maxWidth: contentWidth });
+          const offsetX = doc.getTextWidth(beforePart);
+          // Calculate justify spacing
+          let spacingExtra = 0;
+          if (!isLast && lineText.trim().includes(' ')) {
+            const words = lineText.trim().split(/\s+/);
+            const normalWidth = doc.getTextWidth(lineText.trim());
+            if (words.length > 1) spacingExtra = (contentWidth - normalWidth) / (words.length - 1);
+          }
+          const spacesBefore = (beforePart.match(/ /g) || []).length;
+          doc.setFont('helvetica', 'bold');
+          doc.text(groupName, margin + offsetX + (spacesBefore * spacingExtra), y);
+          doc.setFont('helvetica', 'normal');
         }
         y += 7;
       }
@@ -1046,23 +1056,53 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           for (let wi = 0; wi < wrappedLines.length; wi++) {
             if (y > 275) { doc.addPage(); y = 20; }
             const isLastLine = wi === wrappedLines.length - 1;
+            const justifyAlign = isLastLine ? 'left' : 'justify';
+            
             if (!hasBold) {
               doc.setFont('helvetica', 'normal');
-              doc.text(wrappedLines[wi], xPos, y, { align: isLastLine ? 'left' : 'justify', maxWidth });
+              doc.text(wrappedLines[wi], xPos, y, { align: justifyAlign, maxWidth });
             } else {
-              let curX = xPos; let consumed = 0;
+              // First render full line justified in normal font (this sets correct word spacing)
+              doc.setFont('helvetica', 'normal');
+              doc.text(wrappedLines[wi], xPos, y, { align: justifyAlign, maxWidth });
+              
+              // Now overlay bold portions on top
+              // We need to find which segments appear in this wrapped line
+              let consumed = 0;
               for (let pi = 0; pi < wi; pi++) consumed += wrappedLines[pi].length;
               const lineStart = consumed; const lineEnd = consumed + wrappedLines[wi].length;
+              
+              // Calculate character positions by measuring each word
+              const lineStr = wrappedLines[wi];
               let charPos = 0;
               for (const seg of segments) {
                 const segStart = charPos; const segEnd = charPos + seg.text.length; charPos = segEnd;
+                if (!seg.bold) continue;
                 const os = Math.max(segStart, lineStart); const oe = Math.min(segEnd, lineEnd);
                 if (os >= oe) continue;
                 const portion = seg.text.slice(os - segStart, oe - segStart);
                 if (!portion) continue;
-                doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-                doc.text(portion, curX, y); curX += doc.getTextWidth(portion);
+                // Measure text before this portion in the line to get X offset
+                const textBefore = fullLineText.slice(lineStart, os);
+                doc.setFont('helvetica', 'normal');
+                const offsetX = doc.getTextWidth(textBefore);
+                // Calculate justify spacing factor
+                let spacingExtra = 0;
+                if (!isLastLine && lineStr.trim().includes(' ')) {
+                  const words = lineStr.trim().split(/\s+/);
+                  const normalWidth = doc.getTextWidth(lineStr.trim());
+                  if (words.length > 1) {
+                    spacingExtra = (maxWidth - normalWidth) / (words.length - 1);
+                  }
+                }
+                // Count spaces before this portion to add extra spacing
+                const spacesBefore = (textBefore.match(/ /g) || []).length;
+                const adjustedX = xPos + offsetX + (spacesBefore * spacingExtra);
+                
+                doc.setFont('helvetica', 'bold');
+                doc.text(portion, adjustedX, y);
               }
+              doc.setFont('helvetica', 'normal');
             }
             y += 5;
           }
