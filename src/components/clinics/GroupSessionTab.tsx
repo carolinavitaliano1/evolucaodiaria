@@ -1643,6 +1643,22 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             </CardContent>
           </Card>
 
+          {/* File Upload */}
+          <Card className="border-border">
+            <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Upload className="w-4 h-4 text-primary" /> Arquivos da Sessão</CardTitle></CardHeader>
+            <CardContent>
+              <FileUpload
+                existingFiles={sessionAttachedFiles}
+                onUpload={(files) => setSessionAttachedFiles(prev => [...prev, ...files])}
+                onRemove={(fileId) => setSessionAttachedFiles(prev => prev.filter(f => f.id !== fileId))}
+                parentId={sessionId || 'temp-group-session'}
+                parentType="therapy_session"
+                multiple
+              />
+              <p className="text-xs text-muted-foreground mt-2">Envie até 5 arquivos (máx 20MB por arquivo).</p>
+            </CardContent>
+          </Card>
+
           {/* Evolução */}
           <Card className="border-border">
             <CardHeader className="pb-2">
