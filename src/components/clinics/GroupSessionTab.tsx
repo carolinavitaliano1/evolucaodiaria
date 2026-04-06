@@ -555,7 +555,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     }
   };
 
-  // Generate individual AI evolutions for each member
+  // Generate individual AI evolutions for each member with per-participant context
   const generateIndividualEvolutions = async () => {
     if (!user) return;
     setGeneratingAI(true);
@@ -564,6 +564,14 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       for (const m of members) {
         setGeneratingIndividualFor(m.id);
         const pd = participantsData[m.id];
+        // Build per-participant summary with their specific data
+        const participantContext = [
+          pd?.moodScore ? `Humor do paciente: ${pd.moodScore}/10` : '',
+          pd?.positiveFeelings?.length ? `Sentimentos positivos: ${pd.positiveFeelings.join(', ')}` : '',
+          pd?.negativeFeelings?.length ? `Sentimentos negativos: ${pd.negativeFeelings.join(', ')}` : '',
+          pd?.suicidalThoughts ? 'ALERTA: Paciente reportou ideação suicida' : '',
+        ].filter(Boolean).join('\n');
+
         const { data, error } = await supabase.functions.invoke('generate-evolution', {
           body: {
             patientName: m.name,
@@ -571,7 +579,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             positiveFeelings: pd?.positiveFeelings || [],
             negativeFeelings: pd?.negativeFeelings || [],
             suicidalThoughts: pd?.suicidalThoughts || false,
-            notesText: notesText,
+            notesText: `Contexto individual de ${m.name}:\n${participantContext}\n\nAnotações gerais da sessão de grupo:\n${notesText}`,
             actionPlans,
             nextSessionNotes,
             generalComments,
