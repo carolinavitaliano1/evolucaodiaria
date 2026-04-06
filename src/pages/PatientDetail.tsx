@@ -220,6 +220,7 @@ export default function PatientDetail() {
   const [editingEvolution, setEditingEvolution] = useState<Evolution | null>(null);
   const [feedbackEvolution, setFeedbackEvolution] = useState<Evolution | null>(null);
   const [feedbackBulkOpen, setFeedbackBulkOpen] = useState(false);
+  const [evoTypeFilter, setEvoTypeFilter] = useState<'all' | 'group' | 'individual'>('all');
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [archivePatientOpen, setArchivePatientOpen] = useState(false);
@@ -1021,7 +1022,10 @@ export default function PatientDetail() {
     if (!startDate || !endDate) return;
     const filtered = patientEvolutions.filter(evo => {
       const d = new Date(evo.date + 'T12:00:00');
-      return d >= startDate && d <= endDate;
+      if (d < startDate || d > endDate) return false;
+      if (evoTypeFilter === 'group') return !!evo.groupId;
+      if (evoTypeFilter === 'individual') return !evo.groupId;
+      return true;
     });
     if (filtered.length === 0) { toast.error('Nenhuma evolução no período.'); return; }
     generateMultipleEvolutionsPdf({
@@ -2136,6 +2140,16 @@ export default function PatientDetail() {
               </h2>
               {patientEvolutions.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={evoTypeFilter} onValueChange={(v: any) => setEvoTypeFilter(v)}>
+                    <SelectTrigger className="h-8 w-[150px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="group">👥 Grupo</SelectItem>
+                      <SelectItem value="individual">👤 Individual</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button variant="outline" size="sm" className="gap-2 text-xs text-primary border-primary/30 hover:bg-primary/5"
                     onClick={() => setFeedbackBulkOpen(true)}>
                     <Sparkles className="w-3.5 h-3.5" /> Feedback em Lote
@@ -2202,7 +2216,11 @@ export default function PatientDetail() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {patientEvolutions.map((evo) => {
+                  {patientEvolutions.filter(evo => {
+                    if (evoTypeFilter === 'group') return !!evo.groupId;
+                    if (evoTypeFilter === 'individual') return !evo.groupId;
+                    return true;
+                  }).map((evo) => {
                     const moodInfo = getMoodInfo(evo.mood, customMoods);
                     const evoAuthorId = (evo as any).user_id;
                     const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;

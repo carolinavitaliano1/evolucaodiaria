@@ -90,7 +90,7 @@ export default function GroupDetail() {
   const [evolutions, setEvolutions] = useState<any[]>([]);
   const [loadingEvos, setLoadingEvos] = useState(false);
   const [evoFilterMember, setEvoFilterMember] = useState('all');
-  const [evoFilterType, setEvoFilterType] = useState<'all' | 'group' | 'individual'>('all');
+  
   const [evoFilterStartDate, setEvoFilterStartDate] = useState<Date | undefined>(undefined);
   const [evoFilterEndDate, setEvoFilterEndDate] = useState<Date | undefined>(undefined);
   const [startDateOpen, setStartDateOpen] = useState(false);
@@ -195,9 +195,8 @@ export default function GroupDetail() {
   const loadEvolutions = async () => {
     if (!user || members.length === 0) { setLoadingEvos(false); return; }
     setLoadingEvos(true);
-    const patientIds = members.map(m => m.id);
     
-    // Load group evolutions
+    // Load only group evolutions
     const { data: groupEvos } = await supabase
       .from('evolutions')
       .select('*')
@@ -205,28 +204,12 @@ export default function GroupDetail() {
       .order('date', { ascending: false })
       .limit(500);
     
-    // Load individual evolutions for members
-    const { data: individualEvos } = await supabase
-      .from('evolutions')
-      .select('*')
-      .in('patient_id', patientIds)
-      .is('group_id', null)
-      .order('date', { ascending: false })
-      .limit(500);
-    
-    const all = [
-      ...(groupEvos || []).map((e: any) => ({ ...e, _evoType: 'group' })),
-      ...(individualEvos || []).map((e: any) => ({ ...e, _evoType: 'individual' })),
-    ];
-    all.sort((a, b) => b.date.localeCompare(a.date));
-    setEvolutions(all);
+    setEvolutions((groupEvos || []).map((e: any) => ({ ...e, _evoType: 'group' })));
     setLoadingEvos(false);
   };
 
   const filteredEvolutions = evolutions.filter(evo => {
     if (evoFilterMember !== 'all' && evo.patient_id !== evoFilterMember) return false;
-    if (evoFilterType === 'group' && evo._evoType !== 'group') return false;
-    if (evoFilterType === 'individual' && evo._evoType !== 'individual') return false;
     if (evoFilterStartDate && evo.date < format(evoFilterStartDate, 'yyyy-MM-dd')) return false;
     if (evoFilterEndDate && evo.date > format(evoFilterEndDate, 'yyyy-MM-dd')) return false;
     return true;
@@ -840,20 +823,6 @@ export default function GroupDetail() {
                 </Select>
               </div>
 
-              {/* Type filter */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Tipo de evolução</Label>
-                <Select value={evoFilterType} onValueChange={(v: any) => setEvoFilterType(v)}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="group">👥 Grupo</SelectItem>
-                    <SelectItem value="individual">👤 Individual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* Start date */}
               <div>
@@ -919,10 +888,9 @@ export default function GroupDetail() {
                 {filteredEvolutions.length} evolução(ões) encontrada(s)
               </p>
               <div className="flex gap-2">
-                {(evoFilterMember !== 'all' || evoFilterType !== 'all' || evoFilterStartDate || evoFilterEndDate) && (
+                {(evoFilterMember !== 'all' || evoFilterStartDate || evoFilterEndDate) && (
                   <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
                     setEvoFilterMember('all');
-                    setEvoFilterType('all');
                     setEvoFilterStartDate(undefined);
                     setEvoFilterEndDate(undefined);
                   }}>
@@ -1057,9 +1025,6 @@ export default function GroupDetail() {
                           <Badge variant="outline" className="text-xs shrink-0">{patient?.name || 'Paciente'}</Badge>
                           <Badge variant={evo.attendance_status === 'presente' ? 'default' : 'secondary'} className="text-xs shrink-0">
                             {evo.attendance_status}
-                          </Badge>
-                          <Badge variant="outline" className={cn("text-[10px] shrink-0", evo._evoType === 'group' ? 'border-primary/30 text-primary' : 'border-muted-foreground/30 text-muted-foreground')}>
-                            {evo._evoType === 'group' ? '👥 Grupo' : '👤 Individual'}
                           </Badge>
                           {evo.text && <p className="text-sm text-muted-foreground line-clamp-2">{evo.text}</p>}
                         </div>
