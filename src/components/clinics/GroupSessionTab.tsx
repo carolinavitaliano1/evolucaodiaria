@@ -1046,6 +1046,31 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       addSection('Planejamento para Próxima Sessão', session.next_session_notes || '');
       addSection('Comentários Gerais', session.general_comments || '');
 
+      // Evolução da sessão (grupo)
+      if (session.ai_evolution) {
+        addSection('Evolução da Sessão', session.ai_evolution);
+      }
+
+      // Evoluções individuais
+      if (session.ai_individual_evolutions && typeof session.ai_individual_evolutions === 'object') {
+        const indivEvos = session.ai_individual_evolutions as Record<string, string>;
+        const entries = Object.entries(indivEvos).filter(([, text]) => !!text);
+        if (entries.length > 0) {
+          if (y > 260) { doc.addPage(); y = 20; }
+          doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(99, 102, 241);
+          doc.text('Evoluções Individuais', margin, y); y += 7;
+          for (const [memberId, text] of entries) {
+            if (y > 260) { doc.addPage(); y = 20; }
+            const memberName = members.find(m => m.id === memberId)?.name || 'Participante';
+            doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(50, 50, 50);
+            doc.text(memberName, margin, y); y += 5;
+            doc.setTextColor(60, 60, 60);
+            renderMarkdownText(text, margin, contentWidth); y += 4;
+          }
+          y += 4;
+        }
+      }
+
       // Footer
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
