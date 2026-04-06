@@ -2137,6 +2137,16 @@ export default function PatientDetail() {
               </h2>
               {patientEvolutions.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={evoTypeFilter} onValueChange={(v: any) => setEvoTypeFilter(v)}>
+                    <SelectTrigger className="h-8 w-[150px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="group">👥 Grupo</SelectItem>
+                      <SelectItem value="individual">👤 Individual</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button variant="outline" size="sm" className="gap-2 text-xs text-primary border-primary/30 hover:bg-primary/5"
                     onClick={() => setFeedbackBulkOpen(true)}>
                     <Sparkles className="w-3.5 h-3.5" /> Feedback em Lote
