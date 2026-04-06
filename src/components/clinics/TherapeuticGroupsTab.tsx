@@ -142,6 +142,7 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
     setEditingId(null);
     setForm(emptyForm());
     setSelectedPatients([]);
+    setSelectedPaymentConfigs({});
     setDialogOpen(true);
   };
 
