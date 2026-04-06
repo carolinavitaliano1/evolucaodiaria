@@ -612,7 +612,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       const { error } = await supabase.from('evolutions').insert(inserts);
       setSendingToProntuario(false);
       if (error) toast.error('Erro ao enviar para prontuário');
-      else { toast.success('Evoluções individuais salvas no prontuário do grupo!'); setAiIndividualEvolutions({}); }
+      else { toast.success('Evoluções individuais salvas no prontuário do grupo!'); }
     } else {
       if (!aiEvolution) { setSendingToProntuario(false); return; }
       const inserts = members.map(m => ({
@@ -628,7 +628,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       const { error } = await supabase.from('evolutions').insert(inserts);
       setSendingToProntuario(false);
       if (error) toast.error('Erro ao enviar para prontuário');
-      else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
+      else { toast.success('Evolução salva no prontuário do grupo!'); }
     }
   };
 
