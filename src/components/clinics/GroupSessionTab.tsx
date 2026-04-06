@@ -1224,7 +1224,49 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             </CardContent>
           </Card>
 
-          {/* Mood per participant */}
+          {/* Attendance / Frequência per participant */}
+          <Card className="border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-primary" /> Frequência
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {members.map(m => {
+                const att = participantAttendance[m.id] || 'presente';
+                return (
+                  <div key={m.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-border last:border-0">
+                    <span className="text-sm font-medium text-foreground">{m.name}</span>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm" variant={att === 'presente' ? 'default' : 'outline'}
+                        className={cn('gap-1 text-xs h-7', att === 'presente' && 'bg-green-600 hover:bg-green-700 text-white')}
+                        onClick={() => setParticipantAttendance(prev => ({ ...prev, [m.id]: 'presente' }))}
+                      >
+                        <CheckCircle className="w-3 h-3" /> Presente
+                      </Button>
+                      <Button
+                        size="sm" variant={att === 'falta' ? 'default' : 'outline'}
+                        className={cn('gap-1 text-xs h-7', att === 'falta' && 'bg-red-600 hover:bg-red-700 text-white')}
+                        onClick={() => setParticipantAttendance(prev => ({ ...prev, [m.id]: 'falta' }))}
+                      >
+                        <XCircle className="w-3 h-3" /> Falta
+                      </Button>
+                      <Button
+                        size="sm" variant={att === 'falta_justificada' ? 'default' : 'outline'}
+                        className={cn('gap-1 text-xs h-7', att === 'falta_justificada' && 'bg-yellow-600 hover:bg-yellow-700 text-white')}
+                        onClick={() => setParticipantAttendance(prev => ({ ...prev, [m.id]: 'falta_justificada' }))}
+                      >
+                        Justificada
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+
           <Card className="border-border">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
