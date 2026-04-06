@@ -113,13 +113,16 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   useEffect(() => {
     const init: Record<string, ParticipantData> = {};
     const initFeelings: Record<string, { positive: string; negative: string }> = {};
+    const initAttendance: Record<string, string> = {};
     members.forEach(m => {
       init[m.id] = participantsData[m.id] || { moodScore: null, positiveFeelings: [], negativeFeelings: [], suicidalThoughts: false };
       initFeelings[m.id] = newFeelings[m.id] || { positive: '', negative: '' };
+      initAttendance[m.id] = participantAttendance[m.id] || 'presente';
     });
     setParticipantsData(init);
     setNewFeelings(initFeelings);
-  }, [members.map(m => m.id).join(',')]);
+    setParticipantAttendance(initAttendance);
+  }, [members.map(m => m.id).join(',')]); 
 
   useEffect(() => {
     if (!user || !groupId) return;
