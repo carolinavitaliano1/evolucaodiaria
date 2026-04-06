@@ -90,6 +90,8 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [planActivities, setPlanActivities] = useState('');
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<any>(null);
+  const [planAttachedFiles, setPlanAttachedFiles] = useState<UploadedFile[]>([]);
+  const [sessionAttachedFiles, setSessionAttachedFiles] = useState<UploadedFile[]>([]);
 
   // Attendance per participant
   const [participantAttendance, setParticipantAttendance] = useState<Record<string, string>>({});
