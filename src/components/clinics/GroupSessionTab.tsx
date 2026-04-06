@@ -988,26 +988,26 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       members.forEach(m => {
         const pd = pData[m.id];
         if (!pd) return;
-        if (y > 260) { doc.addPage(); y = 20; }
+        if (y > 255) { doc.addPage(); y = 20; }
         doc.setFont('helvetica', 'bold');
-        const moodStr = pd.mood_score ? `${pd.mood_score}/10` : '';
-        doc.text(`${m.name}  ${moodStr}`, margin, y);
+        doc.setFontSize(10);
+        const moodStr = pd.mood_score ? ` (${pd.mood_score}/10)` : '';
+        doc.text(`${m.name}${moodStr}`, margin + 2, y);
         y += 5;
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
         if (pd.positive_feelings?.length) {
-          doc.setFont('helvetica', 'bold'); doc.text('Positivos:', margin, y);
-          doc.setFont('helvetica', 'normal'); doc.text(pd.positive_feelings.join(', '), margin + 25, y); y += 5;
+          doc.text(`Positivos: ${pd.positive_feelings.join(', ')}`, margin + 4, y); y += 4.5;
         }
         if (pd.negative_feelings?.length) {
-          doc.setFont('helvetica', 'bold'); doc.text('Negativos:', margin, y);
-          doc.setFont('helvetica', 'normal'); doc.text(pd.negative_feelings.join(', '), margin + 25, y); y += 5;
+          doc.text(`Negativos: ${pd.negative_feelings.join(', ')}`, margin + 4, y); y += 4.5;
         }
         if (pd.suicidal_thoughts) {
           doc.setFillColor(254, 226, 226);
-          doc.roundedRect(margin, y, contentWidth, 8, 2, 2, 'F');
+          doc.roundedRect(margin, y - 1, contentWidth, 7, 2, 2, 'F');
           doc.setTextColor(185, 28, 28); doc.setFont('helvetica', 'bold');
-          doc.text(`ALERTA: Ideacao suicida - ${m.name}`, margin + 3, y + 6);
-          doc.setTextColor(50, 50, 50); y += 12;
+          doc.text(`ALERTA: Ideação suicida — ${m.name}`, margin + 3, y + 4);
+          doc.setTextColor(50, 50, 50); y += 10;
         }
         y += 3;
       });
