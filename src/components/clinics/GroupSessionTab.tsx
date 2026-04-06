@@ -1318,6 +1318,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           <History className="w-3.5 h-3.5" /> Realizadas
           {sessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{sessions.length}</Badge>}
         </Button>
+        <Button variant={mainView === 'next_sessions' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('next_sessions')} className="gap-1.5">
+          <CalendarPlus className="w-3.5 h-3.5" /> Próximas Sessões
+          {savedNextSessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{savedNextSessions.length}</Badge>}
+        </Button>
       </div>
 
       {/* ═══ PLANNING VIEW ═══ */}
