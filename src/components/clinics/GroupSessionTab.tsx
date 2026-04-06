@@ -1756,31 +1756,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             })
           )}
 
-          {/* Download evolutions per member */}
-          {sessions.length > 0 && (
-            <Card className="border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2"><Download className="w-4 h-4 text-primary" /> Baixar Evoluções por Paciente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {members.map(m => (
-                    <div key={m.id} className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-foreground min-w-[120px]">{m.name}</span>
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs" disabled={generatingReport}
-                        onClick={() => downloadMemberEvolutions(m.id, 'group')}>
-                        {generatingReport ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} Grupo
-                      </Button>
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs" disabled={generatingReport}
-                        onClick={() => downloadMemberEvolutions(m.id, 'individual')}>
-                        {generatingReport ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} Individual
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
