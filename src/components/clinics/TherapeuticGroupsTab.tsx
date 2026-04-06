@@ -97,10 +97,12 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
   const navigate = useNavigate();
   const [groups, setGroups] = useState<TherapeuticGroup[]>([]);
   const [members, setMembers] = useState<Record<string, string[]>>({});
+  const [memberConfigs, setMemberConfigs] = useState<Record<string, Record<string, { isPaying: boolean; memberPaymentValue: number | null }>>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
+  const [selectedPaymentConfigs, setSelectedPaymentConfigs] = useState<Record<string, { isPaying: boolean; memberPaymentValue: number | null }>>({});
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [showArchived, setShowArchived] = useState(false);

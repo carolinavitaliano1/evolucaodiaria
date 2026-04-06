@@ -26,10 +26,13 @@ export default function Financial() {
 
   // Group prices for group evolutions
   const [groupPrices, setGroupPrices] = useState<Record<string, number>>({});
+  // Member payment configs: memberPaymentMap[groupId][patientId] = { isPaying, value }
+  const [memberPaymentMap, setMemberPaymentMap] = useState<Record<string, Record<string, { isPaying: boolean; value: number | null }>>>({});
 
   useEffect(() => {
     if (user) {
       loadAllEvolutions();
+      // Load group prices
       supabase.from('therapeutic_groups').select('id, default_price, financial_enabled')
         .eq('financial_enabled', true)
         .then(({ data }) => {
@@ -37,6 +40,22 @@ export default function Financial() {
             const map: Record<string, number> = {};
             data.forEach((g: any) => { if (g.default_price) map[g.id] = Number(g.default_price); });
             setGroupPrices(map);
+          }
+        });
+      // Load member payment configs
+      supabase.from('therapeutic_group_members').select('group_id, patient_id, is_paying, member_payment_value')
+        .eq('status', 'active')
+        .then(({ data }) => {
+          if (data) {
+            const map: Record<string, Record<string, { isPaying: boolean; value: number | null }>> = {};
+            data.forEach((m: any) => {
+              if (!map[m.group_id]) map[m.group_id] = {};
+              map[m.group_id][m.patient_id] = {
+                isPaying: m.is_paying ?? true,
+                value: m.member_payment_value ?? null,
+              };
+            });
+            setMemberPaymentMap(map);
           }
         });
     }
