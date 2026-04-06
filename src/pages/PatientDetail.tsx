@@ -725,13 +725,18 @@ export default function PatientDetail() {
     return null;
   }, [monthlyDynamic, paymentValue, monthlyDeductibleAbsences]);
 
+  const monthlyBillableEvos = monthlyEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const monthlyGroupRevenue = computeGroupRevenue(monthlyBillableEvos);
+  const monthlyIndividualBillable = monthlyBillableEvos.filter(e => !e.groupId);
+  const monthlyIndividualBillableCount = monthlyIndividualBillable.length;
+  const monthlyIndividualUniqueDays = new Set(monthlyIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const monthlyRevenue = monthlyMensalDeduction
-    ? monthlyMensalDeduction.finalRevenue
+    ? monthlyMensalDeduction.finalRevenue + monthlyGroupRevenue
     : isFixoMensal
-      ? paymentValue
+      ? paymentValue + monthlyGroupRevenue
       : isFixoDiario
-        ? monthlyUniqueDays * perSessionValue
-        : monthlyBillableCount * perSessionValue;
+        ? monthlyIndividualUniqueDays * perSessionValue + monthlyGroupRevenue
+        : monthlyIndividualBillableCount * perSessionValue + monthlyGroupRevenue;
   const monthlyRevenueSubtitle = monthlyMensalDeduction
     ? `${monthlyDynamic!.occurrences} sessões previstas`
     : isFixoMensal
