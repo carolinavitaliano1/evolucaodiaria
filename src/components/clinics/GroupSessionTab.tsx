@@ -1107,7 +1107,15 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       // Markdown renderer
       const renderMarkdownText = (text: string, xPos: number, maxWidth: number) => {
         const originalLines = text.split('\n');
-        for (const originalLine of originalLines) {
+        for (let olIdx = 0; olIdx < originalLines.length; olIdx++) {
+          let originalLine = originalLines[olIdx];
+          
+          // Handle # headers - strip # and render as bold
+          const headerMatch = originalLine.match(/^(#{1,3})\s+(.*)$/);
+          if (headerMatch) {
+            originalLine = `**${headerMatch[2]}**`;
+          }
+
           const segments: { text: string; bold: boolean }[] = [];
           let rem = originalLine;
           while (rem.length > 0) {
