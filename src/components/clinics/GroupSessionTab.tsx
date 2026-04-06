@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { saveAs } from 'file-saver';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -68,13 +70,16 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Sub-views: planning | session | history
-  const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
+  // Sub-views: planning | session | history | next_sessions
+  const [mainView, setMainView] = useState<'planning' | 'session' | 'history' | 'next_sessions'>('planning');
 
   // History
   const [sessions, setSessions] = useState<any[]>([]);
   const [viewingSession, setViewingSession] = useState<any | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
+
+  // Saved next sessions
+  const [savedNextSessions, setSavedNextSessions] = useState<any[]>([]);
 
   // Plans
   const [plans, setPlans] = useState<any[]>([]);
@@ -126,11 +131,61 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     setParticipantAttendance(initAttendance);
   }, [members.map(m => m.id).join(',')]); 
 
+  const loadSavedNextSessions = async () => {
+    if (!user) return;
+    // Load finished sessions that have next_session_notes
+    const { data } = await supabase
+      .from('therapy_sessions')
+      .select('id, title, created_at, next_session_notes')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .eq('status', 'finished')
+      .not('next_session_notes', 'is', null)
+      .order('created_at', { ascending: false });
+    if (data) setSavedNextSessions(data.filter((s: any) => s.next_session_notes?.trim()));
+  };
+
+  const downloadNextSessionWord = async (session: any) => {
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: `Planejamento - ${groupName}`, bold: true, size: 32 })],
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Sessão: ${session.title || 'Sem título'}`, size: 22, color: '666666' })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Data: ${new Date(session.created_at).toLocaleDateString('pt-BR')}`, size: 20, color: '999999' })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+          }),
+          ...session.next_session_notes.split('\n').map((line: string) => 
+            new Paragraph({
+              children: [new TextRun({ text: line, size: 24 })],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: 120 },
+            })
+          ),
+        ],
+      }],
+    });
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `proxima_sessao_${groupName.replace(/\s+/g, '_')}_${new Date(session.created_at).toLocaleDateString('pt-BR').replace(/\//g, '-')}.docx`);
+    toast.success('Documento Word gerado!');
+  };
+
   useEffect(() => {
     if (!user || !groupId) return;
     loadActiveSession();
     loadHistory();
     loadPlans();
+    loadSavedNextSessions();
     // Load stamps
     supabase.from('stamps').select('*').eq('user_id', user.id).then(({ data }) => {
       if (data) setStamps(data);
@@ -360,6 +415,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       setSessionId(null);
       resetForm();
       await loadHistory();
+      await loadSavedNextSessions();
       setMainView('history');
     }
   };
@@ -646,6 +702,23 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       return;
     }
 
+    // Check for duplicates - check first patient
+    const firstInsert = inserts[0];
+    const { data: existing } = await supabase
+      .from('evolutions')
+      .select('id')
+      .eq('patient_id', firstInsert.patient_id)
+      .eq('clinic_id', clinicId)
+      .eq('date', evolutionDate)
+      .eq('group_id', groupId)
+      .eq('text', firstInsert.text)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      toast.error('Essas evoluções já foram salvas no prontuário.');
+      return;
+    }
+
     setSendingToProntuario(true);
     try {
       const { error } = await supabase.from('evolutions').insert(inserts);
@@ -673,13 +746,32 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       return;
     }
 
+    const evolutionDate = new Date().toISOString().slice(0, 10);
+
+    // Check for duplicates
+    const { data: existing } = await supabase
+      .from('evolutions')
+      .select('id')
+      .eq('patient_id', memberId)
+      .eq('clinic_id', clinicId)
+      .eq('date', evolutionDate)
+      .eq('group_id', groupId)
+      .eq('text', text)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      toast.error('Essa evolução já foi salva no prontuário.');
+      return;
+    }
+
     setSendingToProntuario(true);
     try {
       const { error } = await supabase.from('evolutions').insert({
         user_id: user.id,
         patient_id: memberId,
         clinic_id: clinicId,
-        date: new Date().toISOString().slice(0, 10),
+        group_id: groupId,
+        date: evolutionDate,
         text,
         attendance_status: participantAttendance[memberId] || 'presente',
         mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
@@ -1071,7 +1163,15 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       // Markdown renderer
       const renderMarkdownText = (text: string, xPos: number, maxWidth: number) => {
         const originalLines = text.split('\n');
-        for (const originalLine of originalLines) {
+        for (let olIdx = 0; olIdx < originalLines.length; olIdx++) {
+          let originalLine = originalLines[olIdx];
+          
+          // Handle # headers - strip # and render as bold
+          const headerMatch = originalLine.match(/^(#{1,3})\s+(.*)$/);
+          if (headerMatch) {
+            originalLine = `**${headerMatch[2]}**`;
+          }
+
           const segments: { text: string; bold: boolean }[] = [];
           let rem = originalLine;
           while (rem.length > 0) {
@@ -1218,6 +1318,10 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         <Button variant={mainView === 'history' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('history')} className="gap-1.5">
           <History className="w-3.5 h-3.5" /> Realizadas
           {sessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{sessions.length}</Badge>}
+        </Button>
+        <Button variant={mainView === 'next_sessions' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('next_sessions')} className="gap-1.5">
+          <CalendarPlus className="w-3.5 h-3.5" /> Próximas Sessões
+          {savedNextSessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{savedNextSessions.length}</Badge>}
         </Button>
       </div>
 
@@ -1794,6 +1898,39 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
             })
           )}
 
+        </div>
+      )}
+
+      {/* ═══ NEXT SESSIONS VIEW ═══ */}
+      {mainView === 'next_sessions' && (
+        <div className="space-y-3">
+          {savedNextSessions.length === 0 ? (
+            <div className="text-center py-12">
+              <CalendarPlus className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">Nenhum planejamento de próxima sessão salvo</p>
+              <p className="text-xs text-muted-foreground mt-1">Os planejamentos são salvos automaticamente ao finalizar uma sessão com a aba &quot;Próxima Sessão&quot; preenchida.</p>
+            </div>
+          ) : (
+            savedNextSessions.map(s => {
+              const date = new Date(s.created_at);
+              return (
+                <Card key={s.id} className="border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-sm">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</p>
+                        <p className="text-xs text-muted-foreground">{date.toLocaleDateString('pt-BR')}</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs shrink-0" onClick={() => downloadNextSessionWord(s)}>
+                        <Download className="w-3.5 h-3.5" /> Word
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap line-clamp-4">{s.next_session_notes}</p>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
       )}
 
