@@ -1618,6 +1618,39 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         </>
       )}
 
+      {/* ===== NEXT SESSIONS VIEW ===== */}
+      {mainView === 'next_sessions' && (
+        <div className="space-y-3">
+          {savedNextSessions.length === 0 ? (
+            <div className="text-center py-12">
+              <CalendarPlus className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">Nenhum planejamento de próxima sessão salvo</p>
+              <p className="text-xs text-muted-foreground mt-1">Os planejamentos são salvos automaticamente ao finalizar uma sessão com a aba &quot;Próxima Sessão&quot; preenchida.</p>
+            </div>
+          ) : (
+            savedNextSessions.map(s => {
+              const date = new Date(s.created_at);
+              return (
+                <Card key={s.id} className="border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-sm">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</p>
+                        <p className="text-xs text-muted-foreground">{date.toLocaleDateString('pt-BR')}</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs shrink-0" onClick={() => downloadNextSessionWord(s)}>
+                        <Download className="w-3.5 h-3.5" /> Word
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap line-clamp-4">{s.next_session_notes}</p>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
+
       <SendActionPlanModal
         open={showSendModal}
         onOpenChange={setShowSendModal}
