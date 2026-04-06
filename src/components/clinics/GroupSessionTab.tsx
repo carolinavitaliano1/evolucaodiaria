@@ -1033,23 +1033,29 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           }
           const fullLineText = segments.map(s => s.text).join('');
           if (!fullLineText.trim()) { y += 3; continue; }
+          const hasBold = segments.some(s => s.bold);
           const wrappedLines = doc.splitTextToSize(fullLineText, maxWidth);
           for (let wi = 0; wi < wrappedLines.length; wi++) {
             if (y > 275) { doc.addPage(); y = 20; }
-            let curX = xPos; let consumed = 0;
-            for (let pi = 0; pi < wi; pi++) consumed += wrappedLines[pi].length;
-            const lineStart = consumed; const lineEnd = consumed + wrappedLines[wi].length;
-            let charPos = 0; let rendered = false;
-            for (const seg of segments) {
-              const segStart = charPos; const segEnd = charPos + seg.text.length; charPos = segEnd;
-              const os = Math.max(segStart, lineStart); const oe = Math.min(segEnd, lineEnd);
-              if (os >= oe) continue;
-              const portion = seg.text.slice(os - segStart, oe - segStart);
-              if (!portion) continue;
-              doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-              doc.text(portion, curX, y); curX += doc.getTextWidth(portion); rendered = true;
+            const isLastLine = wi === wrappedLines.length - 1;
+            if (!hasBold) {
+              doc.setFont('helvetica', 'normal');
+              doc.text(wrappedLines[wi], xPos, y, { align: isLastLine ? 'left' : 'justify', maxWidth });
+            } else {
+              let curX = xPos; let consumed = 0;
+              for (let pi = 0; pi < wi; pi++) consumed += wrappedLines[pi].length;
+              const lineStart = consumed; const lineEnd = consumed + wrappedLines[wi].length;
+              let charPos = 0;
+              for (const seg of segments) {
+                const segStart = charPos; const segEnd = charPos + seg.text.length; charPos = segEnd;
+                const os = Math.max(segStart, lineStart); const oe = Math.min(segEnd, lineEnd);
+                if (os >= oe) continue;
+                const portion = seg.text.slice(os - segStart, oe - segStart);
+                if (!portion) continue;
+                doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+                doc.text(portion, curX, y); curX += doc.getTextWidth(portion);
+              }
             }
-            if (!rendered) { doc.setFont('helvetica', 'normal'); doc.text(wrappedLines[wi], xPos, y, { align: wi < wrappedLines.length - 1 ? 'justify' : 'left', maxWidth }); }
             y += 5;
           }
         }
