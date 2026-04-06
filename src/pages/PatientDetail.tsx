@@ -376,7 +376,46 @@ export default function PatientDetail() {
       .then(({ data }) => { if (data) setTherapistProfile(data); });
   }, [user]);
 
-  // Load payment record for current month (Financial tab)
+  // Load group billing data for accurate financial calculations
+  useEffect(() => {
+    if (!user || !patient?.id) return;
+    // Get all groups this patient belongs to
+    supabase.from('therapeutic_group_members').select('group_id, is_paying, member_payment_value')
+      .eq('patient_id', patient.id)
+      .eq('status', 'active')
+      .then(({ data: membersData }) => {
+        if (!membersData || membersData.length === 0) return;
+        const mmap: GroupMemberPaymentMap = {};
+        const groupIds = [...new Set(membersData.map((m: any) => m.group_id))];
+        membersData.forEach((m: any) => {
+          if (!mmap[m.group_id]) mmap[m.group_id] = {};
+          mmap[m.group_id][patient.id] = {
+            isPaying: m.is_paying ?? true,
+            value: m.member_payment_value ?? null,
+          };
+        });
+        setMemberPaymentMap(mmap);
+
+        supabase.from('therapeutic_groups').select('id, default_price, financial_enabled, payment_type, package_id')
+          .in('id', groupIds)
+          .then(({ data: groupsData }) => {
+            if (groupsData) {
+              const gmap: GroupBillingMap = {};
+              groupsData.forEach((g: any) => {
+                gmap[g.id] = {
+                  defaultPrice: g.default_price ?? null,
+                  paymentType: g.payment_type ?? null,
+                  packageId: g.package_id ?? null,
+                  financialEnabled: g.financial_enabled ?? false,
+                };
+              });
+              setGroupBillingMap(gmap);
+            }
+          });
+      });
+  }, [user, patient?.id]);
+
+
   useEffect(() => {
     if (!patient?.id || !user) return;
     supabase
