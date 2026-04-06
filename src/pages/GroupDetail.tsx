@@ -182,7 +182,7 @@ export default function GroupDetail() {
 
     const { data: memberRows } = await supabase
       .from('therapeutic_group_members')
-      .select('patient_id')
+      .select('patient_id, is_paying, member_payment_value')
       .eq('group_id', id!)
       .eq('status', 'active');
 
@@ -193,6 +193,16 @@ export default function GroupDetail() {
         .select('id, name, avatar_url')
         .in('id', patientIds);
       if (patients) setMembers(patients as MemberPatient[]);
+
+      // Build payment config map
+      const configMap: Record<string, MemberPaymentConfig> = {};
+      memberRows.forEach((m: any) => {
+        configMap[m.patient_id] = {
+          isPaying: m.is_paying ?? true,
+          memberPaymentValue: m.member_payment_value ?? null,
+        };
+      });
+      setMemberPaymentConfigs(configMap);
     }
     setLoading(false);
   };
