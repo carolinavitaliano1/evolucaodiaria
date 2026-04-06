@@ -297,17 +297,47 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
             {/* Participantes */}
             <div>
               <Label>Participantes *</Label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
+              <div className="space-y-2 mb-2">
                 {selectedPatients.map(pid => {
                   const p = patients.find(pt => pt.id === pid);
-                  return p ? (
-                    <Badge key={pid} variant="secondary" className="gap-1 pr-1">
-                      {p.name}
-                      <button onClick={() => setSelectedPatients(prev => prev.filter(x => x !== pid))} className="ml-0.5 hover:text-destructive">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ) : null;
+                  const config = selectedPaymentConfigs[pid] || { isPaying: true, memberPaymentValue: null };
+                  if (!p) return null;
+                  return (
+                    <div key={pid} className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 rounded-lg border border-border bg-background">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-sm font-medium truncate">{p.name}</span>
+                        <button onClick={() => setSelectedPatients(prev => prev.filter(x => x !== pid))} className="hover:text-destructive">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <Switch
+                            checked={config.isPaying}
+                            onCheckedChange={(checked) => setSelectedPaymentConfigs(prev => ({
+                              ...prev,
+                              [pid]: { ...config, isPaying: checked }
+                            }))}
+                          />
+                          <span className="text-xs text-muted-foreground">{config.isPaying ? 'Pagante' : 'Não paga'}</span>
+                        </div>
+                        {config.isPaying && (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Valor (R$)"
+                            value={config.memberPaymentValue ?? ''}
+                            onChange={(e) => setSelectedPaymentConfigs(prev => ({
+                              ...prev,
+                              [pid]: { ...config, memberPaymentValue: e.target.value ? parseFloat(e.target.value) : null }
+                            }))}
+                            className="w-28 h-7 text-xs"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
                 })}
               </div>
               <Input placeholder="Buscar paciente..." value={search} onChange={e => setSearch(e.target.value)} className="mb-1" />
