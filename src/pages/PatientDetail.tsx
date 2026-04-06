@@ -785,13 +785,18 @@ export default function PatientDetail() {
     return null;
   }, [finDynamic, paymentValue, finDeductibleAbsences]);
 
+  const finBillableEvos = financialEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const finGroupRevenue = computeGroupRevenue(finBillableEvos);
+  const finIndividualBillable = finBillableEvos.filter(e => !e.groupId);
+  const finIndividualBillableCount = finIndividualBillable.length;
+  const finIndividualUniqueDays = new Set(finIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const finRevenue = finMensalDeduction
-    ? finMensalDeduction.finalRevenue
+    ? finMensalDeduction.finalRevenue + finGroupRevenue
     : isFixoMensal
-      ? paymentValue
+      ? paymentValue + finGroupRevenue
       : isFixoDiario
-        ? finUniqueDays * perSessionValue
-        : finBillableCount * perSessionValue;
+        ? finIndividualUniqueDays * perSessionValue + finGroupRevenue
+        : finIndividualBillableCount * perSessionValue + finGroupRevenue;
   const finRegistros = financialEvolutions.length;
   const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
 
