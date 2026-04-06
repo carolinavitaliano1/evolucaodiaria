@@ -871,17 +871,27 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         // Find if this line contains the group name to render it bold
         const lineText = bodyLines[li];
         const gnIdx = lineText.indexOf(groupName);
+        const isLast = li === bodyLines.length - 1;
+        const justAlign = isLast ? 'left' : 'justify';
+        // Render full line justified in normal font
+        doc.setFont('helvetica', 'normal');
+        doc.text(lineText, margin, y, { align: justAlign, maxWidth: contentWidth });
+        // Overlay bold group name if present
         if (gnIdx !== -1) {
-          // Render segments: before (normal), group name (bold), after (normal)
           const beforePart = lineText.substring(0, gnIdx);
-          const afterPart = lineText.substring(gnIdx + groupName.length);
-          let curX = margin;
-          if (beforePart) { doc.setFont('helvetica', 'normal'); doc.text(beforePart, curX, y); curX += doc.getTextWidth(beforePart); }
-          doc.setFont('helvetica', 'bold'); doc.text(groupName, curX, y); curX += doc.getTextWidth(groupName);
-          if (afterPart) { doc.setFont('helvetica', 'normal'); doc.text(afterPart, curX, y); }
-        } else {
           doc.setFont('helvetica', 'normal');
-          doc.text(lineText, margin, y, { align: 'justify', maxWidth: contentWidth });
+          const offsetX = doc.getTextWidth(beforePart);
+          // Calculate justify spacing
+          let spacingExtra = 0;
+          if (!isLast && lineText.trim().includes(' ')) {
+            const words = lineText.trim().split(/\s+/);
+            const normalWidth = doc.getTextWidth(lineText.trim());
+            if (words.length > 1) spacingExtra = (contentWidth - normalWidth) / (words.length - 1);
+          }
+          const spacesBefore = (beforePart.match(/ /g) || []).length;
+          doc.setFont('helvetica', 'bold');
+          doc.text(groupName, margin + offsetX + (spacesBefore * spacingExtra), y);
+          doc.setFont('helvetica', 'normal');
         }
         y += 7;
       }
