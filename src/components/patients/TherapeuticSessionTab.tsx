@@ -369,6 +369,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       setSessionId(null);
       resetForm();
       await loadHistory();
+      await loadSavedNextSessions();
       setMainView('history');
     }
   };
