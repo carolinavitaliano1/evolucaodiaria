@@ -888,10 +888,9 @@ export default function GroupDetail() {
                 {filteredEvolutions.length} evolução(ões) encontrada(s)
               </p>
               <div className="flex gap-2">
-                {(evoFilterMember !== 'all' || evoFilterType !== 'all' || evoFilterStartDate || evoFilterEndDate) && (
+                {(evoFilterMember !== 'all' || evoFilterStartDate || evoFilterEndDate) && (
                   <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
                     setEvoFilterMember('all');
-                    setEvoFilterType('all');
                     setEvoFilterStartDate(undefined);
                     setEvoFilterEndDate(undefined);
                   }}>
