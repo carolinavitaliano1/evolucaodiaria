@@ -78,6 +78,9 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [viewingSession, setViewingSession] = useState<any | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
+  // Saved next sessions
+  const [savedNextSessions, setSavedNextSessions] = useState<any[]>([]);
+
   // Plans
   const [plans, setPlans] = useState<any[]>([]);
   const [showPlanForm, setShowPlanForm] = useState(false);
