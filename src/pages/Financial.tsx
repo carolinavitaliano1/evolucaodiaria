@@ -283,7 +283,7 @@ export default function Financial() {
     const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
     const pr = patientPaymentRecords[patient.id];
     return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0, pr };
-  }).filter(p => p.paymentValue > 0);
+  }).filter(p => p.paymentValue > 0 || p.revenue > 0);
 
   // Apply filters
   const patientStats = allPatientStats.filter(({ pr, patient }) => {
