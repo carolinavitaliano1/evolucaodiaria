@@ -89,8 +89,11 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   const [declarationSession, setDeclarationSession] = useState<any | null>(null);
   const [declarationStampId, setDeclarationStampId] = useState<string | null>(null);
 
-  // Sub-tab navigation: 'planning' | 'session' | 'history'
-  const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
+  // Sub-tab navigation: 'planning' | 'session' | 'history' | 'next_sessions'
+  const [mainView, setMainView] = useState<'planning' | 'session' | 'history' | 'next_sessions'>('planning');
+
+  // Saved next sessions
+  const [savedNextSessions, setSavedNextSessions] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user || !patientId) return;
