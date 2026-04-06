@@ -246,6 +246,10 @@ export default function PatientDetail() {
   const currentMonth = financialMonth.getMonth() + 1;
   const currentYear = financialMonth.getFullYear();
 
+  // Group billing data for accurate group session pricing
+  const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
+  const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
+
   // Patient notes state
   const [patientNotes, setPatientNotes] = useState<{ id: string; title: string; content: string; created_at: string; updated_at: string }[]>([]);
   const [newNoteTitle, setNewNoteTitle] = useState('');
