@@ -117,15 +117,22 @@ export function TherapeuticGroupsTab({ clinicId, patients }: TherapeuticGroupsTa
 
     const { data: membersData } = await supabase
       .from('therapeutic_group_members')
-      .select('group_id, patient_id')
+      .select('group_id, patient_id, is_paying, member_payment_value')
       .eq('status', 'active');
     if (membersData) {
       const map: Record<string, string[]> = {};
+      const configs: Record<string, Record<string, { isPaying: boolean; memberPaymentValue: number | null }>> = {};
       membersData.forEach((m: any) => {
         if (!map[m.group_id]) map[m.group_id] = [];
         map[m.group_id].push(m.patient_id);
+        if (!configs[m.group_id]) configs[m.group_id] = {};
+        configs[m.group_id][m.patient_id] = {
+          isPaying: m.is_paying ?? true,
+          memberPaymentValue: m.member_payment_value ?? null,
+        };
       });
       setMembers(map);
+      setMemberConfigs(configs);
     }
   };
 
