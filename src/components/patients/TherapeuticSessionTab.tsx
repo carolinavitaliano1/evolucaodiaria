@@ -1248,7 +1248,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
   return (
     <div className="space-y-4">
       {/* Sub-tab navigation */}
-      <div className="flex items-center gap-1 border-b border-border pb-2">
+      <div className="flex items-center gap-1 border-b border-border pb-2 flex-wrap">
         <Button variant={mainView === 'planning' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('planning')} className="gap-1.5">
           <Target className="w-3.5 h-3.5" /> Planejamento
         </Button>
@@ -1259,6 +1259,10 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         <Button variant={mainView === 'history' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('history')} className="gap-1.5">
           <History className="w-3.5 h-3.5" /> Realizadas
           {sessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{sessions.length}</Badge>}
+        </Button>
+        <Button variant={mainView === 'next_sessions' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('next_sessions')} className="gap-1.5">
+          <CalendarPlus className="w-3.5 h-3.5" /> Próximas Sessões
+          {savedNextSessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{savedNextSessions.length}</Badge>}
         </Button>
       </div>
 
