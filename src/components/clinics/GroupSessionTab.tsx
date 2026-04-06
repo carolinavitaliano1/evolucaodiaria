@@ -1250,9 +1250,9 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                   {!sessionId ? (
                     <Button size="sm" onClick={startSession} className="gap-1.5"><Play className="w-3.5 h-3.5" /> Iniciar sessão</Button>
                   ) : (
-                    <Button size="sm" variant="destructive" onClick={finishSession} className="gap-1.5">
-                      <Square className="w-3.5 h-3.5" /> Finalizar {formatTime(elapsedSeconds)}
-                    </Button>
+                    <Badge variant="secondary" className="gap-1.5 text-xs">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Em andamento
+                    </Badge>
                   )}
                 </div>
               </div>
