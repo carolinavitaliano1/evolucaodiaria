@@ -594,15 +594,14 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (!user) return;
     setSendingToProntuario(true);
     if (aiEvoMode === 'individual') {
-      // Send each individual evolution
-      const inserts = members.filter(m => aiIndividualEvolutions[m.id]).map(m => ({
+      const inserts = members.filter(m => aiIndividualEvolutions[m.id]?.trim()).map(m => ({
         user_id: user.id,
         patient_id: m.id,
         clinic_id: clinicId,
         group_id: groupId,
         date: new Date().toISOString().slice(0, 10),
         text: aiIndividualEvolutions[m.id],
-        attendance_status: 'presente',
+        attendance_status: participantAttendance[m.id] || 'presente',
         mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
       }));
       if (inserts.length === 0) { setSendingToProntuario(false); return; }
@@ -619,7 +618,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
         group_id: groupId,
         date: new Date().toISOString().slice(0, 10),
         text: aiEvolution,
-        attendance_status: 'presente',
+        attendance_status: participantAttendance[m.id] || 'presente',
         mood: participantsData[m.id]?.moodScore ? moodEmojis[(participantsData[m.id]?.moodScore || 5) - 1] : null,
       }));
       const { error } = await supabase.from('evolutions').insert(inserts);
@@ -628,8 +627,6 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       else { toast.success('Evolução salva no prontuário do grupo!'); setAiEvolution(''); }
     }
   };
-
-  // sendIndividualMemberId state moved to top-level state block
 
   const sendToIndividualProntuario = async (memberId: string) => {
     if (!user) return;
@@ -643,7 +640,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       clinic_id: clinicId,
       date: new Date().toISOString().slice(0, 10),
       text,
-      attendance_status: 'presente',
+      attendance_status: participantAttendance[memberId] || 'presente',
       mood: pd?.moodScore ? moodEmojis[(pd.moodScore || 5) - 1] : null,
     });
     setSendingToProntuario(false);
