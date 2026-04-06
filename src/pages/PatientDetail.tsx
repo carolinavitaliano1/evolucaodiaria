@@ -634,11 +634,31 @@ export default function PatientDetail() {
     ? paymentValue / (patientPackage!.sessionLimit!)
     : paymentValue;
   const totalBillableCount = totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem;
+
+  // Helper: compute group revenue from a set of billable evolutions
+  const computeGroupRevenue = (evos: typeof patientEvolutions) => {
+    if (!patient) return 0;
+    return evos.filter(e => e.groupId).reduce((sum, e) => {
+      return sum + getGroupSessionValue({
+        groupId: e.groupId,
+        patientId: patient.id,
+        groupBillingMap,
+        memberPaymentMap,
+        packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
+      });
+    }, 0);
+  };
+
+  const totalGroupBillableEvos = totalBillableEvos.filter(e => e.groupId);
+  const totalIndividualBillableEvos = totalBillableEvos.filter(e => !e.groupId);
+  const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
+  const totalIndividualBillableCount = totalIndividualBillableEvos.length;
+  const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   const totalFinancial = isFixoMensal
-    ? paymentValue
+    ? paymentValue + totalGroupRevenue
     : isFixoDiario
-      ? totalUniqueDays * perSessionValue
-      : totalBillableCount * perSessionValue;
+      ? totalIndividualUniqueDays * perSessionValue + totalGroupRevenue
+      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue;
   const totalFinancialSubtitle = isFixoMensal
     ? 'Valor Fixo Mensal'
     : isFixoDiario
