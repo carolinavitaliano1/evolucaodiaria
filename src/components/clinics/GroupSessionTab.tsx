@@ -1667,10 +1667,15 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
           </Card>
 
           {sessionId && (
-            <Button onClick={() => saveSession(true)} disabled={saving} className="w-full gap-1.5">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Salvar sessão
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => saveSession(true)} disabled={saving} variant="outline" className="flex-1 gap-1.5">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                💾 Salvar sessão
+              </Button>
+              <Button onClick={finishSession} variant="destructive" className="flex-1 gap-1.5">
+                <Square className="w-3.5 h-3.5" /> Finalizar sessão
+              </Button>
+            </div>
           )}
         </>
       )}
