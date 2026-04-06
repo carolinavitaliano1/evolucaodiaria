@@ -195,9 +195,8 @@ export default function GroupDetail() {
   const loadEvolutions = async () => {
     if (!user || members.length === 0) { setLoadingEvos(false); return; }
     setLoadingEvos(true);
-    const patientIds = members.map(m => m.id);
     
-    // Load group evolutions
+    // Load only group evolutions
     const { data: groupEvos } = await supabase
       .from('evolutions')
       .select('*')
@@ -205,21 +204,7 @@ export default function GroupDetail() {
       .order('date', { ascending: false })
       .limit(500);
     
-    // Load individual evolutions for members
-    const { data: individualEvos } = await supabase
-      .from('evolutions')
-      .select('*')
-      .in('patient_id', patientIds)
-      .is('group_id', null)
-      .order('date', { ascending: false })
-      .limit(500);
-    
-    const all = [
-      ...(groupEvos || []).map((e: any) => ({ ...e, _evoType: 'group' })),
-      ...(individualEvos || []).map((e: any) => ({ ...e, _evoType: 'individual' })),
-    ];
-    all.sort((a, b) => b.date.localeCompare(a.date));
-    setEvolutions(all);
+    setEvolutions((groupEvos || []).map((e: any) => ({ ...e, _evoType: 'group' })));
     setLoadingEvos(false);
   };
 
