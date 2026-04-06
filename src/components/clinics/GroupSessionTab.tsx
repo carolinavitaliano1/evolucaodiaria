@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit, MoreVertical, Pencil, ScrollText, FileText, CheckCircle, XCircle, UserCheck } from 'lucide-react';
+import { Play, Pause, Square, X, AlertTriangle, Plus, Smile, Frown, PenLine, ListTodo, CalendarPlus, Clock, History, Send, Loader2, Wand2, Users, Target, Download, Eye, Trash2, BrainCircuit, MoreVertical, Pencil, ScrollText, FileText, CheckCircle, XCircle, UserCheck, Upload } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
