@@ -409,7 +409,7 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   };
 
   // ─── AI ───
-  const improveFieldText = async (field: 'notes' | 'action_plans' | 'next_session', getText: () => string, setText: (v: string) => void) => {
+  const improveFieldText = async (field: string, getText: () => string, setText: (v: string) => void) => {
     const text = getText();
     if (!text.trim()) { toast.error('Preencha o campo antes de melhorar com IA.'); return; }
     setImprovingField(field);
