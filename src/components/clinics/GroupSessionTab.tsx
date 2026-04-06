@@ -70,8 +70,8 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Sub-views: planning | session | history
-  const [mainView, setMainView] = useState<'planning' | 'session' | 'history'>('planning');
+  // Sub-views: planning | session | history | next_sessions
+  const [mainView, setMainView] = useState<'planning' | 'session' | 'history' | 'next_sessions'>('planning');
 
   // History
   const [sessions, setSessions] = useState<any[]>([]);
