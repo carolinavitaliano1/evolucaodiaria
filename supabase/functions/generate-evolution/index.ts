@@ -19,7 +19,7 @@ serve(async (req) => {
     const moodLabel = moodScore ? `${moodEmojis[moodScore - 1]} ${moodScore}/10` : 'Não informado';
     const durationMin = durationSeconds ? Math.floor(durationSeconds / 60) : 0;
 
-    const prompt = `Você é um psicólogo clínico redigindo uma evolução técnica de sessão terapêutica. Com base nos dados abaixo, gere APENAS o corpo do texto da evolução clínica em português brasileiro. NÃO inclua cabeçalhos como "Evolução Psicológica", "Paciente:", "Modalidade:", "Data:" ou qualquer informação de identificação. Comece diretamente com o conteúdo clínico narrativo. Use linguagem técnica, termos clínicos adequados, e mantenha o texto objetivo e formal. Inclua uma conclusão sintética ao final.
+    const prompt = `Você é um psicólogo clínico redigindo uma evolução técnica de sessão terapêutica. Com base nos dados abaixo, gere APENAS o corpo do texto da evolução clínica em português brasileiro. NÃO inclua cabeçalhos como "Evolução Psicológica", "Paciente:", "Modalidade:", "Data:" ou qualquer informação de identificação. Comece diretamente com o conteúdo clínico narrativo. Use linguagem técnica, termos clínicos adequados, e mantenha o texto objetivo e formal. Seja FIEL aos dados fornecidos — descreva apenas o que foi observado, sem inventar ou exagerar. Inclua uma conclusão sintética breve ao final.
 
 DADOS DA SESSÃO:
 - Duração: ${durationMin} minutos
@@ -34,7 +34,7 @@ DADOS DA SESSÃO:
 - Próxima sessão: ${nextSessionNotes || 'Sem planejamento'}
 - Comentários gerais: ${generalComments || 'Sem comentários'}
 
-Gere APENAS o corpo da evolução clínica, sem cabeçalhos de identificação:`;
+Gere APENAS o corpo da evolução clínica, sem cabeçalhos de identificação. Seja conciso e direto:`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
