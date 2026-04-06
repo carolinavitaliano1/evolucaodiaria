@@ -823,20 +823,6 @@ export default function GroupDetail() {
                 </Select>
               </div>
 
-              {/* Type filter */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Tipo de evolução</Label>
-                <Select value={evoFilterType} onValueChange={(v: any) => setEvoFilterType(v)}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="group">👥 Grupo</SelectItem>
-                    <SelectItem value="individual">👤 Individual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* Start date */}
               <div>
