@@ -1026,9 +1026,6 @@ export default function GroupDetail() {
                           <Badge variant={evo.attendance_status === 'presente' ? 'default' : 'secondary'} className="text-xs shrink-0">
                             {evo.attendance_status}
                           </Badge>
-                          <Badge variant="outline" className={cn("text-[10px] shrink-0", evo._evoType === 'group' ? 'border-primary/30 text-primary' : 'border-muted-foreground/30 text-muted-foreground')}>
-                            {evo._evoType === 'group' ? '👥 Grupo' : '👤 Individual'}
-                          </Badge>
                           {evo.text && <p className="text-sm text-muted-foreground line-clamp-2">{evo.text}</p>}
                         </div>
                       );
