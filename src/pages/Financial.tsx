@@ -162,7 +162,7 @@ export default function Financial() {
 
   const calculatePatientRevenue = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
-    if (!patient || !patient.paymentValue) return 0;
+    if (!patient) return 0;
 
     const billableEvolutions = monthlyEvolutions.filter(
       e => e.patientId === patientId && (
@@ -177,8 +177,16 @@ export default function Financial() {
     const groupEvos = billableEvolutions.filter(e => e.groupId && groupPrices[e.groupId]);
     const individualEvos = billableEvolutions.filter(e => !e.groupId || !groupPrices[e.groupId!]);
 
-    // Group revenue: sum by group price
-    const groupRevenue = groupEvos.reduce((sum, e) => sum + (groupPrices[e.groupId!] || 0), 0);
+    // Group revenue: check member payment config
+    const groupRevenue = groupEvos.reduce((sum, e) => {
+      const groupId = e.groupId!;
+      const memberConfig = memberPaymentMap[groupId]?.[patientId];
+      // If member is not paying, skip
+      if (memberConfig && !memberConfig.isPaying) return sum;
+      // Use member-specific value, or fallback to group default price
+      const value = memberConfig?.value ?? groupPrices[groupId] ?? 0;
+      return sum + value;
+    }, 0);
 
     // Individual revenue (original logic)
     let individualRevenue = 0;
