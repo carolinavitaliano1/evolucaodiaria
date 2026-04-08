@@ -35,7 +35,7 @@ interface ActivityEntry {
   member_role_label: string | null;
 }
 
-const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
+const OWNER_EMAILS = ['carolinavitaliano1@gmail.com', 'gabriellajf83@gmail.com'];
 
 export default function Team() {
   const { user } = useAuth();
