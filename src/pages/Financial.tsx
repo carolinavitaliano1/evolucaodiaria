@@ -1113,6 +1113,49 @@ export default function Financial() {
       if (totalPaidAbsences > 0) { doc.text(`Faltas remuneradas: ${totalPaidAbsences}`, margin, y); y += 5; }
       if (totalAbsences > 0) { doc.text(`Faltas: ${totalAbsences}`, margin, y); y += 5; }
       y += 3;
+
+      // Revenue breakdown by type for this clinic
+      const invoiceIndividualRevenue = clinicEvolutions
+        .filter(e => !e.groupId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'falta_remunerada' || e.attendanceStatus === 'feriado_remunerado'))
+        .reduce((sum, e) => {
+          const p = clinicPatients.find(pt => pt.id === e.patientId);
+          if (!p || !p.paymentValue || p.paymentType === 'fixo') return sum;
+          return sum + (p.paymentValue || 0);
+        }, 0);
+      const invoiceGroupRevenue = clinicEvolutions
+        .filter(e => e.groupId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'falta_remunerada' || e.attendanceStatus === 'feriado_remunerado'))
+        .reduce((sum, e) => {
+          const p = clinicPatients.find(pt => pt.id === e.patientId);
+          if (!p) return sum;
+          return sum + getPatientGroupValue(p.id, e.groupId);
+        }, 0);
+      const invoiceFixedRevenue = fixedPatients.reduce((sum, p) => sum + (p.paymentValue || 0), 0);
+      const invoiceLinkedServices = linkedServiceAppointments
+        .filter(a => a.clinic_id === clinic.id && a.status === 'concluído')
+        .reduce((sum, a) => sum + (a.price || 0), 0);
+
+      ensureSpace(30);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(51, 51, 100);
+      doc.text('Detalhamento por tipo:', margin, y); y += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      if (invoiceIndividualRevenue > 0) {
+        doc.text(`• Sessões Individuais: R$ ${invoiceIndividualRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 4, y); y += 5;
+      }
+      if (invoiceGroupRevenue > 0) {
+        doc.text(`• Sessões em Grupo: R$ ${invoiceGroupRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 4, y); y += 5;
+      }
+      if (invoiceFixedRevenue > 0) {
+        doc.text(`• Mensalidades Fixas: R$ ${invoiceFixedRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 4, y); y += 5;
+      }
+      if (invoiceLinkedServices > 0) {
+        doc.text(`• Serviços Particulares: R$ ${invoiceLinkedServices.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 4, y); y += 5;
+      }
+      y += 3;
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
       doc.text(`VALOR BRUTO: R$ ${totalInvoiceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
