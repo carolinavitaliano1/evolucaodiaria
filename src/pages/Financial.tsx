@@ -516,6 +516,63 @@ export default function Financial() {
       });
       y += Math.ceil(summaryItems.length / 2) * 12 + 8;
 
+      // ─── Revenue breakdown by type ────────────────────────────────────
+      sectionTitle('DETALHAMENTO POR TIPO DE ATENDIMENTO');
+
+      const breakdownItems = [
+        { label: 'Sessões Individuais', value: revenueIndividual, color: C.primary },
+        { label: 'Sessões em Grupo', value: revenueGroup, color: C.accent },
+        { label: 'Serviços Particulares', value: totalServicesRevenue, color: C.green },
+      ];
+      const breakdownTotal = revenueIndividual + revenueGroup + totalServicesRevenue;
+
+      breakdownItems.forEach((item, idx) => {
+        ensureSpace(16);
+        const rowColor = idx % 2 === 0 ? C.white : C.rowAlt;
+        setFill(rowColor);
+        setDraw(C.border);
+        doc.setLineWidth(0.2);
+        doc.rect(margin, y, contentW, 12, 'FD');
+
+        // Color strip
+        setFill(item.color);
+        doc.rect(margin, y, 3, 12, 'F');
+
+        // Label
+        setTxt(C.dark);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text(item.label, margin + 6, y + 5);
+
+        // Percentage
+        const pct = breakdownTotal > 0 ? ((item.value / breakdownTotal) * 100).toFixed(1) : '0.0';
+        setTxt(C.muted);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.text(`${pct}%`, margin + 6, y + 9.5);
+
+        // Progress bar
+        const barX = margin + 70;
+        const barW = 60;
+        const barH = 3;
+        const barY = y + 4;
+        setFill(C.light);
+        doc.roundedRect(barX, barY, barW, barH, 1, 1, 'F');
+        if (breakdownTotal > 0 && item.value > 0) {
+          setFill(item.color);
+          const fillW = Math.max(2, (item.value / breakdownTotal) * barW);
+          doc.roundedRect(barX, barY, fillW, barH, 1, 1, 'F');
+        }
+
+        // Value
+        setTxt(item.color);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text(`R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 7, { align: 'right' });
+        y += 13;
+      });
+      y += 6;
+
       // ─── Clinic breakdown ─────────────────────────────────────────────
       if (clinicStats.length > 0) {
         sectionTitle('FATURAMENTO POR CLÍNICA');
