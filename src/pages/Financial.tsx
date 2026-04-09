@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -276,6 +276,41 @@ export default function Financial() {
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
   const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue;
+
+  // Revenue breakdown by session type (individual vs group)
+  const { revenueIndividual, revenueGroup } = useMemo(() => {
+    let individual = 0;
+    let group = 0;
+    for (const patient of patients) {
+      const billableEvolutions = monthlyEvolutions.filter(
+        e => e.patientId === patient.id && (
+          e.attendanceStatus === 'presente' ||
+          e.attendanceStatus === 'reposicao' ||
+          e.attendanceStatus === 'falta_remunerada' ||
+          e.attendanceStatus === 'feriado_remunerado'
+        )
+      );
+      const groupEvos = billableEvolutions.filter(e => e.groupId);
+      const individualEvos = billableEvolutions.filter(e => !e.groupId);
+
+      group += groupEvos.reduce((sum, e) => sum + getPatientGroupValue(patient.id, e.groupId), 0);
+
+      if (individualEvos.length > 0 && patient.paymentValue) {
+        if (patient.paymentType === 'fixo') {
+          const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
+          const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+          individual += dynamic.occurrences > 0
+            ? individualEvos.length * dynamic.perSession
+            : individualEvos.length * patient.paymentValue;
+        } else {
+          individual += individualEvos.length * getEffectiveSessionValue(patient);
+        }
+      }
+    }
+    return { revenueIndividual: individual, revenueGroup: group };
+  }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear]);
+
+  const totalServicesRevenue = privateRevenue;
 
   const clinicStats = clinics.filter(c => !c.isArchived).map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
@@ -1279,7 +1314,77 @@ export default function Financial() {
         </div>
       </div>
 
-      {/* Revenue by Clinic */}
+      {/* Revenue breakdown by session type */}
+      <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
+        <CalendarCheck className="w-4 h-4 text-primary" />
+        Detalhamento por Tipo de Atendimento
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 sm:mb-8">
+        {/* Sessões Individuais */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Stethoscope className="w-5 h-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Sessões Individuais</p>
+              <p className="text-[10px] text-muted-foreground/70">Atendimentos 1 a 1</p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            R$ {revenueIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          {grandTotal > 0 && (
+            <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(revenueIndividual / grandTotal) * 100}%` }} />
+            </div>
+          )}
+        </div>
+
+        {/* Sessões em Grupo */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-violet-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Sessões em Grupo</p>
+              <p className="text-[10px] text-muted-foreground/70">Grupos terapêuticos</p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            R$ {revenueGroup.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          {grandTotal > 0 && (
+            <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(revenueGroup / grandTotal) * 100}%` }} />
+            </div>
+          )}
+        </div>
+
+        {/* Serviços Particulares */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+              <Briefcase className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Serviços Particulares</p>
+              <p className="text-[10px] text-muted-foreground/70">Agendamentos avulsos</p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            R$ {privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          {grandTotal > 0 && (
+            <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${(privateRevenue / grandTotal) * 100}%` }} />
+            </div>
+          )}
+        </div>
+      </div>
+
+
       <div className="bg-card rounded-2xl p-5 sm:p-6 border border-border mb-6 sm:mb-8">
         <h2 className="font-bold text-foreground mb-5 flex items-center gap-2 text-sm sm:text-base">
           <Building2 className="w-4 h-4 text-primary" />
