@@ -1315,6 +1315,10 @@ export default function Financial() {
       </div>
 
       {/* Revenue breakdown by session type */}
+      <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
+        <CalendarCheck className="w-4 h-4 text-primary" />
+        Detalhamento por Tipo de Atendimento
+      </h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 sm:mb-8">
         {/* Sessões Individuais */}
         <div className="bg-card border border-border rounded-2xl p-5">
