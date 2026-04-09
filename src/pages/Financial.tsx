@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
