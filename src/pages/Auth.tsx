@@ -329,9 +329,14 @@ export default function Auth() {
           </Tabs>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          Sistema de gestão para profissionais de saúde
-        </p>
+        <div className="text-center mt-4 space-y-2">
+          <Button variant="outline" className="w-full" onClick={() => window.location.href = '/portal/auth'}>
+            Acessar Portal do Paciente
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            Sistema de gestão para profissionais de saúde
+          </p>
+        </div>
       </div>
     </div>
   );
