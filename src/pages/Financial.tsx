@@ -277,6 +277,41 @@ export default function Financial() {
     .reduce((sum, a) => sum + (a.price || 0), 0);
   const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue;
 
+  // Revenue breakdown by session type (individual vs group)
+  const { revenueIndividual, revenueGroup } = useMemo(() => {
+    let individual = 0;
+    let group = 0;
+    for (const patient of patients) {
+      const billableEvolutions = monthlyEvolutions.filter(
+        e => e.patientId === patient.id && (
+          e.attendanceStatus === 'presente' ||
+          e.attendanceStatus === 'reposicao' ||
+          e.attendanceStatus === 'falta_remunerada' ||
+          e.attendanceStatus === 'feriado_remunerado'
+        )
+      );
+      const groupEvos = billableEvolutions.filter(e => e.groupId);
+      const individualEvos = billableEvolutions.filter(e => !e.groupId);
+
+      group += groupEvos.reduce((sum, e) => sum + getPatientGroupValue(patient.id, e.groupId), 0);
+
+      if (individualEvos.length > 0 && patient.paymentValue) {
+        if (patient.paymentType === 'fixo') {
+          const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
+          const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
+          individual += dynamic.occurrences > 0
+            ? individualEvos.length * dynamic.perSession
+            : individualEvos.length * patient.paymentValue;
+        } else {
+          individual += individualEvos.length * getEffectiveSessionValue(patient);
+        }
+      }
+    }
+    return { revenueIndividual: individual, revenueGroup: group };
+  }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear]);
+
+  const totalServicesRevenue = privateRevenue;
+
   const clinicStats = clinics.filter(c => !c.isArchived).map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
     const revenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
