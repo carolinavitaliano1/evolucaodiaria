@@ -516,6 +516,63 @@ export default function Financial() {
       });
       y += Math.ceil(summaryItems.length / 2) * 12 + 8;
 
+      // ─── Revenue breakdown by type ────────────────────────────────────
+      sectionTitle('DETALHAMENTO POR TIPO DE ATENDIMENTO');
+
+      const breakdownItems = [
+        { label: 'Sessões Individuais', value: revenueIndividual, color: C.primary },
+        { label: 'Sessões em Grupo', value: revenueGroup, color: C.accent },
+        { label: 'Serviços Particulares', value: totalServicesRevenue, color: C.green },
+      ];
+      const breakdownTotal = revenueIndividual + revenueGroup + totalServicesRevenue;
+
+      breakdownItems.forEach((item, idx) => {
+        ensureSpace(16);
+        const rowColor = idx % 2 === 0 ? C.white : C.rowAlt;
+        setFill(rowColor);
+        setDraw(C.border);
+        doc.setLineWidth(0.2);
+        doc.rect(margin, y, contentW, 12, 'FD');
+
+        // Color strip
+        setFill(item.color);
+        doc.rect(margin, y, 3, 12, 'F');
+
+        // Label
+        setTxt(C.dark);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text(item.label, margin + 6, y + 5);
+
+        // Percentage
+        const pct = breakdownTotal > 0 ? ((item.value / breakdownTotal) * 100).toFixed(1) : '0.0';
+        setTxt(C.muted);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.text(`${pct}%`, margin + 6, y + 9.5);
+
+        // Progress bar
+        const barX = margin + 70;
+        const barW = 60;
+        const barH = 3;
+        const barY = y + 4;
+        setFill(C.light);
+        doc.roundedRect(barX, barY, barW, barH, 1, 1, 'F');
+        if (breakdownTotal > 0 && item.value > 0) {
+          setFill(item.color);
+          const fillW = Math.max(2, (item.value / breakdownTotal) * barW);
+          doc.roundedRect(barX, barY, fillW, barH, 1, 1, 'F');
+        }
+
+        // Value
+        setTxt(item.color);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text(`R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 7, { align: 'right' });
+        y += 13;
+      });
+      y += 6;
+
       // ─── Clinic breakdown ─────────────────────────────────────────────
       if (clinicStats.length > 0) {
         sectionTitle('FATURAMENTO POR CLÍNICA');
@@ -1056,6 +1113,49 @@ export default function Financial() {
       if (totalPaidAbsences > 0) { doc.text(`Faltas remuneradas: ${totalPaidAbsences}`, margin, y); y += 5; }
       if (totalAbsences > 0) { doc.text(`Faltas: ${totalAbsences}`, margin, y); y += 5; }
       y += 3;
+
+      // Revenue breakdown by type for this clinic
+      const invoiceIndividualRevenue = clinicEvolutions
+        .filter(e => !e.groupId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'falta_remunerada' || e.attendanceStatus === 'feriado_remunerado'))
+        .reduce((sum, e) => {
+          const p = clinicPatients.find(pt => pt.id === e.patientId);
+          if (!p || !p.paymentValue || p.paymentType === 'fixo') return sum;
+          return sum + (p.paymentValue || 0);
+        }, 0);
+      const invoiceGroupRevenue = clinicEvolutions
+        .filter(e => e.groupId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'falta_remunerada' || e.attendanceStatus === 'feriado_remunerado'))
+        .reduce((sum, e) => {
+          const p = clinicPatients.find(pt => pt.id === e.patientId);
+          if (!p) return sum;
+          return sum + getPatientGroupValue(p.id, e.groupId);
+        }, 0);
+      const invoiceFixedRevenue = fixedPatients.reduce((sum, p) => sum + (p.paymentValue || 0), 0);
+      const invoiceLinkedServices = linkedServiceAppointments
+        .filter(a => a.clinic_id === clinic.id && a.status === 'concluído')
+        .reduce((sum, a) => sum + (a.price || 0), 0);
+
+      ensureSpace(30);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(51, 51, 100);
+      doc.text('Detalhamento por tipo:', margin, y); y += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      if (invoiceIndividualRevenue > 0) {
+        doc.text(`• Sessões Individuais: R$ ${invoiceIndividualRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 4, y); y += 5;
+      }
+      if (invoiceGroupRevenue > 0) {
+        doc.text(`• Sessões em Grupo: R$ ${invoiceGroupRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 4, y); y += 5;
+      }
+      if (invoiceFixedRevenue > 0) {
+        doc.text(`• Mensalidades Fixas: R$ ${invoiceFixedRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 4, y); y += 5;
+      }
+      if (invoiceLinkedServices > 0) {
+        doc.text(`• Serviços Particulares: R$ ${invoiceLinkedServices.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 4, y); y += 5;
+      }
+      y += 3;
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
       doc.text(`VALOR BRUTO: R$ ${totalInvoiceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
