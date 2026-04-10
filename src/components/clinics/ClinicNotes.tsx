@@ -234,9 +234,19 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
               placeholder="Digite sua anotação..."
               rows={3}
             />
+            <FileUpload
+              parentType="clinic_note"
+              parentId="temp"
+              compact
+              existingFiles={pendingFiles}
+              onUpload={files => setPendingFiles(prev => [...prev, ...files])}
+              onRemove={id => setPendingFiles(prev => prev.filter(f => f.id !== id))}
+              label="Anexos"
+              accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            />
             <div className="flex gap-2">
               <Button size="sm" onClick={handleAdd} disabled={!newText.trim()}>Salvar</Button>
-              <Button size="sm" variant="ghost" onClick={() => { setIsAdding(false); setNewText(''); setNewTitle(''); }}>Cancelar</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setIsAdding(false); setNewText(''); setNewTitle(''); setPendingFiles([]); }}>Cancelar</Button>
             </div>
           </div>
         )}
