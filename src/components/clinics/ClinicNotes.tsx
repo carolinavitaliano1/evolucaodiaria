@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 
 interface ClinicNote {
   id: string;
@@ -52,6 +53,8 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
   const [newTitle, setNewTitle] = useState('');
   const [newColor, setNewColor] = useState('blue');
   const [isAdding, setIsAdding] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
+  const [noteAttachments, setNoteAttachments] = useState<Record<string, UploadedFile[]>>({});
 
   useEffect(() => {
     loadNotes();
