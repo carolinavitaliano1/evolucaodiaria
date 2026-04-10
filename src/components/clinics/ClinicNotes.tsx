@@ -69,7 +69,32 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
       .eq('clinic_id', clinicId)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    if (data) setNotes(data as ClinicNote[]);
+    if (data) {
+      setNotes(data as ClinicNote[]);
+      // Load attachments for all notes
+      const noteIds = data.map((n: any) => n.id);
+      if (noteIds.length > 0) {
+        const { data: attachData } = await supabase
+          .from('attachments')
+          .select('*')
+          .eq('parent_type', 'clinic_note')
+          .in('parent_id', noteIds);
+        if (attachData) {
+          const map: Record<string, UploadedFile[]> = {};
+          attachData.forEach((a: any) => {
+            if (!map[a.parent_id]) map[a.parent_id] = [];
+            map[a.parent_id].push({
+              id: a.id,
+              name: a.name,
+              filePath: a.file_path,
+              fileType: a.file_type,
+              fileSize: a.file_size,
+            });
+          });
+          setNoteAttachments(map);
+        }
+      }
+    }
     setIsLoading(false);
   };
 
@@ -88,8 +113,24 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
       .single();
 
     if (error) { toast.error('Erro ao salvar anotação'); return; }
-    if (data) setNotes(prev => [data as ClinicNote, ...prev]);
-    setNewText(''); setNewTitle(''); setNewColor('blue');
+    if (data) {
+      // Save pending attachments
+      if (pendingFiles.length > 0) {
+        const attachInserts = pendingFiles.map(f => ({
+          user_id: user.id,
+          parent_id: (data as any).id,
+          parent_type: 'clinic_note',
+          name: f.name,
+          file_path: f.filePath,
+          file_type: f.fileType,
+          file_size: f.fileSize || null,
+        }));
+        await supabase.from('attachments').insert(attachInserts);
+        setNoteAttachments(prev => ({ ...prev, [(data as any).id]: pendingFiles }));
+      }
+      setNotes(prev => [data as ClinicNote, ...prev]);
+    }
+    setNewText(''); setNewTitle(''); setNewColor('blue'); setPendingFiles([]);
     setIsAdding(false);
     toast.success('Anotação salva!');
   };
