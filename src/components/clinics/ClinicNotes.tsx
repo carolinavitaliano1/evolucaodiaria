@@ -263,6 +263,7 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
           <div className="space-y-3">
             {notes.map(note => {
               const col = resolveColor(note.category);
+              const noteFiles = noteAttachments[note.id] || [];
               return (
                 <div key={note.id} className={cn('p-4 rounded-xl border', col.border)}>
                   <div className="flex items-start justify-between gap-2">
@@ -277,6 +278,17 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
                         </span>
                       </div>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{note.text}</p>
+                      <div className="mt-2">
+                        <FileUpload
+                          parentType="clinic_note"
+                          parentId={note.id}
+                          compact
+                          existingFiles={noteFiles}
+                          onUpload={files => handleAddAttachmentToNote(note.id, files)}
+                          onRemove={fileId => handleRemoveAttachment(note.id, fileId)}
+                          accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                        />
+                      </div>
                     </div>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-8 w-8 shrink-0" onClick={() => handleDelete(note.id)}>
                       <Trash2 className="w-3.5 h-3.5" />
