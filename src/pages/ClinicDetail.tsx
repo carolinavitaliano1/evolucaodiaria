@@ -89,13 +89,27 @@ function getTodayWeekday() {
 }
 
 function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, clinic, therapistName, therapistProfessionalId, therapistCbo, therapistClinicalArea, therapistStampImage, therapistSignatureImage }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinic?: Clinic; therapistName?: string; therapistProfessionalId?: string; therapistCbo?: string; therapistClinicalArea?: string; therapistStampImage?: string | null; therapistSignatureImage?: string | null }) {
+  const { user } = useAuth();
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
 
   useEffect(() => {
     supabase.from('saved_reports').select('id, title, content, created_at')
       .eq('clinic_id', clinicId).order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setReports(data); });
-  }, [clinicId]);
+    // Load attached files
+    if (user) {
+      supabase.from('attachments').select('*')
+        .eq('parent_type', 'clinic_docs')
+        .eq('parent_id', clinicId)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (data) setAttachedFiles(data.map((a: any) => ({
+            id: a.id, name: a.name, filePath: a.file_path, fileType: a.file_type, fileSize: a.file_size,
+          })));
+        });
+    }
+  }, [clinicId, user]);
 
   const handleDownloadPdf = (report: { title: string; content: string }) => {
     generateReportPdf({
@@ -124,19 +138,56 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
     toast.success('Relatório excluído!');
   };
 
+  const handleUploadFiles = async (files: UploadedFile[]) => {
+    if (!user) return;
+    const inserts = files.map(f => ({
+      user_id: user.id,
+      parent_id: clinicId,
+      parent_type: 'clinic_docs',
+      name: f.name,
+      file_path: f.filePath,
+      file_type: f.fileType,
+      file_size: f.fileSize || null,
+    }));
+    const { data } = await supabase.from('attachments').insert(inserts).select();
+    if (data) {
+      const newFiles: UploadedFile[] = data.map((a: any) => ({
+        id: a.id, name: a.name, filePath: a.file_path, fileType: a.file_type, fileSize: a.file_size,
+      }));
+      setAttachedFiles(prev => [...newFiles, ...prev]);
+    }
+  };
+
+  const handleRemoveFile = async (fileId: string) => {
+    const file = attachedFiles.find(f => f.id === fileId);
+    if (file) {
+      await supabase.storage.from('attachments').remove([file.filePath]);
+      await supabase.from('attachments').delete().eq('id', fileId);
+      setAttachedFiles(prev => prev.filter(f => f.id !== fileId));
+      toast.success('Arquivo removido');
+    }
+  };
+
   return (
-    <div className="bg-card rounded-2xl p-6 border border-border">
-      <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+    <div className="bg-card rounded-2xl p-6 border border-border space-y-6">
+      <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
         <Sparkles className="w-5 h-5 text-primary" /> Documentos desta Clínica
       </h2>
-      {reports.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📄</div>
-          <p className="text-muted-foreground">Nenhum relatório salvo nesta clínica</p>
-          <p className="text-sm text-muted-foreground mt-1">Gere relatórios na página de Relatórios IA e salve na pasta da clínica</p>
+
+      {/* AI Reports */}
+      {reports.length === 0 && attachedFiles.length === 0 ? (
+        <div className="text-center py-8">
+          <div className="text-5xl mb-4">📄</div>
+          <p className="text-muted-foreground">Nenhum documento nesta clínica</p>
+          <p className="text-sm text-muted-foreground mt-1">Gere relatórios IA ou anexe documentos manualmente</p>
         </div>
-      ) : (
+      ) : null}
+
+      {reports.length > 0 && (
         <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5" /> Relatórios IA
+          </p>
           {reports.map(r => (
             <div key={r.id} className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 border border-border">
               <div>
@@ -157,6 +208,22 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
           ))}
         </div>
       )}
+
+      {/* Manual file uploads */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+          <Upload className="w-3.5 h-3.5" /> Documentos Anexados
+        </p>
+        <FileUpload
+          parentType="clinic_docs"
+          parentId={clinicId}
+          existingFiles={attachedFiles}
+          onUpload={handleUploadFiles}
+          onRemove={handleRemoveFile}
+          accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+          maxFiles={20}
+        />
+      </div>
     </div>
   );
 }
