@@ -53,7 +53,6 @@ import { UsersRound } from 'lucide-react';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
-import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { MoodSelector } from '@/components/evolutions/MoodSelector';
 
 
