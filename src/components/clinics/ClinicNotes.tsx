@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 
 interface ClinicNote {
   id: string;
@@ -52,6 +53,8 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
   const [newTitle, setNewTitle] = useState('');
   const [newColor, setNewColor] = useState('blue');
   const [isAdding, setIsAdding] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
+  const [noteAttachments, setNoteAttachments] = useState<Record<string, UploadedFile[]>>({});
 
   useEffect(() => {
     loadNotes();
@@ -66,7 +69,32 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
       .eq('clinic_id', clinicId)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    if (data) setNotes(data as ClinicNote[]);
+    if (data) {
+      setNotes(data as ClinicNote[]);
+      // Load attachments for all notes
+      const noteIds = data.map((n: any) => n.id);
+      if (noteIds.length > 0) {
+        const { data: attachData } = await supabase
+          .from('attachments')
+          .select('*')
+          .eq('parent_type', 'clinic_note')
+          .in('parent_id', noteIds);
+        if (attachData) {
+          const map: Record<string, UploadedFile[]> = {};
+          attachData.forEach((a: any) => {
+            if (!map[a.parent_id]) map[a.parent_id] = [];
+            map[a.parent_id].push({
+              id: a.id,
+              name: a.name,
+              filePath: a.file_path,
+              fileType: a.file_type,
+              fileSize: a.file_size,
+            });
+          });
+          setNoteAttachments(map);
+        }
+      }
+    }
     setIsLoading(false);
   };
 
@@ -85,17 +113,76 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
       .single();
 
     if (error) { toast.error('Erro ao salvar anotação'); return; }
-    if (data) setNotes(prev => [data as ClinicNote, ...prev]);
-    setNewText(''); setNewTitle(''); setNewColor('blue');
+    if (data) {
+      // Save pending attachments
+      if (pendingFiles.length > 0) {
+        const attachInserts = pendingFiles.map(f => ({
+          user_id: user.id,
+          parent_id: (data as any).id,
+          parent_type: 'clinic_note',
+          name: f.name,
+          file_path: f.filePath,
+          file_type: f.fileType,
+          file_size: f.fileSize || null,
+        }));
+        await supabase.from('attachments').insert(attachInserts);
+        setNoteAttachments(prev => ({ ...prev, [(data as any).id]: pendingFiles }));
+      }
+      setNotes(prev => [data as ClinicNote, ...prev]);
+    }
+    setNewText(''); setNewTitle(''); setNewColor('blue'); setPendingFiles([]);
     setIsAdding(false);
     toast.success('Anotação salva!');
   };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('clinic_notes').delete().eq('id', id);
+    // Delete attachments from storage and DB
+    const files = noteAttachments[id] || [];
+    if (files.length > 0) {
+      await supabase.storage.from('attachments').remove(files.map(f => f.filePath));
+      await supabase.from('attachments').delete().eq('parent_id', id).eq('parent_type', 'clinic_note');
+    }
     if (error) { toast.error('Erro ao excluir'); return; }
     setNotes(prev => prev.filter(n => n.id !== id));
+    setNoteAttachments(prev => { const c = { ...prev }; delete c[id]; return c; });
     toast.success('Anotação excluída');
+  };
+
+  const handleRemoveAttachment = async (noteId: string, fileId: string) => {
+    const file = (noteAttachments[noteId] || []).find(f => f.id === fileId);
+    if (file) {
+      await supabase.storage.from('attachments').remove([file.filePath]);
+      await supabase.from('attachments').delete().eq('id', fileId);
+      setNoteAttachments(prev => ({
+        ...prev,
+        [noteId]: (prev[noteId] || []).filter(f => f.id !== fileId),
+      }));
+      toast.success('Anexo removido');
+    }
+  };
+
+  const handleAddAttachmentToNote = async (noteId: string, files: UploadedFile[]) => {
+    if (!user) return;
+    const inserts = files.map(f => ({
+      user_id: user.id,
+      parent_id: noteId,
+      parent_type: 'clinic_note',
+      name: f.name,
+      file_path: f.filePath,
+      file_type: f.fileType,
+      file_size: f.fileSize || null,
+    }));
+    const { data } = await supabase.from('attachments').insert(inserts).select();
+    if (data) {
+      const newFiles: UploadedFile[] = data.map((a: any) => ({
+        id: a.id, name: a.name, filePath: a.file_path, fileType: a.file_type, fileSize: a.file_size,
+      }));
+      setNoteAttachments(prev => ({
+        ...prev,
+        [noteId]: [...(prev[noteId] || []), ...newFiles],
+      }));
+    }
   };
 
   return (
@@ -147,9 +234,19 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
               placeholder="Digite sua anotação..."
               rows={3}
             />
+            <FileUpload
+              parentType="clinic_note"
+              parentId="temp"
+              compact
+              existingFiles={pendingFiles}
+              onUpload={files => setPendingFiles(prev => [...prev, ...files])}
+              onRemove={id => setPendingFiles(prev => prev.filter(f => f.id !== id))}
+              label="Anexos"
+              accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            />
             <div className="flex gap-2">
               <Button size="sm" onClick={handleAdd} disabled={!newText.trim()}>Salvar</Button>
-              <Button size="sm" variant="ghost" onClick={() => { setIsAdding(false); setNewText(''); setNewTitle(''); }}>Cancelar</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setIsAdding(false); setNewText(''); setNewTitle(''); setPendingFiles([]); }}>Cancelar</Button>
             </div>
           </div>
         )}
@@ -166,6 +263,7 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
           <div className="space-y-3">
             {notes.map(note => {
               const col = resolveColor(note.category);
+              const noteFiles = noteAttachments[note.id] || [];
               return (
                 <div key={note.id} className={cn('p-4 rounded-xl border', col.border)}>
                   <div className="flex items-start justify-between gap-2">
@@ -180,6 +278,17 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
                         </span>
                       </div>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{note.text}</p>
+                      <div className="mt-2">
+                        <FileUpload
+                          parentType="clinic_note"
+                          parentId={note.id}
+                          compact
+                          existingFiles={noteFiles}
+                          onUpload={files => handleAddAttachmentToNote(note.id, files)}
+                          onRemove={fileId => handleRemoveAttachment(note.id, fileId)}
+                          accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                        />
+                      </div>
                     </div>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-8 w-8 shrink-0" onClick={() => handleDelete(note.id)}>
                       <Trash2 className="w-3.5 h-3.5" />
