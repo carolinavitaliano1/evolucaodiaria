@@ -137,9 +137,52 @@ export function ClinicNotes({ clinicId }: ClinicNotesProps) {
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('clinic_notes').delete().eq('id', id);
+    // Delete attachments from storage and DB
+    const files = noteAttachments[id] || [];
+    if (files.length > 0) {
+      await supabase.storage.from('attachments').remove(files.map(f => f.filePath));
+      await supabase.from('attachments').delete().eq('parent_id', id).eq('parent_type', 'clinic_note');
+    }
     if (error) { toast.error('Erro ao excluir'); return; }
     setNotes(prev => prev.filter(n => n.id !== id));
+    setNoteAttachments(prev => { const c = { ...prev }; delete c[id]; return c; });
     toast.success('Anotação excluída');
+  };
+
+  const handleRemoveAttachment = async (noteId: string, fileId: string) => {
+    const file = (noteAttachments[noteId] || []).find(f => f.id === fileId);
+    if (file) {
+      await supabase.storage.from('attachments').remove([file.filePath]);
+      await supabase.from('attachments').delete().eq('id', fileId);
+      setNoteAttachments(prev => ({
+        ...prev,
+        [noteId]: (prev[noteId] || []).filter(f => f.id !== fileId),
+      }));
+      toast.success('Anexo removido');
+    }
+  };
+
+  const handleAddAttachmentToNote = async (noteId: string, files: UploadedFile[]) => {
+    if (!user) return;
+    const inserts = files.map(f => ({
+      user_id: user.id,
+      parent_id: noteId,
+      parent_type: 'clinic_note',
+      name: f.name,
+      file_path: f.filePath,
+      file_type: f.fileType,
+      file_size: f.fileSize || null,
+    }));
+    const { data } = await supabase.from('attachments').insert(inserts).select();
+    if (data) {
+      const newFiles: UploadedFile[] = data.map((a: any) => ({
+        id: a.id, name: a.name, filePath: a.file_path, fileType: a.file_type, fileSize: a.file_size,
+      }));
+      setNoteAttachments(prev => ({
+        ...prev,
+        [noteId]: [...(prev[noteId] || []), ...newFiles],
+      }));
+    }
   };
 
   return (
