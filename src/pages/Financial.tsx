@@ -814,7 +814,7 @@ export default function Financial() {
           doc.text(badge, bx + bw / 2, y + 5, { align: 'center' });
           y += 9;
 
-          items.forEach(({ patient, clinic, revenue, sessions, paymentType, pr }) => {
+          items.forEach(({ patient, clinic, revenue, sessions, paymentType, pr, tipoLabel }) => {
             ensureSpace(8);
             const isContratante = clinic?.type !== 'propria';
             const clinicPr = isContratante ? clinicPaymentRecords[clinic?.id || ''] : null;
@@ -831,7 +831,7 @@ export default function Financial() {
             setTxt(C.mid);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7);
-            doc.text(stat.tipoLabel || (paymentType === 'fixo' ? 'Fixo' : 'Sessão'), th.t, y + 5);
+            doc.text(tipoLabel || (paymentType === 'fixo' ? 'Fixo' : 'Sessão'), th.t, y + 5);
             doc.text(sessions.toString(), th.s, y + 5);
 
             if (effectivePaid) {
@@ -1226,10 +1226,10 @@ export default function Financial() {
   const handleExportCSV = () => {
     const rows = [
       ['Paciente', 'Clínica', 'Tipo', 'Sessões', 'Faltas Rem.', 'Faltas', 'Valor (R$)', 'Status Pagamento', 'Data Pagamento'],
-      ...patientStats.map(({ patient, clinic, sessions, paidAbsences, absences, paymentType, paymentValue, revenue, pr }) => [
+      ...patientStats.map(({ patient, clinic, sessions, paidAbsences, absences, paymentType, paymentValue, revenue, pr, tipoLabel }) => [
         patient.name,
         clinic?.name || '',
-        stat.tipoLabel || (paymentType === 'fixo' ? 'Fixo Mensal' : `Por Sessão (R$${paymentValue}/sessão)`),
+        tipoLabel || (paymentType === 'fixo' ? 'Fixo Mensal' : `Por Sessão (R$${paymentValue}/sessão)`),
         sessions.toString(),
         paidAbsences.toString(),
         absences.toString(),
