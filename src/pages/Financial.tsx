@@ -1426,7 +1426,7 @@ export default function Financial() {
         <CalendarCheck className="w-4 h-4 text-primary" />
         Detalhamento por Tipo de Atendimento
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 sm:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
         {/* Sessões Individuais */}
         <div className="bg-card border border-border rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-3">
@@ -1435,15 +1435,36 @@ export default function Financial() {
             </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Sessões Individuais</p>
-              <p className="text-[10px] text-muted-foreground/70">Atendimentos 1 a 1</p>
+              <p className="text-[10px] text-muted-foreground/70">Por sessão (1 a 1)</p>
             </div>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            R$ {revenueIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {revenueIndividualSession.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           {grandTotal > 0 && (
             <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(revenueIndividual / grandTotal) * 100}%` }} />
+              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(revenueIndividualSession / grandTotal) * 100}%` }} />
+            </div>
+          )}
+        </div>
+
+        {/* Mensalidades Fixas */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+              <DollarSign className="w-5 h-5 text-blue-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Mensalidades Fixas</p>
+              <p className="text-[10px] text-muted-foreground/70">Pagamento fixo mensal</p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            R$ {revenueFixo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          {grandTotal > 0 && (
+            <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(revenueFixo / grandTotal) * 100}%` }} />
             </div>
           )}
         </div>
