@@ -326,11 +326,15 @@ export default function Financial() {
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const revenue = calculatePatientRevenue(patient.id);
     const loss = calculatePatientLoss(patient.id);
+    const patientEvos = monthlyEvolutions.filter(e => e.patientId === patient.id);
     const sessions = presentEvolutions.filter(e => e.patientId === patient.id).length;
     const paidAbsences = paidAbsenceEvolutions.filter(e => e.patientId === patient.id).length;
     const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
     const pr = patientPaymentRecords[patient.id];
-    return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0, pr };
+    const hasGroupEvos = patientEvos.some(e => e.groupId);
+    const hasIndividualEvos = patientEvos.some(e => !e.groupId);
+    const tipoLabel = patient.paymentType === 'fixo' ? 'Fixo' : (hasGroupEvos && hasIndividualEvos ? 'Sessão/Grupo' : hasGroupEvos ? 'Grupo' : 'Sessão');
+    return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0, pr, tipoLabel };
   }).filter(p => p.sessions > 0 || p.paidAbsences > 0 || p.absences > 0 || p.revenue > 0 || p.loss > 0);
 
   // Apply filters
@@ -810,7 +814,7 @@ export default function Financial() {
           doc.text(badge, bx + bw / 2, y + 5, { align: 'center' });
           y += 9;
 
-          items.forEach(({ patient, clinic, revenue, sessions, paymentType, pr }) => {
+          items.forEach(({ patient, clinic, revenue, sessions, paymentType, pr, tipoLabel }) => {
             ensureSpace(8);
             const isContratante = clinic?.type !== 'propria';
             const clinicPr = isContratante ? clinicPaymentRecords[clinic?.id || ''] : null;
@@ -827,7 +831,7 @@ export default function Financial() {
             setTxt(C.mid);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7);
-            doc.text(paymentType === 'fixo' ? 'Fixo' : 'Sessão', th.t, y + 5);
+            doc.text(tipoLabel || (paymentType === 'fixo' ? 'Fixo' : 'Sessão'), th.t, y + 5);
             doc.text(sessions.toString(), th.s, y + 5);
 
             if (effectivePaid) {
@@ -1068,7 +1072,7 @@ export default function Financial() {
         }
 
         doc.setTextColor(80, 80, 80);
-        doc.text(patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão', col5, y);
+        doc.text(patient.paymentType === 'fixo' ? 'Fixo' : (evo.groupId ? 'Grupo' : 'Sessão'), col5, y);
         doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '-', col6, y, { align: 'right' });
         y += 6;
       });
@@ -1222,10 +1226,10 @@ export default function Financial() {
   const handleExportCSV = () => {
     const rows = [
       ['Paciente', 'Clínica', 'Tipo', 'Sessões', 'Faltas Rem.', 'Faltas', 'Valor (R$)', 'Status Pagamento', 'Data Pagamento'],
-      ...patientStats.map(({ patient, clinic, sessions, paidAbsences, absences, paymentType, paymentValue, revenue, pr }) => [
+      ...patientStats.map(({ patient, clinic, sessions, paidAbsences, absences, paymentType, paymentValue, revenue, pr, tipoLabel }) => [
         patient.name,
         clinic?.name || '',
-        paymentType === 'fixo' ? 'Fixo Mensal' : `Por Sessão (R$${paymentValue}/sessão)`,
+        tipoLabel || (paymentType === 'fixo' ? 'Fixo Mensal' : `Por Sessão (R$${paymentValue}/sessão)`),
         sessions.toString(),
         paidAbsences.toString(),
         absences.toString(),
@@ -1739,7 +1743,7 @@ export default function Financial() {
               </tr>
             </thead>
             <tbody>
-              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr }) => (
+              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr, tipoLabel }) => (
                 <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
                   <td className="py-3 px-3 text-foreground text-xs">
                     <span className="truncate block max-w-[100px] sm:max-w-none font-medium">{patient.name}</span>
@@ -1751,7 +1755,7 @@ export default function Financial() {
                   <td className="py-3 px-3 text-muted-foreground text-xs hidden sm:table-cell">{clinic?.name}</td>
                   <td className="py-3 px-3 text-xs">
                     <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent')}>
-                      {paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`}
+                      {tipoLabel || (paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`)}
                     </span>
                   </td>
                   <td className="py-3 px-3 text-center text-foreground text-xs">
