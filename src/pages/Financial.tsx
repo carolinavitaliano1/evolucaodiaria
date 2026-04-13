@@ -277,9 +277,10 @@ export default function Financial() {
     .reduce((sum, a) => sum + (a.price || 0), 0);
   const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue;
 
-  // Revenue breakdown by session type (individual vs group)
-  const { revenueIndividual, revenueGroup } = useMemo(() => {
-    let individual = 0;
+  // Revenue breakdown by session type (individual, fixo, group)
+  const { revenueIndividualSession, revenueFixo, revenueGroup } = useMemo(() => {
+    let individualSession = 0;
+    let fixo = 0;
     let group = 0;
     for (const patient of patients) {
       const billableEvolutions = monthlyEvolutions.filter(
@@ -299,15 +300,16 @@ export default function Financial() {
         if (patient.paymentType === 'fixo') {
           const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
           const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
-          individual += dynamic.occurrences > 0
+          const val = dynamic.occurrences > 0
             ? individualEvos.length * dynamic.perSession
             : individualEvos.length * patient.paymentValue;
+          fixo += val;
         } else {
-          individual += individualEvos.length * getEffectiveSessionValue(patient);
+          individualSession += individualEvos.length * getEffectiveSessionValue(patient);
         }
       }
     }
-    return { revenueIndividual: individual, revenueGroup: group };
+    return { revenueIndividualSession: individualSession, revenueFixo: fixo, revenueGroup: group };
   }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear]);
 
   const totalServicesRevenue = privateRevenue;
