@@ -326,7 +326,7 @@ export default function Financial() {
     const clinic = clinics.find(c => c.id === patient.clinicId);
     const revenue = calculatePatientRevenue(patient.id);
     const loss = calculatePatientLoss(patient.id);
-    const patientEvos = filteredEvolutions.filter(e => e.patientId === patient.id);
+    const patientEvos = monthlyEvolutions.filter(e => e.patientId === patient.id);
     const sessions = presentEvolutions.filter(e => e.patientId === patient.id).length;
     const paidAbsences = paidAbsenceEvolutions.filter(e => e.patientId === patient.id).length;
     const absences = absentEvolutions.filter(e => e.patientId === patient.id).length;
