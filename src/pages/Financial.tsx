@@ -277,9 +277,10 @@ export default function Financial() {
     .reduce((sum, a) => sum + (a.price || 0), 0);
   const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue;
 
-  // Revenue breakdown by session type (individual vs group)
-  const { revenueIndividual, revenueGroup } = useMemo(() => {
-    let individual = 0;
+  // Revenue breakdown by session type (individual, fixo, group)
+  const { revenueIndividualSession, revenueFixo, revenueGroup } = useMemo(() => {
+    let individualSession = 0;
+    let fixo = 0;
     let group = 0;
     for (const patient of patients) {
       const billableEvolutions = monthlyEvolutions.filter(
@@ -299,15 +300,16 @@ export default function Financial() {
         if (patient.paymentType === 'fixo') {
           const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
           const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
-          individual += dynamic.occurrences > 0
+          const val = dynamic.occurrences > 0
             ? individualEvos.length * dynamic.perSession
             : individualEvos.length * patient.paymentValue;
+          fixo += val;
         } else {
-          individual += individualEvos.length * getEffectiveSessionValue(patient);
+          individualSession += individualEvos.length * getEffectiveSessionValue(patient);
         }
       }
     }
-    return { revenueIndividual: individual, revenueGroup: group };
+    return { revenueIndividualSession: individualSession, revenueFixo: fixo, revenueGroup: group };
   }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear]);
 
   const totalServicesRevenue = privateRevenue;
@@ -524,11 +526,12 @@ export default function Financial() {
       sectionTitle('DETALHAMENTO POR TIPO DE ATENDIMENTO');
 
       const breakdownItems = [
-        { label: 'Sessões Individuais', value: revenueIndividual, color: C.primary },
+        { label: 'Sessões Individuais', value: revenueIndividualSession, color: C.primary },
+        { label: 'Mensalidades Fixas', value: revenueFixo, color: [40, 120, 180] as [number,number,number] },
         { label: 'Sessões em Grupo', value: revenueGroup, color: C.accent },
         { label: 'Serviços Particulares', value: totalServicesRevenue, color: C.green },
       ];
-      const breakdownTotal = revenueIndividual + revenueGroup + totalServicesRevenue;
+      const breakdownTotal = revenueIndividualSession + revenueFixo + revenueGroup + totalServicesRevenue;
 
       breakdownItems.forEach((item, idx) => {
         ensureSpace(16);
@@ -1423,7 +1426,7 @@ export default function Financial() {
         <CalendarCheck className="w-4 h-4 text-primary" />
         Detalhamento por Tipo de Atendimento
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 sm:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
         {/* Sessões Individuais */}
         <div className="bg-card border border-border rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-3">
@@ -1432,15 +1435,36 @@ export default function Financial() {
             </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Sessões Individuais</p>
-              <p className="text-[10px] text-muted-foreground/70">Atendimentos 1 a 1</p>
+              <p className="text-[10px] text-muted-foreground/70">Por sessão (1 a 1)</p>
             </div>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            R$ {revenueIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {revenueIndividualSession.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           {grandTotal > 0 && (
             <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(revenueIndividual / grandTotal) * 100}%` }} />
+              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(revenueIndividualSession / grandTotal) * 100}%` }} />
+            </div>
+          )}
+        </div>
+
+        {/* Mensalidades Fixas */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+              <DollarSign className="w-5 h-5 text-blue-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Mensalidades Fixas</p>
+              <p className="text-[10px] text-muted-foreground/70">Pagamento fixo mensal</p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            R$ {revenueFixo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+          {grandTotal > 0 && (
+            <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(revenueFixo / grandTotal) * 100}%` }} />
             </div>
           )}
         </div>
