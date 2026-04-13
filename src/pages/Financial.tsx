@@ -1743,7 +1743,7 @@ export default function Financial() {
               </tr>
             </thead>
             <tbody>
-              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr }) => (
+              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr, tipoLabel }) => (
                 <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
                   <td className="py-3 px-3 text-foreground text-xs">
                     <span className="truncate block max-w-[100px] sm:max-w-none font-medium">{patient.name}</span>
@@ -1755,7 +1755,7 @@ export default function Financial() {
                   <td className="py-3 px-3 text-muted-foreground text-xs hidden sm:table-cell">{clinic?.name}</td>
                   <td className="py-3 px-3 text-xs">
                     <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent')}>
-                      {paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`}
+                      {tipoLabel || (paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`)}
                     </span>
                   </td>
                   <td className="py-3 px-3 text-center text-foreground text-xs">
