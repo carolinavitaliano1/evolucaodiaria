@@ -526,11 +526,12 @@ export default function Financial() {
       sectionTitle('DETALHAMENTO POR TIPO DE ATENDIMENTO');
 
       const breakdownItems = [
-        { label: 'Sessões Individuais', value: revenueIndividual, color: C.primary },
+        { label: 'Sessões Individuais', value: revenueIndividualSession, color: C.primary },
+        { label: 'Mensalidades Fixas', value: revenueFixo, color: [40, 120, 180] as [number,number,number] },
         { label: 'Sessões em Grupo', value: revenueGroup, color: C.accent },
         { label: 'Serviços Particulares', value: totalServicesRevenue, color: C.green },
       ];
-      const breakdownTotal = revenueIndividual + revenueGroup + totalServicesRevenue;
+      const breakdownTotal = revenueIndividualSession + revenueFixo + revenueGroup + totalServicesRevenue;
 
       breakdownItems.forEach((item, idx) => {
         ensureSpace(16);
