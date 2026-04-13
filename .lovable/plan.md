@@ -1,29 +1,25 @@
 
 
-## Problem
+## Problema
 
-The portal financial page (`PortalFinancial.tsx`) only displays months where the therapist has already created a `patient_payment_records` entry. If a record hasn't been created yet for the current month, the patient sees nothing -- they can't tell what they owe or what's been paid.
+Na coluna "Tipo" dos PDFs financeiros (extrato e relatório), todas as sessões aparecem como "Sessão", mesmo quando são sessões de grupo. O usuário quer ver "Grupo" quando a evolução tem `groupId`.
 
-## Solution
+## Solução
 
-Generate "virtual" payment records for months that should exist but don't have a DB entry yet. This way the patient sees the full picture: paid months, pending months, and the current month even if the therapist hasn't logged it.
+Alterar a lógica de exibição da coluna "Tipo" em 3 pontos do arquivo `src/pages/Financial.tsx`:
 
-### Changes in `src/pages/portal/PortalFinancial.tsx`
+1. **Linha 830** (Relatório Mensal PDF) — trocar:
+   - `'Sessão'` → verificar se o paciente tem evoluções de grupo e exibir adequadamente
 
-1. **Load patient's `contract_start_date` and `payment_value`** alongside existing data (already partially available via `patient` from context).
+2. **Linha 1071** (Extrato de Clínica PDF) — trocar:
+   - `patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão'` → `patient.paymentType === 'fixo' ? 'Fixo' : (evo.groupId ? 'Grupo' : 'Sessão')`
 
-2. **Generate expected monthly records**: After loading DB records, compute all months from `contract_start_date` (or the earliest existing record) up to the current month. For each month without a DB record, create a virtual entry with:
-   - `amount` = patient's `payment_value`
-   - `paid` = false
-   - `id` = `virtual-{month}-{year}`
-   - Status shown as "Pendente" or "Atrasado" based on due date logic
+3. **Linha 1228** (Exportação CSV) — ajustar a lógica do tipo para incluir "Grupo" quando aplicável
 
-3. **Merge and sort**: Combine real DB records with virtual ones, sort by year/month descending, ensuring no duplicates.
+4. **Linha 1754** (UI tabela na página) — adicionar indicação visual de "Grupo" quando relevante
 
-4. **UI adjustments**: 
-   - The existing status badges (Pago/Pendente/Atrasado) already work correctly -- they just need data to render against.
-   - The summary cards (Total Pago / Pendente) will automatically reflect the full picture since they aggregate from the merged `records` array.
-   - For virtual (unpaid) records, disable the "Recibo" button (already handled since `record.paid` is false).
+### Detalhes Técnicos
 
-This is a frontend-only change -- no database migrations needed.
+- A verificação é simples: se `evo.groupId` existe, o tipo é "Grupo"; caso contrário, segue a lógica atual ("Fixo" ou "Sessão")
+- No relatório mensal (linha 830), onde a informação é por paciente (não por evolução), será necessário verificar se o paciente participa de grupos para mostrar "Sessão/Grupo" ou o tipo predominante
 
