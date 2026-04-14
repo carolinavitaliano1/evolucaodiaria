@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, DollarSign, FileText, MessageSquare,
-  UserPlus, Sparkles, ChevronDown, ChevronRight,
+  UserPlus, Sparkles, ChevronDown, ChevronRight, Paperclip,
 } from 'lucide-react';
 
 interface PatientRef {
@@ -37,6 +37,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
   const [pendingEnrollmentPatients, setPendingEnrollmentPatients] = useState<PatientRef[]>([]);
   const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
+  const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -117,14 +118,22 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
             .eq('needs_review', true)
             .in('patient_id', clinicPatientIds)
         : Promise.resolve({ data: [] }),
-    ]).then(([paymentsRes, enrollmentsRes, messagesRes, intakesRes]) => {
-      // Map patient_ids to names
+      // Pending receipt documents
+      clinicPatientIds.length > 0
+        ? supabase
+            .from('portal_documents')
+            .select('patient_id')
+            .eq('therapist_user_id', user.id)
+            .eq('therapist_reviewed', false)
+            .ilike('name', 'Comprovante%')
+            .in('patient_id', clinicPatientIds)
+        : Promise.resolve({ data: [] }),
+    ]).then(([paymentsRes, enrollmentsRes, messagesRes, intakesRes, receiptsRes]) => {
       const findPatient = (pid: string): PatientRef => {
         const p = clinicPatients.find(cp => cp.id === pid);
         return { id: pid, name: p?.name || 'Paciente' };
       };
 
-      // Deduplicate by patient_id
       const uniqueByPatient = (items: { patient_id: string }[]): PatientRef[] => {
         const seen = new Set<string>();
         return items.filter(i => {
@@ -140,6 +149,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       );
       setUnreadMessagePatients(uniqueByPatient((messagesRes.data as any[]) || []));
       setIntakeReviewPatients(uniqueByPatient((intakesRes.data as any[]) || []));
+      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as any[]) || []));
       setLoading(false);
     });
   }, [user, clinicId, clinicPatients.length]);
@@ -202,8 +212,19 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       });
     }
 
+    if (pendingReceiptPatients.length > 0) {
+      items.push({
+        key: 'receipts',
+        icon: <Paperclip className="w-3.5 h-3.5" />,
+        label: `${pendingReceiptPatients.length} comprovante${pendingReceiptPatients.length > 1 ? 's' : ''} não revisado${pendingReceiptPatients.length > 1 ? 's' : ''}`,
+        count: pendingReceiptPatients.length,
+        color: 'text-emerald-500',
+        patients: pendingReceiptPatients,
+      });
+    }
+
     return items;
-  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingEnrollmentPatients, intakeReviewPatients]);
+  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingEnrollmentPatients, intakeReviewPatients, pendingReceiptPatients]);
 
   const allClear = alerts.length === 0 && !loading;
 
@@ -224,8 +245,10 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
         navigate(`/patients/${patientId}`);
         break;
       case 'enrollments':
-        // Pending enrollments aren't active patients yet
         navigate(`/patients`);
+        break;
+      case 'receipts':
+        navigate(`/patients/${patientId}#financeiro`);
         break;
       default:
         navigate(`/patients/${patientId}`);
