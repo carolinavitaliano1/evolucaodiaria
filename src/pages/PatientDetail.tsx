@@ -2105,7 +2105,7 @@ export default function PatientDetail() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue={hashTab} className="space-y-5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
         <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-4 sm:grid-cols-4 gap-2.5">
           {[
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
