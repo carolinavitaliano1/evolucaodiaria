@@ -469,15 +469,6 @@ export default function PatientDetail() {
       .limit(20)
       .then(({ data }) => {
         setPortalReceipts((data || []) as typeof portalReceipts);
-        // Mark unreviewed receipts as reviewed
-        const unreviewed = (data || []).filter((d: any) => !d.therapist_reviewed).map((d: any) => d.id);
-        if (unreviewed.length > 0) {
-          supabase
-            .from('portal_documents')
-            .update({ therapist_reviewed: true } as any)
-            .in('id', unreviewed)
-            .then(() => {});
-        }
       });
   }, [patient?.id]);
 
@@ -2938,12 +2929,32 @@ export default function PatientDetail() {
                 <Paperclip className="w-4 h-4 text-primary" /> Comprovantes do Portal
                 <span className="text-xs font-normal text-muted-foreground ml-1">— enviados pelo paciente/responsável</span>
                 {portalReceipts.some(r => !r.therapist_reviewed) && (
-                  <span className="ml-auto bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">NOVO</span>
+                  <>
+                    <span className="bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">NOVO</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="ml-auto text-xs h-7 gap-1"
+                      onClick={async () => {
+                        const unreviewed = portalReceipts.filter(r => !r.therapist_reviewed).map(r => r.id);
+                        if (unreviewed.length > 0) {
+                          await supabase
+                            .from('portal_documents')
+                            .update({ therapist_reviewed: true } as any)
+                            .in('id', unreviewed);
+                          setPortalReceipts(prev => prev.map(r => ({ ...r, therapist_reviewed: true })));
+                          toast.success('Comprovantes marcados como revisados');
+                        }
+                      }}
+                    >
+                      <CheckCircle2 className="w-3 h-3" /> Marcar revisados
+                    </Button>
+                  </>
                 )}
               </h2>
               <div className="space-y-2">
                 {portalReceipts.map(doc => (
-                  <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-secondary/20">
+                  <div key={doc.id} className={cn("flex items-center gap-3 p-3 rounded-lg border", !doc.therapist_reviewed ? "bg-emerald-500/10 border-emerald-500/30" : "bg-secondary/20")}>
                     <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                       {doc.file_type?.startsWith('image/') ? (
                         <Image className="w-4 h-4 text-primary" />
