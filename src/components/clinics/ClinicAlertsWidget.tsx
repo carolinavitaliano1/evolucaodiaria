@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, DollarSign, FileText, MessageSquare,
-  UserPlus, Sparkles, ChevronDown, ChevronRight,
+  UserPlus, Sparkles, ChevronDown, ChevronRight, Paperclip,
 } from 'lucide-react';
 
 interface PatientRef {
