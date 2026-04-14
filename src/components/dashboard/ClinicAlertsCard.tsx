@@ -304,8 +304,19 @@ export function ClinicAlertsCard() {
       });
     }
 
+    if (pendingReceiptPatients.length > 0) {
+      items.push({
+        key: 'receipts',
+        icon: <Paperclip className="w-4 h-4" />,
+        label: `${pendingReceiptPatients.length} comprovante${pendingReceiptPatients.length > 1 ? 's' : ''} de pagamento não revisado${pendingReceiptPatients.length > 1 ? 's' : ''}`,
+        count: pendingReceiptPatients.length,
+        color: 'text-emerald-500',
+        patients: pendingReceiptPatients,
+      });
+    }
+
     return items.filter(a => !isAlertDismissed(a.key));
-  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, intakeReviewPatients, navigate, dismissed]);
+  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, intakeReviewPatients, pendingReceiptPatients, navigate, dismissed]);
 
   const allClear = alerts.length === 0 && !loading;
 
