@@ -245,8 +245,10 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
         navigate(`/patients/${patientId}`);
         break;
       case 'enrollments':
-        // Pending enrollments aren't active patients yet
         navigate(`/patients`);
+        break;
+      case 'receipts':
+        navigate(`/patients/${patientId}#financeiro`);
         break;
       default:
         navigate(`/patients/${patientId}`);
