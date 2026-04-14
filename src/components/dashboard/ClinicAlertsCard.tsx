@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
   AlertTriangle, DollarSign, FileText, MessageSquare,
   ClipboardList, UserPlus, ChevronRight, ChevronDown, Sparkles,
-  CheckCircle2, X,
+  CheckCircle2, X, Paperclip,
 } from 'lucide-react';
 
 interface PatientRef {
@@ -58,6 +58,7 @@ export function ClinicAlertsCard() {
   const [overduePaymentPatients, setOverduePaymentPatients] = useState<PatientRef[]>([]);
   const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
+  const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Record<string, string>>(getDismissedAlerts());
@@ -120,7 +121,13 @@ export function ClinicAlertsCard() {
         .select('patient_id')
         .eq('therapist_user_id', user.id)
         .eq('needs_review', true),
-    ]).then(([paymentsRes, messagesRes, intakesRes]) => {
+      supabase
+        .from('portal_documents')
+        .select('patient_id')
+        .eq('therapist_user_id', user.id)
+        .eq('therapist_reviewed', false)
+        .ilike('name', 'Comprovante%'),
+    ]).then(([paymentsRes, messagesRes, intakesRes, receiptsRes]) => {
       const findPatient = (pid: string): PatientRef => {
         const p = patients.find(cp => cp.id === pid);
         return { id: pid, name: p?.name || 'Paciente' };
@@ -138,6 +145,7 @@ export function ClinicAlertsCard() {
       setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as any[]) || []));
       setUnreadMessagePatients(uniqueByPatient((messagesRes.data as any[]) || []));
       setIntakeReviewPatients(uniqueByPatient((intakesRes.data as any[]) || []));
+      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as any[]) || []));
       setLoading(false);
     });
   }, [user, todayStr, patients]);
