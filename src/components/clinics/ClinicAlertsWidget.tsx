@@ -212,8 +212,19 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       });
     }
 
+    if (pendingReceiptPatients.length > 0) {
+      items.push({
+        key: 'receipts',
+        icon: <Paperclip className="w-3.5 h-3.5" />,
+        label: `${pendingReceiptPatients.length} comprovante${pendingReceiptPatients.length > 1 ? 's' : ''} não revisado${pendingReceiptPatients.length > 1 ? 's' : ''}`,
+        count: pendingReceiptPatients.length,
+        color: 'text-emerald-500',
+        patients: pendingReceiptPatients,
+      });
+    }
+
     return items;
-  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingEnrollmentPatients, intakeReviewPatients]);
+  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingEnrollmentPatients, intakeReviewPatients, pendingReceiptPatients]);
 
   const allClear = alerts.length === 0 && !loading;
 
