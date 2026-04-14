@@ -128,14 +128,12 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
             .ilike('name', 'Comprovante%')
             .in('patient_id', clinicPatientIds)
         : Promise.resolve({ data: [] }),
-    ]).then(([paymentsRes, enrollmentsRes, messagesRes, intakesRes]) => {
-      // Map patient_ids to names
+    ]).then(([paymentsRes, enrollmentsRes, messagesRes, intakesRes, receiptsRes]) => {
       const findPatient = (pid: string): PatientRef => {
         const p = clinicPatients.find(cp => cp.id === pid);
         return { id: pid, name: p?.name || 'Paciente' };
       };
 
-      // Deduplicate by patient_id
       const uniqueByPatient = (items: { patient_id: string }[]): PatientRef[] => {
         const seen = new Set<string>();
         return items.filter(i => {
@@ -151,6 +149,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       );
       setUnreadMessagePatients(uniqueByPatient((messagesRes.data as any[]) || []));
       setIntakeReviewPatients(uniqueByPatient((intakesRes.data as any[]) || []));
+      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as any[]) || []));
       setLoading(false);
     });
   }, [user, clinicId, clinicPatients.length]);
