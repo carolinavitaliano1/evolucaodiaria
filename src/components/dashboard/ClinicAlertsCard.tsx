@@ -213,11 +213,26 @@ export function ClinicAlertsCard() {
       }
     }
 
+    if (alertKey === 'receipts') {
+      const patientIds = pendingReceiptPatients.map(p => p.id);
+      if (patientIds.length > 0) {
+        await supabase
+          .from('portal_documents')
+          .update({ therapist_reviewed: true } as any)
+          .eq('therapist_user_id', user.id)
+          .eq('therapist_reviewed', false)
+          .ilike('name', 'Comprovante%');
+        setPendingReceiptPatients([]);
+        toast.success('Comprovantes marcados como revisados');
+        return;
+      }
+    }
+
     // For other types, just dismiss for today
     dismissAlert(alertKey);
     setDismissed({ ...getDismissedAlerts() });
     toast.success('Alerta marcado como lido');
-  }, [user, unreadMessagePatients, intakeReviewPatients]);
+  }, [user, unreadMessagePatients, intakeReviewPatients, pendingReceiptPatients]);
 
   const alerts: AlertGroup[] = useMemo(() => {
     const items: AlertGroup[] = [];
