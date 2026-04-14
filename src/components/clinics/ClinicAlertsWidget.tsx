@@ -118,6 +118,16 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
             .eq('needs_review', true)
             .in('patient_id', clinicPatientIds)
         : Promise.resolve({ data: [] }),
+      // Pending receipt documents
+      clinicPatientIds.length > 0
+        ? supabase
+            .from('portal_documents')
+            .select('patient_id')
+            .eq('therapist_user_id', user.id)
+            .eq('therapist_reviewed', false)
+            .ilike('name', 'Comprovante%')
+            .in('patient_id', clinicPatientIds)
+        : Promise.resolve({ data: [] }),
     ]).then(([paymentsRes, enrollmentsRes, messagesRes, intakesRes]) => {
       // Map patient_ids to names
       const findPatient = (pid: string): PatientRef => {
