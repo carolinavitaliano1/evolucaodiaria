@@ -37,6 +37,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
   const [pendingEnrollmentPatients, setPendingEnrollmentPatients] = useState<PatientRef[]>([]);
   const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
+  const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
 
