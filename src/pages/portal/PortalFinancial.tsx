@@ -125,7 +125,10 @@ export default function PortalFinancial() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!portalAccount || !patient) return;
+    if (!portalAccount || !patient) {
+      setLoading(false);
+      return;
+    }
 
     const load = async () => {
       setLoading(true);
