@@ -469,15 +469,6 @@ export default function PatientDetail() {
       .limit(20)
       .then(({ data }) => {
         setPortalReceipts((data || []) as typeof portalReceipts);
-        // Mark unreviewed receipts as reviewed
-        const unreviewed = (data || []).filter((d: any) => !d.therapist_reviewed).map((d: any) => d.id);
-        if (unreviewed.length > 0) {
-          supabase
-            .from('portal_documents')
-            .update({ therapist_reviewed: true } as any)
-            .in('id', unreviewed)
-            .then(() => {});
-        }
       });
   }, [patient?.id]);
 
