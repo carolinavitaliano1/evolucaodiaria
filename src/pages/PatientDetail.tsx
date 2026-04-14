@@ -2911,6 +2911,9 @@ export default function PatientDetail() {
               <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
                 <Paperclip className="w-4 h-4 text-primary" /> Comprovantes do Portal
                 <span className="text-xs font-normal text-muted-foreground ml-1">— enviados pelo paciente/responsável</span>
+                {portalReceipts.some(r => !r.therapist_reviewed) && (
+                  <span className="ml-auto bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">NOVO</span>
+                )}
               </h2>
               <div className="space-y-2">
                 {portalReceipts.map(doc => (
