@@ -242,7 +242,7 @@ export default function PatientDetail() {
   const [savingPaymentRecord, setSavingPaymentRecord] = useState(false);
   const [financialMonth, setFinancialMonth] = useState(new Date());
   const [financialStampId, setFinancialStampId] = useState<string>('');
-  const [portalReceipts, setPortalReceipts] = useState<{ id: string; name: string; file_path: string; file_type: string; file_size: number | null; description: string | null; created_at: string }[]>([]);
+  const [portalReceipts, setPortalReceipts] = useState<{ id: string; name: string; file_path: string; file_type: string; file_size: number | null; description: string | null; created_at: string; therapist_reviewed?: boolean }[]>([]);
   const currentMonth = financialMonth.getMonth() + 1;
   const currentYear = financialMonth.getFullYear();
 
@@ -436,13 +436,22 @@ export default function PatientDetail() {
     if (!patient?.id) return;
     supabase
       .from('portal_documents')
-      .select('id, name, file_path, file_type, file_size, description, created_at')
+      .select('id, name, file_path, file_type, file_size, description, created_at, therapist_reviewed')
       .eq('patient_id', patient.id)
       .ilike('name', 'Comprovante%')
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => {
         setPortalReceipts((data || []) as typeof portalReceipts);
+        // Mark unreviewed receipts as reviewed
+        const unreviewed = (data || []).filter((d: any) => !d.therapist_reviewed).map((d: any) => d.id);
+        if (unreviewed.length > 0) {
+          supabase
+            .from('portal_documents')
+            .update({ therapist_reviewed: true } as any)
+            .in('id', unreviewed)
+            .then(() => {});
+        }
       });
   }, [patient?.id]);
 
