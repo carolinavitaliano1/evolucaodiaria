@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
   AlertTriangle, DollarSign, FileText, MessageSquare,
   ClipboardList, UserPlus, ChevronRight, ChevronDown, Sparkles,
-  CheckCircle2, X,
+  CheckCircle2, X, Paperclip,
 } from 'lucide-react';
 
 interface PatientRef {
@@ -58,6 +58,7 @@ export function ClinicAlertsCard() {
   const [overduePaymentPatients, setOverduePaymentPatients] = useState<PatientRef[]>([]);
   const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
+  const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Record<string, string>>(getDismissedAlerts());
@@ -120,7 +121,13 @@ export function ClinicAlertsCard() {
         .select('patient_id')
         .eq('therapist_user_id', user.id)
         .eq('needs_review', true),
-    ]).then(([paymentsRes, messagesRes, intakesRes]) => {
+      supabase
+        .from('portal_documents')
+        .select('patient_id')
+        .eq('therapist_user_id', user.id)
+        .eq('therapist_reviewed', false)
+        .ilike('name', 'Comprovante%'),
+    ]).then(([paymentsRes, messagesRes, intakesRes, receiptsRes]) => {
       const findPatient = (pid: string): PatientRef => {
         const p = patients.find(cp => cp.id === pid);
         return { id: pid, name: p?.name || 'Paciente' };
@@ -138,6 +145,7 @@ export function ClinicAlertsCard() {
       setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as any[]) || []));
       setUnreadMessagePatients(uniqueByPatient((messagesRes.data as any[]) || []));
       setIntakeReviewPatients(uniqueByPatient((intakesRes.data as any[]) || []));
+      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as any[]) || []));
       setLoading(false);
     });
   }, [user, todayStr, patients]);
@@ -155,6 +163,9 @@ export function ClinicAlertsCard() {
         break;
       case 'evolutions':
         navigate(`/patients/${patientId}`);
+        break;
+      case 'receipts':
+        navigate(`/patients/${patientId}#financeiro`);
         break;
       default:
         navigate(`/patients/${patientId}`);
@@ -202,11 +213,26 @@ export function ClinicAlertsCard() {
       }
     }
 
+    if (alertKey === 'receipts') {
+      const patientIds = pendingReceiptPatients.map(p => p.id);
+      if (patientIds.length > 0) {
+        await supabase
+          .from('portal_documents')
+          .update({ therapist_reviewed: true } as any)
+          .eq('therapist_user_id', user.id)
+          .eq('therapist_reviewed', false)
+          .ilike('name', 'Comprovante%');
+        setPendingReceiptPatients([]);
+        toast.success('Comprovantes marcados como revisados');
+        return;
+      }
+    }
+
     // For other types, just dismiss for today
     dismissAlert(alertKey);
     setDismissed({ ...getDismissedAlerts() });
     toast.success('Alerta marcado como lido');
-  }, [user, unreadMessagePatients, intakeReviewPatients]);
+  }, [user, unreadMessagePatients, intakeReviewPatients, pendingReceiptPatients]);
 
   const alerts: AlertGroup[] = useMemo(() => {
     const items: AlertGroup[] = [];
@@ -278,8 +304,19 @@ export function ClinicAlertsCard() {
       });
     }
 
+    if (pendingReceiptPatients.length > 0) {
+      items.push({
+        key: 'receipts',
+        icon: <Paperclip className="w-4 h-4" />,
+        label: `${pendingReceiptPatients.length} comprovante${pendingReceiptPatients.length > 1 ? 's' : ''} de pagamento não revisado${pendingReceiptPatients.length > 1 ? 's' : ''}`,
+        count: pendingReceiptPatients.length,
+        color: 'text-emerald-500',
+        patients: pendingReceiptPatients,
+      });
+    }
+
     return items.filter(a => !isAlertDismissed(a.key));
-  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, intakeReviewPatients, navigate, dismissed]);
+  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, intakeReviewPatients, pendingReceiptPatients, navigate, dismissed]);
 
   const allClear = alerts.length === 0 && !loading;
 

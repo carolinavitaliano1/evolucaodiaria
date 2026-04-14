@@ -1682,6 +1682,7 @@ export type Database = {
           name: string
           patient_id: string
           portal_account_id: string
+          therapist_reviewed: boolean
           therapist_user_id: string
           updated_at: string
           uploaded_by_type: string
@@ -1697,6 +1698,7 @@ export type Database = {
           name: string
           patient_id: string
           portal_account_id: string
+          therapist_reviewed?: boolean
           therapist_user_id: string
           updated_at?: string
           uploaded_by_type?: string
@@ -1712,6 +1714,7 @@ export type Database = {
           name?: string
           patient_id?: string
           portal_account_id?: string
+          therapist_reviewed?: boolean
           therapist_user_id?: string
           updated_at?: string
           uploaded_by_type?: string
