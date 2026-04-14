@@ -184,22 +184,30 @@ export default function PatientDetail() {
   const [whatsAppRecipientOpen, setWhatsAppRecipientOpen] = useState(false);
 
   // Read hash from URL to set initial tab (e.g. #financeiro, #portal)
-  const hashTab = useMemo(() => {
-    const hash = window.location.hash.replace('#', '');
-    const validTabs = ['evolutions', 'session', 'reports', 'financial', 'documents', 'tasks', 'notes', 'portal', 'mural', 'attendance', 'therapists',
-      // aliases from alert navigation
-      'financeiro', 'documentos', 'tarefas', 'notas', 'frequencia'];
-    const aliasMap: Record<string, string> = {
-      financeiro: 'financial',
-      documentos: 'documents',
-      tarefas: 'tasks',
-      notas: 'notes',
-      frequencia: 'attendance',
-    };
-    if (!hash) return 'evolutions';
-    const mapped = aliasMap[hash] || hash;
-    return validTabs.includes(hash) || Object.values(aliasMap).includes(mapped) ? mapped : 'evolutions';
-  }, []);
+  const location = useLocation();
+  const aliasMap: Record<string, string> = {
+    financeiro: 'financial',
+    documentos: 'documents',
+    tarefas: 'tasks',
+    notas: 'notes',
+    frequencia: 'attendance',
+  };
+  const validTabValues = ['evolutions', 'session', 'reports', 'financial', 'documents', 'tasks', 'notes', 'portal', 'mural', 'attendance', 'therapists'];
+
+  const resolveHash = (hash: string) => {
+    const h = hash.replace('#', '');
+    if (!h) return 'evolutions';
+    const mapped = aliasMap[h] || h;
+    return validTabValues.includes(mapped) ? mapped : 'evolutions';
+  };
+
+  const [activeTab, setActiveTab] = useState(() => resolveHash(window.location.hash));
+
+  // React to hash changes (e.g. navigating from alerts)
+  useEffect(() => {
+    const newTab = resolveHash(location.hash);
+    setActiveTab(newTab);
+  }, [location.hash]);
 
   useEffect(() => {
     if (!patient?.clinicId) return;
