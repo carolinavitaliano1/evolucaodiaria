@@ -164,6 +164,9 @@ export function ClinicAlertsCard() {
       case 'evolutions':
         navigate(`/patients/${patientId}`);
         break;
+      case 'receipts':
+        navigate(`/patients/${patientId}#financeiro`);
+        break;
       default:
         navigate(`/patients/${patientId}`);
     }
