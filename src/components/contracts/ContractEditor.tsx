@@ -2,14 +2,14 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-import Image from '@tiptap/extension-image';
+import ImageExt from '@tiptap/extension-image';
 import { VariableNode } from './VariableNode';
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter,
   AlignRight, AlignJustify, List, ListOrdered, Heading2, Heading3, Tag,
-  ImageIcon, Minus
+  ImageIcon, Minus, Maximize2, Minimize2
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,6 +32,30 @@ const CONTRACT_VARIABLES = [
   { key: 'horario_atendimento', label: 'Horário de Atendimento' },
 ];
 
+const IMAGE_SIZES = [
+  { label: '25%', value: '25%' },
+  { label: '50%', value: '50%' },
+  { label: '75%', value: '75%' },
+  { label: '100%', value: '100%' },
+];
+
+// Extended Image extension that supports width attribute for resizing
+const ResizableImage = ImageExt.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('width') || el.style.width || null,
+        renderHTML: (attrs) => {
+          if (!attrs.width) return {};
+          return { width: attrs.width, style: `width: ${attrs.width}` };
+        },
+      },
+    };
+  },
+});
+
 interface ContractEditorProps {
   value: string;
   onChange: (html: string) => void;
@@ -39,18 +63,22 @@ interface ContractEditorProps {
 
 export function ContractEditor({ value, onChange }: ContractEditorProps) {
   const imgInputRef = useRef<HTMLInputElement>(null);
+  const [imageSelected, setImageSelected] = useState(false);
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Image.configure({ inline: false, allowBase64: true }),
+      ResizableImage.configure({ inline: false, allowBase64: true }),
       VariableNode,
     ],
     content: value,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+    },
+    onSelectionUpdate: ({ editor }) => {
+      setImageSelected(editor.isActive('image'));
     },
   });
 
@@ -78,6 +106,11 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
     };
     reader.readAsDataURL(file);
     e.target.value = '';
+  }, [editor]);
+
+  const setImageWidth = useCallback((width: string) => {
+    if (!editor) return;
+    editor.chain().focus().updateAttributes('image', { width }).run();
   }, [editor]);
 
   const insertHr = useCallback(() => {
@@ -132,6 +165,37 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
           <ImageIcon className="w-3.5 h-3.5" />
         </ToolBtn>
         <input ref={imgInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+
+        {/* Image size controls - shown when image is selected */}
+        {imageSelected && (
+          <>
+            <div className="w-px h-5 bg-border mx-0.5" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 gap-1 text-xs px-2 border-primary/30 text-primary hover:bg-primary/5">
+                  <Maximize2 className="w-3 h-3" /> Tamanho
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" align="start">
+                <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 px-1">Largura da imagem</p>
+                <div className="flex gap-1">
+                  {IMAGE_SIZES.map(s => (
+                    <Button
+                      key={s.value}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs px-2.5"
+                      onClick={() => setImageWidth(s.value)}
+                    >
+                      {s.label}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </>
+        )}
+
         <ToolBtn active={false} onClick={insertHr} title="Linha horizontal">
           <Minus className="w-3.5 h-3.5" />
         </ToolBtn>
@@ -199,10 +263,14 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
         .contract-editor img {
           max-width: 100%;
           height: auto;
-          max-height: 200px;
           border-radius: 4px;
           margin: 8px auto;
           display: block;
+          cursor: pointer;
+        }
+        .contract-editor img.ProseMirror-selectednode {
+          outline: 2px solid hsl(var(--primary));
+          outline-offset: 2px;
         }
         .contract-editor hr {
           border: none;
