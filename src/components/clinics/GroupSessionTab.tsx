@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
-import { saveAs } from 'file-saver';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -147,39 +145,19 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (data) setSavedNextSessions(data.filter((s: any) => s.next_session_notes?.trim()));
   };
 
-  const downloadNextSessionWord = async (session: any) => {
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: [
-          new Paragraph({
-            children: [new TextRun({ text: `Planejamento - ${groupName}`, bold: true, size: 32 })],
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: `Sessão: ${session.title || 'Sem título'}`, size: 22, color: '666666' })],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 200 },
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: `Data: ${new Date(session.created_at).toLocaleDateString('pt-BR')}`, size: 20, color: '999999' })],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 400 },
-          }),
-          ...session.next_session_notes.split('\n').map((line: string) => 
-            new Paragraph({
-              children: [new TextRun({ text: line, size: 24 })],
-              alignment: AlignmentType.JUSTIFIED,
-              spacing: { after: 120 },
-            })
-          ),
-        ],
-      }],
-    });
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `proxima_sessao_${groupName.replace(/\s+/g, '_')}_${new Date(session.created_at).toLocaleDateString('pt-BR').replace(/\//g, '-')}.docx`);
-    toast.success('Documento Word gerado!');
+  const handleDownloadNextSession = async (session: any, format: 'word' | 'pdf') => {
+    const dateStr = new Date(session.created_at).toLocaleDateString('pt-BR');
+    const fileName = `proxima_sessao_${groupName.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '-')}`;
+    const sessionTitle = session.title || 'Sem título';
+    if (format === 'word') {
+      const { downloadNextSessionAsWord } = await import('@/utils/sessionPlanExport');
+      await downloadNextSessionAsWord(session.next_session_notes, groupName, sessionTitle, dateStr, fileName);
+      toast.success('Documento Word gerado!');
+    } else {
+      const { downloadNextSessionAsPdf } = await import('@/utils/sessionPlanExport');
+      downloadNextSessionAsPdf(session.next_session_notes, groupName, sessionTitle, dateStr, fileName);
+      toast.success('PDF gerado!');
+    }
   };
 
   useEffect(() => {
@@ -1850,11 +1828,16 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
                         <p className="font-medium text-foreground text-sm">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</p>
                         <p className="text-xs text-muted-foreground">{date.toLocaleDateString('pt-BR')}</p>
                       </div>
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs shrink-0" onClick={() => downloadNextSessionWord(s)}>
-                        <Download className="w-3.5 h-3.5" /> Word
-                      </Button>
+                      <div className="flex gap-1.5 shrink-0">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadNextSession(s, 'pdf')}>
+                          <Download className="w-3.5 h-3.5" /> PDF
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadNextSession(s, 'word')}>
+                          <Download className="w-3.5 h-3.5" /> Word
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap line-clamp-4">{s.next_session_notes}</p>
+                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap line-clamp-4">{s.next_session_notes?.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,3}\s+/gm, '')}</p>
                   </CardContent>
                 </Card>
               );
