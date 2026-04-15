@@ -61,11 +61,15 @@ export function ClinicAlertsCard() {
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
   const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
   const [pendingEnrollmentPatients, setPendingEnrollmentPatients] = useState<PatientRef[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dbLoading, setDbLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Record<string, string>>(getDismissedAlerts());
 
   const todayStr = toLocalDateString(new Date());
+
+  // Consider loading until both DB queries and context patients are ready
+  const contextReady = patients.length > 0 || clinics.length === 0;
+  const loading = dbLoading || !contextReady;
 
   const pendingTasks = useMemo(() => tasks.filter(t => !t.completed).length, [tasks]);
 
@@ -105,7 +109,7 @@ export function ClinicAlertsCard() {
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
+    setDbLoading(true);
 
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
@@ -142,18 +146,25 @@ export function ClinicAlertsCard() {
         .eq('user_id', user.id)
         .eq('status', 'pendente'),
     ]).then(([paymentsRes, messagesRes, intakesRes, receiptsRes, enrollmentsRes]) => {
-      const findPatient = (pid: string): PatientRef => {
+      // Build a set of valid patient IDs from context for filtering orphaned data
+      
+
+      const findPatient = (pid: string): PatientRef | null => {
         const p = patients.find(cp => cp.id === pid);
-        return { id: pid, name: p?.name || 'Paciente', clinicId: p?.clinicId };
+        if (!p) return null; // Skip orphaned references
+        return { id: pid, name: p.name, clinicId: p.clinicId };
       };
 
       const uniqueByPatient = (items: { patient_id: string }[]): PatientRef[] => {
         const seen = new Set<string>();
-        return items.filter(i => {
-          if (seen.has(i.patient_id)) return false;
+        const result: PatientRef[] = [];
+        for (const i of items) {
+          if (seen.has(i.patient_id)) continue;
           seen.add(i.patient_id);
-          return true;
-        }).map(i => findPatient(i.patient_id));
+          const ref = findPatient(i.patient_id);
+          if (ref) result.push(ref);
+        }
+        return result;
       };
 
       setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as any[]) || []));
@@ -167,7 +178,7 @@ export function ClinicAlertsCard() {
           clinicId: p.clinic_id,
         }))
       );
-      setLoading(false);
+      setDbLoading(false);
     });
   }, [user, todayStr, patients]);
 
