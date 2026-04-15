@@ -257,8 +257,8 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     if (st.billable) { sessionTotal += sessionValue; }
   }
 
-  if (patient.paymentType === 'fixo' && paymentValue > 0) {
-    sessionTotal  = paymentValue;
+  if (patient.paymentType === 'fixo' && (patient.paymentValue ?? 0) > 0) {
+    sessionTotal  = patient.paymentValue ?? 0;
   }
 
   // ─── RESUMO FINANCEIRO ──────────────────────────────────────────────────
@@ -267,9 +267,19 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   sectionTitle('RESUMO FINANCEIRO');
 
   const isPersonalizado = !!patient.effectiveSessionValue && !!patient.packageSessionLimit;
+  const isMensal = patient.paymentType === 'fixo' && !!patient.effectiveSessionValue && !patient.packageSessionLimit;
   const billableCount = realizedCount + paidAbsenceCount;
 
-  const summaryRows: [string, string][] = patient.paymentType === 'fixo'
+  const summaryRows: [string, string][] = isMensal
+    ? [
+        ['Modalidade:', 'Mensalidade fixa'],
+        ['Sessões Realizadas:', String(realizedCount)],
+        ['Faltas Remuneradas:', String(paidAbsenceCount)],
+        ['Faltas / Feriados:', String(unpaidAbsenceCount)],
+        ['Valor por sessão:', `R$ ${paymentValue.toFixed(2)}`],
+        ['Valor mensal:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`],
+      ]
+    : patient.paymentType === 'fixo'
     ? [
         ['Modalidade:', 'Mensalidade fixa'],
         ['Sessões Realizadas:', String(realizedCount)],
