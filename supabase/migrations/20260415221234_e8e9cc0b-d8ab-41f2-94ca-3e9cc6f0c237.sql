@@ -1,0 +1,1 @@
+ALTER TABLE public.therapeutic_groups ADD COLUMN custom_sections jsonb DEFAULT '{}'::jsonb;
