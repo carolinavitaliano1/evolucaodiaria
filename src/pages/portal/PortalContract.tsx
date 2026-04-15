@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { cleanContractHtml } from '@/utils/contractHtmlUtils';
 
 interface Contract {
@@ -35,12 +36,14 @@ interface PatientExtra {
 }
 
 /**
- * Gera PDF com autopaginação por texto para evitar cortes no meio do conteúdo.
+ * Gera PDF capturando o conteúdo inteiro como canvas e fatiando em páginas A4.
  */
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const A4_W_MM = 210;
+  const A4_H_MM = 297;
   const MARGIN_MM = 15;
   const CONTENT_W_MM = A4_W_MM - MARGIN_MM * 2;
+  const CONTENT_H_MM = A4_H_MM - MARGIN_MM * 2;
   const SCALE = 2;
 
   // Pixels per mm at 96dpi
@@ -181,6 +184,7 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
 
   try {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
     const images = Array.from(contentDiv.querySelectorAll('img')) as HTMLImageElement[];
     await Promise.all(images.map((img) => {
       if (img.complete) return Promise.resolve();
@@ -190,27 +194,41 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
       });
     }));
 
-    await new Promise<void>((resolve, reject) => {
-      try {
-        (pdf as any).html(contentDiv, {
-          x: MARGIN_MM,
-          y: MARGIN_MM,
-          width: CONTENT_W_MM,
-          windowWidth: contentWidthPx,
-          autoPaging: 'text',
-          html2canvas: {
-            scale: SCALE,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-            windowWidth: contentWidthPx,
-          },
-          callback: () => resolve(),
-        });
-      } catch (error) {
-        reject(error);
-      }
+    // Capture full content as single canvas
+    const fullCanvas = await html2canvas(contentDiv, {
+      scale: SCALE,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: contentWidthPx,
     });
+
+    // Calculate dimensions
+    const canvasWidthScaled = fullCanvas.width; // pixels at SCALE
+    const canvasHeightScaled = fullCanvas.height;
+    const pxPerMm = canvasWidthScaled / CONTENT_W_MM;
+    const pageHeightPx = Math.floor(CONTENT_H_MM * pxPerMm);
+    const totalPages = Math.ceil(canvasHeightScaled / pageHeightPx);
+
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) pdf.addPage();
+
+      const srcY = page * pageHeightPx;
+      const srcH = Math.min(pageHeightPx, canvasHeightScaled - srcY);
+      const destH = srcH / pxPerMm;
+
+      // Create a slice canvas for this page
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvasWidthScaled;
+      sliceCanvas.height = srcH;
+      const ctx = sliceCanvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      ctx.drawImage(fullCanvas, 0, srcY, canvasWidthScaled, srcH, 0, 0, canvasWidthScaled, srcH);
+
+      const imgData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(imgData, 'JPEG', MARGIN_MM, MARGIN_MM, CONTENT_W_MM, destH);
+    }
 
     pdf.save(`contrato-${signerName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   } finally {
