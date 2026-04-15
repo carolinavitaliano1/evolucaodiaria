@@ -61,11 +61,15 @@ export function ClinicAlertsCard() {
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
   const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
   const [pendingEnrollmentPatients, setPendingEnrollmentPatients] = useState<PatientRef[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dbLoading, setDbLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Record<string, string>>(getDismissedAlerts());
 
   const todayStr = toLocalDateString(new Date());
+
+  // Consider loading until both DB queries and context patients are ready
+  const contextReady = patients.length > 0 || clinics.length === 0;
+  const loading = dbLoading || !contextReady;
 
   const pendingTasks = useMemo(() => tasks.filter(t => !t.completed).length, [tasks]);
 
