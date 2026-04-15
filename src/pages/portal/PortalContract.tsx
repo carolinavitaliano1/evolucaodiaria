@@ -71,15 +71,13 @@ function createPdfPageElement(contentWidthPx: number, host: HTMLElement) {
 
 function buildPaginatedPdfPages({
   cleanHtml,
-  therapistSigBlock,
-  patientSigBlock,
+  signatureBlock,
   contentWidthPx,
   maxPageHeightPx,
   host,
 }: {
   cleanHtml: string;
-  therapistSigBlock: string;
-  patientSigBlock: string;
+  signatureBlock: string;
   contentWidthPx: number;
   maxPageHeightPx: number;
   host: HTMLElement;
@@ -109,11 +107,8 @@ function buildPaginatedPdfPages({
     groups.push([current]);
   }
 
-  const therapistNode = createPdfBlockFromHtml(therapistSigBlock);
-  if (therapistNode) groups.push([therapistNode]);
-
-  const patientNode = createPdfBlockFromHtml(patientSigBlock);
-  if (patientNode) groups.push([patientNode]);
+  const sigNode = createPdfBlockFromHtml(signatureBlock);
+  if (sigNode) groups.push([sigNode]);
 
   const pages: HTMLDivElement[] = [];
   let currentPage = createPdfPageElement(contentWidthPx, host);
