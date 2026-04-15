@@ -147,7 +147,7 @@ export function ClinicAlertsCard() {
         .eq('status', 'pendente'),
     ]).then(([paymentsRes, messagesRes, intakesRes, receiptsRes, enrollmentsRes]) => {
       // Build a set of valid patient IDs from context for filtering orphaned data
-      const validPatientIds = new Set(patients.map(p => p.id));
+      
 
       const findPatient = (pid: string): PatientRef | null => {
         const p = patients.find(cp => cp.id === pid);
