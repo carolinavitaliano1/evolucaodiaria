@@ -1658,9 +1658,7 @@ export default function PatientDetail() {
               packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
             });
           } else {
-            sessionValue = perSessionValue;
-          }
-        }
+            sessionValue = pdfPerSession;
 
         doc.setDrawColor(...borderColor); doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
