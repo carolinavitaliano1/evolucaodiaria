@@ -11,12 +11,13 @@ import { toast } from 'sonner';
 import {
   AlertTriangle, DollarSign, FileText, MessageSquare,
   ClipboardList, UserPlus, ChevronRight, ChevronDown, Sparkles,
-  CheckCircle2, X, Paperclip,
+  CheckCircle2, X, Paperclip, Building2,
 } from 'lucide-react';
 
 interface PatientRef {
   id: string;
   name: string;
+  clinicId?: string;
 }
 
 interface AlertGroup {
@@ -49,7 +50,7 @@ function isAlertDismissed(key: string): boolean {
 }
 
 export function ClinicAlertsCard() {
-  const { patients, tasks, evolutions } = useApp();
+  const { patients, tasks, evolutions, clinics } = useApp();
   const { user } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -59,6 +60,7 @@ export function ClinicAlertsCard() {
   const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
   const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
+  const [pendingEnrollmentPatients, setPendingEnrollmentPatients] = useState<PatientRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Record<string, string>>(getDismissedAlerts());
@@ -66,6 +68,13 @@ export function ClinicAlertsCard() {
   const todayStr = toLocalDateString(new Date());
 
   const pendingTasks = useMemo(() => tasks.filter(t => !t.completed).length, [tasks]);
+
+  // Build clinic name map for display
+  const clinicNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    clinics.forEach(c => { map[c.id] = c.name; });
+    return map;
+  }, [clinics]);
 
   const missingEvolutionPatients = useMemo(() => {
     if (!user) return [];
@@ -87,7 +96,7 @@ export function ClinicAlertsCard() {
           e => e.patientId === p.id && e.date === dateStr
         );
         if (!hasEvolution) {
-          patientSet.set(p.id, { id: p.id, name: p.name });
+          patientSet.set(p.id, { id: p.id, name: p.name, clinicId: p.clinicId });
         }
       }
     }
@@ -127,10 +136,15 @@ export function ClinicAlertsCard() {
         .eq('therapist_user_id', user.id)
         .eq('therapist_reviewed', false)
         .ilike('name', 'Comprovante%'),
-    ]).then(([paymentsRes, messagesRes, intakesRes, receiptsRes]) => {
+      supabase
+        .from('patients')
+        .select('id, name, clinic_id')
+        .eq('user_id', user.id)
+        .eq('status', 'pendente'),
+    ]).then(([paymentsRes, messagesRes, intakesRes, receiptsRes, enrollmentsRes]) => {
       const findPatient = (pid: string): PatientRef => {
         const p = patients.find(cp => cp.id === pid);
-        return { id: pid, name: p?.name || 'Paciente' };
+        return { id: pid, name: p?.name || 'Paciente', clinicId: p?.clinicId };
       };
 
       const uniqueByPatient = (items: { patient_id: string }[]): PatientRef[] => {
@@ -146,6 +160,13 @@ export function ClinicAlertsCard() {
       setUnreadMessagePatients(uniqueByPatient((messagesRes.data as any[]) || []));
       setIntakeReviewPatients(uniqueByPatient((intakesRes.data as any[]) || []));
       setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as any[]) || []));
+      setPendingEnrollmentPatients(
+        ((enrollmentsRes.data as any[]) || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          clinicId: p.clinic_id,
+        }))
+      );
       setLoading(false);
     });
   }, [user, todayStr, patients]);
@@ -166,6 +187,9 @@ export function ClinicAlertsCard() {
         break;
       case 'receipts':
         navigate(`/patients/${patientId}#financeiro`);
+        break;
+      case 'enrollments':
+        navigate(`/patients/${patientId}`);
         break;
       default:
         navigate(`/patients/${patientId}`);
@@ -228,11 +252,24 @@ export function ClinicAlertsCard() {
       }
     }
 
-    // For other types, just dismiss for today
     dismissAlert(alertKey);
     setDismissed({ ...getDismissedAlerts() });
     toast.success('Alerta marcado como lido');
   }, [user, unreadMessagePatients, intakeReviewPatients, pendingReceiptPatients]);
+
+  // Group patients by clinic for display
+  const groupByClinic = useCallback((patientsArr: PatientRef[]): { clinicName: string; patients: PatientRef[] }[] => {
+    const groups: Record<string, PatientRef[]> = {};
+    for (const p of patientsArr) {
+      const key = p.clinicId || '_sem_clinica';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    }
+    return Object.entries(groups).map(([clinicId, pts]) => ({
+      clinicName: clinicId === '_sem_clinica' ? 'Sem unidade' : (clinicNameMap[clinicId] || 'Unidade'),
+      patients: pts,
+    }));
+  }, [clinicNameMap]);
 
   const alerts: AlertGroup[] = useMemo(() => {
     const items: AlertGroup[] = [];
@@ -282,7 +319,16 @@ export function ClinicAlertsCard() {
       });
     }
 
-    if (pendingEnrollments > 0) {
+    if (pendingEnrollmentPatients.length > 0) {
+      items.push({
+        key: 'enrollments',
+        icon: <UserPlus className="w-4 h-4" />,
+        label: `${pendingEnrollmentPatients.length} matrícula${pendingEnrollmentPatients.length > 1 ? 's' : ''} aguardando revisão`,
+        count: pendingEnrollmentPatients.length,
+        color: 'text-purple-500',
+        patients: pendingEnrollmentPatients,
+      });
+    } else if (pendingEnrollments > 0) {
       items.push({
         key: 'enrollments',
         icon: <UserPlus className="w-4 h-4" />,
@@ -316,7 +362,7 @@ export function ClinicAlertsCard() {
     }
 
     return items.filter(a => !isAlertDismissed(a.key));
-  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, intakeReviewPatients, pendingReceiptPatients, navigate, dismissed]);
+  }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, pendingEnrollmentPatients, intakeReviewPatients, pendingReceiptPatients, navigate, dismissed]);
 
   const allClear = alerts.length === 0 && !loading;
 
@@ -348,64 +394,114 @@ export function ClinicAlertsCard() {
         </div>
       ) : (
         <div className="space-y-1.5">
-          {alerts.map(alert => (
-            <div key={alert.key}>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    if (alert.patients.length === 1) {
-                      handlePatientClick(alert.patients[0].id, alert.key);
-                    } else if (alert.patients.length > 1) {
-                      setExpanded(expanded === alert.key ? null : alert.key);
-                    } else if (alert.fallbackClick) {
-                      alert.fallbackClick();
-                    }
-                  }}
-                  className="flex-1 flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors text-left group min-w-0"
-                >
-                  <span className={cn("shrink-0", alert.color)}>{alert.icon}</span>
-                  <span className="text-sm text-foreground flex-1 truncate">{alert.label}</span>
-                  {alert.patients.length === 1 || alert.fallbackClick ? (
-                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                  ) : alert.patients.length > 1 ? (
-                    <ChevronDown className={cn(
-                      "w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0",
-                      expanded === alert.key && "rotate-180"
-                    )} />
-                  ) : null}
-                </button>
-                <button
-                  onClick={(e) => handleMarkRead(alert.key, e)}
-                  title="Marcar como lido"
-                  className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors shrink-0"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={(e) => handleDismiss(alert.key, e)}
-                  title="Ocultar alerta"
-                  className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
+          {alerts.map(alert => {
+            const clinicGroups = alert.patients.length > 0 ? groupByClinic(alert.patients) : [];
+            const hasMultipleClinics = clinicGroups.length > 1;
 
-              {expanded === alert.key && alert.patients.length > 1 && (
-                <div className="ml-7 mt-0.5 mb-1 space-y-0.5">
-                  {alert.patients.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => handlePatientClick(p.id, alert.key)}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted/80 transition-colors text-left group"
-                    >
-                      <span className="text-xs text-foreground truncate flex-1">{p.name}</span>
-                      <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                    </button>
-                  ))}
+            return (
+              <div key={alert.key}>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      if (alert.patients.length === 1) {
+                        handlePatientClick(alert.patients[0].id, alert.key);
+                      } else if (alert.patients.length > 1) {
+                        setExpanded(expanded === alert.key ? null : alert.key);
+                      } else if (alert.fallbackClick) {
+                        alert.fallbackClick();
+                      }
+                    }}
+                    className="flex-1 flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors text-left group min-w-0"
+                  >
+                    <span className={cn("shrink-0", alert.color)}>{alert.icon}</span>
+                    <span className="text-sm text-foreground flex-1 truncate">{alert.label}</span>
+                    {alert.patients.length === 1 ? (
+                      <>
+                        {alert.patients[0].clinicId && clinicNameMap[alert.patients[0].clinicId] && (
+                          <span className="text-[10px] text-muted-foreground bg-muted/80 px-1.5 py-0.5 rounded-md truncate max-w-[100px] shrink-0">
+                            {clinicNameMap[alert.patients[0].clinicId]}
+                          </span>
+                        )}
+                        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </>
+                    ) : alert.fallbackClick ? (
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    ) : alert.patients.length > 1 ? (
+                      <ChevronDown className={cn(
+                        "w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0",
+                        expanded === alert.key && "rotate-180"
+                      )} />
+                    ) : null}
+                  </button>
+                  <button
+                    onClick={(e) => handleMarkRead(alert.key, e)}
+                    title="Marcar como lido"
+                    className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDismiss(alert.key, e)}
+                    title="Ocultar alerta"
+                    className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {expanded === alert.key && alert.patients.length > 1 && (
+                  <div className="ml-7 mt-0.5 mb-1 space-y-1">
+                    {hasMultipleClinics ? (
+                      clinicGroups.map(group => (
+                        <div key={group.clinicName}>
+                          <div className="flex items-center gap-1.5 px-2 py-1">
+                            <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                              {group.clinicName}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">({group.patients.length})</span>
+                          </div>
+                          <div className="space-y-0.5">
+                            {group.patients.map(p => (
+                              <button
+                                key={p.id}
+                                onClick={() => handlePatientClick(p.id, alert.key)}
+                                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted/80 transition-colors text-left group"
+                              >
+                                <span className="text-xs text-foreground truncate flex-1">{p.name}</span>
+                                <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        {clinicGroups.length === 1 && clinicGroups[0].clinicName !== 'Sem unidade' && (
+                          <div className="flex items-center gap-1.5 px-2 py-0.5">
+                            <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                              {clinicGroups[0].clinicName}
+                            </span>
+                          </div>
+                        )}
+                        {alert.patients.map(p => (
+                          <button
+                            key={p.id}
+                            onClick={() => handlePatientClick(p.id, alert.key)}
+                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted/80 transition-colors text-left group"
+                          >
+                            <span className="text-xs text-foreground truncate flex-1">{p.name}</span>
+                            <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
