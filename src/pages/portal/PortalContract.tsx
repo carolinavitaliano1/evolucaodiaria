@@ -782,6 +782,7 @@ function ContractCard({
                   </p>
                 )}
               </div>
+              <Button className="w-full gap-2" variant="outline" onClick={onDownload} disabled={downloadingId === contract.id}>
                 {downloadingId === contract.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Baixar contrato assinado (PDF)
               </Button>
