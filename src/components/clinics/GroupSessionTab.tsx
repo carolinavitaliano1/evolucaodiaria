@@ -1114,82 +1114,38 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       doc.line(margin, y, pageWidth - margin, y);
       y += 8;
 
-      // Markdown renderer
+      // Markdown renderer — strips ** markers and renders headers as bold lines
       const renderMarkdownText = (text: string, xPos: number, maxWidth: number) => {
         const originalLines = text.split('\n');
         for (let olIdx = 0; olIdx < originalLines.length; olIdx++) {
           let originalLine = originalLines[olIdx];
-          
-          // Handle # headers - strip # and render as bold
-          const headerMatch = originalLine.match(/^(#{1,3})\s+(.*)$/);
-          if (headerMatch) {
-            originalLine = `**${headerMatch[2]}**`;
-          }
 
-          const segments: { text: string; bold: boolean }[] = [];
-          let rem = originalLine;
-          while (rem.length > 0) {
-            const bs = rem.indexOf('**');
-            if (bs === -1) { if (rem) segments.push({ text: rem, bold: false }); break; }
-            if (bs > 0) segments.push({ text: rem.slice(0, bs), bold: false });
-            const be = rem.indexOf('**', bs + 2);
-            if (be === -1) { segments.push({ text: rem.slice(bs + 2), bold: false }); break; }
-            segments.push({ text: rem.slice(bs + 2, be), bold: true });
-            rem = rem.slice(be + 2);
-          }
-          const fullLineText = segments.map(s => s.text).join('');
-          if (!fullLineText.trim()) { y += 3; continue; }
-          const hasBold = segments.some(s => s.bold);
-          const wrappedLines = doc.splitTextToSize(fullLineText, maxWidth);
+          // Detect if the entire line is a heading (# or entirely wrapped in **)
+          const headerMatch = originalLine.match(/^(#{1,3})\s+(.*)$/);
+          const isFullBold = headerMatch || /^\*\*[^*]+\*\*$/.test(originalLine.trim());
+
+          // Strip all markdown markers
+          let cleanText = originalLine
+            .replace(/^#{1,3}\s+/, '')
+            .replace(/\*\*(.+?)\*\*/g, '$1')
+            .replace(/\*(.+?)\*/g, '$1');
+
+          if (!cleanText.trim()) { y += 3; continue; }
+
+          const fontStyle = isFullBold ? 'bold' : 'normal';
+          doc.setFont('helvetica', fontStyle);
+          doc.setFontSize(isFullBold ? 11 : 10);
+
+          const wrappedLines: string[] = doc.splitTextToSize(cleanText, maxWidth);
           for (let wi = 0; wi < wrappedLines.length; wi++) {
             if (y > 275) { doc.addPage(); y = 20; }
-            const isLastLine = wi === wrappedLines.length - 1;
-            const justifyAlign = isLastLine ? 'left' : 'justify';
-            
-            if (!hasBold) {
-              doc.setFont('helvetica', 'normal');
-              doc.text(wrappedLines[wi], xPos, y, { align: justifyAlign, maxWidth });
-            } else {
-              // Render each segment individually to avoid duplication
-              let consumed = 0;
-              for (let pi = 0; pi < wi; pi++) consumed += wrappedLines[pi].length;
-              const lineStart = consumed;
-              const lineEnd = consumed + wrappedLines[wi].length;
-              const lineStr = wrappedLines[wi];
-
-              // Calculate justify spacing
-              let spacingExtra = 0;
-              doc.setFont('helvetica', 'normal');
-              if (!isLastLine && lineStr.trim().includes(' ')) {
-                const words = lineStr.trim().split(/\s+/);
-                const normalWidth = doc.getTextWidth(lineStr.trim());
-                if (words.length > 1) {
-                  spacingExtra = (maxWidth - normalWidth) / (words.length - 1);
-                }
-              }
-
-              let charPos = 0;
-              for (const seg of segments) {
-                const segStart = charPos;
-                const segEnd = charPos + seg.text.length;
-                charPos = segEnd;
-                const os = Math.max(segStart, lineStart);
-                const oe = Math.min(segEnd, lineEnd);
-                if (os >= oe) continue;
-                const portion = seg.text.slice(os - segStart, oe - segStart);
-                if (!portion) continue;
-                const textBefore = fullLineText.slice(lineStart, os);
-                doc.setFont('helvetica', 'normal');
-                const offsetX = doc.getTextWidth(textBefore);
-                const spacesBefore = (textBefore.match(/ /g) || []).length;
-                const adjustedX = xPos + offsetX + (spacesBefore * spacingExtra);
-                doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-                doc.text(portion, adjustedX, y);
-              }
-              doc.setFont('helvetica', 'normal');
-            }
+            doc.setFont('helvetica', fontStyle);
+            doc.text(wrappedLines[wi], xPos, y);
             y += 5;
           }
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
         }
       };
 

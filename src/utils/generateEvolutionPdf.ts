@@ -11,6 +11,9 @@ const PARA_SPACING = 4;  // mm — extra space between paragraphs
 function sanitizeLine(text: string): string {
   return text
     .replace(/✅/g, '[x]')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^#{1,3}\s+/gm, '')
     .replace(/[\u2600-\u27BF\u{1F000}-\u{1FFFF}]/gu, '')
     .replace(/[^\u0000-\u024F\u2010-\u2027\u2030-\u205E\u2060-\u2FFF\u3000-\u303F ]/g, '');
 }
