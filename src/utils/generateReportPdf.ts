@@ -84,8 +84,12 @@ function htmlToLines(html: string): string[] {
 
   // Block elements → newlines
   text = text.replace(/<\/?(p|div|br|h[1-6]|li|ul|ol|blockquote|tr|table)[^>]*\/?>/gi, '\n');
+  // Strip inline tags (strong, em, span, a, etc.) WITHOUT duplicating content
   text = text.replace(/<[^>]+>/g, '');
   text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  // Strip residual markdown bold/italic markers
+  text = text.replace(/\*\*(.+?)\*\*/g, '$1');
+  text = text.replace(/\*(.+?)\*/g, '$1');
   text = text.replace(/\n{3,}/g, '\n\n').trim();
 
   return text.split('\n');
