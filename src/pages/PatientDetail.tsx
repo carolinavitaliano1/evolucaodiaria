@@ -3617,6 +3617,20 @@ export default function PatientDetail() {
                     <p className="text-xs text-muted-foreground text-center py-2">Nenhuma sessão realizada registrada.</p>
                   );
                   const allSelected = prSelectedSessions.length === billable.length && billable.length > 0;
+                  const patientUnitValue = patient.paymentValue ?? 0;
+                  const paymentType = patient.paymentType || 'sessao';
+                  const isMonthly = ['fixo', 'mensal'].includes(paymentType);
+
+                  const autoCalcTotal = (count: number) => {
+                    if (isMonthly && patientUnitValue > 0) {
+                      // For monthly, total = monthly value (not per session)
+                      setPrAmount(patientUnitValue.toFixed(2));
+                    } else {
+                      const unit = parseFloat(prUnitValue);
+                      if (!isNaN(unit) && unit > 0) setPrAmount((count * unit).toFixed(2));
+                    }
+                  };
+
                   return (
                     <>
                       <div className="flex items-center justify-between mb-1">
@@ -3632,9 +3646,8 @@ export default function PatientDetail() {
                             } else {
                               const ids = billable.map(e => e.id);
                               setPrSelectedSessions(ids);
-                              const unit = parseFloat(prUnitValue);
-                              if (!isNaN(unit) && unit > 0) setPrAmount((ids.length * unit).toFixed(2));
                               setPrSessions(String(ids.length));
+                              autoCalcTotal(ids.length);
                               const sorted = [...billable].sort((a, b) => a.date.localeCompare(b.date));
                               const first = format(new Date(sorted[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
                               const last = format(new Date(sorted[sorted.length - 1].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
@@ -3659,16 +3672,15 @@ export default function PatientDetail() {
                                     ? [...prSelectedSessions, evo.id]
                                     : prSelectedSessions.filter(id => id !== evo.id);
                                   setPrSelectedSessions(newSelected);
-                                  const unit = parseFloat(prUnitValue);
-                                  if (!isNaN(unit) && unit > 0) setPrAmount((newSelected.length * unit).toFixed(2));
                                   setPrSessions(String(newSelected.length));
                                   if (newSelected.length > 0) {
+                                    autoCalcTotal(newSelected.length);
                                     const sel = evolutions.filter(ev => newSelected.includes(ev.id));
                                     const s = [...sel].sort((a, b) => a.date.localeCompare(b.date));
                                     const first = format(new Date(s[0].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
                                     const last = format(new Date(s[s.length-1].date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
                                     setPrPeriod(first === last ? first : `${first} a ${last}`);
-                                  } else { setPrPeriod(''); }
+                                  } else { setPrPeriod(''); setPrAmount(''); }
                                 }}
                               />
                               <span className="flex-1 font-medium">{format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</span>
@@ -3677,16 +3689,18 @@ export default function PatientDetail() {
                           );
                         })}
                       </div>
-                      <div>
-                        <Label className="text-xs mb-1 block text-muted-foreground">Valor por Sessão (R$)</Label>
-                        <Input type="number" min="0" step="0.01" value={prUnitValue} placeholder="0,00" className="h-8 text-xs"
-                          onChange={e => {
-                            const u = e.target.value; setPrUnitValue(u);
-                            const unit = parseFloat(u);
-                            if (!isNaN(unit) && unit > 0 && prSelectedSessions.length > 0)
-                              setPrAmount((prSelectedSessions.length * unit).toFixed(2));
-                          }} />
-                      </div>
+                      {!isMonthly && (
+                        <div>
+                          <Label className="text-xs mb-1 block text-muted-foreground">Valor por Sessão (R$)</Label>
+                          <Input type="number" min="0" step="0.01" value={prUnitValue} placeholder="0,00" className="h-8 text-xs"
+                            onChange={e => {
+                              const u = e.target.value; setPrUnitValue(u);
+                              const unit = parseFloat(u);
+                              if (!isNaN(unit) && unit > 0 && prSelectedSessions.length > 0)
+                                setPrAmount((prSelectedSessions.length * unit).toFixed(2));
+                            }} />
+                        </div>
+                      )}
                     </>
                   );
                 })() : (
