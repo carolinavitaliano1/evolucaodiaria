@@ -35,8 +35,107 @@ interface PatientExtra {
   is_minor: boolean;
 }
 
+function createPdfBlockFromHtml(html: string) {
+  const temp = document.createElement('div');
+  temp.innerHTML = html.trim();
+  return temp.firstElementChild as HTMLElement | null;
+}
+
+async function waitForImages(root: HTMLElement) {
+  const images = Array.from(root.querySelectorAll('img')) as HTMLImageElement[];
+
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete && img.naturalWidth > 0) {
+        return Promise.resolve();
+      }
+
+      return new Promise<void>((resolve) => {
+        const done = () => resolve();
+        img.onload = done;
+        img.onerror = done;
+      });
+    })
+  );
+}
+
+function createPdfPageElement(contentWidthPx: number, host: HTMLElement) {
+  const page = document.createElement('div');
+  page.className = 'contract-pdf-wrap contract-pdf-page';
+  page.style.width = `${contentWidthPx}px`;
+  page.style.background = '#ffffff';
+  page.style.display = 'flow-root';
+  host.appendChild(page);
+  return page;
+}
+
+function buildPaginatedPdfPages({
+  cleanHtml,
+  therapistSigBlock,
+  patientSigBlock,
+  contentWidthPx,
+  maxPageHeightPx,
+  host,
+}: {
+  cleanHtml: string;
+  therapistSigBlock: string;
+  patientSigBlock: string;
+  contentWidthPx: number;
+  maxPageHeightPx: number;
+  host: HTMLElement;
+}) {
+  const sourceBody = document.createElement('div');
+  sourceBody.className = 'contract-body';
+  sourceBody.innerHTML = cleanHtml;
+
+  const groups: HTMLElement[][] = [];
+  const sourceChildren = Array.from(sourceBody.children) as HTMLElement[];
+
+  for (let i = 0; i < sourceChildren.length; i++) {
+    const current = sourceChildren[i];
+    const currentTag = current.tagName.toUpperCase();
+
+    if ((currentTag === 'H2' || currentTag === 'H3') && i < sourceChildren.length - 1) {
+      const next = sourceChildren[i + 1];
+      const nextTag = next.tagName.toUpperCase();
+
+      if (nextTag !== 'H2' && nextTag !== 'H3') {
+        groups.push([current, next]);
+        i += 1;
+        continue;
+      }
+    }
+
+    groups.push([current]);
+  }
+
+  const therapistNode = createPdfBlockFromHtml(therapistSigBlock);
+  if (therapistNode) groups.push([therapistNode]);
+
+  const patientNode = createPdfBlockFromHtml(patientSigBlock);
+  if (patientNode) groups.push([patientNode]);
+
+  const pages: HTMLDivElement[] = [];
+  let currentPage = createPdfPageElement(contentWidthPx, host);
+  pages.push(currentPage);
+
+  for (const group of groups) {
+    const clones = group.map((node) => node.cloneNode(true) as HTMLElement);
+    clones.forEach((node) => currentPage.appendChild(node));
+
+    if (currentPage.scrollHeight > maxPageHeightPx && currentPage.childElementCount > clones.length) {
+      clones.forEach((node) => node.remove());
+      currentPage = createPdfPageElement(contentWidthPx, host);
+      pages.push(currentPage);
+      clones.forEach((node) => currentPage.appendChild(node));
+    }
+  }
+
+  return pages;
+}
+
 /**
- * Gera PDF capturando o conteúdo inteiro como canvas e fatiando em páginas A4.
+ * Gera PDF em páginas A4 reais, evitando cortes no meio do texto e preservando o bloco do carimbo/assinaturas.
  */
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const A4_W_MM = 210;
@@ -45,12 +144,10 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   const CONTENT_W_MM = A4_W_MM - MARGIN_MM * 2;
   const CONTENT_H_MM = A4_H_MM - MARGIN_MM * 2;
   const SCALE = 2;
-
-  // Pixels per mm at 96dpi
   const PX_PER_MM = 96 / 25.4;
   const contentWidthPx = Math.round(CONTENT_W_MM * PX_PER_MM);
+  const maxPageHeightPx = Math.floor(CONTENT_H_MM * PX_PER_MM);
 
-  // Clean HTML
   const cleanHtml = cleanContractHtml(contract.template_html);
 
   const displayName = contract.signer_name || signerName;
@@ -58,22 +155,23 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   const displayCity = contract.signer_city || '';
 
   const formatCpfStr = (cpf: string) => {
-    const d = cpf.replace(/\D/g, '');
-    if (d.length === 11) return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`;
+    const digits = cpf.replace(/\D/g, '');
+    if (digits.length === 11) {
+      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    }
     return cpf;
   };
 
-  // Build therapist signature block
   const therapistSigBlock = contract.therapist_signature_data
-    ? `<div class="pdf-keep-together" style="margin-top:40px;padding-top:24px;border-top:2px solid #333;text-align:center;">
-        <p style="font-size:11px;color:#555;margin-bottom:8px;text-align:center;">Assinatura do(a) Profissional</p>
-        <img class="therapist-mark-img" src="${contract.therapist_signature_data}" style="max-height:140px;max-width:280px;border:1px solid #ddd;border-radius:2px;margin:0 auto;display:block;" />
-        ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:8px;text-align:center;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
-      </div>` : '';
+    ? `<div class="pdf-keep-together pdf-signature-block" style="margin-top:40px;padding-top:24px;border-top:2px solid #333;text-align:center;">
+        <p style="font-size:11px;color:#555;margin-bottom:10px;text-align:center;">Assinatura do(a) Profissional</p>
+        <img class="therapist-mark-img" src="${contract.therapist_signature_data}" style="max-height:180px;max-width:320px;margin:0 auto;display:block;" />
+        ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:10px;text-align:center;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
+      </div>`
+    : '';
 
-  // Patient signature block
   const patientSigBlock = contract.signature_data
-    ? `<div class="pdf-keep-together" style="margin-top:48px;border-top:2px solid #333;padding-top:28px;">
+    ? `<div class="pdf-keep-together pdf-signature-block" style="margin-top:48px;border-top:2px solid #333;padding-top:28px;">
         <p style="font-size:13px;font-weight:bold;color:#111;margin-bottom:16px;text-align:center;text-transform:uppercase;letter-spacing:0.5px;">
           Dados do Assinante
         </p>
@@ -101,25 +199,31 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
             O assinante declarou ter lido e concordado com todos os termos deste contrato.
           </p>
         </div>
-      </div>` : '';
+      </div>`
+    : '';
 
-  // Create the full content wrapper
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = `
-    position: absolute; left: -9999px; top: 0;
+  const renderRoot = document.createElement('div');
+  renderRoot.style.cssText = `
+    position: fixed;
+    left: -100000px;
+    top: 0;
     width: ${contentWidthPx}px;
-    background: white;
+    opacity: 0;
+    pointer-events: none;
+    background: #ffffff;
     font-family: 'Times New Roman', 'Georgia', serif;
     font-size: 13px;
     color: #111;
     line-height: 1.65;
     box-sizing: border-box;
+    z-index: -1;
   `;
 
   const styleEl = document.createElement('style');
   styleEl.textContent = `
+    .contract-pdf-wrap,
     .contract-pdf-wrap * { box-sizing: border-box; }
-    .contract-pdf-wrap { width: ${contentWidthPx}px; }
+    .contract-pdf-wrap { width: ${contentWidthPx}px; color: #111; }
     .contract-pdf-wrap h2 {
       font-size: 16px; font-weight: bold; text-align: center;
       margin: 28px 0 20px; color: #111; text-transform: uppercase;
@@ -150,89 +254,71 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
       border: 1px solid #bbb; padding: 6px 10px; font-size: 12px;
       text-align: left; vertical-align: top;
     }
-    .contract-pdf-wrap .contract-body > *,
-    .contract-pdf-wrap .pdf-keep-together,
-    .contract-pdf-wrap table,
-    .contract-pdf-wrap img,
-    .contract-pdf-wrap h2,
-    .contract-pdf-wrap h3,
-    .contract-pdf-wrap p,
-    .contract-pdf-wrap ul,
-    .contract-pdf-wrap ol,
-    .contract-pdf-wrap li {
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
     .contract-pdf-wrap th {
       background: #f5f5f5; font-weight: bold;
     }
     .contract-pdf-wrap img:not(.therapist-mark-img):not(.patient-signature-img) {
       max-width: 100%; height: auto; display: block; margin: 8px auto;
     }
+    .contract-pdf-wrap .therapist-mark-img,
+    .contract-pdf-wrap .patient-signature-img {
+      object-fit: contain;
+    }
+    .contract-pdf-wrap > :first-child { margin-top: 0 !important; }
+    .contract-pdf-wrap > :last-child { margin-bottom: 0 !important; }
   `;
-  wrapper.appendChild(styleEl);
 
-  const contentDiv = document.createElement('div');
-  contentDiv.className = 'contract-pdf-wrap';
-  contentDiv.innerHTML = `
-    <div class="contract-body">${cleanHtml}</div>
-    ${therapistSigBlock}
-    ${patientSigBlock}
-  `;
-  wrapper.appendChild(contentDiv);
-  document.body.appendChild(wrapper);
+  const pagesHost = document.createElement('div');
+  pagesHost.style.width = `${contentWidthPx}px`;
+
+  renderRoot.appendChild(styleEl);
+  renderRoot.appendChild(pagesHost);
+  document.body.appendChild(renderRoot);
 
   try {
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-    const images = Array.from(contentDiv.querySelectorAll('img')) as HTMLImageElement[];
-    await Promise.all(images.map((img) => {
-      if (img.complete) return Promise.resolve();
-      return new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-      });
-    }));
-
-    // Capture full content as single canvas
-    const fullCanvas = await html2canvas(contentDiv, {
-      scale: SCALE,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      width: contentWidthPx,
+    const pages = buildPaginatedPdfPages({
+      cleanHtml,
+      therapistSigBlock,
+      patientSigBlock,
+      contentWidthPx,
+      maxPageHeightPx,
+      host: pagesHost,
     });
 
-    // Calculate dimensions
-    const canvasWidthScaled = fullCanvas.width; // pixels at SCALE
-    const canvasHeightScaled = fullCanvas.height;
-    const pxPerMm = canvasWidthScaled / CONTENT_W_MM;
-    const pageHeightPx = Math.floor(CONTENT_H_MM * pxPerMm);
-    const totalPages = Math.ceil(canvasHeightScaled / pageHeightPx);
+    await waitForImages(renderRoot);
 
-    for (let page = 0; page < totalPages; page++) {
-      if (page > 0) pdf.addPage();
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-      const srcY = page * pageHeightPx;
-      const srcH = Math.min(pageHeightPx, canvasHeightScaled - srcY);
-      const destH = srcH / pxPerMm;
+    for (let index = 0; index < pages.length; index++) {
+      const page = pages[index];
+      const canvas = await html2canvas(page, {
+        scale: SCALE,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: contentWidthPx,
+        windowWidth: contentWidthPx,
+      });
 
-      // Create a slice canvas for this page
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvasWidthScaled;
-      sliceCanvas.height = srcH;
-      const ctx = sliceCanvas.getContext('2d')!;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-      ctx.drawImage(fullCanvas, 0, srcY, canvasWidthScaled, srcH, 0, 0, canvasWidthScaled, srcH);
+      const renderedHeightMm = canvas.height / (canvas.width / CONTENT_W_MM);
 
-      const imgData = sliceCanvas.toDataURL('image/jpeg', 0.92);
-      pdf.addImage(imgData, 'JPEG', MARGIN_MM, MARGIN_MM, CONTENT_W_MM, destH);
+      if (index > 0) {
+        pdf.addPage();
+      }
+
+      pdf.addImage(
+        canvas.toDataURL('image/png'),
+        'PNG',
+        MARGIN_MM,
+        MARGIN_MM,
+        CONTENT_W_MM,
+        Math.min(renderedHeightMm, CONTENT_H_MM)
+      );
     }
 
-    pdf.save(`contrato-${signerName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+    pdf.save(`contrato-${displayName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   } finally {
-    document.body.removeChild(wrapper);
+    document.body.removeChild(renderRoot);
   }
 }
 
