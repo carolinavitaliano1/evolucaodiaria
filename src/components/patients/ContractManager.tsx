@@ -166,9 +166,8 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
   const [digitizing, setDigitizing] = useState(false);
   const [digitizeProgress, setDigitizeProgress] = useState('');
 
-  // Therapist signature per contract
+  // Therapist stamp per contract
   const [signingContractId, setSigningContractId] = useState<string | null>(null);
-  const [therapistSigData, setTherapistSigData] = useState('');
   const [savingSig, setSavingSig] = useState(false);
 
   // Stamps
