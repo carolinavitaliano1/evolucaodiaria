@@ -709,12 +709,18 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                                 const newPaid = !pr?.paid;
                                 const newDate = newPaid ? new Date().toISOString().split('T')[0] : null;
                                 const existing = pr as any;
+                                let recordId = existing?.id;
                                 if (existing?.id) {
-                                  await supabase.from('patient_payment_records' as any).update({ paid: newPaid, payment_date: newDate }).eq('id', existing.id);
+                                  await supabase.from('patient_payment_records' as any).update({ amount: revenue, paid: newPaid, payment_date: newDate }).eq('id', existing.id);
                                 } else {
-                                  await supabase.from('patient_payment_records' as any).insert({ user_id: user.id, patient_id: patient.id, clinic_id: clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate });
+                                  const { data: inserted } = await supabase
+                                    .from('patient_payment_records' as any)
+                                    .insert({ user_id: user.id, patient_id: patient.id, clinic_id: clinicId, month: m, year: y, amount: revenue, paid: newPaid, payment_date: newDate })
+                                    .select('id')
+                                    .maybeSingle();
+                                  recordId = inserted?.id;
                                 }
-                                setPatientPaymentRecords(prev => ({ ...prev, [patient.id]: { ...(prev[patient.id] || {}), paid: newPaid, payment_date: newDate, id: existing?.id } as any }));
+                                setPatientPaymentRecords(prev => ({ ...prev, [patient.id]: { ...(prev[patient.id] || {}), amount: revenue, paid: newPaid, payment_date: newDate, id: recordId } as any }));
                                 setSavingPatientPayment(null);
                               }}
                               className={cn(
