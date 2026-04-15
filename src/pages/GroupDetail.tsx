@@ -187,7 +187,12 @@ export default function GroupDetail() {
       .eq('id', id!)
       .single();
     if (!g) { setLoading(false); return; }
-    setGroup(g as unknown as GroupData);
+    const cs = (g as any).custom_sections;
+    const parsedGroup = {
+      ...g,
+      custom_sections: (typeof cs === 'object' && cs !== null ? cs : {}) as CustomSections,
+    };
+    setGroup(parsedGroup as unknown as GroupData);
 
     // Load clinic packages
     const { data: pkgs } = await supabase
