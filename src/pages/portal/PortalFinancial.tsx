@@ -198,12 +198,20 @@ export default function PortalFinancial() {
         // Calculate actual monthly revenue via DB function
         const cm = new Date().getMonth() + 1;
         const cy = new Date().getFullYear();
-        const { data: revenueData } = await supabase.rpc('get_patient_monthly_revenue', {
-          _patient_id: portalAccount.patient_id,
-          _month: cm,
-          _year: cy,
-        });
-        setCalculatedRevenue(typeof revenueData === 'number' ? revenueData : null);
+        try {
+          const { data: revenueData, error: rpcError } = await (supabase.rpc as any)('get_patient_monthly_revenue', {
+            _patient_id: portalAccount.patient_id,
+            _month: cm,
+            _year: cy,
+          });
+          if (!rpcError && revenueData != null) {
+            setCalculatedRevenue(Number(revenueData));
+          } else {
+            console.warn('RPC get_patient_monthly_revenue error:', rpcError);
+          }
+        } catch (e) {
+          console.warn('Failed to calculate revenue:', e);
+        }
       } finally {
         setLoading(false);
       }
