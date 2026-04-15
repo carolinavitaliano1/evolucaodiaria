@@ -87,8 +87,19 @@ function getRecordStatus(record: PaymentRecord, paymentDueDay: number | null): '
   return 'pending';
 }
 
-function formatPaymentType(type: string | null): string {
+function formatPaymentType(type: string | null, packageData?: PackageData | null): string {
+  // If patient has a package, show the package type label
+  if (packageData) {
+    const pkgMap: Record<string, string> = {
+      mensal: 'Pacote Mensal',
+      por_sessao: 'Pacote por Sessão',
+      personalizado: 'Pacote Personalizado',
+    };
+    return pkgMap[packageData.package_type] || `Pacote (${packageData.package_type})`;
+  }
   const map: Record<string, string> = {
+    sessao: 'Por Sessão',
+    fixo: 'Fixo Mensal',
     mensal: 'Mensal',
     por_sessao: 'Por Sessão',
     fixo_diaria: 'Fixo Diária',
