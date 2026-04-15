@@ -211,6 +211,8 @@ export function downloadNextSessionAsPdf(
   const PAGE_HEIGHT = 297;
   const MARGIN = 20;
   const maxWidth = PAGE_WIDTH - MARGIN * 2;
+  const LINE_HEIGHT = 5;
+  const SECTION_GAP = 4;
   let y = MARGIN;
 
   const checkPage = (needed: number) => {
@@ -220,31 +222,73 @@ export function downloadNextSessionAsPdf(
     }
   };
 
-  // ─ Header ─
+  // Helper: render a line with inline bold/italic segments, handling word-wrap
+  const renderFormattedBlock = (segments: TextSegment[], startX: number, availWidth: number, fontSize: number) => {
+    doc.setFontSize(fontSize);
+
+    // Build words with their formatting
+    const words: { text: string; bold: boolean; italic: boolean }[] = [];
+    for (const seg of segments) {
+      if (!seg.text) continue;
+      const parts = seg.text.split(/(\s+)/);
+      for (const part of parts) {
+        if (part) words.push({ text: part, bold: seg.bold, italic: seg.italic });
+      }
+    }
+
+    let currentX = startX;
+    for (const word of words) {
+      const fontStyle = word.bold && word.italic ? 'bolditalic' : word.bold ? 'bold' : word.italic ? 'italic' : 'normal';
+      doc.setFont('helvetica', fontStyle);
+      doc.setFontSize(fontSize);
+      const wordWidth = doc.getTextWidth(word.text);
+
+      // Check if we need to wrap (skip for whitespace-only)
+      if (word.text.trim() && currentX + wordWidth > startX + availWidth && currentX > startX) {
+        y += LINE_HEIGHT;
+        checkPage(LINE_HEIGHT);
+        currentX = startX;
+      }
+
+      doc.text(word.text, currentX, y);
+      currentX += wordWidth;
+    }
+    y += LINE_HEIGHT;
+  };
+
+  // ═══════════════════════════════════════
+  // HEADER — matches Word: centered title, subtitle, date
+  // ═══════════════════════════════════════
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   const titleText = `Planejamento - ${title}`;
-  const titleWidth = doc.getTextWidth(titleText);
-  doc.text(titleText, (PAGE_WIDTH - titleWidth) / 2, y);
-  y += 8;
+  const titleLines = doc.splitTextToSize(titleText, maxWidth);
+  for (const tl of titleLines) {
+    doc.text(tl, PAGE_WIDTH / 2, y, { align: 'center' });
+    y += 7;
+  }
+  y += 1;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setTextColor(100);
-  const sub1 = `Sessão: ${sessionTitle}`;
-  doc.text(sub1, (PAGE_WIDTH - doc.getTextWidth(sub1)) / 2, y);
+  doc.text(`Sessão: ${sessionTitle}`, PAGE_WIDTH / 2, y, { align: 'center' });
   y += 5;
-  const sub2 = `Data: ${dateStr}`;
-  doc.text(sub2, (PAGE_WIDTH - doc.getTextWidth(sub2)) / 2, y);
-  y += 3;
+  doc.setFontSize(10);
+  doc.setTextColor(150);
+  doc.text(`Data: ${dateStr}`, PAGE_WIDTH / 2, y, { align: 'center' });
+  y += 4;
 
-  // Separator line
+  // Separator
   doc.setDrawColor(200);
   doc.setLineWidth(0.3);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
   y += 8;
   doc.setTextColor(0);
 
+  // ═══════════════════════════════════════
+  // BODY — parse and render each line
+  // ═══════════════════════════════════════
   const lines = parseMarkdown(notes);
 
   for (const line of lines) {
@@ -255,94 +299,97 @@ export function downloadNextSessionAsPdf(
 
     const plainText = line.segments.map(s => s.text).join('');
 
+    // ── Heading 1: Main title (centered, large, bold) ──
     if (line.type === 'heading1') {
-      checkPage(12);
+      checkPage(14);
+      y += SECTION_GAP;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
-      const w = doc.getTextWidth(plainText);
-      doc.text(plainText, (PAGE_WIDTH - w) / 2, y);
-      y += 8;
-    } else if (line.type === 'heading2') {
-      checkPage(10);
+      const wrapped = doc.splitTextToSize(plainText, maxWidth);
+      for (const wl of wrapped) {
+        doc.text(wl, PAGE_WIDTH / 2, y, { align: 'center' });
+        y += 6;
+      }
       y += 2;
+    }
+
+    // ── Heading 2: Section titles (e.g., "1. OBJETIVOS CLÍNICOS GERAIS") ──
+    else if (line.type === 'heading2') {
+      checkPage(12);
+      y += SECTION_GAP + 2;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      const wrapped = doc.splitTextToSize(plainText, maxWidth);
+      for (const wl of wrapped) {
+        doc.text(wl, MARGIN, y);
+        y += 5.5;
+      }
+      // Subtle underline
+      doc.setDrawColor(220);
+      doc.setLineWidth(0.15);
+      doc.line(MARGIN, y - 1, PAGE_WIDTH - MARGIN, y - 1);
+      y += 3;
+    }
+
+    // ── Heading 3: Patient blocks (e.g., "PACIENTE: BENJAMIN VITALIANO") ──
+    else if (line.type === 'heading3') {
+      checkPage(16);
+      y += SECTION_GAP + 3;
+
+      // Light background box for patient name
+      doc.setFillColor(245, 245, 250);
+      doc.setDrawColor(210, 210, 220);
+      doc.setLineWidth(0.2);
+      const boxH = 8;
+      doc.roundedRect(MARGIN, y - 5, maxWidth, boxH, 1.5, 1.5, 'FD');
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
-      doc.text(plainText, MARGIN, y);
-      y += 6;
-    } else if (line.type === 'heading3') {
-      checkPage(12);
-      y += 4;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10.5);
-      doc.text(plainText, MARGIN, y);
-      y += 1;
-      doc.setDrawColor(180);
-      doc.setLineWidth(0.2);
-      doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-      y += 5;
-    } else if (line.type === 'bullet' || line.type === 'sub_bullet') {
-      const indent = line.type === 'sub_bullet' ? MARGIN + 8 : MARGIN + 3;
-      const bulletChar = line.type === 'sub_bullet' ? '◦' : '•';
-      const textX = indent + 4;
+      doc.setTextColor(40, 40, 80);
+      doc.text(plainText, MARGIN + 4, y);
+      doc.setTextColor(0);
+      y += boxH + 2;
+    }
+
+    // ── Bullet points ──
+    else if (line.type === 'bullet') {
+      const bulletIndent = MARGIN + 4;
+      const textX = bulletIndent + 4;
       const availWidth = PAGE_WIDTH - MARGIN - textX;
 
-      // Render segments with inline bold/italic
-      checkPage(6);
-      doc.setFontSize(10);
+      checkPage(LINE_HEIGHT + 2);
       doc.setFont('helvetica', 'normal');
-      doc.text(bulletChar, indent, y);
-
-      // Use splitTextToSize for wrapping, render segments
-      const fullText = line.segments.map(s => s.text).join('');
-      const wrapped = doc.splitTextToSize(fullText, availWidth);
-
-      for (let wi = 0; wi < wrapped.length; wi++) {
-        checkPage(5);
-        // For first line, render segments with formatting
-        if (wi === 0) {
-          renderSegmentsOnLine(doc, line.segments, textX, y, availWidth);
-        } else {
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-          doc.text(wrapped[wi], textX, y);
-        }
-        y += 4.5;
-      }
-      y += 0.5;
-    } else {
-      // Paragraph
-      checkPage(6);
       doc.setFontSize(10);
+      doc.text('•', bulletIndent, y);
 
-      const fullText = line.segments.map(s => s.text).join('');
-      const wrapped = doc.splitTextToSize(fullText, maxWidth);
-
-      for (let wi = 0; wi < wrapped.length; wi++) {
-        checkPage(5);
-        if (wi === 0) {
-          renderSegmentsOnLine(doc, line.segments, MARGIN, y, maxWidth);
-        } else {
-          doc.setFont('helvetica', 'normal');
-          doc.text(wrapped[wi], MARGIN, y);
-        }
-        y += 4.5;
-      }
+      renderFormattedBlock(line.segments, textX, availWidth, 10);
       y += 1;
+    }
+
+    // ── Sub-bullet points ──
+    else if (line.type === 'sub_bullet') {
+      const bulletIndent = MARGIN + 10;
+      const textX = bulletIndent + 4;
+      const availWidth = PAGE_WIDTH - MARGIN - textX;
+
+      checkPage(LINE_HEIGHT + 2);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(80);
+      doc.text('◦', bulletIndent, y);
+      doc.setTextColor(0);
+
+      renderFormattedBlock(line.segments, textX, availWidth, 9.5);
+      y += 0.5;
+    }
+
+    // ── Regular paragraph ──
+    else {
+      checkPage(LINE_HEIGHT + 2);
+      renderFormattedBlock(line.segments, MARGIN, maxWidth, 10);
+      y += 1.5;
     }
   }
 
   doc.save(`${fileName}.pdf`);
-}
-
-// Render inline segments (bold/italic) on a single line
-function renderSegmentsOnLine(doc: jsPDF, segments: TextSegment[], x: number, y: number, _maxWidth: number) {
-  let currentX = x;
-  for (const seg of segments) {
-    if (!seg.text) continue;
-    const fontStyle = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
-    doc.setFont('helvetica', fontStyle);
-    doc.setFontSize(10);
-    doc.text(seg.text, currentX, y);
-    currentX += doc.getTextWidth(seg.text);
-  }
 }
