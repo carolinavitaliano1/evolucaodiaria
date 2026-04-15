@@ -852,21 +852,32 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                 className="prose prose-sm max-w-none text-foreground [&_p]:text-justify [&_p]:leading-relaxed [&_h2]:text-center [&_h3]:uppercase [&_h3]:text-sm"
                 dangerouslySetInnerHTML={{ __html: cleanContractHtml(previewContract.template_html) }}
               />
-              {/* Therapist signature */}
-              {previewContract.therapist_signature_data && (
-                <div className="border-t border-border pt-4 space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
-                  <div className="flex items-end gap-4 flex-wrap">
-                    <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
-                      className="max-h-32 w-auto object-contain border border-border rounded bg-background" />
+              {/* Therapist stamp */}
+              {previewContract.therapist_signature_data && (() => {
+                let stampInfo: any = null;
+                try { stampInfo = JSON.parse(previewContract.therapist_signature_data); } catch { stampInfo = null; }
+                return (
+                  <div className="border-t border-border pt-4 space-y-2 text-center">
+                    <p className="text-xs text-muted-foreground font-medium">Carimbo do terapeuta:</p>
+                    {stampInfo?.stamp_image ? (
+                      <img src={stampInfo.stamp_image} alt="Carimbo" className="max-h-24 mx-auto object-contain" />
+                    ) : !stampInfo ? (
+                      <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
+                        className="max-h-32 mx-auto object-contain border border-border rounded bg-background" />
+                    ) : null}
+                    <div className="w-48 mx-auto border-b border-foreground/40" />
+                    {stampInfo?.name && <p className="text-xs font-semibold text-foreground">{stampInfo.name}</p>}
+                    {stampInfo?.clinical_area && <p className="text-[10px] text-muted-foreground">{stampInfo.clinical_area}</p>}
+                    {stampInfo?.cbo && <p className="text-[10px] text-muted-foreground">CBO: {stampInfo.cbo}</p>}
+                    {stampInfo?.professional_id && <p className="text-[10px] text-muted-foreground">Registro: {stampInfo.professional_id}</p>}
+                    {previewContract.therapist_signed_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(previewContract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
                   </div>
-                  {previewContract.therapist_signed_at && (
-                    <p className="text-[10px] text-muted-foreground">
-                      {format(new Date(previewContract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  )}
-                </div>
-              )}
+                );
+              })()}
               {/* Patient signature */}
               {previewContract.signature_data && (
                 <div className="border-t border-border pt-4 space-y-1">
