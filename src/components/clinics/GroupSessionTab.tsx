@@ -147,39 +147,19 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
     if (data) setSavedNextSessions(data.filter((s: any) => s.next_session_notes?.trim()));
   };
 
-  const downloadNextSessionWord = async (session: any) => {
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: [
-          new Paragraph({
-            children: [new TextRun({ text: `Planejamento - ${groupName}`, bold: true, size: 32 })],
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: `Sessão: ${session.title || 'Sem título'}`, size: 22, color: '666666' })],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 200 },
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: `Data: ${new Date(session.created_at).toLocaleDateString('pt-BR')}`, size: 20, color: '999999' })],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 400 },
-          }),
-          ...session.next_session_notes.split('\n').map((line: string) => 
-            new Paragraph({
-              children: [new TextRun({ text: line, size: 24 })],
-              alignment: AlignmentType.JUSTIFIED,
-              spacing: { after: 120 },
-            })
-          ),
-        ],
-      }],
-    });
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `proxima_sessao_${groupName.replace(/\s+/g, '_')}_${new Date(session.created_at).toLocaleDateString('pt-BR').replace(/\//g, '-')}.docx`);
-    toast.success('Documento Word gerado!');
+  const handleDownloadNextSession = async (session: any, format: 'word' | 'pdf') => {
+    const dateStr = new Date(session.created_at).toLocaleDateString('pt-BR');
+    const fileName = `proxima_sessao_${groupName.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '-')}`;
+    const sessionTitle = session.title || 'Sem título';
+    if (format === 'word') {
+      const { downloadNextSessionAsWord } = await import('@/utils/sessionPlanExport');
+      await downloadNextSessionAsWord(session.next_session_notes, groupName, sessionTitle, dateStr, fileName);
+      toast.success('Documento Word gerado!');
+    } else {
+      const { downloadNextSessionAsPdf } = await import('@/utils/sessionPlanExport');
+      downloadNextSessionAsPdf(session.next_session_notes, groupName, sessionTitle, dateStr, fileName);
+      toast.success('PDF gerado!');
+    }
   };
 
   useEffect(() => {
