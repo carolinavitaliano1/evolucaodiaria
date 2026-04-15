@@ -669,9 +669,9 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                       <Eye className="w-3.5 h-3.5 text-muted-foreground" />
                     </Button>
                     {!contract.therapist_signature_data && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar como terapeuta"
-                        onClick={() => { setSigningContractId(contract.id); setTherapistSigData(''); }}>
-                        <PenLine className="w-3.5 h-3.5 text-primary" />
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Registrar carimbo"
+                        onClick={() => setSigningContractId(contract.id)}>
+                        <Stamp className="w-3.5 h-3.5 text-primary" />
                       </Button>
                     )}
                     {contract.status === 'pending' && (
