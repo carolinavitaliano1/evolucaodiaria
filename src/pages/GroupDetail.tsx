@@ -656,73 +656,7 @@ export default function GroupDetail() {
 
         {/* ═══ Info Tab ═══ */}
         <TabsContent value="info" className="mt-4 space-y-4">
-          <Accordion type="multiple" defaultValue={['overview', 'structure', 'criteria', 'tracking']} className="space-y-3">
-            <AccordionItem value="overview" className="border rounded-xl px-4">
-              <AccordionTrigger className="text-base font-semibold">Visão geral</AccordionTrigger>
-              <AccordionContent>
-                <InfoRow label="Descrição" value={group.description} />
-                <InfoRow label="Foco terapêutico" value={group.therapeutic_focus} />
-                <InfoRow label="Objetivos" value={group.objectives} />
-                <InfoRow label="Motivo do suporte" value={group.support_reason} />
-                <InfoRow label="Metas compartilhadas" value={group.shared_goals} />
-                <InfoRow label="Padrões de comunicação" value={group.communication_patterns} />
-                <InfoRow label="Áreas de conflito" value={group.conflict_areas} />
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="structure" className="border rounded-xl px-4">
-              <AccordionTrigger className="text-base font-semibold">Estrutura</AccordionTrigger>
-              <AccordionContent>
-                <InfoRow label="Frequência dos encontros" value={group.meeting_frequency} />
-                <InfoRow label="Duração (min)" value={group.duration_minutes} />
-                <InfoRow label="Formato do encontro" value={group.meeting_format} />
-                <InfoRow label="Estilo de facilitação" value={group.facilitation_style} />
-                <InfoRow label="Grupo aberto" value={group.open_to_new ? 'Sim' : 'Não'} />
-                <InfoRow label="Máximo de participantes" value={group.max_participants} />
-                <InfoRow label="Política de lista de espera" value={group.waitlist_policy} />
-                <InfoRow label="Plano de acompanhamento" value={group.follow_up_plan} />
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="criteria" className="border rounded-xl px-4">
-              <AccordionTrigger className="text-base font-semibold">Critérios e combinados</AccordionTrigger>
-              <AccordionContent>
-                <InfoRow label="Critérios de entrada" value={group.entry_criteria} />
-                <InfoRow label="Critérios de exclusão" value={group.exclusion_criteria} />
-                <InfoRow label="Confidencialidade" value={group.confidentiality_agreement} />
-                <InfoRow label="Regras do grupo" value={group.group_rules} />
-                <InfoRow label="Materiais" value={group.materials} />
-                <InfoRow label="Recursos de apoio" value={group.support_resources} />
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="tracking" className="border rounded-xl px-4">
-              <AccordionTrigger className="text-base font-semibold">Acompanhamento</AccordionTrigger>
-              <AccordionContent>
-                <InfoRow label="Método de avaliação" value={group.assessment_method} />
-                <InfoRow label="Próximos tópicos" value={group.next_topics} />
-                <InfoRow label="Notas da facilitação" value={group.facilitation_notes} />
-                <InfoRow label="Notas de supervisão" value={group.supervision_notes} />
-                <InfoRow label="Observações gerais" value={group.general_notes} />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
-          {/* Financial toggle & pricing */}
-          <div className="bg-card border rounded-xl p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">Módulo financeiro</p>
-                <p className="text-xs text-muted-foreground">Habilite para acompanhar pagamentos dos participantes do grupo</p>
-              </div>
-              <Switch
-                checked={group.financial_enabled}
-                onCheckedChange={async (checked) => {
-                  await supabase.from('therapeutic_groups').update({ financial_enabled: checked } as any).eq('id', group.id);
-                  setGroup(prev => prev ? { ...prev, financial_enabled: checked } : prev);
-                  toast.success(checked ? 'Financeiro habilitado' : 'Financeiro desabilitado');
-                }}
-              />
+          <GroupInfoTab group={group} setGroup={setGroup} members={members} memberPaymentConfigs={memberPaymentConfigs} setMemberPaymentConfigs={setMemberPaymentConfigs} clinicPackages={clinicPackages} />
             </div>
             {group.financial_enabled && (
               <div className="space-y-4 pt-2 border-t border-border">
