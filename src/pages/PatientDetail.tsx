@@ -1585,14 +1585,36 @@ export default function PatientDetail() {
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
         const isPaid = paidStatuses.includes(evo.attendanceStatus);
+        const isGroup = !!evo.groupId;
+        const typeLabel = isGroup ? '👥 Grupo' : '👤 Individual';
+
+        // Calculate correct value for this session
+        let sessionValue = 0;
+        if (isPaid) {
+          if (isGroup) {
+            sessionValue = getGroupSessionValue({
+              groupId: evo.groupId,
+              patientId: patient.id,
+              groupBillingMap,
+              memberPaymentMap,
+              packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
+            });
+          } else {
+            sessionValue = perSessionValue;
+          }
+        }
+
         doc.setDrawColor(...borderColor); doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
         doc.text(dateStr, margin + 2, y + 4);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
         doc.text(status, margin + 32, y + 4);
-        if (isPaid && patient.paymentValue) {
-          doc.setTextColor(...accentDark);
-          doc.text(`R$ ${patient.paymentValue.toFixed(2)}`, W - margin - 2, y + 4, { align: 'right' });
+        // Type indicator
+        doc.setFontSize(8); doc.setTextColor(isGroup ? 100 : 60, isGroup ? 60 : 100, isGroup ? 180 : 60);
+        doc.text(typeLabel, margin + 68, y + 4);
+        if (isPaid) {
+          doc.setFontSize(9); doc.setTextColor(...accentDark);
+          doc.text(`R$ ${sessionValue.toFixed(2)}`, W - margin - 2, y + 4, { align: 'right' });
         }
         y += 7;
       }
