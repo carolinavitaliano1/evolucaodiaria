@@ -162,13 +162,39 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
     return cpf;
   };
 
-  const therapistSigBlock = contract.therapist_signature_data
-    ? `<div class="pdf-keep-together pdf-signature-block" style="margin-top:40px;padding-top:24px;border-top:2px solid #333;text-align:center;">
-        <p style="font-size:11px;color:#555;margin-bottom:10px;text-align:center;">Assinatura do(a) Profissional</p>
-        <img class="therapist-mark-img" src="${contract.therapist_signature_data}" style="max-height:180px;max-width:320px;margin:0 auto;display:block;" />
-        ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:10px;text-align:center;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
-      </div>`
-    : '';
+  // Parse therapist stamp data — supports both JSON format (new) and base64 image (legacy)
+  let therapistSigBlock = '';
+  if (contract.therapist_signature_data) {
+    let stampData: { stamp_image?: string; name?: string; clinical_area?: string; cbo?: string; professional_id?: string } | null = null;
+    try {
+      stampData = JSON.parse(contract.therapist_signature_data);
+    } catch {
+      // Legacy: therapist_signature_data is a base64 image
+      stampData = { stamp_image: contract.therapist_signature_data };
+    }
+
+    const stampImgHtml = stampData?.stamp_image
+      ? `<img class="therapist-mark-img" src="${stampData.stamp_image}" style="max-height:120px;max-width:280px;margin:0 auto 12px;display:block;object-fit:contain;" />`
+      : '';
+    const lineHtml = `<div style="width:260px;margin:0 auto;border-bottom:1.5px solid #333;"></div>`;
+    const nameHtml = stampData?.name ? `<p style="font-size:11px;font-weight:bold;color:#111;margin:8px 0 2px;text-align:center;">${stampData.name}</p>` : '';
+    const areaHtml = stampData?.clinical_area ? `<p style="font-size:10px;color:#555;margin:0 0 2px;text-align:center;">${stampData.clinical_area}</p>` : '';
+    const cboHtml = stampData?.cbo ? `<p style="font-size:10px;color:#555;margin:0 0 2px;text-align:center;">CBO: ${stampData.cbo}</p>` : '';
+    const regHtml = stampData?.professional_id ? `<p style="font-size:10px;color:#555;margin:0 0 2px;text-align:center;">Registro: ${stampData.professional_id}</p>` : '';
+    const dateHtml = contract.therapist_signed_at
+      ? `<p style="font-size:9px;color:#888;margin-top:8px;text-align:center;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>`
+      : '';
+
+    therapistSigBlock = `<div class="pdf-keep-together pdf-signature-block" style="margin-top:40px;padding-top:24px;border-top:2px solid #333;text-align:center;">
+      ${stampImgHtml}
+      ${lineHtml}
+      ${nameHtml}
+      ${areaHtml}
+      ${cboHtml}
+      ${regHtml}
+      ${dateHtml}
+    </div>`;
+  }
 
   const patientSigBlock = contract.signature_data
     ? `<div class="pdf-keep-together pdf-signature-block" style="margin-top:48px;border-top:2px solid #333;padding-top:28px;">
