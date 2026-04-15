@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ContractEditor } from '@/components/contracts/ContractEditor';
-import { SignaturePad } from '@/components/ui/signature-pad';
+
 import { toast } from 'sonner';
 import {
   Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2,
