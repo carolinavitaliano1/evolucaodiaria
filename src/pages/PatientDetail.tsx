@@ -1378,7 +1378,7 @@ export default function PatientDetail() {
         </table>
         <hr/>
         <h3 style="color:#1e3a8a">RESUMO FINANCEIRO</h3>
-        ${patient.paymentType === 'fixo' ? `<p>Modalidade: Mensalidade fixa &nbsp;|&nbsp; Sessões: ${sessionCount} &nbsp;|&nbsp; Valor: R$ ${payVal.toFixed(2)}</p>` : `<p>Modalidade: Por sessão &nbsp;|&nbsp; Sessões cobráveis: ${sessionCount} &nbsp;|&nbsp; Valor/sessão: R$ ${payVal.toFixed(2)}</p>`}
+        ${(isPackageMensal || isFixoMensal) ? `<p>Modalidade: Mensalidade fixa &nbsp;|&nbsp; Sessões: ${sessionCount} &nbsp;|&nbsp; Valor/sessão: R$ ${payVal.toFixed(2)} &nbsp;|&nbsp; Mensal: R$ ${rawPayVal.toFixed(2)}</p>` : `<p>Modalidade: Por sessão &nbsp;|&nbsp; Sessões cobráveis: ${sessionCount} &nbsp;|&nbsp; Valor/sessão: R$ ${payVal.toFixed(2)}</p>`}
         <p style="font-size:13pt"><strong>TOTAL DO PERÍODO: R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
         <p><strong>Status:</strong> ${payStatusLabel}${fiscalPaymentDate && fiscalPaymentStatus === 'paid' ? ` &nbsp;·&nbsp; Recebido em: ${format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}` : ''}</p>
         <hr/>
