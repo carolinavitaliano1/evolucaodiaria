@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { cleanContractHtml } from '@/utils/contractHtmlUtils';
 
 interface Contract {
   id: string;
