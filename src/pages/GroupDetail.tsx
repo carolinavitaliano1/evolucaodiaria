@@ -132,10 +132,7 @@ export default function GroupDetail() {
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
-  // Financial state
-  const [payments, setPayments] = useState<any[]>([]);
-  const [loadingFinancial, setLoadingFinancial] = useState(false);
-  const [clinicPackages, setClinicPackages] = useState<any[]>([]);
+  // Financial state (now handled by GroupFinancialTab)
 
   // Mural state
   const [muralMember, setMuralMember] = useState<string | null>(null);
@@ -158,7 +155,7 @@ export default function GroupDetail() {
     if (activeTab === 'tasks') loadTasks();
     if (activeTab === 'notes') loadNotes();
     if (activeTab === 'documents') loadDocuments();
-    if (activeTab === 'financial' && members.length > 0) loadFinancial();
+    if (activeTab === 'financial' && members.length > 0) { /* handled by GroupFinancialTab */ }
     if (activeTab === 'mural' && members.length > 0 && !muralMember) setMuralMember(members[0]?.id || null);
   }, [activeTab, members]);
 
