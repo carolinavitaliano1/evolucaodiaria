@@ -496,20 +496,6 @@ export default function GroupDetail() {
     toast.success('Documento removido');
   };
 
-  // ─── Financial ───
-  const loadFinancial = async () => {
-    if (members.length === 0) return;
-    setLoadingFinancial(true);
-    const patientIds = members.map(m => m.id);
-    const { data } = await supabase.from('patient_payment_records')
-      .select('*')
-      .in('patient_id', patientIds)
-      .order('year', { ascending: false })
-      .order('month', { ascending: false })
-      .limit(200);
-    if (data) setPayments(data);
-    setLoadingFinancial(false);
-  };
 
   // ─── Attendance ───
   const getAttendanceData = () => {
