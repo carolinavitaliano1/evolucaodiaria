@@ -679,7 +679,7 @@ export default function PortalFinancial() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 px-0 md:px-6">
-            {records.length === 0 ? (
+            {displayRecords.length === 0 ? (
               <div className="text-center py-8 px-4">
                 <DollarSign className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
                 <p className="font-semibold text-sm text-foreground">Sem registros financeiros</p>
@@ -700,7 +700,7 @@ export default function PortalFinancial() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {records.map(record => {
+                      {displayRecords.map(record => {
                         const status = getRecordStatus(record, patient?.payment_due_day || null);
                         return (
                           <TableRow key={record.id}>
@@ -753,7 +753,7 @@ export default function PortalFinancial() {
 
                 {/* Mobile card list */}
                 <div className="md:hidden space-y-2 px-4">
-                  {records.map(record => {
+                  {displayRecords.map(record => {
                     const status = getRecordStatus(record, patient?.payment_due_day || null);
                     return (
                       <div key={record.id} className="bg-card rounded-lg border p-3">
