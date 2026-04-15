@@ -157,69 +157,68 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
     return cpf;
   };
 
-  // Parse therapist stamp data — supports both JSON format (new) and base64 image (legacy)
-  let therapistSigBlock = '';
+  // Build therapist column (right side)
+  let therapistColHtml = '';
   if (contract.therapist_signature_data) {
     let stampData: { stamp_image?: string; name?: string; clinical_area?: string; cbo?: string; professional_id?: string } | null = null;
     try {
       stampData = JSON.parse(contract.therapist_signature_data);
     } catch {
-      // Legacy: therapist_signature_data is a base64 image
       stampData = { stamp_image: contract.therapist_signature_data };
     }
 
     const stampImgHtml = stampData?.stamp_image
-      ? `<img class="therapist-mark-img" src="${stampData.stamp_image}" style="max-height:120px;max-width:280px;margin:0 auto 12px;display:block;object-fit:contain;" />`
+      ? `<img class="therapist-mark-img" src="${stampData.stamp_image}" style="max-height:100px;max-width:200px;margin:0 auto 8px;display:block;object-fit:contain;" />`
       : '';
-    const lineHtml = `<div style="width:260px;margin:0 auto;border-bottom:1.5px solid #333;"></div>`;
-    const nameHtml = stampData?.name ? `<p style="font-size:11px;font-weight:bold;color:#111;margin:8px 0 2px;text-align:center;">${stampData.name}</p>` : '';
+    const lineHtml = `<div style="width:200px;margin:0 auto;border-bottom:1.5px solid #333;"></div>`;
+    const nameHtml = stampData?.name ? `<p style="font-size:11px;font-weight:bold;color:#111;margin:6px 0 2px;text-align:center;">${stampData.name}</p>` : '';
     const areaHtml = stampData?.clinical_area ? `<p style="font-size:10px;color:#555;margin:0 0 2px;text-align:center;">${stampData.clinical_area}</p>` : '';
     const cboHtml = stampData?.cbo ? `<p style="font-size:10px;color:#555;margin:0 0 2px;text-align:center;">CBO: ${stampData.cbo}</p>` : '';
-    const regHtml = stampData?.professional_id ? `<p style="font-size:10px;color:#555;margin:0 0 2px;text-align:center;">Registro: ${stampData.professional_id}</p>` : '';
-    const dateHtml = contract.therapist_signed_at
-      ? `<p style="font-size:9px;color:#888;margin-top:8px;text-align:center;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>`
-      : '';
+    const regHtml = stampData?.professional_id ? `<p style="font-size:10px;color:#555;margin:0;text-align:center;">Registro: ${stampData.professional_id}</p>` : '';
 
-    therapistSigBlock = `<div class="pdf-keep-together pdf-signature-block" style="margin-top:40px;padding-top:24px;border-top:2px solid #333;text-align:center;">
-      ${stampImgHtml}
-      ${lineHtml}
-      ${nameHtml}
-      ${areaHtml}
-      ${cboHtml}
-      ${regHtml}
-      ${dateHtml}
-    </div>`;
+    therapistColHtml = `
+      <td style="width:50%;vertical-align:top;padding:0 8px;text-align:center;">
+        ${stampImgHtml}
+        ${lineHtml}
+        ${nameHtml}
+        ${areaHtml}
+        ${cboHtml}
+        ${regHtml}
+      </td>`;
   }
 
-  const patientSigBlock = contract.signature_data
-    ? `<div class="pdf-keep-together pdf-signature-block" style="margin-top:48px;border-top:2px solid #333;padding-top:28px;">
-        <p style="font-size:13px;font-weight:bold;color:#111;margin-bottom:16px;text-align:center;text-transform:uppercase;letter-spacing:0.5px;">
-          Dados do Assinante
-        </p>
-        <table style="width:100%;border-collapse:collapse;margin:0 auto 20px;max-width:500px;">
+  // Build patient column (left side)
+  let patientColHtml = '';
+  if (contract.signature_data) {
+    patientColHtml = `
+      <td style="width:50%;vertical-align:top;padding:0 8px;text-align:center;">
+        <img class="patient-signature-img" src="${contract.signature_data}" style="max-height:70px;max-width:200px;margin:0 auto 8px;display:block;border:1px solid #ddd;border-radius:2px;" />
+        <div style="width:200px;margin:0 auto;border-bottom:1.5px solid #333;"></div>
+        <p style="font-size:11px;font-weight:bold;color:#111;margin:6px 0 2px;text-align:center;">${displayName}</p>
+        ${displayCpf ? `<p style="font-size:10px;color:#555;margin:0;text-align:center;">CPF: ${formatCpfStr(displayCpf)}</p>` : ''}
+      </td>`;
+  }
+
+  // Build the combined signature block
+  const now = new Date();
+  const cityStateDate = displayCity
+    ? `${displayCity}, ${format(now, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}`
+    : format(now, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
+
+  const signatureBlock = (patientColHtml || therapistColHtml)
+    ? `<div class="pdf-keep-together pdf-signature-block" style="margin-top:48px;padding-top:24px;">
+        <table style="width:100%;border-collapse:collapse;border:none;">
           <tr>
-            <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;font-weight:bold;width:120px;background:#f9f9f9;">Nome:</td>
-            <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;">${displayName}</td>
+            ${patientColHtml}
+            ${therapistColHtml}
           </tr>
-          ${displayCpf ? `<tr>
-            <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;font-weight:bold;background:#f9f9f9;">CPF:</td>
-            <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;">${formatCpfStr(displayCpf)}</td>
-          </tr>` : ''}
-          ${displayCity ? `<tr>
-            <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;font-weight:bold;background:#f9f9f9;">Cidade:</td>
-            <td style="border:1px solid #bbb;padding:8px 12px;font-size:12px;">${displayCity}</td>
-          </tr>` : ''}
         </table>
-        <div style="text-align:center;margin-top:20px;">
-          <p style="font-size:11px;color:#555;margin-bottom:8px;">Assinatura digital:</p>
-          <img class="patient-signature-img" src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #ddd;border-radius:2px;margin:0 auto;display:block;" />
-          <p style="font-size:11px;color:#333;margin-top:14px;font-weight:bold;">
-            Assinado em ${format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-          </p>
-          <p style="font-size:10px;color:#888;margin-top:6px;font-style:italic;">
-            O assinante declarou ter lido e concordado com todos os termos deste contrato.
-          </p>
-        </div>
+        <p style="font-size:11px;color:#333;margin-top:24px;text-align:center;">
+          ${cityStateDate}
+        </p>
+        ${contract.signed_at ? `<p style="font-size:9px;color:#888;margin-top:6px;text-align:center;font-style:italic;">
+          O assinante declarou ter lido e concordado com todos os termos deste contrato.
+        </p>` : ''}
       </div>`
     : '';
 
@@ -278,6 +277,12 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
     .contract-pdf-wrap th {
       background: #f5f5f5; font-weight: bold;
     }
+    .contract-pdf-wrap .pdf-signature-block table {
+      border: none !important;
+    }
+    .contract-pdf-wrap .pdf-signature-block td {
+      border: none !important;
+    }
     .contract-pdf-wrap img:not(.therapist-mark-img):not(.patient-signature-img) {
       max-width: 100%; height: auto; display: block; margin: 8px auto;
     }
@@ -299,8 +304,7 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   try {
     const pages = buildPaginatedPdfPages({
       cleanHtml,
-      therapistSigBlock,
-      patientSigBlock,
+      signatureBlock,
       contentWidthPx,
       maxPageHeightPx,
       host: pagesHost,
