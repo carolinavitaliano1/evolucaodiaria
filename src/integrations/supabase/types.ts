@@ -2398,6 +2398,7 @@ export type Database = {
           confidentiality_agreement: string | null
           conflict_areas: string | null
           created_at: string
+          custom_sections: Json | null
           default_price: number | null
           description: string | null
           duration_minutes: number | null
@@ -2438,6 +2439,7 @@ export type Database = {
           confidentiality_agreement?: string | null
           conflict_areas?: string | null
           created_at?: string
+          custom_sections?: Json | null
           default_price?: number | null
           description?: string | null
           duration_minutes?: number | null
@@ -2478,6 +2480,7 @@ export type Database = {
           confidentiality_agreement?: string | null
           conflict_areas?: string | null
           created_at?: string
+          custom_sections?: Json | null
           default_price?: number | null
           description?: string | null
           duration_minutes?: number | null
