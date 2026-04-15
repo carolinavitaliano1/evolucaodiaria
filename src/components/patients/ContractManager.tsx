@@ -57,14 +57,45 @@ interface ContractManagerProps {
   patientName: string;
 }
 
-function loadImageElement(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Falha ao carregar imagem.'));
-    image.src = src;
-  });
+interface LoadedCanvasImage {
+  image: HTMLImageElement;
+  cleanup: () => void;
+}
+
+async function loadImageElement(src: string): Promise<LoadedCanvasImage> {
+  let objectUrl: string | null = null;
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.decoding = 'async';
+
+  const cleanup = () => {
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      objectUrl = null;
+    }
+  };
+
+  try {
+    if (src.startsWith('data:') || src.startsWith('blob:')) {
+      image.src = src;
+    } else {
+      const response = await fetch(src);
+      if (!response.ok) throw new Error('Falha ao buscar imagem.');
+      const blob = await response.blob();
+      objectUrl = URL.createObjectURL(blob);
+      image.src = objectUrl;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Falha ao carregar imagem.'));
+    });
+
+    return { image, cleanup };
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
 }
 
 function fitImageWithin(width: number, height: number, maxWidth: number, maxHeight: number) {
@@ -79,31 +110,45 @@ function fitImageWithin(width: number, height: number, maxWidth: number, maxHeig
 async function composeTherapistSignature(signatureData: string, stampImage?: string | null) {
   if (!stampImage) return signatureData;
 
+  let loadedSignature: LoadedCanvasImage | null = null;
+  let loadedStamp: LoadedCanvasImage | null = null;
+
   try {
-    const [signatureImg, stampImg] = await Promise.all([
+    [loadedSignature, loadedStamp] = await Promise.all([
       loadImageElement(signatureData),
       loadImageElement(stampImage),
     ]);
 
-    const signatureSize = fitImageWithin(signatureImg.naturalWidth, signatureImg.naturalHeight, 520, 140);
-    const stampSize = fitImageWithin(stampImg.naturalWidth, stampImg.naturalHeight, 360, 180);
-    const padding = 12;
-    const gap = 14;
+    const signatureImg = loadedSignature.image;
+    const stampImg = loadedStamp.image;
+    const signatureSize = fitImageWithin(signatureImg.naturalWidth, signatureImg.naturalHeight, 520, 150);
+    const stampSize = fitImageWithin(stampImg.naturalWidth, stampImg.naturalHeight, 420, 220);
+    const padding = 18;
+    const gap = 18;
+    const canvasWidth = Math.ceil(Math.max(signatureSize.width, stampSize.width) + padding * 2);
+    const canvasHeight = Math.ceil(signatureSize.height + stampSize.height + gap + padding * 2);
+    const outputScale = 2;
 
     const canvas = document.createElement('canvas');
-    canvas.width = Math.ceil(Math.max(signatureSize.width, stampSize.width) + padding * 2);
-    canvas.height = Math.ceil(signatureSize.height + stampSize.height + gap + padding * 2);
+    canvas.width = canvasWidth * outputScale;
+    canvas.height = canvasHeight * outputScale;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return signatureData;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(signatureImg, (canvas.width - signatureSize.width) / 2, padding, signatureSize.width, signatureSize.height);
-    ctx.drawImage(stampImg, (canvas.width - stampSize.width) / 2, padding + signatureSize.height + gap, stampSize.width, stampSize.height);
+    ctx.scale(outputScale, outputScale);
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(signatureImg, (canvasWidth - signatureSize.width) / 2, padding, signatureSize.width, signatureSize.height);
+    ctx.drawImage(stampImg, (canvasWidth - stampSize.width) / 2, padding + signatureSize.height + gap, stampSize.width, stampSize.height);
 
     return canvas.toDataURL('image/png');
   } catch {
     return signatureData;
+  } finally {
+    loadedSignature?.cleanup();
+    loadedStamp?.cleanup();
   }
 }
 
