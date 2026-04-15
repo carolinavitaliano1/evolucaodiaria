@@ -376,7 +376,7 @@ export function downloadNextSessionAsPdf(
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9.5);
       doc.setTextColor(80);
-      doc.text('◦', bulletIndent, y);
+      doc.text('-', bulletIndent, y);
       doc.setTextColor(0);
 
       renderFormattedBlock(line.segments, textX, availWidth, 9.5);
