@@ -1538,6 +1538,12 @@ export default function PatientDetail() {
       doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, y); y += 4;
       doc.setDrawColor(...borderColor); doc.line(margin, y, W - margin, y); y += 6;
 
+      // Compute dynamic per-session value for mensal patients
+      const pdfDynamic = (isPackageMensal || isFixoMensal)
+        ? getDynamicSessionValue(paymentValue, patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []), targetMonth.getMonth(), targetMonth.getFullYear())
+        : null;
+      const pdfPerSession = pdfDynamic ? pdfDynamic.perSession : perSessionValue;
+
       // ── IDENTIFICAÇÃO ────────────────────────────────────────────
       const idLines: [string, string][] = [];
       if (patient.name) idLines.push(['Paciente:', patient.name]);
