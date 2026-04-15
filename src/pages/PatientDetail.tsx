@@ -1402,8 +1402,10 @@ export default function PatientDetail() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success('Recibo Word gerado com sucesso!');
-    } catch { toast.error('Erro ao gerar recibo Word'); }
-    finally { setIsExportingFiscalWord(false); }
+    } catch (err) {
+      console.error('Word export error:', err);
+      toast.error('Erro ao gerar recibo Word');
+    }
   };
 
   // ── RECIBO DE PAGAMENTO ───────────────────────────────────────────────────
