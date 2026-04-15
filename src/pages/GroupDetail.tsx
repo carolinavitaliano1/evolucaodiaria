@@ -1380,81 +1380,20 @@ export default function GroupDetail() {
         </TabsContent>
 
         {/* ═══ Financial Tab ═══ */}
-        <TabsContent value="financial" className="mt-4 space-y-4">
-          {loadingFinancial ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-          ) : members.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhum participante</p>
-          ) : (
-            <>
-              {/* Financial summary per member */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {members.map(m => {
-                  const memberPayments = payments.filter(p => p.patient_id === m.id);
-                  const totalPaid = memberPayments.filter(p => p.paid).reduce((s, p) => s + Number(p.amount), 0);
-                  const totalPending = memberPayments.filter(p => !p.paid).reduce((s, p) => s + Number(p.amount), 0);
-                  return (
-                    <div key={m.id} className="bg-card border rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                          {m.name.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-medium text-foreground text-sm">{m.name}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Pago</p>
-                          <p className="text-lg font-bold text-primary">R$ {totalPaid.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Pendente</p>
-                          <p className="text-lg font-bold text-destructive">R$ {totalPending.toFixed(2)}</p>
-                        </div>
-                      </div>
-                      <Link to={`/patients/${m.id}`}>
-                        <Button variant="outline" size="sm" className="mt-3 w-full text-xs">Ver detalhes →</Button>
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Recent payments */}
-              {payments.length > 0 && (
-                <div className="bg-card border rounded-xl p-4">
-                  <h3 className="font-semibold text-foreground mb-3">Últimos registros</h3>
-                  <div className="space-y-2">
-                    {payments.slice(0, 20).map(p => {
-                      const patient = members.find(m => m.id === p.patient_id);
-                      return (
-                        <div key={p.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">{patient?.name || 'Paciente'}</Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {String(p.month).padStart(2, '0')}/{p.year}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">R$ {Number(p.amount).toFixed(2)}</span>
-                            <Badge variant={p.paid ? 'default' : 'destructive'} className="text-xs">
-                              {p.paid ? 'Pago' : 'Pendente'}
-                            </Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {payments.length === 0 && (
-                <div className="text-center py-8">
-                  <DollarSign className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">Nenhum registro financeiro dos participantes</p>
-                </div>
-              )}
-            </>
-          )}
+        <TabsContent value="financial" className="mt-4">
+          <GroupFinancialTab
+            groupId={group.id}
+            clinicId={group.clinic_id}
+            members={members}
+            memberPaymentConfigs={memberPaymentConfigs}
+            groupData={{
+              default_price: group.default_price,
+              payment_type: group.payment_type,
+              package_id: group.package_id,
+              financial_enabled: group.financial_enabled,
+            }}
+            clinicPackages={clinicPackages}
+          />
         </TabsContent>
       </Tabs>
     </div>
