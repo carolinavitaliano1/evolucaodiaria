@@ -612,18 +612,23 @@ export default function GroupDetail() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {tabs.map(t => (
-            <TabsTrigger
+            <button
               key={t.value}
-              value={t.value}
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-3 py-1.5 text-xs gap-1.5"
+              onClick={() => setActiveTab(t.value)}
+              className={cn(
+                "flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all text-center",
+                activeTab === t.value
+                  ? "bg-primary/10 border-primary/30 text-primary shadow-sm"
+                  : "bg-card border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
             >
               {t.icon}
-              <span className="hidden sm:inline">{t.label}</span>
-            </TabsTrigger>
+              <span className="text-[11px] font-medium leading-tight">{t.label}</span>
+            </button>
           ))}
-        </TabsList>
+        </div>
 
         {/* ═══ Info Tab ═══ */}
         <TabsContent value="info" className="mt-4 space-y-4">
