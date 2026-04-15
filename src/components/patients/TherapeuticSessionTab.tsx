@@ -1651,7 +1651,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                         </Button>
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap line-clamp-4">{s.next_session_notes}</p>
+                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap line-clamp-4">{s.next_session_notes?.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,3}\s+/gm, '')}</p>
                   </CardContent>
                 </Card>
               );
