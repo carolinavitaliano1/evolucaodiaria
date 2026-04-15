@@ -1484,8 +1484,15 @@ export default function PatientDetail() {
     setPaymentReceiptOpen(true);
   };
   // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
-  const handleExportFinancialPDF = async () => {
-    if (financialEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
+  const handleExportFinancialPDF = async (overrideMonth?: Date) => {
+    const targetMonth = overrideMonth || financialMonth;
+    const targetEvolutions = overrideMonth
+      ? patientEvolutions.filter(e => {
+          const d = new Date(e.date + 'T12:00:00');
+          return d >= startOfMonth(overrideMonth) && d <= endOfMonth(overrideMonth);
+        }).sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime())
+      : financialEvolutions;
+    if (targetEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
     setIsExportingFinancial(true);
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
