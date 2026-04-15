@@ -1529,15 +1529,22 @@ export default function PatientDetail() {
       doc.text('1. RESUMO FINANCEIRO', margin, y); y += 6;
 
       const paidSessions = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
+      const finGroupCount = finBillableEvos.filter(e => e.groupId).length;
+      const finIndivCount = finBillableEvos.filter(e => !e.groupId).length;
       const finRows: [string, string][] = [
         ['Sessões realizadas (presença + reposição):', String(finPresent + finReposicao)],
+        ...(finIndivCount > 0 ? [['   • Sessões individuais:', String(finIndivCount)] as [string, string]] : []),
+        ...(finGroupCount > 0 ? [['   • Sessões em grupo:', String(finGroupCount)] as [string, string]] : []),
         ['Faltas remuneradas:', String(finPaidAbsent)],
         ['Feriados remunerados:', String(finFeriadoRem)],
         ['Total de sessões cobradas:', String(paidSessions)],
         ...(isPackagePersonalizado
           ? [['Pacote:', `${paidSessions} sessão(ões) utilizadas de ${patientPackage!.sessionLimit} (${patientPackage!.name})`] as [string, string],
              ['Valor por sessão (fracionado):', `R$ ${perSessionValue.toFixed(2)}`] as [string, string]]
-          : [['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
+          : [['Valor sessão individual:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
+        ),
+        ...(finGroupRevenue > 0 ? [['Receita sessões em grupo:', `R$ ${finGroupRevenue.toFixed(2)}`] as [string, string]] : []),
+        ...(finIndivCount > 0 ? [['Receita sessões individuais:', `R$ ${(finRevenue - finGroupRevenue).toFixed(2)}`] as [string, string]] : []),
         ),
         ['TOTAL FATURADO NO MÊS:', `R$ ${finRevenue.toFixed(2)}`],
       ];
