@@ -1484,14 +1484,50 @@ export default function PatientDetail() {
     setPaymentReceiptOpen(true);
   };
   // ── RELATÓRIO FINANCEIRO (todos os status + valores) ─────────────────────
-  const handleExportFinancialPDF = async () => {
-    if (financialEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
+  const handleExportFinancialPDF = async (overrideMonth?: Date) => {
+    const targetMonth = overrideMonth || financialMonth;
+    const targetEvolutions = overrideMonth
+      ? patientEvolutions.filter(e => {
+          const d = new Date(e.date + 'T12:00:00');
+          return d >= startOfMonth(overrideMonth) && d <= endOfMonth(overrideMonth);
+        }).sort((a, b) => new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime())
+      : financialEvolutions;
+    if (targetEvolutions.length === 0) { toast.error('Nenhuma evolução neste mês.'); return; }
     setIsExportingFinancial(true);
     try {
+      // Compute all stats from targetEvolutions so they match the selected month
+      const tPresent = targetEvolutions.filter(e => e.attendanceStatus === 'presente').length;
+      const tReposicao = targetEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+      const tAbsent = targetEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+      const tPaidAbsent = targetEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
+      const tFeriadoRem = targetEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
+      const tTotal = tPresent + tReposicao;
+      const tBillableCount = tPresent + tReposicao + tPaidAbsent + tFeriadoRem;
+      const tBillableEvos = targetEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+      const tGroupRevenue = computeGroupRevenue(tBillableEvos);
+      const tIndividualBillable = tBillableEvos.filter(e => !e.groupId);
+      const tIndividualBillableCount = tIndividualBillable.length;
+      const tIndividualUniqueDays = new Set(tIndividualBillable.map(e => e.date)).size;
+      const tRevenue = (isPackageMensal || isFixoMensal)
+        ? (() => {
+            const dynVal = getDynamicSessionValue(paymentValue, patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []), targetMonth.getMonth(), targetMonth.getFullYear());
+            if (dynVal) {
+              const deductible = targetEvolutions.filter(e => e.attendanceStatus === 'falta').length;
+              const ded = calculateMensalRevenueWithDeductions(paymentValue, deductible, dynVal.occurrences);
+              return ded.finalRevenue + tGroupRevenue;
+            }
+            return paymentValue + tGroupRevenue;
+          })()
+        : isFixoDiario
+          ? tIndividualUniqueDays * perSessionValue + tGroupRevenue
+          : tIndividualBillableCount * perSessionValue + tGroupRevenue;
+      const tRegistros = targetEvolutions.length;
+      const tAttendanceRate = tRegistros > 0 ? Math.round(((tPresent + tReposicao) / tRegistros) * 100) : 0;
+
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const base = buildPdfBase(doc);
       const { W, margin, contentW, darkText, mutedText, borderColor, accentDark } = base;
-      const monthLabel = format(financialMonth, 'MMMM yyyy', { locale: ptBR });
+      const monthLabel = format(targetMonth, 'MMMM yyyy', { locale: ptBR });
       const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
       let y = margin;
 
@@ -1529,24 +1565,24 @@ export default function PatientDetail() {
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
       doc.text('1. RESUMO FINANCEIRO', margin, y); y += 6;
 
-      const paidSessions = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
-      const finGroupCount = finBillableEvos.filter(e => e.groupId).length;
-      const finIndivCount = finBillableEvos.filter(e => !e.groupId).length;
+      const paidSessions = tBillableCount;
+      const tGroupCount = tBillableEvos.filter(e => e.groupId).length;
+      const tIndivCount = tBillableEvos.filter(e => !e.groupId).length;
       const finRows: [string, string][] = [
-        ['Sessões realizadas (presença + reposição):', String(finPresent + finReposicao)],
-        ...(finIndivCount > 0 ? [['   • Sessões individuais:', String(finIndivCount)] as [string, string]] : []),
-        ...(finGroupCount > 0 ? [['   • Sessões em grupo:', String(finGroupCount)] as [string, string]] : []),
-        ['Faltas remuneradas:', String(finPaidAbsent)],
-        ['Feriados remunerados:', String(finFeriadoRem)],
+        ['Sessões realizadas (presença + reposição):', String(tPresent + tReposicao)],
+        ...(tIndivCount > 0 ? [['   • Sessões individuais:', String(tIndivCount)] as [string, string]] : []),
+        ...(tGroupCount > 0 ? [['   • Sessões em grupo:', String(tGroupCount)] as [string, string]] : []),
+        ['Faltas remuneradas:', String(tPaidAbsent)],
+        ['Feriados remunerados:', String(tFeriadoRem)],
         ['Total de sessões cobradas:', String(paidSessions)],
         ...(isPackagePersonalizado
           ? [['Pacote:', `${paidSessions} sessão(ões) utilizadas de ${patientPackage!.sessionLimit} (${patientPackage!.name})`] as [string, string],
              ['Valor por sessão (fracionado):', `R$ ${perSessionValue.toFixed(2)}`] as [string, string]]
           : [['Valor sessão individual:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
         ),
-        ...(finGroupRevenue > 0 ? [['Receita sessões em grupo:', `R$ ${finGroupRevenue.toFixed(2)}`] as [string, string]] : []),
-        ...(finIndivCount > 0 ? [['Receita sessões individuais:', `R$ ${(finRevenue - finGroupRevenue).toFixed(2)}`] as [string, string]] : []),
-        ['TOTAL FATURADO NO MÊS:', `R$ ${finRevenue.toFixed(2)}`],
+        ...(tGroupRevenue > 0 ? [['Receita sessões em grupo:', `R$ ${tGroupRevenue.toFixed(2)}`] as [string, string]] : []),
+        ...(tIndivCount > 0 ? [['Receita sessões individuais:', `R$ ${(tRevenue - tGroupRevenue).toFixed(2)}`] as [string, string]] : []),
+        ['TOTAL FATURADO NO MÊS:', `R$ ${tRevenue.toFixed(2)}`],
       ];
       finRows.forEach(([label, value], i) => {
         const isBold = i === finRows.length - 1;
@@ -1564,14 +1600,14 @@ export default function PatientDetail() {
       doc.text('2. DETALHAMENTO DE FREQUÊNCIA', margin, y); y += 6;
 
       const freqRows: [string, string][] = [
-        ['Total de sessões registradas:', String(finTotal)],
-        ['Presenças:', String(finPresent)],
-        ['Reposições:', String(finReposicao)],
-        ['Faltas:', String(finAbsent)],
-        ['Faltas remuneradas:', String(finPaidAbsent)],
-        ['Feriados remunerados:', String(finFeriadoRem)],
-        ['Feriados não remunerados:', String(financialEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length)],
-        ['Taxa de frequência (presença/total):', `${finAttendanceRate}%`],
+        ['Total de sessões registradas:', String(tTotal)],
+        ['Presenças:', String(tPresent)],
+        ['Reposições:', String(tReposicao)],
+        ['Faltas:', String(tAbsent)],
+        ['Faltas remuneradas:', String(tPaidAbsent)],
+        ['Feriados remunerados:', String(tFeriadoRem)],
+        ['Feriados não remunerados:', String(targetEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length)],
+        ['Taxa de frequência (presença/total):', `${tAttendanceRate}%`],
       ];
       freqRows.forEach(([label, value]) => {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkText);
@@ -1590,9 +1626,9 @@ export default function PatientDetail() {
       };
       const paidStatuses = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'];
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${financialEvolutions.length})`, margin, y); y += 6;
+      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${targetEvolutions.length})`, margin, y); y += 6;
 
-      for (const evo of financialEvolutions) {
+      for (const evo of targetEvolutions) {
         if (y > 260) { doc.addPage(); y = margin; }
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
@@ -1632,8 +1668,8 @@ export default function PatientDetail() {
       }
 
       // ── ASSINATURA ───────────────────────────────────────────────
-      const chosenStamp = financialStampId && financialStampId !== 'none'
-        ? stamps.find(s => s.id === financialStampId)
+      const chosenStamp = (overrideMonth ? selectedStampId : financialStampId) && (overrideMonth ? selectedStampId : financialStampId) !== 'none'
+        ? stamps.find(s => s.id === (overrideMonth ? selectedStampId : financialStampId))
         : stamps.find(s => s.is_default);
       y = await addSignatureBlock(doc, y, base, chosenStamp ?? null, true);
 
@@ -1647,7 +1683,7 @@ export default function PatientDetail() {
           W / 2, 291, { align: 'center' }
         );
       }
-      doc.save(`relatorio-financeiro-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(financialMonth, 'yyyy-MM')}.pdf`);
+      doc.save(`relatorio-financeiro-${patient.name.replace(/\s+/g, '-').toLowerCase()}-${format(targetMonth, 'yyyy-MM')}.pdf`);
       toast.success('Relatório financeiro gerado!');
     } catch (err) { console.error(err); toast.error('Erro ao gerar PDF financeiro'); }
     finally { setIsExportingFinancial(false); }
@@ -2542,7 +2578,7 @@ export default function PatientDetail() {
                     <span className="truncate">Atendimento</span>
                   </Button>
                   <Button
-                    onClick={handleExportFinancialPDF}
+                    onClick={() => handleExportFinancialPDF(reportMonth)}
                     disabled={isExportingFinancial || monthlyEvolutions.length === 0}
                     className="gap-1.5 text-xs h-9 w-full"
                     size="sm"
