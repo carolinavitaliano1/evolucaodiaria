@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine, FolderOpen, Plus, Save, Wand2, Trash2, CheckCircle2, Circle, Upload, Download, X, Filter } from 'lucide-react';
+import { ArrowLeft, Users, Pencil, Archive, ArchiveRestore, Link2, Loader2, FileText, ListTodo, MessageSquare, Newspaper, Calendar, DollarSign, ClipboardList, UserCheck, PenLine, FolderOpen, Plus, Save, Wand2, Trash2, CheckCircle2, Circle, Upload, Download, X, Filter, EyeOff, Eye, GripVertical, LayoutList } from 'lucide-react';
 import { generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,8 +21,26 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { PatientFeed } from '@/components/feed/PatientFeed';
 import { GroupFinancialTab } from '@/components/clinics/GroupFinancialTab';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+interface CustomSectionField {
+  label: string;
+  value: string;
+}
+
+interface CustomSection {
+  id: string;
+  title: string;
+  fields: CustomSectionField[];
+}
+
+interface CustomSections {
+  renamed_defaults?: Record<string, string | null>;
+  hidden_defaults?: string[];
+  custom?: CustomSection[];
+}
 
 interface GroupData {
   id: string;
@@ -60,6 +78,7 @@ interface GroupData {
   package_id: string | null;
   financial_enabled: boolean;
   is_archived: boolean;
+  custom_sections: CustomSections;
   created_at: string;
 }
 
