@@ -132,7 +132,7 @@ function buildPaginatedPdfPages({
 /**
  * Gera PDF em páginas A4 reais, evitando cortes no meio do texto e preservando o bloco do carimbo/assinaturas.
  */
-async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
+export async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const A4_W_MM = 210;
   const A4_H_MM = 297;
   const MARGIN_MM = 15;
