@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { cleanContractHtml } from '@/utils/contractHtmlUtils';
 
 interface Contract {
@@ -36,17 +35,12 @@ interface PatientExtra {
 }
 
 /**
- * Section-based PDF generation for proper page breaks.
- * Splits contract into top-level DOM elements, captures each,
- * and paginates without cutting content mid-line.
+ * Gera PDF com autopaginação por texto para evitar cortes no meio do conteúdo.
  */
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const A4_W_MM = 210;
-  const A4_H_MM = 297;
   const MARGIN_MM = 15;
   const CONTENT_W_MM = A4_W_MM - MARGIN_MM * 2;
-  const CONTENT_H_MM = A4_H_MM - MARGIN_MM * 2;
-  const GAP_MM = 2;
   const SCALE = 2;
 
   // Pixels per mm at 96dpi
@@ -68,15 +62,15 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
 
   // Build therapist signature block
   const therapistSigBlock = contract.therapist_signature_data
-    ? `<div style="margin-top:40px;padding-top:24px;border-top:2px solid #333;text-align:center;">
+    ? `<div class="pdf-keep-together" style="margin-top:40px;padding-top:24px;border-top:2px solid #333;text-align:center;">
         <p style="font-size:11px;color:#555;margin-bottom:8px;text-align:center;">Assinatura do(a) Profissional</p>
-        <img class="sig-img" src="${contract.therapist_signature_data}" style="max-height:70px;max-width:260px;border:1px solid #ddd;border-radius:2px;margin:0 auto;display:block;" />
+        <img class="therapist-mark-img" src="${contract.therapist_signature_data}" style="max-height:140px;max-width:280px;border:1px solid #ddd;border-radius:2px;margin:0 auto;display:block;" />
         ${contract.therapist_signed_at ? `<p style="font-size:10px;color:#888;margin-top:8px;text-align:center;">${format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>` : ''}
       </div>` : '';
 
   // Patient signature block
   const patientSigBlock = contract.signature_data
-    ? `<div style="margin-top:48px;border-top:2px solid #333;padding-top:28px;">
+    ? `<div class="pdf-keep-together" style="margin-top:48px;border-top:2px solid #333;padding-top:28px;">
         <p style="font-size:13px;font-weight:bold;color:#111;margin-bottom:16px;text-align:center;text-transform:uppercase;letter-spacing:0.5px;">
           Dados do Assinante
         </p>
@@ -96,7 +90,7 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
         </table>
         <div style="text-align:center;margin-top:20px;">
           <p style="font-size:11px;color:#555;margin-bottom:8px;">Assinatura digital:</p>
-          <img class="sig-img" src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #ddd;border-radius:2px;margin:0 auto;display:block;" />
+          <img class="patient-signature-img" src="${contract.signature_data}" style="max-height:80px;max-width:280px;border:1px solid #ddd;border-radius:2px;margin:0 auto;display:block;" />
           <p style="font-size:11px;color:#333;margin-top:14px;font-weight:bold;">
             Assinado em ${format(new Date(contract.signed_at!), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
           </p>
@@ -122,6 +116,7 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   const styleEl = document.createElement('style');
   styleEl.textContent = `
     .contract-pdf-wrap * { box-sizing: border-box; }
+    .contract-pdf-wrap { width: ${contentWidthPx}px; }
     .contract-pdf-wrap h2 {
       font-size: 16px; font-weight: bold; text-align: center;
       margin: 28px 0 20px; color: #111; text-transform: uppercase;
@@ -152,10 +147,23 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
       border: 1px solid #bbb; padding: 6px 10px; font-size: 12px;
       text-align: left; vertical-align: top;
     }
+    .contract-pdf-wrap .contract-body > *,
+    .contract-pdf-wrap .pdf-keep-together,
+    .contract-pdf-wrap table,
+    .contract-pdf-wrap img,
+    .contract-pdf-wrap h2,
+    .contract-pdf-wrap h3,
+    .contract-pdf-wrap p,
+    .contract-pdf-wrap ul,
+    .contract-pdf-wrap ol,
+    .contract-pdf-wrap li {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
     .contract-pdf-wrap th {
       background: #f5f5f5; font-weight: bold;
     }
-    .contract-pdf-wrap img:not(.sig-img) {
+    .contract-pdf-wrap img:not(.therapist-mark-img):not(.patient-signature-img) {
       max-width: 100%; height: auto; display: block; margin: 8px auto;
     }
   `;
@@ -172,97 +180,37 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   document.body.appendChild(wrapper);
 
   try {
-    // Get all top-level children as sections for pagination
-    const bodyEl = contentDiv.querySelector('.contract-body');
-    const allSections: HTMLElement[] = [];
-
-    // Collect top-level elements from contract body
-    if (bodyEl) {
-      Array.from(bodyEl.children).forEach(child => {
-        allSections.push(child as HTMLElement);
-      });
-    }
-
-    // Add signature blocks as sections
-    const sigBlocks = contentDiv.querySelectorAll(':scope > div:not(.contract-body)');
-    sigBlocks.forEach(block => allSections.push(block as HTMLElement));
-
-    const mmPerPx = CONTENT_W_MM / contentWidthPx;
-
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    let currentY = MARGIN_MM;
-    let pageNum = 0;
-
-    for (const section of allSections) {
-      // Capture each section individually
-      const canvas = await html2canvas(section, {
-        scale: SCALE,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: contentWidthPx,
+    const images = Array.from(contentDiv.querySelectorAll('img')) as HTMLImageElement[];
+    await Promise.all(images.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
       });
+    }));
 
-      const sectionHeightMM = (canvas.height / SCALE) * mmPerPx;
-
-      // If section is too tall (larger than page), fall back to slice-based rendering
-      if (sectionHeightMM > CONTENT_H_MM) {
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const totalHeightMM = sectionHeightMM;
-
-        // Slice the canvas into page-sized chunks
-        let sliceY = 0;
-        while (sliceY < totalHeightMM) {
-          const remaining = totalHeightMM - sliceY;
-          const availableOnPage = currentY === MARGIN_MM ? CONTENT_H_MM : (A4_H_MM - MARGIN_MM - currentY);
-          const chunkHeight = Math.min(remaining, availableOnPage);
-
-          if (chunkHeight < 5 && currentY > MARGIN_MM) {
-            pdf.addPage();
-            pageNum++;
-            currentY = MARGIN_MM;
-            continue;
-          }
-
-          // Calculate source and dest coordinates
-          const srcYPx = (sliceY / totalHeightMM) * canvas.height;
-          const srcHeightPx = (chunkHeight / totalHeightMM) * canvas.height;
-
-          // Create a slice canvas
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = Math.ceil(srcHeightPx);
-          const sliceCtx = sliceCanvas.getContext('2d')!;
-          sliceCtx.fillStyle = '#ffffff';
-          sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          sliceCtx.drawImage(canvas, 0, -srcYPx);
-
-          const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
-          pdf.addImage(sliceImgData, 'JPEG', MARGIN_MM, currentY, CONTENT_W_MM, chunkHeight);
-
-          sliceY += chunkHeight;
-          currentY += chunkHeight;
-
-          if (sliceY < totalHeightMM) {
-            pdf.addPage();
-            pageNum++;
-            currentY = MARGIN_MM;
-          }
-        }
-        continue;
+    await new Promise<void>((resolve, reject) => {
+      try {
+        (pdf as any).html(contentDiv, {
+          x: MARGIN_MM,
+          y: MARGIN_MM,
+          width: CONTENT_W_MM,
+          windowWidth: contentWidthPx,
+          autoPaging: 'text',
+          html2canvas: {
+            scale: SCALE,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            windowWidth: contentWidthPx,
+          },
+          callback: () => resolve(),
+        });
+      } catch (error) {
+        reject(error);
       }
-
-      // Check if section fits on current page
-      if (currentY + sectionHeightMM > A4_H_MM - MARGIN_MM && currentY > MARGIN_MM) {
-        pdf.addPage();
-        pageNum++;
-        currentY = MARGIN_MM;
-      }
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      pdf.addImage(imgData, 'JPEG', MARGIN_MM, currentY, CONTENT_W_MM, sectionHeightMM);
-      currentY += sectionHeightMM + GAP_MM;
-    }
+    });
 
     pdf.save(`contrato-${signerName.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   } finally {
@@ -663,7 +611,7 @@ function ContractCard({
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
                   <img src={contract.therapist_signature_data} alt="Assinatura do terapeuta"
-                    className="max-h-16 border border-border rounded" />
+                    className="max-h-32 w-auto object-contain border border-border rounded bg-background" />
                   {contract.therapist_signed_at && (
                     <p className="text-[10px] text-muted-foreground">
                       {format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}

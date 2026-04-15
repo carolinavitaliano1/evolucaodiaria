@@ -25,6 +25,7 @@ interface StampOption {
   clinical_area: string;
   stamp_image: string | null;
   signature_image: string | null;
+  is_default?: boolean | null;
 }
 
 interface ContractTemplate {
@@ -54,6 +55,56 @@ interface Contract {
 interface ContractManagerProps {
   patientId: string;
   patientName: string;
+}
+
+function loadImageElement(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Falha ao carregar imagem.'));
+    image.src = src;
+  });
+}
+
+function fitImageWithin(width: number, height: number, maxWidth: number, maxHeight: number) {
+  const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+async function composeTherapistSignature(signatureData: string, stampImage?: string | null) {
+  if (!stampImage) return signatureData;
+
+  try {
+    const [signatureImg, stampImg] = await Promise.all([
+      loadImageElement(signatureData),
+      loadImageElement(stampImage),
+    ]);
+
+    const signatureSize = fitImageWithin(signatureImg.naturalWidth, signatureImg.naturalHeight, 520, 140);
+    const stampSize = fitImageWithin(stampImg.naturalWidth, stampImg.naturalHeight, 360, 180);
+    const padding = 12;
+    const gap = 14;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(Math.max(signatureSize.width, stampSize.width) + padding * 2);
+    canvas.height = Math.ceil(signatureSize.height + stampSize.height + gap + padding * 2);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return signatureData;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(signatureImg, (canvas.width - signatureSize.width) / 2, padding, signatureSize.width, signatureSize.height);
+    ctx.drawImage(stampImg, (canvas.width - stampSize.width) / 2, padding + signatureSize.height + gap, stampSize.width, stampSize.height);
+
+    return canvas.toDataURL('image/png');
+  } catch {
+    return signatureData;
+  }
 }
 
 
@@ -199,7 +250,7 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
 
   const loadStamps = async () => {
     if (!user) return;
-    const { data } = await supabase.from('stamps').select('id,name,clinical_area,stamp_image,signature_image').eq('user_id', user.id);
+    const { data } = await supabase.from('stamps').select('id,name,clinical_area,stamp_image,signature_image,is_default').eq('user_id', user.id);
     const list = (data || []) as StampOption[];
     setStamps(list);
     const def = list.find(s => (s as any).is_default);
@@ -443,15 +494,17 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     setSavingSig(true);
     try {
       const stamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
+      const signedAt = new Date().toISOString();
+      const composedSignature = await composeTherapistSignature(therapistSigData, stamp?.stamp_image || null);
+
       const { error } = await supabase.from('patient_contracts').update({
-        therapist_signature_data: therapistSigData,
-        therapist_signed_at: new Date().toISOString(),
-        // store stamp image in a JSON metadata field if you have one, else just embed in signature_data
+        therapist_signature_data: composedSignature,
+        therapist_signed_at: signedAt,
       } as any).eq('id', signingContractId);
       if (error) throw error;
       setContracts(prev => prev.map(c =>
         c.id === signingContractId
-          ? { ...c, therapist_signature_data: therapistSigData, therapist_signed_at: new Date().toISOString() }
+          ? { ...c, therapist_signature_data: composedSignature, therapist_signed_at: signedAt }
           : c
       ));
       toast.success('Assinatura do terapeuta registrada!');
@@ -759,7 +812,7 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                   <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
                   <div className="flex items-end gap-4 flex-wrap">
                     <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
-                      className="max-h-16 border border-border rounded" />
+                      className="max-h-32 w-auto object-contain border border-border rounded bg-background" />
                   </div>
                   {previewContract.therapist_signed_at && (
                     <p className="text-[10px] text-muted-foreground">

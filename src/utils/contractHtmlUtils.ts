@@ -32,8 +32,8 @@ export function cleanContractHtml(html: string): string {
 
   // 5. Handle HTML-entity-encoded spans (sometimes TipTap or copy-paste escapes them)
   clean = clean.replace(
-    /&lt;span[^&]*?(?:data-variable|data-type|contract-variable)[^&]*?&gt;([\s\S]*?)&lt;\/span&gt;/gi,
-    (_, inner) => inner.replace(/&lt;[^&]*?&gt;/g, '').trim()
+    /&lt;span[\s\S]*?(?:data-variable|data-type|contract-variable)[\s\S]*?&gt;([\s\S]*?)&lt;\/span&gt;/gi,
+    (_, inner) => stripEncodedInnerTags(inner)
   );
 
   // 6. Remove raw {{variable}} leftover text patterns that look like code
@@ -45,7 +45,7 @@ export function cleanContractHtml(html: string): string {
   // 8. Remove any orphaned empty spans left behind
   clean = clean.replace(/<span[^>]*>\s*<\/span>/gi, '');
 
-  return clean;
+  return clean.trim();
 }
 
 /**
@@ -53,6 +53,13 @@ export function cleanContractHtml(html: string): string {
  */
 function stripInnerTags(html: string): string {
   return html.replace(/<[^>]*>/g, '').trim();
+}
+
+function stripEncodedInnerTags(html: string): string {
+  return html
+    .replace(/&lt;[\s\S]*?&gt;/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
 }
 
 /**
@@ -106,8 +113,13 @@ export function substituteContractVariables(
 
   // 6. Handle entity-encoded spans
   result = result.replace(
-    /&lt;span[^&]*?(?:data-variable|data-type|contract-variable)[^&]*?&gt;([\s\S]*?)&lt;\/span&gt;/gi,
-    (_, inner) => inner.replace(/&lt;[^&]*?&gt;/g, '').trim()
+    /&lt;span[\s\S]*?(?:data-variable|data-type|contract-variable)[\s\S]*?&gt;([\s\S]*?)&lt;\/span&gt;/gi,
+    (_, inner) => {
+      const text = stripEncodedInnerTags(inner);
+      const match = text.match(/^\{\{(\w+)\}\}$/);
+      if (match) return variableMap[match[1]] ?? text;
+      return text;
+    }
   );
 
   // 7. Clean stray &nbsp;
