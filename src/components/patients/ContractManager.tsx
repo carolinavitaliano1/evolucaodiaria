@@ -533,30 +533,41 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     finally { setSaving(false); }
   };
 
-  // ─── Therapist sign ───────────────────────────────────────────────────────
-  const handleTherapistSign = async () => {
-    if (!signingContractId || !therapistSigData) return;
+  // ─── Therapist stamp (no manual signature) ─────────────────────────────
+  const handleTherapistStamp = async (contractId: string) => {
+    const stamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
+    if (!stamp) {
+      toast.error('Selecione um carimbo para assinar o contrato.');
+      return;
+    }
     setSavingSig(true);
     try {
-      const stamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
-      const signedAt = new Date().toISOString();
-      const composedSignature = await composeTherapistSignature(therapistSigData, stamp?.stamp_image || null);
+      const { data: profile } = await supabase.from('profiles').select('name,professional_id').eq('user_id', user!.id).maybeSingle();
+      const { data: fullStamp } = await supabase.from('stamps').select('cbo,clinical_area,stamp_image').eq('id', stamp.id).maybeSingle();
 
+      const stampData = JSON.stringify({
+        stamp_image: (fullStamp as any)?.stamp_image || stamp.stamp_image || null,
+        name: profile?.name || '',
+        clinical_area: (fullStamp as any)?.clinical_area || stamp.clinical_area || '',
+        cbo: (fullStamp as any)?.cbo || '',
+        professional_id: profile?.professional_id || '',
+      });
+
+      const signedAt = new Date().toISOString();
       const { error } = await supabase.from('patient_contracts').update({
-        therapist_signature_data: composedSignature,
+        therapist_signature_data: stampData,
         therapist_signed_at: signedAt,
-      } as any).eq('id', signingContractId);
+      } as any).eq('id', contractId);
       if (error) throw error;
       setContracts(prev => prev.map(c =>
-        c.id === signingContractId
-          ? { ...c, therapist_signature_data: composedSignature, therapist_signed_at: signedAt }
+        c.id === contractId
+          ? { ...c, therapist_signature_data: stampData, therapist_signed_at: signedAt }
           : c
       ));
-      toast.success('Assinatura do terapeuta registrada!');
+      toast.success('Carimbo do terapeuta registrado!');
       setSigningContractId(null);
-      setTherapistSigData('');
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao assinar');
+      toast.error(err.message || 'Erro ao registrar carimbo');
     } finally {
       setSavingSig(false);
     }
