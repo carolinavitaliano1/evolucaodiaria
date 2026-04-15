@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ContractEditor } from '@/components/contracts/ContractEditor';
-import { SignaturePad } from '@/components/ui/signature-pad';
+
 import { toast } from 'sonner';
 import {
   Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2,
@@ -57,100 +57,6 @@ interface ContractManagerProps {
   patientName: string;
 }
 
-interface LoadedCanvasImage {
-  image: HTMLImageElement;
-  cleanup: () => void;
-}
-
-async function loadImageElement(src: string): Promise<LoadedCanvasImage> {
-  let objectUrl: string | null = null;
-  const image = new Image();
-  image.crossOrigin = 'anonymous';
-  image.decoding = 'async';
-
-  const cleanup = () => {
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl);
-      objectUrl = null;
-    }
-  };
-
-  try {
-    if (src.startsWith('data:') || src.startsWith('blob:')) {
-      image.src = src;
-    } else {
-      const response = await fetch(src);
-      if (!response.ok) throw new Error('Falha ao buscar imagem.');
-      const blob = await response.blob();
-      objectUrl = URL.createObjectURL(blob);
-      image.src = objectUrl;
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error('Falha ao carregar imagem.'));
-    });
-
-    return { image, cleanup };
-  } catch (error) {
-    cleanup();
-    throw error;
-  }
-}
-
-function fitImageWithin(width: number, height: number, maxWidth: number, maxHeight: number) {
-  const scale = Math.min(maxWidth / width, maxHeight / height, 1);
-
-  return {
-    width: Math.max(1, Math.round(width * scale)),
-    height: Math.max(1, Math.round(height * scale)),
-  };
-}
-
-async function composeTherapistSignature(signatureData: string, stampImage?: string | null) {
-  if (!stampImage) return signatureData;
-
-  let loadedSignature: LoadedCanvasImage | null = null;
-  let loadedStamp: LoadedCanvasImage | null = null;
-
-  try {
-    [loadedSignature, loadedStamp] = await Promise.all([
-      loadImageElement(signatureData),
-      loadImageElement(stampImage),
-    ]);
-
-    const signatureImg = loadedSignature.image;
-    const stampImg = loadedStamp.image;
-    const signatureSize = fitImageWithin(signatureImg.naturalWidth, signatureImg.naturalHeight, 520, 150);
-    const stampSize = fitImageWithin(stampImg.naturalWidth, stampImg.naturalHeight, 420, 220);
-    const padding = 18;
-    const gap = 18;
-    const canvasWidth = Math.ceil(Math.max(signatureSize.width, stampSize.width) + padding * 2);
-    const canvasHeight = Math.ceil(signatureSize.height + stampSize.height + gap + padding * 2);
-    const outputScale = 2;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = canvasWidth * outputScale;
-    canvas.height = canvasHeight * outputScale;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return signatureData;
-
-    ctx.scale(outputScale, outputScale);
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(signatureImg, (canvasWidth - signatureSize.width) / 2, padding, signatureSize.width, signatureSize.height);
-    ctx.drawImage(stampImg, (canvasWidth - stampSize.width) / 2, padding + signatureSize.height + gap, stampSize.width, stampSize.height);
-
-    return canvas.toDataURL('image/png');
-  } catch {
-    return signatureData;
-  } finally {
-    loadedSignature?.cleanup();
-    loadedStamp?.cleanup();
-  }
-}
 
 
 const DEFAULT_BODY = `<h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS TERAPÊUTICOS</h2>
@@ -260,9 +166,8 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
   const [digitizing, setDigitizing] = useState(false);
   const [digitizeProgress, setDigitizeProgress] = useState('');
 
-  // Therapist signature per contract
+  // Therapist stamp per contract
   const [signingContractId, setSigningContractId] = useState<string | null>(null);
-  const [therapistSigData, setTherapistSigData] = useState('');
   const [savingSig, setSavingSig] = useState(false);
 
   // Stamps
@@ -533,30 +438,41 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
     finally { setSaving(false); }
   };
 
-  // ─── Therapist sign ───────────────────────────────────────────────────────
-  const handleTherapistSign = async () => {
-    if (!signingContractId || !therapistSigData) return;
+  // ─── Therapist stamp (no manual signature) ─────────────────────────────
+  const handleTherapistStamp = async (contractId: string) => {
+    const stamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
+    if (!stamp) {
+      toast.error('Selecione um carimbo para assinar o contrato.');
+      return;
+    }
     setSavingSig(true);
     try {
-      const stamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
-      const signedAt = new Date().toISOString();
-      const composedSignature = await composeTherapistSignature(therapistSigData, stamp?.stamp_image || null);
+      const { data: profile } = await supabase.from('profiles').select('name,professional_id').eq('user_id', user!.id).maybeSingle();
+      const { data: fullStamp } = await supabase.from('stamps').select('cbo,clinical_area,stamp_image').eq('id', stamp.id).maybeSingle();
 
+      const stampData = JSON.stringify({
+        stamp_image: (fullStamp as any)?.stamp_image || stamp.stamp_image || null,
+        name: profile?.name || '',
+        clinical_area: (fullStamp as any)?.clinical_area || stamp.clinical_area || '',
+        cbo: (fullStamp as any)?.cbo || '',
+        professional_id: profile?.professional_id || '',
+      });
+
+      const signedAt = new Date().toISOString();
       const { error } = await supabase.from('patient_contracts').update({
-        therapist_signature_data: composedSignature,
+        therapist_signature_data: stampData,
         therapist_signed_at: signedAt,
-      } as any).eq('id', signingContractId);
+      } as any).eq('id', contractId);
       if (error) throw error;
       setContracts(prev => prev.map(c =>
-        c.id === signingContractId
-          ? { ...c, therapist_signature_data: composedSignature, therapist_signed_at: signedAt }
+        c.id === contractId
+          ? { ...c, therapist_signature_data: stampData, therapist_signed_at: signedAt }
           : c
       ));
-      toast.success('Assinatura do terapeuta registrada!');
+      toast.success('Carimbo do terapeuta registrado!');
       setSigningContractId(null);
-      setTherapistSigData('');
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao assinar');
+      toast.error(err.message || 'Erro ao registrar carimbo');
     } finally {
       setSavingSig(false);
     }
@@ -753,9 +669,9 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                       <Eye className="w-3.5 h-3.5 text-muted-foreground" />
                     </Button>
                     {!contract.therapist_signature_data && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar como terapeuta"
-                        onClick={() => { setSigningContractId(contract.id); setTherapistSigData(''); }}>
-                        <PenLine className="w-3.5 h-3.5 text-primary" />
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Registrar carimbo"
+                        onClick={() => setSigningContractId(contract.id)}>
+                        <Stamp className="w-3.5 h-3.5 text-primary" />
                       </Button>
                     )}
                     {contract.status === 'pending' && (
@@ -771,28 +687,17 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                   </div>
                 </div>
 
-                {/* Therapist signature pad (inline) */}
+                {/* Therapist stamp selector (inline) */}
                 {signingContractId === contract.id && (
                   <div className="border-t border-border bg-muted/20 p-4 space-y-3 animate-fade-in">
                     <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <PenLine className="w-3.5 h-3.5 text-primary" /> Sua assinatura (terapeuta)
+                      <Stamp className="w-3.5 h-3.5 text-primary" /> Selecionar carimbo profissional
                     </p>
 
-                    {/* Signature pad */}
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Assinatura</Label>
-                      <SignaturePad
-                        value={therapistSigData}
-                        onChange={setTherapistSigData}
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Stamp selector */}
-                    {stamps.length > 0 && (
+                    {stamps.length > 0 ? (
                       <div className="space-y-1.5">
                         <Label className="text-[11px] text-muted-foreground flex items-center gap-1">
-                          <Stamp className="w-3 h-3" /> Carimbo (opcional)
+                          <Stamp className="w-3 h-3" /> Carimbo
                         </Label>
                         <Select value={selectedStampId} onValueChange={setSelectedStampId}>
                           <SelectTrigger className="h-8 text-xs">
@@ -807,7 +712,6 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                             ))}
                           </SelectContent>
                         </Select>
-                        {/* Stamp preview */}
                         {selectedStampId !== 'none' && (() => {
                           const stamp = stamps.find(s => s.id === selectedStampId);
                           return stamp?.stamp_image ? (
@@ -818,17 +722,19 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                           ) : null;
                         })()}
                       </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Nenhum carimbo cadastrado. Cadastre um carimbo no seu perfil.</p>
                     )}
 
                     <div className="flex gap-2 pt-1">
                       <Button variant="outline" size="sm" className="flex-1 text-xs"
-                        onClick={() => { setSigningContractId(null); setTherapistSigData(''); }}>
+                        onClick={() => setSigningContractId(null)}>
                         Cancelar
                       </Button>
                       <Button size="sm" className="flex-1 text-xs gap-1.5"
-                        onClick={handleTherapistSign} disabled={!therapistSigData || savingSig}>
+                        onClick={() => handleTherapistStamp(contract.id)} disabled={selectedStampId === 'none' || savingSig}>
                         {savingSig ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                        Registrar assinatura
+                        Registrar carimbo
                       </Button>
                     </div>
                   </div>
@@ -851,21 +757,32 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                 className="prose prose-sm max-w-none text-foreground [&_p]:text-justify [&_p]:leading-relaxed [&_h2]:text-center [&_h3]:uppercase [&_h3]:text-sm"
                 dangerouslySetInnerHTML={{ __html: cleanContractHtml(previewContract.template_html) }}
               />
-              {/* Therapist signature */}
-              {previewContract.therapist_signature_data && (
-                <div className="border-t border-border pt-4 space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">Assinatura do terapeuta:</p>
-                  <div className="flex items-end gap-4 flex-wrap">
-                    <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
-                      className="max-h-32 w-auto object-contain border border-border rounded bg-background" />
+              {/* Therapist stamp */}
+              {previewContract.therapist_signature_data && (() => {
+                let stampInfo: any = null;
+                try { stampInfo = JSON.parse(previewContract.therapist_signature_data); } catch { stampInfo = null; }
+                return (
+                  <div className="border-t border-border pt-4 space-y-2 text-center">
+                    <p className="text-xs text-muted-foreground font-medium">Carimbo do terapeuta:</p>
+                    {stampInfo?.stamp_image ? (
+                      <img src={stampInfo.stamp_image} alt="Carimbo" className="max-h-24 mx-auto object-contain" />
+                    ) : !stampInfo ? (
+                      <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
+                        className="max-h-32 mx-auto object-contain border border-border rounded bg-background" />
+                    ) : null}
+                    <div className="w-48 mx-auto border-b border-foreground/40" />
+                    {stampInfo?.name && <p className="text-xs font-semibold text-foreground">{stampInfo.name}</p>}
+                    {stampInfo?.clinical_area && <p className="text-[10px] text-muted-foreground">{stampInfo.clinical_area}</p>}
+                    {stampInfo?.cbo && <p className="text-[10px] text-muted-foreground">CBO: {stampInfo.cbo}</p>}
+                    {stampInfo?.professional_id && <p className="text-[10px] text-muted-foreground">Registro: {stampInfo.professional_id}</p>}
+                    {previewContract.therapist_signed_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(previewContract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
                   </div>
-                  {previewContract.therapist_signed_at && (
-                    <p className="text-[10px] text-muted-foreground">
-                      {format(new Date(previewContract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  )}
-                </div>
-              )}
+                );
+              })()}
               {/* Patient signature */}
               {previewContract.signature_data && (
                 <div className="border-t border-border pt-4 space-y-1">
