@@ -55,10 +55,13 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
         .filter(p => p.paymentValue && p.paymentValue > 0)
         .map(p => {
           const existing = (data || []).find(r => r.patient_id === p.id);
+          const amount = p.paymentType === 'fixo'
+            ? (p.paymentValue || existing?.amount || 0)
+            : (existing?.amount || p.paymentValue || 0);
           return {
             id: existing?.id || `temp-${p.id}`,
             patient_id: p.id,
-            amount: existing?.amount || p.paymentValue || 0,
+            amount,
             paid: existing?.paid || false,
             due_date: existing?.due_date || null,
             payment_date: existing?.payment_date || null,
@@ -108,7 +111,7 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
       } else {
         const { error } = await supabase
           .from('patient_payment_records')
-          .update({ paid: true, payment_date: today })
+          .update({ amount: payment.amount, paid: true, payment_date: today })
           .eq('id', payment.id);
 
         if (error) throw error;

@@ -476,13 +476,14 @@ export default function PatientDetail() {
     if (!user || !patient) return;
     setSavingPaymentRecord(true);
     try {
-      const amount = patient.paymentValue || 0;
+      const amount = Number(finRevenue ?? patient.paymentValue ?? 0);
       if (paymentRecord?.id) {
         await supabase.from('patient_payment_records').update({
+          amount,
           paid,
           payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
         }).eq('id', paymentRecord.id);
-        setPaymentRecord(prev => prev ? { ...prev, paid, payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null } : prev);
+        setPaymentRecord(prev => prev ? { ...prev, amount, paid, payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null } : prev);
       } else {
         const { data } = await supabase.from('patient_payment_records').insert({
           user_id: user.id,

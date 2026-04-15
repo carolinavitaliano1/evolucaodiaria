@@ -350,16 +350,25 @@ export default function PortalFinancial() {
   const displayRecords = (() => {
     const all = [...records];
     const hasCurrentMonth = all.some(r => r.month === currentMonth && r.year === currentYear);
-    // Use calculated revenue (includes group sessions) or fallback to payment_value
-    const virtualAmount = calculatedRevenue != null && calculatedRevenue > 0
+    // Use calculated revenue (includes current pricing) or fallback to payment_value
+    const currentMonthAmount = calculatedRevenue != null && calculatedRevenue > 0
       ? calculatedRevenue
       : Number(patient?.payment_value || 0);
-    if (!hasCurrentMonth && virtualAmount > 0) {
+
+    if (hasCurrentMonth && currentMonthAmount > 0) {
+      return all.map(record =>
+        record.month === currentMonth && record.year === currentYear
+          ? { ...record, amount: currentMonthAmount }
+          : record
+      );
+    }
+
+    if (!hasCurrentMonth && currentMonthAmount > 0) {
       all.unshift({
         id: 'virtual-current',
         month: currentMonth,
         year: currentYear,
-        amount: virtualAmount,
+        amount: currentMonthAmount,
         paid: false,
         payment_date: null,
         notes: null,
