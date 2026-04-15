@@ -102,6 +102,423 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
   );
 }
 
+const DEFAULT_SECTIONS = [
+  {
+    key: 'overview',
+    defaultTitle: 'Visão geral',
+    fields: (g: GroupData) => [
+      { label: 'Descrição', value: g.description },
+      { label: 'Foco terapêutico', value: g.therapeutic_focus },
+      { label: 'Objetivos', value: g.objectives },
+      { label: 'Motivo do suporte', value: g.support_reason },
+      { label: 'Metas compartilhadas', value: g.shared_goals },
+      { label: 'Padrões de comunicação', value: g.communication_patterns },
+      { label: 'Áreas de conflito', value: g.conflict_areas },
+    ],
+  },
+  {
+    key: 'structure',
+    defaultTitle: 'Estrutura',
+    fields: (g: GroupData) => [
+      { label: 'Frequência dos encontros', value: g.meeting_frequency },
+      { label: 'Duração (min)', value: g.duration_minutes },
+      { label: 'Formato do encontro', value: g.meeting_format },
+      { label: 'Estilo de facilitação', value: g.facilitation_style },
+      { label: 'Grupo aberto', value: g.open_to_new ? 'Sim' : 'Não' },
+      { label: 'Máximo de participantes', value: g.max_participants },
+      { label: 'Política de lista de espera', value: g.waitlist_policy },
+      { label: 'Plano de acompanhamento', value: g.follow_up_plan },
+    ],
+  },
+  {
+    key: 'criteria',
+    defaultTitle: 'Critérios e combinados',
+    fields: (g: GroupData) => [
+      { label: 'Critérios de entrada', value: g.entry_criteria },
+      { label: 'Critérios de exclusão', value: g.exclusion_criteria },
+      { label: 'Confidencialidade', value: g.confidentiality_agreement },
+      { label: 'Regras do grupo', value: g.group_rules },
+      { label: 'Materiais', value: g.materials },
+      { label: 'Recursos de apoio', value: g.support_resources },
+    ],
+  },
+  {
+    key: 'tracking',
+    defaultTitle: 'Acompanhamento',
+    fields: (g: GroupData) => [
+      { label: 'Método de avaliação', value: g.assessment_method },
+      { label: 'Próximos tópicos', value: g.next_topics },
+      { label: 'Notas da facilitação', value: g.facilitation_notes },
+      { label: 'Notas de supervisão', value: g.supervision_notes },
+      { label: 'Observações gerais', value: g.general_notes },
+    ],
+  },
+];
+
+interface GroupInfoTabProps {
+  group: GroupData;
+  setGroup: React.Dispatch<React.SetStateAction<GroupData | null>>;
+  members: MemberPatient[];
+  memberPaymentConfigs: Record<string, MemberPaymentConfig>;
+  setMemberPaymentConfigs: React.Dispatch<React.SetStateAction<Record<string, MemberPaymentConfig>>>;
+  clinicPackages: any[];
+}
+
+function GroupInfoTab({ group, setGroup, members, memberPaymentConfigs, setMemberPaymentConfigs, clinicPackages }: GroupInfoTabProps) {
+  const cs = group.custom_sections || {};
+  const hiddenDefaults = cs.hidden_defaults || [];
+  const renamedDefaults = cs.renamed_defaults || {};
+  const customSections = cs.custom || [];
+
+  // Edit dialog state
+  const [editingDefault, setEditingDefault] = useState<string | null>(null);
+  const [editDefaultTitle, setEditDefaultTitle] = useState('');
+
+  // Custom section dialog
+  const [editingCustom, setEditingCustom] = useState<CustomSection | null>(null);
+  const [isNewCustom, setIsNewCustom] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customFields, setCustomFields] = useState<CustomSectionField[]>([]);
+
+  const saveCustomSections = async (newCs: CustomSections) => {
+    await supabase.from('therapeutic_groups').update({ custom_sections: newCs } as any).eq('id', group.id);
+    setGroup(prev => prev ? { ...prev, custom_sections: newCs } : prev);
+  };
+
+  // Rename default section
+  const handleSaveDefaultRename = async () => {
+    if (!editingDefault) return;
+    const newRenamed = { ...renamedDefaults, [editingDefault]: editDefaultTitle.trim() || null };
+    const newCs: CustomSections = { ...cs, renamed_defaults: newRenamed };
+    await saveCustomSections(newCs);
+    setEditingDefault(null);
+    toast.success('Seção renomeada');
+  };
+
+  // Toggle hide default
+  const toggleHideDefault = async (key: string) => {
+    const isHidden = hiddenDefaults.includes(key);
+    const newHidden = isHidden ? hiddenDefaults.filter(k => k !== key) : [...hiddenDefaults, key];
+    const newCs: CustomSections = { ...cs, hidden_defaults: newHidden };
+    await saveCustomSections(newCs);
+    toast.success(isHidden ? 'Seção restaurada' : 'Seção oculta');
+  };
+
+  // Open new custom section dialog
+  const openNewCustom = () => {
+    setIsNewCustom(true);
+    setCustomTitle('');
+    setCustomFields([{ label: '', value: '' }]);
+    setEditingCustom({ id: crypto.randomUUID(), title: '', fields: [] });
+  };
+
+  // Open edit custom section dialog
+  const openEditCustom = (section: CustomSection) => {
+    setIsNewCustom(false);
+    setCustomTitle(section.title);
+    setCustomFields(section.fields.length > 0 ? [...section.fields] : [{ label: '', value: '' }]);
+    setEditingCustom(section);
+  };
+
+  const handleSaveCustom = async () => {
+    if (!editingCustom || !customTitle.trim()) { toast.error('Informe o título da seção'); return; }
+    const validFields = customFields.filter(f => f.label.trim());
+    const section: CustomSection = {
+      id: editingCustom.id,
+      title: customTitle.trim(),
+      fields: validFields,
+    };
+    let newCustom: CustomSection[];
+    if (isNewCustom) {
+      newCustom = [...customSections, section];
+    } else {
+      newCustom = customSections.map(s => s.id === section.id ? section : s);
+    }
+    const newCs: CustomSections = { ...cs, custom: newCustom };
+    await saveCustomSections(newCs);
+    setEditingCustom(null);
+    toast.success(isNewCustom ? 'Nova seção criada' : 'Seção atualizada');
+  };
+
+  const deleteCustomSection = async (sectionId: string) => {
+    const newCustom = customSections.filter(s => s.id !== sectionId);
+    const newCs: CustomSections = { ...cs, custom: newCustom };
+    await saveCustomSections(newCs);
+    setEditingCustom(null);
+    toast.success('Seção removida');
+  };
+
+  const visibleDefaults = DEFAULT_SECTIONS.filter(s => !hiddenDefaults.includes(s.key));
+  const hiddenDefaultsList = DEFAULT_SECTIONS.filter(s => hiddenDefaults.includes(s.key));
+
+  return (
+    <>
+      <Accordion type="multiple" defaultValue={visibleDefaults.map(s => s.key)} className="space-y-3">
+        {visibleDefaults.map(section => {
+          const title = renamedDefaults[section.key] || section.defaultTitle;
+          return (
+            <AccordionItem key={section.key} value={section.key} className="border rounded-xl px-4">
+              <div className="flex items-center">
+                <AccordionTrigger className="text-base font-semibold flex-1">{title}</AccordionTrigger>
+                <div className="flex gap-1 ml-2">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setEditDefaultTitle(renamedDefaults[section.key] || section.defaultTitle); setEditingDefault(section.key); }}>
+                    <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); toggleHideDefault(section.key); }}>
+                    <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
+              </div>
+              <AccordionContent>
+                {section.fields(group).map((f, i) => (
+                  <InfoRow key={i} label={f.label} value={f.value} />
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+
+        {/* Custom sections */}
+        {customSections.map(section => (
+          <AccordionItem key={section.id} value={`custom-${section.id}`} className="border rounded-xl px-4">
+            <div className="flex items-center">
+              <AccordionTrigger className="text-base font-semibold flex-1">{section.title}</AccordionTrigger>
+              <div className="flex gap-1 ml-2">
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); openEditCustom(section); }}>
+                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); deleteCustomSection(section.id); }}>
+                  <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+              </div>
+            </div>
+            <AccordionContent>
+              {section.fields.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">Nenhum campo adicionado</p>
+              ) : (
+                section.fields.map((f, i) => (
+                  <InfoRow key={i} label={f.label} value={f.value} />
+                ))
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+
+      {/* Hidden sections indicator */}
+      {hiddenDefaultsList.length > 0 && (
+        <div className="bg-muted/50 border border-dashed rounded-xl p-3 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <EyeOff className="w-3.5 h-3.5" /> Seções ocultas
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {hiddenDefaultsList.map(s => (
+              <Button key={s.key} variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => toggleHideDefault(s.key)}>
+                <Eye className="w-3 h-3" /> {renamedDefaults[s.key] || s.defaultTitle}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add new custom section */}
+      <Button variant="outline" className="gap-2 w-full" onClick={openNewCustom}>
+        <Plus className="w-4 h-4" /> Nova seção
+      </Button>
+
+      {/* Financial toggle & pricing (preserved from original) */}
+      <div className="bg-card border rounded-xl p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-foreground">Módulo financeiro</p>
+            <p className="text-xs text-muted-foreground">Habilite para acompanhar pagamentos dos participantes do grupo</p>
+          </div>
+          <Switch
+            checked={group.financial_enabled}
+            onCheckedChange={async (checked) => {
+              await supabase.from('therapeutic_groups').update({ financial_enabled: checked } as any).eq('id', group.id);
+              setGroup(prev => prev ? { ...prev, financial_enabled: checked } : prev);
+              toast.success(checked ? 'Financeiro habilitado' : 'Financeiro desabilitado');
+            }}
+          />
+        </div>
+        {group.financial_enabled && (
+          <div className="space-y-4 pt-2 border-t border-border">
+            <div>
+              <Label className="text-sm font-medium">Tipo de cobrança</Label>
+              <Select
+                value={group.payment_type || 'por_sessao'}
+                onValueChange={async (val) => {
+                  const updates: any = { payment_type: val };
+                  if (val !== 'pacote') updates.package_id = null;
+                  await supabase.from('therapeutic_groups').update(updates).eq('id', group.id);
+                  setGroup(prev => prev ? { ...prev, payment_type: val, ...(val !== 'pacote' ? { package_id: null } : {}) } : prev);
+                }}
+              >
+                <SelectTrigger className="mt-1 max-w-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="por_sessao">Por Sessão</SelectItem>
+                  <SelectItem value="mensal">Mensal</SelectItem>
+                  <SelectItem value="pacote">Pacote</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {group.payment_type === 'pacote' && (
+              <div>
+                <Label className="text-sm font-medium">Pacote da clínica</Label>
+                {clinicPackages.length === 0 ? (
+                  <p className="text-xs text-muted-foreground mt-1">Nenhum pacote ativo nesta clínica.</p>
+                ) : (
+                  <Select
+                    value={group.package_id || ''}
+                    onValueChange={async (val) => {
+                      const pkg = clinicPackages.find(p => p.id === val);
+                      const updates: any = { package_id: val, default_price: pkg?.price ?? group.default_price };
+                      await supabase.from('therapeutic_groups').update(updates).eq('id', group.id);
+                      setGroup(prev => prev ? { ...prev, package_id: val, default_price: pkg?.price ?? prev.default_price } : prev);
+                    }}
+                  >
+                    <SelectTrigger className="mt-1 max-w-xs"><SelectValue placeholder="Selecione um pacote" /></SelectTrigger>
+                    <SelectContent>
+                      {clinicPackages.map(pkg => (
+                        <SelectItem key={pkg.id} value={pkg.id}>
+                          {pkg.name} — R$ {Number(pkg.price).toFixed(2)}
+                          {pkg.session_limit ? ` (${pkg.session_limit} sessões)` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+            {group.payment_type !== 'pacote' && (
+              <div>
+                <Label className="text-sm font-medium">
+                  {group.payment_type === 'mensal' ? 'Valor mensal do grupo (R$)' : 'Valor por sessão do grupo (R$)'}
+                </Label>
+                <Input
+                  type="number" step="0.01" min="0" placeholder="0.00"
+                  value={group.default_price ?? ''}
+                  onChange={(e) => { const val = e.target.value ? parseFloat(e.target.value) : null; setGroup(prev => prev ? { ...prev, default_price: val } : prev); }}
+                  onBlur={async () => { await supabase.from('therapeutic_groups').update({ default_price: group.default_price } as any).eq('id', group.id); }}
+                  className="mt-1 max-w-xs"
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Member payment configuration */}
+      {group.financial_enabled && members.length > 0 && (
+        <div className="bg-card border rounded-xl p-4 space-y-3">
+          <p className="text-sm font-medium text-foreground">💰 Configuração de pagamento por participante</p>
+          <p className="text-xs text-muted-foreground">Defina quem é pagante e o valor individual (ou use o valor padrão do grupo).</p>
+          <div className="space-y-2">
+            {members.map(m => {
+              const config = memberPaymentConfigs[m.id] || { isPaying: true, memberPaymentValue: null };
+              const updateMemberConfig = async (updates: Partial<MemberPaymentConfig>) => {
+                const newConfig = { ...config, ...updates };
+                setMemberPaymentConfigs(prev => ({ ...prev, [m.id]: newConfig }));
+                await supabase.from('therapeutic_group_members').update({
+                  is_paying: newConfig.isPaying,
+                  member_payment_value: newConfig.memberPaymentValue,
+                } as any).eq('group_id', group.id).eq('patient_id', m.id);
+              };
+              return (
+                <div key={m.id} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border border-border bg-background">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-sm font-medium text-foreground truncate">{m.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={config.isPaying} onCheckedChange={(checked) => updateMemberConfig({ isPaying: checked })} />
+                      <Label className="text-xs whitespace-nowrap">{config.isPaying ? '💲 Pagante' : '🚫 Não pagante'}</Label>
+                    </div>
+                    {config.isPaying && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">R$</span>
+                        <Input
+                          type="number" step="0.01" min="0"
+                          placeholder={group.default_price ? `${group.default_price}` : '0.00'}
+                          value={config.memberPaymentValue ?? ''}
+                          onChange={(e) => { const val = e.target.value ? parseFloat(e.target.value) : null; setMemberPaymentConfigs(prev => ({ ...prev, [m.id]: { ...config, memberPaymentValue: val } })); }}
+                          onBlur={() => updateMemberConfig({ memberPaymentValue: config.memberPaymentValue })}
+                          className="w-24 h-8 text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Rename default section dialog */}
+      <Dialog open={!!editingDefault} onOpenChange={(open) => { if (!open) setEditingDefault(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Renomear seção</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm">Novo título</Label>
+              <Input value={editDefaultTitle} onChange={e => setEditDefaultTitle(e.target.value)} placeholder="Nome da seção" className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingDefault(null)}>Cancelar</Button>
+            <Button onClick={handleSaveDefaultRename}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit/create custom section dialog */}
+      <Dialog open={!!editingCustom} onOpenChange={(open) => { if (!open) setEditingCustom(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isNewCustom ? 'Nova seção personalizada' : 'Editar seção'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">Título da seção</Label>
+              <Input value={customTitle} onChange={e => setCustomTitle(e.target.value)} placeholder="Ex: Dinâmicas do Grupo" className="mt-1" />
+            </div>
+            <div className="space-y-3">
+              <Label className="text-sm">Campos</Label>
+              {customFields.map((field, i) => (
+                <div key={i} className="flex gap-2 items-start">
+                  <div className="flex-1 space-y-1.5">
+                    <Input placeholder="Rótulo do campo" value={field.label} onChange={e => { const nf = [...customFields]; nf[i] = { ...nf[i], label: e.target.value }; setCustomFields(nf); }} className="text-sm" />
+                    <Textarea placeholder="Conteúdo..." value={field.value} onChange={e => { const nf = [...customFields]; nf[i] = { ...nf[i], value: e.target.value }; setCustomFields(nf); }} rows={2} className="text-sm" />
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 mt-1 shrink-0" onClick={() => setCustomFields(customFields.filter((_, j) => j !== i))}>
+                    <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setCustomFields([...customFields, { label: '', value: '' }])}>
+                <Plus className="w-3 h-3" /> Adicionar campo
+              </Button>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {!isNewCustom && editingCustom && (
+              <Button variant="destructive" size="sm" className="mr-auto" onClick={() => deleteCustomSection(editingCustom.id)}>
+                <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir seção
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setEditingCustom(null)}>Cancelar</Button>
+            <Button onClick={handleSaveCustom}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
