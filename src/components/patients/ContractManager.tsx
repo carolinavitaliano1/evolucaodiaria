@@ -782,28 +782,17 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                   </div>
                 </div>
 
-                {/* Therapist signature pad (inline) */}
+                {/* Therapist stamp selector (inline) */}
                 {signingContractId === contract.id && (
                   <div className="border-t border-border bg-muted/20 p-4 space-y-3 animate-fade-in">
                     <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <PenLine className="w-3.5 h-3.5 text-primary" /> Sua assinatura (terapeuta)
+                      <Stamp className="w-3.5 h-3.5 text-primary" /> Selecionar carimbo profissional
                     </p>
 
-                    {/* Signature pad */}
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Assinatura</Label>
-                      <SignaturePad
-                        value={therapistSigData}
-                        onChange={setTherapistSigData}
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Stamp selector */}
-                    {stamps.length > 0 && (
+                    {stamps.length > 0 ? (
                       <div className="space-y-1.5">
                         <Label className="text-[11px] text-muted-foreground flex items-center gap-1">
-                          <Stamp className="w-3 h-3" /> Carimbo (opcional)
+                          <Stamp className="w-3 h-3" /> Carimbo
                         </Label>
                         <Select value={selectedStampId} onValueChange={setSelectedStampId}>
                           <SelectTrigger className="h-8 text-xs">
@@ -818,7 +807,6 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                             ))}
                           </SelectContent>
                         </Select>
-                        {/* Stamp preview */}
                         {selectedStampId !== 'none' && (() => {
                           const stamp = stamps.find(s => s.id === selectedStampId);
                           return stamp?.stamp_image ? (
@@ -829,17 +817,19 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                           ) : null;
                         })()}
                       </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Nenhum carimbo cadastrado. Cadastre um carimbo no seu perfil.</p>
                     )}
 
                     <div className="flex gap-2 pt-1">
                       <Button variant="outline" size="sm" className="flex-1 text-xs"
-                        onClick={() => { setSigningContractId(null); setTherapistSigData(''); }}>
+                        onClick={() => setSigningContractId(null)}>
                         Cancelar
                       </Button>
                       <Button size="sm" className="flex-1 text-xs gap-1.5"
-                        onClick={handleTherapistSign} disabled={!therapistSigData || savingSig}>
+                        onClick={() => handleTherapistStamp(contract.id)} disabled={selectedStampId === 'none' || savingSig}>
                         {savingSig ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                        Registrar assinatura
+                        Registrar carimbo
                       </Button>
                     </div>
                   </div>
