@@ -194,6 +194,16 @@ export default function PortalFinancial() {
           .ilike('name', 'Comprovante%')
           .order('created_at', { ascending: false });
         setReceiptDocs((docs || []) as ReceiptDoc[]);
+
+        // Calculate actual monthly revenue via DB function
+        const cm = new Date().getMonth() + 1;
+        const cy = new Date().getFullYear();
+        const { data: revenueData } = await supabase.rpc('get_patient_monthly_revenue', {
+          _patient_id: portalAccount.patient_id,
+          _month: cm,
+          _year: cy,
+        });
+        setCalculatedRevenue(typeof revenueData === 'number' ? revenueData : null);
       } finally {
         setLoading(false);
       }
