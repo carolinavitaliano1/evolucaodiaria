@@ -1514,11 +1514,11 @@ export default function PatientDetail() {
             if (dynVal) {
               const deductible = targetEvolutions.filter(e => e.attendanceStatus === 'falta').length;
               const ded = calculateMensalRevenueWithDeductions(paymentValue, deductible, dynVal.occurrences);
-              return ded.adjustedRevenue + tGroupRevenue;
+              return ded.finalRevenue + tGroupRevenue;
             }
             return paymentValue + tGroupRevenue;
           })()
-        : isClinicDiario
+        : isFixoDiario
           ? tIndividualUniqueDays * perSessionValue + tGroupRevenue
           : tIndividualBillableCount * perSessionValue + tGroupRevenue;
       const tRegistros = targetEvolutions.length;
