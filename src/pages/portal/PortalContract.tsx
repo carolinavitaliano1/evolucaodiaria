@@ -35,16 +35,6 @@ interface PatientExtra {
   is_minor: boolean;
 }
 
-/** Strip contract-variable spans from stored HTML so previews/PDFs show clean text */
-function cleanContractHtml(html: string): string {
-  let clean = html;
-  clean = clean.replace(
-    /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
-    (_, inner) => inner.replace(/<[^>]*>/g, '').trim()
-  );
-  clean = clean.replace(/&nbsp;/g, ' ');
-  return clean;
-}
 
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const wrapper = document.createElement('div');
