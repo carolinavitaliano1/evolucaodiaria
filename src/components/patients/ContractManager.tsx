@@ -9,7 +9,7 @@ import { generateContractPDF } from '@/pages/portal/PortalContract';
 
 import { toast } from 'sonner';
 import {
-  Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2,
+  Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2, Download,
   PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X, Stamp, Upload, Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
