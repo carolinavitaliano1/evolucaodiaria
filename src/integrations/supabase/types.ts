@@ -2777,6 +2777,10 @@ export type Database = {
           name: string
         }[]
       }
+      get_patient_monthly_revenue: {
+        Args: { _month: number; _patient_id: string; _year: number }
+        Returns: number
+      }
       get_user_org_role: {
         Args: { _org_id: string; _user_id: string }
         Returns: string
