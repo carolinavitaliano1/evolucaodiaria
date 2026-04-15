@@ -226,7 +226,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   for (const evo of evolutions) {
     ensureSpace(LH + 1);
     const st = STATUS_LABELS[evo.attendanceStatus] ?? { label: evo.attendanceStatus, billable: false };
-    const sessionValue = st.billable && patient.paymentType !== 'fixo' ? paymentValue : 0;
+    const sessionValue = st.billable ? paymentValue : 0;
     const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
 
     doc.setFontSize(8.5);
