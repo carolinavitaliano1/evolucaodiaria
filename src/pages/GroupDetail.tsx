@@ -132,7 +132,8 @@ export default function GroupDetail() {
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
-  // Financial state (now handled by GroupFinancialTab)
+  // Financial state
+  const [clinicPackages, setClinicPackages] = useState<any[]>([]);
 
   // Mural state
   const [muralMember, setMuralMember] = useState<string | null>(null);
