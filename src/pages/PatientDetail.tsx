@@ -2578,7 +2578,7 @@ export default function PatientDetail() {
                     <span className="truncate">Atendimento</span>
                   </Button>
                   <Button
-                    onClick={handleExportFinancialPDF}
+                    onClick={() => handleExportFinancialPDF(reportMonth)}
                     disabled={isExportingFinancial || monthlyEvolutions.length === 0}
                     className="gap-1.5 text-xs h-9 w-full"
                     size="sm"
