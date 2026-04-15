@@ -935,6 +935,41 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
       doc.setTextColor(50, 50, 50);
       doc.setFont('helvetica', 'normal');
 
+      const renderInlineParagraph = (parts: { text: string; bold: boolean }[], startY: number) => {
+        let currentY = startY;
+        let currentX = margin;
+        const maxX = margin + contentWidth;
+        const lineHeight = 7;
+        const tokens = parts.flatMap((part) =>
+          part.text
+            .split(/(\s+)/)
+            .filter(Boolean)
+            .map((token) => ({
+              text: /^\s+$/.test(token) ? ' ' : token,
+              bold: part.bold,
+              isSpace: /^\s+$/.test(token),
+            }))
+        );
+
+        for (const token of tokens) {
+          doc.setFont('helvetica', token.bold ? 'bold' : 'normal');
+          const tokenWidth = doc.getTextWidth(token.text);
+
+          if (!token.isSpace && currentX + tokenWidth > maxX) {
+            currentY += lineHeight;
+            if (currentY > 260) { doc.addPage(); currentY = 20; }
+            currentX = margin;
+          }
+
+          if (!(token.isSpace && currentX === margin)) {
+            doc.text(token.text, currentX, currentY);
+            currentX += tokenWidth;
+          }
+        }
+
+        return currentY + lineHeight;
+      };
+
       const bodyParts = [
         { text: 'Declaro, para os devidos fins, que ', bold: false },
         { text: patientName, bold: true },
@@ -949,16 +984,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
         { text: '.', bold: false },
       ];
 
-      const fullBody = bodyParts.map(p => p.text).join('');
-      const bodyLines: string[] = doc.splitTextToSize(fullBody, contentWidth);
-      for (let li = 0; li < bodyLines.length; li++) {
-        if (y > 260) { doc.addPage(); y = 20; }
-        doc.setFont('helvetica', 'normal');
-        // Only justify non-last lines; last line stays left-aligned
-        const isLast = li === bodyLines.length - 1;
-        doc.text(bodyLines[li], margin, y, { align: isLast ? 'left' : 'justify', maxWidth: contentWidth });
-        y += 7;
-      }
+      y = renderInlineParagraph(bodyParts, y);
 
       y += 20;
       const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
