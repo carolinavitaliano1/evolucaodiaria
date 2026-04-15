@@ -24,10 +24,25 @@ export function cleanContractHtml(html: string): string {
     (_, inner) => stripInnerTags(inner)
   );
 
-  // 4. Clean up stray &nbsp; entities
+  // 4. Catch-all: any remaining span with variable-related attributes
+  clean = clean.replace(
+    /<span[^>]*(?:data-variable|data-type\s*=\s*["']variable["']|contract-variable)[^>]*>([\s\S]*?)<\/span>/gi,
+    (_, inner) => stripInnerTags(inner)
+  );
+
+  // 5. Handle HTML-entity-encoded spans (sometimes TipTap or copy-paste escapes them)
+  clean = clean.replace(
+    /&lt;span[^&]*?(?:data-variable|data-type|contract-variable)[^&]*?&gt;([\s\S]*?)&lt;\/span&gt;/gi,
+    (_, inner) => inner.replace(/&lt;[^&]*?&gt;/g, '').trim()
+  );
+
+  // 6. Remove raw {{variable}} leftover text patterns that look like code
+  // (but keep the text content, just strip the braces if already substituted)
+
+  // 7. Clean up stray &nbsp; entities
   clean = clean.replace(/&nbsp;/g, ' ');
 
-  // 5. Remove any orphaned empty spans left behind
+  // 8. Remove any orphaned empty spans left behind
   clean = clean.replace(/<span[^>]*>\s*<\/span>/gi, '');
 
   return clean;
@@ -56,9 +71,9 @@ export function substituteContractVariables(
     (_, key) => variableMap[key] ?? `{{${key}}}`
   );
 
-  // 2. Handle <span data-type="variable" ...>{{key}}</span> (legacy)
+  // 2. Handle <span data-type="variable" ...>content</span> (legacy)
   result = result.replace(
-    /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
+    /<span[^>]*data-type\s*=\s*["']variable["'][^>]*>([\s\S]*?)<\/span>/gi,
     (_, innerContent) => {
       const text = stripInnerTags(innerContent).replace(/&nbsp;/g, ' ').trim();
       const match = text.match(/^\{\{(\w+)\}\}$/);
@@ -67,12 +82,35 @@ export function substituteContractVariables(
     }
   );
 
-  // 3. Handle raw {{key}} not inside spans
+  // 3. Handle <span class="...contract-variable...">content</span> (legacy)
+  result = result.replace(
+    /<span[^>]*class\s*=\s*["'][^"']*contract-variable[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,
+    (_, innerContent) => {
+      const text = stripInnerTags(innerContent).replace(/&nbsp;/g, ' ').trim();
+      const match = text.match(/^\{\{(\w+)\}\}$/);
+      if (match) return variableMap[match[1]] ?? text;
+      return stripInnerTags(innerContent);
+    }
+  );
+
+  // 4. Handle raw {{key}} not inside spans
   result = result.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     return variableMap[key] ?? `{{${key}}}`;
   });
 
-  // 4. Clean stray &nbsp;
+  // 5. Final cleanup: remove ANY remaining variable-related span wrappers
+  result = result.replace(
+    /<span[^>]*(?:data-variable|data-type\s*=\s*["']variable["']|contract-variable)[^>]*>([\s\S]*?)<\/span>/gi,
+    (_, inner) => stripInnerTags(inner)
+  );
+
+  // 6. Handle entity-encoded spans
+  result = result.replace(
+    /&lt;span[^&]*?(?:data-variable|data-type|contract-variable)[^&]*?&gt;([\s\S]*?)&lt;\/span&gt;/gi,
+    (_, inner) => inner.replace(/&lt;[^&]*?&gt;/g, '').trim()
+  );
+
+  // 7. Clean stray &nbsp;
   result = result.replace(/&nbsp;\s*/g, ' ');
 
   return result;
