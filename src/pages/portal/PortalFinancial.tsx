@@ -87,8 +87,19 @@ function getRecordStatus(record: PaymentRecord, paymentDueDay: number | null): '
   return 'pending';
 }
 
-function formatPaymentType(type: string | null): string {
+function formatPaymentType(type: string | null, packageData?: PackageData | null): string {
+  // If patient has a package, show the package type label
+  if (packageData) {
+    const pkgMap: Record<string, string> = {
+      mensal: 'Pacote Mensal',
+      por_sessao: 'Pacote por Sessão',
+      personalizado: 'Pacote Personalizado',
+    };
+    return pkgMap[packageData.package_type] || `Pacote (${packageData.package_type})`;
+  }
   const map: Record<string, string> = {
+    sessao: 'Por Sessão',
+    fixo: 'Fixo Mensal',
     mensal: 'Mensal',
     por_sessao: 'Por Sessão',
     fixo_diaria: 'Fixo Diária',
@@ -428,15 +439,17 @@ export default function PortalFinancial() {
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Tipo</p>
                 <p className="font-semibold text-foreground">
-                  {formatPaymentType(patient?.payment_type || null)}
+                  {formatPaymentType(patient?.payment_type || null, packageData)}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Valor</p>
                 <p className="font-semibold text-foreground">
-                  {patient?.payment_value
-                    ? `R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}`
-                    : 'Não definido'}
+                  {packageData
+                    ? `R$ ${Number(packageData.price).toFixed(2).replace('.', ',')}`
+                    : patient?.payment_value
+                      ? `R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}`
+                      : 'Não definido'}
                 </p>
               </div>
               {packageData?.name && (
