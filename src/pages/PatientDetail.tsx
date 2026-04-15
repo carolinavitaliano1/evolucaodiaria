@@ -1397,7 +1397,9 @@ export default function PatientDetail() {
       a.href = url;
       const safeName = patient.name.replace(/\s+/g, '-').toLowerCase();
       a.download = `recibo-fiscal-${safeName}-${format(fiscalStartDate, 'yyyy-MM-dd')}_${format(fiscalEndDate, 'yyyy-MM-dd')}.docx`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success('Recibo Word gerado com sucesso!');
     } catch { toast.error('Erro ao gerar recibo Word'); }
