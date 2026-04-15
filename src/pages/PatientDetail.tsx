@@ -1550,11 +1550,15 @@ export default function PatientDetail() {
       if (clinic?.name) idLines.push(['Unidade Clínica:', clinic.name]);
       if (patient.clinicalArea) idLines.push(['Área Clínica:', patient.clinicalArea]);
       if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
-      if (patient.paymentValue) idLines.push(
-        isPackagePersonalizado
-          ? ['Valor por Sessão:', `R$ ${perSessionValue.toFixed(2)} (Pacote ${patientPackage!.name} — ${patientPackage!.sessionLimit} sessões)`]
-          : ['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]
-      );
+      if (patient.paymentValue) {
+        if (isPackagePersonalizado) {
+          idLines.push(['Valor por Sessão:', `R$ ${perSessionValue.toFixed(2)} (Pacote ${patientPackage!.name} — ${patientPackage!.sessionLimit} sessões)`]);
+        } else if (pdfDynamic) {
+          idLines.push(['Valor Mensal:', `R$ ${paymentValue.toFixed(2)} (${pdfDynamic.occurrences} sessões → R$ ${pdfDynamic.perSession.toFixed(2)}/sessão)`]);
+        } else {
+          idLines.push(['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]);
+        }
+      }
       idLines.push(['Período de Referência:', monthLabelCap]);
       idLines.push(['Data de Emissão:', format(new Date(), 'dd/MM/yyyy', { locale: ptBR })]);
       idLines.forEach(([label, value]) => {
