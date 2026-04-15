@@ -1644,9 +1644,14 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                         <p className="font-medium text-foreground text-sm">{s.title || `Sessão ${date.toLocaleDateString('pt-BR')}`}</p>
                         <p className="text-xs text-muted-foreground">{date.toLocaleDateString('pt-BR')}</p>
                       </div>
-                      <Button variant="outline" size="sm" className="gap-1.5 text-xs shrink-0" onClick={() => downloadNextSessionWord(s)}>
-                        <Download className="w-3.5 h-3.5" /> Word
-                      </Button>
+                      <div className="flex gap-1.5 shrink-0">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadNextSession(s, 'pdf')}>
+                          <Download className="w-3.5 h-3.5" /> PDF
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadNextSession(s, 'word')}>
+                          <Download className="w-3.5 h-3.5" /> Word
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap line-clamp-4">{s.next_session_notes}</p>
                   </CardContent>
