@@ -326,10 +326,32 @@ export default function PortalFinancial() {
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
-  const currentRecord = records.find(r => r.month === currentMonth && r.year === currentYear);
+
+  // Build display records: include a virtual pending record for current month if none exists
+  const displayRecords = (() => {
+    const all = [...records];
+    const hasCurrentMonth = all.some(r => r.month === currentMonth && r.year === currentYear);
+    if (!hasCurrentMonth && patient?.payment_value && patient.payment_value > 0) {
+      all.unshift({
+        id: 'virtual-current',
+        month: currentMonth,
+        year: currentYear,
+        amount: Number(patient.payment_value),
+        paid: false,
+        payment_date: null,
+        notes: null,
+        due_date: patient.payment_due_day
+          ? `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(patient.payment_due_day).padStart(2, '0')}`
+          : null,
+      });
+    }
+    return all;
+  })();
+
+  const currentRecord = displayRecords.find(r => r.month === currentMonth && r.year === currentYear);
   const alert = getPaymentAlert(patient?.payment_due_day || null, !!currentRecord?.paid);
-  const totalPaid = records.filter(r => r.paid).reduce((s, r) => s + Number(r.amount), 0);
-  const totalPending = records.filter(r => !r.paid).reduce((s, r) => s + Number(r.amount), 0);
+  const totalPaid = displayRecords.filter(r => r.paid).reduce((s, r) => s + Number(r.amount), 0);
+  const totalPending = displayRecords.filter(r => !r.paid).reduce((s, r) => s + Number(r.amount), 0);
 
   if (loading) {
     return (
@@ -657,7 +679,7 @@ export default function PortalFinancial() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 px-0 md:px-6">
-            {records.length === 0 ? (
+            {displayRecords.length === 0 ? (
               <div className="text-center py-8 px-4">
                 <DollarSign className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
                 <p className="font-semibold text-sm text-foreground">Sem registros financeiros</p>
@@ -678,7 +700,7 @@ export default function PortalFinancial() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {records.map(record => {
+                      {displayRecords.map(record => {
                         const status = getRecordStatus(record, patient?.payment_due_day || null);
                         return (
                           <TableRow key={record.id}>
@@ -731,7 +753,7 @@ export default function PortalFinancial() {
 
                 {/* Mobile card list */}
                 <div className="md:hidden space-y-2 px-4">
-                  {records.map(record => {
+                  {displayRecords.map(record => {
                     const status = getRecordStatus(record, patient?.payment_due_day || null);
                     return (
                       <div key={record.id} className="bg-card rounded-lg border p-3">
