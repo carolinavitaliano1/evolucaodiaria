@@ -1200,9 +1200,14 @@ export default function PatientDetail() {
     };
     const billableEvos = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false);
     const billableCount = billableEvos.length;
-    // Use per-session value for Personalizado packages
-    const fiscalPerSession = isPackagePersonalizado ? perSessionValue : rawPaymentValue;
-    const calculatedTotal = patient?.paymentType === 'fixo'
+    // Use per-session value for Personalizado packages or dynamic mensal value
+    let fiscalPerSession = isPackagePersonalizado ? perSessionValue : rawPaymentValue;
+    if ((isPackageMensal || isFixoMensal) && rawPaymentValue > 0 && fiscalStartDate) {
+      const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+      const dynResult = getDynamicSessionValue(rawPaymentValue, patientWeekdays, fiscalStartDate.getMonth(), fiscalStartDate.getFullYear());
+      fiscalPerSession = dynResult.perSession;
+    }
+    const calculatedTotal = (isPackageMensal || isFixoMensal)
       ? rawPaymentValue
       : billableCount * fiscalPerSession;
 
