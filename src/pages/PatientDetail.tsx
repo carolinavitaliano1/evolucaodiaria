@@ -1405,7 +1405,7 @@ export default function PatientDetail() {
     } catch (err) {
       console.error('Word export error:', err);
       toast.error('Erro ao gerar recibo Word');
-    }
+    } finally { setIsExportingFiscalWord(false); }
   };
 
   // ── RECIBO DE PAGAMENTO ───────────────────────────────────────────────────
