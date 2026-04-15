@@ -109,7 +109,7 @@ export function ClinicAlertsCard() {
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
+    setDbLoading(true);
 
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
@@ -171,7 +171,7 @@ export function ClinicAlertsCard() {
           clinicId: p.clinic_id,
         }))
       );
-      setLoading(false);
+      setDbLoading(false);
     });
   }, [user, todayStr, patients]);
 
