@@ -1659,6 +1659,8 @@ export default function PatientDetail() {
             });
           } else {
             sessionValue = pdfPerSession;
+          }
+        }
 
         doc.setDrawColor(...borderColor); doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
