@@ -439,7 +439,7 @@ export default function PortalFinancial() {
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Tipo</p>
                 <p className="font-semibold text-foreground">
-                  {formatPaymentType(patient?.payment_type || null)}
+                  {formatPaymentType(patient?.payment_type || null, packageData)}
                 </p>
               </div>
               <div>
