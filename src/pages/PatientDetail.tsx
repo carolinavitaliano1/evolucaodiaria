@@ -1310,21 +1310,26 @@ export default function PatientDetail() {
       const periodLabel = `${format(fiscalStartDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(fiscalEndDate, 'dd/MM/yyyy', { locale: ptBR })}`;
       const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
       const rawPayVal = patient.paymentValue || 0;
-      // For Personalizado packages use per-session value
-      const payVal = isPackagePersonalizado ? perSessionValue : rawPayVal;
+      // For Personalizado packages use per-session value; for mensal use dynamic value
+      let payVal = isPackagePersonalizado ? perSessionValue : rawPayVal;
+      if ((isPackageMensal || isFixoMensal) && rawPayVal > 0 && fiscalStartDate) {
+        const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+        const dynResult = getDynamicSessionValue(rawPayVal, patientWeekdays, fiscalStartDate.getMonth(), fiscalStartDate.getFullYear());
+        payVal = dynResult.perSession;
+      }
       const areaLabel = patient.clinicalArea || fiscalStamp?.clinical_area || 'Atendimento';
 
       let sessionTotal = 0;
       let sessionCount = 0;
       const rows = fiscalEvos.map(e => {
         const st = STATUS_LABELS[e.attendanceStatus] ?? { label: e.attendanceStatus, billable: false };
-        const val = st.billable && patient.paymentType !== 'fixo' ? payVal : 0;
+        const val = st.billable ? payVal : 0;
         const dateStr = format(new Date(e.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         if (st.billable) { sessionTotal += val; sessionCount++; }
         return `<tr style="border-bottom:1px solid #eee"><td style="padding:4px 8px">${dateStr}</td><td style="padding:4px 8px">${areaLabel}</td><td style="padding:4px 8px">${st.label}</td><td style="padding:4px 8px;text-align:right">${val > 0 ? `R$ ${val.toFixed(2)}` : '—'}</td></tr>`;
       }).join('');
-      if (patient.paymentType === 'fixo' && payVal > 0) {
-        sessionTotal = payVal;
+      if ((isPackageMensal || isFixoMensal) && rawPayVal > 0) {
+        sessionTotal = rawPayVal; // Total is the monthly value
         sessionCount = fiscalEvos.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
       }
       const displayTotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : sessionTotal;
