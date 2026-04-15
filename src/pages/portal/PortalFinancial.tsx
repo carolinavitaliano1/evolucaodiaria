@@ -122,6 +122,7 @@ export default function PortalFinancial() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptFilePreview, setReceiptFilePreview] = useState<string | null>(null);
   const [receiptDocs, setReceiptDocs] = useState<ReceiptDoc[]>([]);
+  const [calculatedRevenue, setCalculatedRevenue] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
