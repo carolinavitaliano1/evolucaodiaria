@@ -146,18 +146,25 @@ export function ClinicAlertsCard() {
         .eq('user_id', user.id)
         .eq('status', 'pendente'),
     ]).then(([paymentsRes, messagesRes, intakesRes, receiptsRes, enrollmentsRes]) => {
-      const findPatient = (pid: string): PatientRef => {
+      // Build a set of valid patient IDs from context for filtering orphaned data
+      const validPatientIds = new Set(patients.map(p => p.id));
+
+      const findPatient = (pid: string): PatientRef | null => {
         const p = patients.find(cp => cp.id === pid);
-        return { id: pid, name: p?.name || 'Paciente', clinicId: p?.clinicId };
+        if (!p) return null; // Skip orphaned references
+        return { id: pid, name: p.name, clinicId: p.clinicId };
       };
 
       const uniqueByPatient = (items: { patient_id: string }[]): PatientRef[] => {
         const seen = new Set<string>();
-        return items.filter(i => {
-          if (seen.has(i.patient_id)) return false;
+        const result: PatientRef[] = [];
+        for (const i of items) {
+          if (seen.has(i.patient_id)) continue;
           seen.add(i.patient_id);
-          return true;
-        }).map(i => findPatient(i.patient_id));
+          const ref = findPatient(i.patient_id);
+          if (ref) result.push(ref);
+        }
+        return result;
       };
 
       setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as any[]) || []));
