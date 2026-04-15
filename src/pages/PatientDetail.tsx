@@ -1077,13 +1077,18 @@ export default function PatientDetail() {
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = statusLabelMap[evo.attendanceStatus] || evo.attendanceStatus;
         const moodInfo = getMoodInfo(evo.mood, customMoods);
+        const isGroup = !!evo.groupId;
+        const typeLabel = isGroup ? '👥 Grupo' : '👤 Individual';
         doc.setDrawColor(...borderColor);
         doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
         doc.text(dateStr, margin + 2, y + 4);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
         doc.text(`Status: ${status}`, margin + 32, y + 4);
-        if (moodInfo) doc.text(`Humor: ${moodInfo.label}`, margin + 100, y + 4);
+        // Type indicator
+        doc.setFontSize(8); doc.setTextColor(isGroup ? 100 : 60, isGroup ? 60 : 100, isGroup ? 180 : 60);
+        doc.text(typeLabel, margin + 72, y + 4);
+        if (moodInfo) { doc.setTextColor(...mutedText); doc.setFontSize(9); doc.text(`Humor: ${moodInfo.label}`, margin + 110, y + 4); }
         y += 7;
         if (evo.text) {
           doc.setTextColor(...darkText); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
