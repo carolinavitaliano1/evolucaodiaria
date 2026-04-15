@@ -503,6 +503,38 @@ export default function PatientDetail() {
   };
 
 
+  // Auto-calculate fiscal total from sessions
+  const computeFiscalTotal = () => {
+    if (!fiscalStartDate || !fiscalEndDate || !patient) return 0;
+    const start = new Date(fiscalStartDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(fiscalEndDate);
+    end.setHours(23, 59, 59, 999);
+    const evos = patientEvolutions.filter(evo => {
+      const d = new Date(evo.date + 'T12:00:00');
+      return d >= start && d <= end;
+    });
+    const STATUS_BILLABLE: Record<string, boolean> = {
+      presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
+      falta: false, feriado_nao_remunerado: false,
+    };
+    const billable = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false);
+    const rawVal = patient.paymentValue || 0;
+
+    if (isPackageMensal && isFixoMensal && rawVal > 0) {
+      const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
+      const dynResult = getDynamicSessionValue(rawVal, patientWeekdays, fiscalStartDate.getMonth(), fiscalStartDate.getFullYear());
+      return billable.length * dynResult.perSession;
+    }
+    if (isPackagePersonalizado) {
+      return billable.length * perSessionValue;
+    }
+    if (patient.paymentType === 'fixo') {
+      return rawVal;
+    }
+    return billable.length * rawVal;
+  };
+
   // Auto-fetch payment record when fiscal period is selected
   useEffect(() => {
     if (!fiscalStartDate || !patient?.id || !user) return;
@@ -518,7 +550,6 @@ export default function PatientDetail() {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          // Only auto-set status if user hasn't manually chosen 'total'
           if (fiscalPaymentStatus !== 'total') {
             setFiscalPaymentStatus(data.paid ? 'paid' : 'pending');
           }
@@ -527,19 +558,23 @@ export default function PatientDetail() {
             setFiscalTotalPaid(data.amount.toFixed(2));
             setFiscalTotalPaidFromApp(data.amount);
           } else {
-            setFiscalTotalPaid('');
-            setFiscalTotalPaidFromApp(null);
+            // No amount in record – auto-calculate
+            const calc = computeFiscalTotal();
+            setFiscalTotalPaid(calc > 0 ? calc.toFixed(2) : '');
+            setFiscalTotalPaidFromApp(calc > 0 ? calc : null);
           }
         } else {
           if (fiscalPaymentStatus !== 'total') {
             setFiscalPaymentStatus('pending');
           }
           setFiscalPaymentDate('');
-          setFiscalTotalPaid('');
-          setFiscalTotalPaidFromApp(null);
+          // No record – auto-calculate from sessions
+          const calc = computeFiscalTotal();
+          setFiscalTotalPaid(calc > 0 ? calc.toFixed(2) : '');
+          setFiscalTotalPaidFromApp(calc > 0 ? calc : null);
         }
       });
-  }, [fiscalStartDate, patient?.id, user]);
+  }, [fiscalStartDate, fiscalEndDate, patient?.id, user, patientEvolutions.length]);
 
   useEffect(() => {
     if (!user) return;
@@ -3960,7 +3995,7 @@ export default function PatientDetail() {
                 <Label className="text-xs mb-1 block flex items-center gap-1.5">
                   Valor Total Pago
                   <span className="text-muted-foreground font-normal">
-                    {fiscalTotalPaidFromApp !== null ? '— pré-preenchido do app (editável)' : '— opcional'}
+                    {fiscalTotalPaidFromApp !== null ? '— calculado automaticamente (editável)' : '— opcional'}
                   </span>
                 </Label>
                 <Input
