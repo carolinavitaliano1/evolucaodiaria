@@ -1538,17 +1538,27 @@ export default function PatientDetail() {
       doc.text(`${patient.name}   —   ${monthLabelCap}`, margin, y); y += 4;
       doc.setDrawColor(...borderColor); doc.line(margin, y, W - margin, y); y += 6;
 
+      // Compute dynamic per-session value for mensal patients
+      const pdfDynamic = (isPackageMensal || isFixoMensal)
+        ? getDynamicSessionValue(paymentValue, patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []), targetMonth.getMonth(), targetMonth.getFullYear())
+        : null;
+      const pdfPerSession = pdfDynamic ? pdfDynamic.perSession : perSessionValue;
+
       // ── IDENTIFICAÇÃO ────────────────────────────────────────────
       const idLines: [string, string][] = [];
       if (patient.name) idLines.push(['Paciente:', patient.name]);
       if (clinic?.name) idLines.push(['Unidade Clínica:', clinic.name]);
       if (patient.clinicalArea) idLines.push(['Área Clínica:', patient.clinicalArea]);
       if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
-      if (patient.paymentValue) idLines.push(
-        isPackagePersonalizado
-          ? ['Valor por Sessão:', `R$ ${perSessionValue.toFixed(2)} (Pacote ${patientPackage!.name} — ${patientPackage!.sessionLimit} sessões)`]
-          : ['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]
-      );
+      if (patient.paymentValue) {
+        if (isPackagePersonalizado) {
+          idLines.push(['Valor por Sessão:', `R$ ${perSessionValue.toFixed(2)} (Pacote ${patientPackage!.name} — ${patientPackage!.sessionLimit} sessões)`]);
+        } else if (pdfDynamic) {
+          idLines.push(['Valor Mensal:', `R$ ${paymentValue.toFixed(2)} (${pdfDynamic.occurrences} sessões → R$ ${pdfDynamic.perSession.toFixed(2)}/sessão)`]);
+        } else {
+          idLines.push(['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]);
+        }
+      }
       idLines.push(['Período de Referência:', monthLabelCap]);
       idLines.push(['Data de Emissão:', format(new Date(), 'dd/MM/yyyy', { locale: ptBR })]);
       idLines.forEach(([label, value]) => {
@@ -1578,7 +1588,10 @@ export default function PatientDetail() {
         ...(isPackagePersonalizado
           ? [['Pacote:', `${paidSessions} sessão(ões) utilizadas de ${patientPackage!.sessionLimit} (${patientPackage!.name})`] as [string, string],
              ['Valor por sessão (fracionado):', `R$ ${perSessionValue.toFixed(2)}`] as [string, string]]
-          : [['Valor sessão individual:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
+          : pdfDynamic
+            ? [['Valor mensal:', `R$ ${paymentValue.toFixed(2)}`] as [string, string],
+               [`Valor por sessão (mensal ÷ ${pdfDynamic.occurrences}):`, `R$ ${pdfDynamic.perSession.toFixed(2)}`] as [string, string]]
+            : [['Valor sessão individual:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
         ),
         ...(tGroupRevenue > 0 ? [['Receita sessões em grupo:', `R$ ${tGroupRevenue.toFixed(2)}`] as [string, string]] : []),
         ...(tIndivCount > 0 ? [['Receita sessões individuais:', `R$ ${(tRevenue - tGroupRevenue).toFixed(2)}`] as [string, string]] : []),
@@ -1648,7 +1661,7 @@ export default function PatientDetail() {
               packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
             });
           } else {
-            sessionValue = perSessionValue;
+            sessionValue = pdfPerSession;
           }
         }
 
