@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ContractEditor } from '@/components/contracts/ContractEditor';
+import { generateContractPDF } from '@/pages/portal/PortalContract';
 
 import { toast } from 'sonner';
 import {
-  Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2,
+  Loader2, FilePenLine, CheckCircle2, Send, Eye, Plus, Trash2, Download,
   PenLine, Star, StarOff, Copy, ChevronDown, ChevronRight, FileText, X, Stamp, Upload, Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -668,6 +669,25 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                       onClick={() => setPreviewContract(contract)}>
                       <Eye className="w-3.5 h-3.5 text-muted-foreground" />
                     </Button>
+                    {contract.status === 'signed' && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Baixar PDF"
+                        onClick={async () => {
+                          try {
+                            const { data: pat } = await supabase.from('patients')
+                              .select('name, cpf, responsible_name, responsible_cpf, is_minor')
+                              .eq('id', patientId).maybeSingle();
+                            const sName = contract.signer_name || (pat?.is_minor ? pat?.responsible_name : pat?.name) || patientName;
+                            const sCpf = contract.signer_cpf || (pat?.is_minor ? pat?.responsible_cpf : pat?.cpf) || null;
+                            await generateContractPDF(contract as any, sName, sCpf);
+                            toast.success('PDF do contrato baixado!');
+                          } catch (err) {
+                            console.error(err);
+                            toast.error('Erro ao gerar PDF do contrato');
+                          }
+                        }}>
+                        <Download className="w-3.5 h-3.5 text-success" />
+                      </Button>
+                    )}
                     {!contract.therapist_signature_data && (
                       <Button size="icon" variant="ghost" className="h-7 w-7" title="Registrar carimbo"
                         onClick={() => setSigningContractId(contract.id)}>
