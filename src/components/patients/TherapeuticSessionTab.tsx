@@ -1251,23 +1251,34 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
   return (
     <div className="space-y-4">
-      {/* Sub-tab navigation */}
-      <div className="flex items-center gap-1 border-b border-border pb-2 flex-wrap">
-        <Button variant={mainView === 'planning' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('planning')} className="gap-1.5">
-          <Target className="w-3.5 h-3.5" /> Planejamento
-        </Button>
-        <Button variant={mainView === 'session' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('session')} className="gap-1.5">
-          <PenLine className="w-3.5 h-3.5" /> Sessão Ativa
-          {sessionId && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
-        </Button>
-        <Button variant={mainView === 'history' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('history')} className="gap-1.5">
-          <History className="w-3.5 h-3.5" /> Realizadas
-          {sessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{sessions.length}</Badge>}
-        </Button>
-        <Button variant={mainView === 'next_sessions' ? 'default' : 'ghost'} size="sm" onClick={() => setMainView('next_sessions')} className="gap-1.5">
-          <CalendarPlus className="w-3.5 h-3.5" /> Próximas Sessões
-          {savedNextSessions.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{savedNextSessions.length}</Badge>}
-        </Button>
+      {/* Sub-tab navigation — Card grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {([
+          { key: 'planning' as const, icon: Target, label: 'Planejamento', badge: 0 },
+          { key: 'session' as const, icon: PenLine, label: 'Sessão Ativa', badge: 0, pulse: !!sessionId },
+          { key: 'history' as const, icon: History, label: 'Realizadas', badge: sessions.length },
+          { key: 'next_sessions' as const, icon: CalendarPlus, label: 'Próximas Sessões', badge: savedNextSessions.length },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setMainView(tab.key)}
+            className={cn(
+              "flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all text-center",
+              mainView === tab.key
+                ? "bg-primary/10 border-primary/30 text-primary shadow-sm"
+                : "bg-card border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+            )}
+          >
+            <div className="relative">
+              <tab.icon className="w-5 h-5" />
+              {'pulse' in tab && tab.pulse && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+            </div>
+            <span className="text-xs font-medium leading-tight">{tab.label}</span>
+            {tab.badge > 0 && (
+              <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{tab.badge}</Badge>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* ===== PLANNING VIEW ===== */}
