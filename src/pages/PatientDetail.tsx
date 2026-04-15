@@ -1077,13 +1077,18 @@ export default function PatientDetail() {
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = statusLabelMap[evo.attendanceStatus] || evo.attendanceStatus;
         const moodInfo = getMoodInfo(evo.mood, customMoods);
+        const isGroup = !!evo.groupId;
+        const typeLabel = isGroup ? '👥 Grupo' : '👤 Individual';
         doc.setDrawColor(...borderColor);
         doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
         doc.text(dateStr, margin + 2, y + 4);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
         doc.text(`Status: ${status}`, margin + 32, y + 4);
-        if (moodInfo) doc.text(`Humor: ${moodInfo.label}`, margin + 100, y + 4);
+        // Type indicator
+        doc.setFontSize(8); doc.setTextColor(isGroup ? 100 : 60, isGroup ? 60 : 100, isGroup ? 180 : 60);
+        doc.text(typeLabel, margin + 72, y + 4);
+        if (moodInfo) { doc.setTextColor(...mutedText); doc.setFontSize(9); doc.text(`Humor: ${moodInfo.label}`, margin + 110, y + 4); }
         y += 7;
         if (evo.text) {
           doc.setTextColor(...darkText); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
@@ -1524,16 +1529,22 @@ export default function PatientDetail() {
       doc.text('1. RESUMO FINANCEIRO', margin, y); y += 6;
 
       const paidSessions = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
+      const finGroupCount = finBillableEvos.filter(e => e.groupId).length;
+      const finIndivCount = finBillableEvos.filter(e => !e.groupId).length;
       const finRows: [string, string][] = [
         ['Sessões realizadas (presença + reposição):', String(finPresent + finReposicao)],
+        ...(finIndivCount > 0 ? [['   • Sessões individuais:', String(finIndivCount)] as [string, string]] : []),
+        ...(finGroupCount > 0 ? [['   • Sessões em grupo:', String(finGroupCount)] as [string, string]] : []),
         ['Faltas remuneradas:', String(finPaidAbsent)],
         ['Feriados remunerados:', String(finFeriadoRem)],
         ['Total de sessões cobradas:', String(paidSessions)],
         ...(isPackagePersonalizado
           ? [['Pacote:', `${paidSessions} sessão(ões) utilizadas de ${patientPackage!.sessionLimit} (${patientPackage!.name})`] as [string, string],
              ['Valor por sessão (fracionado):', `R$ ${perSessionValue.toFixed(2)}`] as [string, string]]
-          : [['Valor por sessão:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
+          : [['Valor sessão individual:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
         ),
+        ...(finGroupRevenue > 0 ? [['Receita sessões em grupo:', `R$ ${finGroupRevenue.toFixed(2)}`] as [string, string]] : []),
+        ...(finIndivCount > 0 ? [['Receita sessões individuais:', `R$ ${(finRevenue - finGroupRevenue).toFixed(2)}`] as [string, string]] : []),
         ['TOTAL FATURADO NO MÊS:', `R$ ${finRevenue.toFixed(2)}`],
       ];
       finRows.forEach(([label, value], i) => {
@@ -1585,14 +1596,36 @@ export default function PatientDetail() {
         const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
         const isPaid = paidStatuses.includes(evo.attendanceStatus);
+        const isGroup = !!evo.groupId;
+        const typeLabel = isGroup ? '👥 Grupo' : '👤 Individual';
+
+        // Calculate correct value for this session
+        let sessionValue = 0;
+        if (isPaid) {
+          if (isGroup) {
+            sessionValue = getGroupSessionValue({
+              groupId: evo.groupId,
+              patientId: patient.id,
+              groupBillingMap,
+              memberPaymentMap,
+              packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
+            });
+          } else {
+            sessionValue = perSessionValue;
+          }
+        }
+
         doc.setDrawColor(...borderColor); doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
         doc.text(dateStr, margin + 2, y + 4);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
         doc.text(status, margin + 32, y + 4);
-        if (isPaid && patient.paymentValue) {
-          doc.setTextColor(...accentDark);
-          doc.text(`R$ ${patient.paymentValue.toFixed(2)}`, W - margin - 2, y + 4, { align: 'right' });
+        // Type indicator
+        doc.setFontSize(8); doc.setTextColor(isGroup ? 100 : 60, isGroup ? 60 : 100, isGroup ? 180 : 60);
+        doc.text(typeLabel, margin + 68, y + 4);
+        if (isPaid) {
+          doc.setFontSize(9); doc.setTextColor(...accentDark);
+          doc.text(`R$ ${sessionValue.toFixed(2)}`, W - margin - 2, y + 4, { align: 'right' });
         }
         y += 7;
       }
