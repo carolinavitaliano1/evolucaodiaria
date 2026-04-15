@@ -736,48 +736,52 @@ function ContractCard({
                 </div>
               )}
 
-              {contract.therapist_signature_data && (() => {
-                let stampInfo: any = null;
-                try { stampInfo = JSON.parse(contract.therapist_signature_data); } catch { stampInfo = null; }
-                return (
-                  <div className="space-y-1 text-center">
-                    <p className="text-xs text-muted-foreground font-medium">Carimbo do terapeuta:</p>
-                    {stampInfo?.stamp_image ? (
-                      <img src={stampInfo.stamp_image} alt="Carimbo" className="max-h-20 mx-auto object-contain" />
-                    ) : !stampInfo ? (
-                      <img src={contract.therapist_signature_data} alt="Assinatura do terapeuta"
-                        className="max-h-32 mx-auto object-contain border border-border rounded bg-background" />
-                    ) : null}
-                    <div className="w-40 mx-auto border-b border-foreground/40" />
-                    {stampInfo?.name && <p className="text-xs font-semibold text-foreground">{stampInfo.name}</p>}
-                    {stampInfo?.clinical_area && <p className="text-[10px] text-muted-foreground">{stampInfo.clinical_area}</p>}
-                    {stampInfo?.cbo && <p className="text-[10px] text-muted-foreground">CBO: {stampInfo.cbo}</p>}
-                    {stampInfo?.professional_id && <p className="text-[10px] text-muted-foreground">Registro: {stampInfo.professional_id}</p>}
-                    {contract.therapist_signed_at && (
-                      <p className="text-[10px] text-muted-foreground">
-                        {format(new Date(contract.therapist_signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
+              <div className="flex gap-4 items-start">
+                {/* Left: Patient signature */}
+                {contract.signature_data && (
+                  <div className="flex-1 space-y-1 text-center">
+                    <img src={contract.signature_data} alt="Assinatura" className="max-h-16 mx-auto border border-border rounded" />
+                    <div className="w-32 mx-auto border-b border-foreground/40" />
+                    <p className="text-xs font-semibold text-foreground">{contract.signer_name || signerName}</p>
+                    {(contract.signer_cpf || signerCpf) && (
+                      <p className="text-[10px] text-muted-foreground">CPF: {formatCpf(contract.signer_cpf || signerCpf!)}</p>
                     )}
                   </div>
-                );
-              })()}
-              {contract.signature_data && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground font-medium">
-                    Assinatura de <strong>{contract.signer_name || signerName}</strong>:
+                )}
+
+                {/* Right: Therapist stamp */}
+                {contract.therapist_signature_data && (() => {
+                  let stampInfo: any = null;
+                  try { stampInfo = JSON.parse(contract.therapist_signature_data); } catch { stampInfo = null; }
+                  return (
+                    <div className="flex-1 space-y-1 text-center">
+                      {stampInfo?.stamp_image ? (
+                        <img src={stampInfo.stamp_image} alt="Carimbo" className="max-h-20 mx-auto object-contain" />
+                      ) : !stampInfo ? (
+                        <img src={contract.therapist_signature_data} alt="Assinatura do terapeuta"
+                          className="max-h-20 mx-auto object-contain border border-border rounded bg-background" />
+                      ) : null}
+                      <div className="w-32 mx-auto border-b border-foreground/40" />
+                      {stampInfo?.name && <p className="text-xs font-semibold text-foreground">{stampInfo.name}</p>}
+                      {stampInfo?.clinical_area && <p className="text-[10px] text-muted-foreground">{stampInfo.clinical_area}</p>}
+                      {stampInfo?.cbo && <p className="text-[10px] text-muted-foreground">CBO: {stampInfo.cbo}</p>}
+                      {stampInfo?.professional_id && <p className="text-[10px] text-muted-foreground">Registro: {stampInfo.professional_id}</p>}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* City + Date centered below */}
+              <div className="text-center space-y-0.5 pt-2">
+                {contract.signer_city && (
+                  <p className="text-xs text-muted-foreground">{contract.signer_city}</p>
+                )}
+                {contract.signed_at && (
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(contract.signed_at), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </p>
-                  {(contract.signer_cpf || signerCpf) && (
-                    <p className="text-xs text-muted-foreground">CPF: {formatCpf(contract.signer_cpf || signerCpf!)}</p>
-                  )}
-                  <img src={contract.signature_data} alt="Assinatura" className="max-h-16 border border-border rounded" />
-                  {contract.signed_at && (
-                    <p className="text-[10px] text-muted-foreground">
-                      {format(new Date(contract.signed_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  )}
-                </div>
-              )}
-              <Button className="w-full gap-2" variant="outline" onClick={onDownload} disabled={downloadingId === contract.id}>
+                )}
+              </div>
                 {downloadingId === contract.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Baixar contrato assinado (PDF)
               </Button>
