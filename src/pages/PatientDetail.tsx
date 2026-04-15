@@ -3619,7 +3619,7 @@ export default function PatientDetail() {
                   const allSelected = prSelectedSessions.length === billable.length && billable.length > 0;
                   const patientUnitValue = patient.paymentValue ?? 0;
                   const paymentType = patient.paymentType || 'sessao';
-                  const isMonthly = paymentType === 'fixo' || paymentType === 'mensal';
+                  const isMonthly = ['fixo', 'mensal'].includes(paymentType);
 
                   const autoCalcTotal = (count: number) => {
                     if (isMonthly && patientUnitValue > 0) {
