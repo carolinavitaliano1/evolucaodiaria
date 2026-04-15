@@ -1545,7 +1545,6 @@ export default function PatientDetail() {
         ),
         ...(finGroupRevenue > 0 ? [['Receita sessões em grupo:', `R$ ${finGroupRevenue.toFixed(2)}`] as [string, string]] : []),
         ...(finIndivCount > 0 ? [['Receita sessões individuais:', `R$ ${(finRevenue - finGroupRevenue).toFixed(2)}`] as [string, string]] : []),
-        ),
         ['TOTAL FATURADO NO MÊS:', `R$ ${finRevenue.toFixed(2)}`],
       ];
       finRows.forEach(([label, value], i) => {
