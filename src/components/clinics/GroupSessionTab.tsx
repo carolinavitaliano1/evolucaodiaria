@@ -940,41 +940,56 @@ export function GroupSessionTab({ groupId, groupName, clinicId, members }: Group
       doc.setTextColor(50, 50, 50);
       doc.setFont('helvetica', 'normal');
 
-      // Build declaration text with bold group name inline
-      const textBefore = `Declaro, para os devidos fins, que ${member.name} está em atendimento terapêutico de grupo `;
-      const textAfter = ` sob meus cuidados, e compareceu à sessão realizada no dia ${dateStr} das ${startTime} às ${endTime}.`;
-      const fullBodyText = textBefore + groupName + textAfter;
-      const bodyLines: string[] = doc.splitTextToSize(fullBodyText, contentWidth);
+      const renderInlineParagraph = (parts: { text: string; bold: boolean }[], startY: number) => {
+        let currentY = startY;
+        let currentX = margin;
+        const maxX = margin + contentWidth;
+        const lineHeight = 7;
+        const tokens = parts.flatMap((part) =>
+          part.text
+            .split(/(\s+)/)
+            .filter(Boolean)
+            .map((token) => ({
+              text: /^\s+$/.test(token) ? ' ' : token,
+              bold: part.bold,
+              isSpace: /^\s+$/.test(token),
+            }))
+        );
 
-      for (let li = 0; li < bodyLines.length; li++) {
-        if (y > 260) { doc.addPage(); y = 20; }
-        // Find if this line contains the group name to render it bold
-        const lineText = bodyLines[li];
-        const gnIdx = lineText.indexOf(groupName);
-        const isLast = li === bodyLines.length - 1;
-        const justAlign = isLast ? 'left' : 'justify';
-        // Render full line justified in normal font
-        doc.setFont('helvetica', 'normal');
-        doc.text(lineText, margin, y, { align: justAlign, maxWidth: contentWidth });
-        // Overlay bold group name if present
-        if (gnIdx !== -1) {
-          const beforePart = lineText.substring(0, gnIdx);
-          doc.setFont('helvetica', 'normal');
-          const offsetX = doc.getTextWidth(beforePart);
-          // Calculate justify spacing
-          let spacingExtra = 0;
-          if (!isLast && lineText.trim().includes(' ')) {
-            const words = lineText.trim().split(/\s+/);
-            const normalWidth = doc.getTextWidth(lineText.trim());
-            if (words.length > 1) spacingExtra = (contentWidth - normalWidth) / (words.length - 1);
+        for (const token of tokens) {
+          doc.setFont('helvetica', token.bold ? 'bold' : 'normal');
+          const tokenWidth = doc.getTextWidth(token.text);
+
+          if (!token.isSpace && currentX + tokenWidth > maxX) {
+            currentY += lineHeight;
+            if (currentY > 260) { doc.addPage(); currentY = 20; }
+            currentX = margin;
           }
-          const spacesBefore = (beforePart.match(/ /g) || []).length;
-          doc.setFont('helvetica', 'bold');
-          doc.text(groupName, margin + offsetX + (spacesBefore * spacingExtra), y);
-          doc.setFont('helvetica', 'normal');
+
+          if (!(token.isSpace && currentX === margin)) {
+            doc.text(token.text, currentX, currentY);
+            currentX += tokenWidth;
+          }
         }
-        y += 7;
-      }
+
+        return currentY + lineHeight;
+      };
+
+      const bodyParts = [
+        { text: 'Declaro, para os devidos fins, que ', bold: false },
+        { text: member.name, bold: true },
+        { text: ' está em atendimento terapêutico de grupo ', bold: false },
+        { text: groupName, bold: true },
+        { text: ' sob meus cuidados, e compareceu à sessão realizada no dia ', bold: false },
+        { text: dateStr, bold: true },
+        { text: ' das ', bold: false },
+        { text: startTime, bold: true },
+        { text: ' às ', bold: false },
+        { text: endTime, bold: true },
+        { text: '.', bold: false },
+      ];
+
+      y = renderInlineParagraph(bodyParts, y);
 
       y += 20;
       const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
