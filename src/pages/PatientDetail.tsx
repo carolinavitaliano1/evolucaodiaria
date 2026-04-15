@@ -3995,7 +3995,7 @@ export default function PatientDetail() {
                 <Label className="text-xs mb-1 block flex items-center gap-1.5">
                   Valor Total Pago
                   <span className="text-muted-foreground font-normal">
-                    {fiscalTotalPaidFromApp !== null ? '— pré-preenchido do app (editável)' : '— opcional'}
+                    {fiscalTotalPaidFromApp !== null ? '— calculado automaticamente (editável)' : '— opcional'}
                   </span>
                 </Label>
                 <Input
