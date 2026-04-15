@@ -1590,7 +1590,7 @@ export default function PatientDetail() {
              ['Valor por sessão (fracionado):', `R$ ${perSessionValue.toFixed(2)}`] as [string, string]]
           : pdfDynamic
             ? [['Valor mensal:', `R$ ${paymentValue.toFixed(2)}`] as [string, string],
-               ['Valor por sessão (mensal ÷ ${pdfDynamic.occurrences}):', `R$ ${pdfDynamic.perSession.toFixed(2)}`] as [string, string]]
+               [`Valor por sessão (mensal ÷ ${pdfDynamic.occurrences}):`, `R$ ${pdfDynamic.perSession.toFixed(2)}`] as [string, string]]
             : [['Valor sessão individual:', `R$ ${(patient.paymentValue ?? 0).toFixed(2)}`] as [string, string]]
         ),
         ...(tGroupRevenue > 0 ? [['Receita sessões em grupo:', `R$ ${tGroupRevenue.toFixed(2)}`] as [string, string]] : []),
