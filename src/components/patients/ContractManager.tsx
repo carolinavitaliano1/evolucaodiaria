@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { cleanContractHtml, substituteContractVariables } from '@/utils/contractHtmlUtils';
 
 
 interface StampOption {
@@ -55,16 +56,6 @@ interface ContractManagerProps {
   patientName: string;
 }
 
-/** Strip contract-variable spans from stored HTML so previews show clean text */
-function cleanContractHtml(html: string): string {
-  let clean = html;
-  clean = clean.replace(
-    /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
-    (_, inner) => inner.replace(/<[^>]*>/g, '').trim()
-  );
-  clean = clean.replace(/&nbsp;/g, ' ');
-  return clean;
-}
 
 const DEFAULT_BODY = `<h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS TERAPÊUTICOS</h2>
 
@@ -412,35 +403,8 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
         'horario_atendimento': patientData?.schedule_time || '[não informado]',
       };
 
-      // Strip variable chip spans and replace raw {{var}} tags
-      let filledHtml = bodyHtml;
-
-      // Helper: strip all HTML tags from inside a match to get pure text content
-      const stripInnerHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
-
-      // Handle any <span> with data-type="variable" OR class="contract-variable" — regardless of attribute order,
-      // extra attributes (contenteditable, style, etc.), or nested tags inside the span.
-      // Uses a greedy approach: match the entire span, extract inner text, check if it's a {{key}}.
-      filledHtml = filledHtml.replace(
-        /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
-        (fullMatch, innerContent) => {
-          const textContent = stripInnerHtml(innerContent).replace(/&nbsp;/g, ' ').trim();
-          const varMatch = textContent.match(/^\{\{(\w+)\}\}$/);
-          if (varMatch) {
-            return variableMap[varMatch[1]] ?? textContent;
-          }
-          // Not a variable pattern — just unwrap the span, keep inner content
-          return innerContent;
-        }
-      );
-
-      // Then handle raw {{key}} not inside spans
-      filledHtml = filledHtml.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-        return variableMap[key] ?? `{{${key}}}`;
-      });
-
-      // Clean up stray &nbsp; left after variable spans
-      filledHtml = filledHtml.replace(/&nbsp;\s*/g, ' ');
+      // Use shared utility to substitute all variables and clean spans
+      const filledHtml = substituteContractVariables(bodyHtml, variableMap);
 
       const { error } = await supabase.from('patient_contracts').insert({
         patient_id: patientId,

@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { cleanContractHtml } from '@/utils/contractHtmlUtils';
 
 interface Contract {
   id: string;
@@ -34,16 +35,6 @@ interface PatientExtra {
   is_minor: boolean;
 }
 
-/** Strip contract-variable spans from stored HTML so previews/PDFs show clean text */
-function cleanContractHtml(html: string): string {
-  let clean = html;
-  clean = clean.replace(
-    /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
-    (_, inner) => inner.replace(/<[^>]*>/g, '').trim()
-  );
-  clean = clean.replace(/&nbsp;/g, ' ');
-  return clean;
-}
 
 async function generateContractPDF(contract: Contract, signerName: string, signerCpf: string | null) {
   const wrapper = document.createElement('div');
@@ -112,13 +103,7 @@ async function generateContractPDF(contract: Contract, signerName: string, signe
   };
 
   // Clean any remaining variable span tags from the stored HTML
-  let cleanHtml = contract.template_html;
-  // Robust: handle any attribute order, nested content, extra attributes
-  cleanHtml = cleanHtml.replace(
-    /<span[^>]*(?:data-type\s*=\s*["']variable["']|class\s*=\s*["'][^"']*contract-variable[^"']*["'])[^>]*>([\s\S]*?)<\/span>/gi,
-    (_, inner) => inner.replace(/<[^>]*>/g, '').trim()
-  );
-  cleanHtml = cleanHtml.replace(/&nbsp;/g, ' ');
+  const cleanHtml = cleanContractHtml(contract.template_html);
 
   // Build therapist signature block
   const therapistSigBlock = contract.therapist_signature_data
