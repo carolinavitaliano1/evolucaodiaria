@@ -44,9 +44,8 @@ function dismissAlert(key: string) {
   localStorage.setItem(DISMISSED_KEY, JSON.stringify(current));
 }
 
-function isAlertDismissed(key: string): boolean {
-  const current = getDismissedAlerts();
-  return current[key] === toLocalDateString(new Date());
+function isAlertDismissed(_key: string): boolean {
+  return false;
 }
 
 export function ClinicAlertsCard() {
