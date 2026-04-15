@@ -445,9 +445,11 @@ export default function PortalFinancial() {
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Valor</p>
                 <p className="font-semibold text-foreground">
-                  {patient?.payment_value
-                    ? `R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}`
-                    : 'Não definido'}
+                  {packageData
+                    ? `R$ ${Number(packageData.price).toFixed(2).replace('.', ',')}`
+                    : patient?.payment_value
+                      ? `R$ ${Number(patient.payment_value).toFixed(2).replace('.', ',')}`
+                      : 'Não definido'}
                 </p>
               </div>
               {packageData?.name && (
