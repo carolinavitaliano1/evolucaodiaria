@@ -1,25 +1,61 @@
 
 
-## Problema
+# Seções Personalizáveis nas Informações do Grupo
 
-Na coluna "Tipo" dos PDFs financeiros (extrato e relatório), todas as sessões aparecem como "Sessão", mesmo quando são sessões de grupo. O usuário quer ver "Grupo" quando a evolução tem `groupId`.
+## Objetivo
+Permitir que o terapeuta adicione, edite nomes/subtítulos, e exclua as seções (categorias) da aba "Informações" do grupo terapêutico, além das 4 seções padrão (Visão Geral, Estrutura, Critérios, Acompanhamento).
 
-## Solução
+## Abordagem
 
-Alterar a lógica de exibição da coluna "Tipo" em 3 pontos do arquivo `src/pages/Financial.tsx`:
+Usar uma coluna JSONB `custom_sections` na tabela `therapeutic_groups` para armazenar seções personalizadas. As 4 seções padrão continuam mapeadas às colunas existentes, mas agora com nomes editáveis. A estrutura JSONB armazena tanto os nomes customizados das seções padrão quanto seções totalmente novas.
 
-1. **Linha 830** (Relatório Mensal PDF) — trocar:
-   - `'Sessão'` → verificar se o paciente tem evoluções de grupo e exibir adequadamente
+## Estrutura de dados
 
-2. **Linha 1071** (Extrato de Clínica PDF) — trocar:
-   - `patient.paymentType === 'fixo' ? 'Fixo' : 'Sessão'` → `patient.paymentType === 'fixo' ? 'Fixo' : (evo.groupId ? 'Grupo' : 'Sessão')`
+```json
+{
+  "renamed_defaults": {
+    "overview": "Meu Título Personalizado",
+    "structure": null,
+    "criteria": "Regras Internas",
+    "tracking": null
+  },
+  "hidden_defaults": ["criteria"],
+  "custom": [
+    {
+      "id": "uuid",
+      "title": "Dinâmicas do Grupo",
+      "fields": [
+        { "label": "Atividade principal", "value": "Role-playing" },
+        { "label": "Frequência de revisão", "value": "Quinzenal" }
+      ]
+    }
+  ]
+}
+```
 
-3. **Linha 1228** (Exportação CSV) — ajustar a lógica do tipo para incluir "Grupo" quando aplicável
+## Plano de implementação
 
-4. **Linha 1754** (UI tabela na página) — adicionar indicação visual de "Grupo" quando relevante
+### 1. Migração do banco de dados
+- Adicionar coluna `custom_sections jsonb DEFAULT '{}'` à tabela `therapeutic_groups`.
 
-### Detalhes Técnicos
+### 2. Refatorar a aba Informações (GroupDetail.tsx)
+- Renderizar as 4 seções padrão usando nomes do `custom_sections.renamed_defaults` (fallback para os nomes originais).
+- Ocultar seções padrão listadas em `hidden_defaults`.
+- Renderizar seções custom após as padrão, cada uma como um Accordion com seus campos dinâmicos.
+- Adicionar botão de edição (lápis) em cada seção para renomear ou excluir.
+- Adicionar botão "+ Nova Seção" no final para criar seções custom com título e campos livres.
 
-- A verificação é simples: se `evo.groupId` existe, o tipo é "Grupo"; caso contrário, segue a lógica atual ("Fixo" ou "Sessão")
-- No relatório mensal (linha 830), onde a informação é por paciente (não por evolução), será necessário verificar se o paciente participa de grupos para mostrar "Sessão/Grupo" ou o tipo predominante
+### 3. Modal/Dialog de edição de seção
+- Para seções padrão: editar nome, opção de ocultar (não deletar dados).
+- Para seções custom: editar nome, adicionar/remover/editar campos (label + valor textarea), deletar a seção inteira.
+
+### 4. Persistência
+- Salvar `custom_sections` via update na tabela `therapeutic_groups` ao confirmar edições.
+- Atualizar o `GroupData` interface e o `TherapeuticGroupsTab` form para incluir o novo campo.
+
+## Detalhes técnicos
+- **Migração**: `ALTER TABLE therapeutic_groups ADD COLUMN custom_sections jsonb DEFAULT '{}'::jsonb;`
+- **Tipagem**: Nova interface `CustomSections` com `renamed_defaults`, `hidden_defaults` e `custom` arrays.
+- **Arquivos modificados**: `src/pages/GroupDetail.tsx`, `src/components/clinics/TherapeuticGroupsTab.tsx`
+- **Sem nova tabela**: tudo fica no JSONB para simplicidade e performance.
 
