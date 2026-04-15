@@ -122,6 +122,7 @@ export default function PortalFinancial() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptFilePreview, setReceiptFilePreview] = useState<string | null>(null);
   const [receiptDocs, setReceiptDocs] = useState<ReceiptDoc[]>([]);
+  const [calculatedRevenue, setCalculatedRevenue] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -193,6 +194,16 @@ export default function PortalFinancial() {
           .ilike('name', 'Comprovante%')
           .order('created_at', { ascending: false });
         setReceiptDocs((docs || []) as ReceiptDoc[]);
+
+        // Calculate actual monthly revenue via DB function
+        const cm = new Date().getMonth() + 1;
+        const cy = new Date().getFullYear();
+        const { data: revenueData } = await supabase.rpc('get_patient_monthly_revenue', {
+          _patient_id: portalAccount.patient_id,
+          _month: cm,
+          _year: cy,
+        });
+        setCalculatedRevenue(typeof revenueData === 'number' ? revenueData : null);
       } finally {
         setLoading(false);
       }
@@ -331,16 +342,20 @@ export default function PortalFinancial() {
   const displayRecords = (() => {
     const all = [...records];
     const hasCurrentMonth = all.some(r => r.month === currentMonth && r.year === currentYear);
-    if (!hasCurrentMonth && patient?.payment_value && patient.payment_value > 0) {
+    // Use calculated revenue (includes group sessions) or fallback to payment_value
+    const virtualAmount = calculatedRevenue != null && calculatedRevenue > 0
+      ? calculatedRevenue
+      : Number(patient?.payment_value || 0);
+    if (!hasCurrentMonth && virtualAmount > 0) {
       all.unshift({
         id: 'virtual-current',
         month: currentMonth,
         year: currentYear,
-        amount: Number(patient.payment_value),
+        amount: virtualAmount,
         paid: false,
         payment_date: null,
         notes: null,
-        due_date: patient.payment_due_day
+        due_date: patient?.payment_due_day
           ? `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(patient.payment_due_day).padStart(2, '0')}`
           : null,
       });
