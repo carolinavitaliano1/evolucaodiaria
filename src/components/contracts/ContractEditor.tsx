@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Image from '@tiptap/extension-image';
+import { VariableNode } from './VariableNode';
 import { useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +46,7 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
       Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Image.configure({ inline: false, allowBase64: true }),
+      VariableNode,
     ],
     content: value,
     onUpdate: ({ editor }) => {
@@ -60,7 +62,10 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
 
   const insertVariable = useCallback((key: string) => {
     if (!editor) return;
-    editor.chain().focus().insertContent(`<span data-type="variable" class="contract-variable">{{${key}}}</span>&nbsp;`).run();
+    editor.chain().focus().insertContent({
+      type: 'contractVariable',
+      attrs: { key },
+    }).insertContent(' ').run();
   }, [editor]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,12 +128,10 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
           <ListOrdered className="w-3.5 h-3.5" />
         </ToolBtn>
         <div className="w-px h-5 bg-border mx-0.5" />
-        {/* Image upload */}
         <ToolBtn active={false} onClick={() => imgInputRef.current?.click()} title="Inserir imagem / logo">
           <ImageIcon className="w-3.5 h-3.5" />
         </ToolBtn>
         <input ref={imgInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-        {/* Horizontal rule */}
         <ToolBtn active={false} onClick={insertHr} title="Linha horizontal">
           <Minus className="w-3.5 h-3.5" />
         </ToolBtn>
@@ -181,7 +184,7 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
       {/* CSS for variable chips and images inside the editor */}
       <style>{`
         .contract-editor .contract-variable,
-        .contract-editor span[data-type="variable"] {
+        .contract-editor span[data-variable] {
           background: hsl(var(--primary) / 0.1);
           color: hsl(var(--primary));
           border: 1px solid hsl(var(--primary) / 0.25);
@@ -190,6 +193,8 @@ export function ContractEditor({ value, onChange }: ContractEditorProps) {
           font-size: 11px;
           font-family: ui-monospace, monospace;
           white-space: nowrap;
+          cursor: default;
+          user-select: none;
         }
         .contract-editor img {
           max-width: 100%;
