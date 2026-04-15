@@ -1243,7 +1243,7 @@ export default function PatientDetail() {
         responsible_cpf: (patient as any).responsible_cpf || (patient as any).responsibleCpf || undefined,
         paymentType: patient.paymentType || undefined,
         paymentValue: patient.paymentValue || undefined,
-        effectiveSessionValue: isPackagePersonalizado ? perSessionValue : undefined,
+        effectiveSessionValue: isPackagePersonalizado ? perSessionValue : ((isPackageMensal || isFixoMensal) && fiscalPerSession !== rawPaymentValue ? fiscalPerSession : undefined),
         packageSessionLimit: isPackagePersonalizado ? patientPackage!.sessionLimit! : undefined,
       },
       clinic: clinic ? {
