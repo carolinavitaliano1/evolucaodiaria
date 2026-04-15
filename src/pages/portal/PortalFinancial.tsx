@@ -326,10 +326,32 @@ export default function PortalFinancial() {
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
-  const currentRecord = records.find(r => r.month === currentMonth && r.year === currentYear);
+
+  // Build display records: include a virtual pending record for current month if none exists
+  const displayRecords = (() => {
+    const all = [...records];
+    const hasCurrentMonth = all.some(r => r.month === currentMonth && r.year === currentYear);
+    if (!hasCurrentMonth && patient?.payment_value && patient.payment_value > 0) {
+      all.unshift({
+        id: 'virtual-current',
+        month: currentMonth,
+        year: currentYear,
+        amount: Number(patient.payment_value),
+        paid: false,
+        payment_date: null,
+        notes: null,
+        due_date: patient.payment_due_day
+          ? `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(patient.payment_due_day).padStart(2, '0')}`
+          : null,
+      });
+    }
+    return all;
+  })();
+
+  const currentRecord = displayRecords.find(r => r.month === currentMonth && r.year === currentYear);
   const alert = getPaymentAlert(patient?.payment_due_day || null, !!currentRecord?.paid);
-  const totalPaid = records.filter(r => r.paid).reduce((s, r) => s + Number(r.amount), 0);
-  const totalPending = records.filter(r => !r.paid).reduce((s, r) => s + Number(r.amount), 0);
+  const totalPaid = displayRecords.filter(r => r.paid).reduce((s, r) => s + Number(r.amount), 0);
+  const totalPending = displayRecords.filter(r => !r.paid).reduce((s, r) => s + Number(r.amount), 0);
 
   if (loading) {
     return (
