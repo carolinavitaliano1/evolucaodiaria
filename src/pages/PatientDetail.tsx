@@ -731,11 +731,15 @@ export default function PatientDetail() {
   const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
   const totalIndividualBillableCount = totalIndividualBillableEvos.length;
   const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const totalFinancial = isFixoMensal
+  // Sum of all-time services (não cancelados) for this patient
+  const totalServicesRevenue = patientServices
+    .filter(s => s.status !== 'cancelado')
+    .reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const totalFinancial = (isFixoMensal
     ? paymentValue + totalGroupRevenue
     : isFixoDiario
       ? totalIndividualUniqueDays * perSessionValue + totalGroupRevenue
-      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue;
+      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue) + totalServicesRevenue;
   const totalFinancialSubtitle = isFixoMensal
     ? 'Valor Fixo Mensal'
     : isFixoDiario
