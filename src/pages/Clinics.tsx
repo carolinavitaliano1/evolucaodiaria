@@ -371,8 +371,17 @@ export default function Clinics() {
       }
     }
 
-    return clinicRevenue;
-  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds]);
+    // Add monthly services (private_appointments) revenue — não cancelados
+    const servicesRevenue = privateAppointments
+      .filter(a => {
+        if (a.status === 'cancelado') return false;
+        const d = new Date(a.date + 'T12:00:00');
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      })
+      .reduce((sum, a) => sum + Number(a.price || 0), 0);
+
+    return clinicRevenue + servicesRevenue;
+  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds, privateAppointments]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
