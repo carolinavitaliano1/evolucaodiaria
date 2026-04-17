@@ -125,9 +125,14 @@ export default function Clinics() {
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
   });
 
+  // Load on mount so Faturado card includes services revenue
+  useEffect(() => {
+    if (!user) return;
+    loadPrivateAppointments();
+  }, [user]);
+
   useEffect(() => {
     if (activeTab === 'meus-servicos') {
-      loadPrivateAppointments();
       loadRegisteredServices();
     }
   }, [activeTab, user]);
