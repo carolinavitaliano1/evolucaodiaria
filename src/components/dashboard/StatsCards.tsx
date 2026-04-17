@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { getDynamicSessionValue } from '@/utils/dateHelpers';
+import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 
 export function StatsCards() {
   const { clinics, patients, appointments, evolutions, clinicPackages } = useApp();
