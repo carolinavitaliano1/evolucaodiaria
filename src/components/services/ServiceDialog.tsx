@@ -76,6 +76,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedClinicId, setSelectedClinicId] = useState<string>('');
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -92,13 +93,15 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
       loadServices();
       loadCustomTypes();
       loadPropriaClinics();
-      if (clinicId) loadClinicPatients(clinicId);
+      // Load patients (filtered by clinic if provided, else all)
+      loadAllPatients(clinicId);
       // Pre-fill form if editing an appointment
       if (editAppointment) {
         setActiveTab('agendar');
         setEditingAppointmentId(editAppointment.id);
         setSelectedService(editAppointment.service_id || '');
         setSelectedClinicId((editAppointment as any).clinic_id || clinicId || '');
+        setSelectedPatientId((editAppointment as any).patient_id || '');
         setClientName(editAppointment.client_name);
         setClientPhone(editAppointment.client_phone || '');
         setClientEmail(editAppointment.client_email || '');
@@ -113,22 +116,25 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         setEditingAppointmentId(null);
         setActiveTab(clinicId ? 'agendar' : 'servicos');
         setSelectedClinicId(clinicId || '');
+        setSelectedPatientId('');
         setAppointmentPaymentDate('');
       }
     }
   }, [open, editAppointment, clinicId]);
 
-  async function loadClinicPatients(cid: string) {
-    const { data } = await supabase
+  async function loadAllPatients(cid?: string) {
+    let q = supabase
       .from('patients')
       .select('id, name, phone, responsible_email')
-      .eq('clinic_id', cid)
       .eq('is_archived', false)
       .order('name');
+    if (cid) q = q.eq('clinic_id', cid);
+    const { data } = await q;
     if (data) setClinicPatients(data as PatientOption[]);
   }
 
   function handlePatientSelect(patientId: string) {
+    setSelectedPatientId(patientId);
     const p = clinicPatients.find(pt => pt.id === patientId);
     if (!p) return;
     setClientName(p.name);
@@ -206,6 +212,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   function resetAppointmentForm() {
     setSelectedService('');
     setSelectedClinicId(clinicId || '');
+    setSelectedPatientId('');
     setClientName('');
     setClientPhone('');
     setClientEmail('');
@@ -299,7 +306,8 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
 
       const appointmentData: any = {
         service_id: selectedService || null,
-        clinic_id: selectedClinicId || null,
+        clinic_id: selectedClinicId && selectedClinicId !== 'none' ? selectedClinicId : null,
+        patient_id: selectedPatientId || null,
         client_name: clientName,
         client_phone: clientPhone || null,
         client_email: clientEmail || null,
@@ -412,24 +420,25 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
               </div>
             )}
 
-            {/* Patient selector — only when coming from a clinic */}
-            {clinicId && clinicPatients.length > 0 && (
+            {/* Patient selector — always available */}
+            {clinicPatients.length > 0 && (
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5" />
-                  Paciente cadastrado nesta clínica
+                  Vincular a paciente cadastrado
                 </Label>
-                <Select onValueChange={handlePatientSelect}>
+                <Select value={selectedPatientId || 'none'} onValueChange={(v) => v === 'none' ? setSelectedPatientId('') : handlePatientSelect(v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar paciente (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Nenhum (cliente avulso)</SelectItem>
                     {clinicPatients.map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Preenche os campos abaixo automaticamente</p>
+                <p className="text-xs text-muted-foreground">Vincula o serviço ao financeiro do paciente e preenche os contatos</p>
               </div>
             )}
 

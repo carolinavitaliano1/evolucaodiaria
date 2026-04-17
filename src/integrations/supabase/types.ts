@@ -1838,6 +1838,7 @@ export type Database = {
           id: string
           notes: string | null
           paid: boolean | null
+          patient_id: string | null
           payment_date: string | null
           price: number
           service_id: string | null
@@ -1856,6 +1857,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid?: boolean | null
+          patient_id?: string | null
           payment_date?: string | null
           price?: number
           service_id?: string | null
@@ -1874,6 +1876,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid?: boolean | null
+          patient_id?: string | null
           payment_date?: string | null
           price?: number
           service_id?: string | null
@@ -1888,6 +1891,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
           {

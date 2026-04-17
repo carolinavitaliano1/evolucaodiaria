@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toLocalDateString } from '@/lib/utils';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck } from 'lucide-react';
+import { generatePaymentReceiptPdf } from '@/utils/generatePaymentReceiptPdf';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { PendingEnrollmentsPanel } from '@/components/clinics/PendingEnrollmentsPanel';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
@@ -446,7 +447,8 @@ export default function ClinicDetail() {
   // Services (private_appointments) for this propria clinic
   interface ClinicPrivateApt {
     id: string; client_name: string; client_email?: string | null; client_phone?: string | null;
-    service_id?: string | null; clinic_id?: string | null; date: string; time: string;
+    service_id?: string | null; clinic_id?: string | null; patient_id?: string | null;
+    date: string; time: string;
     price: number; status: string; notes?: string | null; paid?: boolean | null;
     payment_date?: string | null; created_at: string;
     service_name?: string | null;
@@ -499,6 +501,53 @@ export default function ClinicDetail() {
     setDeleteServiceAptOpen(false);
     setServiceAptToDelete(null);
     loadClinicServices();
+  };
+
+  const [generatingReceiptId, setGeneratingReceiptId] = useState<string | null>(null);
+  const handleGenerateServiceReceipt = async (apt: ClinicPrivateApt) => {
+    if (!user) return;
+    setGeneratingReceiptId(apt.id);
+    try {
+      const [{ data: prof }, { data: stampsData }, { data: pat }] = await Promise.all([
+        supabase.from('profiles').select('name, professional_id, cpf, cbo').eq('user_id', user.id).maybeSingle(),
+        supabase.from('stamps').select('*').eq('user_id', user.id),
+        apt.patient_id
+          ? supabase.from('patients').select('name, cpf, is_minor, guardian_name, responsible_cpf').eq('id', apt.patient_id).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+      ]);
+      const stamp = (stampsData || []).find((s: any) => s.is_default) || (stampsData || [])[0] || null;
+      const payerName = pat
+        ? (pat.is_minor && pat.guardian_name ? pat.guardian_name : pat.name)
+        : apt.client_name;
+      const payerCpf = pat
+        ? (pat.is_minor ? pat.responsible_cpf : pat.cpf)
+        : null;
+      await generatePaymentReceiptPdf({
+        therapistName: prof?.name || 'Profissional',
+        therapistCpf: prof?.cpf,
+        therapistAddress: null,
+        therapistProfessionalId: prof?.professional_id,
+        therapistCbo: prof?.cbo,
+        therapistClinicalArea: stamp?.clinical_area ?? null,
+        stamp,
+        payerName,
+        payerCpf,
+        location: null,
+        amount: apt.price,
+        serviceName: apt.service_name || 'Serviço prestado',
+        period: format(new Date(apt.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }),
+        paymentMethod: 'transferência bancária',
+        paymentDate: apt.payment_date || apt.date,
+        clinicName: clinic?.name ?? null,
+        clinicAddress: clinic?.address ?? null,
+        clinicCnpj: (clinic as any)?.cnpj ?? null,
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao gerar recibo');
+    } finally {
+      setGeneratingReceiptId(null);
+    }
   };
 
   const getServiceStatusColor = (status: string) => {
@@ -2566,6 +2615,11 @@ export default function ClinicDetail() {
                           {apt.paid && (
                             <Badge variant="outline" className="text-xs border-success/50 text-success shrink-0">Pago</Badge>
                           )}
+                          {apt.patient_id && (
+                            <Badge variant="outline" className="text-xs border-primary/50 text-primary shrink-0 flex items-center gap-1">
+                              <UserCheck className="w-3 h-3" /> Paciente
+                            </Badge>
+                          )}
                         </div>
                         {apt.service_name && (
                           <p className="text-xs text-primary font-medium mb-1 flex items-center gap-1">
@@ -2637,6 +2691,12 @@ export default function ClinicDetail() {
                             <DropdownMenuItem onClick={() => { setEditServiceApt(apt); setEditServiceAptOpen(true); }}>
                               <Edit className="w-4 h-4 mr-2" /> Editar
                             </DropdownMenuItem>
+                            {apt.status === 'concluído' && (
+                              <DropdownMenuItem onClick={() => handleGenerateServiceReceipt(apt)} disabled={generatingReceiptId === apt.id}>
+                                {generatingReceiptId === apt.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Receipt className="w-4 h-4 mr-2" />}
+                                Emitir Recibo
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem className="text-destructive focus:text-destructive"
                               onClick={() => { setServiceAptToDelete(apt); setDeleteServiceAptOpen(true); }}>
                               <Trash2 className="w-4 h-4 mr-2" /> Apagar
