@@ -3055,6 +3055,24 @@ export default function PatientDetail() {
             </div>
           </div>
 
+          {/* Patient services (private_appointments linked to patient) */}
+          <PatientServicesSection
+            patientId={patient.id}
+            month={financialMonth.getMonth()}
+            year={financialMonth.getFullYear()}
+            therapist={therapistProfile ? {
+              name: therapistProfile.name || '',
+              cpf: therapistProfile.cpf,
+              professionalId: therapistProfile.professional_id,
+              cbo: therapistProfile.cbo,
+              address: (therapistProfile as any).address ?? null,
+            } : undefined}
+            payerName={patient.isMinor && patient.guardianName ? patient.guardianName : patient.name}
+            payerCpf={patient.isMinor && (patient as any).guardian_cpf ? (patient as any).guardian_cpf : (patient as any).cpf}
+            stamp={financialStampId && financialStampId !== 'none' ? stamps.find(s => s.id === financialStampId) : stamps.find(s => s.is_default)}
+            clinic={clinic ? { name: clinic.name, address: clinic.address, cnpj: (clinic as any).cnpj } : null}
+          />
+
           {/* Portal receipts uploaded by patient/guardian */}
           {portalReceipts.length > 0 && (
             <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
