@@ -445,6 +445,17 @@ export default function PatientDetail() {
       });
   }, [user, patient?.id]);
 
+  // Load patient services (private_appointments) for revenue inclusion
+  useEffect(() => {
+    if (!patient?.id) return;
+    supabase.from('private_appointments')
+      .select('id, date, price, status, paid')
+      .eq('patient_id', patient.id)
+      .then(({ data }) => {
+        setPatientServices((data || []) as any);
+      });
+  }, [patient?.id]);
+
 
   useEffect(() => {
     if (!patient?.id || !user) return;
