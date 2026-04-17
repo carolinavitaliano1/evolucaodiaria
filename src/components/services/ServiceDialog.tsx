@@ -420,24 +420,25 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
               </div>
             )}
 
-            {/* Patient selector — only when coming from a clinic */}
-            {clinicId && clinicPatients.length > 0 && (
+            {/* Patient selector — always available */}
+            {clinicPatients.length > 0 && (
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5" />
-                  Paciente cadastrado nesta clínica
+                  Vincular a paciente cadastrado
                 </Label>
-                <Select onValueChange={handlePatientSelect}>
+                <Select value={selectedPatientId || 'none'} onValueChange={(v) => v === 'none' ? setSelectedPatientId('') : handlePatientSelect(v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar paciente (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Nenhum (cliente avulso)</SelectItem>
                     {clinicPatients.map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Preenche os campos abaixo automaticamente</p>
+                <p className="text-xs text-muted-foreground">Vincula o serviço ao financeiro do paciente e preenche os contatos</p>
               </div>
             )}
 
