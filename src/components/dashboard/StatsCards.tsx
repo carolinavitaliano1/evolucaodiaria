@@ -172,8 +172,6 @@ export function StatsCards() {
 
       // Per-patient calculation
       for (const p of cPatients) {
-        if (!p.paymentValue) continue;
-
         const billableEvolutions = monthlyEvolutions.filter(
           e => e.patientId === p.id && (
             e.attendanceStatus === 'presente' ||
@@ -183,16 +181,32 @@ export function StatsCards() {
           )
         );
 
+        // Group sessions: priced via group config, independent of patient's individual price
+        const groupEvos = billableEvolutions.filter(e => e.groupId);
+        const individualEvos = billableEvolutions.filter(e => !e.groupId);
+
+        for (const e of groupEvos) {
+          total += getGroupSessionValue({
+            groupId: e.groupId,
+            patientId: p.id,
+            groupBillingMap,
+            memberPaymentMap,
+            packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
+          });
+        }
+
+        if (!p.paymentValue || individualEvos.length === 0) continue;
+
         if (p.paymentType === 'fixo') {
           const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
           const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
           if (dynamic.occurrences > 0) {
-            total += billableEvolutions.length * dynamic.perSession;
+            total += individualEvos.length * dynamic.perSession;
           } else {
-            total += billableEvolutions.length * p.paymentValue;
+            total += individualEvos.length * p.paymentValue;
           }
         } else {
-          total += billableEvolutions.length * getEffectiveSessionValue(p);
+          total += individualEvos.length * getEffectiveSessionValue(p);
         }
       }
     }
