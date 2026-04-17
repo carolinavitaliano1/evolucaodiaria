@@ -28,6 +28,8 @@ export function StatsCards() {
 
   const [privateToday, setPrivateToday] = useState(0);
   const [privateMonthlyRevenue, setPrivateMonthlyRevenue] = useState(0);
+  const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
+  const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
 
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
