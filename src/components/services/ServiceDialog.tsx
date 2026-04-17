@@ -212,6 +212,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   function resetAppointmentForm() {
     setSelectedService('');
     setSelectedClinicId(clinicId || '');
+    setSelectedPatientId('');
     setClientName('');
     setClientPhone('');
     setClientEmail('');
