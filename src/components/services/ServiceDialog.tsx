@@ -76,6 +76,7 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedClinicId, setSelectedClinicId] = useState<string>('');
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
