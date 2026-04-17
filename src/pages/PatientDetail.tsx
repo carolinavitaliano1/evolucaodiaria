@@ -811,13 +811,21 @@ export default function PatientDetail() {
   const monthlyIndividualBillable = monthlyBillableEvos.filter(e => !e.groupId);
   const monthlyIndividualBillableCount = monthlyIndividualBillable.length;
   const monthlyIndividualUniqueDays = new Set(monthlyIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const monthlyRevenue = monthlyMensalDeduction
+  // Services revenue for the report month
+  const monthlyServicesRevenue = patientServices
+    .filter(s => {
+      if (s.status === 'cancelado') return false;
+      const d = new Date(s.date + 'T12:00:00');
+      return d.getMonth() === reportMonth.getMonth() && d.getFullYear() === reportMonth.getFullYear();
+    })
+    .reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const monthlyRevenue = (monthlyMensalDeduction
     ? monthlyMensalDeduction.finalRevenue + monthlyGroupRevenue
     : isFixoMensal
       ? paymentValue + monthlyGroupRevenue
       : isFixoDiario
         ? monthlyIndividualUniqueDays * perSessionValue + monthlyGroupRevenue
-        : monthlyIndividualBillableCount * perSessionValue + monthlyGroupRevenue;
+        : monthlyIndividualBillableCount * perSessionValue + monthlyGroupRevenue) + monthlyServicesRevenue;
   const monthlyRevenueSubtitle = monthlyMensalDeduction
     ? `${monthlyDynamic!.occurrences} sessões previstas`
     : isFixoMensal
