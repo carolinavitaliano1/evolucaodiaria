@@ -2691,6 +2691,12 @@ export default function ClinicDetail() {
                             <DropdownMenuItem onClick={() => { setEditServiceApt(apt); setEditServiceAptOpen(true); }}>
                               <Edit className="w-4 h-4 mr-2" /> Editar
                             </DropdownMenuItem>
+                            {apt.status === 'concluído' && (
+                              <DropdownMenuItem onClick={() => handleGenerateServiceReceipt(apt)} disabled={generatingReceiptId === apt.id}>
+                                {generatingReceiptId === apt.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Receipt className="w-4 h-4 mr-2" />}
+                                Emitir Recibo
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem className="text-destructive focus:text-destructive"
                               onClick={() => { setServiceAptToDelete(apt); setDeleteServiceAptOpen(true); }}>
                               <Trash2 className="w-4 h-4 mr-2" /> Apagar
