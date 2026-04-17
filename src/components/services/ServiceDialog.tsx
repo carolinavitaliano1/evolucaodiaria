@@ -93,13 +93,15 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
       loadServices();
       loadCustomTypes();
       loadPropriaClinics();
-      if (clinicId) loadClinicPatients(clinicId);
+      // Load patients (filtered by clinic if provided, else all)
+      loadAllPatients(clinicId);
       // Pre-fill form if editing an appointment
       if (editAppointment) {
         setActiveTab('agendar');
         setEditingAppointmentId(editAppointment.id);
         setSelectedService(editAppointment.service_id || '');
         setSelectedClinicId((editAppointment as any).clinic_id || clinicId || '');
+        setSelectedPatientId((editAppointment as any).patient_id || '');
         setClientName(editAppointment.client_name);
         setClientPhone(editAppointment.client_phone || '');
         setClientEmail(editAppointment.client_email || '');
@@ -114,22 +116,25 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
         setEditingAppointmentId(null);
         setActiveTab(clinicId ? 'agendar' : 'servicos');
         setSelectedClinicId(clinicId || '');
+        setSelectedPatientId('');
         setAppointmentPaymentDate('');
       }
     }
   }, [open, editAppointment, clinicId]);
 
-  async function loadClinicPatients(cid: string) {
-    const { data } = await supabase
+  async function loadAllPatients(cid?: string) {
+    let q = supabase
       .from('patients')
       .select('id, name, phone, responsible_email')
-      .eq('clinic_id', cid)
       .eq('is_archived', false)
       .order('name');
+    if (cid) q = q.eq('clinic_id', cid);
+    const { data } = await q;
     if (data) setClinicPatients(data as PatientOption[]);
   }
 
   function handlePatientSelect(patientId: string) {
+    setSelectedPatientId(patientId);
     const p = clinicPatients.find(pt => pt.id === patientId);
     if (!p) return;
     setClientName(p.name);
