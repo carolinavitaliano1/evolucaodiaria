@@ -306,7 +306,8 @@ export function ServiceDialog({ open, onOpenChange, editAppointment, onAppointme
 
       const appointmentData: any = {
         service_id: selectedService || null,
-        clinic_id: selectedClinicId || null,
+        clinic_id: selectedClinicId && selectedClinicId !== 'none' ? selectedClinicId : null,
+        patient_id: selectedPatientId || null,
         client_name: clientName,
         client_phone: clientPhone || null,
         client_email: clientEmail || null,
