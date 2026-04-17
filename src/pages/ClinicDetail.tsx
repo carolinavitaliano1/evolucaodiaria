@@ -2615,6 +2615,11 @@ export default function ClinicDetail() {
                           {apt.paid && (
                             <Badge variant="outline" className="text-xs border-success/50 text-success shrink-0">Pago</Badge>
                           )}
+                          {apt.patient_id && (
+                            <Badge variant="outline" className="text-xs border-primary/50 text-primary shrink-0 flex items-center gap-1">
+                              <UserCheck className="w-3 h-3" /> Paciente
+                            </Badge>
+                          )}
                         </div>
                         {apt.service_name && (
                           <p className="text-xs text-primary font-medium mb-1 flex items-center gap-1">
