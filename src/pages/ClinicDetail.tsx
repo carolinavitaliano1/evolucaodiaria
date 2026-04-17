@@ -503,6 +503,53 @@ export default function ClinicDetail() {
     loadClinicServices();
   };
 
+  const [generatingReceiptId, setGeneratingReceiptId] = useState<string | null>(null);
+  const handleGenerateServiceReceipt = async (apt: ClinicPrivateApt) => {
+    if (!user) return;
+    setGeneratingReceiptId(apt.id);
+    try {
+      const [{ data: prof }, { data: stampsData }, { data: pat }] = await Promise.all([
+        supabase.from('profiles').select('name, professional_id, cpf, cbo').eq('user_id', user.id).maybeSingle(),
+        supabase.from('stamps').select('*').eq('user_id', user.id),
+        apt.patient_id
+          ? supabase.from('patients').select('name, cpf, is_minor, guardian_name, responsible_cpf').eq('id', apt.patient_id).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+      ]);
+      const stamp = (stampsData || []).find((s: any) => s.is_default) || (stampsData || [])[0] || null;
+      const payerName = pat
+        ? (pat.is_minor && pat.guardian_name ? pat.guardian_name : pat.name)
+        : apt.client_name;
+      const payerCpf = pat
+        ? (pat.is_minor ? pat.responsible_cpf : pat.cpf)
+        : null;
+      await generatePaymentReceiptPdf({
+        therapistName: prof?.name || 'Profissional',
+        therapistCpf: prof?.cpf,
+        therapistAddress: null,
+        therapistProfessionalId: prof?.professional_id,
+        therapistCbo: prof?.cbo,
+        therapistClinicalArea: stamp?.clinical_area ?? null,
+        stamp,
+        payerName,
+        payerCpf,
+        location: null,
+        amount: apt.price,
+        serviceName: apt.service_name || 'Serviço prestado',
+        period: format(new Date(apt.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }),
+        paymentMethod: 'transferência bancária',
+        paymentDate: apt.payment_date || apt.date,
+        clinicName: clinic?.name ?? null,
+        clinicAddress: clinic?.address ?? null,
+        clinicCnpj: (clinic as any)?.cnpj ?? null,
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao gerar recibo');
+    } finally {
+      setGeneratingReceiptId(null);
+    }
+  };
+
   const getServiceStatusColor = (status: string) => {
     switch (status) {
       case 'agendado': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
