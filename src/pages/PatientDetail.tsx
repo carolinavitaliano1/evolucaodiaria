@@ -277,6 +277,9 @@ export default function PatientDetail() {
   const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
   const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
 
+  // Patient services (private_appointments) for revenue calculations
+  const [patientServices, setPatientServices] = useState<{ id: string; date: string; price: number; status: string; paid: boolean | null }[]>([]);
+
   // Patient notes state
   const [patientNotes, setPatientNotes] = useState<{ id: string; title: string; content: string; created_at: string; updated_at: string }[]>([]);
   const [newNoteTitle, setNewNoteTitle] = useState('');
