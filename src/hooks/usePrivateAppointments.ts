@@ -8,6 +8,7 @@ export interface PrivateAppointment {
   client_phone?: string;
   service_id?: string;
   clinic_id?: string | null;
+  patient_id?: string | null;
   date: string;
   time: string;
   price: number;
