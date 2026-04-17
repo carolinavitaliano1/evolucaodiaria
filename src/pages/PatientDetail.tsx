@@ -277,6 +277,9 @@ export default function PatientDetail() {
   const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
   const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
 
+  // Patient services (private_appointments) for revenue calculations
+  const [patientServices, setPatientServices] = useState<{ id: string; date: string; price: number; status: string; paid: boolean | null }[]>([]);
+
   // Patient notes state
   const [patientNotes, setPatientNotes] = useState<{ id: string; title: string; content: string; created_at: string; updated_at: string }[]>([]);
   const [newNoteTitle, setNewNoteTitle] = useState('');
@@ -441,6 +444,17 @@ export default function PatientDetail() {
           });
       });
   }, [user, patient?.id]);
+
+  // Load patient services (private_appointments) for revenue inclusion
+  useEffect(() => {
+    if (!patient?.id) return;
+    supabase.from('private_appointments')
+      .select('id, date, price, status, paid')
+      .eq('patient_id', patient.id)
+      .then(({ data }) => {
+        setPatientServices((data || []) as any);
+      });
+  }, [patient?.id]);
 
 
   useEffect(() => {
@@ -717,11 +731,15 @@ export default function PatientDetail() {
   const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
   const totalIndividualBillableCount = totalIndividualBillableEvos.length;
   const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const totalFinancial = isFixoMensal
+  // Sum of all-time services (não cancelados) for this patient
+  const totalServicesRevenue = patientServices
+    .filter(s => s.status !== 'cancelado')
+    .reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const totalFinancial = (isFixoMensal
     ? paymentValue + totalGroupRevenue
     : isFixoDiario
       ? totalIndividualUniqueDays * perSessionValue + totalGroupRevenue
-      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue;
+      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue) + totalServicesRevenue;
   const totalFinancialSubtitle = isFixoMensal
     ? 'Valor Fixo Mensal'
     : isFixoDiario
@@ -793,13 +811,21 @@ export default function PatientDetail() {
   const monthlyIndividualBillable = monthlyBillableEvos.filter(e => !e.groupId);
   const monthlyIndividualBillableCount = monthlyIndividualBillable.length;
   const monthlyIndividualUniqueDays = new Set(monthlyIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const monthlyRevenue = monthlyMensalDeduction
+  // Services revenue for the report month
+  const monthlyServicesRevenue = patientServices
+    .filter(s => {
+      if (s.status === 'cancelado') return false;
+      const d = new Date(s.date + 'T12:00:00');
+      return d.getMonth() === reportMonth.getMonth() && d.getFullYear() === reportMonth.getFullYear();
+    })
+    .reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const monthlyRevenue = (monthlyMensalDeduction
     ? monthlyMensalDeduction.finalRevenue + monthlyGroupRevenue
     : isFixoMensal
       ? paymentValue + monthlyGroupRevenue
       : isFixoDiario
         ? monthlyIndividualUniqueDays * perSessionValue + monthlyGroupRevenue
-        : monthlyIndividualBillableCount * perSessionValue + monthlyGroupRevenue;
+        : monthlyIndividualBillableCount * perSessionValue + monthlyGroupRevenue) + monthlyServicesRevenue;
   const monthlyRevenueSubtitle = monthlyMensalDeduction
     ? `${monthlyDynamic!.occurrences} sessões previstas`
     : isFixoMensal

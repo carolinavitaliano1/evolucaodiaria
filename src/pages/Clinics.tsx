@@ -125,9 +125,14 @@ export default function Clinics() {
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
   });
 
+  // Load on mount so Faturado card includes services revenue
+  useEffect(() => {
+    if (!user) return;
+    loadPrivateAppointments();
+  }, [user]);
+
   useEffect(() => {
     if (activeTab === 'meus-servicos') {
-      loadPrivateAppointments();
       loadRegisteredServices();
     }
   }, [activeTab, user]);
@@ -371,8 +376,17 @@ export default function Clinics() {
       }
     }
 
-    return clinicRevenue;
-  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds]);
+    // Add monthly services (private_appointments) revenue — não cancelados
+    const servicesRevenue = privateAppointments
+      .filter(a => {
+        if (a.status === 'cancelado') return false;
+        const d = new Date(a.date + 'T12:00:00');
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      })
+      .reduce((sum, a) => sum + Number(a.price || 0), 0);
+
+    return clinicRevenue + servicesRevenue;
+  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds, privateAppointments]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

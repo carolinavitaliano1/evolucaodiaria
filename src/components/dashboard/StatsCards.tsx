@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { getDynamicSessionValue } from '@/utils/dateHelpers';
+import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 
 export function StatsCards() {
   const { clinics, patients, appointments, evolutions, clinicPackages } = useApp();
@@ -27,6 +28,8 @@ export function StatsCards() {
 
   const [privateToday, setPrivateToday] = useState(0);
   const [privateMonthlyRevenue, setPrivateMonthlyRevenue] = useState(0);
+  const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
+  const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
 
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -46,9 +49,9 @@ export function StatsCards() {
         .eq('date', today),
       supabase
         .from('private_appointments')
-        .select('price')
+        .select('price, status')
         .eq('user_id', user.id)
-        .eq('status', 'concluído')
+        .neq('status', 'cancelado')
         .gte('date', monthStart)
         .lt('date', monthEnd),
     ]);
@@ -57,6 +60,45 @@ export function StatsCards() {
     const revenue = (monthRes.data || []).reduce((sum, a) => sum + (a.price || 0), 0);
     setPrivateMonthlyRevenue(revenue);
   };
+
+  // Load group billing data for accurate group session pricing
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('therapeutic_groups').select('id, default_price, financial_enabled, payment_type, package_id')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: GroupBillingMap = {};
+        data.forEach((g: any) => {
+          map[g.id] = {
+            defaultPrice: g.default_price ?? null,
+            paymentType: g.payment_type ?? null,
+            packageId: g.package_id ?? null,
+            financialEnabled: g.financial_enabled ?? false,
+          };
+        });
+        setGroupBillingMap(map);
+        if (data.length > 0) {
+          const groupIds = data.map((g: any) => g.id);
+          supabase.from('therapeutic_group_members')
+            .select('group_id, patient_id, is_paying, member_payment_value')
+            .in('group_id', groupIds)
+            .eq('status', 'active')
+            .then(({ data: membersData }) => {
+              if (!membersData) return;
+              const mmap: GroupMemberPaymentMap = {};
+              membersData.forEach((m: any) => {
+                if (!mmap[m.group_id]) mmap[m.group_id] = {};
+                mmap[m.group_id][m.patient_id] = {
+                  isPaying: m.is_paying ?? true,
+                  value: m.member_payment_value ?? null,
+                };
+              });
+              setMemberPaymentMap(mmap);
+            });
+        }
+      });
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -130,8 +172,6 @@ export function StatsCards() {
 
       // Per-patient calculation
       for (const p of cPatients) {
-        if (!p.paymentValue) continue;
-
         const billableEvolutions = monthlyEvolutions.filter(
           e => e.patientId === p.id && (
             e.attendanceStatus === 'presente' ||
@@ -141,16 +181,32 @@ export function StatsCards() {
           )
         );
 
+        // Group sessions: priced via group config, independent of patient's individual price
+        const groupEvos = billableEvolutions.filter(e => e.groupId);
+        const individualEvos = billableEvolutions.filter(e => !e.groupId);
+
+        for (const e of groupEvos) {
+          total += getGroupSessionValue({
+            groupId: e.groupId,
+            patientId: p.id,
+            groupBillingMap,
+            memberPaymentMap,
+            packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
+          });
+        }
+
+        if (!p.paymentValue || individualEvos.length === 0) continue;
+
         if (p.paymentType === 'fixo') {
           const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
           const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
           if (dynamic.occurrences > 0) {
-            total += billableEvolutions.length * dynamic.perSession;
+            total += individualEvos.length * dynamic.perSession;
           } else {
-            total += billableEvolutions.length * p.paymentValue;
+            total += individualEvos.length * p.paymentValue;
           }
         } else {
-          total += billableEvolutions.length * getEffectiveSessionValue(p);
+          total += individualEvos.length * getEffectiveSessionValue(p);
         }
       }
     }
