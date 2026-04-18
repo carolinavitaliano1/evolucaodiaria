@@ -19,6 +19,7 @@ import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 import jsPDF from 'jspdf';
 import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
+import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 
 interface ClinicFinancialProps {
   clinicId: string;
