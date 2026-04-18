@@ -3052,6 +3052,17 @@ export default function ClinicDetail() {
         onSave={updateClinic}
       />
 
+      {/* Editable Receipt Modal (clinic services) */}
+      {receiptModalData && (
+        <EditableReceiptModal
+          open={receiptModalOpen}
+          onOpenChange={setReceiptModalOpen}
+          initial={receiptModalData.initial}
+          therapist={receiptModalData.therapist}
+          clinic={{ name: clinic?.name ?? null, address: clinic?.address ?? null, cnpj: (clinic as any)?.cnpj ?? null }}
+        />
+      )}
+
       {/* Edit Patient Dialog */}
       {patientToEdit && (
         <EditPatientDialog
