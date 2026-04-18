@@ -401,7 +401,12 @@ export default function Patients() {
       const presences = patientEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const faltasRem = patientEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       const absences = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
-      const valuePerSession = patient.paymentValue || clinic?.paymentAmount || 0;
+      // Effective per-session value: respects "personalizado" packages (price / sessionLimit)
+      const _pkgs = getClinicPackages(patient.clinicId);
+      const _pkg = patient.packageId ? _pkgs.find(p => p.id === patient.packageId) : null;
+      const _isPersonalizado = _pkg?.packageType === 'personalizado' && (_pkg?.sessionLimit ?? 0) > 0;
+      const baseValue = patient.paymentValue || clinic?.paymentAmount || 0;
+      const valuePerSession = _isPersonalizado ? baseValue / (_pkg!.sessionLimit as number) : baseValue;
       const totalValue = (presences + faltasRem) * valuePerSession;
 
       const pdf = new jsPDF('p', 'mm', 'a4');
