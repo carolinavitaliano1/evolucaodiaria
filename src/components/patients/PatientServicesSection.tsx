@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { generatePaymentReceiptPdf } from '@/utils/generatePaymentReceiptPdf';
+import { EditableReceiptModal } from '@/components/financial/EditableReceiptModal';
 import { toast } from 'sonner';
 
 interface PatientServicesSectionProps {
