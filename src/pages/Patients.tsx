@@ -555,7 +555,9 @@ export default function Patients() {
         { label: 'Faltas Remuneradas', value: String(faltasRem) },
         { label: 'Faltas (sem cobrança)', value: String(absences) },
         { label: 'Total de Sessões no Período', value: String(patientEvolutions.length) },
-        { label: 'Valor por Sessão', value: `R$ ${valuePerSession.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        _isMensal
+          ? { label: 'Valor Mensal do Pacote', value: `R$ ${baseValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }
+          : { label: 'Valor por Sessão', value: `R$ ${valuePerSession.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
       ];
 
       pdf.setFont('helvetica', 'normal');
