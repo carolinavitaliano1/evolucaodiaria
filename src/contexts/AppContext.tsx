@@ -169,6 +169,25 @@ function mapAttachment(a: Record<string, unknown>): Attachment {
   };
 }
 
+// Cache key for sessionStorage stale-while-revalidate hydration
+const CACHE_KEY = 'app-context-cache-v1';
+
+function readCache(userId: string): Partial<Pick<AppState, 'clinics' | 'patients' | 'tasks' | 'clinicPackages'>> | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.userId !== userId) return null;
+    return parsed.data;
+  } catch { return null; }
+}
+
+function writeCache(userId: string, data: Pick<AppState, 'clinics' | 'patients' | 'tasks' | 'clinicPackages'>) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ userId, data }));
+  } catch { /* quota exceeded — ignore */ }
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user, sessionReady } = useAuth();
   const [state, setState] = useState<AppState>({
@@ -186,8 +205,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadingAttachmentsRef = useRef<Set<string>>(new Set());
   const loadingAllEvolutionsRef = useRef(false);
 
-  // === PHASE 1: Fast initial load — only clinics, patients, tasks, packages ===
-  // For org members (collaborators), we scope the data to their org's clinic only.
+  // === PHASE 1: Fast initial load — clinics, patients, tasks, packages ===
+  // Hydrates instantly from sessionStorage (stale-while-revalidate), then refreshes in background.
   const loadInitialData = useCallback(async () => {
     if (!user) {
       setState(prev => ({
@@ -200,76 +219,76 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setState(prev => ({ ...prev, isLoading: true }));
+    // 1) Hydrate instantly from cache if available — eliminates "not found" flash on refresh
+    const cached = readCache(user.id);
+    if (cached) {
+      setState(prev => ({
+        ...prev,
+        clinics: cached.clinics || prev.clinics,
+        patients: cached.patients || prev.patients,
+        tasks: cached.tasks || prev.tasks,
+        clinicPackages: cached.clinicPackages || prev.clinicPackages,
+        isLoading: false,
+      }));
+    } else {
+      setState(prev => ({ ...prev, isLoading: true }));
+    }
+
     try {
-      // Check if this user is a non-owner org member (collaborator)
-      const { data: memberData } = await supabase
+      // 2) Fire core data queries IMMEDIATELY in parallel with the org-membership check
+      const corePromise = Promise.all([
+        supabase.from('clinics').select('*').order('created_at', { ascending: false }),
+        supabase.from('patients').select('*').order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+        supabase.from('clinic_packages').select('*').order('created_at', { ascending: false }),
+      ]);
+      const memberPromise = supabase
         .from('organization_members')
         .select('organization_id, role')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .maybeSingle();
 
-      let orgClinicIds: string[] | null = null;
+      const [memberRes, [clinicsRes, patientsRes, tasksRes, packagesRes]] = await Promise.all([
+        memberPromise,
+        corePromise,
+      ]);
 
+      let orgClinicIds: Set<string> | null = null;
+      const memberData = memberRes.data;
       if (memberData) {
-        // Check if they are the org owner
         const { data: orgData } = await supabase
           .from('organizations')
           .select('owner_id')
           .eq('id', memberData.organization_id)
           .maybeSingle();
-
         const isOwner = orgData?.owner_id === user.id;
-
         if (!isOwner) {
-          // Collaborator: only load clinics linked to their org
-          const { data: orgClinics } = await supabase
-            .from('clinics')
-            .select('id')
-            .eq('organization_id', memberData.organization_id);
-          orgClinicIds = (orgClinics || []).map(c => c.id);
+          // Filter client-side from already-fetched clinics (no extra roundtrip)
+          const orgClinics = (clinicsRes.data || []).filter((c: any) => c.organization_id === memberData.organization_id);
+          orgClinicIds = new Set(orgClinics.map((c: any) => c.id));
         }
       }
 
-      // Build queries — collaborators are scoped to their org's clinics
-      let clinicsQuery = supabase.from('clinics').select('*').order('created_at', { ascending: false });
-      let patientsQuery = supabase.from('patients').select('*').order('created_at', { ascending: false });
-      let packagesQuery = supabase.from('clinic_packages').select('*').order('created_at', { ascending: false });
+      let clinicsRaw = (clinicsRes.data || []).map(c => mapClinic(c as Record<string, unknown>));
+      let patientsRaw = (patientsRes.data || []).map(p => mapPatient(p as Record<string, unknown>));
+      let tasks = (tasksRes.data || []).map(t => mapTask(t as Record<string, unknown>));
+      let clinicPackages = (packagesRes.data || []).map(p => mapPackage(p as Record<string, unknown>));
 
       if (orgClinicIds !== null) {
-        if (orgClinicIds.length === 0) {
-          // Member of org but no clinics found — show empty
-          setState(prev => ({
-            ...prev, clinics: [], patients: [], tasks: [], clinicPackages: [], isLoading: false,
-            loadedEvolutionsForClinics: new Set(),
-            loadedAppointmentsForClinics: new Set(),
-            loadedAttachmentsForPatients: new Set(),
-          }));
-          return;
-        }
-        clinicsQuery = clinicsQuery.in('id', orgClinicIds);
-        patientsQuery = patientsQuery.in('clinic_id', orgClinicIds);
-        packagesQuery = packagesQuery.in('clinic_id', orgClinicIds);
+        clinicsRaw = clinicsRaw.filter(c => orgClinicIds!.has(c.id));
+        patientsRaw = patientsRaw.filter(p => orgClinicIds!.has(p.clinicId));
+        clinicPackages = clinicPackages.filter(p => orgClinicIds!.has(p.clinicId));
       }
 
-      const [clinicsRes, patientsRes, tasksRes, packagesRes] = await Promise.all([
-        clinicsQuery,
-        patientsQuery,
-        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-        packagesQuery,
-      ]);
-
-      const clinicsRaw = (clinicsRes.data || []).map(c => mapClinic(c as Record<string, unknown>));
-      const patientsRaw = (patientsRes.data || []).map(p => mapPatient(p as Record<string, unknown>));
-      const tasks = (tasksRes.data || []).map(t => mapTask(t as Record<string, unknown>));
-      const clinicPackages = (packagesRes.data || []).map(p => mapPackage(p as Record<string, unknown>));
-
-      // Deduplicate by id to prevent ghost birthday/duplicate entries on fast re-renders
+      // Deduplicate by id
       const seenClinics = new Set<string>();
       const clinics = clinicsRaw.filter(c => { if (seenClinics.has(c.id)) return false; seenClinics.add(c.id); return true; });
       const seenPatients = new Set<string>();
       const patients = patientsRaw.filter(p => { if (seenPatients.has(p.id)) return false; seenPatients.add(p.id); return true; });
+
+      // Persist to cache for next refresh
+      writeCache(user.id, { clinics, patients, tasks, clinicPackages });
 
       setState(prev => ({
         ...prev, clinics, patients, tasks, clinicPackages, isLoading: false,
@@ -279,7 +298,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
     } catch (error) {
       console.error('Error loading initial data:', error);
-      toast.error('Erro ao carregar dados');
+      if (!cached) toast.error('Erro ao carregar dados');
       setState(prev => ({ ...prev, isLoading: false }));
     }
   }, [user]);
