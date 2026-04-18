@@ -1721,18 +1721,36 @@ export default function PatientDetail() {
         feriado_nao_remunerado: 'Feriado Não Remunerado',
       };
       const paidStatuses = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'];
-      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
-      doc.text(`3. REGISTRO COMPLETO DAS SESSÕES (${targetEvolutions.length})`, margin, y); y += 6;
 
-      for (const evo of targetEvolutions) {
-        if (y > 260) { doc.addPage(); y = margin; }
-        const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-        const status = allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus;
+      // Fetch private services (avulsos) within the same month
+      const monthStart = format(startOfMonth(targetMonth), 'yyyy-MM-dd');
+      const monthEnd = format(endOfMonth(targetMonth), 'yyyy-MM-dd');
+      const { data: svcData } = await supabase
+        .from('private_appointments')
+        .select('id, date, time, price, status, paid, services(name)')
+        .eq('patient_id', patient.id)
+        .gte('date', monthStart)
+        .lte('date', monthEnd);
+      const monthServices = (svcData || [])
+        .filter((s: any) => s.status !== 'cancelado')
+        .map((s: any) => ({
+          id: s.id,
+          date: s.date as string,
+          status: s.status as string,
+          paid: !!s.paid,
+          price: Number(s.price) || 0,
+          name: s.services?.name || 'Serviço prestado',
+        }));
+      const servicesTotal = monthServices.reduce((sum, s) => sum + s.price, 0);
+
+      // Build unified rows (sessions + services), sorted chronologically
+      type UnifiedRow =
+        | { kind: 'session'; date: string; statusLabel: string; isPaid: boolean; isGroup: boolean; value: number }
+        | { kind: 'service'; date: string; statusLabel: string; isPaid: boolean; description: string; value: number };
+
+      const sessionRows: UnifiedRow[] = targetEvolutions.map(evo => {
         const isPaid = paidStatuses.includes(evo.attendanceStatus);
         const isGroup = !!evo.groupId;
-        const typeLabel = isGroup ? 'Tipo: Grupo' : 'Tipo: Individual';
-
-        // Calculate correct value for this session
         let sessionValue = 0;
         if (isPaid) {
           if (isGroup) {
@@ -1747,19 +1765,69 @@ export default function PatientDetail() {
             sessionValue = pdfPerSession;
           }
         }
+        return {
+          kind: 'session',
+          date: evo.date,
+          statusLabel: allStatusLabel[evo.attendanceStatus] || evo.attendanceStatus,
+          isPaid,
+          isGroup,
+          value: sessionValue,
+        };
+      });
+
+      const serviceRows: UnifiedRow[] = monthServices.map(s => ({
+        kind: 'service' as const,
+        date: s.date,
+        statusLabel: s.status,
+        isPaid: s.paid,
+        description: s.name,
+        value: s.price,
+      }));
+
+      const allRows = [...sessionRows, ...serviceRows].sort((a, b) => a.date.localeCompare(b.date));
+
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
+      doc.text(`3. REGISTRO COMPLETO DE ATENDIMENTOS (${allRows.length})`, margin, y); y += 6;
+
+      for (const row of allRows) {
+        if (y > 260) { doc.addPage(); y = margin; }
+        const dateStr = format(new Date(row.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        let typeLabel: string;
+        let typeColor: [number, number, number];
+        if (row.kind === 'session') {
+          typeLabel = row.isGroup ? 'Tipo: Sessão Grupo' : 'Tipo: Sessão';
+          typeColor = row.isGroup ? [100, 60, 180] : [60, 100, 60];
+        } else {
+          typeLabel = `Tipo: Serviço — ${row.description.slice(0, 35)}`;
+          typeColor = [120, 60, 160];
+        }
 
         doc.setDrawColor(...borderColor); doc.line(margin, y - 1, W - margin, y - 1);
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
         doc.text(dateStr, margin + 2, y + 4);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...mutedText);
-        doc.text(status, margin + 32, y + 4);
-        // Type indicator (plain text only to avoid broken glyphs in PDF fonts)
-        doc.setFontSize(8); doc.setTextColor(isGroup ? 100 : 60, isGroup ? 60 : 100, isGroup ? 180 : 60);
+        doc.text(row.statusLabel, margin + 32, y + 4);
+        doc.setFontSize(8); doc.setTextColor(...typeColor);
         doc.text(typeLabel, margin + 68, y + 4);
-        if (isPaid) {
+        if (row.isPaid || row.kind === 'service') {
           doc.setFontSize(9); doc.setTextColor(...accentDark);
-          doc.text(`R$ ${sessionValue.toFixed(2)}`, W - margin - 2, y + 4, { align: 'right' });
+          doc.text(`R$ ${row.value.toFixed(2)}`, W - margin - 2, y + 4, { align: 'right' });
         }
+        y += 7;
+      }
+
+      // Add services subtotal line if any
+      if (serviceRows.length > 0) {
+        if (y > 270) { doc.addPage(); y = margin; }
+        y += 2;
+        doc.setDrawColor(...borderColor); doc.line(margin, y, W - margin, y); y += 5;
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
+        doc.text(`Subtotal de serviços avulsos: ${serviceRows.length} item(ns)`, margin + 2, y);
+        doc.text(`R$ ${servicesTotal.toFixed(2)}`, W - margin - 2, y, { align: 'right' });
+        y += 5;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...accentDark);
+        doc.text('TOTAL GERAL (Sessões + Serviços):', margin + 2, y);
+        doc.text(`R$ ${(tRevenue + servicesTotal).toFixed(2)}`, W - margin - 2, y, { align: 'right' });
         y += 7;
       }
 

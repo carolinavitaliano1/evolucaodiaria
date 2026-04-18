@@ -19,6 +19,7 @@ import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 import jsPDF from 'jspdf';
 import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
+import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -454,6 +455,26 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         <h3 className="font-bold text-foreground capitalize text-sm">{monthName}</h3>
         <Button variant="ghost" size="icon" onClick={() => setSelectedDate(prev => addMonths(prev, 1))}>
           <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Internal statement download */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => generateClinicInternalStatementPdf({
+            clinicId,
+            clinicName: clinic.name,
+            clinicAddress: clinic.address ?? null,
+            clinicCnpj: (clinic as any)?.cnpj ?? null,
+            month: selectedMonth,
+            year: selectedYear,
+            patients: clinicPatients.map(p => ({ id: p.id, name: p.name })),
+          })}
+          className="gap-2"
+        >
+          <FileDown className="w-4 h-4" /> Extrato Completo Interno
         </Button>
       </div>
 
