@@ -232,7 +232,7 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
 export default function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic, addPatientToState } = useApp();
+  const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, addPackage, updatePackage, deletePackage, loadEvolutionsForClinic, loadAppointmentsForClinic, addPatientToState, isLoading: appLoading } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [submittingPatient, setSubmittingPatient] = useState(false);
   const [pendingPatients, setPendingPatients] = useState<any[]>([]);
@@ -718,6 +718,13 @@ export default function ClinicDetail() {
   };
 
   if (!clinic) {
+    if (appLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
     return (
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Clínica não encontrada</p>

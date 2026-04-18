@@ -166,7 +166,7 @@ export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { patients, clinics, evolutions, attachments, addEvolution, updateEvolution, deleteEvolution, currentClinic,
-    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages, loadEvolutionsForClinic, loadAttachmentsForPatient } = useApp();
+    addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages, loadEvolutionsForClinic, loadAttachmentsForPatient, isLoading: appLoading } = useApp();
   const { user } = useAuth();
   const { customMoods } = useCustomMoods();
   const { permissions: orgPermissions, isOwner: isOrgOwner } = useOrgPermissions();
@@ -891,6 +891,13 @@ export default function PatientDetail() {
 
 
   if (!patient) {
+    if (appLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
     return (
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Paciente não encontrado</p>
