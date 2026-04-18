@@ -401,13 +401,28 @@ export default function Patients() {
       const presences = patientEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const faltasRem = patientEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       const absences = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
-      // Effective per-session value: respects "personalizado" packages (price / sessionLimit)
+      // Effective value calculation: respects package type
+      // - mensal: fixed price × number of months in period
+      // - personalizado: price / sessionLimit per session
+      // - por_sessao / no package: price per session
       const _pkgs = getClinicPackages(patient.clinicId);
       const _pkg = patient.packageId ? _pkgs.find(p => p.id === patient.packageId) : null;
-      const _isPersonalizado = _pkg?.packageType === 'personalizado' && (_pkg?.sessionLimit ?? 0) > 0;
+      const _pkgType = _pkg?.packageType;
+      const _isPersonalizado = _pkgType === 'personalizado' && (_pkg?.sessionLimit ?? 0) > 0;
+      const _isMensal = _pkgType === 'mensal';
       const baseValue = patient.paymentValue || clinic?.paymentAmount || 0;
-      const valuePerSession = _isPersonalizado ? baseValue / (_pkg!.sessionLimit as number) : baseValue;
-      const totalValue = (presences + faltasRem) * valuePerSession;
+      const valuePerSession = _isPersonalizado
+        ? baseValue / (_pkg!.sessionLimit as number)
+        : baseValue;
+      let totalValue: number;
+      if (_isMensal) {
+        // Count distinct months in the selected period (inclusive)
+        const monthsCount = (endDate.getFullYear() - startDate.getFullYear()) * 12
+          + (endDate.getMonth() - startDate.getMonth()) + 1;
+        totalValue = baseValue * Math.max(1, monthsCount);
+      } else {
+        totalValue = (presences + faltasRem) * valuePerSession;
+      }
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -540,7 +555,9 @@ export default function Patients() {
         { label: 'Faltas Remuneradas', value: String(faltasRem) },
         { label: 'Faltas (sem cobrança)', value: String(absences) },
         { label: 'Total de Sessões no Período', value: String(patientEvolutions.length) },
-        { label: 'Valor por Sessão', value: `R$ ${valuePerSession.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        _isMensal
+          ? { label: 'Valor Mensal do Pacote', value: `R$ ${baseValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }
+          : { label: 'Valor por Sessão', value: `R$ ${valuePerSession.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
       ];
 
       pdf.setFont('helvetica', 'normal');
