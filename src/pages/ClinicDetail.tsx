@@ -468,7 +468,7 @@ export default function ClinicDetail() {
     setLoadingClinicServices(true);
     const { data } = await supabase
       .from('private_appointments')
-      .select('*, services(name)')
+      .select('id, client_name, client_email, client_phone, service_id, clinic_id, patient_id, date, time, price, status, notes, paid, payment_date, created_at, services(name)')
       .eq('clinic_id', id)
       .order('date', { ascending: false })
       .order('time', { ascending: true });
@@ -479,6 +479,14 @@ export default function ClinicDetail() {
     setClinicServices(mapped);
     setLoadingClinicServices(false);
   };
+
+  // Auto-load services list when entering a propria clinic so the history is ready
+  useEffect(() => {
+    if (id && clinic?.type === 'propria') {
+      loadClinicServices();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, clinic?.type]);
 
   const updateClinicServiceStatus = async (aptId: string, status: string) => {
     await supabase.from('private_appointments').update({ status }).eq('id', aptId);
