@@ -458,6 +458,26 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         </Button>
       </div>
 
+      {/* Internal statement download */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => generateClinicInternalStatementPdf({
+            clinicId,
+            clinicName: clinic.name,
+            clinicAddress: clinic.address ?? null,
+            clinicCnpj: (clinic as any)?.cnpj ?? null,
+            month: selectedMonth,
+            year: selectedYear,
+            patients: clinicPatients.map(p => ({ id: p.id, name: p.name })),
+          })}
+          className="gap-2"
+        >
+          <FileDown className="w-4 h-4" /> Extrato Completo Interno
+        </Button>
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card rounded-2xl p-4 border border-border">
