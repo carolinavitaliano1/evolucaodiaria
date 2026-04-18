@@ -43,7 +43,12 @@ export function PatientServicesSection({
 }: PatientServicesSectionProps) {
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptInitial, setReceiptInitial] = useState<{
+    payerName: string; payerCpf?: string | null; amount: number;
+    serviceName: string; period: string; paymentMethod: string; paymentDate: string;
+    initialStampId?: string | null;
+  } | null>(null);
 
   const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month + 1, 0).getDate();
@@ -77,33 +82,19 @@ export function PatientServicesSection({
     load();
   };
 
-  const handleGenerateReceipt = async (svc: ServiceRow) => {
+  const handleGenerateReceipt = (svc: ServiceRow) => {
     if (!therapist) { toast.error('Perfil profissional incompleto'); return; }
-    setGeneratingId(svc.id);
-    try {
-      await generatePaymentReceiptPdf({
-        therapistName: therapist.name,
-        therapistCpf: therapist.cpf,
-        therapistAddress: therapist.address,
-        therapistProfessionalId: therapist.professionalId,
-        therapistCbo: therapist.cbo,
-        therapistClinicalArea: stamp?.clinical_area ?? null,
-        stamp: stamp || null,
-        payerName,
-        payerCpf,
-        location: null,
-        amount: svc.price,
-        serviceName: svc.service_name || 'Serviço prestado',
-        period: format(new Date(svc.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }),
-        paymentMethod: 'transferência bancária',
-        paymentDate: svc.payment_date || svc.date,
-        clinicName: clinic?.name ?? null,
-        clinicAddress: clinic?.address ?? null,
-        clinicCnpj: clinic?.cnpj ?? null,
-      });
-    } finally {
-      setGeneratingId(null);
-    }
+    setReceiptInitial({
+      payerName,
+      payerCpf: payerCpf ?? null,
+      amount: svc.price,
+      serviceName: svc.service_name || 'Serviço prestado',
+      period: format(new Date(svc.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }),
+      paymentMethod: 'transferência bancária',
+      paymentDate: svc.payment_date || svc.date,
+      initialStampId: stamp?.id ?? null,
+    });
+    setReceiptOpen(true);
   };
 
   const totalReceived = services.filter(s => s.paid && s.status !== 'cancelado').reduce((sum, s) => sum + s.price, 0);
