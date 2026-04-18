@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { toLocalDateString } from '@/lib/utils';
 import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck } from 'lucide-react';
-import { generatePaymentReceiptPdf } from '@/utils/generatePaymentReceiptPdf';
+import { EditableReceiptModal } from '@/components/financial/EditableReceiptModal';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { PendingEnrollmentsPanel } from '@/components/clinics/PendingEnrollmentsPanel';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
@@ -504,6 +504,12 @@ export default function ClinicDetail() {
   };
 
   const [generatingReceiptId, setGeneratingReceiptId] = useState<string | null>(null);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [receiptModalData, setReceiptModalData] = useState<{
+    initial: { payerName: string; payerCpf?: string | null; amount: number; serviceName: string; period: string; paymentMethod: string; paymentDate: string; initialStampId?: string | null };
+    therapist: { name: string; cpf?: string | null; professionalId?: string | null; cbo?: string | null; address?: string | null };
+  } | null>(null);
+
   const handleGenerateServiceReceipt = async (apt: ClinicPrivateApt) => {
     if (!user) return;
     setGeneratingReceiptId(apt.id);
@@ -515,36 +521,36 @@ export default function ClinicDetail() {
           ? supabase.from('patients').select('name, cpf, is_minor, guardian_name, responsible_cpf').eq('id', apt.patient_id).maybeSingle()
           : Promise.resolve({ data: null } as any),
       ]);
-      const stamp = (stampsData || []).find((s: any) => s.is_default) || (stampsData || [])[0] || null;
+      const defaultStamp = (stampsData || []).find((s: any) => s.is_default) || (stampsData || [])[0] || null;
       const payerName = pat
         ? (pat.is_minor && pat.guardian_name ? pat.guardian_name : pat.name)
         : apt.client_name;
       const payerCpf = pat
         ? (pat.is_minor ? pat.responsible_cpf : pat.cpf)
         : null;
-      await generatePaymentReceiptPdf({
-        therapistName: prof?.name || 'Profissional',
-        therapistCpf: prof?.cpf,
-        therapistAddress: null,
-        therapistProfessionalId: prof?.professional_id,
-        therapistCbo: prof?.cbo,
-        therapistClinicalArea: stamp?.clinical_area ?? null,
-        stamp,
-        payerName,
-        payerCpf,
-        location: null,
-        amount: apt.price,
-        serviceName: apt.service_name || 'Serviço prestado',
-        period: format(new Date(apt.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }),
-        paymentMethod: 'transferência bancária',
-        paymentDate: apt.payment_date || apt.date,
-        clinicName: clinic?.name ?? null,
-        clinicAddress: clinic?.address ?? null,
-        clinicCnpj: (clinic as any)?.cnpj ?? null,
+      setReceiptModalData({
+        initial: {
+          payerName,
+          payerCpf,
+          amount: apt.price,
+          serviceName: apt.service_name || 'Serviço prestado',
+          period: format(new Date(apt.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR }),
+          paymentMethod: 'transferência bancária',
+          paymentDate: apt.payment_date || apt.date,
+          initialStampId: defaultStamp?.id ?? null,
+        },
+        therapist: {
+          name: prof?.name || 'Profissional',
+          cpf: prof?.cpf,
+          professionalId: prof?.professional_id,
+          cbo: prof?.cbo,
+          address: null,
+        },
       });
+      setReceiptModalOpen(true);
     } catch (e) {
       console.error(e);
-      toast.error('Erro ao gerar recibo');
+      toast.error('Erro ao preparar recibo');
     } finally {
       setGeneratingReceiptId(null);
     }
