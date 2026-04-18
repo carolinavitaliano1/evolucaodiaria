@@ -179,9 +179,8 @@ export function PatientServicesSection({
                     className="h-7 w-7"
                     title="Emitir recibo"
                     onClick={() => handleGenerateReceipt(svc)}
-                    disabled={generatingId === svc.id}
                   >
-                    {generatingId === svc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Receipt className="w-3.5 h-3.5 text-primary" />}
+                    <Receipt className="w-3.5 h-3.5 text-primary" />
                   </Button>
                 )}
               </div>
@@ -189,6 +188,16 @@ export function PatientServicesSection({
           </div>
         ))}
       </div>
+
+      {receiptInitial && therapist && (
+        <EditableReceiptModal
+          open={receiptOpen}
+          onOpenChange={setReceiptOpen}
+          initial={receiptInitial}
+          therapist={therapist}
+          clinic={clinic ?? null}
+        />
+      )}
     </div>
   );
 }
