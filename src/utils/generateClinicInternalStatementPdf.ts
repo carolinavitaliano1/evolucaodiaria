@@ -280,36 +280,26 @@ export async function generateClinicInternalStatementPdf(
     let deductionTotal = 0;
 
     if (isMensal) {
-      // For mensalistas: show monthly fee + deductions for unpaid absences
+      // For mensalistas: show each session with per-session value (counter N/Total)
       const billableEvos = pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status));
       const absences = pEvos.filter(e => e.attendance_status === 'falta');
       const calc = calculateMensalRevenueWithDeductions(monthlyValue, perSession, absences.length);
+      const totalSessionsInMonth = pEvos.length;
 
-      // Detail each session as informational (R$ 0 individually for mensalistas)
+      let billableCounter = 0;
       pEvos.forEach(e => {
+        const isBillable = COUNTS_AS_BILLABLE(e.attendance_status);
+        if (isBillable) billableCounter++;
         rows.push({
           date: e.date,
           type: 'Sessão',
-          description: COUNTS_AS_BILLABLE(e.attendance_status)
-            ? 'Atendimento (incluso na mensalidade)'
-            : 'Sessão sem cobrança',
+          description: isBillable ? 'Atendimento' : 'Sessão sem cobrança',
           status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
-          amount: 0,
+          // Use a small marker amount; rendering will show "R$ X (n/total)" or "R$ 0,00"
+          amount: isBillable ? perSession : 0,
           paid: !!pPay?.paid,
         });
       });
-
-      // Monthly fee line
-      if (monthlyValue > 0) {
-        rows.push({
-          date: `${year}-${String(month + 1).padStart(2, '0')}-01`,
-          type: 'Mensalidade',
-          description: `Mensalidade do mês (${billableEvos.length} sessões cobertas)`,
-          status: pPay?.paid ? 'Pago' : 'Pendente',
-          amount: monthlyValue,
-          paid: !!pPay?.paid,
-        });
-      }
 
       // Deductions for unpaid absences
       if (calc.hasDeduction && calc.deduction > 0) {
