@@ -321,9 +321,6 @@ export async function generateClinicInternalStatementPdf(
 
       sessionsTotal = calc.finalRevenue;
     } else {
-
-      sessionsTotal = calc.finalRevenue;
-    } else {
       // Per session / personalizado / avulso: each session has its own value
       pEvos.forEach(e => {
         const billable = COUNTS_AS_BILLABLE(e.attendance_status);
