@@ -27,6 +27,8 @@ interface Row {
   status: string;
   amount: number;
   paid: boolean;
+  sessionIndex?: number;
+  sessionTotal?: number;
 }
 
 interface PrivateApt {
