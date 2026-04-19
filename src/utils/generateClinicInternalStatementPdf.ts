@@ -513,16 +513,32 @@ export async function generateClinicInternalStatementPdf(
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...accent);
     doc.text(b.info.name, M + 2, y + 5);
 
-    // Status badge on right
+    // Status badge on right (top)
     const badge = statusBadge(b.paymentStatus);
     doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...badge.color);
     doc.text(badge.label, W - M - 2, y + 5, { align: 'right' });
 
+    // Subtitle: package + session counter
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...muted);
-    const sessionInfoBilled = b.isMensal
-      ? `${b.rows.filter(r => r.type === 'Sessão').length} sessões`
-      : `Valor/sessão: ${fmtBRL(b.perSession)}`;
-    doc.text(`${b.packageLabel} • ${sessionInfoBilled}`, M + 2, y + 9);
+    let sessionInfoBilled: string;
+    if (b.isMensal) {
+      const billable = b.rows.filter(r => r.type === 'Sessão' && r.amount > 0).length;
+      const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? billable;
+      sessionInfoBilled = `${billable}/${totalSlots} sessões`;
+    } else {
+      sessionInfoBilled = `Valor/sessão: ${fmtBRL(b.perSession)}`;
+    }
+    doc.text(`${b.packageLabel}  •  ${sessionInfoBilled}`, M + 2, y + 9);
+
+    // Right side under badge: monthly value + weekly breakdown for mensalistas
+    if (b.isMensal && b.monthlyValue > 0) {
+      const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? 0;
+      const detail = totalSlots > 0
+        ? `${fmtBRL(b.monthlyValue)}/mês  (Mês de ${totalSlots} semanas: ${fmtBRL(b.perSession)}/sessão)`
+        : `${fmtBRL(b.monthlyValue)}/mês`;
+      doc.setTextColor(...badge.color); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+      doc.text(detail, W - M - 2, y + 9, { align: 'right' });
+    }
     y += 13;
 
     drawTableHeader();
