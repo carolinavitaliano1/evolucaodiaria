@@ -720,6 +720,21 @@ export default function AIReports() {
               </SelectContent>
             </Select>
           </div>
+          {stamps.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-sm font-medium text-foreground whitespace-nowrap">🏷️ Carimbo do PDF:</span>
+              <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                <SelectTrigger className="w-full sm:w-[320px]"><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
+                <SelectContent>
+                  {stamps.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}{s.clinical_area ? ` — ${s.clinical_area}` : ''}{s.is_default ? ' (padrão)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Textarea
             placeholder="Ex: Foque nos aspectos psicomotores, inclua recomendações para a escola..."
             value={guidedCommand}
