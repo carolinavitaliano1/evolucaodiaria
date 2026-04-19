@@ -1350,7 +1350,7 @@ export default function Financial() {
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Emitir Extrato de Atendimentos</DialogTitle>
+                  <DialogTitle>Emitir Extrato Completo Interno</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
                   <div>
@@ -1362,27 +1362,9 @@ export default function Financial() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Data Início</label>
-                      <Input type="date" value={invoiceStartDate} onChange={(e) => setInvoiceStartDate(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Data Fim</label>
-                      <Input type="date" value={invoiceEndDate} onChange={(e) => setInvoiceEndDate(e.target.value)} />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">As datas são pré-preenchidas com o mês selecionado. Ajuste se necessário.</p>
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-2 block">Carimbo (opcional)</label>
-                    <Select value={selectedStampId} onValueChange={setSelectedStampId}>
-                      <SelectTrigger><SelectValue placeholder="Sem carimbo" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sem carimbo</SelectItem>
-                        {stamps.map(s => <SelectItem key={s.id} value={s.id}>{s.name} - {s.clinical_area}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    O extrato será gerado para o mês selecionado: <span className="font-medium capitalize">{monthName}</span>.
+                  </p>
                   <Button onClick={handleExportClinicInvoice} disabled={isExportingInvoice || !invoiceClinicId} className="w-full gap-2">
                     {isExportingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     {isExportingInvoice ? 'Gerando...' : 'Exportar Extrato PDF'}
