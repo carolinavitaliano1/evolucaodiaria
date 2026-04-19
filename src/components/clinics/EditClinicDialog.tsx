@@ -230,6 +230,46 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             />
           </div>
 
+          <div className="border-t pt-4">
+            <Label className="text-sm font-medium">Timbrado da Clínica</Label>
+            <p className="text-xs text-muted-foreground mt-1 mb-2">
+              Imagem aplicada como cabeçalho nos PDFs gerados (relatórios, recibos, fichas). Use uma imagem horizontal (ex: 1200×300px), PNG ou JPG, até 2MB.
+            </p>
+            {formData.letterhead ? (
+              <div className="relative inline-block">
+                <img
+                  src={formData.letterhead}
+                  alt="Timbrado"
+                  className="max-h-24 rounded-md border border-border bg-background"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                  onClick={() => setFormData({ ...formData, letterhead: '' })}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <label
+                htmlFor="edit-letterhead-upload"
+                className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-md cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors text-sm text-muted-foreground"
+              >
+                <Upload className="h-4 w-4" />
+                Enviar imagem do timbrado
+                <input
+                  id="edit-letterhead-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={handleLetterheadUpload}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
           {/* Schedule */}
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Dias e Horários de Atendimento</Label>
