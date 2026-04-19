@@ -287,11 +287,13 @@ export async function generateReportPdf(opts: ReportPdfOptions) {
     if (date) {
       const badgeW = 26;
       const badgeH = 7;
-      pdf.setFillColor(...(isAbsence ? [240, 240, 240] : BRAND));
+      const badgeFill: [number, number, number] = isAbsence ? [240, 240, 240] : BRAND;
+      const badgeText: [number, number, number] = isAbsence ? TEXT_MED : [255, 255, 255];
+      pdf.setFillColor(...badgeFill);
       pdf.roundedRect(MARGIN, y - 5, badgeW, badgeH, 1, 1, 'F');
       pdf.setFont(FONT, 'bold');
       pdf.setFontSize(7.5);
-      pdf.setTextColor(...(isAbsence ? TEXT_MED : [255, 255, 255]));
+      pdf.setTextColor(...badgeText);
       pdf.text(date, MARGIN + badgeW / 2, y - 0.5, { align: 'center' });
 
       // Status pill
