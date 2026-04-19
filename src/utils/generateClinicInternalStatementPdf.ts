@@ -504,12 +504,12 @@ export async function generateClinicInternalStatementPdf(
   };
 
   for (const b of blocks) {
-    ensure(20);
-    // Patient header bar
+    ensure(24);
+    // Patient header bar (taller for breathing room)
     doc.setFillColor(250, 251, 253);
-    doc.rect(M, y, contentW, 11, 'F');
+    doc.rect(M, y, contentW, 14, 'F');
     doc.setDrawColor(...border);
-    doc.line(M, y + 11, W - M, y + 11);
+    doc.line(M, y + 14, W - M, y + 14);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...accent);
     doc.text(b.info.name, M + 2, y + 5);
 
@@ -528,7 +528,7 @@ export async function generateClinicInternalStatementPdf(
     } else {
       sessionInfoBilled = `Valor/sessão: ${fmtBRL(b.perSession)}`;
     }
-    doc.text(`${b.packageLabel}  •  ${sessionInfoBilled}`, M + 2, y + 9);
+    doc.text(`${b.packageLabel}  •  ${sessionInfoBilled}`, M + 2, y + 10);
 
     // Right side under badge: monthly value + weekly breakdown for mensalistas
     if (b.isMensal && b.monthlyValue > 0) {
@@ -537,9 +537,9 @@ export async function generateClinicInternalStatementPdf(
         ? `${fmtBRL(b.monthlyValue)}/mês  (Mês de ${totalSlots} semanas: ${fmtBRL(b.perSession)}/sessão)`
         : `${fmtBRL(b.monthlyValue)}/mês`;
       doc.setTextColor(...badge.color); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
-      doc.text(detail, W - M - 2, y + 9, { align: 'right' });
+      doc.text(detail, W - M - 2, y + 10, { align: 'right' });
     }
-    y += 13;
+    y += 18;
 
     drawTableHeader();
     b.rows.forEach(r => drawRow(r));
