@@ -98,6 +98,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
         paysOnAbsence: formData.absencePaymentType !== 'never',
         absencePaymentType: formData.absencePaymentType,
+        letterhead: formData.letterhead || undefined,
       });
       toast.success('Clínica atualizada!');
       onOpenChange(false);
