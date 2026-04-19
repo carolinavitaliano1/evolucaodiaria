@@ -312,22 +312,27 @@ export default function AIReports() {
   const [saveDestination, setSaveDestination] = useState<'patient' | 'clinic'>('patient');
   const [saveClinicId, setSaveClinicId] = useState('');
 
-  // Therapist profile + default stamp for PDF exports
+  // Therapist profile + stamps for PDF exports
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null } | null>(null);
-  const [defaultStamp, setDefaultStamp] = useState<{ name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image: string | null } | null>(null);
+  type StampOption = { id: string; name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image: string | null; is_default?: boolean };
+  const [stamps, setStamps] = useState<StampOption[]>([]);
+  const [selectedStampId, setSelectedStampId] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
     supabase.from('profiles').select('name, professional_id, cpf').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { if (data) setTherapistProfile(data); });
-    supabase.from('stamps').select('name, clinical_area, cbo, stamp_image, signature_image, is_default').eq('user_id', user.id)
+    supabase.from('stamps').select('id, name, clinical_area, cbo, stamp_image, signature_image, is_default').eq('user_id', user.id)
       .then(({ data }) => {
         if (data && data.length > 0) {
+          setStamps(data as StampOption[]);
           const def = data.find((s: any) => s.is_default) || data[0];
-          setDefaultStamp(def);
+          setSelectedStampId(def.id);
         }
       });
   }, [user]);
+
+  const defaultStamp = stamps.find(s => s.id === selectedStampId) || null;
 
   const editor = useEditor({
     extensions: [
