@@ -131,7 +131,7 @@ ESTRUTURA OBRIGATÓRIA DO RELATÓRIO
 ==================================================
 
 1) CABEÇALHO TÉCNICO (antes da Seção I, em formato campo-valor, um por linha, SEM numeração romana):
-- Musicoterapeuta Relatora: [inferir do profissional/área clínica do paciente; se não houver, usar "A definir"]
+- Terapeuta Relator(a): [usar EXATAMENTE o nome e especialidade fornecidos no contexto do profissional, se disponível; caso contrário usar "A definir"]
 - Solicitante: [inferir do contexto (responsável legal, escola, médico) ou usar "Responsáveis legais"]
 - Motivo: [síntese objetiva em 1 linha do propósito do relatório]
 

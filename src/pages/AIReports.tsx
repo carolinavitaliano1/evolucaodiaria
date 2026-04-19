@@ -312,22 +312,27 @@ export default function AIReports() {
   const [saveDestination, setSaveDestination] = useState<'patient' | 'clinic'>('patient');
   const [saveClinicId, setSaveClinicId] = useState('');
 
-  // Therapist profile + default stamp for PDF exports
+  // Therapist profile + stamps for PDF exports
   const [therapistProfile, setTherapistProfile] = useState<{ name: string | null; professional_id: string | null; cpf?: string | null } | null>(null);
-  const [defaultStamp, setDefaultStamp] = useState<{ name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image: string | null } | null>(null);
+  type StampOption = { id: string; name: string; clinical_area: string; cbo?: string | null; stamp_image: string | null; signature_image: string | null; is_default?: boolean };
+  const [stamps, setStamps] = useState<StampOption[]>([]);
+  const [selectedStampId, setSelectedStampId] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
     supabase.from('profiles').select('name, professional_id, cpf').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { if (data) setTherapistProfile(data); });
-    supabase.from('stamps').select('name, clinical_area, cbo, stamp_image, signature_image, is_default').eq('user_id', user.id)
+    supabase.from('stamps').select('id, name, clinical_area, cbo, stamp_image, signature_image, is_default').eq('user_id', user.id)
       .then(({ data }) => {
         if (data && data.length > 0) {
+          setStamps(data as StampOption[]);
           const def = data.find((s: any) => s.is_default) || data[0];
-          setDefaultStamp(def);
+          setSelectedStampId(def.id);
         }
       });
   }, [user]);
+
+  const defaultStamp = stamps.find(s => s.id === selectedStampId) || null;
 
   const editor = useEditor({
     extensions: [
@@ -715,6 +720,21 @@ export default function AIReports() {
               </SelectContent>
             </Select>
           </div>
+          {stamps.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-sm font-medium text-foreground whitespace-nowrap">🏷️ Carimbo do PDF:</span>
+              <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                <SelectTrigger className="w-full sm:w-[320px]"><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
+                <SelectContent>
+                  {stamps.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}{s.clinical_area ? ` — ${s.clinical_area}` : ''}{s.is_default ? ' (padrão)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Textarea
             placeholder="Ex: Foque nos aspectos psicomotores, inclua recomendações para a escola..."
             value={guidedCommand}
