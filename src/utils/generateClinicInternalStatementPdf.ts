@@ -27,6 +27,8 @@ interface Row {
   status: string;
   amount: number;
   paid: boolean;
+  sessionIndex?: number;
+  sessionTotal?: number;
 }
 
 interface PrivateApt {
@@ -280,38 +282,31 @@ export async function generateClinicInternalStatementPdf(
     let deductionTotal = 0;
 
     if (isMensal) {
-      // For mensalistas: show monthly fee + deductions for unpaid absences
+      // For mensalistas: monthly fee divided per actual occurrences
       const billableEvos = pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status));
       const absences = pEvos.filter(e => e.attendance_status === 'falta');
       const calc = calculateMensalRevenueWithDeductions(monthlyValue, perSession, absences.length);
 
-      // Detail each session as informational (R$ 0 individually for mensalistas)
+      // Use dynamic occurrences from weekday count (not actual evolutions logged)
+      const dynInfo = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
+      const totalSessionsInMonth = dynInfo.occurrences || billableEvos.length || 1;
+
+      let billableCounter = 0;
       pEvos.forEach(e => {
+        const isBillable = COUNTS_AS_BILLABLE(e.attendance_status);
+        if (isBillable) billableCounter++;
         rows.push({
           date: e.date,
           type: 'Sessão',
-          description: COUNTS_AS_BILLABLE(e.attendance_status)
-            ? 'Atendimento (incluso na mensalidade)'
-            : 'Sessão sem cobrança',
+          description: isBillable ? 'Atendimento' : 'Sessão sem cobrança',
           status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
-          amount: 0,
+          amount: isBillable ? perSession : 0,
           paid: !!pPay?.paid,
+          sessionIndex: isBillable ? billableCounter : undefined,
+          sessionTotal: isBillable ? totalSessionsInMonth : undefined,
         });
       });
 
-      // Monthly fee line
-      if (monthlyValue > 0) {
-        rows.push({
-          date: `${year}-${String(month + 1).padStart(2, '0')}-01`,
-          type: 'Mensalidade',
-          description: `Mensalidade do mês (${billableEvos.length} sessões cobertas)`,
-          status: pPay?.paid ? 'Pago' : 'Pendente',
-          amount: monthlyValue,
-          paid: !!pPay?.paid,
-        });
-      }
-
-      // Deductions for unpaid absences
       if (calc.hasDeduction && calc.deduction > 0) {
         rows.push({
           date: `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
@@ -491,7 +486,10 @@ export async function generateClinicInternalStatementPdf(
       doc.text(r.paid ? 'Sim' : 'Não', M + 138, y);
     }
     doc.setTextColor(...(r.amount < 0 ? red : dark));
-    doc.text(fmtBRL(r.amount), W - M - 2, y, { align: 'right' });
+    const valueLabel = r.sessionIndex && r.sessionTotal
+      ? `${fmtBRL(r.amount)} (${r.sessionIndex}/${r.sessionTotal})`
+      : fmtBRL(r.amount);
+    doc.text(valueLabel, W - M - 2, y, { align: 'right' });
     y += 5;
   };
 
@@ -515,16 +513,32 @@ export async function generateClinicInternalStatementPdf(
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...accent);
     doc.text(b.info.name, M + 2, y + 5);
 
-    // Status badge on right
+    // Status badge on right (top)
     const badge = statusBadge(b.paymentStatus);
     doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...badge.color);
     doc.text(badge.label, W - M - 2, y + 5, { align: 'right' });
 
+    // Subtitle: package + session counter
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...muted);
-    const sessionInfoBilled = b.isMensal
-      ? `${b.rows.filter(r => r.type === 'Sessão').length} sessões`
-      : `Valor/sessão: ${fmtBRL(b.perSession)}`;
-    doc.text(`${b.packageLabel} • ${sessionInfoBilled}`, M + 2, y + 9);
+    let sessionInfoBilled: string;
+    if (b.isMensal) {
+      const billable = b.rows.filter(r => r.type === 'Sessão' && r.amount > 0).length;
+      const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? billable;
+      sessionInfoBilled = `${billable}/${totalSlots} sessões`;
+    } else {
+      sessionInfoBilled = `Valor/sessão: ${fmtBRL(b.perSession)}`;
+    }
+    doc.text(`${b.packageLabel}  •  ${sessionInfoBilled}`, M + 2, y + 9);
+
+    // Right side under badge: monthly value + weekly breakdown for mensalistas
+    if (b.isMensal && b.monthlyValue > 0) {
+      const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? 0;
+      const detail = totalSlots > 0
+        ? `${fmtBRL(b.monthlyValue)}/mês  (Mês de ${totalSlots} semanas: ${fmtBRL(b.perSession)}/sessão)`
+        : `${fmtBRL(b.monthlyValue)}/mês`;
+      doc.setTextColor(...badge.color); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+      doc.text(detail, W - M - 2, y + 9, { align: 'right' });
+    }
     y += 13;
 
     drawTableHeader();
