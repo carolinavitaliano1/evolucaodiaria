@@ -446,17 +446,17 @@ export async function generateClinicInternalStatementPdf(
 
   // ===== Per-patient detail =====
   const drawTableHeader = () => {
-    ensure(7);
+    ensure(8);
     doc.setFillColor(245, 246, 250);
-    doc.rect(M, y, contentW, 6, 'F');
+    doc.rect(M, y, contentW, 7, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...dark);
-    doc.text('Data', M + 2, y + 4);
-    doc.text('Tipo', M + 20, y + 4);
-    doc.text('Descrição', M + 42, y + 4);
-    doc.text('Status', M + 112, y + 4);
-    doc.text('Pago', M + 138, y + 4);
-    doc.text('Valor', W - M - 2, y + 4, { align: 'right' });
-    y += 7;
+    doc.text('Data', M + 2, y + 4.5);
+    doc.text('Tipo', M + 20, y + 4.5);
+    doc.text('Descrição', M + 42, y + 4.5);
+    doc.text('Status', M + 112, y + 4.5);
+    doc.text('Pago', M + 138, y + 4.5);
+    doc.text('Valor', W - M - 2, y + 4.5, { align: 'right' });
+    y += 9;
   };
 
   const drawRow = (r: Row) => {
