@@ -44,6 +44,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     paymentAmount: '',
     discountPercentage: '',
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
+    letterhead: '' as string,
   });
 
   useEffect(() => {
