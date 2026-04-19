@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Clinic } from '@/types';
 import { toast } from 'sonner';
+import { Upload, X } from 'lucide-react';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -43,6 +44,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     paymentAmount: '',
     discountPercentage: '',
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
+    letterhead: '' as string,
   });
 
   useEffect(() => {
@@ -62,11 +64,31 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         paymentAmount: clinic.paymentAmount?.toString() || '',
         discountPercentage: clinic.discountPercentage?.toString() || '0',
         absencePaymentType: clinic.absencePaymentType || 'always',
+        letterhead: (clinic as any).letterhead || '',
       });
     }
   }, [open, clinic]);
 
   const [saving, setSaving] = useState(false);
+
+  const handleLetterheadUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione uma imagem (PNG ou JPG).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Imagem muito grande (máx. 2MB).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData(prev => ({ ...prev, letterhead: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +117,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
         paysOnAbsence: formData.absencePaymentType !== 'never',
         absencePaymentType: formData.absencePaymentType,
+        letterhead: formData.letterhead || undefined,
       });
       toast.success('Clínica atualizada!');
       onOpenChange(false);
@@ -205,6 +228,46 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
             />
+          </div>
+
+          <div className="border-t pt-4">
+            <Label className="text-sm font-medium">Timbrado da Clínica</Label>
+            <p className="text-xs text-muted-foreground mt-1 mb-2">
+              Imagem aplicada como cabeçalho nos PDFs gerados (relatórios, recibos, fichas). Use uma imagem horizontal (ex: 1200×300px), PNG ou JPG, até 2MB.
+            </p>
+            {formData.letterhead ? (
+              <div className="relative inline-block">
+                <img
+                  src={formData.letterhead}
+                  alt="Timbrado"
+                  className="max-h-24 rounded-md border border-border bg-background"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                  onClick={() => setFormData({ ...formData, letterhead: '' })}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <label
+                htmlFor="edit-letterhead-upload"
+                className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-md cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors text-sm text-muted-foreground"
+              >
+                <Upload className="h-4 w-4" />
+                Enviar imagem do timbrado
+                <input
+                  id="edit-letterhead-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={handleLetterheadUpload}
+                  className="hidden"
+                />
+              </label>
+            )}
           </div>
 
           {/* Schedule */}
