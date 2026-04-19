@@ -64,6 +64,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         paymentAmount: clinic.paymentAmount?.toString() || '',
         discountPercentage: clinic.discountPercentage?.toString() || '0',
         absencePaymentType: clinic.absencePaymentType || 'always',
+        letterhead: (clinic as any).letterhead || '',
       });
     }
   }, [open, clinic]);
