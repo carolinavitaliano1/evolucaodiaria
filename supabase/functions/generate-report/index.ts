@@ -119,6 +119,8 @@ ${evolutions?.slice(0, 30).map((e: any) => {
 `;
     }
 
+    const mentionsEvolutions = command && /evolu|sess(ã|a)o|atendimento|registr/i.test(command);
+
     const systemPrompt = `Você é um assistente especializado em gerar relatórios clínicos profissionais para terapeutas e profissionais de saúde.
 
 REGRAS DE FORMATAÇÃO OBRIGATÓRIAS:
@@ -134,7 +136,9 @@ REGRAS DE FORMATAÇÃO OBRIGATÓRIAS:
 10. NÃO inclua bloco de assinatura ou "Responsável Técnico" no texto — o sistema adiciona automaticamente.
 11. A primeira seção deve ser "1. CABEÇALHO E IDENTIFICAÇÃO" com dados do paciente em formato campo-valor.
 12. Inclua uma seção "2. RESUMO EXECUTIVO" com dados de frequência em formato campo-valor.
-13. Cada sessão/evolução deve ter subtítulo "Sessão – DD/MM/AAAA" seguido de texto corrido.
+13. ${mentionsEvolutions
+      ? 'Quando descrever sessões individuais, use subtítulo "Sessão – DD/MM/AAAA" seguido de texto corrido.'
+      : 'NÃO liste, cite, transcreva ou faça referência direta a evoluções/sessões individuais por data. NÃO crie seção "Evoluções Registradas" nem subtítulos por sessão. Use os dados das evoluções APENAS como base analítica para sintetizar a evolução clínica geral do paciente em parágrafos descritivos consolidados (ex.: progresso global, áreas trabalhadas, observações comportamentais), sem mencionar datas específicas ou número de sessões individualmente. Apenas inclua referência a sessões se o terapeuta solicitar explicitamente.'}
 
 Data atual: ${new Date().toLocaleDateString("pt-BR")}.`;
 
