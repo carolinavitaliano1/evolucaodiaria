@@ -282,11 +282,14 @@ export async function generateClinicInternalStatementPdf(
     let deductionTotal = 0;
 
     if (isMensal) {
-      // For mensalistas: show each session with per-session value (counter N/Total)
+      // For mensalistas: monthly fee divided per actual occurrences
       const billableEvos = pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status));
       const absences = pEvos.filter(e => e.attendance_status === 'falta');
       const calc = calculateMensalRevenueWithDeductions(monthlyValue, perSession, absences.length);
-      const totalSessionsInMonth = pEvos.length;
+
+      // Use dynamic occurrences from weekday count (not actual evolutions logged)
+      const dynInfo = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
+      const totalSessionsInMonth = dynInfo.occurrences || billableEvos.length || 1;
 
       let billableCounter = 0;
       pEvos.forEach(e => {
@@ -297,13 +300,13 @@ export async function generateClinicInternalStatementPdf(
           type: 'Sessão',
           description: isBillable ? 'Atendimento' : 'Sessão sem cobrança',
           status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
-          // Use a small marker amount; rendering will show "R$ X (n/total)" or "R$ 0,00"
           amount: isBillable ? perSession : 0,
           paid: !!pPay?.paid,
+          sessionIndex: isBillable ? billableCounter : undefined,
+          sessionTotal: isBillable ? totalSessionsInMonth : undefined,
         });
       });
 
-      // Deductions for unpaid absences
       if (calc.hasDeduction && calc.deduction > 0) {
         rows.push({
           date: `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
@@ -315,6 +318,9 @@ export async function generateClinicInternalStatementPdf(
         });
         deductionTotal = calc.deduction;
       }
+
+      sessionsTotal = calc.finalRevenue;
+    } else {
 
       sessionsTotal = calc.finalRevenue;
     } else {
