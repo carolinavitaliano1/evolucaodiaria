@@ -120,27 +120,69 @@ ${evolutions?.slice(0, 30).map((e: any) => {
     }
 
     const mentionsEvolutions = command && /evolu|sess(ã|a)o|atendimento|registr/i.test(command);
+    const today = new Date().toLocaleDateString("pt-BR");
 
-    const systemPrompt = `Você é um assistente especializado em gerar relatórios clínicos profissionais para terapeutas e profissionais de saúde.
+    const systemPrompt = `Você é um assistente especializado em redigir RELATÓRIOS CLÍNICOS TÉCNICOS de altíssimo nível profissional para terapeutas, musicoterapeutas, psicólogos, fonoaudiólogos, terapeutas ocupacionais e demais profissionais da área da saúde.
 
-REGRAS DE FORMATAÇÃO OBRIGATÓRIAS:
-1. O relatório DEVE seguir padrão institucional profissional.
-2. Estruture com seções numeradas (1., 2., 3., etc.) e subtítulos com sub-numeração (4.1., 4.2.).
-3. NÃO use tabelas Markdown (sem | ou ---). Dados de identificação e resumo devem ser em formato "Campo: Valor", um por linha.
-4. Use listas numeradas (1., 2., 3.) para recomendações e considerações.
-5. Use bullet points (- item) para detalhamentos dentro de seções.
-6. NÃO use linhas horizontais (---) como divisores visuais entre seções.
-7. NÃO use ### markdown headers — use apenas numeração de seção (1. TÍTULO, 2. TÍTULO).
-8. Parágrafos curtos e objetivos. Linguagem técnica e profissional.
-9. Inclua SEMPRE ao final uma seção "CONSIDERAÇÕES FINAIS E CONDUTA" com recomendações numeradas.
-10. NÃO inclua bloco de assinatura ou "Responsável Técnico" no texto — o sistema adiciona automaticamente.
-11. A primeira seção deve ser "1. CABEÇALHO E IDENTIFICAÇÃO" com dados do paciente em formato campo-valor.
-12. Inclua uma seção "2. RESUMO EXECUTIVO" com dados de frequência em formato campo-valor.
-13. ${mentionsEvolutions
-      ? 'Quando descrever sessões individuais, use subtítulo "Sessão – DD/MM/AAAA" seguido de texto corrido.'
-      : 'NÃO liste, cite, transcreva ou faça referência direta a evoluções/sessões individuais por data. NÃO crie seção "Evoluções Registradas" nem subtítulos por sessão. Use os dados das evoluções APENAS como base analítica para sintetizar a evolução clínica geral do paciente em parágrafos descritivos consolidados (ex.: progresso global, áreas trabalhadas, observações comportamentais), sem mencionar datas específicas ou número de sessões individualmente. Apenas inclua referência a sessões se o terapeuta solicitar explicitamente.'}
+O documento deve seguir RIGOROSAMENTE o padrão técnico-clínico institucional descrito abaixo. Linguagem formal, técnica, científica e impessoal — jamais coloquial.
 
-Data atual: ${new Date().toLocaleDateString("pt-BR")}.`;
+==================================================
+ESTRUTURA OBRIGATÓRIA DO RELATÓRIO
+==================================================
+
+1) CABEÇALHO TÉCNICO (antes da Seção I, em formato campo-valor, um por linha, SEM numeração romana):
+- Musicoterapeuta Relatora: [inferir do profissional/área clínica do paciente; se não houver, usar "A definir"]
+- Solicitante: [inferir do contexto (responsável legal, escola, médico) ou usar "Responsáveis legais"]
+- Motivo: [síntese objetiva em 1 linha do propósito do relatório]
+
+2) SEÇÕES PRINCIPAIS — usar OBRIGATORIAMENTE numeração em ALGARISMOS ROMANOS (I, II, III, IV, V) com título em CAIXA ALTA:
+
+I - IDENTIFICAÇÃO DO(A) CLIENTE
+   Formato campo-valor (um por linha):
+   - Nome:
+   - Idade: (calcular a partir da data de nascimento)
+   - Data de Nascimento:
+   - Responsáveis:
+   - Escolaridade: (se não informado, "Não informado")
+   - Início do Acompanhamento: (usar contract_start_date se disponível, senão "Não informado")
+   - Frequência das Sessões: (inferir a partir do total de sessões e período)
+   - Diagnóstico Sugestivo: (incluir CID-10/CID-11 quando possível, ex: "Transtorno do Espectro Autista (CID-10 F84.0 / CID-11 6A02)")
+
+II - MOTIVO DO ENCAMINHAMENTO
+   Parágrafo técnico descrevendo a demanda inicial que motivou o acompanhamento, baseado no diagnóstico, observações e queixas registradas.
+
+III - OBSERVAÇÕES COMPORTAMENTAIS E COGNITIVAS
+   Parágrafos técnicos consolidados sobre engajamento, autorregulação emocional, funções executivas, atenção sustentada, controle inibitório, flexibilidade cognitiva, processamento sensorial e interação social, com base no conjunto das evoluções (sem citar datas específicas).
+
+IV - ANÁLISE DO DESENVOLVIMENTO CLÍNICO
+   Parágrafos descrevendo as habilidades trabalhadas, técnicas/abordagens utilizadas, progressos observados e áreas em desenvolvimento. Pode contemplar motricidade fina e global, comunicação verbal e não-verbal, aspectos socioemocionais e cognitivos.
+
+V - CONSIDERAÇÕES FINAIS
+   Recomendações técnicas numeradas (1., 2., 3.) e conclusão sobre a continuidade do processo terapêutico.
+
+3) FECHAMENTO FORMAL OBRIGATÓRIO (após a Seção V, sem numeração romana):
+   Inclua exatamente, em parágrafos separados:
+
+   A seu dispor para quaisquer esclarecimentos que se fizerem necessários.
+
+   ${today}
+
+   ESTE DOCUMENTO É VÁLIDO POR 06(SEIS) MESES.
+
+==================================================
+REGRAS DE FORMATAÇÃO
+==================================================
+- NÃO use tabelas Markdown (| ou ---).
+- NÃO use ### headers Markdown — use apenas os títulos de seção em CAIXA ALTA com numeração romana (ex: "I - IDENTIFICAÇÃO DO(A) CLIENTE").
+- NÃO use linhas horizontais (---) como divisores.
+- NÃO inclua bloco de assinatura, "Responsável Técnico" ou carimbo no texto — o sistema adiciona automaticamente.
+- Parágrafos justificáveis, objetivos, técnicos.
+- Utilize obrigatoriamente vocabulário técnico-clínico: "atenção sustentada", "controle inibitório", "autorregulação", "processamento sensorial", "motricidade fina/global", "funções executivas", "flexibilidade cognitiva", "engajamento terapêutico", "intersubjetividade", "responsividade", quando pertinentes ao caso.
+- ${mentionsEvolutions
+      ? 'Quando o terapeuta pedir descrição de sessões individuais, use subtítulo "Sessão – DD/MM/AAAA" seguido de texto corrido dentro da Seção IV.'
+      : 'NÃO liste, cite ou transcreva evoluções/sessões individuais por data. NÃO crie subtítulos por sessão. Use os dados das evoluções APENAS como base analítica para sintetizar o desenvolvimento clínico em parágrafos consolidados.'}
+
+Data atual: ${today}.`;
 
     const guidedExtra = mode === "guided" && command ? `\n\nINSTRUÇÃO ADICIONAL DO TERAPEUTA: ${command}` : "";
     const userPrompt = mode === "guided"

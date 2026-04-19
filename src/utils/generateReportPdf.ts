@@ -103,12 +103,16 @@ function isSignatureLine(line: string): boolean {
   );
 }
 
-// Strip leading numbering like "1.", "2.", "3.1." from headings
+// Strip leading numbering like "1.", "2.", "3.1.", "I -", "II -" from headings
 function stripNumbering(text: string): string {
-  return text.replace(/^\d+(\.\d+)*\.?\s+/, '').trim();
+  let t = text.replace(/^\d+(\.\d+)*\.?\s+/, '').trim();
+  t = t.replace(/^[IVX]+\s*[-–—]\s*/i, '').trim();
+  return t;
 }
 
 function classifyLine(trimmed: string): 'section' | 'subsection' | 'allcaps' | 'mdheading' | null {
+  // Roman numeral section: "I - TÍTULO", "II - TÍTULO"
+  if (/^[IVX]+\s*[-–—]\s+/i.test(trimmed) && trimmed.length < 140) return 'section';
   if (/^\d+\.\d+/.test(trimmed) && trimmed.length < 120) return 'subsection';
   if (/^\d+\.?\s/.test(trimmed) && trimmed.length < 120) {
     const afterNum = trimmed.replace(/^\d+\.?\s*/, '');
