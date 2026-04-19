@@ -486,7 +486,10 @@ export async function generateClinicInternalStatementPdf(
       doc.text(r.paid ? 'Sim' : 'Não', M + 138, y);
     }
     doc.setTextColor(...(r.amount < 0 ? red : dark));
-    doc.text(fmtBRL(r.amount), W - M - 2, y, { align: 'right' });
+    const valueLabel = r.sessionIndex && r.sessionTotal
+      ? `${fmtBRL(r.amount)} (${r.sessionIndex}/${r.sessionTotal})`
+      : fmtBRL(r.amount);
+    doc.text(valueLabel, W - M - 2, y, { align: 'right' });
     y += 5;
   };
 
