@@ -678,86 +678,55 @@ export default function AIReports() {
         </Button>
       </div>
 
-      <Tabs defaultValue="guided" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="guided" className="gap-2">
-            <UserSearch className="w-4 h-4" /> Guiado
-          </TabsTrigger>
-          <TabsTrigger value="free" className="gap-2">
-            <MessageSquare className="w-4 h-4" /> Livre
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="guided">
-          <Card className="glass-card">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><FileText className="w-5 h-5" /> Relatório por Paciente</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Select value={selectedClinic} onValueChange={(val) => { setSelectedClinic(val); setSelectedPatient(''); }}>
-                  <SelectTrigger><SelectValue placeholder="Clínica (timbrado no PDF)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem timbrado</SelectItem>
-                    {clinics.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <PatientSearchSelect
-                  value={selectedPatient}
-                  onValueChange={setSelectedPatient}
-                  patients={patients
-                    .filter(p => !selectedClinic || selectedClinic === 'none' || p.clinicId === selectedClinic)
-                    .map(p => ({
-                      id: p.id,
-                      name: p.name,
-                      clinicName: (!selectedClinic || selectedClinic === 'none')
-                        ? clinics.find(c => c.id === p.clinicId)?.name
-                        : undefined,
-                    }))}
-                  placeholder="🔍 Pesquisar paciente..."
-                />
-                <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="month">Último mês</SelectItem>
-                    <SelectItem value="quarter">Último trimestre</SelectItem>
-                    <SelectItem value="semester">Último semestre</SelectItem>
-                    <SelectItem value="all">Todo o período</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Textarea
-                placeholder="Ex: Foque nos aspectos psicomotores, inclua recomendações para a escola..."
-                value={guidedCommand}
-                onChange={(e) => setGuidedCommand(e.target.value)}
-                rows={2}
-              />
-              <Button onClick={generateGuided} disabled={isGenerating || !selectedPatient} className="gap-2">
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                Gerar
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="free">
-          <Card className="glass-card">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><MessageSquare className="w-5 h-5" /> Comando Livre</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                placeholder="Ex: Gere um relatório mensal de frequência de todos os pacientes..."
-                value={freeCommand}
-                onChange={(e) => setFreeCommand(e.target.value)}
-                rows={3}
-              />
-              <Button onClick={generateFree} disabled={isGenerating || !freeCommand.trim()} className="gap-2">
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Gerar
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Card className="glass-card">
+        <CardHeader><CardTitle className="text-lg flex items-center gap-2"><FileText className="w-5 h-5" /> Relatório por Paciente</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Select value={selectedClinic} onValueChange={(val) => { setSelectedClinic(val); setSelectedPatient(''); }}>
+              <SelectTrigger><SelectValue placeholder="Clínica (timbrado no PDF)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem timbrado</SelectItem>
+                {clinics.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <PatientSearchSelect
+              value={selectedPatient}
+              onValueChange={setSelectedPatient}
+              patients={patients
+                .filter(p => !selectedClinic || selectedClinic === 'none' || p.clinicId === selectedClinic)
+                .map(p => ({
+                  id: p.id,
+                  name: p.name,
+                  clinicName: (!selectedClinic || selectedClinic === 'none')
+                    ? clinics.find(c => c.id === p.clinicId)?.name
+                    : undefined,
+                }))}
+              placeholder="🔍 Pesquisar paciente..."
+            />
+            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Último mês</SelectItem>
+                <SelectItem value="quarter">Último trimestre</SelectItem>
+                <SelectItem value="semester">Último semestre</SelectItem>
+                <SelectItem value="all">Todo o período</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Textarea
+            placeholder="Ex: Foque nos aspectos psicomotores, inclua recomendações para a escola..."
+            value={guidedCommand}
+            onChange={(e) => setGuidedCommand(e.target.value)}
+            rows={2}
+          />
+          <Button onClick={generateGuided} disabled={isGenerating || !selectedPatient} className="gap-2">
+            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Gerar
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Editor */}
       <Card className="glass-card overflow-hidden">
