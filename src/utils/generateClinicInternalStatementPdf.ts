@@ -426,22 +426,22 @@ export async function generateClinicInternalStatementPdf(
 
     const servicesTotal = pSvcs.reduce((acc, s) => acc + s.price, 0);
     const grossTotal = sessionsTotal + servicesTotal;
-    // Desconto da clínica incide sobre o TOTAL bruto recebido no mês.
-    const patientTotal = treatAsFixedSalary ? 0 : grossTotal * clinicDiscountFactor;
+    // Por paciente, mostramos sempre o valor BRUTO. O desconto da clínica
+    // (discount_percentage) é aplicado APENAS no Total Geral da Clínica.
+    const patientTotal = treatAsFixedSalary ? 0 : grossTotal;
 
     if (grossTotal === 0 && rows.length === 0 && !treatAsFixedSalary) continue;
 
-    // Payment status calculation (sobre o valor com desconto)
-    let receivedGross = 0;
+    // Payment status calculation (valor bruto por paciente)
+    let received = 0;
     if (treatAsFixedSalary) {
-      receivedGross = 0;
+      received = 0;
     } else if (isMensal) {
-      if (pPay?.paid) receivedGross += sessionsTotal;
+      if (pPay?.paid) received += sessionsTotal;
     } else {
-      if (pPay?.paid) receivedGross += sessionsTotal;
+      if (pPay?.paid) received += sessionsTotal;
     }
-    receivedGross += pSvcs.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
-    const received = receivedGross * clinicDiscountFactor;
+    received += pSvcs.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
     const pending = Math.max(0, patientTotal - received);
 
     let paymentStatus: PatientBlock['paymentStatus'] = 'sem_registro';
@@ -470,11 +470,11 @@ export async function generateClinicInternalStatementPdf(
     });
   }
 
-  // Orphan services totals (com desconto da clínica)
+  // Orphan services totais BRUTOS (desconto vai no total geral)
   const orphanGross = orphanServices.reduce((acc, s) => acc + s.price, 0);
   const orphanReceivedGross = orphanServices.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
-  const orphanTotal = orphanGross * clinicDiscountFactor;
-  const orphanReceived = orphanReceivedGross * clinicDiscountFactor;
+  const orphanTotal = orphanGross;
+  const orphanReceived = orphanReceivedGross;
 
   // Para clínicas com salário fixo: a "receita" da clínica é o salário (mensal) ou
   // salário diário × dias trabalhados (dias únicos com sessões cobráveis).
@@ -499,9 +499,15 @@ export async function generateClinicInternalStatementPdf(
   const patientsRevenueTotal = blocks.reduce((acc, b) => acc + b.patientTotal, 0);
   const patientsReceivedTotal = blocks.reduce((acc, b) => acc + b.received, 0);
 
-  const grandTotal = (isClinicFixedSalary ? clinicFixedRevenue : patientsRevenueTotal) + orphanTotal;
-  const grandReceived = (isClinicFixedSalary ? clinicFixedReceived : patientsReceivedTotal) + orphanReceived;
+  // Total bruto e total com desconto da clínica aplicado SOMENTE aqui
+  const grossGrandTotal = (isClinicFixedSalary ? clinicFixedRevenue : patientsRevenueTotal) + orphanTotal;
+  const grossGrandReceived = (isClinicFixedSalary ? clinicFixedReceived : patientsReceivedTotal) + orphanReceived;
+
+  // Salário fixo não recebe desconto percentual; demais modelos sim
+  const grandTotal = isClinicFixedSalary ? grossGrandTotal : grossGrandTotal * clinicDiscountFactor;
+  const grandReceived = isClinicFixedSalary ? grossGrandReceived : grossGrandReceived * clinicDiscountFactor;
   const grandPending = Math.max(0, grandTotal - grandReceived);
+  const grandDiscount = grossGrandTotal - grandTotal;
 
   const inadimplencia = grandTotal > 0 ? (grandPending / grandTotal) * 100 : 0;
   const billedBlocks = blocks.filter(b => b.patientTotal > 0);
@@ -557,7 +563,7 @@ export async function generateClinicInternalStatementPdf(
   doc.text(`Serviços avulsos: ${orphanServices.length}`, M + 3 + kpiW * 3, subY);
 
   doc.setFontSize(7); doc.setTextColor(...muted);
-  doc.text(`Total de sessões registradas: ${evolutions.length}  •  Serviços vinculados: ${services.length - orphanServices.length}${clinicDiscountPct > 0 ? `  •  Desconto da clínica aplicado sobre o total: ${clinicDiscountPct}%` : ''}`, M + 3, y + 42);
+  doc.text(`Total de sessões registradas: ${evolutions.length}  •  Serviços vinculados: ${services.length - orphanServices.length}${clinicDiscountPct > 0 && !isClinicFixedSalary ? `  •  Desconto da clínica (${clinicDiscountPct}%) aplicado apenas no Total Geral` : ''}`, M + 3, y + 42);
 
   y += summaryH + 4;
 
@@ -682,12 +688,6 @@ export async function generateClinicInternalStatementPdf(
     if (isClinicFixedSalary) {
       doc.setTextColor(...muted); doc.setFont('helvetica', 'italic');
       doc.text('—  (incluso no salário fixo)', W - M - 2, y, { align: 'right' });
-    } else if (clinicDiscountPct > 0 && b.patientTotal > 0) {
-      const grossSubtotal = b.sessionsTotal + b.servicesTotal;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...muted);
-      doc.text(`Bruto: ${fmtBRL(grossSubtotal)}  −${clinicDiscountPct}% clínica  →`, W - M - 32, y, { align: 'right' });
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...dark);
-      doc.text(fmtBRL(b.patientTotal), W - M - 2, y, { align: 'right' });
     } else {
       doc.text(fmtBRL(b.patientTotal), W - M - 2, y, { align: 'right' });
     }
@@ -744,24 +744,35 @@ export async function generateClinicInternalStatementPdf(
   }
 
   // ===== GRAND TOTAL =====
-  ensure(28);
+  const grandBoxH = clinicDiscountPct > 0 && !isClinicFixedSalary ? 30 : 22;
+  ensure(grandBoxH + 6);
   y += 2;
   doc.setFillColor(...accent);
-  doc.rect(M, y, contentW, 22, 'F');
+  doc.rect(M, y, contentW, grandBoxH, 'F');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255);
   doc.text('TOTAL GERAL DA CLÍNICA', M + 3, y + 6);
   doc.setFontSize(14);
   doc.text(fmtBRL(grandTotal), W - M - 3, y + 8, { align: 'right' });
 
+  if (clinicDiscountPct > 0 && !isClinicFixedSalary) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+    doc.setTextColor(210, 220, 245);
+    doc.text(
+      `Bruto: ${fmtBRL(grossGrandTotal)}  −  Desconto da clínica (${clinicDiscountPct}%): ${fmtBRL(grandDiscount)}`,
+      W - M - 3, y + 13, { align: 'right' },
+    );
+  }
+
+  const baseY = clinicDiscountPct > 0 && !isClinicFixedSalary ? y + 6 : y;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
   doc.setTextColor(180, 230, 200);
-  doc.text(`Recebido: ${fmtBRL(grandReceived)}`, M + 3, y + 14);
+  doc.text(`Recebido: ${fmtBRL(grandReceived)}`, M + 3, baseY + 14);
   doc.setTextColor(255, 220, 180);
-  doc.text(`Pendente: ${fmtBRL(grandPending)}`, M + 3, y + 19);
+  doc.text(`Pendente: ${fmtBRL(grandPending)}`, M + 3, baseY + 19);
   doc.setTextColor(255, 255, 255);
-  doc.text(`Inadimplência: ${inadimplencia.toFixed(1)}%`, W - M - 3, y + 19, { align: 'right' });
+  doc.text(`Inadimplência: ${inadimplencia.toFixed(1)}%`, W - M - 3, baseY + 19, { align: 'right' });
 
-  y += 26;
+  y += grandBoxH + 4;
 
   // ===== Insight para clínicas com salário fixo =====
   if (isClinicFixedSalary && clinicFixedRevenue > 0) {
