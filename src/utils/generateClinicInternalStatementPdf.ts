@@ -497,13 +497,16 @@ export async function generateClinicInternalStatementPdf(
   const grandPending = Math.max(0, grandTotal - grandReceived);
 
   const inadimplencia = grandTotal > 0 ? (grandPending / grandTotal) * 100 : 0;
+  const billedBlocks = blocks.filter(b => b.patientTotal > 0);
   const totalPatients = blocks.length;
+  const billedPatients = billedBlocks.length;
   const paidPatients = isClinicFixedSalary
     ? (clinicFixedReceived >= clinicFixedRevenue - 0.01 && clinicFixedRevenue > 0 ? totalPatients : 0)
-    : blocks.filter(b => b.paymentStatus === 'pago').length;
+    : billedBlocks.filter(b => b.paymentStatus === 'pago').length;
   const pendingPatients = isClinicFixedSalary
     ? (clinicFixedReceived >= clinicFixedRevenue - 0.01 ? 0 : totalPatients)
-    : blocks.filter(b => b.paymentStatus === 'pendente' || b.paymentStatus === 'parcial').length;
+    : billedBlocks.filter(b => b.paymentStatus === 'pendente' || b.paymentStatus === 'parcial').length;
+  const noChargePatients = isClinicFixedSalary ? 0 : totalPatients - billedPatients;
 
   // ===== EXECUTIVE SUMMARY =====
   ensure(46);
@@ -534,7 +537,10 @@ export async function generateClinicInternalStatementPdf(
   // Sub-stats
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...dark);
   const subY = y + 30;
-  doc.text(`Pacientes c/ movimento: ${totalPatients}`, M + 3, subY);
+  const movimentoLabel = isClinicFixedSalary
+    ? `Pacientes atendidos: ${totalPatients}`
+    : `Pacientes c/ cobrança: ${billedPatients}${noChargePatients > 0 ? ` (+ ${noChargePatients} sem cobrança no mês)` : ''}`;
+  doc.text(movimentoLabel, M + 3, subY);
   doc.setTextColor(...green);
   doc.text(`Quitados: ${paidPatients}`, M + 3 + kpiW, subY);
   doc.setTextColor(...orange);
