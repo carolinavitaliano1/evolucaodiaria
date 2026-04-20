@@ -802,6 +802,7 @@ export default function Financial() {
         }, {} as Record<string, { clinic: any; items: typeof patientStats }>);
 
         let totalPaid = 0, totalPending = 0;
+        let totalPaidNet = 0, totalPendingNet = 0;
         let rowIdx = 0;
 
         Object.values(grouped).forEach(({ clinic: grpClinic, items }) => {
