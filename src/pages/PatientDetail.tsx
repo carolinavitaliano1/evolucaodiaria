@@ -172,6 +172,7 @@ export default function PatientDetail() {
   const { user } = useAuth();
   const { customMoods } = useCustomMoods();
   const { permissions: orgPermissions, isOwner: isOrgOwner } = useOrgPermissions();
+  const { isPro } = useFeatureAccess();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
@@ -3412,14 +3413,22 @@ export default function PatientDetail() {
 
         {/* Mural Tab */}
         <TabsContent value="mural">
-          <PatientFeed
-            patientId={patient.id}
-            therapistId={user.id}
-            therapistName={therapistProfile?.name ?? undefined}
-            isTherapist={true}
-            currentUserId={user.id}
-            currentUserName={therapistProfile?.name ?? 'Terapeuta'}
-          />
+          {!isPro ? (
+            <UpgradeBlock
+              feature="mural"
+              title="Mural do Paciente é exclusivo do plano Pro"
+              description="Compartilhe fotos, vídeos, conquistas e atividades com o paciente e seus familiares através do Portal — disponível no plano Pro."
+            />
+          ) : (
+            <PatientFeed
+              patientId={patient.id}
+              therapistId={user.id}
+              therapistName={therapistProfile?.name ?? undefined}
+              isTherapist={true}
+              currentUserId={user.id}
+              currentUserName={therapistProfile?.name ?? 'Terapeuta'}
+            />
+          )}
         </TabsContent>
 
         {/* Frequência Tab */}
