@@ -503,9 +503,9 @@ export async function generateClinicInternalStatementPdf(
   const grossGrandTotal = (isClinicFixedSalary ? clinicFixedRevenue : patientsRevenueTotal) + orphanTotal;
   const grossGrandReceived = (isClinicFixedSalary ? clinicFixedReceived : patientsReceivedTotal) + orphanReceived;
 
-  // Salário fixo não recebe desconto percentual; demais modelos sim
-  const grandTotal = isClinicFixedSalary ? grossGrandTotal : grossGrandTotal * clinicDiscountFactor;
-  const grandReceived = isClinicFixedSalary ? grossGrandReceived : grossGrandReceived * clinicDiscountFactor;
+  // Desconto da clínica é aplicado SOMENTE no Total Geral, para todos os modelos (inclusive salário fixo).
+  const grandTotal = grossGrandTotal * clinicDiscountFactor;
+  const grandReceived = grossGrandReceived * clinicDiscountFactor;
   const grandPending = Math.max(0, grandTotal - grandReceived);
   const grandDiscount = grossGrandTotal - grandTotal;
 
