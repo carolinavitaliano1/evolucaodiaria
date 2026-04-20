@@ -441,7 +441,7 @@ export async function generateClinicInternalStatementPdf(
 
     let paymentStatus: PatientBlock['paymentStatus'] = 'sem_registro';
     if (treatAsFixedSalary) paymentStatus = 'sem_registro';
-    else if (patientTotal === 0) paymentStatus = 'pago';
+    else if (patientTotal === 0) paymentStatus = 'sem_registro';
     else if (received >= patientTotal - 0.01) paymentStatus = 'pago';
     else if (received > 0) paymentStatus = 'parcial';
     else paymentStatus = 'pendente';
