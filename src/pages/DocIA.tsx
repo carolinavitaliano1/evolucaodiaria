@@ -478,7 +478,30 @@ export default function DocIA() {
         const todayBR = new Date(doc.created_at).toLocaleDateString('pt-BR');
         const cityFromHeader = (clinicData as any)?.document_header_text?.split('\n')[0] || clinic?.name || '';
         const cityLine = `${cityFromHeader}, ${todayBR}`;
-        const profRegistration = profile?.professional_id ? `Reg.: ${profile.professional_id}` : '';
+
+        // Recover stamp + signatures persisted in the saved HTML so Word matches the original PDF.
+        let metaStampId: string | null = null;
+        let metaExtraSigs: { label: string }[] = [];
+        let metaProfName: string | null = null;
+        let metaProfReg: string | null = null;
+        const metaMatch = doc.content.match(/<script[^>]*id=["']docia-meta["'][^>]*>([\s\S]*?)<\/script>/i);
+        if (metaMatch) {
+          try {
+            const parsed = JSON.parse(metaMatch[1].replace(/\\u003c/g, '<'));
+            metaStampId = parsed.stampId || null;
+            metaExtraSigs = Array.isArray(parsed.extraSignatures) ? parsed.extraSignatures : [];
+            metaProfName = parsed.professionalName || null;
+            metaProfReg = parsed.profRegistration || null;
+          } catch {}
+        }
+
+        let stampUrl: string | null = null;
+        if (metaStampId) {
+          const stamp = stamps.find(s => s.id === metaStampId);
+          stampUrl = stamp?.stamp_image || null;
+        }
+
+        const fallbackReg = profile?.professional_id ? `Reg.: ${profile.professional_id}` : '';
 
         const blob = await generateAIDocumentDocx({
           title: doc.title,
@@ -486,9 +509,11 @@ export default function DocIA() {
           logoUrl: (clinicData as any)?.document_logo_url || null,
           headerText: (clinicData as any)?.document_header_text || null,
           footerText: (clinicData as any)?.document_footer_text || null,
-          professionalName: profile?.name || '',
-          professionalRegistration: profRegistration,
+          professionalName: metaProfName || profile?.name || '',
+          professionalRegistration: metaProfReg || fallbackReg,
           cityLine,
+          stampUrl,
+          extraSignatures: metaExtraSigs,
         });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
