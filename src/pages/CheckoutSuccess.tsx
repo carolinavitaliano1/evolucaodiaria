@@ -41,7 +41,7 @@ export default function CheckoutSuccess() {
             <span className="font-semibold">Evolução Diária</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Seu período de teste gratuito de 15 dias começou. Você não será cobrado durante este período.
+            Seu período de teste gratuito de 30 dias começou. Você não será cobrado durante este período.
           </p>
         </div>
 

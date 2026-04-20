@@ -31,7 +31,7 @@ const PLANS: PlanDef[] = [
       'Evoluções com texto livre e templates',
       'Controle financeiro completo',
       'WhatsApp, anexos e notas',
-      '15 dias grátis para testar',
+      '30 dias grátis para testar',
     ],
   },
   {
@@ -47,7 +47,7 @@ const PLANS: PlanDef[] = [
       'Portal do Paciente (convites, fichas, mensagens)',
       'Gestão de Equipe e multi-profissionais',
       'Conformidade e financeiro de equipe',
-      '15 dias grátis para testar',
+      '30 dias grátis para testar',
     ],
   },
 ];
@@ -105,7 +105,7 @@ export default function Pricing() {
         </p>
         <p className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary">
           <Sparkles className="w-4 h-4" />
-          15 dias grátis em todos os planos
+          30 dias grátis em todos os planos
         </p>
         {subscribed && tier === 'legacy' && (
           <Badge variant="outline" className="mt-3 ml-2 text-primary border-primary">

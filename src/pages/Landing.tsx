@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { motion, type Variants } from 'framer-motion';
 import {
   BookOpen, Users, Calendar, FileText, BarChart3, Shield, Sparkles,
   ArrowRight, CheckCircle2, Clock, Brain, AlertTriangle, Heart, Star, Quote,
-  ChevronDown, Monitor, Wand2, Layout, Zap, FileCheck, ClipboardList, TrendingUp,
-  Smartphone, Lock, RefreshCw, Play,
+  Wand2, Zap, FileCheck, ClipboardList, TrendingUp,
+  Lock, RefreshCw, MessageCircle, UserPlus, Bell, Megaphone,
+  GraduationCap, ListChecks, Activity, Receipt, X, Check,
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -13,7 +15,7 @@ const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number) => ({
     opacity: 1, y: 0,
-    transition: { delay: i * 0.1, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] as const },
+    transition: { delay: i * 0.08, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] as const },
   }),
 };
 
@@ -35,40 +37,64 @@ const PAIN_POINTS = [
   },
 ];
 
-const FEATURES = [
-  { icon: Users, title: 'Gestão de Pacientes', desc: 'Cadastro completo com diagnóstico, frequência, humor e histórico de sessões — tudo em um só lugar.' },
-  { icon: FileText, title: 'Evoluções com Carimbo', desc: 'Registre cada sessão com texto, humor, anexos e seu carimbo profissional. Exporte em PDF quando precisar.' },
-  { icon: Calendar, title: 'Agenda Integrada', desc: 'Sessões, tarefas e eventos em uma agenda visual. Nunca mais esqueça um atendimento.' },
-  { icon: BarChart3, title: 'Financeiro Automático', desc: 'Controle por sessão, pacote ou fixo mensal. Saiba exatamente quanto cada clínica rende.' },
-  { icon: Shield, title: 'Segurança de Verdade', desc: 'Seus dados ficam criptografados na nuvem. Só você acessa. Sem planilhas vulneráveis.' },
-  { icon: Sparkles, title: 'Relatórios com IA', desc: 'Crie relatórios clínicos com inteligência artificial — guiados por paciente ou com comando livre. Edite, salve e exporte em PDF.' },
+const CORE_FEATURES = [
+  { icon: Users, title: 'Gestão de Pacientes', desc: 'Cadastro completo com diagnóstico, frequência, humor, responsáveis e histórico de sessões.' },
+  { icon: FileText, title: 'Evoluções com Carimbo', desc: 'Registre cada sessão com texto, humor, anexos, modelos estruturados e seu carimbo profissional.' },
+  { icon: Calendar, title: 'Agenda Integrada', desc: 'Sessões, tarefas, eventos e bloqueios em uma agenda visual com sincronização Google Calendar.' },
+  { icon: BarChart3, title: 'Financeiro Automático', desc: 'Controle por sessão, pacote ou fixo mensal. Recibos, comprovantes e extratos em PDF.' },
+  { icon: MessageCircle, title: 'WhatsApp Integrado', desc: 'Modelos de mensagem, envio rápido, lembretes e cobranças com variáveis personalizadas.' },
+  { icon: Shield, title: 'Segurança LGPD', desc: 'Criptografia ponta a ponta, dados na nuvem e conformidade com a LGPD.' },
+  { icon: GraduationCap, title: 'Grupos Terapêuticos', desc: 'Gerencie grupos com sessões, evoluções, financeiro e participantes em um único lugar.' },
+  { icon: ListChecks, title: 'Lista de Espera & Matrículas', desc: 'Links públicos para inscrição em lista de espera e matrículas com revisão automática.' },
+  { icon: Bell, title: 'Alertas Inteligentes', desc: 'Pendências de evolução, pagamentos vencidos, aniversários e revisões — tudo no dashboard.' },
 ];
 
-const AI_FEATURES = [
+const PRO_FEATURES = [
   {
     icon: Wand2,
-    title: 'Evolução Melhorada com IA',
-    desc: 'Escreva suas notas de sessão normalmente e deixe a IA refinar o vocabulário técnico, corrigir a gramática e elevar a qualidade — sem alterar o sentido clínico.',
-    highlight: 'Economize 15 min por evolução',
-  },
-  {
-    icon: Sparkles,
-    title: 'Relatórios Clínicos com IA',
-    desc: 'Gere relatórios completos automaticamente a partir do histórico do paciente. Escolha modo guiado ou livre, edite com editor rico e exporte em PDF profissional.',
+    title: 'Doc IA — Documentos Inteligentes',
+    desc: 'Gere relatórios, declarações e atestados clínicos com IA a partir do histórico do paciente. Editor rico, salve versões e exporte em PDF/Word com carimbo.',
     highlight: 'De horas para minutos',
   },
   {
-    icon: ClipboardList,
-    title: 'Modelos de Evolução Personalizados',
-    desc: 'Crie modelos com campos específicos (disposição, atividade, desenvolvimento) por clínica. Preencha formulários estruturados ao invés de texto livre — cada campo tem IA integrada.',
-    highlight: 'Padronize sem perder flexibilidade',
+    icon: Sparkles,
+    title: 'Melhorar Evolução com IA',
+    desc: 'Escreva suas notas e a IA refina o vocabulário técnico mantendo o sentido clínico. Funciona em texto livre e em modelos estruturados.',
+    highlight: 'Economize 15 min por sessão',
   },
   {
-    icon: Zap,
-    title: 'Evolução Rápida em 30 Segundos',
-    desc: 'Registre presença, humor, aplique seu modelo e pronto. Ideal para clínicas com agenda cheia onde cada minuto entre sessões conta.',
-    highlight: 'Agilidade máxima',
+    icon: Heart,
+    title: 'Feedbacks IA para Responsáveis',
+    desc: 'Crie feedbacks individuais ou em lote com IA, anexe fotos e envie diretamente para o Portal do Paciente.',
+    highlight: 'Família engajada',
   },
+  {
+    icon: TrendingUp,
+    title: 'Relatórios IA',
+    desc: 'Relatórios completos com modo guiado ou comando livre, totalmente editáveis e exportáveis em PDF profissional.',
+    highlight: 'Documentação impecável',
+  },
+  {
+    icon: UserPlus,
+    title: 'Portal do Paciente',
+    desc: 'Convites por e-mail, fichas digitais, mensagens, atividades, mural, contratos digitais e financeiro — tudo acessível ao paciente/responsável.',
+    highlight: 'Engajamento total',
+  },
+  {
+    icon: Users,
+    title: 'Gestão de Equipe',
+    desc: 'Convide profissionais, defina permissões granulares, modelos de remuneração, conformidade e financeiro de equipe.',
+    highlight: 'Multi-profissional',
+  },
+];
+
+const PORTAL_BENEFITS = [
+  { icon: FileText, title: 'Fichas Digitais', desc: 'Anamnese e questionários personalizados respondidos pelo paciente.' },
+  { icon: MessageCircle, title: 'Mensagens Diretas', desc: 'Comunicação segura entre terapeuta e responsável, com lembretes de sessões.' },
+  { icon: Activity, title: 'Atividades & Planos de Ação', desc: 'Envie tarefas terapêuticas e acompanhe o cumprimento.' },
+  { icon: Megaphone, title: 'Mural & Avisos', desc: 'Comunicados e avisos importantes centralizados no portal.' },
+  { icon: Receipt, title: 'Financeiro Transparente', desc: 'Comprovantes, vencimentos e pacotes acessíveis ao responsável financeiro.' },
+  { icon: Sparkles, title: 'Feedbacks Curados', desc: 'Apenas feedbacks aprovados pelo terapeuta chegam ao paciente.' },
 ];
 
 const AUTOMATION_BENEFITS = [
@@ -94,28 +120,43 @@ const TESTIMONIALS = [
   {
     name: 'Dra. Ana Beatriz Santos',
     role: 'Terapeuta Ocupacional — Curitiba, PR',
-    text: 'O que mais gosto é poder gerar relatórios em PDF com carimbo na hora. Quando o convênio pede documentação, está tudo pronto. Zero estresse.',
+    text: 'O Portal do Paciente mudou minha relação com as famílias. Eles acompanham tudo, mandam fotos e respondem fichas online. Conexão total.',
     rating: 5,
   },
   {
     name: 'Dra. Fernanda Lima',
     role: 'Fisioterapeuta — Recife, PE',
-    text: 'Os modelos de evolução personalizados mudaram minha rotina. Preencho os campos, a IA melhora o texto e em 30 segundos a evolução está pronta e profissional.',
+    text: 'Os modelos de evolução com IA mudaram minha rotina. Preencho os campos, a IA refina o texto e em 30 segundos a evolução está pronta e profissional.',
     rating: 5,
   },
 ];
 
 const FAQ_ITEMS = [
-  { q: 'O teste grátis é realmente sem compromisso?', a: 'Sim! Você tem 15 dias para testar todas as funcionalidades. Se não gostar, é só cancelar antes do fim do período de teste.' },
-  { q: 'Meus dados ficam seguros?', a: 'Totalmente. Utilizamos criptografia de ponta a ponta e servidores seguros na nuvem. Apenas você tem acesso aos seus dados — nem mesmo nossa equipe consegue visualizá-los.' },
-  { q: 'Posso usar em mais de uma clínica?', a: 'Sim! Você pode cadastrar quantas clínicas quiser e gerenciar pacientes, agenda e financeiro de cada uma separadamente.' },
+  { q: 'O teste grátis é realmente sem compromisso?', a: 'Sim! Você tem 30 dias para testar todas as funcionalidades, sem precisar cadastrar cartão de crédito. Se não gostar, é só não assinar — o acesso é interrompido automaticamente.' },
+  { q: 'Qual a diferença entre o plano Básico e o Pro?', a: 'O Básico (R$ 29,90/mês) inclui pacientes, agenda, evoluções, financeiro, WhatsApp e anexos. O Pro (R$ 59,90/mês) acrescenta toda a Inteligência Artificial (Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA), o Portal do Paciente e a Gestão de Equipe multi-profissional.' },
+  { q: 'Meus dados ficam seguros?', a: 'Totalmente. Utilizamos criptografia, servidores seguros na nuvem e seguimos a LGPD. Apenas você (e sua equipe, se autorizada) tem acesso aos dados dos pacientes.' },
+  { q: 'Posso usar em mais de uma clínica?', a: 'Sim! Você pode cadastrar quantas clínicas, consultórios ou contratantes quiser e gerenciar pacientes, agenda e financeiro de cada um separadamente.' },
   { q: 'Funciona no celular?', a: 'Sim. O sistema é totalmente responsivo e funciona perfeitamente no navegador do seu celular ou tablet, sem precisar instalar nada.' },
   { q: 'Posso cancelar a qualquer momento?', a: 'Sim, sem multas ou burocracia. Basta cancelar na área de assinatura e você mantém acesso até o fim do período pago.' },
-  { q: 'Quais profissionais podem usar?', a: 'Psicólogos, fonoaudiólogos, terapeutas ocupacionais, fisioterapeutas, psicopedagogos e qualquer profissional de saúde que atenda em clínicas.' },
-  { q: 'Como funciona a IA nas evoluções?', a: 'Você escreve suas notas normalmente (ou usa um modelo estruturado) e a IA refina o vocabulário técnico e corrige a gramática, preservando 100% do sentido clínico original. É como ter um revisor especialista ao seu lado.' },
-  { q: 'Preciso saber tecnologia para usar?', a: 'De jeito nenhum. A interface é intuitiva e foi pensada para profissionais de saúde, não para engenheiros. Se você usa WhatsApp, consegue usar o Evolução Diária.' },
+  { q: 'Quais profissionais podem usar?', a: 'Psicólogos, fonoaudiólogos, terapeutas ocupacionais, fisioterapeutas, psicopedagogos, psicomotricistas, musicoterapeutas e qualquer profissional de saúde que atenda em clínicas.' },
+  { q: 'Como funciona o Portal do Paciente?', a: 'Disponível no plano Pro: você convida o paciente ou responsável por e-mail, e ele acessa fichas, mensagens, atividades, mural, contratos e financeiro de forma segura e personalizada.' },
 ];
 
+const PLAN_COMPARISON: { label: string; basic: boolean; pro: boolean }[] = [
+  { label: 'Clínicas, pacientes e agenda ilimitados', basic: true, pro: true },
+  { label: 'Evoluções, modelos e carimbo', basic: true, pro: true },
+  { label: 'Controle financeiro completo', basic: true, pro: true },
+  { label: 'WhatsApp, anexos e notas', basic: true, pro: true },
+  { label: 'Grupos terapêuticos', basic: true, pro: true },
+  { label: 'Lista de espera e matrículas', basic: true, pro: true },
+  { label: 'Doc IA — documentos com IA', basic: false, pro: true },
+  { label: 'Melhorar Evolução com IA', basic: false, pro: true },
+  { label: 'Feedbacks IA para responsáveis', basic: false, pro: true },
+  { label: 'Relatórios IA', basic: false, pro: true },
+  { label: 'Portal do Paciente', basic: false, pro: true },
+  { label: 'Gestão de Equipe multi-profissional', basic: false, pro: true },
+  { label: 'Conformidade e financeiro de equipe', basic: false, pro: true },
+];
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -134,7 +175,7 @@ export default function Landing() {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>Entrar</Button>
             <Button size="sm" onClick={() => navigate('/auth')} className="gradient-primary gap-1.5 text-xs sm:text-sm px-3 sm:px-4">
-              <span className="hidden sm:inline">Testar 15 Dias Grátis</span>
+              <span className="hidden sm:inline">Testar 30 Dias Grátis</span>
               <span className="sm:hidden">Testar Grátis</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Button>
@@ -145,7 +186,6 @@ export default function Landing() {
       {/* Hero */}
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 gradient-subtle opacity-60" />
-        {/* decorative blobs */}
         <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-primary/8 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
 
@@ -165,21 +205,20 @@ export default function Landing() {
 
           <motion.p initial="hidden" animate="visible" custom={2} variants={fadeUp}
             className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Evoluções com IA em 30 segundos, agenda integrada, financeiro automático e relatórios clínicos — tudo pensado para o profissional de saúde que atende em clínicas.
+            Evoluções com IA em 30 segundos, agenda integrada, financeiro automático, Portal do Paciente e gestão de equipe — tudo pensado para o profissional de saúde que atende em clínicas.
           </motion.p>
 
           <motion.div initial="hidden" animate="visible" custom={3} variants={fadeUp}
             className="flex flex-col items-center gap-3 mb-10">
             <Button size="lg" onClick={() => navigate('/auth')}
               className="gradient-primary gap-2 text-base px-6 py-5 shadow-glow w-full max-w-sm sm:max-w-none sm:w-auto sm:text-lg sm:px-8 sm:py-6">
-              <span className="sm:hidden">Criar Conta Grátis — 15 dias</span>
-              <span className="hidden sm:inline">Criar Conta Grátis — 15 dias sem cobrar</span>
+              <span className="sm:hidden">Criar Conta Grátis — 30 dias</span>
+              <span className="hidden sm:inline">Criar Conta Grátis — 30 dias sem cobrar</span>
               <ArrowRight className="w-5 h-5 shrink-0" />
             </Button>
             <p className="text-sm text-muted-foreground">Sem cartão. Cancele quando quiser.</p>
           </motion.div>
 
-          {/* Social proof bar */}
           <motion.div initial="hidden" animate="visible" custom={4} variants={fadeUp}
             className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -197,7 +236,6 @@ export default function Landing() {
             </span>
           </motion.div>
         </div>
-
       </header>
 
       {/* Pain Points */}
@@ -224,40 +262,51 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Solution transition */}
-      <section className="py-16 px-4 gradient-subtle">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
-          custom={0} variants={fadeUp} className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 text-success text-sm font-medium mb-6">
-            <CheckCircle2 className="w-4 h-4" /> A solução existe — e foi feita para você
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-            Um sistema construído do zero para a sua realidade
-          </h2>
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            O Evolução Diária não é um sistema genérico adaptado. Cada funcionalidade existe porque um profissional como você pediu. Psicólogos, fonoaudiólogos, terapeutas ocupacionais, fisioterapeutas — você é o centro do produto.
-          </p>
-        </motion.div>
-      </section>
-
-      {/* AI Section */}
+      {/* Core Features */}
       <section className="py-20 px-4 gradient-subtle">
         <div className="max-w-6xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
-            custom={0} variants={fadeUp} className="text-center mb-6">
+            custom={0} variants={fadeUp} className="text-center mb-14">
+            <Badge variant="outline" className="mb-4 border-primary/30 text-primary">Disponível em todos os planos</Badge>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Tudo que você precisa, integrado</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Da gestão básica do consultório a recursos avançados — uma plataforma completa para sua rotina clínica.
+            </p>
+          </motion.div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {CORE_FEATURES.map((f, i) => (
+              <motion.div key={f.title} initial="hidden" whileInView="visible"
+                viewport={{ once: true, margin: '-60px' }} custom={i} variants={fadeUp}
+                className="glass-card rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 shadow-glow">
+                  <f.icon className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">{f.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pro Features (IA + Portal + Equipe) */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+            custom={0} variants={fadeUp} className="text-center mb-12">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 border border-primary/20">
-              <Wand2 className="w-4 h-4" /> Inteligência Artificial
+              <Sparkles className="w-4 h-4" /> Exclusivo do plano Pro
             </span>
             <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-3">
-              IA que trabalha <span className="text-primary">por você</span>
+              IA, Portal do Paciente e <span className="text-primary">Gestão de Equipe</span>
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Pare de gastar horas com texto e relatórios. A IA do Evolução Diária faz o trabalho pesado enquanto você cuida dos seus pacientes.
+              Recursos avançados para quem quer escalar o consultório, engajar famílias e trabalhar com mais profissionais.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-6 mt-12">
-            {AI_FEATURES.map((f, i) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {PRO_FEATURES.map((f, i) => (
               <motion.div key={f.title} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
                 className="relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
@@ -271,6 +320,37 @@ export default function Landing() {
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2 pr-28">{f.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Portal Spotlight */}
+      <section className="py-20 px-4 gradient-subtle">
+        <div className="max-w-6xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+            custom={0} variants={fadeUp} className="text-center mb-12">
+            <Badge className="mb-4 bg-primary text-primary-foreground">Portal do Paciente</Badge>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
+              Famílias engajadas, comunicação centralizada
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Um espaço dedicado para o paciente e responsáveis acompanharem tudo — com sigilo entre múltiplos responsáveis (pai, mãe, escola).
+            </p>
+          </motion.div>
+          <div className="grid md:grid-cols-3 gap-5">
+            {PORTAL_BENEFITS.map((b, i) => (
+              <motion.div key={b.title} initial="hidden" whileInView="visible"
+                viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
+                className="glass-card rounded-2xl p-5 flex gap-4 items-start">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <b.icon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">{b.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -304,32 +384,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-20 px-4 gradient-subtle">
-        <div className="max-w-6xl mx-auto">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
-            custom={0} variants={fadeUp} className="text-center mb-14">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Tudo que você precisa, integrado</h2>
-            <p className="text-muted-foreground text-lg">Ferramentas práticas que economizam horas por semana</p>
-          </motion.div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((f, i) => (
-              <motion.div key={f.title} initial="hidden" whileInView="visible"
-                viewport={{ once: true, margin: '-60px' }} custom={i} variants={fadeUp}
-                className="glass-card rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 shadow-glow">
-                  <f.icon className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{f.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* How it works */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 gradient-subtle">
         <div className="max-w-4xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
@@ -339,8 +395,8 @@ export default function Landing() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { step: '1', title: 'Cadastre suas clínicas e pacientes', desc: 'Adicione suas informações uma vez. O sistema organiza tudo automaticamente por clínica, paciente e período.' },
-              { step: '2', title: 'Registre evoluções com IA', desc: 'Escolha um modelo ou escreva livremente. A IA refina seu texto em segundos. Anexe arquivos e adicione seu carimbo.' },
-              { step: '3', title: 'Gere relatórios e controle finanças', desc: 'Exporte PDFs profissionais, acompanhe frequência e receita. Tudo calculado automaticamente, sem planilhas.' },
+              { step: '2', title: 'Registre evoluções e gerencie a rotina', desc: 'Use modelos estruturados, agenda integrada, WhatsApp e financeiro automático. No Pro, ainda conta com IA e Portal.' },
+              { step: '3', title: 'Gere relatórios e escale com equipe', desc: 'Exporte PDFs profissionais, envie ao Portal e — no Pro — convide profissionais para sua organização.' },
             ].map((s, i) => (
               <motion.div key={s.step} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
@@ -357,7 +413,7 @@ export default function Landing() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 px-4 gradient-subtle">
+      <section className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
             custom={0} variants={fadeUp} className="text-center mb-14">
@@ -383,6 +439,110 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Pricing — Basic vs Pro */}
+      <section className="py-20 px-4 gradient-subtle">
+        <div className="max-w-5xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
+            custom={0} variants={fadeUp} className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Planos simples e diretos</h2>
+            <p className="text-muted-foreground text-lg mb-3">
+              Escolha o plano ideal e comece com 30 dias grátis — sem cartão de crédito.
+            </p>
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+              <Sparkles className="w-4 h-4" />
+              30 dias grátis em todos os planos
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-12">
+            {/* Básico */}
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
+              custom={1} variants={fadeUp}
+              className="glass-card rounded-2xl p-8 flex flex-col border border-border">
+              <h3 className="text-xl font-bold text-foreground">Básico</h3>
+              <p className="text-sm text-muted-foreground mt-1">O essencial para sua prática clínica</p>
+              <div className="my-5">
+                <span className="text-4xl font-bold text-foreground">R$ 29,90</span>
+                <span className="text-muted-foreground">/mês</span>
+              </div>
+              <ul className="text-sm text-muted-foreground space-y-2.5 mb-6 flex-1">
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> Clínicas, pacientes e agenda ilimitados</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> Evoluções com texto livre e modelos</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> Controle financeiro completo</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> WhatsApp, anexos e notas</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> Grupos terapêuticos, lista de espera</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> 30 dias grátis</li>
+              </ul>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>
+                Começar Grátis
+              </Button>
+            </motion.div>
+
+            {/* Pro */}
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
+              custom={2} variants={fadeUp}
+              className="relative glass-card rounded-2xl p-8 flex flex-col border-2 border-primary shadow-glow ring-1 ring-primary/20">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
+                Recomendado
+              </Badge>
+              <h3 className="text-xl font-bold text-foreground">Pro</h3>
+              <p className="text-sm text-muted-foreground mt-1">Tudo que você precisa para escalar</p>
+              <div className="my-5">
+                <span className="text-4xl font-bold text-foreground">R$ 59,90</span>
+                <span className="text-muted-foreground">/mês</span>
+              </div>
+              <ul className="text-sm text-muted-foreground space-y-2.5 mb-6 flex-1">
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Tudo do Básico</span></li>
+                <li className="flex items-start gap-2"><Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>IA completa: Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA</span></li>
+                <li className="flex items-start gap-2"><UserPlus className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Portal do Paciente (convites, fichas, mensagens)</span></li>
+                <li className="flex items-start gap-2"><Users className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Gestão de Equipe e multi-profissionais</span></li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> Conformidade e financeiro de equipe</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> 30 dias grátis</li>
+              </ul>
+              <Button className="w-full gradient-primary" onClick={() => navigate('/auth')}>
+                Começar Grátis
+              </Button>
+            </motion.div>
+          </div>
+
+          {/* Comparison table */}
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-60px' }}
+            custom={3} variants={fadeUp}>
+            <h3 className="text-lg font-semibold text-foreground text-center mb-4">Comparativo de recursos</h3>
+            <div className="glass-card rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/40">
+                      <th className="text-left px-4 py-3 font-semibold text-foreground">Recurso</th>
+                      <th className="text-center px-4 py-3 font-semibold text-foreground w-32">Básico</th>
+                      <th className="text-center px-4 py-3 font-semibold text-primary w-32">Pro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PLAN_COMPARISON.map((row, i) => (
+                      <tr key={i} className="border-b border-border/60 last:border-0">
+                        <td className="px-4 py-2.5 text-foreground">{row.label}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          {row.basic ? (
+                            <Check className="w-4 h-4 text-primary mx-auto" />
+                          ) : (
+                            <X className="w-4 h-4 text-muted-foreground/40 mx-auto" />
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <Check className="w-4 h-4 text-primary mx-auto" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -435,55 +595,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
-            custom={0} variants={fadeUp}>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">Investimento que se paga sozinho</h2>
-            <p className="text-muted-foreground text-lg mb-10">
-              Quanto vale o tempo que você perde toda semana com burocracia?
-            </p>
-          </motion.div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { name: 'Mensal', price: 'R$ 29', period: '/mês', sub: 'Menos de R$1 por dia' },
-              { name: 'Bimestral', price: 'R$ 49', period: '/2 meses', popular: true, sub: 'Economia de R$ 9' },
-              { name: 'Trimestral', price: 'R$ 59', period: '/3 meses', sub: 'Economia de R$ 28' },
-            ].map((plan, i) => (
-              <motion.div key={plan.name} initial="hidden" whileInView="visible"
-                viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
-                className={`glass-card rounded-2xl p-6 flex flex-col ${plan.popular ? 'border-2 border-primary shadow-glow ring-1 ring-primary/20' : ''}`}>
-                {plan.popular && (
-                  <span className="inline-block px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium mb-3 self-center">
-                    Mais Popular
-                  </span>
-                )}
-                <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                <div className="my-4">
-                  <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-                <p className="text-xs text-primary font-medium mb-4">{plan.sub}</p>
-                <ul className="text-sm text-muted-foreground space-y-2 mb-6 flex-1">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Acesso completo + IA</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Modelos ilimitados</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> 15 dias grátis inclusos</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> Cancele quando quiser</li>
-                </ul>
-                <Button variant={plan.popular ? 'default' : 'outline'}
-                  className={`w-full ${plan.popular ? 'gradient-primary' : ''}`}
-                  onClick={() => navigate('/auth')}>
-                  Começar 15 Dias Grátis
-                </Button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Final CTA */}
-      <section className="py-20 px-4 gradient-subtle">
+      <section className="py-20 px-4">
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
           custom={0} variants={fadeUp} className="max-w-3xl mx-auto text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
@@ -492,13 +605,13 @@ export default function Landing() {
             <span className="text-primary">Você merece uma ferramenta que ajude nisso.</span>
           </h2>
           <p className="text-muted-foreground text-lg mb-8">
-            Comece agora. São 15 dias completamente grátis, sem compromisso, sem cartão.
+            Comece agora. São 30 dias completamente grátis, sem compromisso, sem cartão.
           </p>
           <Button size="lg" onClick={() => navigate('/auth')}
             className="gradient-primary gap-2 text-base sm:text-lg px-8 sm:px-10 py-5 sm:py-6 shadow-glow w-full sm:w-auto max-w-sm">
             Criar Minha Conta Grátis <ArrowRight className="w-5 h-5 shrink-0" />
           </Button>
-          <p className="text-xs text-muted-foreground mt-4">✓ Sem cartão &nbsp;·&nbsp; ✓ 15 dias grátis &nbsp;·&nbsp; ✓ Cancele quando quiser</p>
+          <p className="text-xs text-muted-foreground mt-4">✓ Sem cartão &nbsp;·&nbsp; ✓ 30 dias grátis &nbsp;·&nbsp; ✓ Cancele quando quiser</p>
         </motion.div>
       </section>
 

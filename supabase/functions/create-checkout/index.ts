@@ -71,7 +71,7 @@ serve(async (req) => {
       mode: "subscription",
       payment_method_types: ["card"],
       subscription_data: {
-        trial_period_days: 15,
+        trial_period_days: 30,
         trial_settings: {
           end_behavior: {
             missing_payment_method: "cancel",
