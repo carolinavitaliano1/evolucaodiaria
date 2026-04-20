@@ -145,7 +145,7 @@ export async function generateClinicInternalStatementPdf(
       .eq('clinic_id', clinicId),
     supabase
       .from('clinics')
-      .select('payment_type, payment_amount')
+      .select('payment_type, payment_amount, discount_percentage')
       .eq('id', clinicId)
       .maybeSingle(),
     supabase
@@ -157,7 +157,7 @@ export async function generateClinicInternalStatementPdf(
       .maybeSingle(),
   ]);
 
-  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null } | null =
+  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null } | null =
     (clinicRes.data as any) ?? null;
 
   const isClinicFixedSalary =
@@ -166,6 +166,11 @@ export async function generateClinicInternalStatementPdf(
     clinicPayInfo?.payment_type === 'mensal' ||
     clinicPayInfo?.payment_type === 'fixo_diario' ||
     clinicPayInfo?.payment_type === 'fixo_dia';
+
+  const clinicDiscountPct = Math.max(0, Math.min(100, Number(clinicPayInfo?.discount_percentage || 0)));
+  const clinicDiscountFactor = 1 - clinicDiscountPct / 100;
+  const clinicSessionAmount = Number(clinicPayInfo?.payment_amount || 0);
+  const isClinicPerSession = clinicPayInfo?.payment_type === 'sessao' || clinicPayInfo?.payment_type === 'por_sessao';
 
   const services: PrivateApt[] = (svcRes.data || []).map((d: any) => ({
     id: d.id,
@@ -311,20 +316,25 @@ export async function generateClinicInternalStatementPdf(
         ? 'Salário fixo da clínica (por dia)'
         : 'Salário fixo da clínica (mensal)';
     } else if (pkg?.package_type === 'sessao') {
-      perSession = Number(pkg.price) || 0;
+      perSession = (Number(pkg.price) || 0) * clinicDiscountFactor;
       packageLabel = `Por sessão • ${pkg.name}`;
     } else if (pkg?.package_type === 'personalizado') {
       const limit = pkg.session_limit || pEvos.length || 1;
-      perSession = (Number(pkg.price) || 0) / Math.max(1, limit);
+      perSession = ((Number(pkg.price) || 0) / Math.max(1, limit)) * clinicDiscountFactor;
       packageLabel = `Personalizado • ${pkg.name} (${limit} sessões)`;
     } else if (isMensal) {
       const dyn = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
       perSession = dyn.perSession || monthlyValue;
       packageLabel = pkg ? `Mensal • ${pkg.name}` : 'Mensalidade';
     } else {
-      const dyn = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
-      perSession = dyn.perSession || monthlyValue;
-      packageLabel = info.payment_type ? `${info.payment_type}` : 'Avulso';
+      // Por sessão (sem pacote): valor fixo do paciente OU da clínica.
+      // ❌ NÃO dividir por semanas — o valor já é o preço de uma única sessão.
+      const baseSessionValue = Number(info.payment_value) > 0
+        ? Number(info.payment_value)
+        : clinicSessionAmount;
+      perSession = baseSessionValue * clinicDiscountFactor;
+      const discountSuffix = clinicDiscountPct > 0 ? ` (−${clinicDiscountPct}% clínica)` : '';
+      packageLabel = `Por sessão${discountSuffix}`;
     }
 
     const rows: Row[] = [];
@@ -431,7 +441,7 @@ export async function generateClinicInternalStatementPdf(
 
     let paymentStatus: PatientBlock['paymentStatus'] = 'sem_registro';
     if (treatAsFixedSalary) paymentStatus = 'sem_registro';
-    else if (patientTotal === 0) paymentStatus = 'pago';
+    else if (patientTotal === 0) paymentStatus = 'sem_registro';
     else if (received >= patientTotal - 0.01) paymentStatus = 'pago';
     else if (received > 0) paymentStatus = 'parcial';
     else paymentStatus = 'pendente';
@@ -487,13 +497,16 @@ export async function generateClinicInternalStatementPdf(
   const grandPending = Math.max(0, grandTotal - grandReceived);
 
   const inadimplencia = grandTotal > 0 ? (grandPending / grandTotal) * 100 : 0;
+  const billedBlocks = blocks.filter(b => b.patientTotal > 0);
   const totalPatients = blocks.length;
+  const billedPatients = billedBlocks.length;
   const paidPatients = isClinicFixedSalary
     ? (clinicFixedReceived >= clinicFixedRevenue - 0.01 && clinicFixedRevenue > 0 ? totalPatients : 0)
-    : blocks.filter(b => b.paymentStatus === 'pago').length;
+    : billedBlocks.filter(b => b.paymentStatus === 'pago').length;
   const pendingPatients = isClinicFixedSalary
     ? (clinicFixedReceived >= clinicFixedRevenue - 0.01 ? 0 : totalPatients)
-    : blocks.filter(b => b.paymentStatus === 'pendente' || b.paymentStatus === 'parcial').length;
+    : billedBlocks.filter(b => b.paymentStatus === 'pendente' || b.paymentStatus === 'parcial').length;
+  const noChargePatients = isClinicFixedSalary ? 0 : totalPatients - billedPatients;
 
   // ===== EXECUTIVE SUMMARY =====
   ensure(46);
@@ -524,7 +537,10 @@ export async function generateClinicInternalStatementPdf(
   // Sub-stats
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...dark);
   const subY = y + 30;
-  doc.text(`Pacientes c/ movimento: ${totalPatients}`, M + 3, subY);
+  const movimentoLabel = isClinicFixedSalary
+    ? `Pacientes atendidos: ${totalPatients}`
+    : `Pacientes c/ cobrança: ${billedPatients}${noChargePatients > 0 ? ` (+ ${noChargePatients} sem cobrança no mês)` : ''}`;
+  doc.text(movimentoLabel, M + 3, subY);
   doc.setTextColor(...green);
   doc.text(`Quitados: ${paidPatients}`, M + 3 + kpiW, subY);
   doc.setTextColor(...orange);
@@ -595,7 +611,7 @@ export async function generateClinicInternalStatementPdf(
       pago: { label: 'QUITADO', color: green },
       pendente: { label: 'PENDENTE', color: orange },
       parcial: { label: 'PARCIAL', color: orange },
-      sem_registro: { label: 'SEM REG.', color: muted },
+      sem_registro: { label: 'SEM COBRANÇA', color: muted },
     }[status];
     return cfg;
   };
