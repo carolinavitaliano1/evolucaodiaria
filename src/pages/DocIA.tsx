@@ -391,6 +391,16 @@ export default function DocIA() {
     try {
       const { patient, clinic, clinicData, todayBR, cityLine, professionalName, profRegistration, stampUrl } = await buildExportPayload();
 
+      // Embed export metadata inside the saved HTML so future Word/PDF exports keep stamp + signatures.
+      const meta = {
+        stampId: includeStamp ? selectedStampId : null,
+        extraSignatures,
+        professionalName,
+        profRegistration,
+      };
+      const metaScript = `<script type="application/json" id="docia-meta">${JSON.stringify(meta).replace(/</g, '\\u003c')}</script>`;
+      const persistedHtml = `${metaScript}${bodyHtml}`;
+
       const { blob, dataUrl } = await generateAIDocumentPdf({
         title: draftTitle || docTypeLabel(createDocType),
         bodyText: bodyHtml,
@@ -414,7 +424,7 @@ export default function DocIA() {
       const { error: insErr } = await supabase.from('patient_documents').insert({
         user_id: user.id, clinic_id: clinic.id, patient_id: createPatientId,
         title: draftTitle || docTypeLabel(createDocType),
-        doc_type: createDocType, content: bodyHtml,
+        doc_type: createDocType, content: persistedHtml,
         file_url: urlData.publicUrl, file_path: path,
       } as any);
       if (insErr) throw insErr;
@@ -468,7 +478,30 @@ export default function DocIA() {
         const todayBR = new Date(doc.created_at).toLocaleDateString('pt-BR');
         const cityFromHeader = (clinicData as any)?.document_header_text?.split('\n')[0] || clinic?.name || '';
         const cityLine = `${cityFromHeader}, ${todayBR}`;
-        const profRegistration = profile?.professional_id ? `Reg.: ${profile.professional_id}` : '';
+
+        // Recover stamp + signatures persisted in the saved HTML so Word matches the original PDF.
+        let metaStampId: string | null = null;
+        let metaExtraSigs: { label: string }[] = [];
+        let metaProfName: string | null = null;
+        let metaProfReg: string | null = null;
+        const metaMatch = doc.content.match(/<script[^>]*id=["']docia-meta["'][^>]*>([\s\S]*?)<\/script>/i);
+        if (metaMatch) {
+          try {
+            const parsed = JSON.parse(metaMatch[1].replace(/\\u003c/g, '<'));
+            metaStampId = parsed.stampId || null;
+            metaExtraSigs = Array.isArray(parsed.extraSignatures) ? parsed.extraSignatures : [];
+            metaProfName = parsed.professionalName || null;
+            metaProfReg = parsed.profRegistration || null;
+          } catch {}
+        }
+
+        let stampUrl: string | null = null;
+        if (metaStampId) {
+          const stamp = stamps.find(s => s.id === metaStampId);
+          stampUrl = stamp?.stamp_image || null;
+        }
+
+        const fallbackReg = profile?.professional_id ? `Reg.: ${profile.professional_id}` : '';
 
         const blob = await generateAIDocumentDocx({
           title: doc.title,
@@ -476,9 +509,11 @@ export default function DocIA() {
           logoUrl: (clinicData as any)?.document_logo_url || null,
           headerText: (clinicData as any)?.document_header_text || null,
           footerText: (clinicData as any)?.document_footer_text || null,
-          professionalName: profile?.name || '',
-          professionalRegistration: profRegistration,
+          professionalName: metaProfName || profile?.name || '',
+          professionalRegistration: metaProfReg || fallbackReg,
           cityLine,
+          stampUrl,
+          extraSignatures: metaExtraSigs,
         });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -508,7 +543,8 @@ export default function DocIA() {
     setCreatePatientId(doc.patient_id);
     setCreateDocType(doc.doc_type);
     setDraftTitle(doc.title);
-    editor?.commands.setContent(doc.content || '<p style="text-align:justify"></p>');
+    const cleanContent = (doc.content || '').replace(/<script[^>]*id=["']docia-meta["'][^>]*>[\s\S]*?<\/script>/gi, '');
+    editor?.commands.setContent(cleanContent || '<p style="text-align:justify"></p>');
     setHasDraft(true);
     setActiveTab('create');
     toast.success('Documento carregado no editor — ajuste e salve novamente');
