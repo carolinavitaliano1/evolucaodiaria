@@ -1009,9 +1009,16 @@ export default function Financial() {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-primary-foreground/70 text-sm mb-1">Faturamento Total do Mês</p>
-            <h2 className="text-3xl sm:text-5xl font-bold text-primary-foreground mb-3 break-words">
-              R$ {grandTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            <h2 className="text-3xl sm:text-5xl font-bold text-primary-foreground mb-2 break-words">
+              R$ {grandNetTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </h2>
+            {totalDiscount > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-primary-foreground/80 mb-3">
+                <span>Bruto: <strong className="font-semibold">R$ {grandTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></span>
+                <span className="text-amber-200">− Descontos: R$ {totalDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                <span className="px-2 py-0.5 rounded-full bg-success/20 text-success-foreground/90 font-semibold">Líquido</span>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 sm:gap-4 text-primary-foreground/80 text-xs sm:text-sm">
               <span className="flex items-center gap-1.5 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
                 <CalendarCheck className="w-3.5 h-3.5" />
