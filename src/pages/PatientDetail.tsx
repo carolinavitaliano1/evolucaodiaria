@@ -1637,7 +1637,7 @@ export default function PatientDetail() {
         if (isPackagePersonalizado) {
           idLines.push(['Valor por Sessão:', `R$ ${perSessionValue.toFixed(2)} (Pacote ${patientPackage!.name} — ${patientPackage!.sessionLimit} sessões)`]);
         } else if (pdfDynamic) {
-          idLines.push(['Valor Mensal:', `R$ ${paymentValue.toFixed(2)} (${pdfDynamic.occurrences} sessões → R$ ${pdfDynamic.perSession.toFixed(2)}/sessão)`]);
+          idLines.push(['Valor Mensal:', `R$ ${paymentValue.toFixed(2)}/mês (Mês de ${pdfDynamic.occurrences} semanas: R$ ${pdfDynamic.perSession.toFixed(2)}/sessão)`]);
         } else {
           idLines.push(['Valor por Sessão:', `R$ ${patient.paymentValue.toFixed(2)}`]);
         }
