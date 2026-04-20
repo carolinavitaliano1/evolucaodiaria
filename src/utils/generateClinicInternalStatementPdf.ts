@@ -145,7 +145,7 @@ export async function generateClinicInternalStatementPdf(
       .eq('clinic_id', clinicId),
     supabase
       .from('clinics')
-      .select('payment_type, payment_amount')
+      .select('payment_type, payment_amount, discount_percentage')
       .eq('id', clinicId)
       .maybeSingle(),
     supabase
