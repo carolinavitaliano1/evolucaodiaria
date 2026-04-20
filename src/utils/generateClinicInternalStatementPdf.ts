@@ -688,12 +688,6 @@ export async function generateClinicInternalStatementPdf(
     if (isClinicFixedSalary) {
       doc.setTextColor(...muted); doc.setFont('helvetica', 'italic');
       doc.text('—  (incluso no salário fixo)', W - M - 2, y, { align: 'right' });
-    } else if (clinicDiscountPct > 0 && b.patientTotal > 0) {
-      const grossSubtotal = b.sessionsTotal + b.servicesTotal;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...muted);
-      doc.text(`Bruto: ${fmtBRL(grossSubtotal)}  −${clinicDiscountPct}% clínica  →`, W - M - 32, y, { align: 'right' });
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...dark);
-      doc.text(fmtBRL(b.patientTotal), W - M - 2, y, { align: 'right' });
     } else {
       doc.text(fmtBRL(b.patientTotal), W - M - 2, y, { align: 'right' });
     }
