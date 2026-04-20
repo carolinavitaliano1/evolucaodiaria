@@ -252,7 +252,7 @@ export function GroupFinancialTab({
         cbo: profileRes.data?.cbo,
       });
       setClinicInfo(clinicRes.data || null);
-      setReceiptData({ payerName, amount, period: periodLabel, patientId: payDialog.patientId });
+      setReceiptData({ payerName, amount, period: periodLabel, patientId: payerPatientId });
       setReceiptOpen(true);
     } catch (e: any) {
       toast.error('Erro ao registrar pagamento: ' + (e.message || ''));
