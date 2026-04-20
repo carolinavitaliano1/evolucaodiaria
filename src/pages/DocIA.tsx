@@ -1,0 +1,529 @@
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PatientSearchSelect } from '@/components/ui/patient-search-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Loader2, Sparkles, Save, Download, Upload, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { generateAIDocumentPdf } from '@/utils/generateAIDocumentPdf';
+
+interface DocRow {
+  id: string;
+  title: string;
+  doc_type: string;
+  patient_id: string;
+  clinic_id: string;
+  content: string;
+  file_url: string | null;
+  created_at: string;
+}
+
+const DOC_TYPES = [
+  { value: 'declaracao', label: 'Declaração de Comparecimento' },
+  { value: 'frequencia', label: 'Ficha de Frequência' },
+  { value: 'recibo', label: 'Recibo' },
+  { value: 'livre', label: 'Documento Livre / Personalizado' },
+];
+
+const docTypeLabel = (t: string) => DOC_TYPES.find(d => d.value === t)?.label || t;
+
+export default function DocIA() {
+  const { patients, clinics } = useApp();
+  const { user } = useAuth();
+
+  // ----- Tab 1: Timbrado -----
+  const [selectedClinicId, setSelectedClinicId] = useState<string>('');
+  const [headerText, setHeaderText] = useState('');
+  const [footerText, setFooterText] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [savingTimbrado, setSavingTimbrado] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
+
+  // ----- Tab 3: Criar -----
+  const [createPatientId, setCreatePatientId] = useState('');
+  const [createDocType, setCreateDocType] = useState('declaracao');
+  const [instructions, setInstructions] = useState('');
+  const [draftText, setDraftText] = useState('');
+  const [draftTitle, setDraftTitle] = useState('');
+  const [generatingText, setGeneratingText] = useState(false);
+  const [savingPdf, setSavingPdf] = useState(false);
+
+  // ----- Tab 2: Histórico -----
+  const [history, setHistory] = useState<DocRow[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Profile (for professional name on signature)
+  const [profile, setProfile] = useState<{ name?: string; cpf?: string; professional_id?: string } | null>(null);
+
+  useEffect(() => {
+    if (clinics.length > 0 && !selectedClinicId) {
+      const first = clinics.find(c => !c.isArchived) || clinics[0];
+      setSelectedClinicId(first.id);
+    }
+  }, [clinics, selectedClinicId]);
+
+  // Load timbrado for selected clinic
+  useEffect(() => {
+    if (!selectedClinicId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('clinics')
+        .select('document_logo_url, document_header_text, document_footer_text')
+        .eq('id', selectedClinicId)
+        .maybeSingle();
+      setLogoUrl((data as any)?.document_logo_url || null);
+      setHeaderText((data as any)?.document_header_text || '');
+      setFooterText((data as any)?.document_footer_text || '');
+    })();
+  }, [selectedClinicId]);
+
+  // Load profile
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('name, cpf, professional_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      setProfile(data || null);
+    })();
+  }, [user]);
+
+  const loadHistory = async () => {
+    if (!user) return;
+    setLoadingHistory(true);
+    const { data, error } = await supabase
+      .from('patient_documents')
+      .select('id, title, doc_type, patient_id, clinic_id, content, file_url, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    if (error) toast.error('Erro ao carregar histórico');
+    setHistory((data as DocRow[]) || []);
+    setLoadingHistory(false);
+  };
+
+  useEffect(() => { loadHistory(); }, [user]);
+
+  // ====== Handlers ======
+
+  const handleLogoUpload = async (file: File) => {
+    if (!user || !selectedClinicId) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione um arquivo de imagem');
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `${user.id}/clinic-logos/${selectedClinicId}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('attachments').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
+      setLogoUrl(urlData.publicUrl);
+      toast.success('Logo carregada — clique em Salvar para aplicar');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao enviar logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleSaveTimbrado = async () => {
+    if (!selectedClinicId) return;
+    setSavingTimbrado(true);
+    const { error } = await supabase
+      .from('clinics')
+      .update({
+        document_logo_url: logoUrl,
+        document_header_text: headerText,
+        document_footer_text: footerText,
+      } as any)
+      .eq('id', selectedClinicId);
+    setSavingTimbrado(false);
+    if (error) {
+      toast.error('Erro ao salvar timbrado');
+      return;
+    }
+    toast.success('Timbrado salvo!');
+  };
+
+  const handleGenerateText = async () => {
+    if (!createPatientId) { toast.error('Selecione um paciente'); return; }
+    const patient = patients.find(p => p.id === createPatientId);
+    if (!patient) { toast.error('Paciente não encontrado'); return; }
+    const clinic = clinics.find(c => c.id === patient.clinicId) || clinics.find(c => c.id === selectedClinicId);
+
+    setGeneratingText(true);
+    setDraftText('');
+    try {
+      const todayBR = new Date().toLocaleDateString('pt-BR');
+      const { data, error } = await supabase.functions.invoke('generate-document-text', {
+        body: {
+          docType: createDocType,
+          patient: {
+            name: patient.name,
+            birthdate: patient.birthdate ? new Date(patient.birthdate).toLocaleDateString('pt-BR') : null,
+            cpf: (patient as any).cpf,
+            responsibleName: patient.responsibleName,
+            responsibleCpf: (patient as any).responsible_cpf,
+          },
+          clinic: clinic ? { name: clinic.name, cnpj: clinic.cnpj, address: clinic.address } : null,
+          professional: {
+            name: profile?.name,
+            cpf: profile?.cpf,
+            professionalId: profile?.professional_id,
+          },
+          instructions,
+          todayBR,
+        },
+      });
+      if (error) throw error;
+      const text = (data as any)?.text || '';
+      const title = (data as any)?.title || docTypeLabel(createDocType);
+      setDraftText(text);
+      setDraftTitle(title);
+      toast.success('Rascunho gerado! Revise e ajuste antes de salvar.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao gerar texto');
+    } finally {
+      setGeneratingText(false);
+    }
+  };
+
+  const handleSaveAndGeneratePdf = async () => {
+    if (!user) return;
+    if (!createPatientId || !draftText.trim()) {
+      toast.error('Gere e revise o texto antes de salvar');
+      return;
+    }
+    const patient = patients.find(p => p.id === createPatientId);
+    if (!patient) { toast.error('Paciente não encontrado'); return; }
+    const clinic = clinics.find(c => c.id === patient.clinicId) || clinics.find(c => c.id === selectedClinicId);
+    if (!clinic) { toast.error('Clínica não encontrada'); return; }
+
+    setSavingPdf(true);
+    try {
+      // Read clinic timbrado fresh (in case it differs from selected timbrado clinic)
+      const { data: clinicData } = await supabase
+        .from('clinics')
+        .select('document_logo_url, document_header_text, document_footer_text')
+        .eq('id', clinic.id)
+        .maybeSingle();
+
+      const todayBR = new Date().toLocaleDateString('pt-BR');
+      const cityFromHeader = (clinicData as any)?.document_header_text?.split('\n')[0] || clinic.name;
+      const cityLine = `${cityFromHeader}, ${todayBR}`;
+
+      const profRegistration = profile?.professional_id ? `Reg.: ${profile.professional_id}` : '';
+
+      const { blob, dataUrl } = await generateAIDocumentPdf({
+        title: draftTitle || docTypeLabel(createDocType),
+        bodyText: draftText,
+        logoUrl: (clinicData as any)?.document_logo_url || null,
+        headerText: (clinicData as any)?.document_header_text || null,
+        footerText: (clinicData as any)?.document_footer_text || null,
+        professionalName: profile?.name || '',
+        professionalRegistration: profRegistration,
+        todayBR,
+        cityLine,
+      });
+
+      // Upload PDF
+      const safeName = (draftTitle || 'documento').replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 60);
+      const path = `${user.id}/${createPatientId}/${Date.now()}-${safeName}.pdf`;
+      const { error: upErr } = await supabase.storage
+        .from('patient_documents')
+        .upload(path, blob, { contentType: 'application/pdf', upsert: false });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from('patient_documents').getPublicUrl(path);
+      const fileUrl = urlData.publicUrl;
+
+      // Insert record
+      const { error: insErr } = await supabase.from('patient_documents').insert({
+        user_id: user.id,
+        clinic_id: clinic.id,
+        patient_id: createPatientId,
+        title: draftTitle || docTypeLabel(createDocType),
+        doc_type: createDocType,
+        content: draftText,
+        file_url: fileUrl,
+        file_path: path,
+      } as any);
+      if (insErr) throw insErr;
+
+      // Auto-download
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${safeName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      toast.success('Documento salvo no histórico e baixado!');
+      setDraftText('');
+      setDraftTitle('');
+      setInstructions('');
+      loadHistory();
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao gerar PDF');
+    } finally {
+      setSavingPdf(false);
+    }
+  };
+
+  const handleDeleteDoc = async (doc: DocRow) => {
+    if (!confirm('Excluir este documento?')) return;
+    const { error } = await supabase.from('patient_documents').delete().eq('id', doc.id);
+    if (error) { toast.error('Erro ao excluir'); return; }
+    toast.success('Documento excluído');
+    loadHistory();
+  };
+
+  const patientOptions = useMemo(() =>
+    patients
+      .filter(p => !p.isArchived)
+      .map(p => ({ id: p.id, name: p.name, clinicName: clinics.find(c => c.id === p.clinicId)?.name }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [patients, clinics]
+  );
+
+  const patientName = (id: string) => patients.find(p => p.id === id)?.name || '—';
+
+  return (
+    <div className="container max-w-6xl mx-auto py-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Sparkles className="w-6 h-6 text-primary" />
+          Doc IA — Hub de Documentos Inteligentes
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Gere declarações, recibos, fichas de frequência e documentos personalizados com IA, com seu papel timbrado.
+        </p>
+      </div>
+
+      <Tabs defaultValue="create" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="create"><Sparkles className="w-4 h-4 mr-1.5" />Criar Documento</TabsTrigger>
+          <TabsTrigger value="history"><FileText className="w-4 h-4 mr-1.5" />Histórico</TabsTrigger>
+          <TabsTrigger value="timbrado"><ImageIcon className="w-4 h-4 mr-1.5" />Timbrado</TabsTrigger>
+        </TabsList>
+
+        {/* ========== TAB CREATE ========== */}
+        <TabsContent value="create" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">1. Definir o documento</CardTitle>
+              <CardDescription>Escolha o paciente, o tipo e descreva instruções específicas.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Paciente</Label>
+                  <PatientSearchSelect
+                    value={createPatientId}
+                    onValueChange={setCreatePatientId}
+                    patients={patientOptions}
+                    placeholder="Selecione o paciente"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo de documento</Label>
+                  <Select value={createDocType} onValueChange={setCreateDocType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DOC_TYPES.map(t => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Instruções para a IA</Label>
+                <Textarea
+                  rows={4}
+                  placeholder='Ex: "Justificar comparecimento no dia 10/04/2026 das 14h às 15h" ou "Recibo de R$ 350,00 referente a 4 sessões de abril"'
+                  value={instructions}
+                  onChange={e => setInstructions(e.target.value)}
+                />
+              </div>
+
+              <Button onClick={handleGenerateText} disabled={generatingText || !createPatientId}>
+                {generatingText ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                {generatingText ? 'Gerando...' : 'Gerar Rascunho com IA'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {(draftText || generatingText) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">2. Revisar e editar</CardTitle>
+                <CardDescription>Ajuste livremente o texto antes de gerar o PDF.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Título do documento</Label>
+                  <Input value={draftTitle} onChange={e => setDraftTitle(e.target.value)} placeholder="Título" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Corpo do documento</Label>
+                  <Textarea
+                    rows={16}
+                    value={draftText}
+                    onChange={e => setDraftText(e.target.value)}
+                    className="font-serif leading-relaxed"
+                    placeholder="O texto gerado aparecerá aqui..."
+                  />
+                </div>
+                <Button onClick={handleSaveAndGeneratePdf} disabled={savingPdf || !draftText.trim()} className="w-full md:w-auto">
+                  {savingPdf ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  {savingPdf ? 'Gerando PDF...' : 'Salvar e Gerar PDF'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ========== TAB HISTORY ========== */}
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Documentos gerados</CardTitle>
+              <CardDescription>Histórico completo de documentos criados pelo Hub.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : history.length === 0 ? (
+                <div className="text-center text-sm text-muted-foreground py-12">Nenhum documento gerado ainda.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paciente</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Título</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {history.map(doc => (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium">{patientName(doc.patient_id)}</TableCell>
+                        <TableCell><span className="text-xs px-2 py-0.5 rounded bg-muted">{docTypeLabel(doc.doc_type)}</span></TableCell>
+                        <TableCell>{doc.title}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{new Date(doc.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {doc.file_url && (
+                              <Button size="sm" variant="outline" asChild>
+                                <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                                  <Download className="w-3.5 h-3.5 mr-1" /> Baixar
+                                </a>
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" onClick={() => handleDeleteDoc(doc)}>
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ========== TAB TIMBRADO ========== */}
+        <TabsContent value="timbrado">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Configurar papel timbrado</CardTitle>
+              <CardDescription>O timbrado é configurado por estabelecimento. O documento gerado usará o timbrado da clínica do paciente.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Estabelecimento</Label>
+                <Select value={selectedClinicId} onValueChange={setSelectedClinicId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {clinics.filter(c => !c.isArchived).map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Logo</Label>
+                <div className="flex items-center gap-4">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="h-20 max-w-[200px] object-contain border rounded p-2 bg-white" />
+                  ) : (
+                    <div className="h-20 w-32 border-2 border-dashed rounded flex items-center justify-center text-xs text-muted-foreground">Sem logo</div>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    <input
+                      ref={logoFileRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={e => e.target.files?.[0] && handleLogoUpload(e.target.files[0])}
+                    />
+                    <Button variant="outline" size="sm" disabled={uploadingLogo || !selectedClinicId} onClick={() => logoFileRef.current?.click()}>
+                      {uploadingLogo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                      Enviar logo
+                    </Button>
+                    {logoUrl && (
+                      <Button variant="ghost" size="sm" onClick={() => setLogoUrl(null)}>Remover</Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Cabeçalho (centralizado, abaixo da logo)</Label>
+                <Textarea
+                  rows={3}
+                  placeholder={"Nome da Clínica\nCNPJ: 00.000.000/0001-00\nRua Exemplo, 123 — São Paulo/SP"}
+                  value={headerText}
+                  onChange={e => setHeaderText(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Rodapé (centralizado no final da página)</Label>
+                <Textarea
+                  rows={2}
+                  placeholder={"contato@clinica.com.br | (11) 99999-9999"}
+                  value={footerText}
+                  onChange={e => setFooterText(e.target.value)}
+                />
+              </div>
+
+              <Button onClick={handleSaveTimbrado} disabled={savingTimbrado || !selectedClinicId}>
+                {savingTimbrado ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Salvar timbrado
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

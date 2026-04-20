@@ -303,6 +303,9 @@ export type Database = {
           cnpj: string | null
           created_at: string
           discount_percentage: number | null
+          document_footer_text: string | null
+          document_header_text: string | null
+          document_logo_url: string | null
           email: string | null
           id: string
           is_archived: boolean | null
@@ -333,6 +336,9 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           discount_percentage?: number | null
+          document_footer_text?: string | null
+          document_header_text?: string | null
+          document_logo_url?: string | null
           email?: string | null
           id?: string
           is_archived?: boolean | null
@@ -363,6 +369,9 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           discount_percentage?: number | null
+          document_footer_text?: string | null
+          document_header_text?: string | null
+          document_logo_url?: string | null
           email?: string | null
           id?: string
           is_archived?: boolean | null
@@ -1211,6 +1220,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      patient_documents: {
+        Row: {
+          clinic_id: string
+          content: string
+          created_at: string
+          doc_type: string
+          file_path: string | null
+          file_url: string | null
+          id: string
+          patient_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clinic_id: string
+          content?: string
+          created_at?: string
+          doc_type?: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          patient_id: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clinic_id?: string
+          content?: string
+          created_at?: string
+          doc_type?: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          patient_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       patient_intake_forms: {
         Row: {
