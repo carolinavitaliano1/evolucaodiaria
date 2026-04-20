@@ -197,7 +197,7 @@ export default function Landing() {
 
           <motion.p initial="hidden" animate="visible" custom={2} variants={fadeUp}
             className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Evoluções com IA em 30 segundos, agenda integrada, financeiro automático, Portal do Paciente e gestão de equipe — tudo pensado para o profissional de saúde que atende em clínicas.
+            Evoluções com IA em 30 segundos, agenda integrada, financeiro automático e Portal do Paciente — tudo pensado para o profissional de saúde que atende em clínicas.
           </motion.p>
 
           <motion.div initial="hidden" animate="visible" custom={3} variants={fadeUp}
@@ -281,7 +281,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pro Features (IA + Portal + Equipe) */}
+      {/* Pro Features (IA + Portal) */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
@@ -290,10 +290,10 @@ export default function Landing() {
               <Sparkles className="w-4 h-4" /> Exclusivo do plano Pro
             </span>
             <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-3">
-              IA, Portal do Paciente e <span className="text-primary">Gestão de Equipe</span>
+              IA e <span className="text-primary">Portal do Paciente</span>
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Recursos avançados para quem quer escalar o consultório, engajar famílias e trabalhar com mais profissionais.
+              Recursos avançados para quem quer escalar o consultório e engajar famílias com tecnologia de ponta.
             </p>
           </motion.div>
 
