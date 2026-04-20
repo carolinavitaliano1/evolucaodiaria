@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Loader2, Sparkles, Save, Download, Upload, FileText, Image as ImageIcon, Trash2,
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, Type, Stamp, Plus, X, FileType,
+  List, Type, Stamp, Plus, X, FileType, Pencil, FolderPlus,
 } from 'lucide-react';
 import { generateAIDocumentPdf, ExtraSignature } from '@/utils/generateAIDocumentPdf';
 import { generateAIDocumentDocx } from '@/utils/aiDocumentDocxExport';
@@ -170,7 +170,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 // MAIN PAGE
 // =======================================================================
 export default function DocIA() {
-  const { patients, clinics } = useApp();
+  const { patients, clinics, addAttachment } = useApp();
   const { user } = useAuth();
 
   // Tab 1: Timbrado
@@ -201,6 +201,8 @@ export default function DocIA() {
   const [history, setHistory] = useState<DocRow[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [savingToFolderId, setSavingToFolderId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('create');
 
   const [profile, setProfile] = useState<{ name?: string; cpf?: string; professional_id?: string } | null>(null);
 
@@ -501,6 +503,60 @@ export default function DocIA() {
     loadHistory();
   };
 
+  // Load a saved doc back into the editor for editing
+  const handleEditDoc = (doc: DocRow) => {
+    setCreatePatientId(doc.patient_id);
+    setCreateDocType(doc.doc_type);
+    setDraftTitle(doc.title);
+    editor?.commands.setContent(doc.content || '<p style="text-align:justify"></p>');
+    setHasDraft(true);
+    setActiveTab('create');
+    toast.success('Documento carregado no editor — ajuste e salve novamente');
+  };
+
+  // Copy the existing PDF into the patient's attachments folder
+  const handleSaveToPatientFolder = async (doc: DocRow) => {
+    if (!user) return;
+    if (!doc.file_path && !doc.file_url) {
+      toast.error('Arquivo PDF indisponível para salvar na pasta');
+      return;
+    }
+    setSavingToFolderId(doc.id);
+    try {
+      // Download original PDF
+      let blob: Blob | null = null;
+      if (doc.file_path) {
+        const { data, error } = await supabase.storage.from('patient_documents').download(doc.file_path);
+        if (error) throw error;
+        blob = data;
+      } else if (doc.file_url) {
+        const r = await fetch(doc.file_url);
+        blob = await r.blob();
+      }
+      if (!blob) throw new Error('Falha ao obter PDF');
+
+      const safeName = (doc.title || 'documento').replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 60);
+      const fileName = `${safeName}.pdf`;
+      const path = `${user.id}/patient-${doc.patient_id}/${Date.now()}-${fileName}`;
+      const { error: upErr } = await supabase.storage.from('attachments')
+        .upload(path, blob, { contentType: 'application/pdf', upsert: false });
+      if (upErr) throw upErr;
+
+      addAttachment({
+        parentId: doc.patient_id,
+        parentType: 'patient',
+        name: fileName,
+        data: path,
+        type: 'application/pdf',
+      });
+      toast.success('Documento salvo na pasta do paciente!');
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao salvar na pasta');
+    } finally {
+      setSavingToFolderId(null);
+    }
+  };
+
   const patientOptions = useMemo(() =>
     patients.filter(p => !p.isArchived)
       .map(p => ({ id: p.id, name: p.name, clinicName: clinics.find(c => c.id === p.clinicId)?.name }))
@@ -524,7 +580,7 @@ export default function DocIA() {
         </p>
       </div>
 
-      <Tabs defaultValue="create" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="create"><Sparkles className="w-4 h-4 mr-1.5" />Criar Documento</TabsTrigger>
           <TabsTrigger value="history"><FileText className="w-4 h-4 mr-1.5" />Histórico</TabsTrigger>
@@ -699,7 +755,14 @@ export default function DocIA() {
                               {downloadingId === `${doc.id}-docx` ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FileType className="w-3.5 h-3.5 mr-1" />}
                               Word
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDeleteDoc(doc)}>
+                            <Button size="sm" variant="outline" onClick={() => handleEditDoc(doc)} title="Editar no editor">
+                              <Pencil className="w-3.5 h-3.5 mr-1" /> Editar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleSaveToPatientFolder(doc)} disabled={savingToFolderId === doc.id} title="Salvar na pasta do paciente">
+                              {savingToFolderId === doc.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FolderPlus className="w-3.5 h-3.5 mr-1" />}
+                              Pasta
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDeleteDoc(doc)} title="Excluir documento">
                               <Trash2 className="w-3.5 h-3.5 text-destructive" />
                             </Button>
                           </div>
