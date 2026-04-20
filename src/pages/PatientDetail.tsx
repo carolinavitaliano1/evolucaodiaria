@@ -2249,7 +2249,7 @@ export default function PatientDetail() {
             <p className="text-xs font-medium text-muted-foreground">Faturamento</p>
           </div>
           <p className="text-2xl font-bold text-success">R$ {totalFinancial.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{totalFinancialSubtitle}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Receita total</p>
         </div>
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <div className="flex items-center gap-2 mb-2">
