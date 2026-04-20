@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDynamicSessionValue } from '@/utils/dateHelpers';
+import { calculatePatientMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -303,14 +303,6 @@ export default function Clinics() {
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     });
 
-    // Helper: effective per-session value respecting personalizado packages
-    const getEffectiveSessionValue = (p: typeof patients[0]) => {
-      if (!p.paymentValue) return 0;
-      const pkg = p.packageId ? clinicPackages.find(pk => pk.id === p.packageId) : null;
-      const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
-      return isPersonalizado ? p.paymentValue / pkg!.sessionLimit! : p.paymentValue;
-    };
-
     // Group patients by clinic
     const patientsByClinic: Record<string, typeof patients> = {};
     for (const p of patients) {
@@ -345,34 +337,18 @@ export default function Clinics() {
         continue;
       }
 
-      // Per-patient calculation
+      // 🔒 Per-patient via helper central (respeita absencePaymentType + faltas remuneradas)
       for (const p of cPatients) {
-        if (!p.paymentValue) continue;
-
-        // Session-based: count confirmed evolutions
-        const billableEvolutions = monthlyEvolutions.filter(
-          e => e.patientId === p.id && (
-            e.attendanceStatus === 'presente' ||
-            e.attendanceStatus === 'reposicao' ||
-            e.attendanceStatus === 'falta_remunerada' ||
-            e.attendanceStatus === 'feriado_remunerado'
-          )
-        );
-
-        // Fixo (mensal) patients: same prorated logic used in Dashboard/Financial
-        if (p.paymentType === 'fixo') {
-          const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
-          const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
-
-          if (dynamic.occurrences > 0) {
-            clinicRevenue += billableEvolutions.length * dynamic.perSession;
-          } else {
-            clinicRevenue += billableEvolutions.length * p.paymentValue;
-          }
-          continue;
-        }
-
-        clinicRevenue += billableEvolutions.length * getEffectiveSessionValue(p);
+        const patientEvos: EvolutionLike[] = monthlyEvolutions
+          .filter(e => e.patientId === p.id)
+          .map(e => ({
+            id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
+            attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance,
+          }));
+        clinicRevenue += calculatePatientMonthlyRevenue({
+          patient: p, clinic, evolutions: patientEvos,
+          month: currentMonth, year: currentYear, packages: clinicPackages,
+        }).total;
       }
     }
 

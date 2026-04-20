@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import { calculateMemberRemuneration as calculateMemberRemunerationHelper } from '@/utils/financialHelpers';
 
 interface TeamFinancialDashboardProps {
   clinicId: string;
@@ -56,35 +57,18 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
 
   const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
 
-  // Calculate member remuneration based on their configured model
+  // 🔒 Comissão delegada ao helper central — inclui faltas remuneradas e feriados
+  // remunerados nos modelos "por sessão" e "fixo_dia".
   const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof evolutions) => {
-    const { remunerationType, remunerationValue } = member;
-    if (!remunerationValue || remunerationType === 'definir_depois' || !remunerationType) return 0;
-
-    if (remunerationType === 'fixo_mensal') {
-      // Fixed monthly salary — always the same value, regardless of sessions
-      return remunerationValue;
-    }
-
-    if (remunerationType === 'fixo_dia') {
-      // Fixed daily rate × distinct days with "presente" evolutions
-      const presentDays = new Set(
-        memberEvos
-          .filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')
-          .map(e => e.date)
-      );
-      return presentDays.size * remunerationValue;
-    }
-
-    if (remunerationType === 'por_sessao') {
-      // Per session: count presente + reposicao
-      const sessions = memberEvos.filter(e =>
-        e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'
-      ).length;
-      return sessions * remunerationValue;
-    }
-
-    return 0;
+    return calculateMemberRemunerationHelper({
+      remunerationType: member.remunerationType,
+      remunerationValue: member.remunerationValue,
+      evolutions: memberEvos.map(e => ({
+        id: e.id, patientId: e.patientId, groupId: e.groupId,
+        date: e.date, attendanceStatus: e.attendanceStatus,
+        confirmedAttendance: e.confirmedAttendance, userId: e.userId,
+      })),
+    });
   };
 
   // Current month evolutions
