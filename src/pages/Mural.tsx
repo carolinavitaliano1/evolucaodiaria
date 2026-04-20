@@ -387,17 +387,6 @@ export default function Mural() {
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
-      {isLocked && (
-        <div className="mb-6">
-          <div className="mb-4">
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Mural de Avisos</h1>
-            <p className="text-muted-foreground text-sm mt-1">Avisos, vídeos e tutoriais para consulta rápida</p>
-          </div>
-          <UpgradeBlock feature="mural" />
-        </div>
-      )}
-      {!isLocked && (
-      <>
       {/* Header */}
       <div className="mb-6 lg:mb-8">
         <div className="flex items-center justify-between mb-2">
