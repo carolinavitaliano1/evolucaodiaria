@@ -14,6 +14,8 @@ import {
 import { Evolution, Patient } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { UpgradeBlock } from '@/components/UpgradeBlock';
 
 /**
  * Extrai texto clínico relevante de uma evolução.
@@ -55,6 +57,7 @@ interface BulkDayFeedbackModalProps {
 
 export function BulkDayFeedbackModal({ open, onOpenChange, items, selectedDate }: BulkDayFeedbackModalProps) {
   const { user } = useAuth();
+  const { hasAI } = useFeatureAccess();
   const [feedbackItems, setFeedbackItems] = useState<PatientFeedbackItem[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [generatingAll, setGeneratingAll] = useState(false);
@@ -189,6 +192,12 @@ export function BulkDayFeedbackModal({ open, onOpenChange, items, selectedDate }
           </DialogTitle>
         </DialogHeader>
 
+        {!hasAI ? (
+          <div className="py-4">
+            <UpgradeBlock feature="bulk_ai" />
+          </div>
+        ) : (
+        <>
         {/* Summary bar */}
         <div className="bg-primary/5 border border-primary/15 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3 flex-shrink-0">
           <p className="text-xs text-muted-foreground">
