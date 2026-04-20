@@ -316,20 +316,25 @@ export async function generateClinicInternalStatementPdf(
         ? 'Salário fixo da clínica (por dia)'
         : 'Salário fixo da clínica (mensal)';
     } else if (pkg?.package_type === 'sessao') {
-      perSession = Number(pkg.price) || 0;
+      perSession = (Number(pkg.price) || 0) * clinicDiscountFactor;
       packageLabel = `Por sessão • ${pkg.name}`;
     } else if (pkg?.package_type === 'personalizado') {
       const limit = pkg.session_limit || pEvos.length || 1;
-      perSession = (Number(pkg.price) || 0) / Math.max(1, limit);
+      perSession = ((Number(pkg.price) || 0) / Math.max(1, limit)) * clinicDiscountFactor;
       packageLabel = `Personalizado • ${pkg.name} (${limit} sessões)`;
     } else if (isMensal) {
       const dyn = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
       perSession = dyn.perSession || monthlyValue;
       packageLabel = pkg ? `Mensal • ${pkg.name}` : 'Mensalidade';
     } else {
-      const dyn = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
-      perSession = dyn.perSession || monthlyValue;
-      packageLabel = info.payment_type ? `${info.payment_type}` : 'Avulso';
+      // Por sessão (sem pacote): valor fixo do paciente OU da clínica.
+      // ❌ NÃO dividir por semanas — o valor já é o preço de uma única sessão.
+      const baseSessionValue = Number(info.payment_value) > 0
+        ? Number(info.payment_value)
+        : clinicSessionAmount;
+      perSession = baseSessionValue * clinicDiscountFactor;
+      const discountSuffix = clinicDiscountPct > 0 ? ` (−${clinicDiscountPct}% clínica)` : '';
+      packageLabel = `Por sessão${discountSuffix}`;
     }
 
     const rows: Row[] = [];
