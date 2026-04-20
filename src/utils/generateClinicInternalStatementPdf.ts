@@ -459,8 +459,31 @@ export async function generateClinicInternalStatementPdf(
   const orphanTotal = orphanServices.reduce((acc, s) => acc + s.price, 0);
   const orphanReceived = orphanServices.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
 
-  const grandTotal = blocks.reduce((acc, b) => acc + b.patientTotal, 0) + orphanTotal;
-  const grandReceived = blocks.reduce((acc, b) => acc + b.received, 0) + orphanReceived;
+  // Para clínicas com salário fixo: a "receita" da clínica é o salário (mensal) ou
+  // salário diário × dias trabalhados (dias únicos com sessões cobráveis).
+  let clinicFixedRevenue = 0;
+  if (isClinicFixedSalary) {
+    if (clinicPayInfo?.payment_type === 'fixo_diario' || clinicPayInfo?.payment_type === 'fixo_dia') {
+      const billableDays = new Set<string>();
+      evolutions.forEach(e => {
+        if (COUNTS_AS_BILLABLE(e.attendance_status)) billableDays.add(e.date);
+      });
+      clinicFixedRevenue = Number(clinicPayInfo?.payment_amount || 0) * billableDays.size;
+    } else {
+      clinicFixedRevenue = Number(clinicPayInfo?.payment_amount || 0);
+    }
+  }
+
+  const clinicPayRecord = (clinicPayRes.data as any) || null;
+  const clinicFixedReceived = isClinicFixedSalary && clinicPayRecord?.paid
+    ? Number(clinicPayRecord?.amount ?? clinicFixedRevenue)
+    : 0;
+
+  const patientsRevenueTotal = blocks.reduce((acc, b) => acc + b.patientTotal, 0);
+  const patientsReceivedTotal = blocks.reduce((acc, b) => acc + b.received, 0);
+
+  const grandTotal = (isClinicFixedSalary ? clinicFixedRevenue : patientsRevenueTotal) + orphanTotal;
+  const grandReceived = (isClinicFixedSalary ? clinicFixedReceived : patientsReceivedTotal) + orphanReceived;
   const grandPending = Math.max(0, grandTotal - grandReceived);
 
   const inadimplencia = grandTotal > 0 ? (grandPending / grandTotal) * 100 : 0;
