@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { UpgradeBlock } from '@/components/UpgradeBlock';
 
 interface Notice {
   id: string;
@@ -85,6 +87,9 @@ const emptyForm = {
 export default function Mural() {
   const { user } = useAuth();
   const isOwner = user?.email === 'carolinavitaliano1@gmail.com';
+  const { hasAI, loading: featureLoading } = useFeatureAccess();
+  // Mural uses the same Pro gating (AI/Pro tier). Owner always sees it.
+  const isLocked = !featureLoading && !hasAI && !isOwner;
   const [notices, setNotices] = useState<Notice[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -385,6 +390,17 @@ export default function Mural() {
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+      {isLocked && (
+        <div className="mb-6">
+          <div className="mb-4">
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Mural de Avisos</h1>
+            <p className="text-muted-foreground text-sm mt-1">Avisos, vídeos e tutoriais para consulta rápida</p>
+          </div>
+          <UpgradeBlock feature="mural" />
+        </div>
+      )}
+      {!isLocked && (
+      <>
       {/* Header */}
       <div className="mb-6 lg:mb-8">
         <div className="flex items-center justify-between mb-2">
@@ -664,6 +680,8 @@ export default function Mural() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>
+      )}
     </div>
   );
 }
