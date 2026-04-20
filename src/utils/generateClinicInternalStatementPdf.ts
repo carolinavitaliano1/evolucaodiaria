@@ -245,14 +245,14 @@ export async function generateClinicInternalStatementPdf(
   if (clPay === 'fixo_mensal' || clPay === 'fixo' || clPay === 'mensal') {
     doc.setFontSize(8); doc.setTextColor(...accent); doc.setFont('helvetica', 'bold');
     doc.text(
-      `💼 Remuneração: Salário Fixo Mensal — ${fmtBRL(clAmt)} (independente do nº de sessões)`,
+      `Remuneração: Salário Fixo Mensal — ${fmtBRL(clAmt)} (independente do nº de sessões)`,
       M, y,
     );
     y += 6;
   } else if (clPay === 'fixo_diario' || clPay === 'fixo_dia') {
     doc.setFontSize(8); doc.setTextColor(...accent); doc.setFont('helvetica', 'bold');
     doc.text(
-      `💼 Remuneração: Fixo por Dia Trabalhado — ${fmtBRL(clAmt)} / dia`,
+      `Remuneração: Fixo por Dia Trabalhado — ${fmtBRL(clAmt)} / dia`,
       M, y,
     );
     y += 6;
@@ -547,8 +547,10 @@ export async function generateClinicInternalStatementPdf(
     doc.text('Tipo', M + 20, y + 6);
     doc.text('Descrição', M + 42, y + 6);
     doc.text('Status', M + 112, y + 6);
-    doc.text('Pago', M + 138, y + 6);
-    doc.text('Valor', W - M - 2, y + 6, { align: 'right' });
+    if (!isClinicFixedSalary) {
+      doc.text('Pago', M + 138, y + 6);
+      doc.text('Valor', W - M - 2, y + 6, { align: 'right' });
+    }
     y += 13;
   };
 
@@ -568,21 +570,23 @@ export async function generateClinicInternalStatementPdf(
     doc.text(desc, M + 42, y);
     doc.setTextColor(...muted);
     doc.text(r.status, M + 112, y);
-    if (r.type === 'Sessão' && r.amount === 0) {
-      doc.setTextColor(...muted);
-      doc.text('—', M + 138, y);
-    } else if (r.type === 'Dedução') {
-      doc.setTextColor(...muted);
-      doc.text('—', M + 138, y);
-    } else {
-      doc.setTextColor(...(r.paid ? green : orange));
-      doc.text(r.paid ? 'Sim' : 'Não', M + 138, y);
+    if (!isClinicFixedSalary) {
+      if (r.type === 'Sessão' && r.amount === 0) {
+        doc.setTextColor(...muted);
+        doc.text('—', M + 138, y);
+      } else if (r.type === 'Dedução') {
+        doc.setTextColor(...muted);
+        doc.text('—', M + 138, y);
+      } else {
+        doc.setTextColor(...(r.paid ? green : orange));
+        doc.text(r.paid ? 'Sim' : 'Não', M + 138, y);
+      }
+      doc.setTextColor(...(r.amount < 0 ? red : dark));
+      const valueLabel = r.sessionIndex && r.sessionTotal
+        ? `${fmtBRL(r.amount)} (${r.sessionIndex}/${r.sessionTotal})`
+        : fmtBRL(r.amount);
+      doc.text(valueLabel, W - M - 2, y, { align: 'right' });
     }
-    doc.setTextColor(...(r.amount < 0 ? red : dark));
-    const valueLabel = r.sessionIndex && r.sessionTotal
-      ? `${fmtBRL(r.amount)} (${r.sessionIndex}/${r.sessionTotal})`
-      : fmtBRL(r.amount);
-    doc.text(valueLabel, W - M - 2, y, { align: 'right' });
     y += 5;
   };
 
@@ -606,10 +610,12 @@ export async function generateClinicInternalStatementPdf(
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...accent);
     doc.text(b.info.name, M + 2, y + 5);
 
-    // Status badge on right (top)
+    // Status badge on right (top) — hide for fixed salary clinics
     const badge = statusBadge(b.paymentStatus);
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...badge.color);
-    doc.text(badge.label, W - M - 2, y + 5, { align: 'right' });
+    if (!isClinicFixedSalary) {
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...badge.color);
+      doc.text(badge.label, W - M - 2, y + 5, { align: 'right' });
+    }
 
     // Subtitle: package + session counter
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...muted);
@@ -723,6 +729,37 @@ export async function generateClinicInternalStatementPdf(
   doc.text(`Pendente: ${fmtBRL(grandPending)}`, M + 3, y + 19);
   doc.setTextColor(255, 255, 255);
   doc.text(`Inadimplência: ${inadimplencia.toFixed(1)}%`, W - M - 3, y + 19, { align: 'right' });
+
+  y += 26;
+
+  // ===== Insight para clínicas com salário fixo =====
+  if (isClinicFixedSalary && clinicFixedRevenue > 0) {
+    const totalSessions = blocks.reduce(
+      (acc, b) => acc + b.rows.filter(r => r.type === 'Sessão').length,
+      0,
+    );
+    const patientsCount = blocks.length;
+    const perSession = totalSessions > 0 ? clinicFixedRevenue / totalSessions : 0;
+    const perPatient = patientsCount > 0 ? clinicFixedRevenue / patientsCount : 0;
+
+    ensure(28);
+    doc.setFillColor(245, 246, 250);
+    doc.rect(M, y, contentW, 22, 'F');
+    doc.setDrawColor(...accent); doc.setLineWidth(0.4);
+    doc.line(M, y, M, y + 22);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...accent);
+    doc.text('RESUMO DO MÊS (salário fixo rateado)', M + 4, y + 6);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...dark);
+    doc.text(
+      `Este mês você recebeu ${fmtBRL(perSession)} por atendimento (${totalSessions} sessões realizadas).`,
+      M + 4, y + 12,
+    );
+    doc.text(
+      `E ${fmtBRL(perPatient)} por paciente atendido (${patientsCount} paciente${patientsCount !== 1 ? 's' : ''}).`,
+      M + 4, y + 18,
+    );
+    y += 26;
+  }
 
   // FOOTER
   const pages = (doc as any).internal.getNumberOfPages();
