@@ -472,6 +472,7 @@ export function GroupFinancialTab({
           }}
           therapist={therapistInfo}
           clinic={clinicInfo}
+          patientId={receiptData.patientId}
         />
       )}
     </div>
