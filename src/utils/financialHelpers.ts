@@ -51,11 +51,28 @@ export interface PatientLike {
 }
 
 export interface ClinicLike {
+  id?: string;
   absencePaymentType?: AbsencePaymentType | string | null;
   paysOnAbsence?: boolean | null;
+  /**
+   * Modelo de remuneração que a clínica paga AO TERAPEUTA.
+   * - 'fixo_mensal'  → salário mensal fixo (independe de sessões)
+   * - 'fixo_diario'  → valor fixo por dia trabalhado
+   * - 'sessao'       → valor por sessão (multiplica nº de sessões billable)
+   * - 'variado'      → calcula por paciente (soma calculatePatientMonthlyRevenue)
+   * Aceita também legados 'fixo' e 'mensal' como sinônimos de 'fixo_mensal'.
+   */
   paymentType?: string | null;
   paymentAmount?: number | null;
 }
+
+/** True se o tipo de pagamento da clínica é "salário fixo mensal". */
+export const isClinicFixedMonthly = (paymentType?: string | null): boolean =>
+  paymentType === 'fixo_mensal' || paymentType === 'fixo' || paymentType === 'mensal';
+
+/** True se o tipo de pagamento da clínica é "fixo por dia trabalhado". */
+export const isClinicFixedDaily = (paymentType?: string | null): boolean =>
+  paymentType === 'fixo_diario' || paymentType === 'fixo_dia';
 
 export interface PackageLike {
   id: string;
