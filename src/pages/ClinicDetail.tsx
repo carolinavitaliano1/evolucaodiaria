@@ -2952,6 +2952,7 @@ export default function ClinicDetail() {
                   className="mt-2 gap-2"
                   disabled={!quickEvolutionText.trim() || isImprovingQuickText}
                   onClick={async () => {
+                    if (!hasAI) { setAiUpgradeOpen(true); return; }
                     setIsImprovingQuickText(true);
                     try {
                       const { data, error } = await supabase.functions.invoke('improve-evolution', {
@@ -3182,6 +3183,7 @@ export default function ClinicDetail() {
           }}
         />
       )}
+      <AIUpgradeDialog open={aiUpgradeOpen} onOpenChange={setAiUpgradeOpen} />
     </div>
   );
 }
