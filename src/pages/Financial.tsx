@@ -578,17 +578,21 @@ export default function Financial() {
         sectionTitle('FATURAMENTO POR CLÍNICA');
 
         clinicStats.forEach(({ clinic, patientCount, revenue, sessions, paidAbsences, absences }, idx) => {
-          ensureSpace(16);
+          const pct = clinic.discountPercentage || 0;
+          const hasPct = pct > 0;
+          const netRev = revenue * (1 - pct / 100);
+          const rowH = hasPct ? 18 : 14;
+          ensureSpace(rowH + 2);
           const rowColor = idx % 2 === 0 ? C.white : C.rowAlt;
           setFill(rowColor);
           setDraw(C.border);
           doc.setLineWidth(0.2);
-          doc.rect(margin, y, contentW, 14, 'FD');
+          doc.rect(margin, y, contentW, rowH, 'FD');
 
           // Accent left strip
           const isContratante = clinic.type !== 'propria';
           setFill(isContratante ? C.accent : C.primary);
-          doc.rect(margin, y, 3, 14, 'F');
+          doc.rect(margin, y, 3, rowH, 'F');
 
           // Clinic name + type badge
           setTxt(C.dark);
@@ -615,12 +619,24 @@ export default function Financial() {
           doc.setFontSize(7.5);
           doc.text(`${patientCount} pacientes  •  ${sessions} sessões  •  ${paidAbsences} faltas rem.  •  ${absences} faltas`, margin + 6, y + 10.5);
 
-          // Revenue
+          // Revenue (líquido em destaque)
           setTxt(C.primary);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
-          doc.text(`R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 7, { align: 'right' });
-          y += 15;
+          doc.text(`R$ ${netRev.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 7, { align: 'right' });
+
+          if (hasPct) {
+            // Linha de detalhamento Bruto • Desconto
+            setTxt(C.muted);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(6.8);
+            const discountVal = revenue - netRev;
+            doc.text(
+              `Bruto R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}  •  Desconto ${pct}% (− R$ ${discountVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
+              margin + 6, y + 15
+            );
+          }
+          y += rowH + 1;
         });
         y += 6;
       }
