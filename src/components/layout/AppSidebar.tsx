@@ -30,6 +30,7 @@ import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
 import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const allNavItems = [
@@ -57,6 +58,7 @@ export function AppSidebar() {
   const { count: pendingCount } = usePendingEnrollments();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
+  const { hasAI, hasTeam } = useFeatureAccess();
 
   // Calculate trial days remaining
   const trialDaysLeft = (() => {
@@ -74,14 +76,19 @@ export function AppSidebar() {
   // Build nav list: org members see all items but restricted ones are shown as locked
   // Non-org users / owners see everything normally; pricing/install hidden for org members
   const navItemsWithAccess = allNavItems.map(item => {
+    // Plan-based lock for AI features
+    if (item.to === '/doc-ia' || item.to === '/ai-reports') {
+      if (!hasAI) return { ...item, locked: true, hidden: false };
+    }
     if (!isOrgMember) return { ...item, locked: false, hidden: false };
     if (item.perm === null) return { ...item, locked: false, hidden: true }; // hide pricing/install
     const hasAccess = permissions.includes(item.perm as any);
     return { ...item, locked: !hasAccess, hidden: false };
   }).filter(i => !i.hidden);
 
-  // Show /team for everyone (non-owners see "em breve" page)
+  // Show /team for everyone (non-owners see "em breve" page) — but lock if Basic plan
   const showTeam = !isOrgMember || isOwner || permissions.includes('team.view' as any);
+  const teamLocked = !hasTeam;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -182,6 +189,23 @@ export function AppSidebar() {
 
               {/* Equipe — logo após Mural */}
               {to === '/mural' && showTeam && (
+                teamLocked ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        onClick={() => window.location.assign('/pricing')}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-60 cursor-pointer hover:bg-accent select-none"
+                      >
+                        <UsersRound className="w-[18px] h-[18px] text-muted-foreground" />
+                        <span className="text-sm font-medium flex-1 text-foreground">Equipe</span>
+                        <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="text-xs">
+                      Disponível no plano Pro
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
                 <NavLink
                   to="/team"
                   className={cn(
@@ -201,6 +225,7 @@ export function AppSidebar() {
                     Equipe
                   </span>
                 </NavLink>
+                )
               )}
             </div>
           );

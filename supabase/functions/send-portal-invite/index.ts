@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
       });
     }
     const userId = claimsData.claims.sub;
+    const userEmail = (claimsData.claims as any).email as string | undefined;
 
     // Service role client for privileged DB operations
     const supabase = createClient(
@@ -41,6 +42,52 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { persistSession: false } }
     );
+
+    // Plan-based gate: Portal do Paciente exige plano Pro
+    const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
+    const isOwner = userEmail && OWNER_EMAILS.includes(userEmail.toLowerCase());
+
+    if (!isOwner) {
+      try {
+        const { data: profileTrial } = await supabase
+          .from('profiles')
+          .select('trial_until')
+          .eq('user_id', userId)
+          .maybeSingle();
+        const onTrial = profileTrial?.trial_until && new Date(profileTrial.trial_until) > new Date();
+
+        if (!onTrial) {
+          const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+          if (stripeKey && userEmail) {
+            const Stripe = (await import('npm:stripe@14.21.0')).default;
+            const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' as any });
+            const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+            if (customers.data.length > 0) {
+              const [active, trialing] = await Promise.all([
+                stripe.subscriptions.list({ customer: customers.data[0].id, status: 'active', limit: 1 }),
+                stripe.subscriptions.list({ customer: customers.data[0].id, status: 'trialing', limit: 1 }),
+              ]);
+              const sub = [...active.data, ...trialing.data][0];
+              if (sub) {
+                const priceId = sub.items.data[0]?.price?.id;
+                const productId = sub.items.data[0]?.price?.product as string | undefined;
+                const BASIC_PRODUCT_ID = 'prod_UN5zsXIUOrZTbq';
+                if (productId === BASIC_PRODUCT_ID) {
+                  return new Response(JSON.stringify({
+                    error: 'O Portal do Paciente está disponível apenas no plano Pro. Faça upgrade para enviar convites.',
+                  }), {
+                    status: 403,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[send-portal-invite] tier check error (non-blocking):', e);
+      }
+    }
 
     const { patient_id, override_email, access_type, access_label, invite_token: providedToken } = await req.json();
 
