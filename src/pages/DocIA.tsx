@@ -580,7 +580,7 @@ export default function DocIA() {
         </p>
       </div>
 
-      <Tabs defaultValue="create" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="create"><Sparkles className="w-4 h-4 mr-1.5" />Criar Documento</TabsTrigger>
           <TabsTrigger value="history"><FileText className="w-4 h-4 mr-1.5" />Histórico</TabsTrigger>
