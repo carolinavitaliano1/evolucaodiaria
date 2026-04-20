@@ -828,12 +828,15 @@ export default function Financial() {
           doc.text(badge, bx + bw / 2, y + 5, { align: 'center' });
           y += 9;
 
-          items.forEach(({ patient, clinic, revenue, sessions, paymentType, pr, tipoLabel }) => {
+          items.forEach(({ patient, clinic, revenue, sessions, paymentType, pr, tipoLabel, proportionalShare }) => {
             ensureSpace(8);
             const isContratante = clinic?.type !== 'propria';
             const clinicPr = isContratante ? clinicPaymentRecords[clinic?.id || ''] : null;
             const effectivePaid = isContratante ? !!clinicPr?.paid : !!pr?.paid;
             const effectiveDate = isContratante ? clinicPr?.payment_date : pr?.payment_date;
+            // For fixed-salary clinics (Eden etc.), revenue is 0 per-patient; use proportional share
+            const displayValue = revenue > 0 ? revenue : (proportionalShare?.share ?? 0);
+            const isProportional = revenue === 0 && (proportionalShare?.share ?? 0) > 0;
 
             setFill(rowIdx % 2 === 0 ? C.white : C.rowAlt);
             doc.rect(margin, y, contentW, 7.5, 'F');
@@ -855,20 +858,21 @@ export default function Financial() {
               setTxt(C.green);
               doc.setFont('helvetica', 'bold');
               doc.text(paidLabel, th.st + 1, y + 5);
-              totalPaid += revenue;
+              totalPaid += displayValue;
             } else {
               setFill(C.orangeLight);
               doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth('Pendente') + 4, 6, 1, 1, 'F');
               setTxt(C.orange);
               doc.setFont('helvetica', 'bold');
               doc.text('Pendente', th.st + 1, y + 5);
-              totalPending += revenue;
+              totalPending += displayValue;
             }
 
             setTxt(C.dark);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(7.5);
-            doc.text(`R$ ${revenue.toFixed(2)}`, th.v, y + 5, { align: 'right' });
+            const valLabel = isProportional ? `~ R$ ${displayValue.toFixed(2)}` : `R$ ${displayValue.toFixed(2)}`;
+            doc.text(valLabel, th.v, y + 5, { align: 'right' });
 
             setDraw(C.border);
             doc.setLineWidth(0.1);
