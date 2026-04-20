@@ -76,10 +76,7 @@ export function AppSidebar() {
   // Build nav list: org members see all items but restricted ones are shown as locked
   // Non-org users / owners see everything normally; pricing/install hidden for org members
   const navItemsWithAccess = allNavItems.map(item => {
-    // Plan-based lock for AI features
-    if (item.to === '/doc-ia' || item.to === '/ai-reports') {
-      if (!hasAI) return { ...item, locked: true, hidden: false };
-    }
+    // AI feature pages stay clickable so Basic users can see the upgrade message inside the page
     if (!isOrgMember) return { ...item, locked: false, hidden: false };
     if (item.perm === null) return { ...item, locked: false, hidden: true }; // hide pricing/install
     const hasAccess = permissions.includes(item.perm as any);

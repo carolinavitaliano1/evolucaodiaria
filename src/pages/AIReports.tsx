@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { UpgradeBlock } from '@/components/UpgradeBlock';
 // jsPDF now handled by generateReportPdf utility
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -296,6 +298,7 @@ export default function AIReports() {
   const { theme } = useTheme();
   const isLilas = theme === 'lilas';
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const { isPro, loading: featureLoading } = useFeatureAccess();
   const canUseAI = !isOrgMember || isOwner || hasPermission(permissions, 'ai_reports.use');
 
   const [selectedPatient, setSelectedPatient] = useState('');
@@ -588,9 +591,12 @@ export default function AIReports() {
 
   return (
     <div className="space-y-6">
-      {!canUseAI && (
+      {!featureLoading && !isPro && !isOwner && (
+        <UpgradeBlock feature="ia" title="Relatórios IA são exclusivos do plano Pro" description="Crie relatórios clínicos com IA, edite o conteúdo e exporte com acabamento profissional ao assinar o plano Pro." />
+      )}
+      {(isOwner || isPro) && !featureLoading && !canUseAI && (
         <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
             <LockKeyhole className="w-8 h-8 text-muted-foreground" />
           </div>
           <div>
@@ -601,7 +607,7 @@ export default function AIReports() {
           </div>
         </div>
       )}
-      {canUseAI && <>
+      {(isOwner || isPro) && canUseAI && <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
