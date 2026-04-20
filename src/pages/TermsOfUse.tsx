@@ -55,7 +55,7 @@ export default function TermsOfUse() {
           <section>
             <h2 className="text-xl font-semibold mb-3">4. Assinatura e Pagamentos</h2>
             <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-              <li>O serviço é oferecido mediante assinatura mensal ou anual, com período de teste gratuito de 15 dias.</li>
+              <li>O serviço é oferecido mediante assinatura mensal ou anual, com período de teste gratuito de 30 dias.</li>
               <li>Os valores são cobrados antecipadamente no início de cada período de faturamento.</li>
               <li>O cancelamento pode ser realizado a qualquer momento; o acesso permanece até o fim do período pago.</li>
               <li>Não realizamos reembolsos proporcionais por cancelamento antes do fim do período.</li>
