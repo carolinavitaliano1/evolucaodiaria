@@ -755,11 +755,11 @@ export async function generateClinicInternalStatementPdf(
   doc.text(fmtBRL(grandTotal), W - M - 3, y + 8, { align: 'right' });
 
   if (clinicDiscountPct > 0 && !isClinicFixedSalary) {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
     doc.setTextColor(210, 220, 245);
     doc.text(
-      `Bruto: ${fmtBRL(grossGrandTotal)}  −  Desconto da clínica (${clinicDiscountPct}%): ${fmtBRL(grandDiscount)}`,
-      W - M - 3, y + 13, { align: 'right' },
+      `Bruto ${fmtBRL(grossGrandTotal)}  •  Desconto ${clinicDiscountPct}% (−${fmtBRL(grandDiscount)})`,
+      W - M - 3, y + 14, { align: 'right' },
     );
   }
 
