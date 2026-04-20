@@ -744,7 +744,7 @@ export async function generateClinicInternalStatementPdf(
   }
 
   // ===== GRAND TOTAL =====
-  const grandBoxH = clinicDiscountPct > 0 && !isClinicFixedSalary ? 30 : 22;
+  const grandBoxH = clinicDiscountPct > 0 ? 30 : 22;
   ensure(grandBoxH + 6);
   y += 2;
   doc.setFillColor(...accent);
@@ -754,7 +754,7 @@ export async function generateClinicInternalStatementPdf(
   doc.setFontSize(14);
   doc.text(fmtBRL(grandTotal), W - M - 3, y + 8, { align: 'right' });
 
-  if (clinicDiscountPct > 0 && !isClinicFixedSalary) {
+  if (clinicDiscountPct > 0) {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
     doc.setTextColor(210, 220, 245);
     doc.text(
@@ -763,7 +763,7 @@ export async function generateClinicInternalStatementPdf(
     );
   }
 
-  const baseY = clinicDiscountPct > 0 && !isClinicFixedSalary ? y + 6 : y;
+  const baseY = clinicDiscountPct > 0 ? y + 6 : y;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
   doc.setTextColor(180, 230, 200);
   doc.text(`Recebido: ${fmtBRL(grandReceived)}`, M + 3, baseY + 14);
