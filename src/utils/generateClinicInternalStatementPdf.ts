@@ -310,17 +310,20 @@ export async function generateClinicInternalStatementPdf(
     // e mostramos apenas as sessões com valor zero (a receita real é da clínica).
     const treatAsFixedSalary = isClinicFixedSalary;
 
+    // ⚠️ IMPORTANTE: o desconto da clínica (discount_percentage) incide sobre o
+    // TOTAL recebido no mês, não por sessão. Por isso aqui mantemos o valor
+    // bruto da sessão e o desconto é aplicado depois, no recebido/total.
     if (treatAsFixedSalary) {
       perSession = 0;
       packageLabel = clinicPayInfo?.payment_type === 'fixo_diario' || clinicPayInfo?.payment_type === 'fixo_dia'
         ? 'Salário fixo da clínica (por dia)'
         : 'Salário fixo da clínica (mensal)';
     } else if (pkg?.package_type === 'sessao') {
-      perSession = (Number(pkg.price) || 0) * clinicDiscountFactor;
+      perSession = Number(pkg.price) || 0;
       packageLabel = `Por sessão • ${pkg.name}`;
     } else if (pkg?.package_type === 'personalizado') {
       const limit = pkg.session_limit || pEvos.length || 1;
-      perSession = ((Number(pkg.price) || 0) / Math.max(1, limit)) * clinicDiscountFactor;
+      perSession = (Number(pkg.price) || 0) / Math.max(1, limit);
       packageLabel = `Personalizado • ${pkg.name} (${limit} sessões)`;
     } else if (isMensal) {
       const dyn = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
@@ -328,13 +331,12 @@ export async function generateClinicInternalStatementPdf(
       packageLabel = pkg ? `Mensal • ${pkg.name}` : 'Mensalidade';
     } else {
       // Por sessão (sem pacote): valor fixo do paciente OU da clínica.
-      // ❌ NÃO dividir por semanas — o valor já é o preço de uma única sessão.
+      // Valor BRUTO — desconto da clínica entra no total.
       const baseSessionValue = Number(info.payment_value) > 0
         ? Number(info.payment_value)
         : clinicSessionAmount;
-      perSession = baseSessionValue * clinicDiscountFactor;
-      const discountSuffix = clinicDiscountPct > 0 ? ` (−${clinicDiscountPct}% clínica)` : '';
-      packageLabel = `Por sessão${discountSuffix}`;
+      perSession = baseSessionValue;
+      packageLabel = 'Por sessão';
     }
 
     const rows: Row[] = [];
