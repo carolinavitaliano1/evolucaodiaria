@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { format, subDays, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
 
 const DEFAULT_SESSION_DURATION = 50;
 const DAYS_BACK = 7; // look back up to 7 days
@@ -29,6 +30,7 @@ function dayLabel(dateStr: string): string {
 export function MissingEvolutionsAlert() {
   const { patients, appointments } = useApp();
   const { user } = useAuth();
+  const { isDateBlocked } = useCalendarBlocks();
   const navigate = useNavigate();
   const [missing, setMissing] = useState<PendingEntry[]>([]);
 
@@ -40,7 +42,8 @@ export function MissingEvolutionsAlert() {
   useEffect(() => {
     if (!user || patients.length === 0) return;
     computeMissing();
-  }, [user, patients, appointments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, patients, appointments, isDateBlocked]);
 
   async function computeMissing() {
     const now = new Date();
@@ -65,6 +68,8 @@ export function MissingEvolutionsAlert() {
           const patientCreatedDate = toLocalDateString(new Date(p.createdAt));
           if (dateStr < patientCreatedDate) return;
         }
+        // Skip if this date is blocked (holiday/vacation) for the patient's clinic
+        if (isDateBlocked(dateStr, p.clinicId)) return;
         const schedByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
         const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
         if (!scheduledDays.includes(weekday)) return;
@@ -84,6 +89,8 @@ export function MissingEvolutionsAlert() {
         .forEach(a => {
           const patient = patients.find(p => p.id === a.patientId);
           if (!patient || patient.isArchived) return;
+          // Skip if this date is blocked for the patient's clinic
+          if (isDateBlocked(dateStr, patient.clinicId)) return;
           const startTime = a.time || '';
           if (!startTime || startTime === '00:00') return;
           const endMin = toMin(startTime) + DEFAULT_SESSION_DURATION;

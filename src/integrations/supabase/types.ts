@@ -101,6 +101,50 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_blocks: {
+        Row: {
+          block_type: string
+          clinic_id: string | null
+          created_at: string
+          description: string
+          end_date: string
+          id: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          block_type?: string
+          clinic_id?: string | null
+          created_at?: string
+          description?: string
+          end_date: string
+          id?: string
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          block_type?: string
+          clinic_id?: string | null
+          created_at?: string
+          description?: string
+          end_date?: string
+          id?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_blocks_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_notes: {
         Row: {
           category: string
