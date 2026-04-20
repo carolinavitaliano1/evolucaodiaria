@@ -424,7 +424,7 @@ export default function DocIA() {
       const { error: insErr } = await supabase.from('patient_documents').insert({
         user_id: user.id, clinic_id: clinic.id, patient_id: createPatientId,
         title: draftTitle || docTypeLabel(createDocType),
-        doc_type: createDocType, content: bodyHtml,
+        doc_type: createDocType, content: persistedHtml,
         file_url: urlData.publicUrl, file_path: path,
       } as any);
       if (insErr) throw insErr;
