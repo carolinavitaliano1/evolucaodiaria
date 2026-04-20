@@ -16,6 +16,11 @@ interface DocxExportInput {
 const escape = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** Strip our hidden meta script so it doesn't show in the document body. */
+function stripMetaScript(html: string): string {
+  return html.replace(/<script[^>]*id=["']docia-meta["'][^>]*>[\s\S]*?<\/script>/gi, '');
+}
+
 /** Converts an external image URL into a base64 data URI so it embeds inside the .docx */
 async function urlToDataUrl(url: string): Promise<string | null> {
   try {
@@ -53,7 +58,8 @@ export async function generateAIDocumentDocx(input: DocxExportInput): Promise<Bl
     stampUrl, extraSignatures = [],
   } = input;
 
-  const inlinedBody = await inlineImages(bodyHtml);
+  const cleanBody = stripMetaScript(bodyHtml);
+  const inlinedBody = await inlineImages(cleanBody);
   const inlinedLogo = logoUrl ? await urlToDataUrl(logoUrl) : null;
   const inlinedStamp = stampUrl ? await urlToDataUrl(stampUrl) : null;
 
@@ -74,13 +80,17 @@ export async function generateAIDocumentDocx(input: DocxExportInput): Promise<Bl
     ? `<p style="text-align:center; margin-top:32px;">${escape(cityLine)}</p>`
     : '';
 
+  // Stamp appears ABOVE the signature line (matches PDF layout)
+  const stampBlock = inlinedStamp
+    ? `<div style="text-align:center; margin-top:48px; margin-bottom:-8px;"><img src="${inlinedStamp}" style="max-height:80px; max-width:200px;" /></div>`
+    : '';
+
   const signatureBlock = `
-    <div style="margin-top:48px; text-align:center;">
+    <div style="margin-top:${inlinedStamp ? '4px' : '48px'}; text-align:center;">
       <div style="border-top:1px solid #000; width:320px; margin:0 auto; padding-top:4px;">
         <strong>${escape(professionalName || '')}</strong><br/>
         ${professionalRegistration ? `<span style="font-size:12px;">${escape(professionalRegistration)}</span>` : ''}
       </div>
-      ${inlinedStamp ? `<div style="margin-top:16px;"><img src="${inlinedStamp}" style="max-height:110px;" /></div>` : ''}
     </div>`;
 
   const extraSigsBlock = extraSignatures.length
@@ -97,7 +107,7 @@ export async function generateAIDocumentDocx(input: DocxExportInput): Promise<Bl
     : '';
 
   const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escape(title)}</title></head>
-    <body>${headerBlock}${titleBlock}${body}${cityBlock}${signatureBlock}${extraSigsBlock}${footerBlock}</body></html>`;
+    <body>${headerBlock}${titleBlock}${body}${cityBlock}${stampBlock}${signatureBlock}${extraSigsBlock}${footerBlock}</body></html>`;
 
   const result = await asBlob(fullHtml, { orientation: 'portrait', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
   return result instanceof Blob ? result : new Blob([result as any], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
