@@ -901,12 +901,8 @@ export default function Financial() {
         setTxt(C.green);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8);
-        doc.text('Total Pago:', margin + 4, y + 6);
-        doc.text(`R$ ${totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentW / 2 - 5, y + 6, { align: 'right' });
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.text('Total Pago Líquido:', margin + 4, y + 11.5);
-        doc.text(`R$ ${totalPaidNet.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentW / 2 - 5, y + 11.5, { align: 'right' });
+        doc.text('Total Pago:', margin + 4, y + 8.5);
+        doc.text(`R$ ${totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentW / 2 - 5, y + 8.5, { align: 'right' });
 
         setFill(C.orangeLight);
         setDraw(C.orange);
