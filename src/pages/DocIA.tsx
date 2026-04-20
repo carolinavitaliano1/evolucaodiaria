@@ -170,7 +170,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 // MAIN PAGE
 // =======================================================================
 export default function DocIA() {
-  const { patients, clinics } = useApp();
+  const { patients, clinics, addAttachment } = useApp();
   const { user } = useAuth();
 
   // Tab 1: Timbrado
@@ -201,6 +201,8 @@ export default function DocIA() {
   const [history, setHistory] = useState<DocRow[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [savingToFolderId, setSavingToFolderId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('create');
 
   const [profile, setProfile] = useState<{ name?: string; cpf?: string; professional_id?: string } | null>(null);
 
