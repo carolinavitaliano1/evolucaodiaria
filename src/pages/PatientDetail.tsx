@@ -2246,10 +2246,10 @@ export default function PatientDetail() {
             <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
               <DollarSign className="w-4 h-4 text-success" />
             </div>
-            <p className="text-xs font-medium text-muted-foreground">Receita Total</p>
+            <p className="text-xs font-medium text-muted-foreground">Faturamento</p>
           </div>
           <p className="text-2xl font-bold text-success">R$ {totalFinancial.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Faturamento de todos os pacientes cadastrados</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{totalFinancialSubtitle}</p>
         </div>
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <div className="flex items-center gap-2 mb-2">
