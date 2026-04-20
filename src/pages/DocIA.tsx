@@ -600,7 +600,7 @@ export default function DocIA() {
                         <Select value={selectedStampId} onValueChange={setSelectedStampId}>
                           <SelectTrigger className="h-9"><SelectValue placeholder="Escolha um carimbo" /></SelectTrigger>
                           <SelectContent>
-                            {stampsWithImage.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            {stampsWithImage.map(s => <SelectItem key={s.id} value={s.id}>{s.name}{s.clinical_area ? ` — ${s.clinical_area}` : ''}{s.cbo ? ` (CBO ${s.cbo})` : ''}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         {selectedStampId && (
