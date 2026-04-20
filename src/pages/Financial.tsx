@@ -802,6 +802,7 @@ export default function Financial() {
         }, {} as Record<string, { clinic: any; items: typeof patientStats }>);
 
         let totalPaid = 0, totalPending = 0;
+        let totalPaidNet = 0, totalPendingNet = 0;
         let rowIdx = 0;
 
         Object.values(grouped).forEach(({ clinic: grpClinic, items }) => {
@@ -851,6 +852,9 @@ export default function Financial() {
             doc.text(tipoLabel || (paymentType === 'fixo' ? 'Fixo' : 'Sessão'), th.t, y + 5);
             doc.text(sessions.toString(), th.s, y + 5);
 
+            const discPct = clinic?.discountPercentage || 0;
+            const netValue = displayValue * (1 - discPct / 100);
+
             if (effectivePaid) {
               const paidLabel = `Pago${effectiveDate ? ' ' + format(new Date(effectiveDate + 'T00:00:00'), 'dd/MM') : ''}`;
               setFill(C.greenLight);
@@ -859,6 +863,7 @@ export default function Financial() {
               doc.setFont('helvetica', 'bold');
               doc.text(paidLabel, th.st + 1, y + 5);
               totalPaid += displayValue;
+              totalPaidNet += netValue;
             } else {
               setFill(C.orangeLight);
               doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth('Pendente') + 4, 6, 1, 1, 'F');
@@ -866,6 +871,7 @@ export default function Financial() {
               doc.setFont('helvetica', 'bold');
               doc.text('Pendente', th.st + 1, y + 5);
               totalPending += displayValue;
+              totalPendingNet += netValue;
             }
 
             setTxt(C.dark);
@@ -884,9 +890,9 @@ export default function Financial() {
         });
 
         // Totals footer row
-        ensureSpace(22);
+        ensureSpace(28);
         y += 4;
-        const footerRowH = 9;
+        const footerRowH = 14;
 
         setFill(C.greenLight);
         setDraw(C.green);
@@ -897,13 +903,23 @@ export default function Financial() {
         doc.setFontSize(8);
         doc.text('Total Pago:', margin + 4, y + 6);
         doc.text(`R$ ${totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentW / 2 - 5, y + 6, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text('Total Pago Líquido:', margin + 4, y + 11.5);
+        doc.text(`R$ ${totalPaidNet.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentW / 2 - 5, y + 11.5, { align: 'right' });
 
         setFill(C.orangeLight);
         setDraw(C.orange);
         doc.roundedRect(margin + contentW / 2 + 2, y, contentW / 2 - 2, footerRowH, 1.5, 1.5, 'FD');
         setTxt(C.orange);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
         doc.text('Total Pendente:', margin + contentW / 2 + 6, y + 6);
         doc.text(`R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 6, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text('Total Pendente Líquido:', margin + contentW / 2 + 6, y + 11.5);
+        doc.text(`R$ ${totalPendingNet.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 11.5, { align: 'right' });
         y += footerRowH + 5;
       }
 
