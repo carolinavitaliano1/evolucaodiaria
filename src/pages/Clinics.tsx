@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { calculatePatientMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
+import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -316,40 +316,17 @@ export default function Clinics() {
       const clinic = clinics.find(c => c.id === cId);
       if (!clinic || clinic.isArchived) continue;
 
-      const clPayType = clinic.paymentType as string | undefined;
-      const isFixoMensal = clPayType === 'fixo_mensal';
-      const isFixoDiario = clPayType === 'fixo_diario';
-      const clinicBaseValue = clinic.paymentAmount || 0;
+      const cEvos: EvolutionLike[] = monthlyEvolutions
+        .filter(e => cPatients.some(p => p.id === e.patientId))
+        .map(e => ({
+          id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
+          attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance,
+        }));
 
-      if (isFixoMensal) {
-        clinicRevenue += clinicBaseValue;
-        continue;
-      }
-
-      if (isFixoDiario) {
-        const clinicBillableEvos = monthlyEvolutions.filter(
-          e => cPatients.some(p => p.id === e.patientId) && (
-            e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'
-          )
-        );
-        const uniqueDays = new Set(clinicBillableEvos.map(e => e.date)).size;
-        clinicRevenue += uniqueDays * clinicBaseValue;
-        continue;
-      }
-
-      // 🔒 Per-patient via helper central (respeita absencePaymentType + faltas remuneradas)
-      for (const p of cPatients) {
-        const patientEvos: EvolutionLike[] = monthlyEvolutions
-          .filter(e => e.patientId === p.id)
-          .map(e => ({
-            id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
-            attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance,
-          }));
-        clinicRevenue += calculatePatientMonthlyRevenue({
-          patient: p, clinic, evolutions: patientEvos,
-          month: currentMonth, year: currentYear, packages: clinicPackages,
-        }).total;
-      }
+      clinicRevenue += calculateClinicMonthlyRevenue({
+        clinic, patients: cPatients, evolutions: cEvos,
+        month: currentMonth, year: currentYear, packages: clinicPackages,
+      }).total;
     }
 
     // Add monthly services (private_appointments) revenue — não cancelados
