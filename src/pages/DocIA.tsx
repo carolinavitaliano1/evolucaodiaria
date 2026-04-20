@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { UpgradeBlock } from '@/components/UpgradeBlock';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -172,6 +174,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 export default function DocIA() {
   const { patients, clinics, addAttachment } = useApp();
   const { user } = useAuth();
+  const { hasAI, loading: featureLoading } = useFeatureAccess();
 
   // Tab 1: Timbrado
   const [selectedClinicId, setSelectedClinicId] = useState<string>('');
@@ -603,6 +606,23 @@ export default function DocIA() {
   const patientName = (id: string) => patients.find(p => p.id === id)?.name || '—';
 
   const stampsWithImage = stamps.filter(s => s.stamp_image);
+
+  if (!featureLoading && !hasAI) {
+    return (
+      <div className="container max-w-6xl mx-auto py-10 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Sparkles className="w-6 h-6 text-primary" />
+            Doc IA — Hub de Documentos Inteligentes
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gere declarações, recibos, fichas e documentos personalizados com IA.
+          </p>
+        </div>
+        <UpgradeBlock feature="ia" />
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-6xl mx-auto py-6 space-y-6">

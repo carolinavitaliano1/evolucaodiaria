@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { deriveTier, type Tier } from '@/lib/plans';
 
 const CACHE_KEY = 'evolucao_subscription_cache';
 
@@ -8,6 +9,7 @@ interface SubscriptionState {
   subscribed: boolean;
   productId: string | null;
   subscriptionEnd: string | null;
+  tier: Tier;
   loading: boolean;
 }
 
@@ -16,9 +18,14 @@ function getCachedSubscription(userId: string): Omit<SubscriptionState, 'loading
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const cached = JSON.parse(raw);
-    // Only use cache if it belongs to the same user and is less than 5 minutes old
     if (cached.userId === userId && Date.now() - cached.timestamp < 15 * 60 * 1000) {
-      return { subscribed: cached.subscribed, productId: cached.productId, subscriptionEnd: cached.subscriptionEnd };
+      const productId = cached.productId ?? null;
+      return {
+        subscribed: cached.subscribed,
+        productId,
+        subscriptionEnd: cached.subscriptionEnd,
+        tier: cached.tier ?? deriveTier(productId),
+      };
     }
   } catch {}
   return null;
@@ -42,14 +49,13 @@ export function useSubscription() {
       const cached = getCachedSubscription(user.id);
       if (cached) return { ...cached, loading: false };
     }
-    return { subscribed: false, productId: null, subscriptionEnd: null, loading: true };
+    return { subscribed: false, productId: null, subscriptionEnd: null, tier: null, loading: true };
   });
 
   const checkSubscription = useCallback(async () => {
     if (!user) {
-      setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: false });
+      setState({ subscribed: false, productId: null, subscriptionEnd: null, tier: null, loading: false });
       localStorage.removeItem(CACHE_KEY);
-      // Migrate old cache key if exists
       localStorage.removeItem('clinipro_subscription_cache');
       return;
     }
@@ -58,41 +64,45 @@ export function useSubscription() {
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) throw error;
 
+      const productId = data?.product_id ?? null;
+      const tier: Tier = (data?.tier as Tier) ?? deriveTier(productId);
       const result = {
         subscribed: data?.subscribed ?? false,
-        productId: data?.product_id ?? null,
+        productId,
         subscriptionEnd: data?.subscription_end ?? null,
+        tier,
       };
       setCachedSubscription(user.id, result);
       setState({ ...result, loading: false });
     } catch (error) {
       console.error('Error checking subscription:', error);
-      // On error, keep previous subscription state (or use cache) instead of granting access
       const cached = user ? getCachedSubscription(user.id) : null;
-      setState(prev => ({ ...prev, loading: false, subscribed: cached?.subscribed ?? prev.subscribed }));
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        subscribed: cached?.subscribed ?? prev.subscribed,
+        tier: cached?.tier ?? prev.tier,
+      }));
     }
   }, [user]);
 
   useEffect(() => {
-    // Don't do anything until session is confirmed
     if (!sessionReady) return;
 
     if (user) {
       const cached = getCachedSubscription(user.id);
       if (cached) {
         setState({ ...cached, loading: false });
-        // Refresh in background without blocking
         checkSubscription();
       } else {
-        setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: true });
+        setState({ subscribed: false, productId: null, subscriptionEnd: null, tier: null, loading: true });
         checkSubscription();
       }
     } else {
-      setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: false });
-      return; // No interval when not logged in
+      setState({ subscribed: false, productId: null, subscriptionEnd: null, tier: null, loading: false });
+      return;
     }
 
-    // Poll every 5 minutes instead of every 60 seconds
     const interval = setInterval(() => checkSubscription(), 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [user, sessionReady, checkSubscription]);

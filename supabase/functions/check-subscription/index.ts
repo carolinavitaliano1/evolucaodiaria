@@ -7,6 +7,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Plan IDs — keep in sync with src/lib/plans.ts
+const BASIC_PRODUCT_ID = 'prod_UN5zsXIUOrZTbq';
+const PRO_PRODUCT_ID = 'prod_UN67H1phk2js4F';
+const LEGACY_PRICE_IDS = new Set([
+  'price_1Sz87xDl2hex55TCI3ONELuq',
+  'price_1Sz88ADl2hex55TCABAFO3OL',
+  'price_1Sz88LDl2hex55TCwzGTUplF',
+]);
+
+type Tier = 'basic' | 'pro' | 'legacy' | 'trial' | 'owner' | null;
+
+function tierFromSubscription(subscription: any): { tier: Tier; productId: string | null } {
+  const item = subscription.items.data[0];
+  const priceId: string | null = item?.price?.id ?? null;
+  const productId: string | null = item?.price?.product ?? null;
+
+  if (priceId && LEGACY_PRICE_IDS.has(priceId)) return { tier: 'legacy', productId: 'legacy' };
+  if (productId === PRO_PRODUCT_ID) return { tier: 'pro', productId };
+  if (productId === BASIC_PRODUCT_ID) return { tier: 'basic', productId };
+  // Unknown active subscription → treat as legacy to avoid locking paying users
+  return { tier: 'legacy', productId: 'legacy' };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -31,20 +54,21 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    // Owner bypass - always grant full access
+    // Owner bypass
     const OWNER_EMAILS = ["carolinavitaliano1@gmail.com"];
     if (OWNER_EMAILS.includes(user.email.toLowerCase())) {
       return new Response(JSON.stringify({
         subscribed: true,
         product_id: "owner",
         subscription_end: null,
+        tier: "owner",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    // Trial access bypass - check profiles.trial_until
+    // Trial bypass via profiles.trial_until
     const { data: profileData } = await supabaseClient
       .from("profiles")
       .select("trial_until")
@@ -56,6 +80,7 @@ serve(async (req) => {
         subscribed: true,
         product_id: "trial",
         subscription_end: profileData.trial_until,
+        tier: "trial",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -66,29 +91,23 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
-      return new Response(JSON.stringify({ subscribed: false }), {
+      return new Response(JSON.stringify({ subscribed: false, tier: null }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
     const customerId = customers.data[0].id;
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
+    const [activeSubs, trialingSubs] = await Promise.all([
+      stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
+      stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+    ]);
 
-    const trialingSubs = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "trialing",
-      limit: 1,
-    });
-
-    const allSubs = [...subscriptions.data, ...trialingSubs.data];
+    const allSubs = [...activeSubs.data, ...trialingSubs.data];
     const hasActiveSub = allSubs.length > 0;
-    let productId = null;
-    let subscriptionEnd = null;
+    let productId: string | null = null;
+    let subscriptionEnd: string | null = null;
+    let tier: Tier = null;
 
     if (hasActiveSub) {
       const subscription = allSubs[0];
@@ -97,21 +116,24 @@ serve(async (req) => {
       } catch {
         subscriptionEnd = null;
       }
-      productId = subscription.items.data[0]?.price?.product ?? null;
+      const derived = tierFromSubscription(subscription);
+      tier = derived.tier;
+      productId = derived.productId;
     }
 
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       product_id: productId,
       subscription_end: subscriptionEnd,
+      tier,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     console.error("check-subscription error:", error);
-    // On error, grant access to avoid blocking users
-    return new Response(JSON.stringify({ subscribed: true, error: error.message }), {
+    // On error, grant pro-level access to avoid blocking users
+    return new Response(JSON.stringify({ subscribed: true, tier: "legacy", error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

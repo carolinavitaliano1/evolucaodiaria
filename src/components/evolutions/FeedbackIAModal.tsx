@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,6 +52,7 @@ export function FeedbackIAModal({
   isBulk = false,
 }: FeedbackIAModalProps) {
   const { user } = useAuth();
+  const { hasAI } = useFeatureAccess();
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [content, setContent] = useState('');
@@ -184,7 +186,7 @@ export function FeedbackIAModal({
 
           {/* Options: Write manually or Generate with AI */}
           {!content && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className={hasAI ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3'}>
               <button
                 onClick={() => setContent(' ')}
                 className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all group"
@@ -195,6 +197,7 @@ export function FeedbackIAModal({
                 <span className="text-sm font-medium text-foreground">Escrever manualmente</span>
                 <span className="text-[10px] text-muted-foreground">Redija seu próprio texto</span>
               </button>
+              {hasAI && (
               <button
                 onClick={handleGenerate}
                 disabled={generating}
@@ -206,6 +209,7 @@ export function FeedbackIAModal({
                 <span className="text-sm font-medium text-foreground">{generating ? 'Gerando...' : 'Gerar com IA'}</span>
                 <span className="text-[10px] text-muted-foreground">Resumo automático da sessão</span>
               </button>
+              )}
             </div>
           )}
 
@@ -217,11 +221,13 @@ export function FeedbackIAModal({
                   <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                     <MessageSquare className="w-3.5 h-3.5 text-primary" /> Feedback
                   </p>
+                  {hasAI && (
                   <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground gap-1"
                     onClick={handleGenerate} disabled={generating}>
                     {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                     {content.trim() ? 'Regerar com IA' : 'Gerar com IA'}
                   </Button>
+                  )}
                 </div>
                 <Textarea
                   value={content.trim() === '' ? '' : content}

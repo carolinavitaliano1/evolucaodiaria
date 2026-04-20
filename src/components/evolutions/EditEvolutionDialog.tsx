@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import TemplateForm from './TemplateForm';
 import { MoodSelector } from './MoodSelector';
 import { cn } from '@/lib/utils';
@@ -28,7 +29,8 @@ interface EditEvolutionDialogProps {
 export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, showFaltaRemunerada = true }: EditEvolutionDialogProps) {
   const { user } = useAuth();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
-  const canUseAI = !isOrgMember || isOwner || hasPermission(permissions, 'ai_evolutions.use');
+  const { hasAI } = useFeatureAccess();
+  const canUseAI = hasAI && (!isOrgMember || isOwner || hasPermission(permissions, 'ai_evolutions.use'));
   const [text, setText] = useState(evolution.text);
   const [date, setDate] = useState(evolution.date);
   const [attendanceStatus, setAttendanceStatus] = useState(evolution.attendanceStatus);

@@ -5,6 +5,7 @@ import { useUnreadSupportCount } from '@/hooks/useUnreadSupport';
 import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -54,6 +55,7 @@ export function MobileNav() {
   const { count: pendingCount } = usePendingEnrollments();
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
+  const { hasAI, hasTeam } = useFeatureAccess();
 
   const trialDaysLeft = (() => {
     if (productId !== 'trial' || !subscriptionEnd) return null;
@@ -68,13 +70,15 @@ export function MobileNav() {
   });
 
   const allowedMore = moreNavItems.filter(i => {
+    // Hide AI Reports for Basic plan
+    if (i.to === '/ai-reports' && !hasAI) return false;
     if (!isOrgMember) return true;
     if (i.to === '/profile') return true;
     if (i.perm === null) return false;
     return permissions.includes(i.perm as any);
   });
 
-  const showTeam = !isOrgMember || isOwner || permissions.includes('team.view' as any);
+  const showTeam = (!isOrgMember || isOwner || permissions.includes('team.view' as any)) && hasTeam;
   const teamItem = showTeam ? [{ to: '/team', icon: UsersRound, label: 'Equipe', perm: 'team.view' as const, badge: null as any }] : [];
   const baseMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any, badge: null as any }, ...allowedMore.filter(i => i.to !== '/profile')];
   const muralIdx = baseMore.findIndex(i => i.to === '/mural');

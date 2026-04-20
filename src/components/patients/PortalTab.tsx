@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { UpgradeBlock } from '@/components/UpgradeBlock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1442,6 +1444,7 @@ function AddAccessDialog({
 // ─── Main PortalTab ───────────────────────────────────────────────────────────
 export function PortalTab({ patientId, patientEmail, patientName, responsibleEmail, responsibleName }: PortalTabProps) {
   const { user } = useAuth();
+  const { hasPortal } = useFeatureAccess();
   const [accounts, setAccounts] = useState<PortalAccount[]>([]);
   const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1578,6 +1581,10 @@ export function PortalTab({ patientId, patientEmail, patientName, responsibleEma
   };
 
   if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  if (!hasPortal) {
+    return <div className="py-6"><UpgradeBlock feature="portal" /></div>;
+  }
 
   return (
     <div className="space-y-3">
