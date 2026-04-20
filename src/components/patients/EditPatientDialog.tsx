@@ -30,9 +30,11 @@ interface EditPatientDialogProps {
   onSave: (id: string, updates: Partial<Patient>) => void;
   clinicPackages?: ClinicPackage[];
   clinicType?: 'propria' | 'terceirizada' | 'clinica';
+  clinicPaymentType?: 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado';
+  clinicPaymentAmount?: number;
 }
 
-export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicPackages = [], clinicType }: EditPatientDialogProps) {
+export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicPackages = [], clinicType, clinicPaymentType, clinicPaymentAmount }: EditPatientDialogProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
