@@ -771,8 +771,10 @@ export default function Financial() {
       }
 
       // ─── Patient payments table ────────────────────────────────────────
-      // Only include patients with at least some billable activity in the month
-      const pdfPatientStats = patientStats.filter(({ revenue }) => revenue > 0);
+      // Include patients with billable revenue OR proportional share (fixed-salary clinics like Eden)
+      const pdfPatientStats = patientStats.filter(({ revenue, proportionalShare }) =>
+        revenue > 0 || (proportionalShare?.share ?? 0) > 0
+      );
       if (pdfPatientStats.length > 0) {
         sectionTitle('CONTROLE DE PAGAMENTOS POR PACIENTE');
 
