@@ -80,12 +80,6 @@ const PRO_FEATURES = [
     desc: 'Convites por e-mail, fichas digitais, mensagens, atividades, mural, contratos digitais e financeiro — tudo acessível ao paciente/responsável.',
     highlight: 'Engajamento total',
   },
-  {
-    icon: Users,
-    title: 'Gestão de Equipe',
-    desc: 'Convide profissionais, defina permissões granulares, modelos de remuneração, conformidade e financeiro de equipe.',
-    highlight: 'Multi-profissional',
-  },
 ];
 
 const PORTAL_BENEFITS = [
