@@ -80,9 +80,7 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
     : '';
 
   const stampHtml = stampUrl
-    ? `<div style="margin-top: 24px; text-align:center;">
-        <img src="${stampUrl}" crossorigin="anonymous" style="max-height:110px; max-width:240px; object-fit:contain; opacity:0.95;" />
-      </div>`
+    ? `<img src="${stampUrl}" crossorigin="anonymous" style="max-height:90px; max-width:220px; object-fit:contain; opacity:0.95; display:block; margin: 0 auto -30px auto; position: relative; z-index: 2;" />`
     : '';
 
   container.innerHTML = `
@@ -106,11 +104,11 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
     ${cityLine ? `<p style="margin-top: 40px; text-align:center;">${escape(cityLine)}</p>` : ''}
 
     <div style="margin-top: 60px; text-align:center;">
-      <div style="border-top: 1px solid #000; width: 320px; margin: 0 auto; padding-top: 6px;">
+      ${stampHtml}
+      <div style="border-top: 1px solid #000; width: 320px; margin: 0 auto; padding-top: 6px; position: relative; z-index: 1;">
         <div style="font-weight:600;">${escape(professionalName || '')}</div>
         ${professionalRegistration ? `<div style="font-size:12px; color:#444;">${escape(professionalRegistration)}</div>` : ''}
       </div>
-      ${stampHtml}
     </div>
 
     ${extraSigsHtml}
