@@ -1945,7 +1945,7 @@ export default function PatientDetail() {
             <label className="relative cursor-pointer group flex-shrink-0">
               <div className="w-20 h-20 rounded-2xl bg-primary/10 border-2 border-border overflow-hidden flex items-center justify-center shadow-sm">
                 {patient.avatarUrl ? (
-                  <img src={patient.avatarUrl} alt={patient.name} className="w-full h-full object-cover" />
+                  <img loading="lazy" decoding="async" src={patient.avatarUrl} alt={patient.name} className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-3xl">👤</span>
                 )}
@@ -2639,7 +2639,7 @@ export default function PatientDetail() {
                                   <div key={att.id} className="flex flex-col gap-1">
                                     {isImage && (
                                       <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                                        <img src={fileUrl} alt={att.name} className="w-20 h-20 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                                        <img loading="lazy" decoding="async" src={fileUrl} alt={att.name} className="w-20 h-20 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
                                       </a>
                                     )}
                                     <a href={fileUrl} target="_blank" rel="noopener noreferrer" download={att.name}
@@ -2657,7 +2657,7 @@ export default function PatientDetail() {
                         {evo.signature && (
                           <div className="mt-2 flex items-center gap-2">
                             <span className="text-xs text-muted-foreground flex items-center gap-1"><PenLine className="w-3 h-3" /> Assinatura:</span>
-                            <img src={evo.signature} alt="Assinatura" className="h-8 object-contain" />
+                            <img loading="lazy" decoding="async" src={evo.signature} alt="Assinatura" className="h-8 object-contain" />
                           </div>
                         )}
                         {evo.stampId && (() => {
@@ -2667,7 +2667,7 @@ export default function PatientDetail() {
                               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                                 <StampIcon className="w-3 h-3" /> {stamp.name} — {stamp.clinical_area}
                               </div>
-                              <img src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain opacity-70" />
+                              <img loading="lazy" decoding="async" src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain opacity-70" />
                             </div>
                           ) : stamp ? (
                             <div className="mt-3 pt-2 border-t border-border/40 text-xs text-muted-foreground flex items-center gap-1">
@@ -2940,7 +2940,7 @@ export default function PatientDetail() {
                         <a key={att.id} href={fileUrl} target="_blank" rel="noopener noreferrer" download={att.name}
                           className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border hover:border-primary/50 transition-colors">
                           {att.type.startsWith('image/') ? (
-                            <img src={fileUrl} alt={att.name} className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                            <img loading="lazy" decoding="async" src={fileUrl} alt={att.name} className="w-10 h-10 rounded object-cover flex-shrink-0" />
                           ) : (
                             <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
                               <FileText className="w-5 h-5 text-primary" />

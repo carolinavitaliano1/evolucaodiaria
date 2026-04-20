@@ -725,7 +725,7 @@ export default function DocIA() {
                           </SelectContent>
                         </Select>
                         {selectedStampId && (
-                          <img src={stampsWithImage.find(s => s.id === selectedStampId)?.stamp_image || ''} alt="Carimbo" className="h-16 object-contain border rounded p-1 bg-white" />
+                          <img loading="lazy" decoding="async" src={stampsWithImage.find(s => s.id === selectedStampId)?.stamp_image || ''} alt="Carimbo" className="h-16 object-contain border rounded p-1 bg-white" />
                         )}
                       </div>
                     )}
@@ -856,7 +856,7 @@ export default function DocIA() {
                 <Label>Logo</Label>
                 <div className="flex items-center gap-4">
                   {logoUrl ? (
-                    <img src={logoUrl} alt="Logo" className="h-20 max-w-[200px] object-contain border rounded p-2 bg-white" />
+                    <img loading="lazy" decoding="async" src={logoUrl} alt="Logo" className="h-20 max-w-[200px] object-contain border rounded p-2 bg-white" />
                   ) : (
                     <div className="h-20 w-32 border-2 border-dashed rounded flex items-center justify-center text-xs text-muted-foreground">Sem logo</div>
                   )}

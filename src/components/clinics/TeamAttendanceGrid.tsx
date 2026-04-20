@@ -313,7 +313,7 @@ export function TeamAttendanceGrid({ organizationId, members, canManage }: TeamA
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0 overflow-hidden">
                           {member.profile?.avatar_url
-                            ? <img src={member.profile.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
+                            ? <img loading="lazy" decoding="async" src={member.profile.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
                             : getInitials(member)}
                         </div>
                         <div className="min-w-0">

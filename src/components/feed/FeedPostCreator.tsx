@@ -230,7 +230,7 @@ export function FeedPostCreator({ patientId, therapistId, therapistName, onPostC
       {mediaPreview && (
         <div className="relative rounded-lg overflow-hidden border border-border ml-11">
           {mediaType === 'image' && (
-            <img src={mediaPreview} alt="preview" className="w-full max-h-64 object-cover" />
+            <img loading="lazy" decoding="async" src={mediaPreview} alt="preview" className="w-full max-h-64 object-cover" />
           )}
           {mediaType === 'video' && (
             <video src={mediaPreview} controls className="w-full max-h-64" />

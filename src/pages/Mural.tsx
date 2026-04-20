@@ -322,7 +322,7 @@ export default function Mural() {
             className="rounded-xl overflow-hidden cursor-pointer"
             onClick={() => setExpandedImage(n.image_url!)}
           >
-            <img
+            <img loading="lazy" decoding="async"
               src={n.image_url}
               alt={n.title}
               className="w-full max-h-56 object-cover hover:opacity-90 transition-opacity"
@@ -477,7 +477,7 @@ export default function Mural() {
           >
             <X className="w-8 h-8" />
           </button>
-          <img
+          <img loading="lazy" decoding="async"
             src={expandedImage}
             alt="Imagem ampliada"
             className="max-w-full max-h-full rounded-xl object-contain"
@@ -545,7 +545,7 @@ export default function Mural() {
               />
               {imagePreview ? (
                 <div className="mt-2 relative">
-                  <img src={imagePreview} alt="Preview" className="w-full max-h-40 object-cover rounded-xl border border-border" />
+                  <img loading="lazy" decoding="async" src={imagePreview} alt="Preview" className="w-full max-h-40 object-cover rounded-xl border border-border" />
                   <button
                     type="button"
                     onClick={removeImage}

@@ -736,7 +736,7 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                           const stamp = stamps.find(s => s.id === selectedStampId);
                           return stamp?.stamp_image ? (
                             <div className="flex items-center gap-2 p-2 rounded-lg bg-background border border-border">
-                              <img src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain" />
+                              <img loading="lazy" decoding="async" src={stamp.stamp_image} alt="Carimbo" className="h-12 object-contain" />
                               <span className="text-[10px] text-muted-foreground">{stamp.name}</span>
                             </div>
                           ) : null;
@@ -785,9 +785,9 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                   <div className="border-t border-border pt-4 space-y-2 text-center">
                     <p className="text-xs text-muted-foreground font-medium">Carimbo do terapeuta:</p>
                     {stampInfo?.stamp_image ? (
-                      <img src={stampInfo.stamp_image} alt="Carimbo" className="max-h-24 mx-auto object-contain" />
+                      <img loading="lazy" decoding="async" src={stampInfo.stamp_image} alt="Carimbo" className="max-h-24 mx-auto object-contain" />
                     ) : !stampInfo ? (
-                      <img src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
+                      <img loading="lazy" decoding="async" src={previewContract.therapist_signature_data} alt="Assinatura do terapeuta"
                         className="max-h-32 mx-auto object-contain border border-border rounded bg-background" />
                     ) : null}
                     <div className="w-48 mx-auto border-b border-foreground/40" />
@@ -817,7 +817,7 @@ export function ContractManager({ patientId, patientName }: ContractManagerProps
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground font-medium">Assinatura do paciente / responsável:</p>
-                  <img src={previewContract.signature_data} alt="Assinatura do paciente"
+                  <img loading="lazy" decoding="async" src={previewContract.signature_data} alt="Assinatura do paciente"
                     className="max-h-20 border border-border rounded" />
                   {previewContract.signed_at && (
                     <p className="text-[10px] text-muted-foreground">

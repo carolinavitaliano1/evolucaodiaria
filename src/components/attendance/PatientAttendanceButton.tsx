@@ -154,7 +154,7 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
               </Select>
               {selectedStamp?.stamp_image && (
                 <div className="mt-2 flex items-center gap-2">
-                  <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-12 w-auto rounded border border-border" />
+                  <img loading="lazy" decoding="async" src={selectedStamp.stamp_image} alt="Carimbo" className="h-12 w-auto rounded border border-border" />
                   <span className="text-[10px] text-muted-foreground">Preview do carimbo</span>
                 </div>
               )}

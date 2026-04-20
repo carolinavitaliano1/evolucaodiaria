@@ -141,7 +141,7 @@ export function MuralNoticesBell() {
                   )}
 
                   {n.image_url && (
-                    <img src={n.image_url} alt={n.title} className="w-full max-h-24 object-cover rounded-lg mb-1" />
+                    <img loading="lazy" decoding="async" src={n.image_url} alt={n.title} className="w-full max-h-24 object-cover rounded-lg mb-1" />
                   )}
 
                   {n.video_url && embedUrl && (
