@@ -1000,14 +1000,40 @@ export default function Financial() {
             );
             if (patientServices.length > 0) {
               const svcSum = patientServices.reduce((s: number, a: any) => s + (a.price || 0), 0);
+              const sessionsValue = baseValue;
+              // Linha 1: detalhamento de sessões
               ensureSpace(6);
               setFill(C.light);
               doc.rect(margin, y, contentW, 5.5, 'F');
               setTxt(C.mid);
               doc.setFont('helvetica', 'italic');
               doc.setFontSize(6.5);
-              const svcLabel = `↳ Inclui R$ ${svcSum.toFixed(2)} em ${patientServices.length} serviço(s): ${patientServices.map((a: any) => a.services?.name || 'Serviço').join(', ').substring(0, 90)}`;
-              doc.text(svcLabel, th.p + 4, y + 3.8);
+              doc.text(
+                `  - Sessoes (${sessions}): R$ ${sessionsValue.toFixed(2)}`,
+                th.p + 4,
+                y + 3.8
+              );
+              setDraw(C.border);
+              doc.setLineWidth(0.1);
+              doc.line(margin, y + 5.5, pageWidth - margin, y + 5.5);
+              y += 5.5;
+
+              // Linha 2: detalhamento de serviços
+              ensureSpace(6);
+              setFill(C.light);
+              doc.rect(margin, y, contentW, 5.5, 'F');
+              setTxt(C.mid);
+              doc.setFont('helvetica', 'italic');
+              doc.setFontSize(6.5);
+              const svcNames = patientServices
+                .map((a: any) => a.services?.name || 'Serviço')
+                .join(', ')
+                .substring(0, 80);
+              doc.text(
+                `  - Servicos (${patientServices.length}): R$ ${svcSum.toFixed(2)} - ${svcNames}`,
+                th.p + 4,
+                y + 3.8
+              );
               setDraw(C.border);
               doc.setLineWidth(0.1);
               doc.line(margin, y + 5.5, pageWidth - margin, y + 5.5);
