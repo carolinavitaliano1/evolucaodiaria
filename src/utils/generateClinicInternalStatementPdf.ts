@@ -488,8 +488,12 @@ export async function generateClinicInternalStatementPdf(
 
   const inadimplencia = grandTotal > 0 ? (grandPending / grandTotal) * 100 : 0;
   const totalPatients = blocks.length;
-  const paidPatients = blocks.filter(b => b.paymentStatus === 'pago').length;
-  const pendingPatients = blocks.filter(b => b.paymentStatus === 'pendente' || b.paymentStatus === 'parcial').length;
+  const paidPatients = isClinicFixedSalary
+    ? (clinicFixedReceived >= clinicFixedRevenue - 0.01 && clinicFixedRevenue > 0 ? totalPatients : 0)
+    : blocks.filter(b => b.paymentStatus === 'pago').length;
+  const pendingPatients = isClinicFixedSalary
+    ? (clinicFixedReceived >= clinicFixedRevenue - 0.01 ? 0 : totalPatients)
+    : blocks.filter(b => b.paymentStatus === 'pendente' || b.paymentStatus === 'parcial').length;
 
   // ===== EXECUTIVE SUMMARY =====
   ensure(46);
