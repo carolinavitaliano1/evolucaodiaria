@@ -57,7 +57,7 @@ interface EditableReceiptModalProps {
 }
 
 export function EditableReceiptModal({
-  open, onOpenChange, initial, therapist, clinic,
+  open, onOpenChange, initial, therapist, clinic, patientId,
 }: EditableReceiptModalProps) {
   const { user } = useAuth();
   const [stamps, setStamps] = useState<StampRow[]>([]);
