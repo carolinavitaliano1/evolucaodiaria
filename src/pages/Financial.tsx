@@ -240,34 +240,20 @@ export default function Financial() {
     let fixo = 0;
     let group = 0;
     for (const patient of patients) {
-      const billableEvolutions = monthlyEvolutions.filter(
-        e => e.patientId === patient.id && (
-          e.attendanceStatus === 'presente' ||
-          e.attendanceStatus === 'reposicao' ||
-          e.attendanceStatus === 'falta_remunerada' ||
-          e.attendanceStatus === 'feriado_remunerado'
-        )
-      );
-      const groupEvos = billableEvolutions.filter(e => e.groupId);
-      const individualEvos = billableEvolutions.filter(e => !e.groupId);
-
-      group += groupEvos.reduce((sum, e) => sum + getPatientGroupValue(patient.id, e.groupId), 0);
-
-      if (individualEvos.length > 0 && patient.paymentValue) {
-        if (patient.paymentType === 'fixo') {
-          const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
-          const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
-          const val = dynamic.occurrences > 0
-            ? individualEvos.length * dynamic.perSession
-            : individualEvos.length * patient.paymentValue;
-          fixo += val;
-        } else {
-          individualSession += individualEvos.length * getEffectiveSessionValue(patient);
-        }
+      const ctx = buildRevenueCtx(patient.id);
+      if (!ctx) continue;
+      const breakdown = calculatePatientMonthlyRevenue(ctx);
+      group += breakdown.groupRevenue;
+      // Individual + faltas cobradas vão para "fixo" se o paciente é mensalista
+      const individualPart = breakdown.individualRevenue + breakdown.chargedAbsenceRevenue;
+      if (patient.paymentType === 'fixo') {
+        fixo += individualPart;
+      } else {
+        individualSession += individualPart;
       }
     }
     return { revenueIndividualSession: individualSession, revenueFixo: fixo, revenueGroup: group };
-  }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear]);
+  }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear, clinics]);
 
   const totalServicesRevenue = privateRevenue;
 
