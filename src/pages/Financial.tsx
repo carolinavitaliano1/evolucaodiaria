@@ -296,8 +296,26 @@ export default function Financial() {
     const hasGroupEvos = patientEvos.some(e => e.groupId);
     const hasIndividualEvos = patientEvos.some(e => !e.groupId);
     const tipoLabel = patient.paymentType === 'fixo' ? 'Fixo' : (hasGroupEvos && hasIndividualEvos ? 'Sessão/Grupo' : hasGroupEvos ? 'Grupo' : 'Sessão');
-    return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0, pr, tipoLabel };
-  }).filter(p => p.sessions > 0 || p.paidAbsences > 0 || p.absences > 0 || p.revenue > 0 || p.loss > 0);
+
+    // Rateio proporcional: somente para clínicas com salário fixo (mensal/diário).
+    // Valor informativo — NÃO entra no Faturamento Total.
+    let proportionalShare: ReturnType<typeof calculatePatientProportionalShare> | null = null;
+    if (clinic && (isClinicFixedMonthly(clinic.paymentType) || isClinicFixedDaily(clinic.paymentType))) {
+      const clinicPatients = patients.filter(p => p.clinicId === clinic.id && !p.isArchived);
+      const clinicEvos: EvolutionLike[] = monthlyEvolutions
+        .filter(e => clinicPatients.some(p => p.id === e.patientId))
+        .map(e => ({
+          id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
+          attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance, userId: e.userId,
+        }));
+      proportionalShare = calculatePatientProportionalShare({
+        patient, clinic, allClinicPatients: clinicPatients, allClinicEvolutions: clinicEvos,
+        month: selectedMonth, year: selectedYear,
+      });
+    }
+
+    return { patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType: patient.paymentType, paymentValue: patient.paymentValue || 0, pr, tipoLabel, proportionalShare };
+  }).filter(p => p.sessions > 0 || p.paidAbsences > 0 || p.absences > 0 || p.revenue > 0 || p.loss > 0 || (p.proportionalShare?.share ?? 0) > 0);
 
   // Apply filters
   const patientStats = allPatientStats.filter(({ pr, patient }) => {
@@ -1422,26 +1440,18 @@ export default function Financial() {
             <tbody>
               {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr, tipoLabel, proportionalShare }) => (
                 <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
-                  <td className="py-3 px-3 text-foreground text-xs">
-                    <button
-                      onClick={() => navigate(`/patient/${patient.id}#financeiro`)}
-                      className="text-left hover:text-primary hover:underline transition-colors font-medium"
-                    >
-                      {patient.name}
-                    </button>
-                  </td>
+                  <td className="py-3 px-3 text-foreground text-xs font-medium">{patient.name}</td>
                   <td className="py-3 px-3 text-muted-foreground text-xs hidden sm:table-cell">{clinic?.name}</td>
                   <td className="py-3 px-3 text-xs">
                     <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent')}>
                       {tipoLabel || (paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`)}
                     </span>
                   </td>
-                  {/* keep middle cells unchanged */}
                   <td className="py-3 px-3 text-center text-foreground text-xs">{sessions}</td>
                   <td className="py-3 px-3 text-center text-foreground text-xs">{absences}</td>
                   <td className="py-3 px-3 text-center">
                     <button
-                      onClick={() => togglePatientPaid(patient.id)}
+                      onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
                       disabled={savingPatientPayment === patient.id}
                       className={cn(
                         'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors',
