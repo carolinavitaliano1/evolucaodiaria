@@ -730,6 +730,37 @@ export async function generateClinicInternalStatementPdf(
   doc.setTextColor(255, 255, 255);
   doc.text(`Inadimplência: ${inadimplencia.toFixed(1)}%`, W - M - 3, y + 19, { align: 'right' });
 
+  y += 26;
+
+  // ===== Insight para clínicas com salário fixo =====
+  if (isClinicFixedSalary && clinicFixedRevenue > 0) {
+    const totalSessions = blocks.reduce(
+      (acc, b) => acc + b.rows.filter(r => r.type === 'Sessão').length,
+      0,
+    );
+    const patientsCount = blocks.length;
+    const perSession = totalSessions > 0 ? clinicFixedRevenue / totalSessions : 0;
+    const perPatient = patientsCount > 0 ? clinicFixedRevenue / patientsCount : 0;
+
+    ensure(28);
+    doc.setFillColor(245, 246, 250);
+    doc.rect(M, y, contentW, 22, 'F');
+    doc.setDrawColor(...accent); doc.setLineWidth(0.4);
+    doc.line(M, y, M, y + 22);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...accent);
+    doc.text('RESUMO DO MÊS (salário fixo rateado)', M + 4, y + 6);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...dark);
+    doc.text(
+      `Este mês você recebeu ${fmtBRL(perSession)} por atendimento (${totalSessions} sessões realizadas).`,
+      M + 4, y + 12,
+    );
+    doc.text(
+      `E ${fmtBRL(perPatient)} por paciente atendido (${patientsCount} paciente${patientsCount !== 1 ? 's' : ''}).`,
+      M + 4, y + 18,
+    );
+    y += 26;
+  }
+
   // FOOTER
   const pages = (doc as any).internal.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
