@@ -94,7 +94,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   useEffect(() => {
     supabase
       .from('private_appointments')
-      .select('id, price, status, paid, payment_date, date, time, client_name, services(name)')
+      .select('id, price, status, paid, payment_date, date, time, client_name, patient_id, services(name), patients(name)')
       .eq('clinic_id', clinicId)
       .order('date', { ascending: false })
       .then(({ data }) => {
@@ -109,6 +109,8 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             time: d.time,
             client_name: d.client_name,
             service_name: d.services?.name ?? null,
+            patient_id: d.patient_id ?? null,
+            patient_name: d.patients?.name ?? null,
           })));
         }
       });
