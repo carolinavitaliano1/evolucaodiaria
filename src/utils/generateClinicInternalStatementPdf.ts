@@ -652,7 +652,8 @@ export async function generateClinicInternalStatementPdf(
       const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? billable;
       sessionInfoBilled = `${billable}/${totalSlots} sessões`;
     } else {
-      sessionInfoBilled = `Valor/sessão: ${fmtBRL(b.perSession)}`;
+      const billable = b.rows.filter(r => r.type === 'Sessão' && r.amount > 0).length;
+      sessionInfoBilled = `${billable} sessão(ões) cobrável(is)`;
     }
     doc.text(`${b.packageLabel}  •  ${sessionInfoBilled}`, M + 2, y + 10);
 
