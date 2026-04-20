@@ -979,6 +979,26 @@ export default function Financial() {
             doc.line(margin, y + 7.5, pageWidth - margin, y + 7.5);
             y += 7.5;
             rowIdx++;
+
+            // Sub-line: serviços prestados ao paciente no mês (auditoria)
+            const patientServices = linkedServiceAppointments.filter(
+              (a: any) => a.patient_id === patient.id && a.status === 'concluído'
+            );
+            if (patientServices.length > 0) {
+              const svcSum = patientServices.reduce((s: number, a: any) => s + (a.price || 0), 0);
+              ensureSpace(6);
+              setFill(C.light);
+              doc.rect(margin, y, contentW, 5.5, 'F');
+              setTxt(C.mid);
+              doc.setFont('helvetica', 'italic');
+              doc.setFontSize(6.5);
+              const svcLabel = `↳ + R$ ${svcSum.toFixed(2)} em ${patientServices.length} serviço(s): ${patientServices.map((a: any) => a.services?.name || 'Serviço').join(', ').substring(0, 90)}`;
+              doc.text(svcLabel, th.p + 4, y + 3.8);
+              setDraw(C.border);
+              doc.setLineWidth(0.1);
+              doc.line(margin, y + 5.5, pageWidth - margin, y + 5.5);
+              y += 5.5;
+            }
           });
           y += 3; // space between clinic groups
         });
