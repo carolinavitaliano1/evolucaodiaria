@@ -744,24 +744,35 @@ export async function generateClinicInternalStatementPdf(
   }
 
   // ===== GRAND TOTAL =====
-  ensure(28);
+  const grandBoxH = clinicDiscountPct > 0 && !isClinicFixedSalary ? 30 : 22;
+  ensure(grandBoxH + 6);
   y += 2;
   doc.setFillColor(...accent);
-  doc.rect(M, y, contentW, 22, 'F');
+  doc.rect(M, y, contentW, grandBoxH, 'F');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255);
   doc.text('TOTAL GERAL DA CLÍNICA', M + 3, y + 6);
   doc.setFontSize(14);
   doc.text(fmtBRL(grandTotal), W - M - 3, y + 8, { align: 'right' });
 
+  if (clinicDiscountPct > 0 && !isClinicFixedSalary) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+    doc.setTextColor(210, 220, 245);
+    doc.text(
+      `Bruto: ${fmtBRL(grossGrandTotal)}  −  Desconto da clínica (${clinicDiscountPct}%): ${fmtBRL(grandDiscount)}`,
+      W - M - 3, y + 13, { align: 'right' },
+    );
+  }
+
+  const baseY = clinicDiscountPct > 0 && !isClinicFixedSalary ? y + 6 : y;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
   doc.setTextColor(180, 230, 200);
-  doc.text(`Recebido: ${fmtBRL(grandReceived)}`, M + 3, y + 14);
+  doc.text(`Recebido: ${fmtBRL(grandReceived)}`, M + 3, baseY + 14);
   doc.setTextColor(255, 220, 180);
-  doc.text(`Pendente: ${fmtBRL(grandPending)}`, M + 3, y + 19);
+  doc.text(`Pendente: ${fmtBRL(grandPending)}`, M + 3, baseY + 19);
   doc.setTextColor(255, 255, 255);
-  doc.text(`Inadimplência: ${inadimplencia.toFixed(1)}%`, W - M - 3, y + 19, { align: 'right' });
+  doc.text(`Inadimplência: ${inadimplencia.toFixed(1)}%`, W - M - 3, baseY + 19, { align: 'right' });
 
-  y += 26;
+  y += grandBoxH + 4;
 
   // ===== Insight para clínicas com salário fixo =====
   if (isClinicFixedSalary && clinicFixedRevenue > 0) {
