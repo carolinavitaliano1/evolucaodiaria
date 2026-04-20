@@ -634,9 +634,9 @@ export async function generateClinicInternalStatementPdf(
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...accent);
     doc.text(b.info.name, M + 2, y + 5);
 
-    // Status badge on right (top) — hide for fixed salary clinics
+    // Status badge on right (top) — hide for fixed salary clinics e quando vazio
     const badge = statusBadge(b.paymentStatus);
-    if (!isClinicFixedSalary) {
+    if (!isClinicFixedSalary && badge.label) {
       doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...badge.color);
       doc.text(badge.label, W - M - 2, y + 5, { align: 'right' });
     }
