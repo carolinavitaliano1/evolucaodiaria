@@ -30,6 +30,7 @@ function dayLabel(dateStr: string): string {
 export function MissingEvolutionsAlert() {
   const { patients, appointments } = useApp();
   const { user } = useAuth();
+  const { isDateBlocked } = useCalendarBlocks();
   const navigate = useNavigate();
   const [missing, setMissing] = useState<PendingEntry[]>([]);
 
@@ -41,7 +42,8 @@ export function MissingEvolutionsAlert() {
   useEffect(() => {
     if (!user || patients.length === 0) return;
     computeMissing();
-  }, [user, patients, appointments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, patients, appointments, isDateBlocked]);
 
   async function computeMissing() {
     const now = new Date();
