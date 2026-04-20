@@ -503,9 +503,9 @@ export async function generateClinicInternalStatementPdf(
   const grossGrandTotal = (isClinicFixedSalary ? clinicFixedRevenue : patientsRevenueTotal) + orphanTotal;
   const grossGrandReceived = (isClinicFixedSalary ? clinicFixedReceived : patientsReceivedTotal) + orphanReceived;
 
-  // Salário fixo não recebe desconto percentual; demais modelos sim
-  const grandTotal = isClinicFixedSalary ? grossGrandTotal : grossGrandTotal * clinicDiscountFactor;
-  const grandReceived = isClinicFixedSalary ? grossGrandReceived : grossGrandReceived * clinicDiscountFactor;
+  // Desconto da clínica é aplicado SOMENTE no Total Geral, para todos os modelos (inclusive salário fixo).
+  const grandTotal = grossGrandTotal * clinicDiscountFactor;
+  const grandReceived = grossGrandReceived * clinicDiscountFactor;
   const grandPending = Math.max(0, grandTotal - grandReceived);
   const grandDiscount = grossGrandTotal - grandTotal;
 
@@ -563,7 +563,7 @@ export async function generateClinicInternalStatementPdf(
   doc.text(`Serviços avulsos: ${orphanServices.length}`, M + 3 + kpiW * 3, subY);
 
   doc.setFontSize(7); doc.setTextColor(...muted);
-  doc.text(`Total de sessões registradas: ${evolutions.length}  •  Serviços vinculados: ${services.length - orphanServices.length}${clinicDiscountPct > 0 && !isClinicFixedSalary ? `  •  Desconto da clínica (${clinicDiscountPct}%) aplicado apenas no Total Geral` : ''}`, M + 3, y + 42);
+  doc.text(`Total de sessões registradas: ${evolutions.length}  •  Serviços vinculados: ${services.length - orphanServices.length}${clinicDiscountPct > 0 ? `  •  Desconto da clínica (${clinicDiscountPct}%) aplicado apenas no Total Geral` : ''}`, M + 3, y + 42);
 
   y += summaryH + 4;
 
@@ -744,7 +744,7 @@ export async function generateClinicInternalStatementPdf(
   }
 
   // ===== GRAND TOTAL =====
-  const grandBoxH = clinicDiscountPct > 0 && !isClinicFixedSalary ? 30 : 22;
+  const grandBoxH = clinicDiscountPct > 0 ? 30 : 22;
   ensure(grandBoxH + 6);
   y += 2;
   doc.setFillColor(...accent);
@@ -754,7 +754,7 @@ export async function generateClinicInternalStatementPdf(
   doc.setFontSize(14);
   doc.text(fmtBRL(grandTotal), W - M - 3, y + 8, { align: 'right' });
 
-  if (clinicDiscountPct > 0 && !isClinicFixedSalary) {
+  if (clinicDiscountPct > 0) {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
     doc.setTextColor(210, 220, 245);
     doc.text(
@@ -763,7 +763,7 @@ export async function generateClinicInternalStatementPdf(
     );
   }
 
-  const baseY = clinicDiscountPct > 0 && !isClinicFixedSalary ? y + 6 : y;
+  const baseY = clinicDiscountPct > 0 ? y + 6 : y;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
   doc.setTextColor(180, 230, 200);
   doc.text(`Recebido: ${fmtBRL(grandReceived)}`, M + 3, baseY + 14);
