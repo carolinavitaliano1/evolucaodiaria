@@ -93,7 +93,6 @@ function getTodayWeekday() {
 
 function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, clinic, therapistName, therapistProfessionalId, therapistCbo, therapistClinicalArea, therapistStampImage, therapistSignatureImage }: { clinicId: string; clinicName?: string; clinicAddress?: string; clinicLetterhead?: string; clinic?: Clinic; therapistName?: string; therapistProfessionalId?: string; therapistCbo?: string; therapistClinicalArea?: string; therapistStampImage?: string | null; therapistSignatureImage?: string | null }) {
   const { user } = useAuth();
-  const { hasAI } = useFeatureAccess();
   const [reports, setReports] = useState<{ id: string; title: string; content: string; created_at: string }[]>([]);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
 
