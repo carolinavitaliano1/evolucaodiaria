@@ -45,8 +45,6 @@ const PLANS: PlanDef[] = [
       'Tudo do plano Básico',
       'Inteligência Artificial completa (Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA)',
       'Portal do Paciente (convites, fichas, mensagens)',
-      'Gestão de Equipe e multi-profissionais',
-      'Conformidade e financeiro de equipe',
       '30 dias grátis para testar',
     ],
   },
@@ -62,8 +60,6 @@ const COMPARISON: { label: string; basic: boolean; pro: boolean }[] = [
   { label: 'Feedbacks IA para responsáveis', basic: false, pro: true },
   { label: 'Relatórios IA', basic: false, pro: true },
   { label: 'Portal do Paciente', basic: false, pro: true },
-  { label: 'Gestão de Equipe', basic: false, pro: true },
-  { label: 'Conformidade e financeiro de equipe', basic: false, pro: true },
 ];
 
 export default function Pricing() {
@@ -101,7 +97,7 @@ export default function Pricing() {
       <div className="text-center mb-2">
         <h1 className="text-3xl font-bold text-foreground mb-3">Escolha seu plano</h1>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Comece com o Básico e cresça para o Pro quando precisar de IA, Portal do Paciente e Gestão de Equipe.
+          Comece com o Básico e cresça para o Pro quando precisar de IA e Portal do Paciente.
         </p>
         <p className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary">
           <Sparkles className="w-4 h-4" />
