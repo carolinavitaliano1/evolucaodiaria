@@ -490,8 +490,6 @@ export default function Landing() {
                 <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Tudo do Básico</span></li>
                 <li className="flex items-start gap-2"><Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>IA completa: Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA</span></li>
                 <li className="flex items-start gap-2"><UserPlus className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Portal do Paciente (convites, fichas, mensagens)</span></li>
-                <li className="flex items-start gap-2"><Users className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Gestão de Equipe e multi-profissionais</span></li>
-                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> Conformidade e financeiro de equipe</li>
                 <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> 30 dias grátis</li>
               </ul>
               <Button className="w-full gradient-primary" onClick={() => navigate('/auth')}>
