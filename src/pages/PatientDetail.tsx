@@ -1680,14 +1680,28 @@ export default function PatientDetail() {
         ...(tIndivCount > 0 ? [['Receita sessões individuais:', `R$ ${(tRevenue - tGroupRevenue).toFixed(2)}`] as [string, string]] : []),
         ['TOTAL FATURADO NO MÊS:', `R$ ${tRevenue.toFixed(2)}`],
       ];
-      finRows.forEach(([label, value], i) => {
-        const isBold = i === finRows.length - 1;
+      const drawDottedRow = (label: string, value: string, isBold: boolean) => {
         doc.setFont('helvetica', isBold ? 'bold' : 'normal');
         doc.setFontSize(9); doc.setTextColor(...(isBold ? accentDark : darkText));
         doc.text(label, margin + 4, y);
         doc.setFont('helvetica', 'bold');
         doc.text(value, W - margin - 2, y, { align: 'right' });
+        // Dot leader between label and value
+        const labelW = doc.getTextWidth(label);
+        doc.setFont('helvetica', 'normal');
+        const valueW = doc.getTextWidth(value);
+        const dotsStart = margin + 4 + labelW + 1.5;
+        const dotsEnd = W - margin - 2 - valueW - 1.5;
+        if (dotsEnd > dotsStart) {
+          doc.setTextColor(...mutedText);
+          const dotW = doc.getTextWidth('.');
+          const count = Math.max(0, Math.floor((dotsEnd - dotsStart) / dotW));
+          if (count > 0) doc.text('.'.repeat(count), dotsStart, y);
+        }
         y += 5;
+      };
+      finRows.forEach(([label, value], i) => {
+        drawDottedRow(label, value, i === finRows.length - 1);
       });
       doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 7;
 
