@@ -187,25 +187,9 @@ export function AppSidebar() {
                 </NavLink>
               )}
 
-              {/* Equipe — logo após Mural */}
+              {/* Equipe — logo após Mural. Sempre clicável: a página /team
+                   já exibe a mensagem de "Em desenvolvimento" / upsell Pro. */}
               {to === '/mural' && showTeam && (
-                teamLocked ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div
-                        onClick={() => window.location.assign('/pricing')}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-60 cursor-pointer hover:bg-accent select-none"
-                      >
-                        <UsersRound className="w-[18px] h-[18px] text-muted-foreground" />
-                        <span className="text-sm font-medium flex-1 text-foreground">Equipe</span>
-                        <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="text-xs">
-                      Disponível no plano Pro
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
                 <NavLink
                   to="/team"
                   className={cn(
@@ -224,8 +208,8 @@ export function AppSidebar() {
                   )}>
                     Equipe
                   </span>
+                  {teamLocked && <Lock className="w-3 h-3 text-muted-foreground shrink-0" />}
                 </NavLink>
-                )
               )}
             </div>
           );
