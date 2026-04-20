@@ -14,6 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { AIUpgradeDialog } from '@/components/AIUpgradeDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -265,6 +267,7 @@ export default function ClinicDetail() {
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string; packageType: 'mensal' | 'por_sessao' | 'personalizado'; sessionLimit: string} | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [improvingBatchTemplateFieldId, setImprovingBatchTemplateFieldId] = useState<string | null>(null);
+  const [aiUpgradeOpen, setAiUpgradeOpen] = useState(false);
   const [batchSearch, setBatchSearch] = useState('');
   const [batchFilterByDay, setBatchFilterByDay] = useState(true);
   const [patientSearch, setPatientSearch] = useState('');
@@ -272,6 +275,7 @@ export default function ClinicDetail() {
   const [batchSelectedTemplateId, setBatchSelectedTemplateId] = useState<string>('none');
   const [batchTemplateFormValues, setBatchTemplateFormValues] = useState<Record<string, any>>({});
   const { user } = useAuth();
+  const { hasAI } = useFeatureAccess();
 
   // Lazy-load evolutions and appointments for this clinic
   useEffect(() => {
@@ -2390,6 +2394,7 @@ export default function ClinicDetail() {
                                     onClick={async () => {
                                       const currentVal = batchTemplateFormValues[field.id];
                                       if (!currentVal?.trim()) return;
+                                      if (!hasAI) { setAiUpgradeOpen(true); return; }
                                       setImprovingBatchTemplateFieldId(field.id);
                                       try {
                                         const { data, error } = await supabase.functions.invoke('improve-evolution', {
@@ -2439,6 +2444,7 @@ export default function ClinicDetail() {
                           disabled={!batchEvolutionText.trim() || isImprovingBatchText}
                           onClick={async () => {
                             if (!batchEvolutionText.trim()) return;
+                            if (!hasAI) { setAiUpgradeOpen(true); return; }
                             setIsImprovingBatchText(true);
                             try {
                               const { data, error } = await supabase.functions.invoke('improve-evolution', {
@@ -2946,6 +2952,7 @@ export default function ClinicDetail() {
                   className="mt-2 gap-2"
                   disabled={!quickEvolutionText.trim() || isImprovingQuickText}
                   onClick={async () => {
+                    if (!hasAI) { setAiUpgradeOpen(true); return; }
                     setIsImprovingQuickText(true);
                     try {
                       const { data, error } = await supabase.functions.invoke('improve-evolution', {
@@ -3176,6 +3183,7 @@ export default function ClinicDetail() {
           }}
         />
       )}
+      <AIUpgradeDialog open={aiUpgradeOpen} onOpenChange={setAiUpgradeOpen} />
     </div>
   );
 }
