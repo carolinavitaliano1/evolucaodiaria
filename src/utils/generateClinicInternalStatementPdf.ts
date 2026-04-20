@@ -116,7 +116,7 @@ export async function generateClinicInternalStatementPdf(
   const lastDay = new Date(year, month + 1, 0).getDate();
   const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-  const [svcRes, payRes, patRes, evoRes, pkgRes, clinicRes] = await Promise.all([
+  const [svcRes, payRes, patRes, evoRes, pkgRes, clinicRes, clinicPayRes] = await Promise.all([
     supabase
       .from('private_appointments')
       .select('id, date, time, price, status, paid, patient_id, client_name, services(name)')
@@ -148,10 +148,24 @@ export async function generateClinicInternalStatementPdf(
       .select('payment_type, payment_amount')
       .eq('id', clinicId)
       .maybeSingle(),
+    supabase
+      .from('clinic_payment_records')
+      .select('amount, paid, payment_date')
+      .eq('clinic_id', clinicId)
+      .eq('month', month + 1)
+      .eq('year', year)
+      .maybeSingle(),
   ]);
 
   const clinicPayInfo: { payment_type: string | null; payment_amount: number | null } | null =
     (clinicRes.data as any) ?? null;
+
+  const isClinicFixedSalary =
+    clinicPayInfo?.payment_type === 'fixo_mensal' ||
+    clinicPayInfo?.payment_type === 'fixo' ||
+    clinicPayInfo?.payment_type === 'mensal' ||
+    clinicPayInfo?.payment_type === 'fixo_diario' ||
+    clinicPayInfo?.payment_type === 'fixo_dia';
 
   const services: PrivateApt[] = (svcRes.data || []).map((d: any) => ({
     id: d.id,
@@ -287,7 +301,16 @@ export async function generateClinicInternalStatementPdf(
     let perSession = 0;
     let packageLabel = '';
 
-    if (pkg?.package_type === 'sessao') {
+    // Quando a clínica é de salário fixo, ignoramos a mensalidade do paciente
+    // e mostramos apenas as sessões com valor zero (a receita real é da clínica).
+    const treatAsFixedSalary = isClinicFixedSalary;
+
+    if (treatAsFixedSalary) {
+      perSession = 0;
+      packageLabel = clinicPayInfo?.payment_type === 'fixo_diario' || clinicPayInfo?.payment_type === 'fixo_dia'
+        ? 'Salário fixo da clínica (por dia)'
+        : 'Salário fixo da clínica (mensal)';
+    } else if (pkg?.package_type === 'sessao') {
       perSession = Number(pkg.price) || 0;
       packageLabel = `Por sessão • ${pkg.name}`;
     } else if (pkg?.package_type === 'personalizado') {
@@ -308,7 +331,20 @@ export async function generateClinicInternalStatementPdf(
     let sessionsTotal = 0;
     let deductionTotal = 0;
 
-    if (isMensal) {
+    if (treatAsFixedSalary) {
+      // Sessões listadas apenas para visibilidade — sem cobrança individual.
+      pEvos.forEach(e => {
+        rows.push({
+          date: e.date,
+          type: 'Sessão',
+          description: 'Atendimento (salário fixo da clínica)',
+          status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
+          amount: 0,
+          paid: false,
+        });
+      });
+      sessionsTotal = 0;
+    } else if (isMensal) {
       // For mensalistas: monthly fee divided per actual occurrences
       const billableEvos = pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status));
       const absences = pEvos.filter(e => e.attendance_status === 'falta');
@@ -379,12 +415,14 @@ export async function generateClinicInternalStatementPdf(
     const servicesTotal = pSvcs.reduce((acc, s) => acc + s.price, 0);
     const patientTotal = sessionsTotal + servicesTotal;
 
-    if (patientTotal === 0 && rows.length === 0) continue;
+    if (patientTotal === 0 && rows.length === 0 && !treatAsFixedSalary) continue;
 
     // Payment status calculation
     let received = 0;
-    if (isMensal) {
-      if (pPay?.paid) received += sessionsTotal; // monthly minus deductions
+    if (treatAsFixedSalary) {
+      received = 0;
+    } else if (isMensal) {
+      if (pPay?.paid) received += sessionsTotal;
     } else {
       if (pPay?.paid) received += sessionsTotal;
     }
@@ -392,7 +430,8 @@ export async function generateClinicInternalStatementPdf(
     const pending = Math.max(0, patientTotal - received);
 
     let paymentStatus: PatientBlock['paymentStatus'] = 'sem_registro';
-    if (patientTotal === 0) paymentStatus = 'pago';
+    if (treatAsFixedSalary) paymentStatus = 'sem_registro';
+    else if (patientTotal === 0) paymentStatus = 'pago';
     else if (received >= patientTotal - 0.01) paymentStatus = 'pago';
     else if (received > 0) paymentStatus = 'parcial';
     else paymentStatus = 'pendente';
@@ -420,14 +459,41 @@ export async function generateClinicInternalStatementPdf(
   const orphanTotal = orphanServices.reduce((acc, s) => acc + s.price, 0);
   const orphanReceived = orphanServices.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
 
-  const grandTotal = blocks.reduce((acc, b) => acc + b.patientTotal, 0) + orphanTotal;
-  const grandReceived = blocks.reduce((acc, b) => acc + b.received, 0) + orphanReceived;
+  // Para clínicas com salário fixo: a "receita" da clínica é o salário (mensal) ou
+  // salário diário × dias trabalhados (dias únicos com sessões cobráveis).
+  let clinicFixedRevenue = 0;
+  if (isClinicFixedSalary) {
+    if (clinicPayInfo?.payment_type === 'fixo_diario' || clinicPayInfo?.payment_type === 'fixo_dia') {
+      const billableDays = new Set<string>();
+      evolutions.forEach(e => {
+        if (COUNTS_AS_BILLABLE(e.attendance_status)) billableDays.add(e.date);
+      });
+      clinicFixedRevenue = Number(clinicPayInfo?.payment_amount || 0) * billableDays.size;
+    } else {
+      clinicFixedRevenue = Number(clinicPayInfo?.payment_amount || 0);
+    }
+  }
+
+  const clinicPayRecord = (clinicPayRes.data as any) || null;
+  const clinicFixedReceived = isClinicFixedSalary && clinicPayRecord?.paid
+    ? Number(clinicPayRecord?.amount ?? clinicFixedRevenue)
+    : 0;
+
+  const patientsRevenueTotal = blocks.reduce((acc, b) => acc + b.patientTotal, 0);
+  const patientsReceivedTotal = blocks.reduce((acc, b) => acc + b.received, 0);
+
+  const grandTotal = (isClinicFixedSalary ? clinicFixedRevenue : patientsRevenueTotal) + orphanTotal;
+  const grandReceived = (isClinicFixedSalary ? clinicFixedReceived : patientsReceivedTotal) + orphanReceived;
   const grandPending = Math.max(0, grandTotal - grandReceived);
 
   const inadimplencia = grandTotal > 0 ? (grandPending / grandTotal) * 100 : 0;
   const totalPatients = blocks.length;
-  const paidPatients = blocks.filter(b => b.paymentStatus === 'pago').length;
-  const pendingPatients = blocks.filter(b => b.paymentStatus === 'pendente' || b.paymentStatus === 'parcial').length;
+  const paidPatients = isClinicFixedSalary
+    ? (clinicFixedReceived >= clinicFixedRevenue - 0.01 && clinicFixedRevenue > 0 ? totalPatients : 0)
+    : blocks.filter(b => b.paymentStatus === 'pago').length;
+  const pendingPatients = isClinicFixedSalary
+    ? (clinicFixedReceived >= clinicFixedRevenue - 0.01 ? 0 : totalPatients)
+    : blocks.filter(b => b.paymentStatus === 'pendente' || b.paymentStatus === 'parcial').length;
 
   // ===== EXECUTIVE SUMMARY =====
   ensure(46);
@@ -548,7 +614,10 @@ export async function generateClinicInternalStatementPdf(
     // Subtitle: package + session counter
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...muted);
     let sessionInfoBilled: string;
-    if (b.isMensal) {
+    if (isClinicFixedSalary) {
+      const sessionsCount = b.rows.filter(r => r.type === 'Sessão').length;
+      sessionInfoBilled = `${sessionsCount} sessão(ões) registrada(s)`;
+    } else if (b.isMensal) {
       const billable = b.rows.filter(r => r.type === 'Sessão' && r.amount > 0).length;
       const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? billable;
       sessionInfoBilled = `${billable}/${totalSlots} sessões`;
@@ -558,7 +627,10 @@ export async function generateClinicInternalStatementPdf(
     doc.text(`${b.packageLabel}  •  ${sessionInfoBilled}`, M + 2, y + 10);
 
     // Right side under badge: monthly value + weekly breakdown for mensalistas
-    if (b.isMensal && b.monthlyValue > 0) {
+    if (isClinicFixedSalary) {
+      doc.setTextColor(...muted); doc.setFontSize(7.5); doc.setFont('helvetica', 'italic');
+      doc.text('Sem cobrança individual', W - M - 2, y + 10, { align: 'right' });
+    } else if (b.isMensal && b.monthlyValue > 0) {
       const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? 0;
       const detail = totalSlots > 0
         ? `${fmtBRL(b.monthlyValue)}/mês  (Mês de ${totalSlots} semanas: ${fmtBRL(b.perSession)}/sessão)`
@@ -576,19 +648,28 @@ export async function generateClinicInternalStatementPdf(
     doc.setDrawColor(...border); doc.line(M, y + 0.5, W - M, y + 0.5); y += 4;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...dark);
     doc.text(`Subtotal — ${b.info.name}`, M + 2, y);
-    doc.text(fmtBRL(b.patientTotal), W - M - 2, y, { align: 'right' });
+    if (isClinicFixedSalary) {
+      doc.setTextColor(...muted); doc.setFont('helvetica', 'italic');
+      doc.text('—  (incluso no salário fixo)', W - M - 2, y, { align: 'right' });
+    } else {
+      doc.text(fmtBRL(b.patientTotal), W - M - 2, y, { align: 'right' });
+    }
     y += 4;
 
-    // Recebido / pendente line
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...green);
-    doc.text(`Recebido: ${fmtBRL(b.received)}`, M + 2, y);
-    doc.setTextColor(...orange);
-    doc.text(`Pendente: ${fmtBRL(b.pending)}`, M + 50, y);
-    if (b.deductionTotal > 0) {
-      doc.setTextColor(...red);
-      doc.text(`Deduções: ${fmtBRL(b.deductionTotal)}`, M + 100, y);
+    // Recebido / pendente line — omit for fixed salary clinics (handled at clinic level)
+    if (!isClinicFixedSalary) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...green);
+      doc.text(`Recebido: ${fmtBRL(b.received)}`, M + 2, y);
+      doc.setTextColor(...orange);
+      doc.text(`Pendente: ${fmtBRL(b.pending)}`, M + 50, y);
+      if (b.deductionTotal > 0) {
+        doc.setTextColor(...red);
+        doc.text(`Deduções: ${fmtBRL(b.deductionTotal)}`, M + 100, y);
+      }
+      y += 7;
+    } else {
+      y += 3;
     }
-    y += 7;
   }
 
   // ===== ORPHAN SERVICES =====
