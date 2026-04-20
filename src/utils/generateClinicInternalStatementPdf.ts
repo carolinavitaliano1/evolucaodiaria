@@ -153,6 +153,13 @@ export async function generateClinicInternalStatementPdf(
   const clinicPayInfo: { payment_type: string | null; payment_amount: number | null } | null =
     (clinicRes.data as any) ?? null;
 
+  const isClinicFixedSalary =
+    clinicPayInfo?.payment_type === 'fixo_mensal' ||
+    clinicPayInfo?.payment_type === 'fixo' ||
+    clinicPayInfo?.payment_type === 'mensal' ||
+    clinicPayInfo?.payment_type === 'fixo_diario' ||
+    clinicPayInfo?.payment_type === 'fixo_dia';
+
   const services: PrivateApt[] = (svcRes.data || []).map((d: any) => ({
     id: d.id,
     date: d.date,
