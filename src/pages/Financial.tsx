@@ -937,8 +937,14 @@ export default function Financial() {
             const clinicPr = isContratante ? clinicPaymentRecords[clinic?.id || ''] : null;
             const effectivePaid = isContratante ? !!clinicPr?.paid : !!pr?.paid;
             const effectiveDate = isContratante ? clinicPr?.payment_date : pr?.payment_date;
+            // Soma serviços vinculados prestados a este paciente no mês
+            const patientLinkedServices = linkedServiceAppointments.filter(
+              (a: any) => a.patient_id === patient.id && a.status === 'concluído'
+            );
+            const patientServicesTotal = patientLinkedServices.reduce((s: number, a: any) => s + (a.price || 0), 0);
             // For fixed-salary clinics (Eden etc.), revenue is 0 per-patient; use proportional share
-            const displayValue = revenue > 0 ? revenue : (proportionalShare?.share ?? 0);
+            const baseValue = revenue > 0 ? revenue : (proportionalShare?.share ?? 0);
+            const displayValue = baseValue + patientServicesTotal;
             const isProportional = revenue === 0 && (proportionalShare?.share ?? 0) > 0;
 
             setFill(rowIdx % 2 === 0 ? C.white : C.rowAlt);
