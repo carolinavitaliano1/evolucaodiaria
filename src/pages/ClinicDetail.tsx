@@ -14,6 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { AIUpgradeDialog } from '@/components/AIUpgradeDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -265,6 +267,7 @@ export default function ClinicDetail() {
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string; packageType: 'mensal' | 'por_sessao' | 'personalizado'; sessionLimit: string} | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [improvingBatchTemplateFieldId, setImprovingBatchTemplateFieldId] = useState<string | null>(null);
+  const [aiUpgradeOpen, setAiUpgradeOpen] = useState(false);
   const [batchSearch, setBatchSearch] = useState('');
   const [batchFilterByDay, setBatchFilterByDay] = useState(true);
   const [patientSearch, setPatientSearch] = useState('');
