@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DollarSign, Loader2, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase, CheckCircle2, Clock, XCircle, CalendarIcon, FileDown, CalendarDays, Receipt } from 'lucide-react';
 import { PatientBillingManager } from './PatientBillingManager';
-import { calculatePatientMonthlyRevenue, getIndividualPerSessionValue, resolveAbsencePaymentType, shouldChargeAbsence, isBillableStatus, type EvolutionLike } from '@/utils/financialHelpers';
+import { calculatePatientMonthlyRevenue, calculateClinicMonthlyRevenue, getIndividualPerSessionValue, resolveAbsencePaymentType, shouldChargeAbsence, isBillableStatus, isClinicFixedMonthly, isClinicFixedDaily, type EvolutionLike } from '@/utils/financialHelpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -267,13 +267,12 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
   const absenceType = resolveAbsencePaymentType(clinic);
 
-  // Determine clinic-level payment type
-  const clPayType = (clinic.paymentType as string | undefined);
-  const isClinicFixoMensal = clPayType === 'fixo_mensal';
-  const isClinicFixoDiario = clPayType === 'fixo_diario';
+  // 🔒 Modelo de pagamento da clínica (helper centralizado)
+  const isClinicFixoMensal = isClinicFixedMonthly(clinic.paymentType);
+  const isClinicFixoDiario = isClinicFixedDaily(clinic.paymentType);
   const clinicBaseValue = clinic.paymentAmount || 0;
 
-  // Count unique work days across all patients for the month (for fixo_diario)
+  // Count unique work days across all patients for the month (for fixo_diario display)
   const uniqueWorkDays = isClinicFixoDiario
     ? new Set(presentEvos.map(e => e.date)).size
     : 0;
@@ -326,12 +325,18 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     return 0;
   };
 
-  // Total patient revenue — for fixed models this is a single global amount
-  const totalPatientRevenue = (() => {
-    if (isClinicFixoMensal) return clinicBaseValue;
-    if (isClinicFixoDiario) return uniqueWorkDays * clinicBaseValue;
-    return clinicPatients.reduce((sum, p) => sum + calcPatientRevenue(p), 0);
-  })();
+  // 🔒 Total da clínica via helper único — respeita modelo fixo_mensal/fixo_diario/variado
+  const clinicRevenueBreakdown = calculateClinicMonthlyRevenue({
+    clinic,
+    patients: clinicPatients,
+    evolutions: evosToLikeArr(monthlyEvolutions),
+    month: selectedMonth,
+    year: selectedYear,
+    packages: clinicPackages,
+    groupBillingMap,
+    memberPaymentMap,
+  });
+  const totalPatientRevenue = clinicRevenueBreakdown.total;
 
   // Filter services by selected month
   const monthlyServices = clinicServices.filter(s => {
