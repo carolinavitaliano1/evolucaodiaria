@@ -465,8 +465,23 @@ export default function Financial() {
       // ─── Summary cards ────────────────────────────────────────────────
       sectionTitle('RESUMO MENSAL');
 
+      // Bruto x Líquido (descontos contratuais das clínicas)
+      const pdfGrossClinic = clinicStats.reduce((sum, s) => sum + s.revenue, 0);
+      const pdfNetClinic = clinicStats.reduce((sum, s) => {
+        const pct = s.clinic.discountPercentage || 0;
+        return sum + s.revenue * (1 - pct / 100);
+      }, 0);
+      const pdfTotalDiscount = pdfGrossClinic - pdfNetClinic;
+      const pdfNetRevenue = pdfNetClinic + standaloneRevenue;
+      const pdfGrossRevenue = pdfGrossClinic + standaloneRevenue;
+      const hasDiscount = pdfTotalDiscount > 0.005;
+
       const summaryItems = [
-        { label: 'Faturamento Total',        value: `R$ ${netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,                   bold: true },
+        { label: hasDiscount ? 'Faturamento Líquido' : 'Faturamento Total', value: `R$ ${pdfNetRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, bold: true },
+        ...(hasDiscount ? [
+          { label: 'Faturamento Bruto', value: `R$ ${pdfGrossRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+          { label: 'Descontos das Clínicas', value: `- R$ ${pdfTotalDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, loss: true },
+        ] : []),
         { label: 'Receita Consultórios',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Receita Contratante',      value: `R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Serviços Particulares',    value: `R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
