@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Loader2, Sparkles, Save, Download, Upload, FileText, Image as ImageIcon, Trash2,
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, Type, Stamp, Plus, X, FileType,
+  List, Type, Stamp, Plus, X, FileType, Pencil, FolderPlus,
 } from 'lucide-react';
 import { generateAIDocumentPdf, ExtraSignature } from '@/utils/generateAIDocumentPdf';
 import { generateAIDocumentDocx } from '@/utils/aiDocumentDocxExport';
