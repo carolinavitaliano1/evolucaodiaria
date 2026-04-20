@@ -472,8 +472,11 @@ export default function Financial() {
         return sum + s.revenue * (1 - pct / 100);
       }, 0);
       const pdfTotalDiscount = pdfGrossClinic - pdfNetClinic;
-      const pdfNetRevenue = pdfNetClinic + standaloneRevenue;
-      const pdfGrossRevenue = pdfGrossClinic + standaloneRevenue;
+      // Faturamento Total = receita das clínicas + serviços vinculados a consultórios + serviços avulsos.
+      // linkedServicesRevenue é somado pois calculateClinicRevenue (base de pdfGrossClinic) não o inclui,
+      // mas "Receita Consultórios/Contratante" exibida no PDF já o inclui — mantendo coerência.
+      const pdfNetRevenue = pdfNetClinic + linkedServicesRevenue + standaloneRevenue;
+      const pdfGrossRevenue = pdfGrossClinic + linkedServicesRevenue + standaloneRevenue;
       const hasDiscount = pdfTotalDiscount > 0.005;
 
       const summaryItems = [
@@ -484,7 +487,7 @@ export default function Financial() {
         ] : []),
         { label: 'Receita Consultórios',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Receita Contratante',      value: `R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
-        { label: 'Serviços Particulares',    value: `R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        { label: 'Serviços Particulares',    value: `R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         ...(totalLoss > 0 ? [{ label: 'Perdas por Faltas', value: `- R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, loss: true }] : []),
         { label: 'Total de Atendimentos',    value: `${presentEvolutions.length}` },
         { label: 'Faltas Remuneradas',       value: `${paidAbsenceEvolutions.length}` },
