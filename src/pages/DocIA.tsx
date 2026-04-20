@@ -58,6 +58,8 @@ interface DocRow {
 interface StampRow {
   id: string;
   name: string;
+  clinical_area: string | null;
+  cbo: string | null;
   stamp_image: string | null;
   signature_image: string | null;
   is_default: boolean | null;
