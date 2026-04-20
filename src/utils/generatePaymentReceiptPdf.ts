@@ -138,7 +138,9 @@ export async function generatePaymentReceiptPdf(opts: PaymentReceiptOptions, ret
   toast.success('Recibo de pagamento gerado com sucesso!');
 }
 
-export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions): Promise<void> {
+export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions, returnBlob?: false): Promise<void>;
+export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions, returnBlob?: true): Promise<Blob>;
+export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions, returnBlob = false): Promise<void | Blob> {
   const { therapistName, therapistCpf, therapistAddress, therapistProfessionalId, therapistCbo,
     therapistClinicalArea, stamp, payerName, payerCpf, location, amount, serviceName, period,
     paymentMethod, paymentDate, clinicName, clinicAddress, clinicCnpj } = opts;
@@ -187,6 +189,7 @@ export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions): P
 
   const { asBlob } = await import('html-docx-js-typescript');
   const blob = await asBlob(html) as Blob;
+  if (returnBlob) return blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

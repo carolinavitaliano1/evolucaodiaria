@@ -76,7 +76,7 @@ export function GroupFinancialTab({
 
   // Receipt modal state
   const [receiptOpen, setReceiptOpen] = useState(false);
-  const [receiptData, setReceiptData] = useState<{ payerName: string; amount: number; period: string } | null>(null);
+  const [receiptData, setReceiptData] = useState<{ payerName: string; amount: number; period: string; patientId: string } | null>(null);
   const [therapistInfo, setTherapistInfo] = useState<{ name: string; cpf?: string | null; professionalId?: string | null; cbo?: string | null; address?: string | null } | null>(null);
   const [clinicInfo, setClinicInfo] = useState<{ name?: string | null; address?: string | null; cnpj?: string | null } | null>(null);
 
@@ -234,6 +234,7 @@ export function GroupFinancialTab({
 
       // Prepare receipt data and load therapist + clinic info
       const payerName = payDialog.name;
+      const payerPatientId = payDialog.patientId;
       setPayDialog(null);
       setPayAmount('');
       await loadData();
@@ -251,7 +252,7 @@ export function GroupFinancialTab({
         cbo: profileRes.data?.cbo,
       });
       setClinicInfo(clinicRes.data || null);
-      setReceiptData({ payerName, amount, period: periodLabel });
+      setReceiptData({ payerName, amount, period: periodLabel, patientId: payerPatientId });
       setReceiptOpen(true);
     } catch (e: any) {
       toast.error('Erro ao registrar pagamento: ' + (e.message || ''));
@@ -471,6 +472,7 @@ export function GroupFinancialTab({
           }}
           therapist={therapistInfo}
           clinic={clinicInfo}
+          patientId={receiptData.patientId}
         />
       )}
     </div>

@@ -52,10 +52,12 @@ interface EditableReceiptModalProps {
   };
   therapist: TherapistInfo;
   clinic?: ClinicInfo | null;
+  /** When provided, generated receipts are auto-saved as patient documents */
+  patientId?: string | null;
 }
 
 export function EditableReceiptModal({
-  open, onOpenChange, initial, therapist, clinic,
+  open, onOpenChange, initial, therapist, clinic, patientId,
 }: EditableReceiptModalProps) {
   const { user } = useAuth();
   const [stamps, setStamps] = useState<StampRow[]>([]);
@@ -131,10 +133,52 @@ export function EditableReceiptModal({
     };
   };
 
+  const saveToPatientDocs = async (blob: Blob, ext: 'pdf' | 'docx', mime: string) => {
+    if (!patientId || !user) return;
+    try {
+      const safePayer = (payerName.trim() || initial.payerName).replace(/\s+/g, '-').toLowerCase();
+      const safeDate = paymentDate || new Date().toISOString().slice(0, 10);
+      const filename = `recibo-pagamento-${safePayer}-${safeDate}.${ext}`;
+      const filePath = `patient-receipts/${patientId}/${Date.now()}_${filename}`;
+      const { error: upErr } = await supabase.storage.from('attachments').upload(filePath, blob, {
+        contentType: mime, upsert: false,
+      });
+      if (upErr) throw upErr;
+      const { error: insErr } = await supabase.from('attachments').insert({
+        user_id: user.id,
+        parent_id: patientId,
+        parent_type: 'patient',
+        name: filename,
+        file_path: filePath,
+        file_type: mime,
+        file_size: blob.size,
+      });
+      if (insErr) throw insErr;
+      toast.success('Recibo salvo nos documentos do paciente');
+    } catch (e) {
+      console.error('Falha ao salvar recibo nos documentos:', e);
+      toast.error('Recibo gerado, mas falhou ao salvar nos documentos do paciente');
+    }
+  };
+
   const handlePdf = async () => {
     setGeneratingPdf(true);
     try {
-      await generatePaymentReceiptPdf(buildOpts());
+      const opts = buildOpts();
+      if (patientId) {
+        const blob = await generatePaymentReceiptPdf(opts, true);
+        // Trigger download as well
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const safePayer = opts.payerName.replace(/\s+/g, '-').toLowerCase();
+        const safeDate = opts.paymentDate || new Date().toISOString().slice(0, 10);
+        a.href = url; a.download = `recibo-pagamento-${safePayer}-${safeDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        await saveToPatientDocs(blob, 'pdf', 'application/pdf');
+      } else {
+        await generatePaymentReceiptPdf(opts);
+      }
       onOpenChange(false);
     } catch (e) {
       console.error(e);
@@ -145,7 +189,20 @@ export function EditableReceiptModal({
   const handleWord = async () => {
     setGeneratingWord(true);
     try {
-      await generatePaymentReceiptWord(buildOpts());
+      const opts = buildOpts();
+      if (patientId) {
+        const blob = await generatePaymentReceiptWord(opts, true);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const safePayer = opts.payerName.replace(/\s+/g, '-').toLowerCase();
+        const safeDate = opts.paymentDate || new Date().toISOString().slice(0, 10);
+        a.href = url; a.download = `recibo-pagamento-${safePayer}-${safeDate}.docx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        await saveToPatientDocs(blob, 'docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      } else {
+        await generatePaymentReceiptWord(opts);
+      }
       onOpenChange(false);
     } catch (e) {
       console.error(e);
