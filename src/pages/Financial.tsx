@@ -472,10 +472,11 @@ export default function Financial() {
         return sum + s.revenue * (1 - pct / 100);
       }, 0);
       const pdfTotalDiscount = pdfGrossClinic - pdfNetClinic;
-      // Inclui serviços avulsos (sem clínica) E serviços vinculados a consultórios
-      // Os vinculados já foram somados em pdfGrossClinic via revenueByClinicType, então não somamos de novo
-      const pdfNetRevenue = pdfNetClinic + standaloneRevenue;
-      const pdfGrossRevenue = pdfGrossClinic + standaloneRevenue;
+      // Faturamento Total = receita das clínicas + serviços vinculados a consultórios + serviços avulsos.
+      // linkedServicesRevenue é somado pois calculateClinicRevenue (base de pdfGrossClinic) não o inclui,
+      // mas "Receita Consultórios/Contratante" exibida no PDF já o inclui — mantendo coerência.
+      const pdfNetRevenue = pdfNetClinic + linkedServicesRevenue + standaloneRevenue;
+      const pdfGrossRevenue = pdfGrossClinic + linkedServicesRevenue + standaloneRevenue;
       const hasDiscount = pdfTotalDiscount > 0.005;
 
       const summaryItems = [
