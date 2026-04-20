@@ -13,6 +13,9 @@ import {
 
 import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal';
 import { EventDialog } from '@/components/calendar/EventDialog';
+import { CalendarBlockDialog } from '@/components/calendar/CalendarBlockDialog';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { CalendarOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
