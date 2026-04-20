@@ -80,7 +80,7 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
     : '';
 
   const stampHtml = stampUrl
-    ? `<img src="${stampUrl}" crossorigin="anonymous" style="max-height:90px; max-width:220px; object-fit:contain; opacity:0.95; display:block; margin: 0 auto -30px auto; position: relative; z-index: 2;" />`
+    ? `<img src="${stampUrl}" crossorigin="anonymous" style="max-height:80px; max-width:200px; object-fit:contain; opacity:0.95; display:block; margin: 0 auto 4px auto;" />`
     : '';
 
   container.innerHTML = `
