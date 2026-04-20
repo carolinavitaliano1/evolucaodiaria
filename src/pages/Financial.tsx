@@ -472,6 +472,8 @@ export default function Financial() {
         return sum + s.revenue * (1 - pct / 100);
       }, 0);
       const pdfTotalDiscount = pdfGrossClinic - pdfNetClinic;
+      // Inclui serviços avulsos (sem clínica) E serviços vinculados a consultórios
+      // Os vinculados já foram somados em pdfGrossClinic via revenueByClinicType, então não somamos de novo
       const pdfNetRevenue = pdfNetClinic + standaloneRevenue;
       const pdfGrossRevenue = pdfGrossClinic + standaloneRevenue;
       const hasDiscount = pdfTotalDiscount > 0.005;
