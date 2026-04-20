@@ -1444,7 +1444,7 @@ function AddAccessDialog({
 // ─── Main PortalTab ───────────────────────────────────────────────────────────
 export function PortalTab({ patientId, patientEmail, patientName, responsibleEmail, responsibleName }: PortalTabProps) {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState<PortalAccount[]>([]);
+  const { hasPortal } = useFeatureAccess();
   const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState<string | null>(null);
