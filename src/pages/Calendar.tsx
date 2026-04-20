@@ -405,6 +405,7 @@ export default function CalendarPage() {
               const visible = dayItems.slice(0, maxVisible);
               const overflow = dayItems.length - maxVisible;
               const dateStr = format(day, 'yyyy-MM-dd');
+              const block = getBlockForDate(dateStr);
 
               return (
                 <div
@@ -416,9 +417,11 @@ export default function CalendarPage() {
                   className={cn(
                     "border-r border-b border-border p-0.5 sm:p-1 cursor-pointer transition-colors relative overflow-hidden",
                     isCurrentMonth ? "bg-background hover:bg-secondary/30" : "bg-muted/20",
+                    block && "bg-muted/60 hover:bg-muted/70",
                     isSelected && "ring-1 ring-inset ring-primary bg-primary/5",
                     dragOverDate === dateStr && "bg-primary/10"
                   )}
+                  title={block ? `${block.block_type === 'feriado' ? 'Feriado' : 'Férias'}: ${block.description}` : undefined}
                 >
                   <div className="flex items-center justify-between mb-0.5">
                     <span
@@ -431,7 +434,15 @@ export default function CalendarPage() {
                     >
                       {format(day, 'd')}
                     </span>
+                    {block && (
+                      <CalendarOff className="w-3 h-3 text-muted-foreground/70 shrink-0" />
+                    )}
                   </div>
+                  {block && (
+                    <div className="text-[9px] sm:text-[10px] font-medium text-muted-foreground truncate mb-0.5 italic">
+                      {block.description}
+                    </div>
+                  )}
                   <div className="space-y-0.5">
                     {visible.map(item => <EventPill key={item.id} item={item} />)}
                     {overflow > 0 && (
