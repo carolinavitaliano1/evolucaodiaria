@@ -317,6 +317,8 @@ export function BulkDayFeedbackModal({ open, onOpenChange, items, selectedDate }
             ))}
           </div>
         </ScrollArea>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
