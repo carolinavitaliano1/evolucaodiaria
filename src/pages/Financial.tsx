@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { calculatePatientMonthlyRevenue, isBillableStatus, type EvolutionLike } from '@/utils/financialHelpers';
+import { calculatePatientMonthlyRevenue, calculateClinicMonthlyRevenue, isBillableStatus, isClinicFixedMonthly, isClinicFixedDaily, type EvolutionLike } from '@/utils/financialHelpers';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 
@@ -213,21 +213,36 @@ export default function Financial() {
   const propriaClinics = clinics.filter(c => c.type === 'propria' && !c.isArchived);
   const contratanteClinics = clinics.filter(c => c.type !== 'propria' && !c.isArchived);
 
+  // Helper: faturamento de UMA clínica no mês (respeita modelo fixo/diário/variado)
+  const calculateClinicRevenue = (clinic: typeof clinics[0]) => {
+    const cPatients = patients.filter(p => p.clinicId === clinic.id && !p.isArchived);
+    const cEvos: EvolutionLike[] = monthlyEvolutions
+      .filter(e => cPatients.some(p => p.id === e.patientId))
+      .map(e => ({
+        id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
+        attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance, userId: e.userId,
+      }));
+    return calculateClinicMonthlyRevenue({
+      clinic, patients: cPatients, evolutions: cEvos,
+      month: selectedMonth, year: selectedYear,
+      packages: clinicPackages, groupBillingMap, memberPaymentMap,
+    }).total;
+  };
+
   const revenueByClinicType = (type: 'propria' | 'contratante') => {
     const targetClinics = type === 'propria' ? propriaClinics : contratanteClinics;
     return targetClinics.reduce((sum, clinic) => {
-      const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
-      const patientsRevenue = clinicPatients.reduce((s, p) => s + calculatePatientRevenue(p.id), 0);
+      const clinicRev = calculateClinicRevenue(clinic);
       const clinicServicesRevenue = linkedServiceAppointments
         .filter(a => a.clinic_id === clinic.id && a.status === 'concluído')
         .reduce((s, a) => s + (a.price || 0), 0);
-      return sum + patientsRevenue + clinicServicesRevenue;
+      return sum + clinicRev + clinicServicesRevenue;
     }, 0);
   };
 
   const revenuePropriaClinicas = revenueByClinicType('propria');
   const revenueContratante = revenueByClinicType('contratante');
-  const totalRevenue = patients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
+  const totalRevenue = clinics.filter(c => !c.isArchived).reduce((sum, c) => sum + calculateClinicRevenue(c), 0);
   const totalLoss = patients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
   const linkedServicesRevenue = linkedServiceAppointments
     .filter(a => a.status === 'concluído')
