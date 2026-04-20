@@ -503,6 +503,60 @@ export default function DocIA() {
     loadHistory();
   };
 
+  // Load a saved doc back into the editor for editing
+  const handleEditDoc = (doc: DocRow) => {
+    setCreatePatientId(doc.patient_id);
+    setCreateDocType(doc.doc_type);
+    setDraftTitle(doc.title);
+    editor?.commands.setContent(doc.content || '<p style="text-align:justify"></p>');
+    setHasDraft(true);
+    setActiveTab('create');
+    toast.success('Documento carregado no editor — ajuste e salve novamente');
+  };
+
+  // Copy the existing PDF into the patient's attachments folder
+  const handleSaveToPatientFolder = async (doc: DocRow) => {
+    if (!user) return;
+    if (!doc.file_path && !doc.file_url) {
+      toast.error('Arquivo PDF indisponível para salvar na pasta');
+      return;
+    }
+    setSavingToFolderId(doc.id);
+    try {
+      // Download original PDF
+      let blob: Blob | null = null;
+      if (doc.file_path) {
+        const { data, error } = await supabase.storage.from('patient_documents').download(doc.file_path);
+        if (error) throw error;
+        blob = data;
+      } else if (doc.file_url) {
+        const r = await fetch(doc.file_url);
+        blob = await r.blob();
+      }
+      if (!blob) throw new Error('Falha ao obter PDF');
+
+      const safeName = (doc.title || 'documento').replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 60);
+      const fileName = `${safeName}.pdf`;
+      const path = `${user.id}/patient-${doc.patient_id}/${Date.now()}-${fileName}`;
+      const { error: upErr } = await supabase.storage.from('attachments')
+        .upload(path, blob, { contentType: 'application/pdf', upsert: false });
+      if (upErr) throw upErr;
+
+      addAttachment({
+        parentId: doc.patient_id,
+        parentType: 'patient',
+        name: fileName,
+        data: path,
+        type: 'application/pdf',
+      });
+      toast.success('Documento salvo na pasta do paciente!');
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao salvar na pasta');
+    } finally {
+      setSavingToFolderId(null);
+    }
+  };
+
   const patientOptions = useMemo(() =>
     patients.filter(p => !p.isArchived)
       .map(p => ({ id: p.id, name: p.name, clinicName: clinics.find(c => c.id === p.clinicId)?.name }))
