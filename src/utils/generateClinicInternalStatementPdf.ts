@@ -225,6 +225,25 @@ export async function generateClinicInternalStatementPdf(
     doc.text(parts.join('  •  '), M, y); y += 5;
   }
 
+  // Nota de modelo de remuneração da clínica (quando fixo)
+  const clPay = clinicPayInfo?.payment_type;
+  const clAmt = clinicPayInfo?.payment_amount ?? 0;
+  if (clPay === 'fixo_mensal' || clPay === 'fixo' || clPay === 'mensal') {
+    doc.setFontSize(8); doc.setTextColor(...accent); doc.setFont('helvetica', 'bold');
+    doc.text(
+      `💼 Remuneração: Salário Fixo Mensal — ${fmtBRL(clAmt)} (independente do nº de sessões)`,
+      M, y,
+    );
+    y += 6;
+  } else if (clPay === 'fixo_diario' || clPay === 'fixo_dia') {
+    doc.setFontSize(8); doc.setTextColor(...accent); doc.setFont('helvetica', 'bold');
+    doc.text(
+      `💼 Remuneração: Fixo por Dia Trabalhado — ${fmtBRL(clAmt)} / dia`,
+      M, y,
+    );
+    y += 6;
+  }
+
   // ===== Compute all data first for executive summary =====
   const patientIdsWithMovement = new Set<string>();
   Object.keys(servicesByPatient).forEach(id => patientIdsWithMovement.add(id));
