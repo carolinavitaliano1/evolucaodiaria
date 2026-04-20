@@ -271,7 +271,9 @@ export default function Financial() {
     return { revenueIndividualSession: individualSession, revenueFixo: fixo, revenueGroup: group };
   }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear, clinics]);
 
-  const totalServicesRevenue = privateRevenue;
+  // "Serviços Particulares" = somente serviços avulsos (sem clinic_id).
+  // Serviços vinculados a clínica entram em Receita Consultórios/Contratante.
+  const totalServicesRevenue = standaloneRevenue;
 
   const clinicStats = clinics.filter(c => !c.isArchived).map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
