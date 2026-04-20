@@ -44,8 +44,12 @@ export function getDynamicSessionValue(
   month: number,
   year: number
 ): { perSession: number; occurrences: number; sessionDay: string | null } {
+  // 🔒 TRAVA: sem dias da semana definidos NÃO há "valor por sessão" calculável.
+  // Retornar `monthlyValue` aqui inflava o faturamento (cada sessão registrada
+  // valia uma mensalidade inteira). Devolvemos perSession=0 e occurrences=0
+  // para o chamador decidir o fallback seguro.
   if (!weekdays || weekdays.length === 0) {
-    return { perSession: monthlyValue, occurrences: 0, sessionDay: null };
+    return { perSession: 0, occurrences: 0, sessionDay: null };
   }
 
   // If patient has multiple days, sum occurrences across all days
@@ -55,7 +59,7 @@ export function getDynamicSessionValue(
   }
 
   if (totalOccurrences === 0) {
-    return { perSession: monthlyValue, occurrences: 0, sessionDay: weekdays[0] };
+    return { perSession: 0, occurrences: 0, sessionDay: weekdays[0] };
   }
 
   return {
