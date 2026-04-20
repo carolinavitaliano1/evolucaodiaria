@@ -1,8 +1,13 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+export interface ExtraSignature {
+  label: string; // e.g. "Assinatura do Paciente"
+}
+
 interface AIDocPdfInput {
   title: string;
+  /** Either plain text (legacy) or HTML from rich editor. If contains '<' it's treated as HTML. */
   bodyText: string;
   logoUrl?: string | null;
   headerText?: string | null;
@@ -10,12 +15,15 @@ interface AIDocPdfInput {
   professionalName?: string | null;
   professionalRegistration?: string | null;
   todayBR: string;
-  cityLine?: string | null; // ex: "São Paulo, 20 de abril de 2026"
+  cityLine?: string | null;
+  /** URL of the professional's stamp image to render right after signature */
+  stampUrl?: string | null;
+  /** Extra signature lines (patient, guardian, etc.) */
+  extraSignatures?: ExtraSignature[];
 }
 
 /**
  * Generates an A4 PDF for the AI Documents Hub.
- * Returns a Blob ready for upload + a base64 dataUrl for direct download.
  */
 export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blob: Blob; dataUrl: string }> {
   const {
@@ -27,34 +35,63 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
     professionalName,
     professionalRegistration,
     cityLine,
+    stampUrl,
+    extraSignatures = [],
   } = input;
 
-  // Build off-screen HTML container styled as A4
   const container = document.createElement('div');
   container.style.position = 'fixed';
   container.style.left = '-99999px';
   container.style.top = '0';
-  container.style.width = '794px'; // A4 width @ 96dpi
+  container.style.width = '794px';
   container.style.minHeight = '1123px';
   container.style.padding = '64px 72px';
   container.style.background = '#ffffff';
   container.style.color = '#111111';
   container.style.fontFamily = 'Georgia, "Times New Roman", serif';
   container.style.fontSize = '14px';
-  container.style.lineHeight = '2'; // double spacing
+  container.style.lineHeight = '1.8';
   container.style.boxSizing = 'border-box';
 
   const escape = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const paragraphs = (bodyText || '')
-    .split(/\n\s*\n/)
-    .map(p => p.trim())
-    .filter(Boolean)
-    .map(p => `<p style="margin:0 0 14px 0; text-align: justify; text-indent: 32px;">${escape(p).replace(/\n/g, '<br/>')}</p>`)
-    .join('');
+  const isHtml = /<[a-z][\s\S]*>/i.test(bodyText);
+
+  let bodyHtml: string;
+  if (isHtml) {
+    bodyHtml = `<div class="rich-body" style="text-align: justify;">${bodyText}</div>`;
+  } else {
+    bodyHtml = (bodyText || '')
+      .split(/\n\s*\n/)
+      .map(p => p.trim())
+      .filter(Boolean)
+      .map(p => `<p style="margin:0 0 14px 0; text-align: justify; text-indent: 32px;">${escape(p).replace(/\n/g, '<br/>')}</p>`)
+      .join('');
+  }
+
+  const extraSigsHtml = extraSignatures.length
+    ? `<div style="margin-top: 50px; display:flex; flex-direction:column; gap:48px; align-items:center;">
+        ${extraSignatures.map(s => `
+          <div style="border-top:1px solid #000; width:320px; padding-top:6px; text-align:center; font-size:13px;">
+            ${escape(s.label)}
+          </div>`).join('')}
+      </div>`
+    : '';
+
+  const stampHtml = stampUrl
+    ? `<div style="margin-top: 24px; text-align:center;">
+        <img src="${stampUrl}" crossorigin="anonymous" style="max-height:110px; max-width:240px; object-fit:contain; opacity:0.95;" />
+      </div>`
+    : '';
 
   container.innerHTML = `
+    <style>
+      .rich-body p { margin: 0 0 12px 0; }
+      .rich-body h1, .rich-body h2, .rich-body h3 { margin: 16px 0 8px; }
+      .rich-body img { max-width: 100%; height: auto; }
+      .rich-body ul, .rich-body ol { margin: 8px 0 12px 24px; }
+    </style>
     <div style="text-align:center; border-bottom: 1px solid #cccccc; padding-bottom: 16px; margin-bottom: 28px;">
       ${logoUrl ? `<img src="${logoUrl}" crossorigin="anonymous" style="max-height:90px; max-width: 280px; object-fit: contain; margin: 0 auto 10px; display:block;" />` : ''}
       ${headerText ? `<div style="font-size:12px; line-height:1.4; color:#333; white-space: pre-line;">${escape(headerText)}</div>` : ''}
@@ -64,9 +101,7 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
       ${escape(title)}
     </h1>
 
-    <div style="text-align: justify;">
-      ${paragraphs}
-    </div>
+    ${bodyHtml}
 
     ${cityLine ? `<p style="margin-top: 40px; text-align:center;">${escape(cityLine)}</p>` : ''}
 
@@ -75,10 +110,13 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
         <div style="font-weight:600;">${escape(professionalName || '')}</div>
         ${professionalRegistration ? `<div style="font-size:12px; color:#444;">${escape(professionalRegistration)}</div>` : ''}
       </div>
+      ${stampHtml}
     </div>
 
+    ${extraSigsHtml}
+
     ${footerText ? `
-      <div style="position: absolute; bottom: 32px; left: 72px; right: 72px; border-top: 1px solid #cccccc; padding-top: 10px; text-align:center; font-size:11px; color:#555; white-space: pre-line; line-height:1.4;">
+      <div style="margin-top: 60px; border-top: 1px solid #cccccc; padding-top: 10px; text-align:center; font-size:11px; color:#555; white-space: pre-line; line-height:1.4;">
         ${escape(footerText)}
       </div>
     ` : ''}
