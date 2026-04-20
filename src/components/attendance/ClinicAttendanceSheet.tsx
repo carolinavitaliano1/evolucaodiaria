@@ -185,7 +185,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
               </Select>
               {selectedStamp?.stamp_image && (
                 <div className="mt-2 flex items-center gap-2">
-                  <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-12 w-auto rounded border border-border" />
+                  <img loading="lazy" decoding="async" src={selectedStamp.stamp_image} alt="Carimbo" className="h-12 w-auto rounded border border-border" />
                   <span className="text-[10px] text-muted-foreground">Preview do carimbo</span>
                 </div>
               )}
@@ -282,7 +282,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
             {/* Footer preview - centered vertical signature block */}
             <div className="px-4 py-8 border-t border-border flex flex-col items-center">
               {selectedStamp?.stamp_image ? (
-                <img src={selectedStamp.stamp_image} alt="Carimbo" className="h-16 w-auto mb-2" />
+                <img loading="lazy" decoding="async" src={selectedStamp.stamp_image} alt="Carimbo" className="h-16 w-auto mb-2" />
               ) : (
                 <div className="h-16 mb-2" />
               )}

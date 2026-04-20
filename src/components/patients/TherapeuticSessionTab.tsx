@@ -1606,7 +1606,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                       const st = stamps.find((s: any) => s.id === declarationStampId);
                       return st?.stamp_image ? (
                         <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
-                          <img src={st.stamp_image} alt="Carimbo" className="h-12 object-contain" />
+                          <img loading="lazy" decoding="async" src={st.stamp_image} alt="Carimbo" className="h-12 object-contain" />
                           <div className="text-[10px] text-muted-foreground space-y-0.5">
                             <p className="font-medium text-foreground">{st.name}</p>
                             {st.cbo && <p>CBO: {st.cbo}</p>}

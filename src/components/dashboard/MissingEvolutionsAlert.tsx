@@ -164,7 +164,7 @@ export function MissingEvolutionsAlert() {
           >
             <div className="w-7 h-7 rounded-full bg-warning/20 flex-shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold text-warning">
               {s.avatarUrl
-                ? <img src={s.avatarUrl} alt={s.name} className="w-full h-full object-cover rounded-full" />
+                ? <img loading="lazy" decoding="async" src={s.avatarUrl} alt={s.name} className="w-full h-full object-cover rounded-full" />
                 : s.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">

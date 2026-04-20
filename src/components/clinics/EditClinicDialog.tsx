@@ -237,7 +237,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             </p>
             {formData.letterhead ? (
               <div className="relative inline-block">
-                <img
+                <img loading="lazy" decoding="async"
                   src={formData.letterhead}
                   alt="Timbrado"
                   className="max-h-24 rounded-md border border-border bg-background"

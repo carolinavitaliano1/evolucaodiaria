@@ -250,7 +250,7 @@ export function FeedbackIAModal({
                 <div className="flex flex-wrap gap-2">
                   {photos.map((p) => (
                     <div key={p.preview} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border">
-                      <img src={p.preview} alt="" className="w-full h-full object-cover" />
+                      <img loading="lazy" decoding="async" src={p.preview} alt="" className="w-full h-full object-cover" />
                       {p.uploading && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                           <Loader2 className="w-4 h-4 text-white animate-spin" />

@@ -46,7 +46,7 @@ export function BirthdayCard() {
           >
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
               {p.avatarUrl ? (
-                <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                <img loading="lazy" decoding="async" src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-base">🎂</span>
               )}

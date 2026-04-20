@@ -179,7 +179,7 @@ export function FeedPostCard({
 
       {/* Media */}
       {post.media_type === 'image' && post.media_url && (
-        <img src={post.media_url} alt="post" className="w-full max-h-96 object-cover" />
+        <img loading="lazy" decoding="async" src={post.media_url} alt="post" className="w-full max-h-96 object-cover" />
       )}
       {post.media_type === 'video' && post.media_url && (
         <video
@@ -200,14 +200,14 @@ export function FeedPostCard({
           className="mx-4 mb-3 flex gap-3 p-3 rounded-xl border border-border bg-muted/40 hover:bg-muted/70 transition-colors items-start"
         >
           {youtubeId && (
-            <img
+            <img loading="lazy" decoding="async"
               src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`}
               alt="thumb"
               className="w-20 h-14 object-cover rounded-lg shrink-0"
             />
           )}
           {!youtubeId && post.link_image && (
-            <img src={post.link_image} alt="thumb" className="w-20 h-14 object-cover rounded-lg shrink-0" />
+            <img loading="lazy" decoding="async" src={post.link_image} alt="thumb" className="w-20 h-14 object-cover rounded-lg shrink-0" />
           )}
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-foreground truncate">{post.link_title || post.link_url}</p>

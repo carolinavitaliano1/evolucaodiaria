@@ -104,7 +104,7 @@ export function DashboardMural() {
               </div>
 
               {n.image_url && (
-                <img src={n.image_url} alt={n.title} className="w-full max-h-32 object-cover rounded-lg" />
+                <img loading="lazy" decoding="async" src={n.image_url} alt={n.title} className="w-full max-h-32 object-cover rounded-lg" />
               )}
 
               {n.content && (
