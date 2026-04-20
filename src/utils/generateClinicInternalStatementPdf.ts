@@ -516,11 +516,12 @@ export async function generateClinicInternalStatementPdf(
   const noChargePatients = isClinicFixedSalary ? 0 : totalPatients - billedPatients;
 
   // ===== EXECUTIVE SUMMARY =====
-  ensure(46);
+  const summaryH = 50;
+  ensure(summaryH + 2);
   doc.setFillColor(...accentLight);
-  doc.rect(M, y, contentW, 42, 'F');
+  doc.rect(M, y, contentW, summaryH, 'F');
   doc.setDrawColor(...accent); doc.setLineWidth(0.3);
-  doc.rect(M, y, contentW, 42);
+  doc.rect(M, y, contentW, summaryH);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...accent);
   doc.text('RESUMO EXECUTIVO', M + 3, y + 5);
 
@@ -541,12 +542,12 @@ export async function generateClinicInternalStatementPdf(
     doc.text(k.value, x, kpiY + 6);
   });
 
-  // Sub-stats
+  // Sub-stats (espaçados verticalmente para não sobrepor os KPIs)
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...dark);
-  const subY = y + 30;
+  const subY = y + 34;
   const movimentoLabel = isClinicFixedSalary
     ? `Pacientes atendidos: ${totalPatients}`
-    : `Pacientes c/ cobrança: ${billedPatients}${noChargePatients > 0 ? ` (+ ${noChargePatients} sem cobrança no mês)` : ''}`;
+    : `Pacientes atendidos: ${totalPatients}`;
   doc.text(movimentoLabel, M + 3, subY);
   doc.setTextColor(...green);
   doc.text(`Quitados: ${paidPatients}`, M + 3 + kpiW, subY);
@@ -556,9 +557,9 @@ export async function generateClinicInternalStatementPdf(
   doc.text(`Serviços avulsos: ${orphanServices.length}`, M + 3 + kpiW * 3, subY);
 
   doc.setFontSize(7); doc.setTextColor(...muted);
-  doc.text(`Total de sessões registradas: ${evolutions.length}  •  Serviços vinculados: ${services.length - orphanServices.length}`, M + 3, y + 38);
+  doc.text(`Total de sessões registradas: ${evolutions.length}  •  Serviços vinculados: ${services.length - orphanServices.length}${clinicDiscountPct > 0 ? `  •  Desconto da clínica aplicado sobre o total: ${clinicDiscountPct}%` : ''}`, M + 3, y + 42);
 
-  y += 46;
+  y += summaryH + 4;
 
   // ===== Per-patient detail =====
   const drawTableHeader = () => {
