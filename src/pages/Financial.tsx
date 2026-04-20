@@ -489,7 +489,7 @@ export default function Financial() {
         ] : []),
         { label: 'Receita Consultórios',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Receita Contratante',      value: `R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
-        { label: 'Serviços Particulares',    value: `R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        { label: 'Serviços Particulares',    value: `R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         ...(totalLoss > 0 ? [{ label: 'Perdas por Faltas', value: `- R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, loss: true }] : []),
         { label: 'Total de Atendimentos',    value: `${presentEvolutions.length}` },
         { label: 'Faltas Remuneradas',       value: `${paidAbsenceEvolutions.length}` },
@@ -1262,11 +1262,11 @@ export default function Financial() {
             </div>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            R$ {privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           {grandTotal > 0 && (
             <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${(privateRevenue / grandTotal) * 100}%` }} />
+              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${(standaloneRevenue / grandTotal) * 100}%` }} />
             </div>
           )}
         </div>
