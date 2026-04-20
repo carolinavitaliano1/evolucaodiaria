@@ -87,9 +87,6 @@ const OWNER_EMAILS = ['carolinavitaliano1@gmail.com', 'gabriellajf83@gmail.com']
 export default function Mural() {
   const { user } = useAuth();
   const isOwner = OWNER_EMAILS.includes(user?.email ?? '');
-  const { isPro, loading: featureLoading } = useFeatureAccess();
-  // Mural is a Pro-only feature. Owners always have access.
-  const isLocked = !featureLoading && !isPro && !isOwner;
   const [notices, setNotices] = useState<Notice[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
