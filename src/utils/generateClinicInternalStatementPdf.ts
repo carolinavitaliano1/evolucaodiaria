@@ -470,11 +470,11 @@ export async function generateClinicInternalStatementPdf(
     });
   }
 
-  // Orphan services totals (com desconto da clínica)
+  // Orphan services totais BRUTOS (desconto vai no total geral)
   const orphanGross = orphanServices.reduce((acc, s) => acc + s.price, 0);
   const orphanReceivedGross = orphanServices.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
-  const orphanTotal = orphanGross * clinicDiscountFactor;
-  const orphanReceived = orphanReceivedGross * clinicDiscountFactor;
+  const orphanTotal = orphanGross;
+  const orphanReceived = orphanReceivedGross;
 
   // Para clínicas com salário fixo: a "receita" da clínica é o salário (mensal) ou
   // salário diário × dias trabalhados (dias únicos com sessões cobráveis).
@@ -499,9 +499,15 @@ export async function generateClinicInternalStatementPdf(
   const patientsRevenueTotal = blocks.reduce((acc, b) => acc + b.patientTotal, 0);
   const patientsReceivedTotal = blocks.reduce((acc, b) => acc + b.received, 0);
 
-  const grandTotal = (isClinicFixedSalary ? clinicFixedRevenue : patientsRevenueTotal) + orphanTotal;
-  const grandReceived = (isClinicFixedSalary ? clinicFixedReceived : patientsReceivedTotal) + orphanReceived;
+  // Total bruto e total com desconto da clínica aplicado SOMENTE aqui
+  const grossGrandTotal = (isClinicFixedSalary ? clinicFixedRevenue : patientsRevenueTotal) + orphanTotal;
+  const grossGrandReceived = (isClinicFixedSalary ? clinicFixedReceived : patientsReceivedTotal) + orphanReceived;
+
+  // Salário fixo não recebe desconto percentual; demais modelos sim
+  const grandTotal = isClinicFixedSalary ? grossGrandTotal : grossGrandTotal * clinicDiscountFactor;
+  const grandReceived = isClinicFixedSalary ? grossGrandReceived : grossGrandReceived * clinicDiscountFactor;
   const grandPending = Math.max(0, grandTotal - grandReceived);
+  const grandDiscount = grossGrandTotal - grandTotal;
 
   const inadimplencia = grandTotal > 0 ? (grandPending / grandTotal) * 100 : 0;
   const billedBlocks = blocks.filter(b => b.patientTotal > 0);
