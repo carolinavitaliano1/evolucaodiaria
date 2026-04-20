@@ -189,6 +189,7 @@ export async function generatePaymentReceiptWord(opts: PaymentReceiptOptions, re
 
   const { asBlob } = await import('html-docx-js-typescript');
   const blob = await asBlob(html) as Blob;
+  if (returnBlob) return blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
