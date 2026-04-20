@@ -245,7 +245,7 @@ export default function DocIA() {
     (async () => {
       const [{ data: prof }, { data: stampList }] = await Promise.all([
         supabase.from('profiles').select('name, cpf, professional_id').eq('user_id', user.id).maybeSingle(),
-        supabase.from('stamps').select('id, name, stamp_image, signature_image, is_default').eq('user_id', user.id),
+        supabase.from('stamps').select('id, name, clinical_area, cbo, stamp_image, signature_image, is_default').eq('user_id', user.id),
       ]);
       setProfile(prof || null);
       const list = (stampList as StampRow[]) || [];
