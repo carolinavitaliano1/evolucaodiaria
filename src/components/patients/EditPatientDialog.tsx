@@ -557,7 +557,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Financeiro</Label>
             <div className="space-y-3 mt-2">
-              {clinicPackages.length > 0 && (
+              {clinicPackages.length > 0 && !isClinicFixedMonthly && (
                 <div>
                   <Label className="text-xs">Pacote</Label>
                   <Select
