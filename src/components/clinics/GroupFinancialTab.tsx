@@ -74,6 +74,12 @@ export function GroupFinancialTab({
   const [payAmount, setPayAmount] = useState('');
   const [paying, setPaying] = useState(false);
 
+  // Receipt modal state
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState<{ payerName: string; amount: number; period: string } | null>(null);
+  const [therapistInfo, setTherapistInfo] = useState<{ name: string; cpf?: string | null; professionalId?: string | null; cbo?: string | null; address?: string | null } | null>(null);
+  const [clinicInfo, setClinicInfo] = useState<{ name?: string | null; address?: string | null; cnpj?: string | null } | null>(null);
+
   const periodLabel = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
 
   const navigateMonth = (dir: -1 | 1) => {
