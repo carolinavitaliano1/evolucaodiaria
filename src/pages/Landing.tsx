@@ -127,7 +127,7 @@ const TESTIMONIALS = [
 
 const FAQ_ITEMS = [
   { q: 'O teste grátis é realmente sem compromisso?', a: 'Sim! Você tem 30 dias para testar todas as funcionalidades, sem precisar cadastrar cartão de crédito. Se não gostar, é só não assinar — o acesso é interrompido automaticamente.' },
-  { q: 'Qual a diferença entre o plano Básico e o Pro?', a: 'O Básico (R$ 29,90/mês) inclui pacientes, agenda, evoluções, financeiro, WhatsApp e anexos. O Pro (R$ 59,90/mês) acrescenta toda a Inteligência Artificial (Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA), o Portal do Paciente e a Gestão de Equipe multi-profissional.' },
+  { q: 'Qual a diferença entre o plano Básico e o Pro?', a: 'O Básico (R$ 29,90/mês) inclui pacientes, agenda, evoluções, financeiro, WhatsApp e anexos. O Pro (R$ 59,90/mês) acrescenta toda a Inteligência Artificial (Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA) e o Portal do Paciente.' },
   { q: 'Meus dados ficam seguros?', a: 'Totalmente. Utilizamos criptografia, servidores seguros na nuvem e seguimos a LGPD. Apenas você (e sua equipe, se autorizada) tem acesso aos dados dos pacientes.' },
   { q: 'Posso usar em mais de uma clínica?', a: 'Sim! Você pode cadastrar quantas clínicas, consultórios ou contratantes quiser e gerenciar pacientes, agenda e financeiro de cada um separadamente.' },
   { q: 'Funciona no celular?', a: 'Sim. O sistema é totalmente responsivo e funciona perfeitamente no navegador do seu celular ou tablet, sem precisar instalar nada.' },
@@ -148,8 +148,6 @@ const PLAN_COMPARISON: { label: string; basic: boolean; pro: boolean }[] = [
   { label: 'Feedbacks IA para responsáveis', basic: false, pro: true },
   { label: 'Relatórios IA', basic: false, pro: true },
   { label: 'Portal do Paciente', basic: false, pro: true },
-  { label: 'Gestão de Equipe multi-profissional', basic: false, pro: true },
-  { label: 'Conformidade e financeiro de equipe', basic: false, pro: true },
 ];
 
 export default function Landing() {
