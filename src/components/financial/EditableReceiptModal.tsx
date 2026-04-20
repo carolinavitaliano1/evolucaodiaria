@@ -52,6 +52,8 @@ interface EditableReceiptModalProps {
   };
   therapist: TherapistInfo;
   clinic?: ClinicInfo | null;
+  /** When provided, generated receipts are auto-saved as patient documents */
+  patientId?: string | null;
 }
 
 export function EditableReceiptModal({
