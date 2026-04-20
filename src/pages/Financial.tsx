@@ -580,12 +580,19 @@ export default function Financial() {
 
       // ─── Clinic breakdown ─────────────────────────────────────────────
       if (clinicStats.length > 0) {
-        sectionTitle('FATURAMENTO POR CLÍNICA');
+        sectionTitle('FATURAMENTO POR ESTABELECIMENTO');
 
         clinicStats.forEach(({ clinic, patientCount, revenue, sessions, paidAbsences, absences }, idx) => {
+          // Faturamento total = sessões/grupos (revenue) + serviços vinculados ao estabelecimento
+          const clinicServicesTotal = linkedServiceAppointments
+            .filter((a: any) => a.clinic_id === clinic.id && a.status === 'concluído')
+            .reduce((s: number, a: any) => s + (a.price || 0), 0);
+          const clinicServicesCount = linkedServiceAppointments
+            .filter((a: any) => a.clinic_id === clinic.id && a.status === 'concluído').length;
+          const totalRevenueClinic = revenue + clinicServicesTotal;
           const pct = clinic.discountPercentage || 0;
           const hasPct = pct > 0;
-          const netRev = revenue * (1 - pct / 100);
+          const netRev = totalRevenueClinic * (1 - pct / 100);
           const rowH = hasPct ? 18 : 14;
           ensureSpace(rowH + 2);
           const rowColor = idx % 2 === 0 ? C.white : C.rowAlt;
@@ -622,9 +629,10 @@ export default function Financial() {
           // Stats line
           setTxt(C.muted);
           doc.setFontSize(7.5);
-          doc.text(`${patientCount} pacientes  •  ${sessions} sessões  •  ${paidAbsences} faltas rem.  •  ${absences} faltas`, margin + 6, y + 10.5);
+          const svcSuffix = clinicServicesCount > 0 ? `  •  ${clinicServicesCount} serviço(s)` : '';
+          doc.text(`${patientCount} pacientes  •  ${sessions} sessões  •  ${paidAbsences} faltas rem.  •  ${absences} faltas${svcSuffix}`, margin + 6, y + 10.5);
 
-          // Revenue (líquido em destaque)
+          // Revenue (líquido em destaque) — inclui sessões + grupos + serviços
           setTxt(C.primary);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
@@ -635,9 +643,9 @@ export default function Financial() {
             setTxt(C.muted);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(6.8);
-            const discountVal = revenue - netRev;
+            const discountVal = totalRevenueClinic - netRev;
             doc.text(
-              `Bruto R$ ${revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}  •  Desconto ${pct}% (− R$ ${discountVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
+              `Bruto R$ ${totalRevenueClinic.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}  •  Desconto ${pct}% (− R$ ${discountVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
               margin + 6, y + 15
             );
           }
