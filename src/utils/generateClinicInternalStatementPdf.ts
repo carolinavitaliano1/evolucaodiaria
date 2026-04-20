@@ -470,9 +470,11 @@ export async function generateClinicInternalStatementPdf(
     });
   }
 
-  // Orphan services totals
-  const orphanTotal = orphanServices.reduce((acc, s) => acc + s.price, 0);
-  const orphanReceived = orphanServices.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
+  // Orphan services totals (com desconto da clínica)
+  const orphanGross = orphanServices.reduce((acc, s) => acc + s.price, 0);
+  const orphanReceivedGross = orphanServices.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
+  const orphanTotal = orphanGross * clinicDiscountFactor;
+  const orphanReceived = orphanReceivedGross * clinicDiscountFactor;
 
   // Para clínicas com salário fixo: a "receita" da clínica é o salário (mensal) ou
   // salário diário × dias trabalhados (dias únicos com sessões cobráveis).
