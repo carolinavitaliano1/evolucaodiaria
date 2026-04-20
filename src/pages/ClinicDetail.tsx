@@ -1791,7 +1791,7 @@ export default function ClinicDetail() {
                       )}
                     </div>
 
-                    {patient.paymentValue && (() => {
+                    {patient.paymentValue && clinic?.paymentType !== 'fixo_mensal' && clinic?.paymentType !== 'fixo_diario' && (() => {
                       const pkg = patient.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
                       const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
                       const displayValue = isPersonalizado
