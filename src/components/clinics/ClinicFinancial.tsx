@@ -35,6 +35,8 @@ interface ServiceRecord {
   time: string;
   client_name: string;
   service_name: string | null;
+  patient_id: string | null;
+  patient_name: string | null;
 }
 
 interface ClinicPaymentRecord {
