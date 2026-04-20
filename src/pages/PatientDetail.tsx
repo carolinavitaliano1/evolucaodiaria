@@ -1720,11 +1720,7 @@ export default function PatientDetail() {
         ['Taxa de frequência (presença/total):', `${tAttendanceRate}%`],
       ];
       freqRows.forEach(([label, value]) => {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...darkText);
-        doc.text(label, margin + 4, y);
-        doc.setFont('helvetica', 'bold');
-        doc.text(value, W - margin - 2, y, { align: 'right' });
-        y += 5;
+        drawDottedRow(label, value, false);
       });
       doc.setDrawColor(...borderColor); doc.line(margin, y + 2, W - margin, y + 2); y += 7;
 
