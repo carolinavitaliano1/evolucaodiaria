@@ -80,12 +80,6 @@ const PRO_FEATURES = [
     desc: 'Convites por e-mail, fichas digitais, mensagens, atividades, mural, contratos digitais e financeiro — tudo acessível ao paciente/responsável.',
     highlight: 'Engajamento total',
   },
-  {
-    icon: Users,
-    title: 'Gestão de Equipe',
-    desc: 'Convide profissionais, defina permissões granulares, modelos de remuneração, conformidade e financeiro de equipe.',
-    highlight: 'Multi-profissional',
-  },
 ];
 
 const PORTAL_BENEFITS = [
@@ -133,7 +127,7 @@ const TESTIMONIALS = [
 
 const FAQ_ITEMS = [
   { q: 'O teste grátis é realmente sem compromisso?', a: 'Sim! Você tem 30 dias para testar todas as funcionalidades, sem precisar cadastrar cartão de crédito. Se não gostar, é só não assinar — o acesso é interrompido automaticamente.' },
-  { q: 'Qual a diferença entre o plano Básico e o Pro?', a: 'O Básico (R$ 29,90/mês) inclui pacientes, agenda, evoluções, financeiro, WhatsApp e anexos. O Pro (R$ 59,90/mês) acrescenta toda a Inteligência Artificial (Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA), o Portal do Paciente e a Gestão de Equipe multi-profissional.' },
+  { q: 'Qual a diferença entre o plano Básico e o Pro?', a: 'O Básico (R$ 29,90/mês) inclui pacientes, agenda, evoluções, financeiro, WhatsApp e anexos. O Pro (R$ 59,90/mês) acrescenta toda a Inteligência Artificial (Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA) e o Portal do Paciente.' },
   { q: 'Meus dados ficam seguros?', a: 'Totalmente. Utilizamos criptografia, servidores seguros na nuvem e seguimos a LGPD. Apenas você (e sua equipe, se autorizada) tem acesso aos dados dos pacientes.' },
   { q: 'Posso usar em mais de uma clínica?', a: 'Sim! Você pode cadastrar quantas clínicas, consultórios ou contratantes quiser e gerenciar pacientes, agenda e financeiro de cada um separadamente.' },
   { q: 'Funciona no celular?', a: 'Sim. O sistema é totalmente responsivo e funciona perfeitamente no navegador do seu celular ou tablet, sem precisar instalar nada.' },
@@ -154,8 +148,6 @@ const PLAN_COMPARISON: { label: string; basic: boolean; pro: boolean }[] = [
   { label: 'Feedbacks IA para responsáveis', basic: false, pro: true },
   { label: 'Relatórios IA', basic: false, pro: true },
   { label: 'Portal do Paciente', basic: false, pro: true },
-  { label: 'Gestão de Equipe multi-profissional', basic: false, pro: true },
-  { label: 'Conformidade e financeiro de equipe', basic: false, pro: true },
 ];
 
 export default function Landing() {
@@ -205,7 +197,7 @@ export default function Landing() {
 
           <motion.p initial="hidden" animate="visible" custom={2} variants={fadeUp}
             className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Evoluções com IA em 30 segundos, agenda integrada, financeiro automático, Portal do Paciente e gestão de equipe — tudo pensado para o profissional de saúde que atende em clínicas.
+            Evoluções com IA em 30 segundos, agenda integrada, financeiro automático e Portal do Paciente — tudo pensado para o profissional de saúde que atende em clínicas.
           </motion.p>
 
           <motion.div initial="hidden" animate="visible" custom={3} variants={fadeUp}
@@ -289,7 +281,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pro Features (IA + Portal + Equipe) */}
+      {/* Pro Features (IA + Portal) */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}
@@ -298,10 +290,10 @@ export default function Landing() {
               <Sparkles className="w-4 h-4" /> Exclusivo do plano Pro
             </span>
             <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-3">
-              IA, Portal do Paciente e <span className="text-primary">Gestão de Equipe</span>
+              IA e <span className="text-primary">Portal do Paciente</span>
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Recursos avançados para quem quer escalar o consultório, engajar famílias e trabalhar com mais profissionais.
+              Recursos avançados para quem quer escalar o consultório e engajar famílias com tecnologia de ponta.
             </p>
           </motion.div>
 
@@ -396,7 +388,7 @@ export default function Landing() {
             {[
               { step: '1', title: 'Cadastre suas clínicas e pacientes', desc: 'Adicione suas informações uma vez. O sistema organiza tudo automaticamente por clínica, paciente e período.' },
               { step: '2', title: 'Registre evoluções e gerencie a rotina', desc: 'Use modelos estruturados, agenda integrada, WhatsApp e financeiro automático. No Pro, ainda conta com IA e Portal.' },
-              { step: '3', title: 'Gere relatórios e escale com equipe', desc: 'Exporte PDFs profissionais, envie ao Portal e — no Pro — convide profissionais para sua organização.' },
+              { step: '3', title: 'Gere relatórios e engaje as famílias', desc: 'Exporte PDFs profissionais e — no Pro — envie evoluções, feedbacks e atividades pelo Portal do Paciente.' },
             ].map((s, i) => (
               <motion.div key={s.step} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
@@ -498,8 +490,6 @@ export default function Landing() {
                 <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Tudo do Básico</span></li>
                 <li className="flex items-start gap-2"><Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>IA completa: Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA</span></li>
                 <li className="flex items-start gap-2"><UserPlus className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Portal do Paciente (convites, fichas, mensagens)</span></li>
-                <li className="flex items-start gap-2"><Users className="w-4 h-4 text-primary mt-0.5 shrink-0" /> <span>Gestão de Equipe e multi-profissionais</span></li>
-                <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> Conformidade e financeiro de equipe</li>
                 <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" /> 30 dias grátis</li>
               </ul>
               <Button className="w-full gradient-primary" onClick={() => navigate('/auth')}>
