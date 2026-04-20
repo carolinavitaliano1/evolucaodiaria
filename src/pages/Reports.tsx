@@ -15,6 +15,7 @@ import { BarChart3, PieChartIcon, TrendingUp, Users, Check, X, Download, Loader2
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { calculatePatientMonthlyRevenue } from '@/utils/financialHelpers';
 
 const CHART_COLORS = ['#6366f1', '#ef4444', '#eab308'];
 const PDF_COLORS = { primary: '#6366f1', destructive: '#ef4444', green: '#22c55e', yellow: '#eab308' };
@@ -114,7 +115,7 @@ export default function Reports() {
     return stats;
   }, [filteredEvolutions]);
 
-  // Per-patient detailed stats
+  // Per-patient detailed stats (delegado ao helper central — fonte única da verdade)
   const patientDetailedStats = useMemo(() => {
     const patientIds = [...new Set(filteredEvolutions.map(e => e.patientId))];
     return patientIds.map(pid => {
@@ -129,25 +130,19 @@ export default function Reports() {
       const total = present + reposicao + absent + paidAbsent + feriadoRem;
       const rate = total > 0 ? Math.round(((present + reposicao) / total) * 100) : 0;
 
-      // Effective per-session value: handles personalizado packages (total / sessionLimit)
-      const pkg = patient?.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
-      const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
-      const effectiveSessionValue = patient?.paymentValue
-        ? (isPersonalizado ? patient.paymentValue / pkg!.sessionLimit! : patient.paymentValue)
-        : 0;
-
       let revenue = 0;
-      if (patient?.paymentType === 'fixo' && patient.paymentValue) {
-        revenue = patient.paymentValue;
-      } else if (patient?.paymentValue) {
-        const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
-        let paidRegularAbsences = 0;
-        if (absenceType === 'always') {
-          paidRegularAbsences = absent;
-        } else if (absenceType === 'confirmed_only') {
-          paidRegularAbsences = pEvolutions.filter(e => e.attendanceStatus === 'falta' && e.confirmedAttendance).length;
-        }
-        revenue = (present + reposicao + paidAbsent + paidRegularAbsences + feriadoRem) * effectiveSessionValue;
+      if (patient) {
+        const evosLike = pEvolutions.map(e => ({
+          id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
+          attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance,
+        }));
+        // Usa o mês de referência mais frequente nas evoluções (período pode abranger múltiplos meses)
+        const refDate = pEvolutions[0] ? new Date(pEvolutions[0].date + 'T12:00:00') : new Date();
+        revenue = calculatePatientMonthlyRevenue({
+          patient, clinic, evolutions: evosLike,
+          month: refDate.getMonth(), year: refDate.getFullYear(),
+          packages: clinicPackages,
+        }).total;
       }
 
       // Mood counts

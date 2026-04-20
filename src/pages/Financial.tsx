@@ -15,8 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { getDynamicSessionValue } from '@/utils/dateHelpers';
-import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
+import { calculatePatientMonthlyRevenue, isBillableStatus, type EvolutionLike } from '@/utils/financialHelpers';
+import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 
 type PaymentStatusFilter = 'all' | 'paid' | 'pending';
@@ -157,89 +157,45 @@ export default function Financial() {
   const feriadoRemEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado');
   const feriadoNaoRemEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado');
 
-  const getEffectiveSessionValue = (patient: typeof patients[0]) => {
-    if (!patient?.paymentValue) return 0;
-    const pkg = patient.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
-    const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
-    return isPersonalizado ? patient.paymentValue / pkg!.sessionLimit! : patient.paymentValue;
+  // 🔒 Cálculos delegados ao helper central (financialHelpers).
+  // NÃO duplicar lógica financeira aqui — qualquer ajuste deve ir lá.
+  const buildRevenueCtx = (patientId: string) => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient) return null;
+    const clinic = clinics.find(c => c.id === patient.clinicId);
+    const patientEvos: EvolutionLike[] = monthlyEvolutions
+      .filter(e => e.patientId === patientId)
+      .map(e => ({
+        id: e.id,
+        patientId: e.patientId,
+        groupId: e.groupId,
+        date: e.date,
+        attendanceStatus: e.attendanceStatus,
+        confirmedAttendance: e.confirmedAttendance,
+        userId: e.userId,
+      }));
+    return {
+      patient,
+      clinic,
+      evolutions: patientEvos,
+      month: selectedMonth,
+      year: selectedYear,
+      packages: clinicPackages,
+      groupBillingMap,
+      memberPaymentMap,
+    };
   };
 
-  const getPatientGroupValue = (patientId: string, groupId?: string) => getGroupSessionValue({
-    groupId,
-    patientId,
-    groupBillingMap,
-    memberPaymentMap,
-    packages: clinicPackages.map(pkg => ({
-      id: pkg.id,
-      price: pkg.price,
-      sessionLimit: pkg.sessionLimit,
-    })),
-  });
-
   const calculatePatientRevenue = (patientId: string) => {
-    const patient = patients.find(p => p.id === patientId);
-    if (!patient) return 0;
-
-    const billableEvolutions = monthlyEvolutions.filter(
-      e => e.patientId === patientId && (
-        e.attendanceStatus === 'presente' ||
-        e.attendanceStatus === 'reposicao' ||
-        e.attendanceStatus === 'falta_remunerada' ||
-        e.attendanceStatus === 'feriado_remunerado'
-      )
-    );
-
-    const groupEvos = billableEvolutions.filter(e => e.groupId);
-    const individualEvos = billableEvolutions.filter(e => !e.groupId);
-
-    const groupRevenue = groupEvos.reduce((sum, e) => {
-      return sum + getPatientGroupValue(patientId, e.groupId);
-    }, 0);
-
-    let individualRevenue = 0;
-    if (individualEvos.length > 0 && patient.paymentValue) {
-      if (patient.paymentType === 'fixo') {
-        const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
-        const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
-        if (dynamic.occurrences > 0) {
-          individualRevenue = individualEvos.length * dynamic.perSession;
-        } else {
-          individualRevenue = individualEvos.length * patient.paymentValue;
-        }
-      } else {
-        individualRevenue = individualEvos.length * getEffectiveSessionValue(patient);
-      }
-    }
-
-    return groupRevenue + individualRevenue;
+    const ctx = buildRevenueCtx(patientId);
+    if (!ctx) return 0;
+    return calculatePatientMonthlyRevenue(ctx).total;
   };
 
   const calculatePatientLoss = (patientId: string) => {
-    const patient = patients.find(p => p.id === patientId);
-    if (!patient) return 0;
-
-    const deductibleAbsences = absentEvolutions.filter(e => e.patientId === patientId);
-    if (deductibleAbsences.length === 0) return 0;
-
-    const groupLoss = deductibleAbsences
-      .filter(e => e.groupId)
-      .reduce((sum, e) => sum + getPatientGroupValue(patientId, e.groupId), 0);
-
-    const individualAbsences = deductibleAbsences.filter(e => !e.groupId);
-    if (individualAbsences.length === 0 || !patient.paymentValue) return groupLoss;
-
-    if (patient.paymentType === 'fixo') {
-      const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
-      const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
-
-      if (dynamic.occurrences > 0) {
-        return groupLoss + (individualAbsences.length * dynamic.perSession);
-      }
-
-      return groupLoss + (individualAbsences.length * patient.paymentValue);
-    }
-
-    return groupLoss + (individualAbsences.length * getEffectiveSessionValue(patient));
+    const ctx = buildRevenueCtx(patientId);
+    if (!ctx) return 0;
+    return calculatePatientMonthlyRevenue(ctx).loss;
   };
 
   const monthlyPrivateAppointments = getMonthlyAppointments(selectedMonth, selectedYear);
@@ -284,34 +240,20 @@ export default function Financial() {
     let fixo = 0;
     let group = 0;
     for (const patient of patients) {
-      const billableEvolutions = monthlyEvolutions.filter(
-        e => e.patientId === patient.id && (
-          e.attendanceStatus === 'presente' ||
-          e.attendanceStatus === 'reposicao' ||
-          e.attendanceStatus === 'falta_remunerada' ||
-          e.attendanceStatus === 'feriado_remunerado'
-        )
-      );
-      const groupEvos = billableEvolutions.filter(e => e.groupId);
-      const individualEvos = billableEvolutions.filter(e => !e.groupId);
-
-      group += groupEvos.reduce((sum, e) => sum + getPatientGroupValue(patient.id, e.groupId), 0);
-
-      if (individualEvos.length > 0 && patient.paymentValue) {
-        if (patient.paymentType === 'fixo') {
-          const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay as Record<string, any>) : []);
-          const dynamic = getDynamicSessionValue(patient.paymentValue, patientWeekdays, selectedMonth, selectedYear);
-          const val = dynamic.occurrences > 0
-            ? individualEvos.length * dynamic.perSession
-            : individualEvos.length * patient.paymentValue;
-          fixo += val;
-        } else {
-          individualSession += individualEvos.length * getEffectiveSessionValue(patient);
-        }
+      const ctx = buildRevenueCtx(patient.id);
+      if (!ctx) continue;
+      const breakdown = calculatePatientMonthlyRevenue(ctx);
+      group += breakdown.groupRevenue;
+      // Individual + faltas cobradas vão para "fixo" se o paciente é mensalista
+      const individualPart = breakdown.individualRevenue + breakdown.chargedAbsenceRevenue;
+      if (patient.paymentType === 'fixo') {
+        fixo += individualPart;
+      } else {
+        individualSession += individualPart;
       }
     }
     return { revenueIndividualSession: individualSession, revenueFixo: fixo, revenueGroup: group };
-  }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear]);
+  }, [patients, monthlyEvolutions, groupBillingMap, memberPaymentMap, clinicPackages, selectedMonth, selectedYear, clinics]);
 
   const totalServicesRevenue = privateRevenue;
 
