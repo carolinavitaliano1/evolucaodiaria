@@ -360,12 +360,21 @@ export default function DocIA() {
     const todayBR = new Date().toLocaleDateString('pt-BR');
     const cityFromHeader = (clinicData as any)?.document_header_text?.split('\n')[0] || clinic.name;
     const cityLine = `${cityFromHeader}, ${todayBR}`;
-    const profRegistration = profile?.professional_id ? `Reg.: ${profile.professional_id}` : '';
-    const stampUrl = includeStamp ? (stamps.find(s => s.id === selectedStampId)?.stamp_image || null) : null;
+    const selectedStamp = includeStamp ? stamps.find(s => s.id === selectedStampId) : null;
+    const stampUrl = selectedStamp?.stamp_image || null;
+
+    // Prefer the selected stamp's identity (full name + clinical area + CBO) for the signature line.
+    const professionalName = selectedStamp?.name || profile?.name || '';
+    const regParts: string[] = [];
+    if (selectedStamp?.clinical_area) regParts.push(selectedStamp.clinical_area);
+    if (selectedStamp?.cbo) regParts.push(`CBO ${selectedStamp.cbo}`);
+    if (profile?.professional_id) regParts.push(`Reg.: ${profile.professional_id}`);
+    const profRegistration = regParts.join(' • ');
+
     const bodyHtml = editor?.getHTML() || '';
 
     return {
-      patient, clinic, clinicData, todayBR, cityLine, profRegistration, stampUrl, bodyHtml,
+      patient, clinic, clinicData, todayBR, cityLine, professionalName, profRegistration, stampUrl, bodyHtml,
     };
   };
 
