@@ -218,7 +218,7 @@ export function GroupFinancialTab({
 
     setPaying(true);
     try {
-      const { error } = await supabase.from('patient_payment_records').insert({
+      const { error } = await supabase.from('patient_payment_records').upsert({
         user_id: user.id,
         patient_id: payDialog.patientId,
         clinic_id: clinicId,
@@ -228,14 +228,33 @@ export function GroupFinancialTab({
         paid: true,
         payment_date: new Date().toISOString().slice(0, 10),
         notes: `Pagamento grupo — ${periodLabel}`,
-      });
+      }, { onConflict: 'patient_id,month,year' });
       if (error) throw error;
       toast.success('Pagamento registrado!');
+
+      // Prepare receipt data and load therapist + clinic info
+      const payerName = payDialog.name;
       setPayDialog(null);
       setPayAmount('');
-      loadData();
+      await loadData();
+
+      // Load therapist profile and clinic info for the receipt
+      const [profileRes, clinicRes] = await Promise.all([
+        supabase.from('profiles').select('name, cpf, professional_id, cbo').eq('user_id', user.id).maybeSingle(),
+        supabase.from('clinics').select('name, address, cnpj').eq('id', clinicId).maybeSingle(),
+      ]);
+
+      setTherapistInfo({
+        name: profileRes.data?.name || user.email || 'Profissional',
+        cpf: profileRes.data?.cpf,
+        professionalId: profileRes.data?.professional_id,
+        cbo: profileRes.data?.cbo,
+      });
+      setClinicInfo(clinicRes.data || null);
+      setReceiptData({ payerName, amount, period: periodLabel });
+      setReceiptOpen(true);
     } catch (e: any) {
-      toast.error('Erro: ' + (e.message || ''));
+      toast.error('Erro ao registrar pagamento: ' + (e.message || ''));
     }
     setPaying(false);
   };
