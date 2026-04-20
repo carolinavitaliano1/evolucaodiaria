@@ -68,6 +68,8 @@ export function MissingEvolutionsAlert() {
           const patientCreatedDate = toLocalDateString(new Date(p.createdAt));
           if (dateStr < patientCreatedDate) return;
         }
+        // Skip if this date is blocked (holiday/vacation) for the patient's clinic
+        if (isDateBlocked(dateStr, p.clinicId)) return;
         const schedByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
         const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
         if (!scheduledDays.includes(weekday)) return;
@@ -87,6 +89,8 @@ export function MissingEvolutionsAlert() {
         .forEach(a => {
           const patient = patients.find(p => p.id === a.patientId);
           if (!patient || patient.isArchived) return;
+          // Skip if this date is blocked for the patient's clinic
+          if (isDateBlocked(dateStr, patient.clinicId)) return;
           const startTime = a.time || '';
           if (!startTime || startTime === '00:00') return;
           const endMin = toMin(startTime) + DEFAULT_SESSION_DURATION;
