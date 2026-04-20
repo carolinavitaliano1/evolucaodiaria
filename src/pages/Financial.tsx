@@ -1006,7 +1006,7 @@ export default function Financial() {
               setTxt(C.mid);
               doc.setFont('helvetica', 'italic');
               doc.setFontSize(6.5);
-              const svcLabel = `↳ + R$ ${svcSum.toFixed(2)} em ${patientServices.length} serviço(s): ${patientServices.map((a: any) => a.services?.name || 'Serviço').join(', ').substring(0, 90)}`;
+              const svcLabel = `↳ Inclui R$ ${svcSum.toFixed(2)} em ${patientServices.length} serviço(s): ${patientServices.map((a: any) => a.services?.name || 'Serviço').join(', ').substring(0, 90)}`;
               doc.text(svcLabel, th.p + 4, y + 3.8);
               setDraw(C.border);
               doc.setLineWidth(0.1);
