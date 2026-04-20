@@ -388,7 +388,7 @@ export default function Landing() {
             {[
               { step: '1', title: 'Cadastre suas clínicas e pacientes', desc: 'Adicione suas informações uma vez. O sistema organiza tudo automaticamente por clínica, paciente e período.' },
               { step: '2', title: 'Registre evoluções e gerencie a rotina', desc: 'Use modelos estruturados, agenda integrada, WhatsApp e financeiro automático. No Pro, ainda conta com IA e Portal.' },
-              { step: '3', title: 'Gere relatórios e escale com equipe', desc: 'Exporte PDFs profissionais, envie ao Portal e — no Pro — convide profissionais para sua organização.' },
+              { step: '3', title: 'Gere relatórios e engaje as famílias', desc: 'Exporte PDFs profissionais e — no Pro — envie evoluções, feedbacks e atividades pelo Portal do Paciente.' },
             ].map((s, i) => (
               <motion.div key={s.step} initial="hidden" whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }} custom={i + 1} variants={fadeUp}
