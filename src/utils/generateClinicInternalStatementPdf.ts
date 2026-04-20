@@ -294,7 +294,16 @@ export async function generateClinicInternalStatementPdf(
     let perSession = 0;
     let packageLabel = '';
 
-    if (pkg?.package_type === 'sessao') {
+    // Quando a clínica é de salário fixo, ignoramos a mensalidade do paciente
+    // e mostramos apenas as sessões com valor zero (a receita real é da clínica).
+    const treatAsFixedSalary = isClinicFixedSalary;
+
+    if (treatAsFixedSalary) {
+      perSession = 0;
+      packageLabel = clinicPayInfo?.payment_type === 'fixo_diario' || clinicPayInfo?.payment_type === 'fixo_dia'
+        ? 'Salário fixo da clínica (por dia)'
+        : 'Salário fixo da clínica (mensal)';
+    } else if (pkg?.package_type === 'sessao') {
       perSession = Number(pkg.price) || 0;
       packageLabel = `Por sessão • ${pkg.name}`;
     } else if (pkg?.package_type === 'personalizado') {
@@ -315,7 +324,20 @@ export async function generateClinicInternalStatementPdf(
     let sessionsTotal = 0;
     let deductionTotal = 0;
 
-    if (isMensal) {
+    if (treatAsFixedSalary) {
+      // Sessões listadas apenas para visibilidade — sem cobrança individual.
+      pEvos.forEach(e => {
+        rows.push({
+          date: e.date,
+          type: 'Sessão',
+          description: 'Atendimento (salário fixo da clínica)',
+          status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
+          amount: 0,
+          paid: false,
+        });
+      });
+      sessionsTotal = 0;
+    } else if (isMensal) {
       // For mensalistas: monthly fee divided per actual occurrences
       const billableEvos = pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status));
       const absences = pEvos.filter(e => e.attendance_status === 'falta');
@@ -386,12 +408,14 @@ export async function generateClinicInternalStatementPdf(
     const servicesTotal = pSvcs.reduce((acc, s) => acc + s.price, 0);
     const patientTotal = sessionsTotal + servicesTotal;
 
-    if (patientTotal === 0 && rows.length === 0) continue;
+    if (patientTotal === 0 && rows.length === 0 && !treatAsFixedSalary) continue;
 
     // Payment status calculation
     let received = 0;
-    if (isMensal) {
-      if (pPay?.paid) received += sessionsTotal; // monthly minus deductions
+    if (treatAsFixedSalary) {
+      received = 0;
+    } else if (isMensal) {
+      if (pPay?.paid) received += sessionsTotal;
     } else {
       if (pPay?.paid) received += sessionsTotal;
     }
@@ -399,7 +423,8 @@ export async function generateClinicInternalStatementPdf(
     const pending = Math.max(0, patientTotal - received);
 
     let paymentStatus: PatientBlock['paymentStatus'] = 'sem_registro';
-    if (patientTotal === 0) paymentStatus = 'pago';
+    if (treatAsFixedSalary) paymentStatus = 'sem_registro';
+    else if (patientTotal === 0) paymentStatus = 'pago';
     else if (received >= patientTotal - 0.01) paymentStatus = 'pago';
     else if (received > 0) paymentStatus = 'parcial';
     else paymentStatus = 'pendente';
