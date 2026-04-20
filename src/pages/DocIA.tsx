@@ -58,6 +58,8 @@ interface DocRow {
 interface StampRow {
   id: string;
   name: string;
+  clinical_area: string | null;
+  cbo: string | null;
   stamp_image: string | null;
   signature_image: string | null;
   is_default: boolean | null;
@@ -243,7 +245,7 @@ export default function DocIA() {
     (async () => {
       const [{ data: prof }, { data: stampList }] = await Promise.all([
         supabase.from('profiles').select('name, cpf, professional_id').eq('user_id', user.id).maybeSingle(),
-        supabase.from('stamps').select('id, name, stamp_image, signature_image, is_default').eq('user_id', user.id),
+        supabase.from('stamps').select('id, name, clinical_area, cbo, stamp_image, signature_image, is_default').eq('user_id', user.id),
       ]);
       setProfile(prof || null);
       const list = (stampList as StampRow[]) || [];
@@ -358,12 +360,21 @@ export default function DocIA() {
     const todayBR = new Date().toLocaleDateString('pt-BR');
     const cityFromHeader = (clinicData as any)?.document_header_text?.split('\n')[0] || clinic.name;
     const cityLine = `${cityFromHeader}, ${todayBR}`;
-    const profRegistration = profile?.professional_id ? `Reg.: ${profile.professional_id}` : '';
-    const stampUrl = includeStamp ? (stamps.find(s => s.id === selectedStampId)?.stamp_image || null) : null;
+    const selectedStamp = includeStamp ? stamps.find(s => s.id === selectedStampId) : null;
+    const stampUrl = selectedStamp?.stamp_image || null;
+
+    // Prefer the selected stamp's identity (full name + clinical area + CBO) for the signature line.
+    const professionalName = selectedStamp?.name || profile?.name || '';
+    const regParts: string[] = [];
+    if (selectedStamp?.clinical_area) regParts.push(selectedStamp.clinical_area);
+    if (selectedStamp?.cbo) regParts.push(`CBO ${selectedStamp.cbo}`);
+    if (profile?.professional_id) regParts.push(`Reg.: ${profile.professional_id}`);
+    const profRegistration = regParts.join(' • ');
+
     const bodyHtml = editor?.getHTML() || '';
 
     return {
-      patient, clinic, clinicData, todayBR, cityLine, profRegistration, stampUrl, bodyHtml,
+      patient, clinic, clinicData, todayBR, cityLine, professionalName, profRegistration, stampUrl, bodyHtml,
     };
   };
 
@@ -376,7 +387,7 @@ export default function DocIA() {
     }
     setSavingPdf(true);
     try {
-      const { patient, clinic, clinicData, todayBR, cityLine, profRegistration, stampUrl } = await buildExportPayload();
+      const { patient, clinic, clinicData, todayBR, cityLine, professionalName, profRegistration, stampUrl } = await buildExportPayload();
 
       const { blob, dataUrl } = await generateAIDocumentPdf({
         title: draftTitle || docTypeLabel(createDocType),
@@ -384,7 +395,7 @@ export default function DocIA() {
         logoUrl: (clinicData as any)?.document_logo_url || null,
         headerText: (clinicData as any)?.document_header_text || null,
         footerText: (clinicData as any)?.document_footer_text || null,
-        professionalName: profile?.name || '',
+        professionalName,
         professionalRegistration: profRegistration,
         todayBR, cityLine,
         stampUrl,
@@ -598,7 +609,7 @@ export default function DocIA() {
                         <Select value={selectedStampId} onValueChange={setSelectedStampId}>
                           <SelectTrigger className="h-9"><SelectValue placeholder="Escolha um carimbo" /></SelectTrigger>
                           <SelectContent>
-                            {stampsWithImage.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            {stampsWithImage.map(s => <SelectItem key={s.id} value={s.id}>{s.name}{s.clinical_area ? ` — ${s.clinical_area}` : ''}{s.cbo ? ` (CBO ${s.cbo})` : ''}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         {selectedStampId && (
