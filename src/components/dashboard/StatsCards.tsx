@@ -6,8 +6,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
-import { getDynamicSessionValue } from '@/utils/dateHelpers';
-import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
+import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
+import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 
 export function StatsCards() {
   const { clinics, patients, appointments, evolutions, clinicPackages } = useApp();
@@ -124,18 +124,9 @@ export function StatsCards() {
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   });
 
-  // Helper: effective per-session value respecting personalizado packages
-  const getEffectiveSessionValue = (p: typeof patients[0]) => {
-    if (!p.paymentValue) return 0;
-    const pkg = p.packageId ? clinicPackages.find(pk => pk.id === p.packageId) : null;
-    const isPersonalizado = pkg?.packageType === 'personalizado' && (pkg?.sessionLimit ?? 0) > 0;
-    return isPersonalizado ? p.paymentValue / pkg!.sessionLimit! : p.paymentValue;
-  };
-
-  // Clinic patient revenue — considers clinic-level fixed models (fixo_mensal / fixo_diario)
-  // and per-patient revenue for other models
+  // 🔒 Faturamento da clínica delegado ao helper central — respeita modelo
+  // fixo_mensal (salário fixo, independe de sessões), fixo_diario e variado.
   const clinicMonthlyRevenue = (() => {
-    // Group patients by clinic
     const patientsByClinic: Record<string, typeof patients> = {};
     for (const p of patients) {
       if (p.isArchived) continue;
@@ -148,67 +139,18 @@ export function StatsCards() {
       const clinic = clinics.find(c => c.id === cId);
       if (!clinic || clinic.isArchived) continue;
 
-      const clPayType = clinic.paymentType as string | undefined;
-      const isFixoMensal = clPayType === 'fixo_mensal';
-      const isFixoDiario = clPayType === 'fixo_diario';
-      const clinicBaseValue = clinic.paymentAmount || 0;
+      const cEvos: EvolutionLike[] = monthlyEvolutions
+        .filter(e => cPatients.some(p => p.id === e.patientId))
+        .map(e => ({
+          id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
+          attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance,
+        }));
 
-      if (isFixoMensal) {
-        total += clinicBaseValue;
-        continue;
-      }
-
-      if (isFixoDiario) {
-        // Count unique work days (present/reposicao) for this clinic
-        const clinicBillableEvos = monthlyEvolutions.filter(
-          e => cPatients.some(p => p.id === e.patientId) && (
-            e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'
-          )
-        );
-        const uniqueDays = new Set(clinicBillableEvos.map(e => e.date)).size;
-        total += uniqueDays * clinicBaseValue;
-        continue;
-      }
-
-      // Per-patient calculation
-      for (const p of cPatients) {
-        const billableEvolutions = monthlyEvolutions.filter(
-          e => e.patientId === p.id && (
-            e.attendanceStatus === 'presente' ||
-            e.attendanceStatus === 'reposicao' ||
-            e.attendanceStatus === 'falta_remunerada' ||
-            e.attendanceStatus === 'feriado_remunerado'
-          )
-        );
-
-        // Group sessions: priced via group config, independent of patient's individual price
-        const groupEvos = billableEvolutions.filter(e => e.groupId);
-        const individualEvos = billableEvolutions.filter(e => !e.groupId);
-
-        for (const e of groupEvos) {
-          total += getGroupSessionValue({
-            groupId: e.groupId,
-            patientId: p.id,
-            groupBillingMap,
-            memberPaymentMap,
-            packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
-          });
-        }
-
-        if (!p.paymentValue || individualEvos.length === 0) continue;
-
-        if (p.paymentType === 'fixo') {
-          const patientWeekdays = p.weekdays || (p.scheduleByDay ? Object.keys(p.scheduleByDay as Record<string, any>) : []);
-          const dynamic = getDynamicSessionValue(p.paymentValue, patientWeekdays, currentMonth, currentYear);
-          if (dynamic.occurrences > 0) {
-            total += individualEvos.length * dynamic.perSession;
-          } else {
-            total += individualEvos.length * p.paymentValue;
-          }
-        } else {
-          total += individualEvos.length * getEffectiveSessionValue(p);
-        }
-      }
+      total += calculateClinicMonthlyRevenue({
+        clinic, patients: cPatients, evolutions: cEvos,
+        month: currentMonth, year: currentYear, packages: clinicPackages,
+        groupBillingMap, memberPaymentMap,
+      }).total;
     }
     return total;
   })();

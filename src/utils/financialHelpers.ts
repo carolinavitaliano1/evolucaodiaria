@@ -51,11 +51,28 @@ export interface PatientLike {
 }
 
 export interface ClinicLike {
+  id?: string;
   absencePaymentType?: AbsencePaymentType | string | null;
   paysOnAbsence?: boolean | null;
+  /**
+   * Modelo de remuneração que a clínica paga AO TERAPEUTA.
+   * - 'fixo_mensal'  → salário mensal fixo (independe de sessões)
+   * - 'fixo_diario'  → valor fixo por dia trabalhado
+   * - 'sessao'       → valor por sessão (multiplica nº de sessões billable)
+   * - 'variado'      → calcula por paciente (soma calculatePatientMonthlyRevenue)
+   * Aceita também legados 'fixo' e 'mensal' como sinônimos de 'fixo_mensal'.
+   */
   paymentType?: string | null;
   paymentAmount?: number | null;
 }
+
+/** True se o tipo de pagamento da clínica é "salário fixo mensal". */
+export const isClinicFixedMonthly = (paymentType?: string | null): boolean =>
+  paymentType === 'fixo_mensal' || paymentType === 'fixo' || paymentType === 'mensal';
+
+/** True se o tipo de pagamento da clínica é "fixo por dia trabalhado". */
+export const isClinicFixedDaily = (paymentType?: string | null): boolean =>
+  paymentType === 'fixo_diario' || paymentType === 'fixo_dia';
 
 export interface PackageLike {
   id: string;
@@ -376,6 +393,95 @@ export function calculateMemberRemuneration(ctx: MemberRemunerationContext): num
   }
 
   return 0;
+}
+
+// ============================================================================
+//  Faturamento da CLÍNICA (respeita modelo de pagamento da clínica ao terapeuta)
+// ============================================================================
+
+export interface ClinicRevenueContext {
+  clinic: ClinicLike;
+  patients: PatientLike[];                  // pacientes desta clínica
+  evolutions: EvolutionLike[];              // evoluções do mês (já filtradas pelo mês/ano)
+  month: number;                            // 0-indexed
+  year: number;
+  packages?: PackageLike[];
+  groupBillingMap?: GroupBillingMap;
+  memberPaymentMap?: GroupMemberPaymentMap;
+}
+
+export interface ClinicRevenueBreakdown {
+  /** Faturamento total da clínica no mês. */
+  total: number;
+  /** Modelo aplicado para o cálculo (para exibição na UI). */
+  model: 'fixo_mensal' | 'fixo_diario' | 'variado';
+  /** Dias únicos trabalhados (relevante para fixo_diario). */
+  workDays: number;
+  /** Sessões billable contadas (informativo, não afeta total em modelos fixos). */
+  sessionsCount: number;
+  /** Detalhe por paciente — vazio em modelos fixos (faturamento é global). */
+  perPatient: Array<{ patientId: string; revenue: number }>;
+}
+
+/**
+ * Calcula o faturamento mensal de UMA clínica conforme seu modelo de pagamento.
+ *
+ * 🔒 REGRA DE OURO: clínicas com `paymentType = 'fixo_mensal'` SEMPRE retornam
+ * `paymentAmount` (salário fixo), independentemente do número de sessões.
+ * Clínicas `fixo_diario` retornam `dias_trabalhados × paymentAmount`.
+ * Demais modelos somam `calculatePatientMonthlyRevenue` por paciente.
+ */
+export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): ClinicRevenueBreakdown {
+  const { clinic, patients, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {} } = ctx;
+
+  const baseValue = clinic.paymentAmount ?? 0;
+
+  // Sessões billable (presente/reposição) desta clínica no mês — para informação
+  const billableEvos = evolutions.filter(e => isSessionStatus(e.attendanceStatus));
+  const workDays = new Set(billableEvos.map(e => e.date)).size;
+
+  // Modelo: salário fixo mensal
+  if (isClinicFixedMonthly(clinic.paymentType)) {
+    return {
+      total: baseValue,
+      model: 'fixo_mensal',
+      workDays,
+      sessionsCount: billableEvos.length,
+      perPatient: [],
+    };
+  }
+
+  // Modelo: fixo por dia trabalhado
+  if (isClinicFixedDaily(clinic.paymentType)) {
+    return {
+      total: workDays * baseValue,
+      model: 'fixo_diario',
+      workDays,
+      sessionsCount: billableEvos.length,
+      perPatient: [],
+    };
+  }
+
+  // Modelo: variado (por paciente / sessão)
+  const perPatient: Array<{ patientId: string; revenue: number }> = [];
+  let total = 0;
+  for (const patient of patients) {
+    const patientEvos = evolutions.filter(e => e.patientId === patient.id);
+    const breakdown = calculatePatientMonthlyRevenue({
+      patient, clinic, evolutions: patientEvos, month, year,
+      packages, groupBillingMap, memberPaymentMap,
+    });
+    total += breakdown.total;
+    perPatient.push({ patientId: patient.id, revenue: breakdown.total });
+  }
+
+  return {
+    total,
+    model: 'variado',
+    workDays,
+    sessionsCount: billableEvos.length,
+    perPatient,
+  };
 }
 
 // ============================================================================

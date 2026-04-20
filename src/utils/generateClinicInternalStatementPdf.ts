@@ -116,7 +116,7 @@ export async function generateClinicInternalStatementPdf(
   const lastDay = new Date(year, month + 1, 0).getDate();
   const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-  const [svcRes, payRes, patRes, evoRes, pkgRes] = await Promise.all([
+  const [svcRes, payRes, patRes, evoRes, pkgRes, clinicRes] = await Promise.all([
     supabase
       .from('private_appointments')
       .select('id, date, time, price, status, paid, patient_id, client_name, services(name)')
@@ -143,7 +143,15 @@ export async function generateClinicInternalStatementPdf(
       .from('clinic_packages')
       .select('id, name, package_type, price, session_limit')
       .eq('clinic_id', clinicId),
+    supabase
+      .from('clinics')
+      .select('payment_type, payment_amount')
+      .eq('id', clinicId)
+      .maybeSingle(),
   ]);
+
+  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null } | null =
+    (clinicRes.data as any) ?? null;
 
   const services: PrivateApt[] = (svcRes.data || []).map((d: any) => ({
     id: d.id,
@@ -215,6 +223,25 @@ export async function generateClinicInternalStatementPdf(
     doc.setFontSize(7.5); doc.setTextColor(...muted); doc.setFont('helvetica', 'normal');
     const parts = [clinicAddress, clinicCnpj ? `CNPJ: ${fmtCNPJ(clinicCnpj)}` : null].filter(Boolean);
     doc.text(parts.join('  •  '), M, y); y += 5;
+  }
+
+  // Nota de modelo de remuneração da clínica (quando fixo)
+  const clPay = clinicPayInfo?.payment_type;
+  const clAmt = clinicPayInfo?.payment_amount ?? 0;
+  if (clPay === 'fixo_mensal' || clPay === 'fixo' || clPay === 'mensal') {
+    doc.setFontSize(8); doc.setTextColor(...accent); doc.setFont('helvetica', 'bold');
+    doc.text(
+      `💼 Remuneração: Salário Fixo Mensal — ${fmtBRL(clAmt)} (independente do nº de sessões)`,
+      M, y,
+    );
+    y += 6;
+  } else if (clPay === 'fixo_diario' || clPay === 'fixo_dia') {
+    doc.setFontSize(8); doc.setTextColor(...accent); doc.setFont('helvetica', 'bold');
+    doc.text(
+      `💼 Remuneração: Fixo por Dia Trabalhado — ${fmtBRL(clAmt)} / dia`,
+      M, y,
+    );
+    y += 6;
   }
 
   // ===== Compute all data first for executive summary =====
