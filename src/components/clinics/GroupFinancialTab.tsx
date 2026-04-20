@@ -234,6 +234,7 @@ export function GroupFinancialTab({
 
       // Prepare receipt data and load therapist + clinic info
       const payerName = payDialog.name;
+      const payerPatientId = payDialog.patientId;
       setPayDialog(null);
       setPayAmount('');
       await loadData();
