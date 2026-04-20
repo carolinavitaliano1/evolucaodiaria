@@ -116,7 +116,7 @@ export async function generateClinicInternalStatementPdf(
   const lastDay = new Date(year, month + 1, 0).getDate();
   const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-  const [svcRes, payRes, patRes, evoRes, pkgRes, clinicRes] = await Promise.all([
+  const [svcRes, payRes, patRes, evoRes, pkgRes, clinicRes, clinicPayRes] = await Promise.all([
     supabase
       .from('private_appointments')
       .select('id, date, time, price, status, paid, patient_id, client_name, services(name)')
@@ -147,6 +147,13 @@ export async function generateClinicInternalStatementPdf(
       .from('clinics')
       .select('payment_type, payment_amount')
       .eq('id', clinicId)
+      .maybeSingle(),
+    supabase
+      .from('clinic_payment_records')
+      .select('amount, paid, payment_date')
+      .eq('clinic_id', clinicId)
+      .eq('month', month + 1)
+      .eq('year', year)
       .maybeSingle(),
   ]);
 
