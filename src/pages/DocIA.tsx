@@ -391,6 +391,16 @@ export default function DocIA() {
     try {
       const { patient, clinic, clinicData, todayBR, cityLine, professionalName, profRegistration, stampUrl } = await buildExportPayload();
 
+      // Embed export metadata inside the saved HTML so future Word/PDF exports keep stamp + signatures.
+      const meta = {
+        stampId: includeStamp ? selectedStampId : null,
+        extraSignatures,
+        professionalName,
+        profRegistration,
+      };
+      const metaScript = `<script type="application/json" id="docia-meta">${JSON.stringify(meta).replace(/</g, '\\u003c')}</script>`;
+      const persistedHtml = `${metaScript}${bodyHtml}`;
+
       const { blob, dataUrl } = await generateAIDocumentPdf({
         title: draftTitle || docTypeLabel(createDocType),
         bodyText: bodyHtml,
