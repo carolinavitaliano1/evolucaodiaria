@@ -50,6 +50,8 @@ import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { PatientFeed } from '@/components/feed/PatientFeed';
 import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
 import { Brain } from 'lucide-react';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { UpgradeBlock } from '@/components/UpgradeBlock';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
