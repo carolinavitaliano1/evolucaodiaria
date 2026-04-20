@@ -44,7 +44,7 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
   container.style.left = '-99999px';
   container.style.top = '0';
   container.style.width = '794px';
-  container.style.minHeight = '1123px';
+  container.style.height = 'auto';
   container.style.padding = '64px 72px';
   container.style.background = '#ffffff';
   container.style.color = '#111111';
@@ -144,7 +144,7 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
     pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
 
-    while (heightLeft > 0) {
+    while (heightLeft > 1) {
       position = heightLeft - imgHeight;
       pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
