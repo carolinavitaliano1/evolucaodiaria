@@ -1,46 +1,48 @@
 
-## Plano de implementação
+The user is explaining a clinic remuneration scenario: "Clínica Viva" pays them a fixed monthly salary (R$ 1.200) regardless of how many patients/sessions they attend.
 
-### 1. Modal de pré-visualização editável do Recibo de Pagamento
-**Novo arquivo:** `src/components/financial/EditableReceiptModal.tsx`
-- Modal com formulário pré-preenchido contendo todos os campos: nome do pagador, CPF, valor, descrição do serviço, período, forma de pagamento, data de pagamento, local, e **seletor de carimbo** (carrega lista da tabela `stamps` do usuário).
-- Botões: "Gerar PDF" e "Gerar Word".
-- Reutiliza `generatePaymentReceiptPdf` / `generatePaymentReceiptWord` já existentes — apenas passa o objeto editado.
+This is the `paymentType = 'fixo'` (or `fixo_mensal`) at the **clinic level** (not patient level). Let me check how this is currently calculated.
 
-**Pontos de uso (substituir chamadas diretas):**
-- `src/components/patients/PatientServicesSection.tsx` (linha 80) — abre o modal em vez de gerar direto.
-- `src/pages/PatientDetail.tsx` (linha 1505) — botão de recibo do paciente passa pelo modal.
-- `src/pages/ClinicDetail.tsx` (linha 525) — botão de recibo da aba Serviços da clínica.
+Looking at the audit context and `financialHelpers.ts`, the clinic-level fixed payment logic lives in `ClinicFinancial.tsx` and `Clinics.tsx` / `StatsCards.tsx`. The clinic table has `payment_type` and `payment_amount` fields.
 
-### 2. Incluir serviços avulsos no extrato/PDF financeiro do paciente
-**Arquivo:** `src/utils/generateReportPdf.ts` (função que gera o PDF do tipo "Dante")
-- Buscar `private_appointments` do paciente no período.
-- Misturar com sessões na mesma tabela de atendimentos com coluna `Tipo` ("Sessão" / "Serviço") e ordenação cronológica.
-- Somar no total financeiro.
+The user is reporting/confirming the expected behavior. I need to verify that with the recent refactor:
+1. When `clinic.paymentType === 'fixo'` (or 'mensal'/'fixo_mensal'), the revenue shown for that clinic in the month = `payment_amount` (R$ 1.200), NOT a calculation based on sessions.
+2. This should be the case across: ClinicFinancial, Clinics list, Financial page, Reports, Dashboard StatsCards, and the Internal Statement PDF.
 
-**Arquivo:** local que chama `generateReportPdf` para o paciente — passar o array de serviços já carregado, ou deixar o PDF buscar internamente.
+I should inspect the current state to confirm whether this is working correctly or if there's a bug to fix.
 
-### 3. Novo extrato consolidado da clínica (Financeiro interno)
-**Novo arquivo:** `src/utils/generateClinicInternalStatementPdf.ts`
-- Header: nome da clínica, mês/ano, total geral.
-- **Para cada paciente** com movimento no mês: subtítulo com nome + tabela com sessões e serviços do paciente (mesmo formato unificado do item 2).
-- **Seção final:** "Serviços sem paciente vinculado" listando `private_appointments` com `client_name` mas sem `patient_id`.
-- Total geral consolidado ao final.
+Let me plan to verify and ensure the fixed-monthly clinic logic is honored everywhere.
 
-**Arquivo:** `src/components/clinics/ClinicFinancial.tsx`
-- Adicionar botão "Extrato Completo Interno" no topo da aba.
-- Dispara `generateClinicInternalStatementPdf` com filtros do mês/ano atualmente selecionado.
+## Plan
 
-### Arquivos editados/criados
-- ✏️ `src/components/patients/PatientServicesSection.tsx`
-- ✏️ `src/pages/PatientDetail.tsx`
-- ✏️ `src/pages/ClinicDetail.tsx`
-- ✏️ `src/utils/generateReportPdf.ts`
-- ✏️ `src/components/clinics/ClinicFinancial.tsx`
-- 🆕 `src/components/financial/EditableReceiptModal.tsx`
-- 🆕 `src/utils/generateClinicInternalStatementPdf.ts`
+**Objetivo:** Garantir que clínicas com pagamento "Fixo Mensal" (ex: Clínica Viva — R$ 1.200) sempre exibam o valor fixo do mês como faturamento, independentemente do número de sessões registradas.
 
-### Resultado esperado
-- Antes de baixar qualquer recibo de serviço, abre modal para revisar/editar texto, valor, datas e carimbo.
-- O extrato financeiro do paciente passa a contemplar **todos** os serviços prestados (não só sessões).
-- A clínica ganha um botão para baixar todo o faturamento interno detalhado em um único PDF.
+### Diagnóstico
+Vou verificar em todas as telas/PDFs se o tipo `paymentType = 'fixo'` (ou `fixo_mensal` / `mensal`) da clínica está sendo respeitado:
+
+1. `ClinicFinancial.tsx` — aba Financeiro da clínica
+2. `Clinics.tsx` — card de faturamento na listagem
+3. `Financial.tsx` — dashboard financeiro global
+4. `Reports.tsx` — relatórios
+5. `StatsCards.tsx` — dashboard inicial
+6. `generateClinicInternalStatementPdf.ts` — extrato PDF
+7. `TeamFinancialDashboard.tsx` — financeiro da equipe
+
+### Correções a aplicar
+- Centralizar a regra no `financialHelpers.ts` com uma função única:
+  ```ts
+  calculateClinicMonthlyRevenue(clinic, patients, evolutions, month, year)
+  ```
+  Que retorna:
+  - Se `clinic.paymentType === 'fixo' | 'fixo_mensal' | 'mensal'` → `clinic.paymentAmount` (valor fixo)
+  - Se `clinic.paymentType === 'fixo_dia'` → dias trabalhados × valor diário
+  - Se `clinic.paymentType === 'por_sessao'` → soma das sessões billable × valor/sessão
+  - Se `clinic.paymentType === 'variado'` → soma da receita por paciente (lógica atual)
+
+- Substituir todos os cálculos espalhados pelas 7 telas/PDFs por essa função única.
+- Adicionar nota visual no card: "Salário fixo mensal: R$ 1.200,00 (independente do nº de sessões)" para deixar claro ao usuário.
+
+### Validação esperada
+Após o ajuste, na Clínica Viva você verá sempre R$ 1.200 no mês, mesmo que tenha 1, 10 ou 30 sessões registradas. O número de sessões continua aparecendo como informação separada (produtividade), sem afetar o faturamento.
+
+Confirma que a clínica está cadastrada com **Tipo de Pagamento = "Fixo Mensal"** e **Valor = R$ 1.200**? Se sim, aprove para eu implementar a centralização e travar a regra em todas as telas.
