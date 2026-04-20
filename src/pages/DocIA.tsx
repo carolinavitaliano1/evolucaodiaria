@@ -755,7 +755,14 @@ export default function DocIA() {
                               {downloadingId === `${doc.id}-docx` ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FileType className="w-3.5 h-3.5 mr-1" />}
                               Word
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDeleteDoc(doc)}>
+                            <Button size="sm" variant="outline" onClick={() => handleEditDoc(doc)} title="Editar no editor">
+                              <Pencil className="w-3.5 h-3.5 mr-1" /> Editar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleSaveToPatientFolder(doc)} disabled={savingToFolderId === doc.id} title="Salvar na pasta do paciente">
+                              {savingToFolderId === doc.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FolderPlus className="w-3.5 h-3.5 mr-1" />}
+                              Pasta
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDeleteDoc(doc)} title="Excluir documento">
                               <Trash2 className="w-3.5 h-3.5 text-destructive" />
                             </Button>
                           </div>
