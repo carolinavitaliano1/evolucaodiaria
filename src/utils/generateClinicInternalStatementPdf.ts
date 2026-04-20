@@ -425,20 +425,23 @@ export async function generateClinicInternalStatementPdf(
     });
 
     const servicesTotal = pSvcs.reduce((acc, s) => acc + s.price, 0);
-    const patientTotal = sessionsTotal + servicesTotal;
+    const grossTotal = sessionsTotal + servicesTotal;
+    // Desconto da clínica incide sobre o TOTAL bruto recebido no mês.
+    const patientTotal = treatAsFixedSalary ? 0 : grossTotal * clinicDiscountFactor;
 
-    if (patientTotal === 0 && rows.length === 0 && !treatAsFixedSalary) continue;
+    if (grossTotal === 0 && rows.length === 0 && !treatAsFixedSalary) continue;
 
-    // Payment status calculation
-    let received = 0;
+    // Payment status calculation (sobre o valor com desconto)
+    let receivedGross = 0;
     if (treatAsFixedSalary) {
-      received = 0;
+      receivedGross = 0;
     } else if (isMensal) {
-      if (pPay?.paid) received += sessionsTotal;
+      if (pPay?.paid) receivedGross += sessionsTotal;
     } else {
-      if (pPay?.paid) received += sessionsTotal;
+      if (pPay?.paid) receivedGross += sessionsTotal;
     }
-    received += pSvcs.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
+    receivedGross += pSvcs.filter(s => s.paid).reduce((acc, s) => acc + s.price, 0);
+    const received = receivedGross * clinicDiscountFactor;
     const pending = Math.max(0, patientTotal - received);
 
     let paymentStatus: PatientBlock['paymentStatus'] = 'sem_registro';
