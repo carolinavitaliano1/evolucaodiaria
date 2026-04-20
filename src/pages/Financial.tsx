@@ -852,6 +852,9 @@ export default function Financial() {
             doc.text(tipoLabel || (paymentType === 'fixo' ? 'Fixo' : 'Sessão'), th.t, y + 5);
             doc.text(sessions.toString(), th.s, y + 5);
 
+            const discPct = clinic?.discountPercentage || 0;
+            const netValue = displayValue * (1 - discPct / 100);
+
             if (effectivePaid) {
               const paidLabel = `Pago${effectiveDate ? ' ' + format(new Date(effectiveDate + 'T00:00:00'), 'dd/MM') : ''}`;
               setFill(C.greenLight);
@@ -860,6 +863,7 @@ export default function Financial() {
               doc.setFont('helvetica', 'bold');
               doc.text(paidLabel, th.st + 1, y + 5);
               totalPaid += displayValue;
+              totalPaidNet += netValue;
             } else {
               setFill(C.orangeLight);
               doc.roundedRect(th.st - 1, y + 0.8, doc.getTextWidth('Pendente') + 4, 6, 1, 1, 'F');
@@ -867,6 +871,7 @@ export default function Financial() {
               doc.setFont('helvetica', 'bold');
               doc.text('Pendente', th.st + 1, y + 5);
               totalPending += displayValue;
+              totalPendingNet += netValue;
             }
 
             setTxt(C.dark);
