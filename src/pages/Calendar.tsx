@@ -757,6 +757,8 @@ export default function CalendarPage() {
         }}
         selectedDate={selectedDate}
       />
+
+      <CalendarBlockDialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen} />
     </div>
   );
 }
