@@ -614,7 +614,10 @@ export async function generateClinicInternalStatementPdf(
     // Subtitle: package + session counter
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...muted);
     let sessionInfoBilled: string;
-    if (b.isMensal) {
+    if (isClinicFixedSalary) {
+      const sessionsCount = b.rows.filter(r => r.type === 'Sessão').length;
+      sessionInfoBilled = `${sessionsCount} sessão(ões) registrada(s)`;
+    } else if (b.isMensal) {
       const billable = b.rows.filter(r => r.type === 'Sessão' && r.amount > 0).length;
       const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? billable;
       sessionInfoBilled = `${billable}/${totalSlots} sessões`;
@@ -624,7 +627,10 @@ export async function generateClinicInternalStatementPdf(
     doc.text(`${b.packageLabel}  •  ${sessionInfoBilled}`, M + 2, y + 10);
 
     // Right side under badge: monthly value + weekly breakdown for mensalistas
-    if (b.isMensal && b.monthlyValue > 0) {
+    if (isClinicFixedSalary) {
+      doc.setTextColor(...muted); doc.setFontSize(7.5); doc.setFont('helvetica', 'italic');
+      doc.text('Sem cobrança individual', W - M - 2, y + 10, { align: 'right' });
+    } else if (b.isMensal && b.monthlyValue > 0) {
       const totalSlots = b.rows.find(r => r.sessionTotal)?.sessionTotal ?? 0;
       const detail = totalSlots > 0
         ? `${fmtBRL(b.monthlyValue)}/mês  (Mês de ${totalSlots} semanas: ${fmtBRL(b.perSession)}/sessão)`
@@ -642,19 +648,28 @@ export async function generateClinicInternalStatementPdf(
     doc.setDrawColor(...border); doc.line(M, y + 0.5, W - M, y + 0.5); y += 4;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...dark);
     doc.text(`Subtotal — ${b.info.name}`, M + 2, y);
-    doc.text(fmtBRL(b.patientTotal), W - M - 2, y, { align: 'right' });
+    if (isClinicFixedSalary) {
+      doc.setTextColor(...muted); doc.setFont('helvetica', 'italic');
+      doc.text('—  (incluso no salário fixo)', W - M - 2, y, { align: 'right' });
+    } else {
+      doc.text(fmtBRL(b.patientTotal), W - M - 2, y, { align: 'right' });
+    }
     y += 4;
 
-    // Recebido / pendente line
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...green);
-    doc.text(`Recebido: ${fmtBRL(b.received)}`, M + 2, y);
-    doc.setTextColor(...orange);
-    doc.text(`Pendente: ${fmtBRL(b.pending)}`, M + 50, y);
-    if (b.deductionTotal > 0) {
-      doc.setTextColor(...red);
-      doc.text(`Deduções: ${fmtBRL(b.deductionTotal)}`, M + 100, y);
+    // Recebido / pendente line — omit for fixed salary clinics (handled at clinic level)
+    if (!isClinicFixedSalary) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...green);
+      doc.text(`Recebido: ${fmtBRL(b.received)}`, M + 2, y);
+      doc.setTextColor(...orange);
+      doc.text(`Pendente: ${fmtBRL(b.pending)}`, M + 50, y);
+      if (b.deductionTotal > 0) {
+        doc.setTextColor(...red);
+        doc.text(`Deduções: ${fmtBRL(b.deductionTotal)}`, M + 100, y);
+      }
+      y += 7;
+    } else {
+      y += 3;
     }
-    y += 7;
   }
 
   // ===== ORPHAN SERVICES =====
