@@ -157,7 +157,7 @@ export async function generateClinicInternalStatementPdf(
       .maybeSingle(),
   ]);
 
-  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null } | null =
+  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null } | null =
     (clinicRes.data as any) ?? null;
 
   const isClinicFixedSalary =
@@ -166,6 +166,11 @@ export async function generateClinicInternalStatementPdf(
     clinicPayInfo?.payment_type === 'mensal' ||
     clinicPayInfo?.payment_type === 'fixo_diario' ||
     clinicPayInfo?.payment_type === 'fixo_dia';
+
+  const clinicDiscountPct = Math.max(0, Math.min(100, Number(clinicPayInfo?.discount_percentage || 0)));
+  const clinicDiscountFactor = 1 - clinicDiscountPct / 100;
+  const clinicSessionAmount = Number(clinicPayInfo?.payment_amount || 0);
+  const isClinicPerSession = clinicPayInfo?.payment_type === 'sessao' || clinicPayInfo?.payment_type === 'por_sessao';
 
   const services: PrivateApt[] = (svcRes.data || []).map((d: any) => ({
     id: d.id,
