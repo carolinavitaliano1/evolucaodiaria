@@ -274,12 +274,13 @@ export default function Financial() {
 
   const clinicStats = clinics.filter(c => !c.isArchived).map(clinic => {
     const clinicPatients = patients.filter(p => p.clinicId === clinic.id);
-    const revenue = clinicPatients.reduce((sum, p) => sum + calculatePatientRevenue(p.id), 0);
+    const revenue = calculateClinicRevenue(clinic);
     const loss = clinicPatients.reduce((sum, p) => sum + calculatePatientLoss(p.id), 0);
     const sessions = presentEvolutions.filter(e => clinicPatients.some(p => p.id === e.patientId)).length;
     const paidAbsences = paidAbsenceEvolutions.filter(e => clinicPatients.some(p => p.id === e.patientId)).length;
     const absences = absentEvolutions.filter(e => clinicPatients.some(p => p.id === e.patientId)).length;
-    return { clinic, patientCount: clinicPatients.length, revenue, loss, sessions, paidAbsences, absences };
+    const isFixedClinic = isClinicFixedMonthly(clinic.paymentType) || isClinicFixedDaily(clinic.paymentType);
+    return { clinic, patientCount: clinicPatients.length, revenue, loss, sessions, paidAbsences, absences, isFixedClinic };
   });
 
   const allPatientStats = patients.map(patient => {
