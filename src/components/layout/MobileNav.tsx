@@ -70,8 +70,6 @@ export function MobileNav() {
   });
 
   const allowedMore = moreNavItems.filter(i => {
-    // Hide AI Reports for Basic plan
-    if (i.to === '/ai-reports' && !hasAI) return false;
     if (!isOrgMember) return true;
     if (i.to === '/profile') return true;
     if (i.perm === null) return false;
