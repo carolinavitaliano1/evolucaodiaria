@@ -35,6 +35,8 @@ interface ServiceRecord {
   time: string;
   client_name: string;
   service_name: string | null;
+  patient_id: string | null;
+  patient_name: string | null;
 }
 
 interface ClinicPaymentRecord {
@@ -92,7 +94,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   useEffect(() => {
     supabase
       .from('private_appointments')
-      .select('id, price, status, paid, payment_date, date, time, client_name, services(name)')
+      .select('id, price, status, paid, payment_date, date, time, client_name, patient_id, services(name), patients(name)')
       .eq('clinic_id', clinicId)
       .order('date', { ascending: false })
       .then(({ data }) => {
@@ -107,6 +109,8 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             time: d.time,
             client_name: d.client_name,
             service_name: d.services?.name ?? null,
+            patient_id: d.patient_id ?? null,
+            patient_name: d.patients?.name ?? null,
           })));
         }
       });
@@ -513,7 +517,14 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                       <StatusIcon className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">{service.client_name}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {service.patient_name || service.client_name}
+                        </p>
+                        {service.patient_id && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">Paciente</span>
+                        )}
+                      </div>
                   <p className="text-[10px] text-muted-foreground">
                     {service.service_name ?? 'Serviço'} · {format(new Date(service.date + 'T12:00:00'), 'dd/MM')}
                     {service.status === 'concluído' && service.paid && (
