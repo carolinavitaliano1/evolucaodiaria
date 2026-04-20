@@ -563,7 +563,7 @@ export async function generateClinicInternalStatementPdf(
   doc.text(`Serviços avulsos: ${orphanServices.length}`, M + 3 + kpiW * 3, subY);
 
   doc.setFontSize(7); doc.setTextColor(...muted);
-  doc.text(`Total de sessões registradas: ${evolutions.length}  •  Serviços vinculados: ${services.length - orphanServices.length}${clinicDiscountPct > 0 ? `  •  Desconto da clínica aplicado sobre o total: ${clinicDiscountPct}%` : ''}`, M + 3, y + 42);
+  doc.text(`Total de sessões registradas: ${evolutions.length}  •  Serviços vinculados: ${services.length - orphanServices.length}${clinicDiscountPct > 0 && !isClinicFixedSalary ? `  •  Desconto da clínica (${clinicDiscountPct}%) aplicado apenas no Total Geral` : ''}`, M + 3, y + 42);
 
   y += summaryH + 4;
 
