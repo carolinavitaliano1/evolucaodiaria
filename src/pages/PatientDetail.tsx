@@ -3597,7 +3597,10 @@ export default function PatientDetail() {
       />
 
       <EditPatientDialog patient={patient} open={editPatientOpen} onOpenChange={setEditPatientOpen}
-        onSave={updatePatient} clinicPackages={clinic ? getClinicPackages(clinic.id) : []} />
+        onSave={updatePatient} clinicPackages={clinic ? getClinicPackages(clinic.id) : []}
+        clinicType={clinic?.type as 'propria' | 'terceirizada' | 'clinica' | undefined}
+        clinicPaymentType={clinic?.paymentType as any}
+        clinicPaymentAmount={clinic?.paymentAmount} />
 
       {/* ── PAYMENT RECEIPT DIALOG ───────────────────────────────────────── */}
       <Dialog open={paymentReceiptOpen} onOpenChange={setPaymentReceiptOpen}>
