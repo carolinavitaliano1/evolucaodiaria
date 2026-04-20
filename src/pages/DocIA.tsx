@@ -543,7 +543,8 @@ export default function DocIA() {
     setCreatePatientId(doc.patient_id);
     setCreateDocType(doc.doc_type);
     setDraftTitle(doc.title);
-    editor?.commands.setContent(doc.content || '<p style="text-align:justify"></p>');
+    const cleanContent = (doc.content || '').replace(/<script[^>]*id=["']docia-meta["'][^>]*>[\s\S]*?<\/script>/gi, '');
+    editor?.commands.setContent(cleanContent || '<p style="text-align:justify"></p>');
     setHasDraft(true);
     setActiveTab('create');
     toast.success('Documento carregado no editor — ajuste e salve novamente');
