@@ -505,6 +505,84 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
 }
 
 // ============================================================================
+//  Rateio proporcional do salário fixo (informativo, por paciente)
+// ============================================================================
+
+export interface ProportionalShareContext {
+  patient: PatientLike;
+  clinic?: ClinicLike | null;
+  /** Todos os pacientes da clínica (não arquivados). */
+  allClinicPatients: PatientLike[];
+  /** Todas as evoluções da clínica no mês selecionado (todos os pacientes). */
+  allClinicEvolutions: EvolutionLike[];
+  month: number;
+  year: number;
+}
+
+export interface ProportionalShareResult {
+  /** Valor proporcional do salário que este paciente "representa". */
+  share: number;
+  /** Salário total da clínica no mês (mensal ou diário × dias trabalhados). */
+  clinicSalary: number;
+  /** Sessões billable deste paciente no mês. */
+  patientSessions: number;
+  /** Total de sessões billable da clínica no mês. */
+  totalSessions: number;
+  /** True somente se a clínica é fixo_mensal/fixo_diario. */
+  isProportional: boolean;
+}
+
+/**
+ * Calcula o "rateio proporcional" do salário fixo da clínica para um paciente.
+ *
+ * Uso: APENAS informativo. NÃO somar ao faturamento real — o salário já é
+ * contabilizado uma única vez no nível da clínica via
+ * `calculateClinicMonthlyRevenue`.
+ *
+ * Fórmula: share = (sessões_paciente / total_sessões_clínica) × salário_fixo
+ */
+export function calculatePatientProportionalShare(
+  ctx: ProportionalShareContext,
+): ProportionalShareResult {
+  const { patient, clinic, allClinicPatients, allClinicEvolutions } = ctx;
+  const empty: ProportionalShareResult = {
+    share: 0,
+    clinicSalary: 0,
+    patientSessions: 0,
+    totalSessions: 0,
+    isProportional: false,
+  };
+
+  if (!clinic) return empty;
+  const isMonthly = isClinicFixedMonthly(clinic.paymentType);
+  const isDaily = isClinicFixedDaily(clinic.paymentType);
+  if (!isMonthly && !isDaily) return empty;
+
+  const baseValue = clinic.paymentAmount ?? 0;
+
+  // Sessões billable da clínica (todos os pacientes da clínica)
+  const clinicPatientIds = new Set(allClinicPatients.map(p => p.id));
+  const billableEvos = allClinicEvolutions.filter(
+    e => clinicPatientIds.has(e.patientId) && isBillableStatus(e.attendanceStatus),
+  );
+
+  const clinicSalary = isMonthly
+    ? baseValue
+    : new Set(billableEvos.map(e => e.date)).size * baseValue;
+
+  const totalSessions = billableEvos.length;
+  const patientSessions = billableEvos.filter(e => e.patientId === patient.id).length;
+
+  if (totalSessions === 0 || clinicSalary === 0) {
+    return { ...empty, clinicSalary, patientSessions, totalSessions, isProportional: true };
+  }
+
+  const share = (patientSessions / totalSessions) * clinicSalary;
+
+  return { share, clinicSalary, patientSessions, totalSessions, isProportional: true };
+}
+
+// ============================================================================
 //  Re-exports de helpers já existentes (para conveniência dos consumidores)
 // ============================================================================
 
