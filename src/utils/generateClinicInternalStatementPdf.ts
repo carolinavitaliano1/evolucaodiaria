@@ -619,7 +619,7 @@ export async function generateClinicInternalStatementPdf(
       pago: { label: 'QUITADO', color: green },
       pendente: { label: 'PENDENTE', color: orange },
       parcial: { label: 'PARCIAL', color: orange },
-      sem_registro: { label: 'SEM COBRANÇA', color: muted },
+      sem_registro: { label: '', color: muted },
     }[status];
     return cfg;
   };
