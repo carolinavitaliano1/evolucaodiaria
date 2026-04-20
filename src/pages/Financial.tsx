@@ -775,6 +775,95 @@ export default function Financial() {
         y += svcFooterH + 6;
       }
 
+      // ─── Linked services (in clinics/consultórios) ───────────────────
+      if (linkedServiceAppointments.length > 0) {
+        sectionTitle('SERVIÇOS PRESTADOS EM CLÍNICAS/CONSULTÓRIOS');
+
+        ensureSpace(10);
+        setFill(C.primary);
+        doc.rect(margin, y, contentW, 9, 'F');
+        setTxt(C.white);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        const lt = {
+          cli: margin + 2,
+          pac: margin + 46,
+          srv: margin + 92,
+          dat: margin + 130,
+          val: pageWidth - margin - 2,
+        };
+        doc.text('CLÍNICA', lt.cli, y + 5.8);
+        doc.text('PACIENTE / CLIENTE', lt.pac, y + 5.8);
+        doc.text('SERVIÇO', lt.srv, y + 5.8);
+        doc.text('DATA', lt.dat, y + 5.8);
+        doc.text('VALOR', lt.val, y + 5.8, { align: 'right' });
+        y += 10;
+
+        let linkedPaid = 0;
+        let linkedPending = 0;
+
+        linkedServiceAppointments.forEach((apt: any, idx: number) => {
+          ensureSpace(8);
+          setFill(idx % 2 === 0 ? C.white : C.rowAlt);
+          doc.rect(margin, y, contentW, 7.5, 'F');
+
+          const clinicName = clinics.find(c => c.id === apt.clinic_id)?.name || '—';
+          const patientName = apt.patient_id
+            ? (patients.find(p => p.id === apt.patient_id)?.name || apt.client_name || '—')
+            : (apt.client_name || '—');
+          const svcName = apt.services?.name || '—';
+          const dateStr = apt.date ? format(new Date(apt.date + 'T12:00:00'), 'dd/MM/yyyy') : '—';
+
+          setTxt(C.dark);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.2);
+          doc.text(clinicName.substring(0, 22), lt.cli, y + 5);
+
+          setTxt(C.mid);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          doc.text(patientName.substring(0, 22), lt.pac, y + 5);
+          doc.text(svcName.substring(0, 20), lt.srv, y + 5);
+          doc.text(dateStr, lt.dat, y + 5);
+
+          setTxt(apt.paid ? C.green : C.orange);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.text(`R$ ${(apt.price || 0).toFixed(2)}`, lt.val, y + 5, { align: 'right' });
+
+          if (apt.status === 'concluído') {
+            if (apt.paid) linkedPaid += apt.price || 0;
+            else linkedPending += apt.price || 0;
+          }
+
+          setDraw(C.border);
+          doc.setLineWidth(0.1);
+          doc.line(margin, y + 7.5, pageWidth - margin, y + 7.5);
+          y += 7.5;
+        });
+
+        ensureSpace(14);
+        y += 4;
+        const lFooterH = 9;
+        setFill(C.greenLight);
+        setDraw(C.green);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, y, contentW / 2 - 2, lFooterH, 1.5, 1.5, 'FD');
+        setTxt(C.green);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('Total Recebido:', margin + 4, y + 6);
+        doc.text(`R$ ${linkedPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentW / 2 - 5, y + 6, { align: 'right' });
+
+        setFill(C.orangeLight);
+        setDraw(C.orange);
+        doc.roundedRect(margin + contentW / 2 + 2, y, contentW / 2 - 2, lFooterH, 1.5, 1.5, 'FD');
+        setTxt(C.orange);
+        doc.text('Total Pendente:', margin + contentW / 2 + 6, y + 6);
+        doc.text(`R$ ${linkedPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 3, y + 6, { align: 'right' });
+        y += lFooterH + 6;
+      }
+
       // ─── Patient payments table ────────────────────────────────────────
       // Include patients with billable revenue OR proportional share (fixed-salary clinics like Eden)
       const pdfPatientStats = patientStats.filter(({ revenue, proportionalShare }) =>
