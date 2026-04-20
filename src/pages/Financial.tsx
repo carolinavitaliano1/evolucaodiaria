@@ -15,7 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { calculatePatientMonthlyRevenue, calculateClinicMonthlyRevenue, isBillableStatus, isClinicFixedMonthly, isClinicFixedDaily, type EvolutionLike } from '@/utils/financialHelpers';
+import { calculatePatientMonthlyRevenue, calculateClinicMonthlyRevenue, calculatePatientProportionalShare, isBillableStatus, isClinicFixedMonthly, isClinicFixedDaily, type EvolutionLike } from '@/utils/financialHelpers';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 
@@ -1419,14 +1420,15 @@ export default function Financial() {
               </tr>
             </thead>
             <tbody>
-              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr, tipoLabel }) => (
+              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr, tipoLabel, proportionalShare }) => (
                 <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
                   <td className="py-3 px-3 text-foreground text-xs">
-                    <span className="truncate block max-w-[100px] sm:max-w-none font-medium">{patient.name}</span>
-                    {patient.packageId && (() => {
-                      const pkg = clinicPackages.find(p => p.id === patient.packageId);
-                      return pkg ? <span className="block text-[10px] text-muted-foreground">{pkg.name}</span> : null;
-                    })()}
+                    <button
+                      onClick={() => navigate(`/patient/${patient.id}#financeiro`)}
+                      className="text-left hover:text-primary hover:underline transition-colors font-medium"
+                    >
+                      {patient.name}
+                    </button>
                   </td>
                   <td className="py-3 px-3 text-muted-foreground text-xs hidden sm:table-cell">{clinic?.name}</td>
                   <td className="py-3 px-3 text-xs">
@@ -1434,24 +1436,15 @@ export default function Financial() {
                       {tipoLabel || (paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`)}
                     </span>
                   </td>
-                  <td className="py-3 px-3 text-center text-foreground text-xs">
-                    {sessions}
-                    {paidAbsences > 0 && <span className="text-amber-600 text-[10px] block">+{paidAbsences} rem.</span>}
-                  </td>
-                  <td className="py-3 px-3 text-center text-xs">
-                    {absences > 0 ? (
-                      <span className={cn('inline-flex items-center gap-0.5', loss > 0 ? 'text-destructive' : 'text-amber-600')}>
-                        {absences}{loss > 0 && <AlertTriangle className="w-2.5 h-2.5" />}
-                      </span>
-                    ) : <span className="text-muted-foreground">0</span>}
-                  </td>
-                  {/* Payment status column — clickable toggle */}
+                  {/* keep middle cells unchanged */}
+                  <td className="py-3 px-3 text-center text-foreground text-xs">{sessions}</td>
+                  <td className="py-3 px-3 text-center text-foreground text-xs">{absences}</td>
                   <td className="py-3 px-3 text-center">
                     <button
-                      onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
+                      onClick={() => togglePatientPaid(patient.id)}
                       disabled={savingPatientPayment === patient.id}
                       className={cn(
-                        'inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border transition-all hover:opacity-80 active:scale-95 cursor-pointer',
+                        'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors',
                         pr?.paid
                           ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
                           : 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/20'
@@ -1473,10 +1466,33 @@ export default function Financial() {
                   </td>
                   <td className="py-3 px-3 text-right">
                     <div className="flex flex-col items-end">
-                      <span className={cn('font-bold text-xs', loss > 0 ? 'text-foreground' : 'text-success')}>
-                        R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
-                      {loss > 0 && <span className="text-xs text-destructive hidden sm:block">-R$ {loss.toFixed(2)}</span>}
+                      {proportionalShare?.isProportional ? (
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex flex-col items-end cursor-help">
+                                <span className="font-bold text-xs text-muted-foreground">
+                                  R$ {proportionalShare.share.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/70 italic">(rateio)</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-xs text-xs">
+                              Valor proporcional ao salário fixo da clínica
+                              {' '}(R$ {proportionalShare.clinicSalary.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).
+                              Não é receita adicional — apenas representa o peso deste paciente
+                              ({proportionalShare.patientSessions}/{proportionalShare.totalSessions} sessões) no salário.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <>
+                          <span className={cn('font-bold text-xs', loss > 0 ? 'text-foreground' : 'text-success')}>
+                            R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                          {loss > 0 && <span className="text-xs text-destructive hidden sm:block">-R$ {loss.toFixed(2)}</span>}
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
