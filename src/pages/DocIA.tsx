@@ -387,7 +387,7 @@ export default function DocIA() {
     }
     setSavingPdf(true);
     try {
-      const { patient, clinic, clinicData, todayBR, cityLine, profRegistration, stampUrl } = await buildExportPayload();
+      const { patient, clinic, clinicData, todayBR, cityLine, professionalName, profRegistration, stampUrl } = await buildExportPayload();
 
       const { blob, dataUrl } = await generateAIDocumentPdf({
         title: draftTitle || docTypeLabel(createDocType),
@@ -395,7 +395,7 @@ export default function DocIA() {
         logoUrl: (clinicData as any)?.document_logo_url || null,
         headerText: (clinicData as any)?.document_header_text || null,
         footerText: (clinicData as any)?.document_footer_text || null,
-        professionalName: profile?.name || '',
+        professionalName,
         professionalRegistration: profRegistration,
         todayBR, cityLine,
         stampUrl,
