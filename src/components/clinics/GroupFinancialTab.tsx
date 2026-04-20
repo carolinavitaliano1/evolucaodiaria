@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { DollarSign, Loader2, CheckCircle2, AlertTriangle, XCircle, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { DollarSign, Loader2, CheckCircle2, AlertTriangle, XCircle, ChevronLeft, ChevronRight, Plus, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap, type GroupPackageConfig } from '@/utils/groupFinancial';
+import { EditableReceiptModal } from '@/components/financial/EditableReceiptModal';
 
 interface MemberPatient {
   id: string;
