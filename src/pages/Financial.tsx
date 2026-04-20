@@ -487,7 +487,7 @@ export default function Financial() {
         ] : []),
         { label: 'Receita Consultórios',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Receita Contratante',      value: `R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
-        { label: 'Serviços Particulares',    value: `R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        { label: 'Serviços Particulares',    value: `R$ ${privateRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         ...(totalLoss > 0 ? [{ label: 'Perdas por Faltas', value: `- R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, loss: true }] : []),
         { label: 'Total de Atendimentos',    value: `${presentEvolutions.length}` },
         { label: 'Faltas Remuneradas',       value: `${paidAbsenceEvolutions.length}` },
