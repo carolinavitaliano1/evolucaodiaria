@@ -457,6 +457,22 @@ export function GroupFinancialTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Receipt modal — opens after successful payment */}
+      {receiptData && therapistInfo && (
+        <EditableReceiptModal
+          open={receiptOpen}
+          onOpenChange={setReceiptOpen}
+          initial={{
+            payerName: receiptData.payerName,
+            amount: receiptData.amount,
+            serviceName: 'Sessão de Grupo Terapêutico',
+            period: receiptData.period,
+          }}
+          therapist={therapistInfo}
+          clinic={clinicInfo}
+        />
+      )}
     </div>
   );
 }
