@@ -30,9 +30,11 @@ interface EditPatientDialogProps {
   onSave: (id: string, updates: Partial<Patient>) => void;
   clinicPackages?: ClinicPackage[];
   clinicType?: 'propria' | 'terceirizada' | 'clinica';
+  clinicPaymentType?: 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado';
+  clinicPaymentAmount?: number;
 }
 
-export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicPackages = [], clinicType }: EditPatientDialogProps) {
+export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicPackages = [], clinicType, clinicPaymentType, clinicPaymentAmount }: EditPatientDialogProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
@@ -76,6 +78,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
   const isPropria = clinicType === 'propria';
   const isTerceirizada = clinicType === 'terceirizada';
+  const isClinicFixedMonthly = clinicPaymentType === 'fixo_mensal';
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
@@ -554,7 +557,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Financeiro</Label>
             <div className="space-y-3 mt-2">
-              {clinicPackages.length > 0 && (
+              {clinicPackages.length > 0 && !isClinicFixedMonthly && (
                 <div>
                   <Label className="text-xs">Pacote</Label>
                   <Select
@@ -583,32 +586,42 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Tipo</Label>
-                  <Select
-                    value={formData.paymentType}
-                    onValueChange={(v) => setFormData({ ...formData, paymentType: v as any })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sessao">Por Sessão</SelectItem>
-                      <SelectItem value="fixo">Fixo Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {isClinicFixedMonthly ? (
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                  💼 Esta clínica utiliza <strong className="text-foreground">remuneração fixa mensal</strong>
+                  {typeof clinicPaymentAmount === 'number' && clinicPaymentAmount > 0 && (
+                    <> de <strong className="text-foreground">R$ {clinicPaymentAmount.toFixed(2)}</strong></>
+                  )}
+                  . O valor não depende do número de sessões deste paciente, por isso não é necessário definir tipo ou valor de pagamento individual.
                 </div>
-                <div>
-                  <Label className="text-xs">Valor (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.paymentValue}
-                    onChange={(e) => setFormData({ ...formData, paymentValue: e.target.value })}
-                  />
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Tipo</Label>
+                    <Select
+                      value={formData.paymentType}
+                      onValueChange={(v) => setFormData({ ...formData, paymentType: v as any })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sessao">Por Sessão</SelectItem>
+                        <SelectItem value="fixo">Fixo Mensal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Valor (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.paymentValue}
+                      onChange={(e) => setFormData({ ...formData, paymentValue: e.target.value })}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <Label className="text-xs flex items-center gap-1">
