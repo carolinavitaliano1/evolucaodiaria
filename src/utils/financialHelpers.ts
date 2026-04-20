@@ -279,6 +279,26 @@ export interface PatientRevenueBreakdown {
 export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): PatientRevenueBreakdown {
   const { patient, clinic, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {} } = ctx;
 
+  // 🔒 REGRA: se a clínica paga salário fixo (mensal ou diário) ao terapeuta,
+  // a receita NÃO vem do paciente — o terapeuta recebe da clínica.
+  // Logo, a receita por paciente é 0 nesses modelos.
+  if (clinic && (isClinicFixedMonthly(clinic.paymentType) || isClinicFixedDaily(clinic.paymentType))) {
+    return {
+      individualRevenue: 0,
+      groupRevenue: 0,
+      chargedAbsenceRevenue: 0,
+      total: 0,
+      loss: 0,
+      details: {
+        billableIndividual: 0,
+        billableGroup: 0,
+        chargedAbsences: 0,
+        uncoveredAbsences: 0,
+        perSessionValue: 0,
+      },
+    };
+  }
+
   const pkg = patient.packageId ? packages.find(p => p.id === patient.packageId) ?? null : null;
 
   // Helper: valor de uma sessão de grupo para este paciente
