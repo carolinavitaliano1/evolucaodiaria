@@ -16,6 +16,7 @@ import {
   Megaphone,
   UsersRound,
   HeadphonesIcon,
+  FileSignature,
   Clock,
   Lock,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ const allNavItems = [
   { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const },
   { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const },
   { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const },
+  { to: '/doc-ia',    icon: FileSignature,   label: 'Doc IA',       perm: null             },
   { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const },
   { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: 'notices' as const },
   { to: '/suporte',   icon: HeadphonesIcon,  label: 'Suporte',      perm: null,            badge: 'support' as const },
