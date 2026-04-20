@@ -78,6 +78,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
   const isPropria = clinicType === 'propria';
   const isTerceirizada = clinicType === 'terceirizada';
+  const isClinicFixedMonthly = clinicPaymentType === 'fixo_mensal';
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
