@@ -251,7 +251,7 @@ export function GroupFinancialTab({
         cbo: profileRes.data?.cbo,
       });
       setClinicInfo(clinicRes.data || null);
-      setReceiptData({ payerName, amount, period: periodLabel });
+      setReceiptData({ payerName, amount, period: periodLabel, patientId: payDialog.patientId });
       setReceiptOpen(true);
     } catch (e: any) {
       toast.error('Erro ao registrar pagamento: ' + (e.message || ''));
