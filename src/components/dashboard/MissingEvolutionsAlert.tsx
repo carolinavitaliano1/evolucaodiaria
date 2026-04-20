@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { format, subDays, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
 
 const DEFAULT_SESSION_DURATION = 50;
 const DAYS_BACK = 7; // look back up to 7 days
