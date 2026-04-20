@@ -992,16 +992,16 @@ export default function Financial() {
     URL.revokeObjectURL(url);
   };
 
-  const grandTotal = totalRevenue + standaloneRevenue;
+  const grandTotal = totalRevenue + linkedServicesRevenue + standaloneRevenue;
 
   // Bruto x Líquido: aplica desconto da clínica (discountPercentage) sobre o faturamento de cada clínica.
-  // Serviços particulares avulsos não sofrem desconto.
+  // Serviços particulares (avulsos e vinculados) não sofrem desconto.
   const grossClinicTotal = clinicStats.reduce((sum, s) => sum + s.revenue, 0);
   const netClinicTotal = clinicStats.reduce((sum, s) => {
     const pct = s.clinic.discountPercentage || 0;
     return sum + s.revenue * (1 - pct / 100);
   }, 0);
-  const grandNetTotal = netClinicTotal + standaloneRevenue;
+  const grandNetTotal = netClinicTotal + linkedServicesRevenue + standaloneRevenue;
   const totalDiscount = grossClinicTotal - netClinicTotal;
 
   // Paid total for patients in PROPRIA clinics (tracked individually)
