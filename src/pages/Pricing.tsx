@@ -2,61 +2,73 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Loader2, Sparkles } from 'lucide-react';
+import { Check, X, Loader2, Sparkles, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
+import { BASIC_PRICE_ID, PRO_PRICE_ID } from '@/lib/plans';
+import { cn } from '@/lib/utils';
 
-const PLANS = [
+interface PlanDef {
+  key: 'basic' | 'pro';
+  name: string;
+  price: string;
+  description: string;
+  priceId: string;
+  features: string[];
+  popular?: boolean;
+}
+
+const PLANS: PlanDef[] = [
   {
-    name: 'Mensal',
-    price: 'R$ 29',
-    period: '/mês',
-    description: 'Ideal para começar',
-    priceId: 'price_1Sz87xDl2hex55TCI3ONELuq',
+    key: 'basic',
+    name: 'Básico',
+    price: 'R$ 29,90',
+    description: 'O essencial para sua prática clínica',
+    priceId: BASIC_PRICE_ID,
     features: [
-      'Gestão de clínicas ilimitada',
-      'Cadastro de pacientes',
-      'Agenda completa',
-      'Evoluções e relatórios',
-      'Controle financeiro',
+      'Clínicas, pacientes e agenda ilimitados',
+      'Evoluções com texto livre e templates',
+      'Controle financeiro completo',
+      'WhatsApp, anexos e notas',
       '15 dias grátis para testar',
     ],
   },
   {
-    name: 'Bimestral',
-    price: 'R$ 49',
-    period: '/2 meses',
-    description: 'Mais popular',
-    priceId: 'price_1Sz88ADl2hex55TCABAFO3OL',
+    key: 'pro',
+    name: 'Pro',
+    price: 'R$ 59,90',
+    description: 'Tudo que você precisa para escalar',
+    priceId: PRO_PRICE_ID,
     popular: true,
     features: [
-      'Tudo do plano Mensal',
-      'Economia de R$ 9 vs mensal',
-      'Suporte prioritário',
-      '15 dias grátis para testar',
-    ],
-  },
-  {
-    name: 'Trimestral',
-    price: 'R$ 59',
-    period: '/3 meses',
-    description: 'Melhor custo-benefício',
-    priceId: 'price_1Sz88LDl2hex55TCwzGTUplF',
-    features: [
-      'Tudo do plano Mensal',
-      'Economia de R$ 28 vs mensal',
-      'Suporte prioritário',
+      'Tudo do plano Básico',
+      'Inteligência Artificial completa (Doc IA, Melhorar Evolução, Feedbacks IA, Relatórios IA)',
+      'Portal do Paciente (convites, fichas, mensagens)',
+      'Gestão de Equipe e multi-profissionais',
+      'Conformidade e financeiro de equipe',
       '15 dias grátis para testar',
     ],
   },
 ];
 
+const COMPARISON: { label: string; basic: boolean; pro: boolean }[] = [
+  { label: 'Clínicas, pacientes e agenda', basic: true, pro: true },
+  { label: 'Evoluções e templates', basic: true, pro: true },
+  { label: 'Controle financeiro', basic: true, pro: true },
+  { label: 'WhatsApp, anexos e notas', basic: true, pro: true },
+  { label: 'Doc IA — geração de documentos', basic: false, pro: true },
+  { label: 'Melhorar Evolução com IA', basic: false, pro: true },
+  { label: 'Feedbacks IA para responsáveis', basic: false, pro: true },
+  { label: 'Relatórios IA', basic: false, pro: true },
+  { label: 'Portal do Paciente', basic: false, pro: true },
+  { label: 'Gestão de Equipe', basic: false, pro: true },
+  { label: 'Conformidade e financeiro de equipe', basic: false, pro: true },
+];
+
 export default function Pricing() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const { user } = useAuth();
-  const { subscribed } = useSubscription();
+  const { subscribed, tier } = useSubscription();
 
   async function handleSubscribe(priceId: string) {
     setLoadingPlan(priceId);
@@ -64,11 +76,8 @@ export default function Pricing() {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { priceId },
       });
-
       if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      }
+      if (data?.url) window.location.href = data.url;
     } catch (error) {
       console.error('Checkout error:', error);
       toast.error('Erro ao iniciar pagamento');
@@ -77,80 +86,132 @@ export default function Pricing() {
     }
   }
 
+  function buttonLabelFor(planKey: 'basic' | 'pro') {
+    if (!subscribed) return 'Começar Teste Grátis';
+    if (tier === planKey) return 'Plano atual';
+    if (tier === 'basic' && planKey === 'pro') return 'Fazer upgrade para Pro';
+    if (tier === 'pro' && planKey === 'basic') return 'Mudar para Básico';
+    if (tier === 'legacy') return planKey === 'pro' ? 'Migrar para Pro' : 'Mudar para Básico';
+    return 'Assinar';
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-foreground mb-3">Escolha seu plano</h1>
+      <div className="text-center mb-2">
+        <h1 className="text-3xl font-bold text-foreground mb-3">Escolha seu plano</h1>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Escolha o plano ideal para gerenciar suas clínicas, pacientes e evoluções.
-          <span className="block mt-1 font-semibold text-primary">
-            <Sparkles className="inline w-4 h-4 mr-1" />
-            15 dias grátis em todos os planos!
-          </span>
+          Comece com o Básico e cresça para o Pro quando precisar de IA, Portal do Paciente e Gestão de Equipe.
         </p>
-        {subscribed && (
-          <Badge variant="outline" className="mt-3 text-primary border-primary">
-            ✓ Você já possui uma assinatura ativa
+        <p className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+          <Sparkles className="w-4 h-4" />
+          15 dias grátis em todos os planos
+        </p>
+        {subscribed && tier === 'legacy' && (
+          <Badge variant="outline" className="mt-3 ml-2 text-primary border-primary">
+            ✓ Você é Legado e mantém acesso Pro completo
+          </Badge>
+        )}
+        {subscribed && (tier === 'basic' || tier === 'pro') && (
+          <Badge variant="outline" className="mt-3 ml-2 text-primary border-primary">
+            ✓ Você está no plano {tier === 'pro' ? 'Pro' : 'Básico'}
           </Badge>
         )}
       </div>
 
       {/* Plans */}
-      <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-        {PLANS.map((plan) => (
-          <Card
-            key={plan.priceId}
-            className={`relative flex flex-col ${
-              plan.popular
-                ? 'border-primary shadow-lg scale-105'
-                : 'border-border'
-            }`}
-          >
-            {plan.popular && (
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                Mais Popular
-              </Badge>
-            )}
-            <CardHeader className="text-center pb-2">
-              <CardTitle className="text-xl">{plan.name}</CardTitle>
-              <CardDescription>{plan.description}</CardDescription>
-              <div className="mt-4">
-                <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                <span className="text-muted-foreground">{plan.period}</span>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <ul className="space-y-3">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                    <span className="text-sm text-foreground">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                variant={plan.popular ? 'default' : 'outline'}
-                onClick={() => handleSubscribe(plan.priceId)}
-                disabled={loadingPlan !== null}
-              >
-                {loadingPlan === plan.priceId ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processando...
-                  </>
-                ) : subscribed ? (
-                  'Alterar Plano'
-                ) : (
-                  'Começar Teste Grátis'
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        {PLANS.map((plan) => {
+          const isCurrent = subscribed && tier === plan.key;
+          return (
+            <Card
+              key={plan.priceId}
+              className={cn(
+                'relative flex flex-col',
+                plan.popular ? 'border-primary shadow-lg md:scale-105' : 'border-border',
+                isCurrent && 'ring-2 ring-primary'
+              )}
+            >
+              {plan.popular && (
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
+                  Recomendado
+                </Badge>
+              )}
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                <CardDescription>{plan.description}</CardDescription>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                  <span className="text-muted-foreground">/mês</span>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <ul className="space-y-3">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      <span className="text-sm text-foreground">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  className="w-full"
+                  variant={plan.popular ? 'default' : 'outline'}
+                  onClick={() => handleSubscribe(plan.priceId)}
+                  disabled={loadingPlan !== null || isCurrent}
+                >
+                  {loadingPlan === plan.priceId ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    buttonLabelFor(plan.key)
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Comparison table */}
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-xl font-semibold text-foreground text-center mb-4">Comparativo de recursos</h2>
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="text-left px-4 py-3 font-semibold text-foreground">Recurso</th>
+                    <th className="text-center px-4 py-3 font-semibold text-foreground w-32">Básico</th>
+                    <th className="text-center px-4 py-3 font-semibold text-primary w-32">Pro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARISON.map((row, i) => (
+                    <tr key={i} className="border-b border-border/60 last:border-0">
+                      <td className="px-4 py-2.5 text-foreground">{row.label}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        {row.basic ? (
+                          <Check className="w-4 h-4 text-primary mx-auto" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-muted-foreground/50 mx-auto" />
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <Check className="w-4 h-4 text-primary mx-auto" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
