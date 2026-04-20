@@ -275,6 +275,7 @@ export default function ClinicDetail() {
   const [batchSelectedTemplateId, setBatchSelectedTemplateId] = useState<string>('none');
   const [batchTemplateFormValues, setBatchTemplateFormValues] = useState<Record<string, any>>({});
   const { user } = useAuth();
+  const { hasAI } = useFeatureAccess();
 
   // Lazy-load evolutions and appointments for this clinic
   useEffect(() => {
