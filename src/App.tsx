@@ -54,7 +54,23 @@ const PortalDocuments = lazy(() => import("./pages/portal/PortalDocuments"));
 const PortalMural = lazy(() => import("./pages/portal/PortalMural"));
 const PortalActivities = lazy(() => import("./pages/portal/PortalActivities"));
 
-const queryClient = new QueryClient();
+// Tuned defaults: avoid refetch storms when user switches tabs/windows.
+// Most app data is loaded via AppContext + Supabase realtime, so we keep
+// queries fresh for 5 min and cached for 30 min, and disable refetch on focus.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,        // 5 minutes — data considered fresh
+      gcTime: 30 * 60 * 1000,          // 30 minutes — kept in memory
+      refetchOnWindowFocus: false,     // don't refetch when user returns to tab
+      refetchOnReconnect: 'always',    // do refetch when network reconnects
+      retry: 1,                        // retry failed queries once
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 const RouteFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
