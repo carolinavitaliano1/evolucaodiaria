@@ -68,6 +68,8 @@ export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [isApptDialogOpen, setIsApptDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const { getBlockForDate } = useCalendarBlocks();
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [popupItem, setPopupItem] = useState<CalItem | null>(null);
   
