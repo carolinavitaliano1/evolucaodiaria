@@ -9,6 +9,7 @@ import {
   AlertTriangle, DollarSign, FileText, MessageSquare,
   UserPlus, Sparkles, ChevronDown, ChevronRight, Paperclip,
 } from 'lucide-react';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
 
 interface PatientRef {
   id: string;
@@ -32,6 +33,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
   const { patients, evolutions } = useApp();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isDateBlocked } = useCalendarBlocks();
 
   const [overduePaymentPatients, setOverduePaymentPatients] = useState<PatientRef[]>([]);
   const [pendingEnrollmentPatients, setPendingEnrollmentPatients] = useState<PatientRef[]>([]);
@@ -57,6 +59,8 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       d.setDate(d.getDate() - i);
       const dateStr = toLocalDateString(d);
       const dayName = days[d.getDay()];
+      // Skip dates marked as holiday/vacation for this clinic
+      if (isDateBlocked(dateStr, clinicId)) continue;
 
       for (const p of clinicPatients) {
         if (new Date(p.createdAt) > d) continue;
@@ -70,7 +74,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       }
     }
     return Array.from(patientSet.values());
-  }, [clinicPatients, evolutions, clinicId]);
+  }, [clinicPatients, evolutions, clinicId, isDateBlocked]);
 
   // Fetch clinic-specific detailed data
   useEffect(() => {

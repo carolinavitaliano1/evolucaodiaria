@@ -3,6 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
 import { toLocalDateString } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -54,6 +55,7 @@ export function ClinicAlertsCard() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const { count: pendingEnrollments } = usePendingEnrollments();
+  const { isDateBlocked } = useCalendarBlocks();
 
   const [overduePaymentPatients, setOverduePaymentPatients] = useState<PatientRef[]>([]);
   const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
@@ -94,6 +96,8 @@ export function ClinicAlertsCard() {
 
       for (const p of activePatients) {
         if (new Date(p.createdAt) > d) continue;
+        // Skip if this date is a holiday/vacation for the patient's clinic
+        if (isDateBlocked(dateStr, p.clinicId)) continue;
         if (!p.weekdays?.includes(dayName)) continue;
         const hasEvolution = evolutions.some(
           e => e.patientId === p.id && e.date === dateStr
@@ -104,7 +108,7 @@ export function ClinicAlertsCard() {
       }
     }
     return Array.from(patientSet.values());
-  }, [patients, evolutions, user]);
+  }, [patients, evolutions, user, isDateBlocked]);
 
   useEffect(() => {
     if (!user) return;
