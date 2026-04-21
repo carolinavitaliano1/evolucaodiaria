@@ -159,11 +159,13 @@ export function QuestionnaireTemplatesManager({ onClose, onSendToPatient }: Prop
   };
 
   const renderPdfPagesToBase64 = async (file: File): Promise<string[]> => {
-    // For PDFs, we convert each page to a canvas image using pdf.js from CDN
+    // For PDFs, render each page to a canvas image using bundled pdf.js
     const arrayBuffer = await file.arrayBuffer();
-    const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/+esm' as any);
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
-    
+    const pdfjsLib: any = await import('pdfjs-dist');
+    // Use CDN worker matching the installed version
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const pages: string[] = [];
     
@@ -175,7 +177,7 @@ export function QuestionnaireTemplatesManager({ onClose, onSendToPatient }: Prop
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       const ctx = canvas.getContext('2d')!;
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
       const dataUrl = canvas.toDataURL('image/png');
       pages.push(dataUrl.split(',')[1]);
     }
