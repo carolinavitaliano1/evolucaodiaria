@@ -52,11 +52,14 @@ import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionT
 import { Brain } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { UpgradeBlock } from '@/components/UpgradeBlock';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
   score: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 3, 2, 2, 2, 3][i] ?? 5,
 }));
+
+const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 // Renders text with **bold** markdown support for evolution template titles
 function EvolutionText({ text, className }: { text: string; className?: string }) {
