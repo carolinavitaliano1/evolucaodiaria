@@ -51,6 +51,38 @@ async function inlineImages(html: string): Promise<string> {
   return out;
 }
 
+/**
+ * TipTap stores image size as a `width="400px"` attribute. html-docx-js / Word
+ * ignore that attribute and either drop the image or render it at full natural
+ * size. Convert width/height attributes into an inline style so Word respects
+ * the size the user picked in the editor.
+ */
+function normalizeImageSizes(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (full, attrs) => {
+    const widthMatch = attrs.match(/\swidth=["']([^"']+)["']/i);
+    const heightMatch = attrs.match(/\sheight=["']([^"']+)["']/i);
+    const styleMatch = attrs.match(/\sstyle=["']([^"']*)["']/i);
+
+    const toCss = (v: string) => (/^\d+$/.test(v.trim()) ? `${v.trim()}px` : v.trim());
+
+    const styleParts: string[] = [];
+    if (styleMatch) styleParts.push(styleMatch[1].replace(/;\s*$/, ''));
+    if (widthMatch) styleParts.push(`width:${toCss(widthMatch[1])}`);
+    if (heightMatch) styleParts.push(`height:${toCss(heightMatch[1])}`);
+    if (!widthMatch && !heightMatch && !styleMatch) return full;
+
+    let newAttrs = attrs
+      .replace(/\sstyle=["'][^"']*["']/i, '')
+      .replace(/\swidth=["'][^"']+["']/i, '')
+      .replace(/\sheight=["'][^"']+["']/i, '');
+    newAttrs += ` style="${styleParts.join('; ')}"`;
+    // Keep explicit width/height attrs too — Word reads them when present.
+    if (widthMatch) newAttrs += ` width="${parseInt(widthMatch[1], 10) || ''}"`;
+    if (heightMatch) newAttrs += ` height="${parseInt(heightMatch[1], 10) || ''}"`;
+    return `<img${newAttrs}>`;
+  });
+}
+
 export async function generateAIDocumentDocx(input: DocxExportInput): Promise<Blob> {
   const {
     title, bodyHtml, logoUrl, headerText, footerText,
@@ -59,7 +91,8 @@ export async function generateAIDocumentDocx(input: DocxExportInput): Promise<Bl
   } = input;
 
   const cleanBody = stripMetaScript(bodyHtml);
-  const inlinedBody = await inlineImages(cleanBody);
+  const sizedBody = normalizeImageSizes(cleanBody);
+  const inlinedBody = await inlineImages(sizedBody);
   const inlinedLogo = logoUrl ? await urlToDataUrl(logoUrl) : null;
   const inlinedStamp = stampUrl ? await urlToDataUrl(stampUrl) : null;
 
