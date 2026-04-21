@@ -58,9 +58,32 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
 
   const isHtml = /<[a-z][\s\S]*>/i.test(bodyText);
 
+  // TipTap stores image size as `width="400px"` attribute; html2canvas honors
+  // inline styles more reliably. Mirror the width/height attrs into inline CSS
+  // so the rendered size matches what the user picked in the editor.
+  const normalizeImageSizes = (html: string) =>
+    html.replace(/<img\b([^>]*)>/gi, (full, attrs) => {
+      const widthMatch = attrs.match(/\swidth=["']([^"']+)["']/i);
+      const heightMatch = attrs.match(/\sheight=["']([^"']+)["']/i);
+      if (!widthMatch && !heightMatch) return full;
+      const toCss = (v: string) => (/^\d+$/.test(v.trim()) ? `${v.trim()}px` : v.trim());
+      const styleMatch = attrs.match(/\sstyle=["']([^"']*)["']/i);
+      const parts: string[] = [];
+      if (styleMatch) parts.push(styleMatch[1].replace(/;\s*$/, ''));
+      if (widthMatch) parts.push(`width:${toCss(widthMatch[1])}`);
+      if (heightMatch) parts.push(`height:${toCss(heightMatch[1])}`);
+      // Override max-width from the .rich-body img rule so user size wins.
+      parts.push('max-width:100%');
+      let newAttrs = attrs.replace(/\sstyle=["'][^"']*["']/i, '');
+      newAttrs += ` style="${parts.join('; ')}"`;
+      // Add crossorigin so html2canvas can render remote images.
+      if (!/\scrossorigin=/i.test(newAttrs)) newAttrs += ' crossorigin="anonymous"';
+      return `<img${newAttrs}>`;
+    });
+
   let bodyHtml: string;
   if (isHtml) {
-    bodyHtml = `<div class="rich-body" style="text-align: justify;">${bodyText}</div>`;
+    bodyHtml = `<div class="rich-body" style="text-align: justify;">${normalizeImageSizes(bodyText)}</div>`;
   } else {
     bodyHtml = (bodyText || '')
       .split(/\n\s*\n/)
@@ -123,6 +146,21 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
   document.body.appendChild(container);
 
   try {
+    // Wait for all images inside the offscreen container to actually load,
+    // otherwise html2canvas snapshots them as empty/broken and they disappear from the PDF.
+    const imgs = Array.from(container.querySelectorAll('img'));
+    await Promise.all(
+      imgs.map(img =>
+        img.complete && img.naturalWidth > 0
+          ? Promise.resolve()
+          : new Promise<void>(res => {
+              img.onload = () => res();
+              img.onerror = () => res();
+              setTimeout(() => res(), 5000);
+            })
+      )
+    );
+
     const canvas = await html2canvas(container, {
       scale: 2,
       useCORS: true,
