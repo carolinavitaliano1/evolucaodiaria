@@ -2626,6 +2626,8 @@ export default function PatientDetail() {
                     const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
                     const authorLabel = evoAuthor ? (evoAuthor.name || evoAuthor.email) : null;
                     const isAutoHoliday = Boolean((evo as any).isAutoHoliday);
+                    const holidayLabel = (evo as any).holidayLabel as string | undefined;
+                    const holidayCreatedAt = (evo as any).holidayCreatedAt as string | undefined;
                     return (
                       <div key={evo.id} className="bg-secondary/40 rounded-xl p-4 border border-border/50 hover:border-border transition-colors">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
@@ -2658,9 +2660,16 @@ export default function PatientDetail() {
                               </span>
                             )}
                             {isAutoHoliday && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                                Automático da agenda
-                              </span>
+                              <>
+                                {holidayLabel && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground font-medium">
+                                    📌 {holidayLabel}
+                                  </span>
+                                )}
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                  Automático da agenda{holidayCreatedAt ? ` · cadastrado em ${format(new Date(holidayCreatedAt), 'dd/MM/yyyy', { locale: ptBR })}` : ''}
+                                </span>
+                              </>
                             )}
                             {authorLabel && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
