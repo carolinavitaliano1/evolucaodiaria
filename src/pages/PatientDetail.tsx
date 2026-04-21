@@ -176,6 +176,7 @@ export default function PatientDetail() {
   const { customMoods } = useCustomMoods();
   const { permissions: orgPermissions, isOwner: isOrgOwner } = useOrgPermissions();
   const { isPro } = useFeatureAccess();
+  const { blocks: calendarBlocks } = useCalendarBlocks();
 
   const patient = patients.find(p => p.id === id);
   const clinic = clinics.find(c => c.id === patient?.clinicId);
@@ -229,14 +230,53 @@ export default function PatientDetail() {
   const patientEvolutions = useMemo(() => {
     const evos = evolutions
       .filter(e => e.patientId === id)
-      .sort((a, b) => new Date(b.date + 'T12:00:00').getTime() - new Date(a.date + 'T12:00:00').getTime());
-    return evos.map(evo => ({
+      .map(evo => ({
       ...evo,
       attachments: evo.attachments && evo.attachments.length > 0
         ? evo.attachments
         : attachments.filter(a => a.parentId === evo.id && a.parentType === 'evolution'),
     }));
-  }, [evolutions, attachments, id]);
+
+    if (!patient) {
+      return evos.sort((a, b) => new Date(b.date + 'T12:00:00').getTime() - new Date(a.date + 'T12:00:00').getTime());
+    }
+
+    const existingDates = new Set(evos.map(evo => evo.date));
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const createdStr = patient.createdAt ? format(new Date(patient.createdAt), 'yyyy-MM-dd') : '';
+    const scheduledDays = patient.scheduleByDay ? Object.keys(patient.scheduleByDay) : (patient.weekdays || []);
+    const holidayEvolutions: Evolution[] = [];
+
+    calendarBlocks.forEach(block => {
+      if (block.clinic_id && block.clinic_id !== patient.clinicId) return;
+
+      const current = new Date(block.start_date + 'T12:00:00');
+      const end = new Date(block.end_date + 'T12:00:00');
+      while (current <= end) {
+        const dateStr = format(current, 'yyyy-MM-dd');
+        const weekday = WEEKDAY_NAMES[current.getDay()];
+        if (dateStr <= todayStr && (!createdStr || dateStr >= createdStr) && !existingDates.has(dateStr) && scheduledDays.includes(weekday)) {
+          holidayEvolutions.push({
+            id: `calendar-block-${block.id}-${dateStr}`,
+            patientId: patient.id,
+            clinicId: patient.clinicId,
+            userId: user?.id,
+            date: dateStr,
+            text: `${block.block_type === 'feriado' ? 'Feriado' : 'Recesso/Férias'} cadastrado na agenda${block.description ? `: ${block.description}` : '.'}`,
+            attendanceStatus: 'feriado_nao_remunerado',
+            createdAt: `${dateStr}T12:00:00.000Z`,
+            attachments: [],
+            isAutoHoliday: true,
+          } as Evolution & { isAutoHoliday: boolean });
+          existingDates.add(dateStr);
+        }
+        current.setDate(current.getDate() + 1);
+      }
+    });
+
+    return [...evos, ...holidayEvolutions]
+      .sort((a, b) => new Date(b.date + 'T12:00:00').getTime() - new Date(a.date + 'T12:00:00').getTime());
+  }, [evolutions, attachments, id, patient, calendarBlocks, user?.id]);
 
   const patientTasksList = id ? getPatientTasks(id) : [];
   const patientAttachments = id ? getPatientAttachments(id) : [];
