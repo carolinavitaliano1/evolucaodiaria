@@ -2615,6 +2615,7 @@ export default function PatientDetail() {
                     const evoAuthorId = (evo as any).user_id;
                     const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
                     const authorLabel = evoAuthor ? (evoAuthor.name || evoAuthor.email) : null;
+                    const isAutoHoliday = Boolean((evo as any).isAutoHoliday);
                     return (
                       <div key={evo.id} className="bg-secondary/40 rounded-xl p-4 border border-border/50 hover:border-border transition-colors">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
@@ -2646,6 +2647,11 @@ export default function PatientDetail() {
                                 👥 Grupo
                               </span>
                             )}
+                            {isAutoHoliday && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                Automático da agenda
+                              </span>
+                            )}
                             {authorLabel && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
                                 👤 {authorLabel}{evoAuthorId === user?.id ? ' (você)' : ''}
@@ -2653,21 +2659,27 @@ export default function PatientDetail() {
                             )}
                           </div>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs text-primary hover:bg-primary/10"
-                              onClick={() => setFeedbackEvolution(evo)} title="Gerar feedback para os pais">
-                              <Sparkles className="w-3 h-3" />
-                              <span className="hidden sm:inline">Feedback IA</span>
-                            </Button>
-                            <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
-                              <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
-                            </Button>
+                            {!isAutoHoliday && (
+                              <>
+                                <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs text-primary hover:bg-primary/10"
+                                  onClick={() => setFeedbackEvolution(evo)} title="Gerar feedback para os pais">
+                                  <Sparkles className="w-3 h-3" />
+                                  <span className="hidden sm:inline">Feedback IA</span>
+                                </Button>
+                                <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
+                                  <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
+                                </Button>
+                              </>
+                            )}
                             <Button variant="outline" size="sm" className="gap-1 h-7 px-2 text-xs"
                               onClick={() => generateEvolutionPdf({ evolution: evo, patient, clinic, stamps })}>
                               <Download className="w-3 h-3" /> PDF
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => deleteEvolution(evo.id)}>
-                              <X className="w-3 h-3" />
-                            </Button>
+                            {!isAutoHoliday && (
+                              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => deleteEvolution(evo.id)}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                         {evo.text && <EvolutionText text={evo.text} className="text-foreground text-sm whitespace-pre-wrap" />}
