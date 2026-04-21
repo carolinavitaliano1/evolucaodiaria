@@ -256,18 +256,28 @@ export default function PatientDetail() {
         const dateStr = format(current, 'yyyy-MM-dd');
         const weekday = WEEKDAY_NAMES[current.getDay()];
         if (dateStr <= todayStr && (!createdStr || dateStr >= createdStr) && !existingDates.has(dateStr) && scheduledDays.includes(weekday)) {
+          const typeLabel = block.block_type === 'feriado' ? 'Feriado' : 'Recesso/Férias';
+          const createdLabel = block.created_at
+            ? format(new Date(block.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+            : null;
+          const text = [
+            `${typeLabel}${block.description ? `: ${block.description}` : ''}`,
+            createdLabel ? `Bloqueio cadastrado na agenda em ${createdLabel}.` : null,
+          ].filter(Boolean).join('\n');
           holidayEvolutions.push({
             id: `calendar-block-${block.id}-${dateStr}`,
             patientId: patient.id,
             clinicId: patient.clinicId,
             userId: user?.id,
             date: dateStr,
-            text: `${block.block_type === 'feriado' ? 'Feriado' : 'Recesso/Férias'} cadastrado na agenda${block.description ? `: ${block.description}` : '.'}`,
+            text,
             attendanceStatus: 'feriado_nao_remunerado',
             createdAt: `${dateStr}T12:00:00.000Z`,
             attachments: [],
             isAutoHoliday: true,
-          } as Evolution & { isAutoHoliday: boolean });
+            holidayLabel: block.description || typeLabel,
+            holidayCreatedAt: block.created_at,
+          } as Evolution & { isAutoHoliday: boolean; holidayLabel: string; holidayCreatedAt?: string });
           existingDates.add(dateStr);
         }
         current.setDate(current.getDate() + 1);
@@ -2616,6 +2626,8 @@ export default function PatientDetail() {
                     const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
                     const authorLabel = evoAuthor ? (evoAuthor.name || evoAuthor.email) : null;
                     const isAutoHoliday = Boolean((evo as any).isAutoHoliday);
+                    const holidayLabel = (evo as any).holidayLabel as string | undefined;
+                    const holidayCreatedAt = (evo as any).holidayCreatedAt as string | undefined;
                     return (
                       <div key={evo.id} className="bg-secondary/40 rounded-xl p-4 border border-border/50 hover:border-border transition-colors">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
@@ -2648,9 +2660,16 @@ export default function PatientDetail() {
                               </span>
                             )}
                             {isAutoHoliday && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                                Automático da agenda
-                              </span>
+                              <>
+                                {holidayLabel && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground font-medium">
+                                    📌 {holidayLabel}
+                                  </span>
+                                )}
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                  Automático da agenda{holidayCreatedAt ? ` · cadastrado em ${format(new Date(holidayCreatedAt), 'dd/MM/yyyy', { locale: ptBR })}` : ''}
+                                </span>
+                              </>
                             )}
                             {authorLabel && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
