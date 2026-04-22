@@ -151,6 +151,10 @@ export default function Financial() {
     const date = new Date(e.date + 'T12:00:00');
     return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
   });
+  const patientIdsWithMonthlyActivity = useMemo(
+    () => new Set(monthlyEvolutions.map(e => e.patientId)),
+    [monthlyEvolutions],
+  );
 
   const presentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
   const absentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
@@ -215,16 +219,18 @@ export default function Financial() {
   const propriaClinics = clinics.filter(c => c.type === 'propria' && !c.isArchived);
   const contratanteClinics = clinics.filter(c => c.type !== 'propria' && !c.isArchived);
 
-  // Reference date for "patient active in this period" = last day of selected month.
-  // Patients who left the clinic still appear in financial reports for months prior to their departure.
-  const periodRefDate = useMemo(
-    () => endOfMonth(new Date(selectedYear, selectedMonth, 1)),
+  // Paciente entra no financeiro do mês se teve movimentação no período
+  // OU se ainda estava ativo em algum dia daquele mês.
+  const periodStartDate = useMemo(
+    () => startOfMonth(new Date(selectedYear, selectedMonth, 1)),
     [selectedMonth, selectedYear],
   );
+  const isPatientRelevantInSelectedMonth = (patient: typeof patients[number]) =>
+    patientIdsWithMonthlyActivity.has(patient.id) || isPatientActiveOn(patient, periodStartDate);
 
   // Helper: faturamento de UMA clínica no mês (respeita modelo fixo/diário/variado)
   const calculateClinicRevenue = (clinic: typeof clinics[0]) => {
-    const cPatients = patients.filter(p => p.clinicId === clinic.id && isPatientActiveOn(p, periodRefDate));
+    const cPatients = patients.filter(p => p.clinicId === clinic.id && isPatientRelevantInSelectedMonth(p));
     const cEvos: EvolutionLike[] = monthlyEvolutions
       .filter(e => cPatients.some(p => p.id === e.patientId))
       .map(e => ({
@@ -311,7 +317,7 @@ export default function Financial() {
     // Valor informativo — NÃO entra no Faturamento Total.
     let proportionalShare: ReturnType<typeof calculatePatientProportionalShare> | null = null;
     if (clinic && (isClinicFixedMonthly(clinic.paymentType) || isClinicFixedDaily(clinic.paymentType))) {
-      const clinicPatients = patients.filter(p => p.clinicId === clinic.id && isPatientActiveOn(p, periodRefDate));
+      const clinicPatients = patients.filter(p => p.clinicId === clinic.id && isPatientRelevantInSelectedMonth(p));
       const clinicEvos: EvolutionLike[] = monthlyEvolutions
         .filter(e => clinicPatients.some(p => p.id === e.patientId))
         .map(e => ({
