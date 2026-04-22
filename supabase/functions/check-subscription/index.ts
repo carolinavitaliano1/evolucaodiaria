@@ -10,13 +10,14 @@ const corsHeaders = {
 // Plan IDs — keep in sync with src/lib/plans.ts
 const BASIC_PRODUCT_ID = 'prod_UN5zsXIUOrZTbq';
 const PRO_PRODUCT_ID = 'prod_UN67H1phk2js4F';
+const CLINICA_PRO_PRODUCT_ID = 'prod_UNv69FFEc8eE8h';
 const LEGACY_PRICE_IDS = new Set([
   'price_1Sz87xDl2hex55TCI3ONELuq',
   'price_1Sz88ADl2hex55TCABAFO3OL',
   'price_1Sz88LDl2hex55TCwzGTUplF',
 ]);
 
-type Tier = 'basic' | 'pro' | 'legacy' | 'trial' | 'owner' | null;
+type Tier = 'basic' | 'pro' | 'clinica_pro' | 'legacy' | 'trial' | 'owner' | null;
 
 function tierFromSubscription(subscription: any): { tier: Tier; productId: string | null } {
   const item = subscription.items.data[0];
@@ -24,6 +25,7 @@ function tierFromSubscription(subscription: any): { tier: Tier; productId: strin
   const productId: string | null = item?.price?.product ?? null;
 
   if (priceId && LEGACY_PRICE_IDS.has(priceId)) return { tier: 'legacy', productId: 'legacy' };
+  if (productId === CLINICA_PRO_PRODUCT_ID) return { tier: 'clinica_pro', productId };
   if (productId === PRO_PRODUCT_ID) return { tier: 'pro', productId };
   if (productId === BASIC_PRODUCT_ID) return { tier: 'basic', productId };
   // Unknown active subscription → treat as legacy to avoid locking paying users

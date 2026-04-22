@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { ClinicTeam } from '@/components/clinics/ClinicTeam';
 import { ComplianceDashboard } from '@/components/clinics/ComplianceDashboard';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
@@ -38,11 +39,10 @@ interface ActivityEntry {
   member_role_label: string | null;
 }
 
-const OWNER_EMAILS = ['carolinavitaliano1@gmail.com', 'gabriellajf83@gmail.com'];
-
 export default function Team() {
   const { user } = useAuth();
   const { clinics } = useApp();
+  const { hasTeam, loading: planLoading } = useFeatureAccess();
   const navigate = useNavigate();
   const { isOwner, loading: permLoading } = useOrgPermissions();
 
@@ -65,8 +65,7 @@ export default function Team() {
   const [confirmSwapOpen, setConfirmSwapOpen] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
-  const isOwnerEmail = OWNER_EMAILS.includes(user?.email ?? '');
-  const hasAccess = isOwnerEmail;
+  const hasAccess = hasTeam;
 
   const teamClinics = clinics.filter(c => !c.isArchived && c.type === 'clinica');
   const contratanteClinics = clinics.filter(c => !c.isArchived && c.type === 'terceirizada');
