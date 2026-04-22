@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PatientPlanCard } from '@/components/patients/PatientPlanCard';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -3106,6 +3107,7 @@ export default function PatientDetail() {
 
         {/* Financial Tab */}
         <TabsContent value="financial" className="space-y-4">
+          <PatientPlanCard patient={patient} canEdit={true} />
           {/* Month navigator */}
           <div className="bg-card rounded-xl px-4 py-3 shadow-sm border border-border flex items-center justify-between">
             <button

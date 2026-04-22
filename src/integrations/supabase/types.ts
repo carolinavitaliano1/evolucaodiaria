@@ -1373,6 +1373,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          applications_link_enabled: boolean
           created_at: string
           id: string
           name: string
@@ -1380,6 +1381,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          applications_link_enabled?: boolean
           created_at?: string
           id?: string
           name: string
@@ -1387,6 +1389,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          applications_link_enabled?: boolean
           created_at?: string
           id?: string
           name?: string
@@ -2660,6 +2663,62 @@ export type Database = {
           },
         ]
       }
+      team_applications: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string | null
+          name: string
+          organization_id: string
+          professional_id: string | null
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          specialty: string | null
+          status: string
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message?: string | null
+          name: string
+          organization_id: string
+          professional_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          specialty?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string | null
+          name?: string
+          organization_id?: string
+          professional_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          specialty?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_applications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_attendance: {
         Row: {
           attachment_name: string | null
@@ -3141,6 +3200,14 @@ export type Database = {
         Args: { _clinic_id: string }
         Returns: {
           address: string
+          id: string
+          name: string
+        }[]
+      }
+      get_organization_for_application: {
+        Args: { _org_id: string }
+        Returns: {
+          applications_link_enabled: boolean
           id: string
           name: string
         }[]

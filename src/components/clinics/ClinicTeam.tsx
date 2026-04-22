@@ -35,6 +35,8 @@ import {
   PRESET_ROLES,
 } from '@/hooks/useOrgPermissions';
 import { PermissionEditor } from '@/components/clinics/PermissionEditor';
+import { TeamPublicLinkCard } from '@/components/clinics/TeamPublicLinkCard';
+import { TeamApplicationsPanel } from '@/components/clinics/TeamApplicationsPanel';
 import { cn } from '@/lib/utils';
 
 interface OrganizationMember {
@@ -747,6 +749,14 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Public application link + pending applications */}
+      {canManage && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TeamPublicLinkCard organizationId={organization.id} isOwnerOrAdmin={canManage} />
+          <TeamApplicationsPanel organizationId={organization.id} canManage={canManage} />
         </div>
       )}
 

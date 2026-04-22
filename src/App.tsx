@@ -40,6 +40,7 @@ const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 const PatientIntakePublic = lazy(() => import("./pages/PatientIntakePublic"));
 const Enrollment = lazy(() => import("./pages/Enrollment"));
 const WaitlistPublic = lazy(() => import("./pages/WaitlistPublic"));
+const TeamApplicationPublic = lazy(() => import("./pages/TeamApplicationPublic"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfUse = lazy(() => import("./pages/TermsOfUse"));
 const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
@@ -125,6 +126,7 @@ const App = () => (
                   {/* Self-service enrollment — no auth required */}
                   <Route path="/matricula/:clinicId" element={<Enrollment />} />
                   <Route path="/lista-espera/:clinicId" element={<WaitlistPublic />} />
+                  <Route path="/candidatura-equipe/:organizationId" element={<TeamApplicationPublic />} />
                   <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                   <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                     <Route path="/pricing" element={<Pricing />} />
