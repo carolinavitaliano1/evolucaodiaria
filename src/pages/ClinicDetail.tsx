@@ -2070,6 +2070,11 @@ export default function ClinicDetail() {
           />
         </TabsContent>
 
+        {/* Health Plans Tab */}
+        <TabsContent value="health-plans">
+          <ClinicHealthPlans clinicId={clinic.id} />
+        </TabsContent>
+
         {/* Financial Tab */}
         <TabsContent value="financial">
           <ClinicFinancial clinicId={clinic.id} />
