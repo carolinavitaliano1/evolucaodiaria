@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, LogOut, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
@@ -2180,8 +2180,14 @@ export default function PatientDetail() {
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-warning" onClick={() => setArchivePatientOpen(true)} title={patient.isArchived ? 'Desarquivar' : 'Arquivar'}>
-                {patient.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-warning"
+                onClick={() => setArchivePatientOpen(true)}
+                title={patient.departureDate || patient.isArchived ? 'Reativar paciente' : 'Registrar saída da clínica'}
+              >
+                {patient.departureDate || patient.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <LogOut className="w-4 h-4" />}
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeletePatientOpen(true)} title="Excluir">
                 <Trash2 className="w-4 h-4" />
