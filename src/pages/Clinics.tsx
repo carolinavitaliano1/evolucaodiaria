@@ -483,8 +483,9 @@ export default function Clinics() {
                       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
                       const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
                       // Mutually exclusive: Consultório/Contratante (autônomo) cannot coexist with Clínica
-                      const autonomoDisabled = activeClinica;
-                      const clinicaDisabled = activeAutonomo || !hasTeam;
+                      // Admin override bypasses ambas as restrições para testes
+                      const autonomoDisabled = activeClinica && !isAdminOverride;
+                      const clinicaDisabled = (activeAutonomo && !isAdminOverride) || !canCreateClinica;
                       return (
                         <>
                           <RadioGroup
@@ -500,7 +501,7 @@ export default function Clinics() {
                               <RadioGroupItem value="terceirizada" id="terceirizada" disabled={autonomoDisabled} />
                               <Label htmlFor="terceirizada" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Contratante</Label>
                             </div>
-                            {hasTeam && (
+                            {canCreateClinica && (
                               <div className="flex items-center gap-2">
                                 <RadioGroupItem value="clinica" id="clinica" disabled={clinicaDisabled} />
                                 <Label htmlFor="clinica" className={cn("cursor-pointer text-sm", clinicaDisabled && "opacity-50 cursor-not-allowed")}>Clínica (com equipe)</Label>
