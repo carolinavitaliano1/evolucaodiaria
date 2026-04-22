@@ -238,7 +238,18 @@ export function ClinicHealthPlans({ clinicId }: Props) {
           <ShieldCheck className="w-5 h-5 text-primary" />
           Planos de Saúde / Convênios
         </h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <div className="flex items-center gap-2">
+          {plans.length > 0 && (
+            <>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportCSV()} title="Exportar todos os planos em CSV">
+                <Download className="w-3.5 h-3.5" /> CSV
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportPDF()} title="Exportar relatório completo em PDF">
+                <FileText className="w-3.5 h-3.5" /> PDF
+              </Button>
+            </>
+          )}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2" onClick={openNew}>
               <Plus className="w-4 h-4" /> Novo Convênio
@@ -291,7 +302,8 @@ export function ClinicHealthPlans({ clinicId }: Props) {
               </div>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {loading ? (
