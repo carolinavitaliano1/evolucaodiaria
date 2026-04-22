@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,7 +38,7 @@ interface PatientLink {
 const empty = { name: '', ans_registry: '', phone: '', reimbursement_value: 0, reimbursement_type: 'por_sessao', notes: '', is_active: true };
 
 export function ClinicHealthPlans({ clinicId }: Props) {
-  const { user, patients: ctxPatients } = useApp();
+  const { user } = useAuth();
   const [plans, setPlans] = useState<HealthPlan[]>([]);
   const [patients, setPatients] = useState<PatientLink[]>([]);
   const [loading, setLoading] = useState(true);

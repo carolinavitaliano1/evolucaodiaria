@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { toLocalDateString } from '@/lib/utils';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck, ShieldCheck } from 'lucide-react';
 import { PackagePatientsModal } from '@/components/clinics/PackagePatientsModal';
 import { EditableReceiptModal } from '@/components/financial/EditableReceiptModal';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
