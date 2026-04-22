@@ -65,6 +65,9 @@ export default function Clinics() {
   const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic, loadAllEvolutions } = useApp();
   const { user } = useAuth();
   const { hasTeam } = useFeatureAccess();
+  // Admin override: contas específicas podem cadastrar Clínica mesmo com Consultório/Contratante (para testes)
+  const isAdminOverride = user?.email === 'carolinavitaliano1@gmail.com' || user?.email === 'gabriellajf83@gmail.com';
+  const canCreateClinica = hasTeam || isAdminOverride;
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
@@ -200,8 +203,8 @@ export default function Clinics() {
       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
       const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
       let defaultType: 'propria' | 'terceirizada' | 'clinica' = 'propria';
-      if (hasTeam && activeClinica) defaultType = 'clinica';
-      else if (hasTeam && !activeAutonomo) defaultType = 'clinica';
+      if (canCreateClinica && activeClinica) defaultType = 'clinica';
+      else if (canCreateClinica && !activeAutonomo && !isAdminOverride) defaultType = 'clinica';
       setFormData(prev => ({ ...prev, type: defaultType }));
       setIsDialogOpen(true);
     }
