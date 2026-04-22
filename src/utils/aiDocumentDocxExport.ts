@@ -1,7 +1,29 @@
 import {
-  Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType,
-  HeadingLevel, PageOrientation, Header, Footer, BorderStyle, LevelFormat,
+  AlignmentType,
+  BorderStyle,
+  Document,
+  Footer,
+  Header,
+  HeadingLevel,
+  ImageRun,
+  LevelFormat,
+  PageOrientation,
+  Packer,
+  Paragraph,
+  TextRun,
 } from 'docx';
+import {
+  AI_DOC_CONTENT_WIDTH_PX,
+  AI_DOC_LAYOUT,
+  decodeEntities,
+  extractAttr,
+  extractStyleProp,
+  inlineExportImagesInHtml,
+  parseSize,
+  resolveImageForExport,
+  stripMetaScript,
+  type ExportImageInfo,
+} from '@/utils/aiDocumentExportShared';
 
 export interface DocxExtraSignature { label: string; }
 
@@ -18,396 +40,411 @@ interface DocxExportInput {
   extraSignatures?: DocxExtraSignature[];
 }
 
-const PAGE_CONTENT_WIDTH_DXA = 9026; // A4 minus 1 inch margins on each side
-const EMU_PER_PIXEL = 9525;
-const MAX_BODY_IMG_WIDTH_PX = 600; // ~ matches A4 content width visually
+type RunStyleState = {
+  bold?: boolean;
+  italics?: boolean;
+  underline?: boolean;
+  fontFamily?: string;
+  fontSizePx?: number;
+};
 
-type ImgInfo = { data: Uint8Array; type: 'png' | 'jpg' | 'gif' | 'bmp'; width: number; height: number };
+type ParagraphOptions = {
+  alignment?: AlignmentType;
+  spacingAfter?: number;
+  spacingBefore?: number;
+  firstLine?: number;
+  bullet?: { level: number };
+  numbering?: { reference: string; level: number };
+};
 
-function stripMetaScript(html: string): string {
-  return html.replace(/<script[^>]*id=["']docia-meta["'][^>]*>[\s\S]*?<\/script>/gi, '');
+const DEFAULT_FONT_PX = 16;
+const DEFAULT_TEXT_SIZE = 24;
+const INDENT_FIRST_LINE_DXA = 480;
+const BODY_SPACING_LINE = 360;
+const BODY_SPACING_AFTER = 120;
+
+function pxToHalfPoints(px?: number | null) {
+  const safePx = px && Number.isFinite(px) ? px : DEFAULT_FONT_PX;
+  return Math.max(16, Math.round(safePx * 1.5));
 }
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'");
-}
-
-async function fetchImage(url: string): Promise<ImgInfo | null> {
-  try {
-    const resp = await fetch(url, { mode: 'cors' });
-    if (!resp.ok) return null;
-    const blob = await resp.blob();
-    const buf = new Uint8Array(await blob.arrayBuffer());
-
-    let type: ImgInfo['type'] = 'png';
-    const mime = (blob.type || '').toLowerCase();
-    if (mime.includes('jpeg') || mime.includes('jpg')) type = 'jpg';
-    else if (mime.includes('gif')) type = 'gif';
-    else if (mime.includes('bmp')) type = 'bmp';
-    else if (mime.includes('png')) type = 'png';
-    else if (url.match(/\.(jpe?g)(\?|$)/i)) type = 'jpg';
-    else if (url.match(/\.gif(\?|$)/i)) type = 'gif';
-
-    // Get natural dimensions via HTMLImageElement
-    const dataUrl = await new Promise<string>(res => {
-      const r = new FileReader();
-      r.onloadend = () => res(r.result as string);
-      r.readAsDataURL(blob);
-    });
-    const dims = await new Promise<{ w: number; h: number }>(res => {
-      const img = new Image();
-      img.onload = () => res({ w: img.naturalWidth || 400, h: img.naturalHeight || 300 });
-      img.onerror = () => res({ w: 400, h: 300 });
-      img.src = dataUrl;
-    });
-
-    return { data: buf, type, width: dims.w, height: dims.h };
-  } catch {
-    return null;
+function alignmentFromValue(value?: string | null): AlignmentType | undefined {
+  switch ((value || '').trim().toLowerCase()) {
+    case 'left':
+      return AlignmentType.LEFT;
+    case 'center':
+      return AlignmentType.CENTER;
+    case 'right':
+      return AlignmentType.RIGHT;
+    case 'justify':
+      return AlignmentType.JUSTIFIED;
+    default:
+      return undefined;
   }
 }
 
-/** Parse "400px" / "400" / "50%" → pixels (% resolved against MAX_BODY_IMG_WIDTH_PX). */
-function parseSize(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const v = raw.trim();
-  if (/%$/.test(v)) {
-    const pct = parseFloat(v) / 100;
-    return Math.round(MAX_BODY_IMG_WIDTH_PX * pct);
-  }
-  const n = parseFloat(v);
-  return isFinite(n) ? Math.round(n) : null;
-}
-
-function extractAttr(tag: string, name: string): string | null {
-  const m = tag.match(new RegExp(`\\s${name}=["']([^"']+)["']`, 'i'));
-  return m ? m[1] : null;
-}
-
-function extractStyleProp(style: string | null, prop: string): string | null {
-  if (!style) return null;
-  const m = style.match(new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`, 'i'));
-  return m ? m[1].trim() : null;
-}
-
-/** Convert pixel size to docx ImageRun transformation. Caps width at content width. */
-function sizeForImage(info: ImgInfo, requestedWidthPx: number | null, requestedHeightPx: number | null) {
-  const ratio = info.width > 0 && info.height > 0 ? info.height / info.width : 0.75;
-  let w = requestedWidthPx ?? info.width;
-  let h = requestedHeightPx ?? Math.round(w * ratio);
-  if (!requestedWidthPx && !requestedHeightPx) {
-    // No explicit size – cap at sensible default but keep aspect.
-    if (w > MAX_BODY_IMG_WIDTH_PX) {
-      w = MAX_BODY_IMG_WIDTH_PX;
-      h = Math.round(w * ratio);
-    }
-  }
-  // Hard cap to content width.
-  if (w > MAX_BODY_IMG_WIDTH_PX) {
-    w = MAX_BODY_IMG_WIDTH_PX;
-    h = Math.round(w * ratio);
-  }
-  return { width: Math.max(20, w), height: Math.max(20, h) };
-}
-
-/**
- * Walk through the body HTML and produce an array of docx Paragraphs.
- * Supports: <p>, <br>, <h1-3>, <strong>/<b>, <em>/<i>, <u>, <ul>/<ol>/<li>, <img>.
- * Inline <img> renders as its own centered paragraph (Word can't truly inline images mid-line easily without anchors).
- */
-async function htmlToParagraphs(html: string): Promise<Paragraph[]> {
-  // Normalize <br> to newline markers we'll split on later.
-  const cleaned = html
-    .replace(/\r/g, '')
-    .replace(/<br\s*\/?>(\s*)/gi, '\n');
-
-  // Pre-fetch every image so paragraph build can be synchronous.
-  const imgUrls = Array.from(cleaned.matchAll(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi)).map(m => m[1]);
-  const imgCache = new Map<string, ImgInfo | null>();
-  await Promise.all(
-    Array.from(new Set(imgUrls)).map(async u => {
-      imgCache.set(u, await fetchImage(u));
-    })
+function extractAlignment(element?: Element | null): AlignmentType | undefined {
+  if (!element) return undefined;
+  return alignmentFromValue(
+    extractStyleProp(element.getAttribute('style'), 'text-align') || element.getAttribute('align'),
   );
+}
 
-  // Split on block boundaries while preserving structure.
-  // Tokenize by walking with a regex over recognized block tags.
-  const blockRegex = /<(p|h1|h2|h3|ul|ol|div)([^>]*)>([\s\S]*?)<\/\1>|<img[^>]+>/gi;
-  const out: Paragraph[] = [];
+function extendRunState(element: Element, state: RunStyleState): RunStyleState {
+  const next: RunStyleState = { ...state };
+  const tag = element.tagName.toLowerCase();
+  if (tag === 'strong' || tag === 'b') next.bold = true;
+  if (tag === 'em' || tag === 'i') next.italics = true;
+  if (tag === 'u') next.underline = true;
 
-  // If the html has no block tags, treat the whole thing as one paragraph.
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  const pushFreeText = (chunk: string) => {
-    const text = decodeEntities(chunk.replace(/<[^>]+>/g, '')).trim();
-    if (text) out.push(new Paragraph({ children: [new TextRun({ text, font: 'Georgia', size: 24 })], alignment: AlignmentType.JUSTIFIED }));
+  const style = element.getAttribute('style');
+  const fontFamily = extractStyleProp(style, 'font-family');
+  const fontSize = parseSize(extractStyleProp(style, 'font-size'));
+
+  if (fontFamily) next.fontFamily = fontFamily.split(',')[0]?.replace(/["']/g, '').trim() || state.fontFamily;
+  if (fontSize) next.fontSizePx = fontSize;
+
+  return next;
+}
+
+function textRun(text: string, state: RunStyleState) {
+  return new TextRun({
+    text,
+    bold: state.bold,
+    italics: state.italics,
+    underline: state.underline ? {} : undefined,
+    font: state.fontFamily || 'Georgia',
+    size: pxToHalfPoints(state.fontSizePx),
+  });
+}
+
+function sizeForImage(info: ExportImageInfo, requestedWidthPx: number | null, requestedHeightPx: number | null, maxWidthPx = AI_DOC_CONTENT_WIDTH_PX) {
+  const ratio = info.width > 0 && info.height > 0 ? info.height / info.width : 0.75;
+  let width = requestedWidthPx ?? info.width;
+  let height = requestedHeightPx ?? (requestedWidthPx ? Math.round(requestedWidthPx * ratio) : info.height);
+
+  if (requestedWidthPx && !requestedHeightPx) {
+    height = Math.round(requestedWidthPx * ratio);
+  }
+  if (!requestedWidthPx && requestedHeightPx) {
+    width = Math.round(requestedHeightPx / ratio);
+  }
+
+  if (width > maxWidthPx) {
+    width = maxWidthPx;
+    height = Math.round(width * ratio);
+  }
+
+  return {
+    width: Math.max(24, width),
+    height: Math.max(24, height),
+  };
+}
+
+async function imageParagraphFromElement(
+  element: Element,
+  imgCache: Map<string, ExportImageInfo | null>,
+  options?: { spacingBefore?: number; spacingAfter?: number; maxWidthPx?: number },
+) {
+  const src = element.getAttribute('src');
+  if (!src) return null;
+
+  const info = imgCache.get(src) ?? null;
+  if (!info) return null;
+
+  const style = element.getAttribute('style');
+  const width = parseSize(element.getAttribute('width') || extractStyleProp(style, 'width'));
+  const height = parseSize(element.getAttribute('height') || extractStyleProp(style, 'height'));
+  const transformed = sizeForImage(info, width, height, options?.maxWidthPx);
+
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: options?.spacingBefore ?? 120, after: options?.spacingAfter ?? 120 },
+    children: [new ImageRun({ type: info.type, data: info.data, transformation: transformed })],
+  });
+}
+
+async function appendInlineContent(
+  node: Node,
+  out: Paragraph[],
+  imgCache: Map<string, ExportImageInfo | null>,
+  state: RunStyleState,
+  paragraphOptions: ParagraphOptions,
+  currentRunsRef: { value: TextRun[] },
+) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = decodeEntities(node.textContent || '');
+    if (text) currentRunsRef.value.push(textRun(text, state));
+    return;
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+  const element = node as Element;
+  const tag = element.tagName.toLowerCase();
+
+  const flushParagraph = () => {
+    if (!currentRunsRef.value.length) return;
+    out.push(new Paragraph({
+      alignment: paragraphOptions.alignment ?? AlignmentType.JUSTIFIED,
+      spacing: { line: BODY_SPACING_LINE, before: paragraphOptions.spacingBefore ?? 0, after: paragraphOptions.spacingAfter ?? BODY_SPACING_AFTER },
+      indent: paragraphOptions.firstLine ? { firstLine: paragraphOptions.firstLine } : undefined,
+      bullet: paragraphOptions.bullet,
+      numbering: paragraphOptions.numbering,
+      children: currentRunsRef.value,
+    }));
+    currentRunsRef.value = [];
   };
 
-  while ((match = blockRegex.exec(cleaned)) !== null) {
-    if (match.index > lastIndex) {
-      pushFreeText(cleaned.slice(lastIndex, match.index));
-    }
-    const full = match[0];
-    const tag = (match[1] || '').toLowerCase();
+  if (tag === 'br') {
+    flushParagraph();
+    return;
+  }
 
-    if (full.toLowerCase().startsWith('<img')) {
-      const src = extractAttr(full, 'src');
-      if (src && imgCache.get(src)) {
-        const info = imgCache.get(src)!;
-        const style = extractAttr(full, 'style');
-        const wRaw = extractAttr(full, 'width') || extractStyleProp(style, 'width');
-        const hRaw = extractAttr(full, 'height') || extractStyleProp(style, 'height');
-        const wPx = parseSize(wRaw);
-        const hPx = parseSize(hRaw);
-        const { width, height } = sizeForImage(info, wPx, hPx);
-        out.push(new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 120, after: 120 },
-          children: [new ImageRun({
-            type: info.type as any,
-            data: info.data,
-            transformation: { width, height },
-          } as any)],
-        }));
-      }
-      lastIndex = blockRegex.lastIndex;
-      continue;
+  if (tag === 'img') {
+    flushParagraph();
+    const paragraph = await imageParagraphFromElement(element, imgCache);
+    if (paragraph) out.push(paragraph);
+    return;
+  }
+
+  const nextState = extendRunState(element, state);
+  for (const child of Array.from(element.childNodes)) {
+    await appendInlineContent(child, out, imgCache, nextState, paragraphOptions, currentRunsRef);
+  }
+}
+
+async function richBlockToParagraphs(
+  element: Element,
+  out: Paragraph[],
+  imgCache: Map<string, ExportImageInfo | null>,
+  options?: Partial<ParagraphOptions>,
+) {
+  const currentRunsRef = { value: [] as TextRun[] };
+  const paragraphOptions: ParagraphOptions = {
+    alignment: options?.alignment ?? extractAlignment(element) ?? AlignmentType.JUSTIFIED,
+    spacingBefore: options?.spacingBefore ?? 0,
+    spacingAfter: options?.spacingAfter ?? BODY_SPACING_AFTER,
+    firstLine: options?.firstLine,
+    bullet: options?.bullet,
+    numbering: options?.numbering,
+  };
+
+  for (const child of Array.from(element.childNodes)) {
+    await appendInlineContent(child, out, imgCache, { fontFamily: 'Georgia', fontSizePx: DEFAULT_FONT_PX }, paragraphOptions, currentRunsRef);
+  }
+
+  if (currentRunsRef.value.length) {
+    out.push(new Paragraph({
+      alignment: paragraphOptions.alignment ?? AlignmentType.JUSTIFIED,
+      spacing: { line: BODY_SPACING_LINE, before: paragraphOptions.spacingBefore ?? 0, after: paragraphOptions.spacingAfter ?? BODY_SPACING_AFTER },
+      indent: paragraphOptions.firstLine ? { firstLine: paragraphOptions.firstLine } : undefined,
+      bullet: paragraphOptions.bullet,
+      numbering: paragraphOptions.numbering,
+      children: currentRunsRef.value,
+    }));
+  }
+}
+
+async function htmlToParagraphs(html: string): Promise<Paragraph[]> {
+  const preparedHtml = await inlineExportImagesInHtml(stripMetaScript(html));
+  const parser = new DOMParser();
+  const documentNode = parser.parseFromString(`<div id="docia-root">${preparedHtml}</div>`, 'text/html');
+  const root = documentNode.getElementById('docia-root');
+  const out: Paragraph[] = [];
+
+  if (!root) return [new Paragraph({ children: [new TextRun('')] })];
+
+  const imageSources = Array.from(root.querySelectorAll('img'))
+    .map((img) => img.getAttribute('src'))
+    .filter((src): src is string => Boolean(src));
+
+  const imgCache = new Map<string, ExportImageInfo | null>();
+  await Promise.all(
+    Array.from(new Set(imageSources)).map(async (src) => {
+      imgCache.set(src, await resolveImageForExport(src));
+    }),
+  );
+
+  const processNode = async (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = decodeEntities(node.textContent || '').trim();
+      if (!text) return;
+      out.push(new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { line: BODY_SPACING_LINE, after: BODY_SPACING_AFTER },
+        indent: { firstLine: INDENT_FIRST_LINE_DXA },
+        children: [textRun(text, { fontFamily: 'Georgia', fontSizePx: DEFAULT_FONT_PX })],
+      }));
+      return;
     }
 
-    const inner = match[3] || '';
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const element = node as Element;
+    const tag = element.tagName.toLowerCase();
+
+    if (tag === 'img') {
+      const paragraph = await imageParagraphFromElement(element, imgCache);
+      if (paragraph) out.push(paragraph);
+      return;
+    }
 
     if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
-      const text = decodeEntities(inner.replace(/<[^>]+>/g, '')).trim();
-      if (text) {
-        const heading = tag === 'h1' ? HeadingLevel.HEADING_1 : tag === 'h2' ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3;
-        out.push(new Paragraph({
-          heading,
-          spacing: { before: 200, after: 120 },
-          children: [new TextRun({ text, bold: true, font: 'Georgia', size: tag === 'h1' ? 32 : tag === 'h2' ? 28 : 26 })],
-        }));
-      }
-    } else if (tag === 'ul' || tag === 'ol') {
-      const items = Array.from(inner.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi));
-      for (const li of items) {
-        await pushInlineParagraphs(li[1], out, imgCache, {
+      const headingAlignment = extractAlignment(element) ?? AlignmentType.LEFT;
+      const headingText = decodeEntities(element.textContent || '').trim();
+      if (!headingText) return;
+      const heading = tag === 'h1' ? HeadingLevel.HEADING_1 : tag === 'h2' ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3;
+      const fontSizePx = tag === 'h1' ? 21 : tag === 'h2' ? 19 : 17;
+      out.push(new Paragraph({
+        heading,
+        alignment: headingAlignment,
+        spacing: { before: 200, after: 120 },
+        children: [new TextRun({ text: headingText, bold: true, font: 'Georgia', size: pxToHalfPoints(fontSizePx) })],
+      }));
+      return;
+    }
+
+    if (tag === 'ul' || tag === 'ol') {
+      const items = Array.from(element.children).filter((child) => child.tagName.toLowerCase() === 'li');
+      for (const item of items) {
+        await richBlockToParagraphs(item, out, imgCache, {
+          alignment: extractAlignment(item) ?? AlignmentType.LEFT,
+          firstLine: 0,
           bullet: tag === 'ul' ? { level: 0 } : undefined,
           numbering: tag === 'ol' ? { reference: 'docia-numbers', level: 0 } : undefined,
         });
       }
-    } else {
-      // p / div – may contain inline imgs and formatting + newlines from <br>.
-      await pushInlineParagraphs(inner, out, imgCache, {});
+      return;
     }
 
-    lastIndex = blockRegex.lastIndex;
-  }
-
-  if (lastIndex < cleaned.length) {
-    pushFreeText(cleaned.slice(lastIndex));
-  }
-
-  if (out.length === 0) {
-    out.push(new Paragraph({ children: [new TextRun('')] }));
-  }
-  return out;
-}
-
-async function pushInlineParagraphs(
-  html: string,
-  out: Paragraph[],
-  imgCache: Map<string, ImgInfo | null>,
-  opts: { bullet?: { level: number }; numbering?: { reference: string; level: number } },
-) {
-  // Split by inline <img> – each image becomes its own paragraph; surrounding text becomes paragraphs too.
-  const parts = html.split(/(<img[^>]+>)/gi);
-  // Then split text by newlines (from <br>).
-  for (const part of parts) {
-    if (!part) continue;
-    if (/^<img/i.test(part)) {
-      const src = extractAttr(part, 'src');
-      const info = src ? imgCache.get(src) : null;
-      if (src && info) {
-        const style = extractAttr(part, 'style');
-        const wRaw = extractAttr(part, 'width') || extractStyleProp(style, 'width');
-        const hRaw = extractAttr(part, 'height') || extractStyleProp(style, 'height');
-        const { width, height } = sizeForImage(info, parseSize(wRaw), parseSize(hRaw));
-        out.push(new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 120, after: 120 },
-          children: [new ImageRun({
-            type: info.type as any,
-            data: info.data,
-            transformation: { width, height },
-          } as any)],
-        }));
-      }
-      continue;
+    if (tag === 'p' || tag === 'div' || tag === 'blockquote') {
+      await richBlockToParagraphs(element, out, imgCache, {
+        alignment: extractAlignment(element) ?? AlignmentType.JUSTIFIED,
+        firstLine: tag === 'p' ? INDENT_FIRST_LINE_DXA : 0,
+      });
+      return;
     }
-    // Text segment with inline formatting.
-    const segments = part.split('\n');
-    for (const seg of segments) {
-      const runs = inlineRuns(seg);
-      if (runs.length === 0) continue;
-      out.push(new Paragraph({
-        alignment: opts.bullet || opts.numbering ? AlignmentType.LEFT : AlignmentType.JUSTIFIED,
-        spacing: { line: 360, after: 120 },
-        bullet: opts.bullet,
-        numbering: opts.numbering,
-        children: runs,
-      }));
-    }
-  }
-}
 
-/** Convert a fragment with <strong>/<em>/<u> to TextRuns. */
-function inlineRuns(html: string): TextRun[] {
-  const runs: TextRun[] = [];
-  // Tokenize by tag boundaries while tracking active formatting.
-  const re = /<\/?(strong|b|em|i|u|span)[^>]*>|[^<]+/gi;
-  let bold = false, italic = false, underline = false;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    const tok = m[0];
-    if (tok.startsWith('<')) {
-      const close = tok.startsWith('</');
-      const name = (m[1] || '').toLowerCase();
-      if (name === 'strong' || name === 'b') bold = !close;
-      else if (name === 'em' || name === 'i') italic = !close;
-      else if (name === 'u') underline = !close;
-      // span ignored
-      continue;
+    for (const child of Array.from(element.childNodes)) {
+      await processNode(child);
     }
-    const text = decodeEntities(tok);
-    if (!text) continue;
-    runs.push(new TextRun({
-      text, bold, italics: italic, underline: underline ? {} : undefined,
-      font: 'Georgia', size: 24,
-    }));
+  };
+
+  for (const child of Array.from(root.childNodes)) {
+    await processNode(child);
   }
-  // Trim leading/trailing empty
-  return runs.filter(r => (r as any).options?.text !== '');
+
+  return out.length ? out : [new Paragraph({ children: [new TextRun('')] })];
 }
 
 export async function generateAIDocumentDocx(input: DocxExportInput): Promise<Blob> {
   const {
-    title, bodyHtml, logoUrl, headerText, footerText,
-    professionalName, professionalRegistration, cityLine,
-    stampUrl, extraSignatures = [],
+    title,
+    bodyHtml,
+    logoUrl,
+    headerText,
+    footerText,
+    professionalName,
+    professionalRegistration,
+    cityLine,
+    stampUrl,
+    extraSignatures = [],
   } = input;
 
-  const cleanBody = stripMetaScript(bodyHtml);
-  const bodyParagraphs = await htmlToParagraphs(cleanBody);
+  const bodyParagraphs = await htmlToParagraphs(bodyHtml);
+  const logoInfo = logoUrl ? await resolveImageForExport(logoUrl) : null;
+  const stampInfo = stampUrl ? await resolveImageForExport(stampUrl) : null;
 
-  // Header (logo + clinic header text)
-  const logoInfo = logoUrl ? await fetchImage(logoUrl) : null;
   const headerChildren: Paragraph[] = [];
   if (logoInfo) {
-    const ratio = logoInfo.height / logoInfo.width;
-    const w = Math.min(280, logoInfo.width);
+    const size = sizeForImage(logoInfo, Math.min(280, logoInfo.width), null, 280);
     headerChildren.push(new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new ImageRun({
-        type: logoInfo.type as any,
-        data: logoInfo.data,
-        transformation: { width: w, height: Math.round(w * ratio) },
-      } as any)],
+      spacing: { after: 60 },
+      children: [new ImageRun({ type: logoInfo.type, data: logoInfo.data, transformation: size })],
     }));
   }
   if (headerText) {
-    for (const line of headerText.split('\n')) {
+    for (const line of headerText.split('\n').filter(Boolean)) {
       headerChildren.push(new Paragraph({
         alignment: AlignmentType.CENTER,
+        spacing: { after: 20 },
         children: [new TextRun({ text: line, font: 'Georgia', size: 20, color: '333333' })],
       }));
     }
   }
-  // Bottom rule on header
   if (headerChildren.length) {
     headerChildren.push(new Paragraph({
       border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC', space: 4 } },
+      spacing: { after: 240 },
       children: [new TextRun({ text: '' })],
     }));
   }
 
-  // Footer
   const footerChildren: Paragraph[] = [];
   if (footerText) {
     footerChildren.push(new Paragraph({
       border: { top: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC', space: 4 } },
+      spacing: { before: 120 },
       children: [new TextRun({ text: '' })],
     }));
-    for (const line of footerText.split('\n')) {
+    for (const line of footerText.split('\n').filter(Boolean)) {
       footerChildren.push(new Paragraph({
         alignment: AlignmentType.CENTER,
+        spacing: { after: 20 },
         children: [new TextRun({ text: line, font: 'Georgia', size: 18, color: '555555' })],
       }));
     }
   }
 
-  // Title
-  const titleP = new Paragraph({
+  const children: Paragraph[] = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 360 },
+      children: [new TextRun({ text: title.toUpperCase(), bold: true, font: 'Georgia', size: 32 })],
+    }),
+    ...bodyParagraphs,
+  ];
+
+  if (cityLine) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 360, after: 0 },
+      children: [new TextRun({ text: cityLine, font: 'Georgia', size: 24 })],
+    }));
+  }
+
+  if (stampInfo) {
+    const size = sizeForImage(stampInfo, Math.min(180, stampInfo.width), null, 180);
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 720, after: 40 },
+      children: [new ImageRun({ type: stampInfo.type, data: stampInfo.data, transformation: size })],
+    }));
+  }
+
+  children.push(new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 0, after: 360 },
-    children: [new TextRun({ text: title.toUpperCase(), bold: true, font: 'Georgia', size: 32 })],
-  });
-
-  // City line
-  const cityP = cityLine
-    ? new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 480, after: 0 },
-        children: [new TextRun({ text: cityLine, font: 'Georgia', size: 24 })],
-      })
-    : null;
-
-  // Stamp (centered above signature line)
-  const stampInfo = stampUrl ? await fetchImage(stampUrl) : null;
-  const stampP = stampInfo
-    ? new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 720, after: 0 },
-        children: [new ImageRun({
-          type: stampInfo.type as any,
-          data: stampInfo.data,
-          transformation: (() => {
-            const ratio = stampInfo.height / stampInfo.width;
-            const w = Math.min(180, stampInfo.width);
-            return { width: w, height: Math.round(w * ratio) };
-          })(),
-        } as any)],
-      })
-    : null;
-
-  // Signature line + name + registration
-  const signatureChildren: Paragraph[] = [];
-  signatureChildren.push(new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { before: stampP ? 0 : 720, after: 0 },
+    spacing: { before: stampInfo ? 0 : 720, after: 0 },
     border: { top: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 4 } },
     children: [new TextRun({ text: professionalName || '', bold: true, font: 'Georgia', size: 24 })],
   }));
+
   if (professionalRegistration) {
-    signatureChildren.push(new Paragraph({
+    children.push(new Paragraph({
       alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
       children: [new TextRun({ text: professionalRegistration, font: 'Georgia', size: 22, color: '444444' })],
     }));
   }
 
-  // Extra signatures
-  const extraSigParagraphs: Paragraph[] = [];
-  for (const s of extraSignatures) {
-    extraSigParagraphs.push(new Paragraph({
+  for (const signature of extraSignatures) {
+    children.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 720, after: 0 },
       border: { top: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 4 } },
-      children: [new TextRun({ text: s.label, font: 'Georgia', size: 22 })],
+      children: [new TextRun({ text: signature.label, font: 'Georgia', size: 22 })],
     }));
   }
 
@@ -418,34 +455,38 @@ export async function generateAIDocumentDocx(input: DocxExportInput): Promise<Bl
       config: [{
         reference: 'docia-numbers',
         levels: [{
-          level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT,
+          level: 0,
+          format: LevelFormat.DECIMAL,
+          text: '%1.',
+          alignment: AlignmentType.LEFT,
           style: { paragraph: { indent: { left: 720, hanging: 360 } } },
         }],
       }],
     },
     styles: {
-      default: { document: { run: { font: 'Georgia', size: 24 } } },
+      default: { document: { run: { font: 'Georgia', size: DEFAULT_TEXT_SIZE } } },
     },
     sections: [{
       properties: {
         page: {
-          size: { width: 11906, height: 16838, orientation: PageOrientation.PORTRAIT },
-          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+          size: {
+            width: AI_DOC_LAYOUT.pageWidthDxa,
+            height: AI_DOC_LAYOUT.pageHeightDxa,
+            orientation: PageOrientation.PORTRAIT,
+          },
+          margin: {
+            top: AI_DOC_LAYOUT.pageMarginDxa,
+            right: AI_DOC_LAYOUT.pageMarginDxa,
+            bottom: AI_DOC_LAYOUT.pageMarginDxa,
+            left: AI_DOC_LAYOUT.pageMarginDxa,
+          },
         },
       },
       headers: headerChildren.length ? { default: new Header({ children: headerChildren }) } : undefined,
       footers: footerChildren.length ? { default: new Footer({ children: footerChildren }) } : undefined,
-      children: [
-        titleP,
-        ...bodyParagraphs,
-        ...(cityP ? [cityP] : []),
-        ...(stampP ? [stampP] : []),
-        ...signatureChildren,
-        ...extraSigParagraphs,
-      ],
+      children,
     }],
   });
 
-  const blob = await Packer.toBlob(doc);
-  return blob;
+  return Packer.toBlob(doc);
 }
