@@ -133,6 +133,11 @@ export default function Pricing() {
             ✓ Você está no plano {tier === 'pro' ? 'Pro' : 'Básico'}
           </Badge>
         )}
+        {subscribed && tier === 'clinica_pro' && (
+          <Badge variant="outline" className="mt-3 ml-2 text-primary border-primary">
+            ✓ Você está no plano Clínica Pro
+          </Badge>
+        )}
       </div>
 
       {/* Plans */}
@@ -205,6 +210,7 @@ export default function Pricing() {
                     <th className="text-left px-4 py-3 font-semibold text-foreground">Recurso</th>
                     <th className="text-center px-4 py-3 font-semibold text-foreground w-32">Básico</th>
                     <th className="text-center px-4 py-3 font-semibold text-primary w-32">Pro</th>
+                    <th className="text-center px-4 py-3 font-semibold text-primary w-32">Clínica Pro</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,7 +225,18 @@ export default function Pricing() {
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-center">
-                        <Check className="w-4 h-4 text-primary mx-auto" />
+                        {row.pro ? (
+                          <Check className="w-4 h-4 text-primary mx-auto" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-muted-foreground/50 mx-auto" />
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        {row.clinicaPro ? (
+                          <Check className="w-4 h-4 text-primary mx-auto" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-muted-foreground/50 mx-auto" />
+                        )}
                       </td>
                     </tr>
                   ))}
