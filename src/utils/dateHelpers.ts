@@ -89,3 +89,33 @@ export function calculateMensalRevenueWithDeductions(
     hasDeduction: absenceCount > 0,
   };
 }
+
+/**
+ * Determines whether a patient was active on a given reference date.
+ *
+ * Rules:
+ * - If `departureDate` is set, the patient is considered active on dates
+ *   strictly before the departure date (exclusive). On and after that date
+ *   they are inactive — but historical data (before the departure) is
+ *   preserved in financial reports.
+ * - If `departureDate` is not set, falls back to the legacy `isArchived` flag
+ *   (archived = inactive everywhere). Non-archived patients are always active.
+ *
+ * @param patient - patient-like object with `departureDate` and `isArchived`
+ * @param refDate - reference date (defaults to "now")
+ */
+export function isPatientActiveOn(
+  patient: { departureDate?: string | null; isArchived?: boolean | null } | null | undefined,
+  refDate: Date = new Date(),
+): boolean {
+  if (!patient) return false;
+  if (patient.departureDate) {
+    // Compare as YYYY-MM-DD to avoid timezone surprises
+    const ref = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+    const [y, m, d] = patient.departureDate.split('-').map(Number);
+    if (!y || !m || !d) return !patient.isArchived;
+    const dep = new Date(y, m - 1, d);
+    return ref < dep;
+  }
+  return !patient.isArchived;
+}

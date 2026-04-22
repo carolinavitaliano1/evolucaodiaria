@@ -62,6 +62,8 @@ export interface Patient {
   scheduleByDay?: ScheduleByDay;
   packageId?: string;
   isArchived?: boolean;
+  departureDate?: string; // ISO date string (YYYY-MM-DD); set when patient left the clinic
+  departureReason?: string;
   avatarUrl?: string;
   createdAt: string;
 }

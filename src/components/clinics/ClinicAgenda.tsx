@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,7 +33,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
       .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
   }, [user]);
 
-  const clinicPatients = patients.filter(p => p.clinicId === clinicId && !p.isArchived);
+  const clinicPatients = patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p));
 
   const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const weekday = dayNames[viewDate.getDay()];

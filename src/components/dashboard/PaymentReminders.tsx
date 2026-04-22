@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,7 +70,7 @@ export function PaymentReminders() {
 
   const reminders: ReminderItem[] = patients
     .filter(p => {
-      if (p.isArchived) return false;
+      if (!isPatientActiveOn(p)) return false;
       const dueDay = (p as any).paymentDueDay ?? (p as any).payment_due_day;
       if (!dueDay) return false;
       if (paidPatientIds.has(p.id)) return false;

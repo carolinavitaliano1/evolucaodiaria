@@ -116,6 +116,8 @@ function mapPatient(p: Record<string, unknown>): Patient {
     weekdays: (p.weekdays as string[]) || undefined, scheduleTime: (p.schedule_time as string) || undefined,
     scheduleByDay: p.schedule_by_day as ScheduleByDay | undefined,
     packageId: (p.package_id as string) || undefined, isArchived: (p.is_archived as boolean) || false,
+    departureDate: (p.departure_date as string) || undefined,
+    departureReason: (p.departure_reason as string) || undefined,
     avatarUrl: (p.avatar_url as string) || undefined, createdAt: p.created_at as string,
   } as any;
 }
@@ -631,6 +633,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.scheduleTime !== undefined) updateData.schedule_time = updates.scheduleTime || null;
       if (updates.scheduleByDay !== undefined) updateData.schedule_by_day = updates.scheduleByDay || null;
       if (updates.isArchived !== undefined) updateData.is_archived = updates.isArchived;
+      if ((updates as any).departureDate !== undefined) updateData.departure_date = (updates as any).departureDate || null;
+      if ((updates as any).departureReason !== undefined) updateData.departure_reason = (updates as any).departureReason || null;
       if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl || null;
       if (updates.packageId !== undefined) updateData.package_id = updates.packageId || null;
       if ((updates as any).payment_info !== undefined) updateData.payment_info = (updates as any).payment_info || null;

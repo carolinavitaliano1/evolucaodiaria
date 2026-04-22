@@ -1,4 +1,5 @@
 import { useApp } from '@/contexts/AppContext';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { Cake } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
@@ -24,7 +25,7 @@ export function BirthdayCard() {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
-  const birthdays = patients.filter(p => !p.isArchived && p.birthdate && isBirthdayToday(p.birthdate));
+  const birthdays = patients.filter(p => isPatientActiveOn(p) && p.birthdate && isBirthdayToday(p.birthdate));
 
   if (birthdays.length === 0) return null;
 

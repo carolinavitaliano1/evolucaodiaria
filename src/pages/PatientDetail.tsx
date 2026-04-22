@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, LogOut, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
@@ -32,6 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
+import { DeparturePatientDialog } from '@/components/patients/DeparturePatientDialog';
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { MoodSelector, DEFAULT_MOOD_OPTIONS } from '@/components/evolutions/MoodSelector';
 import { useCustomMoods } from '@/hooks/useCustomMoods';
@@ -2027,8 +2028,12 @@ export default function PatientDetail() {
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h1 className="text-2xl font-bold text-foreground">{patient.name}</h1>
-                {patient.isArchived && (
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">Arquivado</span>
+                {(patient.departureDate || patient.isArchived) && (
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">
+                    {patient.departureDate
+                      ? `Saiu em ${format(new Date(patient.departureDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`
+                      : 'Arquivado'}
+                  </span>
                 )}
                 {(patient as any).status === 'pendente_revisao' && (
                   <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning flex items-center gap-1">
@@ -2180,8 +2185,14 @@ export default function PatientDetail() {
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-warning" onClick={() => setArchivePatientOpen(true)} title={patient.isArchived ? 'Desarquivar' : 'Arquivar'}>
-                {patient.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-warning"
+                onClick={() => setArchivePatientOpen(true)}
+                title={patient.departureDate || patient.isArchived ? 'Reativar paciente' : 'Registrar saída da clínica'}
+              >
+                {patient.departureDate || patient.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <LogOut className="w-4 h-4" />}
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeletePatientOpen(true)} title="Excluir">
                 <Trash2 className="w-4 h-4" />
@@ -4305,25 +4316,26 @@ export default function PatientDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={archivePatientOpen} onOpenChange={setArchivePatientOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{patient.isArchived ? 'Reativar paciente?' : 'Arquivar paciente?'}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {patient.isArchived
-                ? <>O paciente <span className="font-semibold">{patient.name}</span> será reativado e voltará a aparecer na agenda e lista de pacientes.</>
-                : <>O paciente <span className="font-semibold">{patient.name}</span> será removido da agenda e da lista ativa. Você poderá reativá-lo a qualquer momento.</>
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const newVal = !patient.isArchived; updatePatient(patient.id, { isArchived: newVal }); toast.success(newVal ? 'Paciente arquivado' : 'Paciente reativado'); }}>
-              {patient.isArchived ? 'Reativar' : 'Arquivar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeparturePatientDialog
+        open={archivePatientOpen}
+        onOpenChange={setArchivePatientOpen}
+        patient={patient}
+        onConfirm={async (data) => {
+          if (data === null) {
+            // Reactivate
+            await updatePatient(patient.id, { departureDate: '' as any, departureReason: '' as any, isArchived: false });
+            toast.success('Paciente reativado');
+          } else {
+            await updatePatient(patient.id, {
+              departureDate: data.date as any,
+              departureReason: data.reason as any,
+              isArchived: false,
+            });
+            toast.success('Saída registrada. Histórico financeiro preservado.');
+          }
+          setArchivePatientOpen(false);
+        }}
+      />
 
       {/* WhatsApp Message Modal */}
       <WhatsAppMessageModal

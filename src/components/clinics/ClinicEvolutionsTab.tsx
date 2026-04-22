@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicOrg, OrgMemberProfile } from '@/hooks/useClinicOrg';
@@ -60,7 +61,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-  const clinicPatients = useMemo(() => patients.filter(p => p.clinicId === clinicId && !p.isArchived), [patients, clinicId]);
+  const clinicPatients = useMemo(() => patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p)), [patients, clinicId]);
 
   const dayEvolutions = useMemo(() => {
     return evolutions.filter(e =>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,7 +85,7 @@ export function ClinicAlertsCard() {
   const missingEvolutionPatients = useMemo(() => {
     if (!user) return [];
     const today = new Date();
-    const activePatients = patients.filter(p => !p.isArchived && p.clinicId);
+    const activePatients = patients.filter(p => isPatientActiveOn(p) && p.clinicId);
     const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     const patientSet = new Map<string, PatientRef>();
 

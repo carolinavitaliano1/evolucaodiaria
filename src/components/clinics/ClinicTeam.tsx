@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { TeamAttendanceGrid } from '@/components/clinics/TeamAttendanceGrid';
 import { StaffAttendanceReport } from '@/components/clinics/StaffAttendanceReport';
 import { supabase } from '@/integrations/supabase/client';
@@ -164,7 +165,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   // Resend
   const [resendingId, setResendingId] = useState<string | null>(null);
 
-  const clinicPatients = patients.filter(p => p.clinicId === clinicId && !p.isArchived);
+  const clinicPatients = patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p));
   const isOwner = organization?.owner_id === user?.id;
   const myMember = members.find(m => m.user_id === user?.id);
   const canManage = isOwner || myMember?.role === 'admin';

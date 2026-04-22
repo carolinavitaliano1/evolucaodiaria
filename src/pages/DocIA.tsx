@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
@@ -597,7 +598,7 @@ export default function DocIA() {
   };
 
   const patientOptions = useMemo(() =>
-    patients.filter(p => !p.isArchived)
+    patients.filter(p => isPatientActiveOn(p))
       .map(p => ({ id: p.id, name: p.name, clinicName: clinics.find(c => c.id === p.clinicId)?.name }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     [patients, clinics]
