@@ -1127,6 +1127,51 @@ export type Database = {
         }
         Relationships: []
       }
+      health_plans: {
+        Row: {
+          ans_registry: string | null
+          clinic_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          reimbursement_type: string | null
+          reimbursement_value: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ans_registry?: string | null
+          clinic_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          reimbursement_type?: string | null
+          reimbursement_value?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ans_registry?: string | null
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          reimbursement_type?: string | null
+          reimbursement_value?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       intake_custom_questions: {
         Row: {
           created_at: string
@@ -1822,6 +1867,10 @@ export type Database = {
           guardian_kinship: string | null
           guardian_name: string | null
           guardian_phone: string | null
+          health_plan_authorization_expires_at: string | null
+          health_plan_authorized_sessions: number | null
+          health_plan_card_number: string | null
+          health_plan_id: string | null
           id: string
           intake_token: string | null
           is_archived: boolean | null
@@ -1870,6 +1919,10 @@ export type Database = {
           guardian_kinship?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
+          health_plan_authorization_expires_at?: string | null
+          health_plan_authorized_sessions?: number | null
+          health_plan_card_number?: string | null
+          health_plan_id?: string | null
           id?: string
           intake_token?: string | null
           is_archived?: boolean | null
@@ -1918,6 +1971,10 @@ export type Database = {
           guardian_kinship?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
+          health_plan_authorization_expires_at?: string | null
+          health_plan_authorized_sessions?: number | null
+          health_plan_card_number?: string | null
+          health_plan_id?: string | null
           id?: string
           intake_token?: string | null
           is_archived?: boolean | null
@@ -1953,6 +2010,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_health_plan_id_fkey"
+            columns: ["health_plan_id"]
+            isOneToOne: false
+            referencedRelation: "health_plans"
             referencedColumns: ["id"]
           },
           {

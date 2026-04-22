@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { toLocalDateString } from '@/lib/utils';
-import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck } from 'lucide-react';
+import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck, ShieldCheck } from 'lucide-react';
 import { PackagePatientsModal } from '@/components/clinics/PackagePatientsModal';
 import { EditableReceiptModal } from '@/components/financial/EditableReceiptModal';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
@@ -55,6 +55,7 @@ import { ClinicAttendanceSheet } from '@/components/attendance/ClinicAttendanceS
 import { ClinicAlertsWidget } from '@/components/clinics/ClinicAlertsWidget';
 import { TherapeuticGroupsTab } from '@/components/clinics/TherapeuticGroupsTab';
 import { UsersRound } from 'lucide-react';
+import { ClinicHealthPlans } from '@/components/clinics/ClinicHealthPlans';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -1197,6 +1198,7 @@ export default function ClinicDetail() {
             { value: 'notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notas', color: 'text-yellow-500' },
             { value: 'evolutions', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
             { value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' },
+            { value: 'health-plans', icon: <ShieldCheck className="w-5 h-5" />, label: 'Convênios', color: 'text-emerald-500' },
             { value: 'attendance', icon: <ClipboardList className="w-5 h-5" />, label: 'Frequência', color: 'text-orange-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
@@ -2066,6 +2068,11 @@ export default function ClinicDetail() {
             onOpenChange={(v) => !v && setViewingPackagePatients(null)}
             pkg={viewingPackagePatients}
           />
+        </TabsContent>
+
+        {/* Health Plans Tab */}
+        <TabsContent value="health-plans">
+          <ClinicHealthPlans clinicId={clinic.id} />
         </TabsContent>
 
         {/* Financial Tab */}
