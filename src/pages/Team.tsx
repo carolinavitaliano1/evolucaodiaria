@@ -512,6 +512,24 @@ export default function Team() {
           >
             <DollarSign className="w-4 h-4 shrink-0" />Financeiro
           </button>
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
+              activeTab === 'tasks' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <ListTodo className="w-4 h-4 shrink-0" />Tarefas
+          </button>
+          <button
+            onClick={() => setActiveTab('indicators')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
+              activeTab === 'indicators' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <TrendingUp className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Indicadores</span><span className="sm:hidden">KPIs</span>
+          </button>
         </div>
 
         {/* Content */}
@@ -661,6 +679,16 @@ export default function Team() {
               clinicId={activeTeamClinicId}
               organizationId={organizationId}
             />
+          )}
+
+          {/* Team Tasks */}
+          {activeTab === 'tasks' && organizationId && activeTeamClinicId && (
+            <TeamTasksTab organizationId={organizationId} clinicId={activeTeamClinicId} />
+          )}
+
+          {/* Indicators */}
+          {activeTab === 'indicators' && organizationId && activeTeamClinicId && (
+            <TeamIndicatorsTab organizationId={organizationId} clinicId={activeTeamClinicId} />
           )}
         </div>
       </div>
