@@ -147,6 +147,11 @@ function mapTask(t: Record<string, unknown>): Task {
   return {
     id: t.id as string, title: t.title as string, completed: t.completed as boolean,
     notes: (t.notes as string) || undefined, patientId: (t.patient_id as string) || undefined,
+    assignedToUserId: (t.assigned_to_user_id as string) || undefined,
+    assignedByUserId: (t.assigned_by_user_id as string) || undefined,
+    clinicId: (t.clinic_id as string) || undefined,
+    dueDate: (t.due_date as string) || undefined,
+    priority: ((t.priority as string) as 'low' | 'medium' | 'high') || 'medium',
     createdAt: t.created_at as string,
   };
 }

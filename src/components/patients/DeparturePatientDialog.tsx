@@ -19,7 +19,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Patient } from '@/types';
 
-const REASONS = ['Alta', 'Transferência', 'Desistência', 'Outro'];
+const REASONS = [
+  'Alta clínica',
+  'Transferência',
+  'Desistência',
+  'Mudança de cidade',
+  'Financeiro',
+  'Outro',
+];
 
 interface Props {
   open: boolean;
@@ -32,14 +39,14 @@ interface Props {
 export function DeparturePatientDialog({ open, onOpenChange, patient, onConfirm }: Props) {
   const isInactive = !!patient.departureDate || !!patient.isArchived;
   const [date, setDate] = useState<Date>(new Date());
-  const [reason, setReason] = useState<string>('Alta');
+  const [reason, setReason] = useState<string>('Alta clínica');
   const [otherReason, setOtherReason] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open && !isInactive) {
       setDate(new Date());
-      setReason('Alta');
+      setReason('Alta clínica');
       setOtherReason('');
     }
   }, [open, isInactive]);

@@ -17,6 +17,9 @@ import {
   UserCircle, FileText, AlertCircle, DollarSign,
 } from 'lucide-react';
 import { TeamFinancialDashboard } from '@/components/clinics/TeamFinancialDashboard';
+import { TeamTasksTab } from '@/components/team/TeamTasksTab';
+import { TeamIndicatorsTab } from '@/components/team/TeamIndicatorsTab';
+import { ListTodo, TrendingUp } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
@@ -43,7 +46,7 @@ export default function Team() {
   const navigate = useNavigate();
   const { isOwner, loading: permLoading } = useOrgPermissions();
 
-  const [activeTab, setActiveTab] = useState<'team' | 'compliance' | 'activity' | 'financial'>('team');
+  const [activeTab, setActiveTab] = useState<'team' | 'compliance' | 'activity' | 'financial' | 'tasks' | 'indicators'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [complianceBadge, setComplianceBadge] = useState(0);
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
@@ -509,6 +512,24 @@ export default function Team() {
           >
             <DollarSign className="w-4 h-4 shrink-0" />Financeiro
           </button>
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
+              activeTab === 'tasks' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <ListTodo className="w-4 h-4 shrink-0" />Tarefas
+          </button>
+          <button
+            onClick={() => setActiveTab('indicators')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
+              activeTab === 'indicators' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <TrendingUp className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Indicadores</span><span className="sm:hidden">KPIs</span>
+          </button>
         </div>
 
         {/* Content */}
@@ -658,6 +679,16 @@ export default function Team() {
               clinicId={activeTeamClinicId}
               organizationId={organizationId}
             />
+          )}
+
+          {/* Team Tasks */}
+          {activeTab === 'tasks' && organizationId && activeTeamClinicId && (
+            <TeamTasksTab organizationId={organizationId} clinicId={activeTeamClinicId} />
+          )}
+
+          {/* Indicators */}
+          {activeTab === 'indicators' && organizationId && activeTeamClinicId && (
+            <TeamIndicatorsTab organizationId={organizationId} clinicId={activeTeamClinicId} />
           )}
         </div>
       </div>
