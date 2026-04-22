@@ -1,136 +1,194 @@
 
 
-## Implementar Faturamento TISS / NFS-e
+## Plano de Implementação — NFS-e + Novo Plano "Clínica Pro"
 
-### Contexto
-Hoje o app emite recibos simples (PDF/Word) via `EditableReceiptModal` + `generatePaymentReceiptPdf`. Não há integração fiscal. A pergunta é o que envolveria suportar **TISS** (faturamento de convênios médicos) e **NFS-e** (nota fiscal de serviço eletrônica municipal).
-
-São dois universos diferentes — explico cada um e o esforço.
-
----
-
-### Parte 1 — NFS-e (Nota Fiscal de Serviço Eletrônica)
-
-**O que é:** documento fiscal obrigatório para prestadores PJ (e MEI em alguns municípios) ao receber por serviços. Cada prefeitura tem seu próprio padrão (são +5.500 municípios). Existe o **padrão nacional NFS-e** (ABRASF / Receita Federal) que ~30% das cidades já adotaram, mas a maioria ainda usa padrões próprios.
-
-**Caminho realista: integrar com um gateway fiscal** (não tentar falar direto com cada prefeitura).
-
-Provedores brasileiros que cobrem essa complexidade:
-- **NFE.io** — API REST, cobre maioria dos municípios, ~R$ 0,50–2,00 por nota.
-- **Focus NFe** — API REST, bem documentada, ~R$ 0,39–1,50 por nota.
-- **eNotas** — também popular, foco em SaaS.
-
-**Arquitetura proposta:**
-
-1. **Cadastro do emissor (por usuário/clínica):**
-   - Nova aba "Configurações Fiscais" no Perfil ou na Clínica.
-   - Campos: CNPJ, Razão Social, Inscrição Municipal, Regime Tributário (Simples/Lucro Presumido), Código de Serviço Municipal, Alíquota ISS, certificado digital A1 (.pfx + senha) — necessário para a maioria dos municípios.
-   - Armazenar certificado em **Supabase Storage** (bucket privado) + senha como secret criptografado.
-
-2. **Edge Function `emit-nfse`:**
-   - Recebe `payment_id` (recibo já gerado).
-   - Busca dados do tomador (paciente/responsável: nome, CPF/CNPJ, endereço).
-   - Chama API do gateway (NFE.io/Focus) com payload da nota.
-   - Salva retorno (número da nota, link do PDF, XML, status) em nova tabela `fiscal_invoices`.
-
-3. **Nova tabela `fiscal_invoices`:**
-   ```
-   id, user_id, clinic_id, patient_id, payment_record_id,
-   provider ('nfe_io' | 'focus_nfe'),
-   external_id, invoice_number, status ('processing'|'issued'|'cancelled'|'error'),
-   pdf_url, xml_url, amount, iss_amount,
-   issued_at, cancelled_at, error_message, created_at
-   ```
-
-4. **UI:**
-   - No `EditableReceiptModal`: botão extra "Emitir NFS-e" (visível só se config fiscal completa).
-   - Em `ClinicFinancial` / `PatientServicesSection`: badge "🧾 NFS-e #123" ao lado do recibo, com link para PDF/XML.
-   - Aba **"Notas Fiscais"** no Financeiro com listagem, filtros, status, e ação de cancelar nota.
-
-5. **Cancelamento:** edge function `cancel-nfse` que chama o gateway e atualiza status.
-
-6. **Webhook:** endpoint público `nfse-webhook` para receber atualizações assíncronas do gateway (a emissão é processada na prefeitura, pode levar minutos).
-
-**Custos para o usuário final:**
-- Cobrança por nota emitida (repassar do gateway ou absorver no plano Pro).
-- Certificado digital A1: ~R$ 200–400/ano (o usuário compra fora).
-
-**Esforço de implementação:** ~5–7 dias úteis de dev.
+### Decisões confirmadas
+- ✅ Apenas **NFS-e** (Fase 1).
+- ✅ Gateway: **Focus NFe**.
+- ✅ Cobrança: **novo plano "Clínica Pro" — R$ 80/mês**, exclusivo para quem cadastra clínicas (sem Consultório nem Contratante), com NFS-e incluída.
+- ✅ Certificado A1 armazenado no backend (Storage privado + senha como secret/criptografada).
 
 ---
 
-### Parte 2 — TISS (Troca de Informações em Saúde Suplementar)
+### Parte A — Novo plano "Clínica Pro"
 
-**O que é:** padrão da ANS para faturamento entre prestadores e operadoras de planos de saúde (Unimed, Bradesco Saúde, etc.). Hoje versão **TISS 4.01.00**. Envolve XMLs específicos de:
-- Guia de Consulta (SP/SADT individual)
-- Guia de SP/SADT (sessões de terapia)
-- Lote de Guias
-- Demonstrativo de Pagamento
+**1. Stripe**
+- Criar novo produto "Clínica Pro" — R$ 80/mês recorrente.
+- Preciso saber: **mantém os planos atuais** (Pro/Premium) ou esse plano substitui algum?
+- Adicionar `STRIPE_CLINICA_PRO_PRICE_ID` em `src/lib/plans.ts`.
 
-**Realidade do nosso público:** psicólogos, fonoaudiólogos e terapeutas ocupacionais que atendem por convênio precisam disso. A maioria dos planos exige envio via:
-- Portal próprio da operadora (upload manual do XML), ou
-- Webservice TISS direto (cada operadora tem o seu).
+**2. Edge functions**
+- `create-checkout`: aceitar novo `plan_id = 'clinica_pro'`.
+- `check-subscription`: detectar e retornar `subscription_tier = 'clinica_pro'`.
 
-**Arquitetura proposta:**
+**3. Gating no app**
+- Em `useSubscription` / `useFeatureAccess`: novo tier `clinica_pro`.
+- Em `Clinics.tsx` (criação de unidade): se tier = `clinica_pro`, esconder opções "Consultório Próprio" e "Contratante" — só aparece "Clínica".
+- NFS-e: liberada **apenas** para tier `clinica_pro` (e talvez Premium se quiser — me confirme).
+- Em `Pricing.tsx`: adicionar card do novo plano com destaque "Inclui emissão de NFS-e ilimitada".
 
-1. **Cadastro de Convênios e Carteirinhas:**
-   - Nova tabela `health_plans` (operadora, registro ANS, código do prestador).
-   - Em `Patient`: campos `health_plan_id`, `card_number`, `card_validity`, `plan_type`.
-
-2. **Cadastro do Profissional Executante:**
-   - Em `stamps` ou perfil: CBO, Conselho/UF, número, CNES (se aplicável).
-
-3. **Tabela de Procedimentos TUSS:**
-   - Seed com códigos TUSS comuns para terapia (50000462 — Sessão de psicoterapia individual, etc.).
-   - Vincular a cada `service` ou `evolution`.
-
-4. **Geração de Guia (XML TISS 4.01):**
-   - Edge function `generate-tiss-guide` que monta XML conforme XSD da ANS.
-   - Validar contra XSD oficial antes de salvar.
-   - Salvar em nova tabela `tiss_guides` com status (`draft`|`sent`|`accepted`|`glossed`|`paid`).
-
-5. **Lote e demonstrativo:**
-   - UI para agrupar guias por operadora + período → gerar **Lote** (XML).
-   - Tela de conciliação: importar XML de retorno (demonstrativo) da operadora → marcar guias como pagas/glosadas.
-
-6. **UI:**
-   - Nova seção **"Convênios & TISS"** no menu (ou aba dentro de Financeiro).
-   - Por paciente: aba "Convênio" mostrando guias geradas.
-   - Por evolução: botão "Gerar guia TISS" se o paciente é conveniado.
-
-**Webservice direto com operadoras:**
-- Inviável fazer um a um (cada operadora tem regras). Recomendado focar em **gerar XML válido para upload manual** no portal da operadora — cobre 95% do uso real.
-- Para integração webservice, considerar gateway tipo **TISSNet** ou **Saúde Vida** (~R$ 1–3 por guia transmitida).
-
-**Esforço:** ~10–15 dias úteis de dev (TISS é denso, com versionamento ANS frequente).
+**4. Limite de notas**
+- Definir limite mensal por usuário (ex: 50 notas/mês inclusas) para evitar abuso. Excedente → bloquear ou cobrar à parte? Vou assumir **100 notas/mês inclusas, depois bloqueia** — me corrija se quiser outro valor.
 
 ---
 
-### Recomendação de escopo (faseado)
+### Parte B — Configuração fiscal do usuário
 
-**Fase 1 — NFS-e via Focus NFe** (prioridade alta, muito mais demandado):
-- Configuração fiscal por usuário + certificado A1.
-- Emissão a partir de qualquer recibo.
-- Listagem, cancelamento, webhook.
-- **Entrega:** ~1 semana.
+**1. Nova tabela `fiscal_configs`**
+```
+id, user_id, clinic_id (opcional, se config por clínica),
+cnpj, razao_social, nome_fantasia,
+inscricao_municipal, inscricao_estadual,
+regime_tributario ('simples_nacional' | 'lucro_presumido' | 'lucro_real' | 'mei'),
+codigo_servico_municipal, item_lista_servico,
+aliquota_iss (numeric),
+endereco (rua, numero, complemento, bairro, cidade, uf, cep),
+focus_nfe_token (criptografado), -- token de API por usuário OU global do app
+certificado_path (storage path do .pfx),
+certificado_senha_secret_name, -- referência ao secret no vault
+ativo (bool),
+created_at, updated_at
+```
+RLS: usuário só vê/edita o próprio.
 
-**Fase 2 — TISS geração de guias (sem webservice):**
-- Cadastro de convênios + carteirinhas.
-- Geração de Guia SP/SADT XML 4.01.
-- Lote para upload manual no portal da operadora.
-- Tela de conciliação de demonstrativos.
-- **Entrega:** ~2 semanas após Fase 1.
+**2. Bucket `fiscal-certificates` (privado)**
+- Path: `{user_id}/cert.pfx`
+- RLS: apenas owner pode upload/download via signed URL.
 
-**Fase 3 (opcional, futura):** webservice TISS direto + integração com mais gateways.
+**3. UI — nova aba "Configurações Fiscais" em `Profile.tsx`**
+- Form completo com validação (CNPJ válido, CEP, etc.).
+- Upload do certificado A1.
+- Campo senha do certificado (enviado para edge function que armazena via Vault Supabase ou tabela criptografada).
+- Botão "Testar conexão" → edge function `test-fiscal-config` que valida com Focus NFe.
 
 ---
 
-### Perguntas antes de prosseguir
+### Parte C — Tabelas fiscais
 
-1. **Escopo:** quer começar só pela **NFS-e** (mais usada), só pelo **TISS**, ou os dois?
-2. **Gateway NFS-e:** preferência por **Focus NFe** (mais barato, boa doc) ou **NFE.io**? Posso pesquisar planos atualizados.
-3. **Modelo de cobrança:** o custo das notas/guias entra no **plano Pro** (você absorve) ou cobramos à parte do usuário?
-4. **Certificado digital:** confirma que aceita guardar o `.pfx` + senha no nosso backend (criptografado)? É a única forma de a edge function assinar requisições à prefeitura.
+**1. `fiscal_invoices`**
+```
+id, user_id, clinic_id, patient_id,
+payment_record_id (FK opcional para patient_payment_records),
+private_appointment_id (FK opcional, se vier de Serviço),
+provider ('focus_nfe'),
+external_reference (UUID nosso enviado ao gateway, idempotência),
+focus_nfe_ref (ref retornada pelo gateway),
+invoice_number text, invoice_series text,
+status ('processing' | 'issued' | 'cancelled' | 'error'),
+verification_code text,
+pdf_url text, xml_url text,
+amount numeric, iss_amount numeric, iss_aliquota numeric,
+service_description text,
+recipient_name, recipient_cpf_cnpj, recipient_email, recipient_address,
+issued_at timestamptz, cancelled_at timestamptz,
+cancel_reason text, error_message text,
+created_at, updated_at
+```
+RLS: usuário gerencia as próprias.
 
-Responda essas 4 e eu monto o plano de implementação detalhado da fase escolhida.
+**2. `fiscal_invoice_counters`** (controle de limite mensal por plano)
+```
+user_id, year, month, count
+```
+PK: (user_id, year, month).
+
+---
+
+### Parte D — Edge Functions
+
+**1. `emit-nfse`** (verify_jwt = true)
+- Input: `{ payment_record_id?, private_appointment_id?, override?: { amount, description, recipient } }`
+- Valida tier = `clinica_pro` (ou Premium, conforme decisão).
+- Verifica limite mensal em `fiscal_invoice_counters`.
+- Carrega `fiscal_configs` do usuário.
+- Monta payload Focus NFe (endpoint `/v2/nfse?ref={uuid}`).
+- POST com Bearer token + corpo JSON.
+- Salva `fiscal_invoices` com `status = 'processing'`.
+- Incrementa contador.
+- Retorna `{ id, status, ref }`.
+
+**2. `cancel-nfse`** (verify_jwt = true)
+- Input: `{ invoice_id, reason }`.
+- DELETE `https://api.focusnfe.com.br/v2/nfse/{ref}?justificativa=...`.
+- Atualiza `fiscal_invoices.status = 'cancelled'`.
+
+**3. `nfse-webhook`** (verify_jwt = false, público)
+- Recebe POST do Focus NFe quando emissão na prefeitura termina.
+- Valida origem por `secret` no path: `/nfse-webhook/{webhook_secret}`.
+- Atualiza `fiscal_invoices` com `invoice_number`, `pdf_url`, `xml_url`, `status = 'issued'` ou `'error'`.
+
+**4. `test-fiscal-config`** (verify_jwt = true)
+- Faz GET em endpoint sandbox do Focus para validar token + certificado.
+
+**5. `upload-fiscal-certificate`** (verify_jwt = true)
+- Recebe `{ pfx_base64, password }`.
+- Salva .pfx em Storage `fiscal-certificates/{user_id}/cert.pfx`.
+- Salva senha em tabela `fiscal_secrets` criptografada via `pgsodium` (ou em coluna text por enquanto, com nota de melhoria futura).
+- Atualiza `fiscal_configs.certificado_path`.
+
+**Secrets necessários (vou pedir depois da migration):**
+- `FOCUS_NFE_TOKEN` — token global do app (ou orientar usuário a colocar o próprio).
+- `FOCUS_NFE_BASE_URL` — `https://api.focusnfe.com.br` (prod) / `https://homologacao.focusnfe.com.br` (sandbox).
+- `NFSE_WEBHOOK_SECRET` — random string para validar webhook.
+
+---
+
+### Parte E — UI fiscal
+
+**1. `EditableReceiptModal` (existente)**
+- Adicionar botão **"📄 Emitir NFS-e"** ao lado de PDF/Word.
+- Visível só se: tier = `clinica_pro` + `fiscal_configs` completo + dentro do limite mensal.
+- Estados: loading (3s), sucesso ("NFS-e em processamento — você será notificado"), erro.
+
+**2. Novo componente `FiscalInvoiceBadge`**
+- Mostra status, número, link PDF.
+- Usado em `ClinicFinancial`, `PatientServicesSection`, lista de pagamentos.
+
+**3. Nova página `/financial/fiscal-invoices`**
+- Listagem de notas com filtros (período, status, paciente, clínica).
+- Ações: visualizar PDF, baixar XML, cancelar (modal com justificativa).
+- Card de uso: "Notas emitidas este mês: 23 / 100".
+
+**4. `Pricing.tsx`**
+- Adicionar card "Clínica Pro" com badge "Inclui NFS-e".
+- Texto explicativo: "Para clínicas que precisam emitir nota fiscal eletrônica."
+
+**5. `Clinics.tsx` / criação de unidade**
+- Se tier = `clinica_pro`: select de tipo só mostra "Clínica" (oculta Consultório/Contratante).
+
+---
+
+### Parte F — Tipos e helpers
+
+- `src/types/index.ts`: tipos `FiscalConfig`, `FiscalInvoice`, `FiscalInvoiceStatus`.
+- `src/lib/plans.ts`: adicionar `clinica_pro` com features `['nfse', 'clinics_only']`.
+- `src/hooks/useFiscalConfig.ts`: carrega config fiscal do usuário.
+- `src/hooks/useFiscalInvoices.ts`: lista/filtra notas.
+
+---
+
+### Ordem de execução
+
+1. Migration: `fiscal_configs`, `fiscal_invoices`, `fiscal_invoice_counters` + bucket `fiscal-certificates` + RLS.
+2. Pedir secrets: `FOCUS_NFE_TOKEN`, `NFSE_WEBHOOK_SECRET`.
+3. Edge functions: `emit-nfse`, `cancel-nfse`, `nfse-webhook`, `test-fiscal-config`, `upload-fiscal-certificate`.
+4. Atualizar `create-checkout` + `check-subscription` para `clinica_pro`.
+5. Atualizar `src/lib/plans.ts` + `useFeatureAccess` + `Pricing.tsx`.
+6. Aba "Configurações Fiscais" em `Profile.tsx`.
+7. Botão "Emitir NFS-e" no `EditableReceiptModal` + `FiscalInvoiceBadge`.
+8. Página `/financial/fiscal-invoices`.
+9. Gating de tipo de clínica em `Clinics.tsx`.
+10. Stripe: criar produto/preço Clínica Pro.
+
+---
+
+### Confirmações finais antes de começar
+
+Preciso de **3 respostas curtas** porque mudam estrutura:
+
+1. **Planos atuais:** o "Clínica Pro" é um plano **adicional** (mantém Pro/Premium existentes) ou **substitui** o Premium?
+2. **NFS-e em outros planos:** Premium também tem NFS-e ou é exclusiva do Clínica Pro?
+3. **Limite mensal:** 100 notas/mês inclusas no Clínica Pro está OK? (acima disso bloqueia até virar o mês)
+
+Responda essas 3 e eu começo pela migration imediatamente.
 
