@@ -17,10 +17,15 @@ export interface CalendarBlock {
 export function useCalendarBlocks() {
   const { user } = useAuth();
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Start as `true` so consumers wait for the first fetch before deciding
+  // whether a date is blocked (prevents holiday flash on dashboards).
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const { data } = await supabase
       .from('calendar_blocks')
