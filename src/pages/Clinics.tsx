@@ -476,20 +476,52 @@ export default function Clinics() {
 
                   <div>
                     <Label>Tipo de Vínculo *</Label>
-                    <RadioGroup
-                      value={formData.type}
-                      onValueChange={(v) => setFormData({ ...formData, type: v as any })}
-                      className="flex gap-4 mt-2 flex-wrap"
-                    >
-                      <div className="flex items-center gap-2">
-                        <RadioGroupItem value="propria" id="propria" />
-                        <Label htmlFor="propria" className="cursor-pointer text-sm">Consultório</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <RadioGroupItem value="terceirizada" id="terceirizada" />
-                        <Label htmlFor="terceirizada" className="cursor-pointer text-sm">Contratante</Label>
-                      </div>
-                    </RadioGroup>
+                    {(() => {
+                      const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
+                      const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
+                      // Mutually exclusive: Consultório/Contratante (autônomo) cannot coexist with Clínica
+                      const autonomoDisabled = activeClinica;
+                      const clinicaDisabled = activeAutonomo || !hasTeam;
+                      return (
+                        <>
+                          <RadioGroup
+                            value={formData.type}
+                            onValueChange={(v) => setFormData({ ...formData, type: v as any })}
+                            className="flex gap-4 mt-2 flex-wrap"
+                          >
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="propria" id="propria" disabled={autonomoDisabled} />
+                              <Label htmlFor="propria" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Consultório</Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="terceirizada" id="terceirizada" disabled={autonomoDisabled} />
+                              <Label htmlFor="terceirizada" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Contratante</Label>
+                            </div>
+                            {hasTeam && (
+                              <div className="flex items-center gap-2">
+                                <RadioGroupItem value="clinica" id="clinica" disabled={clinicaDisabled} />
+                                <Label htmlFor="clinica" className={cn("cursor-pointer text-sm", clinicaDisabled && "opacity-50 cursor-not-allowed")}>Clínica (com equipe)</Label>
+                              </div>
+                            )}
+                          </RadioGroup>
+                          {autonomoDisabled && (
+                            <p className="text-xs text-warning mt-2">
+                              Você já tem uma Clínica ativa. Arquive-a para cadastrar Consultório ou Contratante.
+                            </p>
+                          )}
+                          {hasTeam && clinicaDisabled && activeAutonomo && (
+                            <p className="text-xs text-warning mt-2">
+                              Você já tem Consultório/Contratante ativo. Arquive-os para cadastrar uma Clínica com equipe.
+                            </p>
+                          )}
+                          {!hasTeam && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Quer cadastrar uma <strong>Clínica com equipe</strong>? Faça upgrade para o plano <a href="/pricing" className="text-primary underline">Clínica Pro</a>.
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div>
