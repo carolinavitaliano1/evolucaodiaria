@@ -2033,6 +2033,7 @@ export default function ClinicDetail() {
                   </div>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
 
             {clinicPackages.length === 0 ? (
