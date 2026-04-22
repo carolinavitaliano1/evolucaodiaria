@@ -65,6 +65,9 @@ export default function Clinics() {
   const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic, loadAllEvolutions } = useApp();
   const { user } = useAuth();
   const { hasTeam } = useFeatureAccess();
+  // Admin override: contas específicas podem cadastrar Clínica mesmo com Consultório/Contratante (para testes)
+  const isAdminOverride = user?.email === 'carolinavitaliano1@gmail.com' || user?.email === 'gabriellajf83@gmail.com';
+  const canCreateClinica = hasTeam || isAdminOverride;
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
@@ -200,8 +203,8 @@ export default function Clinics() {
       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
       const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
       let defaultType: 'propria' | 'terceirizada' | 'clinica' = 'propria';
-      if (hasTeam && activeClinica) defaultType = 'clinica';
-      else if (hasTeam && !activeAutonomo) defaultType = 'clinica';
+      if (canCreateClinica && activeClinica) defaultType = 'clinica';
+      else if (canCreateClinica && !activeAutonomo && !isAdminOverride) defaultType = 'clinica';
       setFormData(prev => ({ ...prev, type: defaultType }));
       setIsDialogOpen(true);
     }
@@ -480,8 +483,9 @@ export default function Clinics() {
                       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
                       const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
                       // Mutually exclusive: Consultório/Contratante (autônomo) cannot coexist with Clínica
-                      const autonomoDisabled = activeClinica;
-                      const clinicaDisabled = activeAutonomo || !hasTeam;
+                      // Admin override bypasses ambas as restrições para testes
+                      const autonomoDisabled = activeClinica && !isAdminOverride;
+                      const clinicaDisabled = (activeAutonomo && !isAdminOverride) || !canCreateClinica;
                       return (
                         <>
                           <RadioGroup
@@ -497,7 +501,7 @@ export default function Clinics() {
                               <RadioGroupItem value="terceirizada" id="terceirizada" disabled={autonomoDisabled} />
                               <Label htmlFor="terceirizada" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Contratante</Label>
                             </div>
-                            {hasTeam && (
+                            {canCreateClinica && (
                               <div className="flex items-center gap-2">
                                 <RadioGroupItem value="clinica" id="clinica" disabled={clinicaDisabled} />
                                 <Label htmlFor="clinica" className={cn("cursor-pointer text-sm", clinicaDisabled && "opacity-50 cursor-not-allowed")}>Clínica (com equipe)</Label>
