@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Patient } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Package, Sparkles, Edit3, Check, X, Calendar as CalendarIcon } from 'lucide-react';
+import { DollarSign, Package, Sparkles, Edit3, Check, X, Calendar as CalendarIcon, ShieldCheck, Stethoscope, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PatientPlanCardProps {
   patient: Patient;
@@ -17,6 +19,7 @@ interface PatientPlanCardProps {
 export function PatientPlanCard({ patient, canEdit }: PatientPlanCardProps) {
   const { getClinicPackages, updatePatient, evolutions } = useApp();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const clinicPackages = getClinicPackages(patient.clinicId).filter(p => p.isActive);
   const currentPackage = clinicPackages.find(p => p.id === patient.packageId);
@@ -25,6 +28,49 @@ export function PatientPlanCard({ patient, canEdit }: PatientPlanCardProps) {
   const [paymentType, setPaymentType] = useState<'sessao' | 'fixo'>(patient.paymentType || 'sessao');
   const [paymentValue, setPaymentValue] = useState((patient.paymentValue || 0).toString());
   const [paymentDueDay, setPaymentDueDay] = useState(((patient as any).payment_due_day || '').toString());
+
+  // Health plans (convênios) for this clinic
+  const [healthPlans, setHealthPlans] = useState<Array<{ id: string; name: string; reimbursement_value: number | null; reimbursement_type: string | null }>>([]);
+  const patientHealthPlanId = (patient as any).health_plan_id as string | null | undefined;
+  const cardNumber = (patient as any).health_plan_card_number as string | null | undefined;
+  const authorizedSessions = (patient as any).health_plan_authorized_sessions as number | null | undefined;
+  const authExpires = (patient as any).health_plan_authorization_expires_at as string | null | undefined;
+  const currentHealthPlan = healthPlans.find(h => h.id === patientHealthPlanId);
+
+  // Active session plan (treatment plan)
+  const [activePlan, setActivePlan] = useState<{ id: string; title: string; objectives: string | null } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('health_plans')
+        .select('id, name, reimbursement_value, reimbursement_type')
+        .eq('clinic_id', patient.clinicId)
+        .eq('is_active', true)
+        .order('name');
+      if (!cancelled && data) setHealthPlans(data as any);
+    })();
+    return () => { cancelled = true; };
+  }, [patient.clinicId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('session_plans')
+        .select('id, title, objectives, status, created_at')
+        .eq('patient_id', patient.id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (cancelled || !data) return;
+      const filtered = (data as any[]).filter(p => !p.objectives?.includes('[grupo:'));
+      const active = filtered.find(p => p.status === 'active' || p.status === 'in_progress') || filtered[0] || null;
+      setActivePlan(active);
+    })();
+  }, [patient.id, user]);
 
   // Sessions this month for the package progress
   const sessionsThisMonth = useMemo(() => {
@@ -64,11 +110,30 @@ export function PatientPlanCard({ patient, canEdit }: PatientPlanCardProps) {
     }
   };
 
+  const handleChangeHealthPlan = async (newId: string) => {
+    const value = newId === 'none' ? null : newId;
+    const { error } = await supabase
+      .from('patients')
+      .update(value
+        ? { health_plan_id: value }
+        : { health_plan_id: null, health_plan_card_number: null, health_plan_authorized_sessions: null, health_plan_authorization_expires_at: null })
+      .eq('id', patient.id);
+    if (error) { toast.error('Erro ao atualizar convênio'); return; }
+    toast.success(value ? 'Convênio vinculado' : 'Convênio removido');
+    // Optimistic local mutation
+    (patient as any).health_plan_id = value;
+    if (!value) {
+      (patient as any).health_plan_card_number = null;
+      (patient as any).health_plan_authorized_sessions = null;
+      (patient as any).health_plan_authorization_expires_at = null;
+    }
+  };
+
   return (
     <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm">
-          <Sparkles className="w-4 h-4 text-primary" /> Plano & Pacote
+          <Sparkles className="w-4 h-4 text-primary" /> Plano & Financeiro
         </h2>
       </div>
 
@@ -191,16 +256,102 @@ export function PatientPlanCard({ patient, canEdit }: PatientPlanCardProps) {
             </p>
           )}
         </div>
-      </div>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full mt-3 text-xs gap-1.5 text-primary"
-        onClick={() => navigate(`/patients/${patient.id}#session`)}
-      >
-        <Sparkles className="w-3 h-3" /> Ver plano de tratamento (Processo Terapêutico)
-      </Button>
+        {/* Plano de saúde (Convênio) */}
+        <div className="rounded-lg border border-border bg-secondary/30 p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Plano de saúde</p>
+          </div>
+
+          {canEdit ? (
+            <Select value={patientHealthPlanId || 'none'} onValueChange={handleChangeHealthPlan}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Sem convênio" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Particular / Sem convênio</SelectItem>
+                {healthPlans.map(hp => (
+                  <SelectItem key={hp.id} value={hp.id}>{hp.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-foreground font-medium">{currentHealthPlan?.name || 'Particular'}</p>
+          )}
+
+          {currentHealthPlan && (
+            <div className="mt-3 space-y-1.5">
+              {currentHealthPlan.reimbursement_value != null && currentHealthPlan.reimbursement_value > 0 && (
+                <p className="text-sm font-semibold text-foreground">
+                  Reembolso: R$ {Number(currentHealthPlan.reimbursement_value).toFixed(2)}
+                  <span className="text-[11px] text-muted-foreground font-normal ml-1">
+                    {currentHealthPlan.reimbursement_type === 'mensal' ? '/ mês' : '/ sessão'}
+                  </span>
+                </p>
+              )}
+              {cardNumber && (
+                <p className="text-[11px] text-muted-foreground">Carteirinha: <strong className="text-foreground">{cardNumber}</strong></p>
+              )}
+              {authorizedSessions != null && (
+                <p className="text-[11px] text-muted-foreground">Sessões autorizadas: <strong className="text-foreground">{authorizedSessions}</strong></p>
+              )}
+              {authExpires && (
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <CalendarIcon className="w-3 h-3" /> Validade: <strong className="text-foreground">{new Date(authExpires + 'T00:00:00').toLocaleDateString('pt-BR')}</strong>
+                </p>
+              )}
+            </div>
+          )}
+
+          {!currentHealthPlan && healthPlans.length === 0 && (
+            <p className="text-[11px] text-muted-foreground italic mt-2">
+              Nenhum convênio cadastrado nesta clínica.
+            </p>
+          )}
+        </div>
+
+        {/* Plano de tratamento ativo */}
+        <div className="rounded-lg border border-border bg-secondary/30 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5">
+              <Stethoscope className="w-3.5 h-3.5 text-primary" />
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Plano de tratamento ativo</p>
+            </div>
+          </div>
+
+          {activePlan ? (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-foreground line-clamp-2">{activePlan.title || 'Plano sem título'}</p>
+              {activePlan.objectives && (
+                <p className="text-[11px] text-muted-foreground line-clamp-3 whitespace-pre-line">{activePlan.objectives}</p>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs gap-1 text-primary"
+                onClick={() => navigate(`/patients/${patient.id}#session`)}
+              >
+                Abrir processo terapêutico <ArrowRight className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground italic">
+                Nenhum plano de tratamento criado ainda.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 w-full text-xs gap-1"
+                onClick={() => navigate(`/patients/${patient.id}#session`)}
+              >
+                <Sparkles className="w-3 h-3" /> Criar plano de tratamento
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
