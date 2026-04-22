@@ -22,7 +22,8 @@ import {
   Megaphone,
   UsersRound,
   HeadphonesIcon,
-  Clock
+  Clock,
+  FileSignature
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -39,6 +40,7 @@ const moreNavItems = [
   { to: '/financial',  icon: DollarSign,     label: 'Finanças',      perm: 'financial.view'  as const, badge: null },
   { to: '/reports',    icon: BarChart3,      label: 'Relatórios',    perm: 'reports.view'    as const, badge: null },
   { to: '/ai-reports', icon: Sparkles,       label: 'Relatórios IA', perm: 'ai_reports.view' as const, badge: null },
+  { to: '/doc-ia',     icon: FileSignature,  label: 'Doc IA',        perm: null,                       badge: null },
   { to: '/tasks',      icon: ClipboardList,  label: 'Tarefas',       perm: 'tasks.view'      as const, badge: null },
   { to: '/mural',      icon: Megaphone,      label: 'Mural',         perm: 'mural.view'      as const, badge: 'notices' as const },
   { to: '/suporte',    icon: HeadphonesIcon, label: 'Suporte',       perm: null,                       badge: 'support' as const },
@@ -72,6 +74,7 @@ export function MobileNav() {
   const allowedMore = moreNavItems.filter(i => {
     if (!isOrgMember) return true;
     if (i.to === '/profile') return true;
+    if (i.to === '/doc-ia') return true;
     if (i.perm === null) return false;
     return permissions.includes(i.perm as any);
   });
