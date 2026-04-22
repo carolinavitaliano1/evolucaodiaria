@@ -71,6 +71,133 @@ export function ClinicHealthPlans({ clinicId }: Props) {
     return m;
   }, [patients]);
 
+  const typeLabel = (t: string) => t === 'mensal' ? 'mês' : t === 'pacote' ? 'pacote' : 'sessão';
+
+  const exportCSV = (singlePlan?: HealthPlan) => {
+    const list = singlePlan ? [singlePlan] : plans;
+    const rows: string[] = [];
+    rows.push(['Convênio', 'ANS', 'Telefone', 'Reembolso', 'Tipo', 'Status', 'Paciente', 'Carteirinha', 'Sessões Aut.', 'Validade'].join(';'));
+    list.forEach(pl => {
+      const linked = patients.filter(p => p.health_plan_id === pl.id);
+      const base = [
+        `"${pl.name}"`,
+        pl.ans_registry || '',
+        pl.phone || '',
+        Number(pl.reimbursement_value || 0).toFixed(2).replace('.', ','),
+        typeLabel(pl.reimbursement_type),
+        pl.is_active ? 'Ativo' : 'Inativo',
+      ];
+      if (linked.length === 0) {
+        rows.push([...base, '(sem pacientes)', '', '', ''].join(';'));
+      } else {
+        linked.forEach(p => {
+          rows.push([
+            ...base,
+            `"${p.name}"`,
+            p.health_plan_card_number || '',
+            p.health_plan_authorized_sessions != null ? String(p.health_plan_authorized_sessions) : '',
+            p.health_plan_authorization_expires_at ? new Date(p.health_plan_authorization_expires_at + 'T00:00').toLocaleDateString('pt-BR') : '',
+          ].join(';'));
+        });
+      }
+    });
+    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `planos-saude-${singlePlan ? singlePlan.name.replace(/\s+/g, '_') : 'completo'}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exportado');
+  };
+
+  const exportPDF = (singlePlan?: HealthPlan) => {
+    const list = singlePlan ? [singlePlan] : plans;
+    const doc = new jsPDF();
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 15;
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatório de Planos de Saúde', pageW / 2, y, { align: 'center' });
+    y += 6;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} • ${list.length} convênio(s)`, pageW / 2, y, { align: 'center' });
+    y += 8;
+    doc.setTextColor(0);
+
+    list.forEach(pl => {
+      const linked = patients.filter(p => p.health_plan_id === pl.id);
+      if (y > 260) { doc.addPage(); y = 15; }
+
+      // Plan header bar
+      doc.setFillColor(238, 232, 250);
+      doc.rect(10, y, pageW - 20, 8, 'F');
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(60, 30, 110);
+      doc.text(pl.name, 12, y + 5.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`${linked.length} paciente(s)`, pageW - 12, y + 5.5, { align: 'right' });
+      y += 11;
+      doc.setTextColor(0);
+
+      // Plan summary
+      doc.setFontSize(9);
+      const info: string[] = [];
+      if (pl.ans_registry) info.push(`ANS: ${pl.ans_registry}`);
+      if (pl.phone) info.push(`Tel: ${pl.phone}`);
+      if (Number(pl.reimbursement_value) > 0) info.push(`R$ ${Number(pl.reimbursement_value).toFixed(2)}/${typeLabel(pl.reimbursement_type)}`);
+      info.push(pl.is_active ? 'Ativo' : 'Inativo');
+      doc.setTextColor(80);
+      doc.text(info.join('  •  '), 12, y);
+      y += 5;
+      if (pl.notes) {
+        const notes = doc.splitTextToSize(`Obs: ${pl.notes}`, pageW - 24);
+        doc.text(notes, 12, y);
+        y += notes.length * 4;
+      }
+      y += 2;
+      doc.setTextColor(0);
+
+      // Patient table
+      if (linked.length === 0) {
+        doc.setFontSize(9);
+        doc.setTextColor(140);
+        doc.text('Nenhum paciente vinculado.', 14, y);
+        doc.setTextColor(0);
+        y += 8;
+      } else {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setFillColor(245, 245, 250);
+        doc.rect(10, y - 4, pageW - 20, 6, 'F');
+        doc.text('Paciente', 12, y);
+        doc.text('Carteirinha', 90, y);
+        doc.text('Sess. Aut.', 140, y);
+        doc.text('Validade', 170, y);
+        y += 4;
+        doc.setFont('helvetica', 'normal');
+        linked.forEach(p => {
+          if (y > 280) { doc.addPage(); y = 15; }
+          y += 5;
+          doc.text(doc.splitTextToSize(p.name, 75)[0], 12, y);
+          doc.text(p.health_plan_card_number || '—', 90, y);
+          doc.text(p.health_plan_authorized_sessions != null ? String(p.health_plan_authorized_sessions) : '—', 140, y);
+          doc.text(p.health_plan_authorization_expires_at
+            ? new Date(p.health_plan_authorization_expires_at + 'T00:00').toLocaleDateString('pt-BR')
+            : '—', 170, y);
+        });
+        y += 8;
+      }
+    });
+
+    doc.save(`planos-saude-${singlePlan ? singlePlan.name.replace(/\s+/g, '_') : 'completo'}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success('PDF exportado');
+  };
+
   const openNew = () => { setEditing(null); setForm(empty); setDialogOpen(true); };
   const openEdit = (p: HealthPlan) => {
     setEditing(p);
