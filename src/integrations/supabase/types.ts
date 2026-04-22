@@ -2357,34 +2357,49 @@ export type Database = {
       }
       tasks: {
         Row: {
+          assigned_by_user_id: string | null
+          assigned_to_user_id: string | null
+          clinic_id: string | null
           completed: boolean
           created_at: string
+          due_date: string | null
           group_id: string | null
           id: string
           notes: string | null
           patient_id: string | null
+          priority: string | null
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          assigned_by_user_id?: string | null
+          assigned_to_user_id?: string | null
+          clinic_id?: string | null
           completed?: boolean
           created_at?: string
+          due_date?: string | null
           group_id?: string | null
           id?: string
           notes?: string | null
           patient_id?: string | null
+          priority?: string | null
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          assigned_by_user_id?: string | null
+          assigned_to_user_id?: string | null
+          clinic_id?: string | null
           completed?: boolean
           created_at?: string
+          due_date?: string | null
           group_id?: string | null
           id?: string
           notes?: string | null
           patient_id?: string | null
+          priority?: string | null
           title?: string
           updated_at?: string
           user_id?: string
