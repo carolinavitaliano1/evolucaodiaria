@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday,
   addMonths, subMonths, isSameMonth, startOfWeek, addWeeks, subWeeks,
@@ -129,7 +130,7 @@ export default function CalendarPage() {
     const scheduledPatientIds = new Set(appointments.filter(a => a.date === dateStr).map(a => a.patientId));
     const scheduledPatients: CalItem[] = patients
       .filter(p => {
-        if (p.isArchived || scheduledPatientIds.has(p.id)) return false;
+        if (!isPatientActiveOn(p) || scheduledPatientIds.has(p.id)) return false;
         const scheduleByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
         const scheduledDays = scheduleByDay ? Object.keys(scheduleByDay) : (p.weekdays || []);
         return scheduledDays.includes(dayOfWeek);

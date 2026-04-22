@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useNavigate } from 'react-router-dom';
 import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote } from 'lucide-react';
@@ -289,7 +290,7 @@ export default function Clinics() {
     : activeClinics.filter(c => filter === 'all' || c.type === filter);
 
   const { evolutions, clinicPackages } = useApp();
-  const totalPatients = patients.filter(p => !p.isArchived).length;
+  const totalPatients = patients.filter(p => isPatientActiveOn(p)).length;
   const pendingAppointments = privateAppointments.filter(a => a.status === 'agendado');
 
   // Active clinic IDs (non-archived)
@@ -306,7 +307,7 @@ export default function Clinics() {
     // Group patients by clinic
     const patientsByClinic: Record<string, typeof patients> = {};
     for (const p of patients) {
-      if (p.isArchived || !activeClinicIds.has(p.clinicId)) continue;
+      if (!isPatientActiveOn(p) || !activeClinicIds.has(p.clinicId)) continue;
       if (!patientsByClinic[p.clinicId]) patientsByClinic[p.clinicId] = [];
       patientsByClinic[p.clinicId].push(p);
     }

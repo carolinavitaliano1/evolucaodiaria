@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,7 +45,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const clinicPatients = useMemo(
-    () => patients.filter(p => p.clinicId === clinicId && !p.isArchived),
+    () => patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p)),
     [patients, clinicId]
   );
 

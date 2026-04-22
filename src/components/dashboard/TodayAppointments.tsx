@@ -1,4 +1,5 @@
 import { useApp } from '@/contexts/AppContext';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { toLocalDateString } from '@/lib/utils';
@@ -55,7 +56,7 @@ export function TodayAppointments() {
   // Patients with recurring weekly schedule for today
   const weekdayPatients: ScheduleItem[] = patients
     .filter(p => {
-      if (p.isArchived) return false;
+      if (!isPatientActiveOn(p)) return false;
       const schedByDay = p.scheduleByDay as Record<string, { start?: string }> | null;
       const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
       return scheduledDays.includes(todayWeekday);

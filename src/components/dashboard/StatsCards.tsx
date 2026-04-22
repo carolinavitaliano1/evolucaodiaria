@@ -1,4 +1,5 @@
 import { Building2, Users, Calendar, DollarSign } from 'lucide-react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { toLocalDateString } from '@/lib/utils';
@@ -16,7 +17,7 @@ export function StatsCards() {
   const today = toLocalDateString(new Date());
   const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
   const patientsScheduledToday = patients.filter(p => {
-    if (p.isArchived) return false;
+    if (!isPatientActiveOn(p)) return false;
     const schedByDay = p.scheduleByDay as Record<string, { start?: string }> | null;
     const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
     return scheduledDays.includes(todayWeekday);
@@ -129,7 +130,7 @@ export function StatsCards() {
   const clinicMonthlyRevenue = (() => {
     const patientsByClinic: Record<string, typeof patients> = {};
     for (const p of patients) {
-      if (p.isArchived) continue;
+      if (!isPatientActiveOn(p)) continue;
       if (!patientsByClinic[p.clinicId]) patientsByClinic[p.clinicId] = [];
       patientsByClinic[p.clinicId].push(p);
     }
@@ -167,7 +168,7 @@ export function StatsCards() {
     },
     {
       label: 'Pacientes',
-      value: patients.filter(p => !p.isArchived).length,
+      value: patients.filter(p => isPatientActiveOn(p)).length,
       icon: Users,
       color: 'text-primary',
       bgColor: 'bg-primary/10',

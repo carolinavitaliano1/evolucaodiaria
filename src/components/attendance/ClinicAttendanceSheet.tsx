@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,7 +67,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
   }, [patients]);
 
   const patientInfos: PatientInfo[] = useMemo(() =>
-    patients.filter(p => !p.isArchived).map(p => ({
+    patients.filter(p => isPatientActiveOn(p)).map(p => ({
       id: p.id,
       name: p.name,
       responsibleName: p.responsibleName,

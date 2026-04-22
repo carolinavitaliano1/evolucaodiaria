@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { toLocalDateString } from '@/lib/utils';
 import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck } from 'lucide-react';
 import { EditableReceiptModal } from '@/components/financial/EditableReceiptModal';
@@ -354,7 +355,7 @@ export default function ClinicDetail() {
 
   const clinic = clinics.find(c => c.id === id);
   const allClinicPatients = patients.filter(p => p.clinicId === id);
-  const clinicPatients = allClinicPatients.filter(p => !p.isArchived);
+  const clinicPatients = allClinicPatients.filter(p => isPatientActiveOn(p));
 
   // Get today's weekday for filtering patients
   const todayWeekday = getTodayWeekday();
@@ -1843,14 +1844,14 @@ export default function ClinicDetail() {
             )}
 
             {/* Archived Patients */}
-            {allClinicPatients.filter(p => p.isArchived).length > 0 && (
+            {allClinicPatients.filter(p => !isPatientActiveOn(p)).length > 0 && (
               <div className="mt-8">
                 <h3 className="text-lg font-semibold text-muted-foreground mb-4 flex items-center gap-2">
                   <Archive className="w-5 h-5" />
-                  Pacientes Arquivados ({allClinicPatients.filter(p => p.isArchived).length})
+                  Pacientes Arquivados ({allClinicPatients.filter(p => !isPatientActiveOn(p)).length})
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {allClinicPatients.filter(p => p.isArchived).map((patient) => (
+                  {allClinicPatients.filter(p => !isPatientActiveOn(p)).map((patient) => (
                     <div
                       key={patient.id}
                       className="bg-secondary/30 rounded-xl p-4 opacity-70 hover:opacity-100 transition-opacity"

@@ -1,4 +1,5 @@
 import { useApp } from '@/contexts/AppContext';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { toLocalDateString } from '@/lib/utils';
 import { AlertTriangle, ArrowRight, Clock } from 'lucide-react';
@@ -62,7 +63,7 @@ export function MissingEvolutionsAlert() {
 
       // 1. Recurring patients
       patients.forEach(p => {
-        if (p.isArchived) return;
+        if (!isPatientActiveOn(p)) return;
         // Don't check days before the patient was registered
         if (p.createdAt) {
           const patientCreatedDate = toLocalDateString(new Date(p.createdAt));
@@ -88,7 +89,7 @@ export function MissingEvolutionsAlert() {
         .filter(a => a.date === dateStr && !recurringIds.has(a.patientId))
         .forEach(a => {
           const patient = patients.find(p => p.id === a.patientId);
-          if (!patient || patient.isArchived) return;
+          if (!patient || !isPatientActiveOn(patient)) return;
           // Skip if this date is blocked for the patient's clinic
           if (isDateBlocked(dateStr, patient.clinicId)) return;
           const startTime = a.time || '';
