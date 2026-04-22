@@ -2729,6 +2729,7 @@ export type Database = {
       }
       team_applications: {
         Row: {
+          birthdate: string | null
           created_at: string
           email: string
           id: string
@@ -2738,12 +2739,14 @@ export type Database = {
           professional_id: string | null
           reviewed_at: string | null
           reviewed_by_user_id: string | null
+          role: string | null
           specialty: string | null
           status: string
           updated_at: string
           whatsapp: string | null
         }
         Insert: {
+          birthdate?: string | null
           created_at?: string
           email: string
           id?: string
@@ -2753,12 +2756,14 @@ export type Database = {
           professional_id?: string | null
           reviewed_at?: string | null
           reviewed_by_user_id?: string | null
+          role?: string | null
           specialty?: string | null
           status?: string
           updated_at?: string
           whatsapp?: string | null
         }
         Update: {
+          birthdate?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -2768,6 +2773,7 @@ export type Database = {
           professional_id?: string | null
           reviewed_at?: string | null
           reviewed_by_user_id?: string | null
+          role?: string | null
           specialty?: string | null
           status?: string
           updated_at?: string

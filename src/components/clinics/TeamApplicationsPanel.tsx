@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, UserCheck, UserX, Briefcase, Mail, Phone, MessageSquare, ChevronDown, ChevronUp, Inbox } from 'lucide-react';
+import { Loader2, UserCheck, UserX, Briefcase, Mail, Phone, MessageSquare, ChevronDown, ChevronUp, Inbox, Cake, IdCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -15,6 +15,8 @@ interface TeamApplication {
   specialty: string | null;
   professional_id: string | null;
   message: string | null;
+  role: string | null;
+  birthdate: string | null;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
 }
@@ -68,7 +70,7 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
           organization_id: organizationId,
           email: app.email,
           role: 'professional',
-          role_label: app.specialty || null,
+          role_label: app.role || app.specialty || null,
         },
       });
       if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
@@ -187,7 +189,7 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
                     )}
                   </div>
 
-                  {(app.whatsapp || app.professional_id || app.message) && (
+                  {(app.whatsapp || app.professional_id || app.message || app.role || app.birthdate) && (
                     <button
                       onClick={() => toggleItem(app.id)}
                       className="text-[11px] text-primary hover:underline mt-2"
@@ -198,6 +200,16 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
 
                   {isExpanded && (
                     <div className="mt-3 pt-3 border-t border-border space-y-1.5 text-xs">
+                      {app.role && (
+                        <p className="text-muted-foreground flex items-center gap-1.5">
+                          <IdCard className="w-3 h-3" /> Função: <strong className="text-foreground font-medium">{app.role}</strong>
+                        </p>
+                      )}
+                      {app.birthdate && (
+                        <p className="text-muted-foreground flex items-center gap-1.5">
+                          <Cake className="w-3 h-3" /> Nascimento: {format(new Date(app.birthdate + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                        </p>
+                      )}
                       {app.whatsapp && (
                         <p className="text-muted-foreground flex items-center gap-1.5">
                           <Phone className="w-3 h-3" /> {app.whatsapp}

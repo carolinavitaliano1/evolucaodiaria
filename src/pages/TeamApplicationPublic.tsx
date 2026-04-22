@@ -19,6 +19,8 @@ export default function TeamApplicationPublic() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [role, setRole] = useState('');
+  const [birthdate, setBirthdate] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [professionalId, setProfessionalId] = useState('');
   const [message, setMessage] = useState('');
@@ -48,6 +50,8 @@ export default function TeamApplicationPublic() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         whatsapp: whatsapp.trim() || null,
+        role: role.trim() || null,
+        birthdate: birthdate || null,
         specialty: specialty.trim() || null,
         professional_id: professionalId.trim() || null,
         message: message.trim() || null,
@@ -144,6 +148,29 @@ export default function TeamApplicationPublic() {
           <div className="space-y-1">
             <Label className="text-xs">WhatsApp</Label>
             <Input value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="(11) 99999-9999" className="h-9 text-sm" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Data de nascimento</Label>
+              <Input
+                type="date"
+                value={birthdate}
+                onChange={e => setBirthdate(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Função / Cargo desejado</Label>
+              <Input
+                value={role}
+                onChange={e => setRole(e.target.value)}
+                placeholder="Ex: Terapeuta, Estagiário, Recepção"
+                className="h-9 text-sm"
+                maxLength={80}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
