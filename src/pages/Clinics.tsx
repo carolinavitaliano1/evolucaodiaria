@@ -24,7 +24,7 @@ import { Clinic } from '@/types';
 import { ServiceDialog } from '@/components/services/ServiceDialog';
 import { EditClinicDialog } from '@/components/clinics/EditClinicDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
@@ -299,15 +299,18 @@ export default function Clinics() {
   const totalRevenue = useMemo(() => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
+    const periodStartDate = startOfMonth(new Date(currentYear, currentMonth, 1));
     const monthlyEvolutions = evolutions.filter(e => {
       const date = new Date(e.date + 'T12:00:00');
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     });
+    const patientIdsWithMonthlyActivity = new Set(monthlyEvolutions.map(e => e.patientId));
 
     // Group patients by clinic
     const patientsByClinic: Record<string, typeof patients> = {};
     for (const p of patients) {
-      if (!isPatientActiveOn(p) || !activeClinicIds.has(p.clinicId)) continue;
+      const isRelevantInMonth = patientIdsWithMonthlyActivity.has(p.id) || isPatientActiveOn(p, periodStartDate);
+      if (!isRelevantInMonth || !activeClinicIds.has(p.clinicId)) continue;
       if (!patientsByClinic[p.clinicId]) patientsByClinic[p.clinicId] = [];
       patientsByClinic[p.clinicId].push(p);
     }

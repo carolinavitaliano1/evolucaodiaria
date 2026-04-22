@@ -6,7 +6,8 @@ import { toLocalDateString } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { startOfMonth } from 'date-fns';
 import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 
@@ -124,13 +125,23 @@ export function StatsCards() {
     const date = new Date(`${e.date}T12:00:00`);
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   });
+  const periodStartDate = useMemo(
+    () => startOfMonth(new Date(currentYear, currentMonth, 1)),
+    [currentMonth, currentYear],
+  );
+  const patientIdsWithMonthlyActivity = useMemo(
+    () => new Set(monthlyEvolutions.map(e => e.patientId)),
+    [monthlyEvolutions],
+  );
+  const isPatientRelevantInCurrentMonth = (patient: typeof patients[number]) =>
+    patientIdsWithMonthlyActivity.has(patient.id) || isPatientActiveOn(patient, periodStartDate);
 
   // 🔒 Faturamento da clínica delegado ao helper central — respeita modelo
   // fixo_mensal (salário fixo, independe de sessões), fixo_diario e variado.
   const clinicMonthlyRevenue = (() => {
     const patientsByClinic: Record<string, typeof patients> = {};
     for (const p of patients) {
-      if (!isPatientActiveOn(p)) continue;
+      if (!isPatientRelevantInCurrentMonth(p)) continue;
       if (!patientsByClinic[p.clinicId]) patientsByClinic[p.clinicId] = [];
       patientsByClinic[p.clinicId].push(p);
     }
