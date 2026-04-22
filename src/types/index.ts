@@ -154,6 +154,11 @@ export interface Task {
   completed: boolean;
   notes?: string;
   patientId?: string;
+  assignedToUserId?: string;
+  assignedByUserId?: string;
+  clinicId?: string;
+  dueDate?: string;
+  priority?: 'low' | 'medium' | 'high';
   createdAt: string;
 }
 
