@@ -267,7 +267,7 @@ export default function ClinicDetail() {
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '', packageType: 'mensal' as 'mensal' | 'por_sessao' | 'personalizado', sessionLimit: '' });
   const [editingPackage, setEditingPackage] = useState<{id: string; name: string; description: string; price: string; packageType: 'mensal' | 'por_sessao' | 'personalizado'; sessionLimit: string} | null>(null);
-  const [viewingPackagePatients, setViewingPackagePatients] = useState<typeof clinicPackages[number] | null>(null);
+  const [viewingPackagePatients, setViewingPackagePatients] = useState<any | null>(null);
   const [isImprovingBatchText, setIsImprovingBatchText] = useState(false);
   const [improvingBatchTemplateFieldId, setImprovingBatchTemplateFieldId] = useState<string | null>(null);
   const [aiUpgradeOpen, setAiUpgradeOpen] = useState(false);
@@ -2058,6 +2058,15 @@ export default function ClinicDetail() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+          <PackagePatientsModal
+            open={!!viewingPackagePatients}
+            onOpenChange={(v) => !v && setViewingPackagePatients(null)}
+            pkg={viewingPackagePatients}
+          />
+        </TabsContent>
               </div>
             )}
           </div>
