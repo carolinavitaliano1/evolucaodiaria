@@ -1843,12 +1843,12 @@ export default function ClinicDetail() {
               </div>
             )}
 
-            {/* Archived Patients */}
+            {/* Pacientes que saíram da clínica */}
             {allClinicPatients.filter(p => !isPatientActiveOn(p)).length > 0 && (
               <div className="mt-8">
                 <h3 className="text-lg font-semibold text-muted-foreground mb-4 flex items-center gap-2">
                   <Archive className="w-5 h-5" />
-                  Pacientes Arquivados ({allClinicPatients.filter(p => !isPatientActiveOn(p)).length})
+                  Pacientes que saíram ({allClinicPatients.filter(p => !isPatientActiveOn(p)).length})
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {allClinicPatients.filter(p => !isPatientActiveOn(p)).map((patient) => (
@@ -1868,7 +1868,7 @@ export default function ClinicDetail() {
                           size="sm"
                           className="h-7 gap-1 text-xs text-muted-foreground hover:text-primary"
                           onClick={() => {
-                            updatePatient(patient.id, { isArchived: false });
+                            updatePatient(patient.id, { isArchived: false, departureDate: '' as any, departureReason: '' as any });
                             toast.success('Paciente reativado!');
                           }}
                         >
@@ -1877,6 +1877,12 @@ export default function ClinicDetail() {
                         </Button>
                       </div>
                       <div className="space-y-1 text-sm text-muted-foreground">
+                        {patient.departureDate && (
+                          <p className="text-xs">
+                            Saiu em {new Date(patient.departureDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            {patient.departureReason ? ` — ${patient.departureReason}` : ''}
+                          </p>
+                        )}
                         {patient.clinicalArea && (
                           <p className="text-primary/70 font-medium">{patient.clinicalArea}</p>
                         )}
