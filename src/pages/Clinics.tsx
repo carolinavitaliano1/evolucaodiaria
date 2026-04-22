@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { Clinic } from '@/types';
 import { ServiceDialog } from '@/components/services/ServiceDialog';
 import { EditClinicDialog } from '@/components/clinics/EditClinicDialog';
@@ -63,6 +64,7 @@ interface ServiceRecord {
 export default function Clinics() {
   const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic, loadAllEvolutions } = useApp();
   const { user } = useAuth();
+  const { hasTeam } = useFeatureAccess();
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
@@ -194,6 +196,13 @@ export default function Clinics() {
     if (activeClinicsCount >= CLINIC_LIMIT) {
       setLimitDialogOpen(true);
     } else {
+      // Pre-select default type based on what is allowed for this user
+      const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
+      const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
+      let defaultType: 'propria' | 'terceirizada' | 'clinica' = 'propria';
+      if (hasTeam && activeClinica) defaultType = 'clinica';
+      else if (hasTeam && !activeAutonomo) defaultType = 'clinica';
+      setFormData(prev => ({ ...prev, type: defaultType }));
       setIsDialogOpen(true);
     }
   };
