@@ -2061,9 +2061,6 @@ export default function ClinicDetail() {
               </div>
             )}
           </div>
-              </div>
-            )}
-          </div>
           <PackagePatientsModal
             open={!!viewingPackagePatients}
             onOpenChange={(v) => !v && setViewingPackagePatients(null)}
