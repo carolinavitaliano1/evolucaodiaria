@@ -45,12 +45,13 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
   container.style.top = '0';
   container.style.width = '794px';
   container.style.height = 'auto';
-  container.style.padding = '64px 72px';
+  // A4 at 96 DPI ≈ 794×1123 px. 1 inch margin (96px) on every side mirrors the DOCX export.
+  container.style.padding = '96px 96px';
   container.style.background = '#ffffff';
   container.style.color = '#111111';
   container.style.fontFamily = 'Georgia, "Times New Roman", serif';
-  container.style.fontSize = '14px';
-  container.style.lineHeight = '1.8';
+  container.style.fontSize = '12px';
+  container.style.lineHeight = '1.5';
   container.style.boxSizing = 'border-box';
 
   const escape = (s: string) =>
