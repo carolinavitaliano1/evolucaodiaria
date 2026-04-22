@@ -1,71 +1,80 @@
 
 
-## Substituir "Arquivar Paciente" por "Saída da Clínica" (com histórico financeiro preservado)
+## Análise da Amplimed e melhorias para o módulo de Equipe
 
-### Problema atual
-Hoje, quando um paciente é arquivado, ele desaparece de praticamente todos os relatórios financeiros — inclusive de meses passados em que houve atendimento e remuneração recebida. Isso acontece porque o código filtra `!p.isArchived` em todos os cálculos (Financial.tsx, Clinics.tsx, StatsCards, ClinicFinancial, TeamFinancialReport, etc.), removendo o paciente do histórico retroativamente.
+### O que vi no site da Amplimed
+A página vende um sistema de gestão de clínicas com 5 planos (Lite → Enterprise). As funcionalidades destacadas para clínicas multiprofissionais que se conectam à ideia de "gestão de equipe" são:
 
-### Solução: Conceito de "Saída" com data
-Substituir "Arquivar/Desarquivar" por uma ação **"Marcar saída da clínica"**, que registra **a data em que o paciente saiu**. A partir dessa data, ele:
-- Não aparece mais na agenda, lista ativa, alertas, dashboard, evoluções pendentes.
-- **Continua aparecendo** em relatórios financeiros e de atendimento dos meses em que esteve ativo (o histórico permanece intacto).
+1. **Controle de repasse de profissionais** (plano Plus) — split financeiro automatizado.
+2. **Tarefas automatizadas e processos integrados** ("equipe sobrecarregada").
+3. **Pesquisa de satisfação** e indicadores.
+4. **Agenda por paciente** e portal de agendamento 24/7.
+5. **Painel de senha** (chamada de pacientes na recepção).
+6. **Acompanhamento terapêutico** com histórico organizado de intervenções, plano educativo individualizado (PEI), repositório de mídias, motivos de entrada/saída/alta.
+7. **Confirmações automáticas por WhatsApp + lista de espera** (já temos).
+8. **Implantação assistida** (cadastramento, treinamento, migração).
 
-### Mudanças no banco (migração)
-Adicionar à tabela `patients`:
-- `departure_date date` — data em que saiu da clínica (NULL = ativo).
-- `departure_reason text` — motivo opcional (alta, transferência, desistência, etc.).
+### O que **já existe** no nosso módulo de Equipe (não duplicar)
+Comparando com `Team.tsx`, `ClinicTeam.tsx`, `TeamAttendanceGrid.tsx`, `TeamFinancialDashboard.tsx`, `ComplianceDashboard.tsx`:
+- Convite de membros por e-mail com cargo, permissões granulares e atribuição de pacientes.
+- 4 modelos de remuneração (sessão / mensal / diário / variado) — equivalente ao "controle de repasse".
+- Grade de presença semanal com justificativas e anexos.
+- Dashboard financeiro por membro com ranking, gráficos de 6 meses e exportação PDF.
+- Compliance: alerta de evoluções atrasadas (>24h) por profissional.
+- Lista de espera pública por clínica.
+- WhatsApp com templates e variáveis.
 
-Manter `is_archived` por compatibilidade com dados existentes (tratar `is_archived = true` como "saída na data de criação do registro", para não quebrar relatórios atuais — ou, melhor, fazer uma migração de dados que defina `departure_date` para a data atual em pacientes hoje arquivados, mantendo `is_archived` como flag legada).
+### O que **vale trazer** da Amplimed (gaps reais)
 
-### Mudanças no frontend
+Selecionei **3 melhorias práticas** que se encaixam no nosso módulo de Equipe sem inflar o produto:
 
-**1. `EditPatientDialog.tsx` / `PatientDetail.tsx`**
-- Substituir botão "Arquivar paciente" por **"Registrar saída da clínica"**, que abre um pequeno modal com:
-  - Data de saída (default = hoje).
-  - Motivo (select: Alta, Transferência, Desistência, Outro) + campo livre opcional.
-- Botão secundário "Reativar paciente" quando `departure_date` estiver preenchida (limpa `departure_date`).
+#### 1. Tarefas atribuídas a membros da equipe (workflow interno)
+Hoje `tasks` existe só por usuário. A Amplimed enfatiza "tarefas automatizadas para reduzir retrabalho". Proposta:
+- Adicionar `assigned_to_user_id` e `clinic_id` em `tasks`.
+- Nova aba **"Tarefas da Equipe"** dentro de Team (ao lado de Equipe / Compliance / Atividade / Financeiro).
+- Owner/admin pode criar tarefa e atribuir a um membro; membro vê suas tarefas no Dashboard.
+- Filtros: pendentes, atribuídas a mim, atribuídas por mim, vencidas.
 
-**2. Helper central `isPatientActiveOn(patient, date)`**
-Criar em `src/utils/dateHelpers.ts`:
-```ts
-isPatientActiveOn(patient, refDate): boolean
-// retorna true se departure_date é null OU refDate < departure_date
-```
+#### 2. Painel de Indicadores da Equipe (KPIs)
+A Amplimed vende "indicadores" no plano Pro. Hoje temos números espalhados (financeiro, compliance, presença), mas sem visão consolidada. Proposta:
+- Nova aba **"Indicadores"** em Team com cards de:
+  - Taxa de presença da equipe (mês).
+  - Taxa de evoluções no prazo (vs. atrasadas).
+  - Pacientes ativos por profissional.
+  - Tempo médio entre sessão e registro de evolução.
+  - Top 3 profissionais por sessões realizadas.
+- Tudo derivado de tabelas existentes (`evolutions`, `team_attendance`, `patients`) — sem schema novo.
 
-**3. Filtros "ativo agora" (UI operacional)** — usar `isPatientActiveOn(p, new Date())`:
-- `StatsCards`, `TodayAppointments`, `Calendar`, `BirthdayCard`, `PaymentReminders`, `ClinicAgenda`, `ClinicAlertsCard`, `ClinicEvolutionsTab`, `MissingEvolutionsAlert`, `Patients` (lista padrão), `ClinicDetail` (lista de pacientes ativos).
+#### 3. Motivos estruturados de saída (PEI / acompanhamento terapêutico)
+A Amplimed cita "cadastro de motivos (entrada, saída e alta)". Hoje temos `departure_reason` como texto livre. Proposta:
+- Transformar em select estruturado: **Alta clínica / Transferência / Desistência / Mudança de cidade / Financeiro / Outro**.
+- Adicionar relatório agregado em **"Indicadores"**: % de cada motivo de saída no período → ajuda gestor a entender churn da clínica.
+- Mantém compatibilidade com texto livre quando "Outro" for selecionado.
 
-**4. Filtros "ativo no período" (relatórios financeiros)** — usar `isPatientActiveOn(p, lastDayOfPeriod)`:
-- `Financial.tsx` (`calculateClinicRevenue`, `clinicStats`, `allPatientStats`, rateio proporcional).
-- `ClinicFinancial.tsx`.
-- `TeamFinancialReport.tsx` / `TeamFinancialDashboard.tsx`.
-- `Reports.tsx`.
-- `generateClinicInternalStatementPdf.ts`.
-- `Clinics.tsx` (cálculo de `totalRevenue`).
-- `StatsCards.tsx` (cálculo de faturamento — usar regra "ativo no período" em vez de "não arquivado").
+### O que **não** trazer (e por quê)
+- **Faturamento TISS / NFS-e**: nosso público (psicólogos, terapeutas, fonos) trabalha majoritariamente fora de convênios.
+- **Painel de senha / totem**: não se aplica a consultórios de psicoterapia.
+- **Teleconsulta nativa**: já temos `session_link` para consulta virtual via link externo.
+- **Amélia Copilot (transcrição)**: já temos suite IA própria (improve-evolution, generate-evolution, generate-feedback) que cobre o caso.
 
-Regra: paciente entra no relatório do mês X/Y se tiver evoluções no período **ou** se estava ativo em qualquer dia daquele mês (`departure_date == null || departure_date >= primeiro dia do mês`).
+### Arquivos afetados (visão técnica)
 
-**5. Lista de pacientes (`Patients.tsx` e `ClinicDetail.tsx`)**
-- Filtro padrão: ativos.
-- Adicionar tab/filtro "Pacientes que saíram" (lista pacientes com `departure_date`), exibindo data de saída e motivo, com badge "Saiu em DD/MM/AAAA".
-- Botão "Reativar" disponível.
+**Migração (1 arquivo SQL):**
+- `tasks`: adicionar `assigned_to_user_id uuid`, `clinic_id uuid`, `due_date date`, `priority text`.
+- Atualizar RLS para permitir membros da org verem tarefas atribuídas a eles.
 
-**6. Compatibilidade com dados antigos**
-Migração de dados única: para todo paciente onde `is_archived = true` e `departure_date IS NULL`, definir `departure_date = updated_at` (aproximação razoável da data de arquivamento). Isso preserva o comportamento atual sem perder histórico.
+**Frontend (~5 arquivos):**
+- `src/pages/Team.tsx` — adicionar abas "Tarefas" e "Indicadores".
+- `src/components/team/TeamTasksTab.tsx` (novo) — lista, criação, filtros.
+- `src/components/team/TeamIndicatorsTab.tsx` (novo) — cards KPI + breakdown de motivos de saída.
+- `src/components/dashboard/TaskList.tsx` — incluir tarefas atribuídas pela equipe.
+- `src/components/patients/DeparturePatientDialog.tsx` — converter motivo em select + texto livre condicional.
 
-### Arquivos afetados
-**Migração:** novo arquivo SQL adicionando colunas + backfill.
-**Tipos:** `src/types/index.ts` (adicionar `departureDate?`, `departureReason?` em `Patient`).
-**Helper novo:** `src/utils/dateHelpers.ts` (função `isPatientActiveOn`).
-**Mapping:** `src/contexts/AppContext.tsx` (`mapPatient` ler `departure_date` e `departure_reason`).
-**UI de saída:** `EditPatientDialog.tsx`, `PatientDetail.tsx` (substituir botão arquivar).
-**Filtros operacionais (≈10 arquivos):** Calendar, Patients, ClinicDetail, dashboard widgets, ClinicAgenda, etc.
-**Filtros financeiros (≈8 arquivos):** Financial.tsx, ClinicFinancial.tsx, Clinics.tsx, StatsCards.tsx, TeamFinancialReport/Dashboard, Reports.tsx, generateClinicInternalStatementPdf.ts.
+**Tipos:**
+- `src/types/index.ts` — `Task` ganha `assignedToUserId`, `clinicId`, `dueDate`, `priority`.
 
 ### Resultado esperado
-- "Arquivar" deixa de existir; em seu lugar há "Registrar saída" com data e motivo.
-- Paciente que saiu hoje **continua** aparecendo no faturamento de meses anteriores (e no mês atual, proporcionalmente, se houver atendimentos antes da saída).
-- Listagens, dashboard, alertas e agenda deixam de mostrá-lo a partir da data da saída.
-- Pacientes hoje arquivados não perdem dados — recebem `departure_date` automaticamente via migração.
+- Gestor de clínica passa a delegar tarefas a profissionais dentro do app (sem WhatsApp paralelo).
+- Owner/admin vê em uma aba os principais indicadores operacionais e clínicos da equipe.
+- Saída de paciente vira dado estruturado, permitindo análise de churn e melhoria de processos.
 
