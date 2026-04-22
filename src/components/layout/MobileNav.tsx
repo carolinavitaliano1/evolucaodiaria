@@ -22,7 +22,8 @@ import {
   Megaphone,
   UsersRound,
   HeadphonesIcon,
-  Clock
+  Clock,
+  FileSignature
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
