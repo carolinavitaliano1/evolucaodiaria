@@ -49,6 +49,7 @@ export default function Patients() {
   const { assignedPatientIds, loading: assignmentsLoading } = useMyAssignedPatientIds();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [packageFilter, setPackageFilter] = useState<string>('all'); // 'all' | 'none' | packageId
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [exportType, setExportType] = useState<'evolutions' | 'attendance' | 'financial'>('evolutions');
@@ -88,14 +89,37 @@ export default function Patients() {
   }, [patients, ownOnly, assignedPatientIds, assignmentsLoading]);
 
   const filteredPatients = useMemo(() => {
-    if (!searchTerm.trim()) return visiblePatients;
+    let list = visiblePatients;
+
+    if (packageFilter !== 'all') {
+      if (packageFilter === 'none') {
+        list = list.filter(p => !p.packageId);
+      } else {
+        list = list.filter(p => p.packageId === packageFilter);
+      }
+    }
+
+    if (!searchTerm.trim()) return list;
     const term = searchTerm.toLowerCase();
-    return visiblePatients.filter(p =>
+    return list.filter(p =>
       p.name.toLowerCase().includes(term) ||
       (canSeeClinical && p.clinicalArea?.toLowerCase().includes(term)) ||
       (canSeeClinical && p.diagnosis?.toLowerCase().includes(term))
     );
-  }, [visiblePatients, searchTerm, canSeeClinical]);
+  }, [visiblePatients, searchTerm, canSeeClinical, packageFilter]);
+
+  // All packages across visible clinics for the filter dropdown
+  const allPackages = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; clinicName: string }>();
+    clinics.forEach(c => {
+      getClinicPackages(c.id).forEach(pkg => {
+        if (pkg.isActive) {
+          map.set(pkg.id, { id: pkg.id, name: pkg.name, clinicName: c.name });
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [clinics, getClinicPackages]);
 
   // Active (non-archived) clinics for quick registration
   const activeClinics = useMemo(() => clinics.filter(c => !c.isArchived), [clinics]);
@@ -775,15 +799,31 @@ export default function Patients() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder={canSeeClinical ? 'Buscar por nome, área clínica ou diagnóstico...' : 'Buscar por nome...'}
-          className="pl-10"
-        />
+      {/* Search + Filters */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={canSeeClinical ? 'Buscar por nome, área clínica ou diagnóstico...' : 'Buscar por nome...'}
+            className="pl-10"
+          />
+        </div>
+        <Select value={packageFilter} onValueChange={setPackageFilter}>
+          <SelectTrigger className="w-full sm:w-[240px]">
+            <SelectValue placeholder="Filtrar por pacote" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os pacotes</SelectItem>
+            <SelectItem value="none">Sem pacote</SelectItem>
+            {allPackages.map(pkg => (
+              <SelectItem key={pkg.id} value={pkg.id}>
+                {pkg.name} <span className="text-muted-foreground">· {pkg.clinicName}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Stats */}
