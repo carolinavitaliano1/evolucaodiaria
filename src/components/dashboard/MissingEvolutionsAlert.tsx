@@ -110,7 +110,6 @@ export function MissingEvolutionsAlert() {
     const { data: evols } = await supabase
       .from('evolutions')
       .select('patient_id, date')
-      .eq('user_id', user!.id)
       .in('patient_id', patientIds)
       .gte('date', startDate)
       .lte('date', endDate);
