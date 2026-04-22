@@ -1908,7 +1908,30 @@ export default function ClinicDetail() {
                 Pacotes
               </h2>
               
-              <Dialog open={packageDialogOpen} onOpenChange={setPackageDialogOpen}>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => exportPackagesCSV()}
+                  disabled={clinicPackages.length === 0}
+                  title="Exportar lista em CSV"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => exportPackagesPDF()}
+                  disabled={clinicPackages.length === 0}
+                  title="Exportar lista em PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                  PDF
+                </Button>
+                <Dialog open={packageDialogOpen} onOpenChange={setPackageDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="gap-2">
                     <Plus className="w-4 h-4" />
