@@ -19,6 +19,8 @@ export default function TeamApplicationPublic() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [role, setRole] = useState('');
+  const [birthdate, setBirthdate] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [professionalId, setProfessionalId] = useState('');
   const [message, setMessage] = useState('');
@@ -48,6 +50,8 @@ export default function TeamApplicationPublic() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         whatsapp: whatsapp.trim() || null,
+        role: role.trim() || null,
+        birthdate: birthdate || null,
         specialty: specialty.trim() || null,
         professional_id: professionalId.trim() || null,
         message: message.trim() || null,
