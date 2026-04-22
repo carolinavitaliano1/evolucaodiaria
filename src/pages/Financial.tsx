@@ -19,6 +19,7 @@ import { calculatePatientMonthlyRevenue, calculateClinicMonthlyRevenue, calculat
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 
 type PaymentStatusFilter = 'all' | 'paid' | 'pending';
 
@@ -214,9 +215,16 @@ export default function Financial() {
   const propriaClinics = clinics.filter(c => c.type === 'propria' && !c.isArchived);
   const contratanteClinics = clinics.filter(c => c.type !== 'propria' && !c.isArchived);
 
+  // Reference date for "patient active in this period" = last day of selected month.
+  // Patients who left the clinic still appear in financial reports for months prior to their departure.
+  const periodRefDate = useMemo(
+    () => endOfMonth(new Date(selectedYear, selectedMonth, 1)),
+    [selectedMonth, selectedYear],
+  );
+
   // Helper: faturamento de UMA clínica no mês (respeita modelo fixo/diário/variado)
   const calculateClinicRevenue = (clinic: typeof clinics[0]) => {
-    const cPatients = patients.filter(p => p.clinicId === clinic.id && !p.isArchived);
+    const cPatients = patients.filter(p => p.clinicId === clinic.id && isPatientActiveOn(p, periodRefDate));
     const cEvos: EvolutionLike[] = monthlyEvolutions
       .filter(e => cPatients.some(p => p.id === e.patientId))
       .map(e => ({
@@ -303,7 +311,7 @@ export default function Financial() {
     // Valor informativo — NÃO entra no Faturamento Total.
     let proportionalShare: ReturnType<typeof calculatePatientProportionalShare> | null = null;
     if (clinic && (isClinicFixedMonthly(clinic.paymentType) || isClinicFixedDaily(clinic.paymentType))) {
-      const clinicPatients = patients.filter(p => p.clinicId === clinic.id && !p.isArchived);
+      const clinicPatients = patients.filter(p => p.clinicId === clinic.id && isPatientActiveOn(p, periodRefDate));
       const clinicEvos: EvolutionLike[] = monthlyEvolutions
         .filter(e => clinicPatients.some(p => p.id === e.patientId))
         .map(e => ({
