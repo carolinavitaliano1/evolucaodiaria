@@ -4311,25 +4311,26 @@ export default function PatientDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={archivePatientOpen} onOpenChange={setArchivePatientOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{patient.isArchived ? 'Reativar paciente?' : 'Arquivar paciente?'}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {patient.isArchived
-                ? <>O paciente <span className="font-semibold">{patient.name}</span> será reativado e voltará a aparecer na agenda e lista de pacientes.</>
-                : <>O paciente <span className="font-semibold">{patient.name}</span> será removido da agenda e da lista ativa. Você poderá reativá-lo a qualquer momento.</>
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const newVal = !patient.isArchived; updatePatient(patient.id, { isArchived: newVal }); toast.success(newVal ? 'Paciente arquivado' : 'Paciente reativado'); }}>
-              {patient.isArchived ? 'Reativar' : 'Arquivar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeparturePatientDialog
+        open={archivePatientOpen}
+        onOpenChange={setArchivePatientOpen}
+        patient={patient}
+        onConfirm={async (data) => {
+          if (data === null) {
+            // Reactivate
+            await updatePatient(patient.id, { departureDate: '' as any, departureReason: '' as any, isArchived: false });
+            toast.success('Paciente reativado');
+          } else {
+            await updatePatient(patient.id, {
+              departureDate: data.date as any,
+              departureReason: data.reason as any,
+              isArchived: false,
+            });
+            toast.success('Saída registrada. Histórico financeiro preservado.');
+          }
+          setArchivePatientOpen(false);
+        }}
+      />
 
       {/* WhatsApp Message Modal */}
       <WhatsAppMessageModal
