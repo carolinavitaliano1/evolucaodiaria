@@ -70,7 +70,7 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
           organization_id: organizationId,
           email: app.email,
           role: 'professional',
-          role_label: app.specialty || null,
+          role_label: app.role || app.specialty || null,
         },
       });
       if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
