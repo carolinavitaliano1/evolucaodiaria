@@ -1569,6 +1569,8 @@ export type Database = {
           contract_start_date: string | null
           cpf: string | null
           created_at: string
+          departure_date: string | null
+          departure_reason: string | null
           diagnosis: string | null
           email: string | null
           financial_responsible_cpf: string | null
@@ -1615,6 +1617,8 @@ export type Database = {
           contract_start_date?: string | null
           cpf?: string | null
           created_at?: string
+          departure_date?: string | null
+          departure_reason?: string | null
           diagnosis?: string | null
           email?: string | null
           financial_responsible_cpf?: string | null
@@ -1661,6 +1665,8 @@ export type Database = {
           contract_start_date?: string | null
           cpf?: string | null
           created_at?: string
+          departure_date?: string | null
+          departure_reason?: string | null
           diagnosis?: string | null
           email?: string | null
           financial_responsible_cpf?: string | null
