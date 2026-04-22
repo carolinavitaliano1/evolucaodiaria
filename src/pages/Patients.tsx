@@ -49,6 +49,7 @@ export default function Patients() {
   const { assignedPatientIds, loading: assignmentsLoading } = useMyAssignedPatientIds();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [packageFilter, setPackageFilter] = useState<string>('all'); // 'all' | 'none' | packageId
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [exportType, setExportType] = useState<'evolutions' | 'attendance' | 'financial'>('evolutions');
@@ -88,14 +89,37 @@ export default function Patients() {
   }, [patients, ownOnly, assignedPatientIds, assignmentsLoading]);
 
   const filteredPatients = useMemo(() => {
-    if (!searchTerm.trim()) return visiblePatients;
+    let list = visiblePatients;
+
+    if (packageFilter !== 'all') {
+      if (packageFilter === 'none') {
+        list = list.filter(p => !p.packageId);
+      } else {
+        list = list.filter(p => p.packageId === packageFilter);
+      }
+    }
+
+    if (!searchTerm.trim()) return list;
     const term = searchTerm.toLowerCase();
-    return visiblePatients.filter(p =>
+    return list.filter(p =>
       p.name.toLowerCase().includes(term) ||
       (canSeeClinical && p.clinicalArea?.toLowerCase().includes(term)) ||
       (canSeeClinical && p.diagnosis?.toLowerCase().includes(term))
     );
-  }, [visiblePatients, searchTerm, canSeeClinical]);
+  }, [visiblePatients, searchTerm, canSeeClinical, packageFilter]);
+
+  // All packages across visible clinics for the filter dropdown
+  const allPackages = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; clinicName: string }>();
+    clinics.forEach(c => {
+      getClinicPackages(c.id).forEach(pkg => {
+        if (pkg.isActive) {
+          map.set(pkg.id, { id: pkg.id, name: pkg.name, clinicName: c.name });
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [clinics, getClinicPackages]);
 
   // Active (non-archived) clinics for quick registration
   const activeClinics = useMemo(() => clinics.filter(c => !c.isArchived), [clinics]);
