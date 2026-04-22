@@ -437,6 +437,142 @@ export default function ClinicDetail() {
 
   const clinicPackages = clinic ? getClinicPackages(clinic.id) : [];
 
+  // Build export rows: for each package list its active patients
+  const buildPackageExportData = () => {
+    return clinicPackages.map(pkg => {
+      const linked = patients.filter(p => p.packageId === pkg.id && !p.isArchived);
+      return { pkg, patients: linked };
+    });
+  };
+
+  const exportPackagesCSV = () => {
+    if (!clinic) return;
+    const data = buildPackageExportData();
+    const escape = (v: any) => {
+      const s = String(v ?? '');
+      return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['Pacote', 'Tipo', 'Valor (R$)', 'Sessões', 'Paciente', 'Telefone', 'Início do contrato'];
+    const rows: string[] = [header.join(';')];
+    data.forEach(({ pkg, patients: pts }) => {
+      const tipo = pkg.packageType === 'por_sessao' ? 'Por Sessão' : pkg.packageType === 'personalizado' ? 'Personalizado' : 'Mensal';
+      const sessoes = pkg.packageType === 'personalizado' && pkg.sessionLimit ? String(pkg.sessionLimit) : '-';
+      if (pts.length === 0) {
+        rows.push([pkg.name, tipo, pkg.price.toFixed(2), sessoes, '(sem pacientes)', '', ''].map(escape).join(';'));
+      } else {
+        pts.forEach(p => {
+          rows.push([
+            pkg.name, tipo, pkg.price.toFixed(2), sessoes,
+            p.name, p.whatsapp || p.phone || '',
+            p.contractStartDate ? new Date(p.contractStartDate).toLocaleDateString('pt-BR') : '',
+          ].map(escape).join(';'));
+        });
+      }
+    });
+    const csv = '\uFEFF' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pacotes-${clinic.name.replace(/\s+/g, '_')}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exportado');
+  };
+
+  const exportPackagesPDF = () => {
+    if (!clinic) return;
+    const data = buildPackageExportData();
+    const doc = new jsPDF();
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    let y = 18;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Pacotes e Pacientes', pageW / 2, y, { align: 'center' });
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(clinic.name, pageW / 2, y, { align: 'center' });
+    y += 5;
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageW / 2, y, { align: 'center' });
+    doc.setTextColor(0);
+    y += 8;
+
+    const ensureSpace = (need: number) => {
+      if (y + need > pageH - 15) {
+        doc.addPage();
+        y = 18;
+      }
+    };
+
+    data.forEach(({ pkg, patients: pts }) => {
+      ensureSpace(20);
+      // Package header bar
+      doc.setFillColor(243, 232, 255);
+      doc.rect(14, y - 4, pageW - 28, 8, 'F');
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(60, 30, 110);
+      doc.text(pkg.name, 16, y + 1.5);
+      const tipo = pkg.packageType === 'por_sessao' ? 'Por Sessão' : pkg.packageType === 'personalizado' ? 'Personalizado' : 'Mensal';
+      const meta = `${tipo} · R$ ${pkg.price.toFixed(2)}${pkg.packageType === 'personalizado' && pkg.sessionLimit ? ` · ${pkg.sessionLimit} sessões` : ''} · ${pts.length} paciente${pts.length === 1 ? '' : 's'}`;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(meta, pageW - 16, y + 1.5, { align: 'right' });
+      doc.setTextColor(0);
+      y += 9;
+
+      if (pts.length === 0) {
+        doc.setFontSize(9);
+        doc.setTextColor(140);
+        doc.text('Nenhum paciente vinculado', 18, y + 4);
+        doc.setTextColor(0);
+        y += 9;
+        return;
+      }
+
+      // Patients table header
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(90);
+      doc.text('Paciente', 18, y + 4);
+      doc.text('Telefone', 110, y + 4);
+      doc.text('Início', 170, y + 4);
+      doc.setTextColor(0);
+      doc.setFont('helvetica', 'normal');
+      y += 6;
+      doc.setDrawColor(220);
+      doc.line(14, y - 1, pageW - 14, y - 1);
+
+      pts.forEach(p => {
+        ensureSpace(7);
+        doc.setFontSize(9);
+        const name = p.name.length > 50 ? p.name.slice(0, 47) + '…' : p.name;
+        doc.text(name, 18, y + 4);
+        doc.text(p.whatsapp || p.phone || '-', 110, y + 4);
+        doc.text(p.contractStartDate ? new Date(p.contractStartDate).toLocaleDateString('pt-BR') : '-', 170, y + 4);
+        y += 6;
+      });
+      y += 4;
+    });
+
+    // Footer page numbers
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Página ${i} de ${totalPages}`, pageW / 2, pageH - 8, { align: 'center' });
+    }
+
+    doc.save(`pacotes-${clinic.name.replace(/\s+/g, '_')}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success('PDF exportado');
+  };
+
   // Quick evolution state
   const [quickEvolutionPatient, setQuickEvolutionPatient] = useState<string | null>(null);
   const [quickEvolutionText, setQuickEvolutionText] = useState('');
@@ -1908,7 +2044,30 @@ export default function ClinicDetail() {
                 Pacotes
               </h2>
               
-              <Dialog open={packageDialogOpen} onOpenChange={setPackageDialogOpen}>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => exportPackagesCSV()}
+                  disabled={clinicPackages.length === 0}
+                  title="Exportar lista em CSV"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => exportPackagesPDF()}
+                  disabled={clinicPackages.length === 0}
+                  title="Exportar lista em PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                  PDF
+                </Button>
+                <Dialog open={packageDialogOpen} onOpenChange={setPackageDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="gap-2">
                     <Plus className="w-4 h-4" />
@@ -2010,6 +2169,7 @@ export default function ClinicDetail() {
                   </div>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
 
             {clinicPackages.length === 0 ? (
