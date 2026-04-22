@@ -74,6 +74,7 @@ export function MobileNav() {
   const allowedMore = moreNavItems.filter(i => {
     if (!isOrgMember) return true;
     if (i.to === '/profile') return true;
+    if (i.to === '/doc-ia') return true;
     if (i.perm === null) return false;
     return permissions.includes(i.perm as any);
   });
