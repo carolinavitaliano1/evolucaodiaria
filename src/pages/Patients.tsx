@@ -799,15 +799,31 @@ export default function Patients() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder={canSeeClinical ? 'Buscar por nome, área clínica ou diagnóstico...' : 'Buscar por nome...'}
-          className="pl-10"
-        />
+      {/* Search + Filters */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={canSeeClinical ? 'Buscar por nome, área clínica ou diagnóstico...' : 'Buscar por nome...'}
+            className="pl-10"
+          />
+        </div>
+        <Select value={packageFilter} onValueChange={setPackageFilter}>
+          <SelectTrigger className="w-full sm:w-[240px]">
+            <SelectValue placeholder="Filtrar por pacote" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os pacotes</SelectItem>
+            <SelectItem value="none">Sem pacote</SelectItem>
+            {allPackages.map(pkg => (
+              <SelectItem key={pkg.id} value={pkg.id}>
+                {pkg.name} <span className="text-muted-foreground">· {pkg.clinicName}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Stats */}
