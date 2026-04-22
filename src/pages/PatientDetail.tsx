@@ -32,6 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
 import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
+import { DeparturePatientDialog } from '@/components/patients/DeparturePatientDialog';
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { MoodSelector, DEFAULT_MOOD_OPTIONS } from '@/components/evolutions/MoodSelector';
 import { useCustomMoods } from '@/hooks/useCustomMoods';
@@ -2027,8 +2028,12 @@ export default function PatientDetail() {
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h1 className="text-2xl font-bold text-foreground">{patient.name}</h1>
-                {patient.isArchived && (
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">Arquivado</span>
+                {(patient.departureDate || patient.isArchived) && (
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning">
+                    {patient.departureDate
+                      ? `Saiu em ${format(new Date(patient.departureDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`
+                      : 'Arquivado'}
+                  </span>
                 )}
                 {(patient as any).status === 'pendente_revisao' && (
                   <span className="text-xs font-medium px-2 py-1 rounded-full bg-warning/20 text-warning flex items-center gap-1">
