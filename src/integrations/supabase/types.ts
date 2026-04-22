@@ -855,6 +855,245 @@ export type Database = {
           },
         ]
       }
+      fiscal_certificate_secrets: {
+        Row: {
+          certificate_password: string
+          created_at: string
+          fiscal_config_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certificate_password: string
+          created_at?: string
+          fiscal_config_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certificate_password?: string
+          created_at?: string
+          fiscal_config_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_certificate_secrets_fiscal_config_id_fkey"
+            columns: ["fiscal_config_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_configs: {
+        Row: {
+          aliquota_iss: number | null
+          ativo: boolean
+          certificado_path: string | null
+          clinic_id: string | null
+          cnpj: string
+          codigo_municipio_ibge: string | null
+          codigo_servico_municipal: string | null
+          created_at: string
+          endereco_bairro: string | null
+          endereco_cep: string | null
+          endereco_cidade: string | null
+          endereco_complemento: string | null
+          endereco_numero: string | null
+          endereco_rua: string | null
+          endereco_uf: string | null
+          id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          item_lista_servico: string | null
+          nome_fantasia: string | null
+          razao_social: string
+          regime_tributario: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aliquota_iss?: number | null
+          ativo?: boolean
+          certificado_path?: string | null
+          clinic_id?: string | null
+          cnpj: string
+          codigo_municipio_ibge?: string | null
+          codigo_servico_municipal?: string | null
+          created_at?: string
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_numero?: string | null
+          endereco_rua?: string | null
+          endereco_uf?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          item_lista_servico?: string | null
+          nome_fantasia?: string | null
+          razao_social: string
+          regime_tributario?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aliquota_iss?: number | null
+          ativo?: boolean
+          certificado_path?: string | null
+          clinic_id?: string | null
+          cnpj?: string
+          codigo_municipio_ibge?: string | null
+          codigo_servico_municipal?: string | null
+          created_at?: string
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_numero?: string | null
+          endereco_rua?: string | null
+          endereco_uf?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          item_lista_servico?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string
+          regime_tributario?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fiscal_invoice_counters: {
+        Row: {
+          count: number
+          month: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          count?: number
+          month: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          count?: number
+          month?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      fiscal_invoices: {
+        Row: {
+          amount: number
+          cancel_reason: string | null
+          cancelled_at: string | null
+          clinic_id: string | null
+          created_at: string
+          error_message: string | null
+          external_reference: string
+          focus_nfe_ref: string | null
+          id: string
+          invoice_number: string | null
+          invoice_series: string | null
+          iss_aliquota: number | null
+          iss_amount: number | null
+          issued_at: string | null
+          patient_id: string | null
+          payment_record_id: string | null
+          pdf_url: string | null
+          private_appointment_id: string | null
+          provider: string
+          raw_response: Json | null
+          recipient_address: string | null
+          recipient_cpf_cnpj: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          service_description: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          verification_code: string | null
+          xml_url: string | null
+        }
+        Insert: {
+          amount?: number
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          clinic_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          external_reference: string
+          focus_nfe_ref?: string | null
+          id?: string
+          invoice_number?: string | null
+          invoice_series?: string | null
+          iss_aliquota?: number | null
+          iss_amount?: number | null
+          issued_at?: string | null
+          patient_id?: string | null
+          payment_record_id?: string | null
+          pdf_url?: string | null
+          private_appointment_id?: string | null
+          provider?: string
+          raw_response?: Json | null
+          recipient_address?: string | null
+          recipient_cpf_cnpj?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          service_description?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          verification_code?: string | null
+          xml_url?: string | null
+        }
+        Update: {
+          amount?: number
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          clinic_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          external_reference?: string
+          focus_nfe_ref?: string | null
+          id?: string
+          invoice_number?: string | null
+          invoice_series?: string | null
+          iss_aliquota?: number | null
+          iss_amount?: number | null
+          issued_at?: string | null
+          patient_id?: string | null
+          payment_record_id?: string | null
+          pdf_url?: string | null
+          private_appointment_id?: string | null
+          provider?: string
+          raw_response?: Json | null
+          recipient_address?: string | null
+          recipient_cpf_cnpj?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          service_description?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verification_code?: string | null
+          xml_url?: string | null
+        }
+        Relationships: []
+      }
       google_calendar_tokens: {
         Row: {
           access_token: string
