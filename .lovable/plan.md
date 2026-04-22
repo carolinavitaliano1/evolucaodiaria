@@ -1,194 +1,108 @@
 
 
-## Plano de Implementação — NFS-e + Novo Plano "Clínica Pro"
+# Plano: Cadastro de Terapeutas (link público) + Visão de Planos no Cadastro do Paciente
 
-### Decisões confirmadas
-- ✅ Apenas **NFS-e** (Fase 1).
-- ✅ Gateway: **Focus NFe**.
-- ✅ Cobrança: **novo plano "Clínica Pro" — R$ 80/mês**, exclusivo para quem cadastra clínicas (sem Consultório nem Contratante), com NFS-e incluída.
-- ✅ Certificado A1 armazenado no backend (Storage privado + senha como secret/criptografada).
+Vou implementar **duas frentes** que conversam com o que você já tem.
 
 ---
 
-### Parte A — Novo plano "Clínica Pro"
+## Frente 1 — Link público de auto-cadastro de terapeutas
 
-**1. Stripe**
-- Criar novo produto "Clínica Pro" — R$ 80/mês recorrente.
-- Preciso saber: **mantém os planos atuais** (Pro/Premium) ou esse plano substitui algum?
-- Adicionar `STRIPE_CLINICA_PRO_PRICE_ID` em `src/lib/plans.ts`.
+Como o `/lista-espera/:clinicId` funciona pra pacientes, vou criar o equivalente para terapeutas se candidatarem à equipe.
 
-**2. Edge functions**
-- `create-checkout`: aceitar novo `plan_id = 'clinica_pro'`.
-- `check-subscription`: detectar e retornar `subscription_tier = 'clinica_pro'`.
+### Como vai funcionar
+1. Na aba **Equipe** da clínica, novo card **"Link de candidatura"** com:
+   - URL pública: `https://evolucaodiaria.app.br/candidatura-equipe/:organizationId`
+   - Botões: **Copiar link**, **Compartilhar via WhatsApp**, **QR Code**
+   - Switch para ativar/desativar o link
+2. Página pública `/candidatura-equipe/:organizationId` — sem login, mostra:
+   - Nome da organização/clínica
+   - Formulário: Nome completo, E-mail, WhatsApp, Especialidade (CBO), Registro profissional, Mensagem opcional
+3. Após envio, vira uma **candidatura pendente** que aparece em nova seção **"Candidaturas pendentes"** dentro do dashboard de Equipe.
+4. Você (admin/owner) tem 2 botões em cada candidatura:
+   - **Aprovar** → dispara o fluxo atual de `invite-member` (cria conta + envia credenciais)
+   - **Recusar** → marca como rejeitada
+5. Notificação interna via `internal_notifications` quando chega candidatura nova.
 
-**3. Gating no app**
-- Em `useSubscription` / `useFeatureAccess`: novo tier `clinica_pro`.
-- Em `Clinics.tsx` (criação de unidade): se tier = `clinica_pro`, esconder opções "Consultório Próprio" e "Contratante" — só aparece "Clínica".
-- NFS-e: liberada **apenas** para tier `clinica_pro` (e talvez Premium se quiser — me confirme).
-- Em `Pricing.tsx`: adicionar card do novo plano com destaque "Inclui emissão de NFS-e ilimitada".
-
-**4. Limite de notas**
-- Definir limite mensal por usuário (ex: 50 notas/mês inclusas) para evitar abuso. Excedente → bloquear ou cobrar à parte? Vou assumir **100 notas/mês inclusas, depois bloqueia** — me corrija se quiser outro valor.
-
----
-
-### Parte B — Configuração fiscal do usuário
-
-**1. Nova tabela `fiscal_configs`**
+### Tabela nova
 ```
-id, user_id, clinic_id (opcional, se config por clínica),
-cnpj, razao_social, nome_fantasia,
-inscricao_municipal, inscricao_estadual,
-regime_tributario ('simples_nacional' | 'lucro_presumido' | 'lucro_real' | 'mei'),
-codigo_servico_municipal, item_lista_servico,
-aliquota_iss (numeric),
-endereco (rua, numero, complemento, bairro, cidade, uf, cep),
-focus_nfe_token (criptografado), -- token de API por usuário OU global do app
-certificado_path (storage path do .pfx),
-certificado_senha_secret_name, -- referência ao secret no vault
-ativo (bool),
-created_at, updated_at
+team_applications
+- id, organization_id, name, email, whatsapp, specialty,
+  professional_id, message, status (pending/approved/rejected),
+  created_at, reviewed_at, reviewed_by_user_id
 ```
-RLS: usuário só vê/edita o próprio.
+RLS: anônimo só pode INSERT; SELECT/UPDATE só para owner/admin da organização.
 
-**2. Bucket `fiscal-certificates` (privado)**
-- Path: `{user_id}/cert.pfx`
-- RLS: apenas owner pode upload/download via signed URL.
-
-**3. UI — nova aba "Configurações Fiscais" em `Profile.tsx`**
-- Form completo com validação (CNPJ válido, CEP, etc.).
-- Upload do certificado A1.
-- Campo senha do certificado (enviado para edge function que armazena via Vault Supabase ou tabela criptografada).
-- Botão "Testar conexão" → edge function `test-fiscal-config` que valida com Focus NFe.
+### Toggle do link
+Coluna `applications_link_enabled boolean` na tabela `organizations` (default `true`).
 
 ---
 
-### Parte C — Tabelas fiscais
+## Frente 2 — "Planos de Tratamento" e "Pacotes" no cadastro do paciente
 
-**1. `fiscal_invoices`**
-```
-id, user_id, clinic_id, patient_id,
-payment_record_id (FK opcional para patient_payment_records),
-private_appointment_id (FK opcional, se vier de Serviço),
-provider ('focus_nfe'),
-external_reference (UUID nosso enviado ao gateway, idempotência),
-focus_nfe_ref (ref retornada pelo gateway),
-invoice_number text, invoice_series text,
-status ('processing' | 'issued' | 'cancelled' | 'error'),
-verification_code text,
-pdf_url text, xml_url text,
-amount numeric, iss_amount numeric, iss_aliquota numeric,
-service_description text,
-recipient_name, recipient_cpf_cnpj, recipient_email, recipient_address,
-issued_at timestamptz, cancelled_at timestamptz,
-cancel_reason text, error_message text,
-created_at, updated_at
-```
-RLS: usuário gerencia as próprias.
+Aqui você misturou duas coisas que o sistema **já tem separadas**, então vou clarificar e melhorar:
 
-**2. `fiscal_invoice_counters`** (controle de limite mensal por plano)
-```
-user_id, year, month, count
-```
-PK: (user_id, year, month).
+### O que já existe hoje
+- **Planos de tratamento clínicos** (`session_plans`) → na aba **Processo Terapêutico** do paciente. Já permite título, objetivos, atividades, evolução, histórico.
+- **Pacotes da clínica** (`clinic_packages`) → cadastrados em **Clínicas → Pacotes**. Tipos: Mensal, Por Sessão, Personalizado. Cada paciente tem `package_id` apontando para um pacote.
+- **Remuneração do paciente** (`payment_value`/`payment_type`) → editado no `EditPatientDialog`.
 
----
+### O que vou melhorar
 
-### Parte D — Edge Functions
+#### A) Aba "Plano & Financeiro" do paciente (nova consolidação visual)
+Hoje a remuneração está escondida no botão "Editar paciente". Vou criar uma seção destacada **na aba Financeiro do paciente** com 3 blocos lado a lado:
 
-**1. `emit-nfse`** (verify_jwt = true)
-- Input: `{ payment_record_id?, private_appointment_id?, override?: { amount, description, recipient } }`
-- Valida tier = `clinica_pro` (ou Premium, conforme decisão).
-- Verifica limite mensal em `fiscal_invoice_counters`.
-- Carrega `fiscal_configs` do usuário.
-- Monta payload Focus NFe (endpoint `/v2/nfse?ref={uuid}`).
-- POST com Bearer token + corpo JSON.
-- Salva `fiscal_invoices` com `status = 'processing'`.
-- Incrementa contador.
-- Retorna `{ id, status, ref }`.
+| Bloco | Conteúdo |
+|---|---|
+| **Plano de pagamento** | Tipo (Sessão/Fixo Mensal), Valor, Dia de vencimento — editável inline |
+| **Pacote contratado** | Dropdown dos `clinic_packages` ativos da clínica + "Sem pacote". Mostra preço, sessões incluídas, progresso do mês |
+| **Plano de tratamento ativo** | Link para o `session_plan` ativo (ou "Criar plano" se não houver) — abre a aba Processo Terapêutico |
 
-**2. `cancel-nfse`** (verify_jwt = true)
-- Input: `{ invoice_id, reason }`.
-- DELETE `https://api.focusnfe.com.br/v2/nfse/{ref}?justificativa=...`.
-- Atualiza `fiscal_invoices.status = 'cancelled'`.
+Permissão: respeita `permissions.patients.financial` (admin/responsável financeiro).
 
-**3. `nfse-webhook`** (verify_jwt = false, público)
-- Recebe POST do Focus NFe quando emissão na prefeitura termina.
-- Valida origem por `secret` no path: `/nfse-webhook/{webhook_secret}`.
-- Atualiza `fiscal_invoices` com `invoice_number`, `pdf_url`, `xml_url`, `status = 'issued'` ou `'error'`.
+#### B) Tela "Pacotes" da clínica — visão por pacote
+Em **Clínicas → Pacotes**, cada card de pacote ganha:
+- Contador "**X pacientes vinculados**"
+- Botão **"Ver pacientes"** → modal com lista (nome, status, data de início, ações: trocar pacote / remover)
+- Botão **"Vincular pacientes"** → multi-select de pacientes da clínica sem pacote ou com outro pacote
 
-**4. `test-fiscal-config`** (verify_jwt = true)
-- Faz GET em endpoint sandbox do Focus para validar token + certificado.
+Isso responde diretamente ao seu "cadastro dos planos que atende e quais pacientes estão cadastrados em cada plano".
 
-**5. `upload-fiscal-certificate`** (verify_jwt = true)
-- Recebe `{ pfx_base64, password }`.
-- Salva .pfx em Storage `fiscal-certificates/{user_id}/cert.pfx`.
-- Salva senha em tabela `fiscal_secrets` criptografada via `pgsodium` (ou em coluna text por enquanto, com nota de melhoria futura).
-- Atualiza `fiscal_configs.certificado_path`.
-
-**Secrets necessários (vou pedir depois da migration):**
-- `FOCUS_NFE_TOKEN` — token global do app (ou orientar usuário a colocar o próprio).
-- `FOCUS_NFE_BASE_URL` — `https://api.focusnfe.com.br` (prod) / `https://homologacao.focusnfe.com.br` (sandbox).
-- `NFSE_WEBHOOK_SECRET` — random string para validar webhook.
+#### C) Filtro por pacote na lista de pacientes
+Em **Pacientes**, novo filtro "Pacote" para listar quem está em cada plano.
 
 ---
 
-### Parte E — UI fiscal
+## Arquivos a criar/editar
 
-**1. `EditableReceiptModal` (existente)**
-- Adicionar botão **"📄 Emitir NFS-e"** ao lado de PDF/Word.
-- Visível só se: tier = `clinica_pro` + `fiscal_configs` completo + dentro do limite mensal.
-- Estados: loading (3s), sucesso ("NFS-e em processamento — você será notificado"), erro.
+### Criar
+- `supabase/migrations/...` — nova tabela `team_applications` + coluna `applications_link_enabled`
+- `src/pages/TeamApplicationPublic.tsx` — formulário público
+- `src/components/clinics/TeamApplicationsPanel.tsx` — painel de candidaturas pendentes
+- `src/components/clinics/TeamPublicLinkCard.tsx` — card de gerar/copiar link
+- `src/components/patients/PatientPlanCard.tsx` — card consolidado plano/pacote/tratamento
+- `src/components/clinics/PackagePatientsModal.tsx` — modal "ver pacientes do pacote"
 
-**2. Novo componente `FiscalInvoiceBadge`**
-- Mostra status, número, link PDF.
-- Usado em `ClinicFinancial`, `PatientServicesSection`, lista de pagamentos.
-
-**3. Nova página `/financial/fiscal-invoices`**
-- Listagem de notas com filtros (período, status, paciente, clínica).
-- Ações: visualizar PDF, baixar XML, cancelar (modal com justificativa).
-- Card de uso: "Notas emitidas este mês: 23 / 100".
-
-**4. `Pricing.tsx`**
-- Adicionar card "Clínica Pro" com badge "Inclui NFS-e".
-- Texto explicativo: "Para clínicas que precisam emitir nota fiscal eletrônica."
-
-**5. `Clinics.tsx` / criação de unidade**
-- Se tier = `clinica_pro`: select de tipo só mostra "Clínica" (oculta Consultório/Contratante).
+### Editar
+- `src/App.tsx` — rota `/candidatura-equipe/:organizationId`
+- `src/components/clinics/ClinicTeam.tsx` — incluir `TeamPublicLinkCard` + `TeamApplicationsPanel`
+- `src/pages/PatientDetail.tsx` (aba Financeiro) — incluir `PatientPlanCard`
+- `src/pages/Clinics.tsx` (aba Pacotes / `ClinicPackages`) — contador + modal de pacientes
+- `src/pages/Patients.tsx` — filtro por pacote
+- `supabase/functions/invite-member/index.ts` — aceitar `application_id` opcional pra marcar candidatura como aprovada
 
 ---
 
-### Parte F — Tipos e helpers
-
-- `src/types/index.ts`: tipos `FiscalConfig`, `FiscalInvoice`, `FiscalInvoiceStatus`.
-- `src/lib/plans.ts`: adicionar `clinica_pro` com features `['nfse', 'clinics_only']`.
-- `src/hooks/useFiscalConfig.ts`: carrega config fiscal do usuário.
-- `src/hooks/useFiscalInvoices.ts`: lista/filtra notas.
+## RLS resumida da nova tabela
+- `INSERT` permitido para `anon` (formulário público)
+- `SELECT/UPDATE/DELETE` só para `is_org_owner(organization_id, auth.uid())` ou admin
 
 ---
 
-### Ordem de execução
+## Pergunta antes de começar
+**Auto-aprovação:** quando alguém se candidata pelo link público, você quer:
+- (a) sempre revisar manualmente antes do convite ir, **ou**
+- (b) já enviar o convite automaticamente e só te notificar?
 
-1. Migration: `fiscal_configs`, `fiscal_invoices`, `fiscal_invoice_counters` + bucket `fiscal-certificates` + RLS.
-2. Pedir secrets: `FOCUS_NFE_TOKEN`, `NFSE_WEBHOOK_SECRET`.
-3. Edge functions: `emit-nfse`, `cancel-nfse`, `nfse-webhook`, `test-fiscal-config`, `upload-fiscal-certificate`.
-4. Atualizar `create-checkout` + `check-subscription` para `clinica_pro`.
-5. Atualizar `src/lib/plans.ts` + `useFeatureAccess` + `Pricing.tsx`.
-6. Aba "Configurações Fiscais" em `Profile.tsx`.
-7. Botão "Emitir NFS-e" no `EditableReceiptModal` + `FiscalInvoiceBadge`.
-8. Página `/financial/fiscal-invoices`.
-9. Gating de tipo de clínica em `Clinics.tsx`.
-10. Stripe: criar produto/preço Clínica Pro.
-
----
-
-### Confirmações finais antes de começar
-
-Preciso de **3 respostas curtas** porque mudam estrutura:
-
-1. **Planos atuais:** o "Clínica Pro" é um plano **adicional** (mantém Pro/Premium existentes) ou **substitui** o Premium?
-2. **NFS-e em outros planos:** Premium também tem NFS-e ou é exclusiva do Clínica Pro?
-3. **Limite mensal:** 100 notas/mês inclusas no Clínica Pro está OK? (acima disso bloqueia até virar o mês)
-
-Responda essas 3 e eu começo pela migration imediatamente.
+Minha recomendação: **(a) revisar manualmente** — evita spam e candidatos não-qualificados criando conta no app.
 
