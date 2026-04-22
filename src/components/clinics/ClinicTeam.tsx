@@ -752,6 +752,14 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         </div>
       )}
 
+      {/* Public application link + pending applications */}
+      {canManage && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TeamPublicLinkCard organizationId={organization.id} isOwnerOrAdmin={canManage} />
+          <TeamApplicationsPanel organizationId={organization.id} canManage={canManage} />
+        </div>
+      )}
+
       {/* Header + Stats + Invite button */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
