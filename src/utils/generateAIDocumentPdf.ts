@@ -114,31 +114,31 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
       .rich-body img { max-width: 100%; height: auto; }
       .rich-body ul, .rich-body ol { margin: 8px 0 12px 24px; }
     </style>
-    <div style="text-align:center; border-bottom: 1px solid #cccccc; padding-bottom: 16px; margin-bottom: 28px;">
-      ${logoUrl ? `<img src="${logoUrl}" crossorigin="anonymous" style="max-height:90px; max-width: 280px; object-fit: contain; margin: 0 auto 10px; display:block;" />` : ''}
-      ${headerText ? `<div style="font-size:12px; line-height:1.4; color:#333; white-space: pre-line;">${escape(headerText)}</div>` : ''}
+    <div style="text-align:center; border-bottom: 1px solid #cccccc; padding-bottom: 12px; margin-bottom: 24px;">
+      ${logoUrl ? `<img src="${logoUrl}" crossorigin="anonymous" style="max-height:80px; max-width: 280px; object-fit: contain; margin: 0 auto 8px; display:block;" />` : ''}
+      ${headerText ? `<div style="font-size:10px; line-height:1.4; color:#333; white-space: pre-line;">${escape(headerText)}</div>` : ''}
     </div>
 
-    <h1 style="text-align:center; font-size:18px; font-weight:bold; text-transform: uppercase; margin: 0 0 28px 0; letter-spacing: 1px;">
+    <h1 style="text-align:center; font-size:16px; font-weight:bold; text-transform: uppercase; margin: 0 0 24px 0; letter-spacing: 1px; font-family: Georgia, serif;">
       ${escape(title)}
     </h1>
 
     ${bodyHtml}
 
-    ${cityLine ? `<p style="margin-top: 40px; text-align:center;">${escape(cityLine)}</p>` : ''}
+    ${cityLine ? `<p style="margin-top: 32px; text-align:center; font-size:12px;">${escape(cityLine)}</p>` : ''}
 
-    <div style="margin-top: 60px; text-align:center;">
+    <div style="margin-top: 48px; text-align:center;">
       ${stampHtml}
-      <div style="border-top: 1px solid #000; width: 320px; margin: 0 auto; padding-top: 6px; position: relative; z-index: 1;">
-        <div style="font-weight:600;">${escape(professionalName || '')}</div>
-        ${professionalRegistration ? `<div style="font-size:12px; color:#444;">${escape(professionalRegistration)}</div>` : ''}
+      <div style="border-top: 1px solid #000; width: 280px; margin: 0 auto; padding-top: 6px; position: relative; z-index: 1;">
+        <div style="font-weight:600; font-size:12px;">${escape(professionalName || '')}</div>
+        ${professionalRegistration ? `<div style="font-size:11px; color:#444;">${escape(professionalRegistration)}</div>` : ''}
       </div>
     </div>
 
     ${extraSigsHtml}
 
     ${footerText ? `
-      <div style="margin-top: 60px; border-top: 1px solid #cccccc; padding-top: 10px; text-align:center; font-size:11px; color:#555; white-space: pre-line; line-height:1.4;">
+      <div style="margin-top: 48px; border-top: 1px solid #cccccc; padding-top: 8px; text-align:center; font-size:9px; color:#555; white-space: pre-line; line-height:1.4;">
         ${escape(footerText)}
       </div>
     ` : ''}
