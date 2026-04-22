@@ -6,11 +6,11 @@ import { Check, X, Loader2, Sparkles, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
-import { BASIC_PRICE_ID, PRO_PRICE_ID } from '@/lib/plans';
+import { BASIC_PRICE_ID, PRO_PRICE_ID, CLINICA_PRO_PRICE_ID } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
 interface PlanDef {
-  key: 'basic' | 'pro';
+  key: 'basic' | 'pro' | 'clinica_pro';
   name: string;
   price: string;
   description: string;
@@ -48,18 +48,36 @@ const PLANS: PlanDef[] = [
       '30 dias grátis para testar',
     ],
   },
+  {
+    key: 'clinica_pro',
+    name: 'Clínica Pro',
+    price: 'R$ 80,00',
+    description: 'Para donos de clínica com equipe',
+    priceId: CLINICA_PRO_PRICE_ID,
+    features: [
+      'Tudo do plano Pro',
+      'Cadastro de Clínicas (multi-unidade com equipe)',
+      'Equipe ilimitada de profissionais',
+      'Permissões granulares por colaborador',
+      'Dashboard financeiro de equipe',
+      'Relatórios de remuneração',
+      'Painel de conformidade da equipe',
+      '30 dias grátis para testar',
+    ],
+  },
 ];
 
-const COMPARISON: { label: string; basic: boolean; pro: boolean }[] = [
-  { label: 'Clínicas, pacientes e agenda', basic: true, pro: true },
-  { label: 'Evoluções e templates', basic: true, pro: true },
-  { label: 'Controle financeiro', basic: true, pro: true },
-  { label: 'WhatsApp, anexos e notas', basic: true, pro: true },
-  { label: 'Doc IA — geração de documentos', basic: false, pro: true },
-  { label: 'Melhorar Evolução com IA', basic: false, pro: true },
-  { label: 'Feedbacks IA para responsáveis', basic: false, pro: true },
-  { label: 'Relatórios IA', basic: false, pro: true },
-  { label: 'Portal do Paciente', basic: false, pro: true },
+const COMPARISON: { label: string; basic: boolean; pro: boolean; clinicaPro: boolean }[] = [
+  { label: 'Pacientes, agenda e evoluções', basic: true, pro: true, clinicaPro: true },
+  { label: 'Controle financeiro', basic: true, pro: true, clinicaPro: true },
+  { label: 'WhatsApp, anexos e notas', basic: true, pro: true, clinicaPro: true },
+  { label: 'Consultório / Contratante (autônomo)', basic: true, pro: true, clinicaPro: false },
+  { label: 'Doc IA, Melhorar Evolução, Feedbacks IA', basic: false, pro: true, clinicaPro: true },
+  { label: 'Portal do Paciente', basic: false, pro: true, clinicaPro: true },
+  { label: 'Cadastro de Clínicas (multi-unidade)', basic: false, pro: false, clinicaPro: true },
+  { label: 'Equipe ilimitada de profissionais', basic: false, pro: false, clinicaPro: true },
+  { label: 'Dashboard financeiro de equipe', basic: false, pro: false, clinicaPro: true },
+  { label: 'Painel de conformidade da equipe', basic: false, pro: false, clinicaPro: true },
 ];
 
 export default function Pricing() {
@@ -82,11 +100,13 @@ export default function Pricing() {
     }
   }
 
-  function buttonLabelFor(planKey: 'basic' | 'pro') {
+  function buttonLabelFor(planKey: 'basic' | 'pro' | 'clinica_pro') {
     if (!subscribed) return 'Começar Teste Grátis';
     if (tier === planKey) return 'Plano atual';
+    if (planKey === 'clinica_pro') return 'Fazer upgrade para Clínica Pro';
     if (tier === 'basic' && planKey === 'pro') return 'Fazer upgrade para Pro';
     if (tier === 'pro' && planKey === 'basic') return 'Mudar para Básico';
+    if (tier === 'clinica_pro') return planKey === 'pro' ? 'Mudar para Pro' : 'Mudar para Básico';
     if (tier === 'legacy') return planKey === 'pro' ? 'Migrar para Pro' : 'Mudar para Básico';
     return 'Assinar';
   }
@@ -116,7 +136,7 @@ export default function Pricing() {
       </div>
 
       {/* Plans */}
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {PLANS.map((plan) => {
           const isCurrent = subscribed && tier === plan.key;
           return (
