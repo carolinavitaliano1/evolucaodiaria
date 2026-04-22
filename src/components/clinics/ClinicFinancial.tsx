@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApp } from '@/contexts/AppContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { TeamFinancialReport } from './TeamFinancialReport';
-import { format, subMonths, addMonths, isSameDay } from 'date-fns';
+import { format, subMonths, addMonths, isSameDay, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +20,7 @@ import { resolveTemplate } from '@/hooks/useMessageTemplates';
 import jsPDF from 'jspdf';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
+import { isPatientActiveOn } from '@/utils/dateHelpers';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -255,7 +256,16 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const selectedYear = selectedDate.getFullYear();
   const monthName = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
 
-  const clinicPatients = patients.filter(p => p.clinicId === clinicId);
+  const periodStartDate = startOfMonth(new Date(selectedYear, selectedMonth, 1));
+  const clinicPatients = patients.filter(p => {
+    if (p.clinicId !== clinicId) return false;
+    const hasMonthlyActivity = evolutions.some(e => {
+      if (e.patientId !== p.id) return false;
+      const date = new Date(e.date + 'T12:00:00');
+      return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+    });
+    return hasMonthlyActivity || isPatientActiveOn(p, periodStartDate);
+  });
 
   const monthlyEvolutions = evolutions.filter(e => {
     if (!clinicPatients.some(p => p.id === e.patientId)) return false;
