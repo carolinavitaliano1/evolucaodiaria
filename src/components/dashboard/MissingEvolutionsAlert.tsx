@@ -31,9 +31,10 @@ function dayLabel(dateStr: string): string {
 export function MissingEvolutionsAlert() {
   const { patients, appointments } = useApp();
   const { user } = useAuth();
-  const { isDateBlocked } = useCalendarBlocks();
+  const { isDateBlocked, loading: blocksLoading } = useCalendarBlocks();
   const navigate = useNavigate();
   const [missing, setMissing] = useState<PendingEntry[]>([]);
+  const [computed, setComputed] = useState(false);
 
   const toMin = (t: string) => {
     const [h, m] = t.split(':').map(Number);
@@ -42,9 +43,12 @@ export function MissingEvolutionsAlert() {
 
   useEffect(() => {
     if (!user || patients.length === 0) return;
+    // Wait for calendar blocks to load before computing — otherwise holiday
+    // dates flash as "pending" and disappear once blocks arrive.
+    if (blocksLoading) return;
     computeMissing();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, patients, appointments, isDateBlocked]);
+  }, [user, patients, appointments, isDateBlocked, blocksLoading]);
 
   async function computeMissing() {
     const now = new Date();
@@ -130,9 +134,10 @@ export function MissingEvolutionsAlert() {
     // Sort: today first, then by date desc
     result.sort((a, b) => b.date.localeCompare(a.date));
     setMissing(result);
+    setComputed(true);
   }
 
-  if (missing.length === 0) return null;
+  if (!computed || missing.length === 0) return null;
 
   const todayMissing = missing.filter(s => s.date === toLocalDateString(new Date()));
   const pastMissing = missing.filter(s => s.date !== toLocalDateString(new Date()));
