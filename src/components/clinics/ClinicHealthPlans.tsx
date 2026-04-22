@@ -12,6 +12,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ShieldCheck, Plus, Pencil, Trash2, Users, Phone, FileBadge2, Search, X, UserPlus, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import jsPDF from 'jspdf';
+import { Download, FileText } from 'lucide-react';
 
 interface Props { clinicId: string; }
 
