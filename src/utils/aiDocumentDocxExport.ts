@@ -49,7 +49,7 @@ type RunStyleState = {
 };
 
 type ParagraphOptions = {
-  alignment?: AlignmentType;
+  alignment?: (typeof AlignmentType)[keyof typeof AlignmentType];
   spacingAfter?: number;
   spacingBefore?: number;
   firstLine?: number;
@@ -68,7 +68,9 @@ function pxToHalfPoints(px?: number | null) {
   return Math.max(16, Math.round(safePx * 1.5));
 }
 
-function alignmentFromValue(value?: string | null): AlignmentType | undefined {
+function alignmentFromValue(
+  value?: string | null,
+): (typeof AlignmentType)[keyof typeof AlignmentType] | undefined {
   switch ((value || '').trim().toLowerCase()) {
     case 'left':
       return AlignmentType.LEFT;
@@ -83,7 +85,9 @@ function alignmentFromValue(value?: string | null): AlignmentType | undefined {
   }
 }
 
-function extractAlignment(element?: Element | null): AlignmentType | undefined {
+function extractAlignment(
+  element?: Element | null,
+): (typeof AlignmentType)[keyof typeof AlignmentType] | undefined {
   if (!element) return undefined;
   return alignmentFromValue(
     extractStyleProp(element.getAttribute('style'), 'text-align') || element.getAttribute('align'),
