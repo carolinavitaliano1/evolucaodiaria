@@ -2067,10 +2067,6 @@ export default function ClinicDetail() {
             pkg={viewingPackagePatients}
           />
         </TabsContent>
-              </div>
-            )}
-          </div>
-        </TabsContent>
 
         {/* Financial Tab */}
         <TabsContent value="financial">
