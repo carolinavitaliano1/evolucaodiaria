@@ -2058,6 +2058,25 @@ export default function ClinicDetail() {
                         {pkg.sessionLimit} sessões · {(pkg.price / pkg.sessionLimit).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/sessão
                       </p>
                     )}
+                    {(() => {
+                      const count = patients.filter(p => p.packageId === pkg.id && !p.isArchived).length;
+                      return (
+                        <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Users className="w-3.5 h-3.5" />
+                            <span><strong className="text-foreground">{count}</strong> paciente{count === 1 ? '' : 's'}</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1 text-xs"
+                            onClick={() => setViewingPackagePatients(pkg)}
+                          >
+                            <Users className="w-3 h-3" /> Ver pacientes
+                          </Button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
