@@ -152,6 +152,29 @@ export default function TeamApplicationPublic() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
+              <Label className="text-xs">Data de nascimento</Label>
+              <Input
+                type="date"
+                value={birthdate}
+                onChange={e => setBirthdate(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Função / Cargo desejado</Label>
+              <Input
+                value={role}
+                onChange={e => setRole(e.target.value)}
+                placeholder="Ex: Terapeuta, Estagiário, Recepção"
+                className="h-9 text-sm"
+                maxLength={80}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
               <Label className="text-xs">Especialidade</Label>
               <Input value={specialty} onChange={e => setSpecialty(e.target.value)} placeholder="Ex: Fonoaudiologia" className="h-9 text-sm" />
             </div>
