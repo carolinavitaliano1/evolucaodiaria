@@ -17,6 +17,9 @@ import {
   UserCircle, FileText, AlertCircle, DollarSign,
 } from 'lucide-react';
 import { TeamFinancialDashboard } from '@/components/clinics/TeamFinancialDashboard';
+import { TeamTasksTab } from '@/components/team/TeamTasksTab';
+import { TeamIndicatorsTab } from '@/components/team/TeamIndicatorsTab';
+import { ListTodo, TrendingUp } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
@@ -43,7 +46,7 @@ export default function Team() {
   const navigate = useNavigate();
   const { isOwner, loading: permLoading } = useOrgPermissions();
 
-  const [activeTab, setActiveTab] = useState<'team' | 'compliance' | 'activity' | 'financial'>('team');
+  const [activeTab, setActiveTab] = useState<'team' | 'compliance' | 'activity' | 'financial' | 'tasks' | 'indicators'>('team');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [complianceBadge, setComplianceBadge] = useState(0);
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
