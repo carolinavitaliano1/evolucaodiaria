@@ -35,6 +35,8 @@ import {
   PRESET_ROLES,
 } from '@/hooks/useOrgPermissions';
 import { PermissionEditor } from '@/components/clinics/PermissionEditor';
+import { TeamPublicLinkCard } from '@/components/clinics/TeamPublicLinkCard';
+import { TeamApplicationsPanel } from '@/components/clinics/TeamApplicationsPanel';
 import { cn } from '@/lib/utils';
 
 interface OrganizationMember {
