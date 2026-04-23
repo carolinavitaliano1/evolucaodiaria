@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link2, Copy, Send, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Copy, Send, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -60,7 +60,7 @@ export function TeamPublicLinkCard({ organizationId, isOwnerOrAdmin }: TeamPubli
   const handleWhatsApp = () => {
     const message = [
       'Olá!',
-      'Estamos com vagas abertas na nossa equipe terapêutica. Se você tem interesse, candidate-se pelo link abaixo:',
+      'Para fazer parte da nossa equipe, preencha seu cadastro de funcionário no link abaixo. Após a aprovação, você receberá acesso ao portal:',
       link,
     ].join('\n\n');
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
@@ -73,12 +73,12 @@ export function TeamPublicLinkCard({ organizationId, isOwnerOrAdmin }: TeamPubli
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Link2 className="w-4 h-4 text-primary" />
+            <UserPlus className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm text-foreground">Link de candidatura</h3>
+            <h3 className="font-semibold text-sm text-foreground">Link de cadastro de funcionário</h3>
             <p className="text-[11px] text-muted-foreground leading-tight">
-              Compartilhe para que terapeutas se candidatem à sua equipe
+              Compartilhe para que profissionais se cadastrem na equipe e recebam acesso ao portal
             </p>
           </div>
         </div>
@@ -108,12 +108,12 @@ export function TeamPublicLinkCard({ organizationId, isOwnerOrAdmin }: TeamPubli
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-success">
             <CheckCircle2 className="w-3 h-3" />
-            Candidaturas serão revisadas manualmente antes do convite.
+            Cadastros serão revisados manualmente antes do envio do convite.
           </div>
         </>
       ) : (
         <p className="text-xs text-muted-foreground italic">
-          Link desativado. Ative para receber novas candidaturas.
+          Link desativado. Ative para receber novos cadastros de funcionários.
         </p>
       )}
     </div>
