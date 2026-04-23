@@ -4,9 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, CheckCircle2, Mail } from 'lucide-react';
+import { Loader2, UserPlus, CheckCircle2, Mail, X, Plus } from 'lucide-react';
 
 export default function TeamApplicationPublic() {
   const { organizationId } = useParams<{ organizationId: string }>();
@@ -21,9 +20,18 @@ export default function TeamApplicationPublic() {
   const [whatsapp, setWhatsapp] = useState('');
   const [role, setRole] = useState('');
   const [birthdate, setBirthdate] = useState('');
-  const [specialty, setSpecialty] = useState('');
+  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [specialtyInput, setSpecialtyInput] = useState('');
   const [professionalId, setProfessionalId] = useState('');
-  const [message, setMessage] = useState('');
+
+  const addSpecialty = () => {
+    const v = specialtyInput.trim();
+    if (!v) return;
+    if (specialties.includes(v)) { setSpecialtyInput(''); return; }
+    setSpecialties([...specialties, v]);
+    setSpecialtyInput('');
+  };
+  const removeSpecialty = (s: string) => setSpecialties(specialties.filter(x => x !== s));
 
   useEffect(() => {
     if (!organizationId) return;
@@ -52,9 +60,9 @@ export default function TeamApplicationPublic() {
         whatsapp: whatsapp.trim() || null,
         role: role.trim() || null,
         birthdate: birthdate || null,
-        specialty: specialty.trim() || null,
+        specialty: specialties[0] || null,
+        specialties: specialties.length > 0 ? specialties : null,
         professional_id: professionalId.trim() || null,
-        message: message.trim() || null,
       } as any);
       if (error) {
         console.error('[team-application] insert error', error);
