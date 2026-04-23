@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Loader2, UserCheck, UserX, Briefcase, Mail, Phone, MessageSquare, ChevronDown, ChevronUp, Inbox, Cake, IdCard, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { DEFAULT_THERAPIST_PERMISSIONS } from '@/hooks/useOrgPermissions';
 
 interface TeamApplication {
   id: string;
@@ -72,6 +73,7 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
           email: app.email,
           role: 'professional',
           role_label: app.role || (app.specialties && app.specialties[0]) || app.specialty || null,
+          permissions: DEFAULT_THERAPIST_PERMISSIONS,
         },
       });
       if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
