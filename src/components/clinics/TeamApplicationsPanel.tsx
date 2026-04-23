@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, UserCheck, UserX, Briefcase, Mail, Phone, MessageSquare, ChevronDown, ChevronUp, Inbox, Cake, IdCard } from 'lucide-react';
+import { Loader2, UserCheck, UserX, Briefcase, Mail, Phone, MessageSquare, ChevronDown, ChevronUp, Inbox, Cake, IdCard, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -87,7 +87,7 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
       toast.success(`Convite enviado para ${app.email}`);
       load();
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao aprovar candidatura');
+      toast.error(err.message || 'Erro ao aprovar cadastro');
     } finally {
       setActingId(null);
     }
@@ -104,9 +104,9 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
       } as any)
       .eq('id', app.id);
     setActingId(null);
-    if (error) toast.error('Erro ao recusar candidatura');
+    if (error) toast.error('Erro ao recusar cadastro');
     else {
-      toast.success('Candidatura recusada');
+      toast.success('Cadastro recusado');
       load();
     }
   };
@@ -121,7 +121,25 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
   };
 
   if (loading) return null;
-  if (applications.length === 0) return null;
+
+  if (applications.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Inbox className="w-4 h-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm text-foreground">Cadastros de funcionários pendentes</h3>
+          </div>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-[11px]" onClick={load}>
+            <RefreshCw className="w-3 h-3" /> Atualizar
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Nenhum cadastro pendente. Quando alguém preencher o link de cadastro de funcionário, aparecerá aqui para revisão.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-warning/30 bg-warning/5 overflow-hidden">
@@ -132,7 +150,7 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
         <div className="flex items-center gap-2">
           <Inbox className="w-4 h-4 text-warning" />
           <h3 className="font-semibold text-sm text-foreground">
-            Candidaturas pendentes
+            Cadastros de funcionários pendentes
           </h3>
           <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px] h-5">
             {applications.length}
