@@ -19,6 +19,7 @@ export default function Auth() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [pendingInvite, setPendingInvite] = useState<{ memberId: string; orgId: string } | null>(null);
   const inviteAcceptedRef = useRef(false);
+  const [checkingInvite, setCheckingInvite] = useState(true);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -47,7 +48,10 @@ export default function Auth() {
   // call accept-invite. Also detects pending invites by email for users
   // who log in without the URL params (e.g. returning via normal login).
   useEffect(() => {
-    if (!user || inviteAcceptedRef.current) return;
+    if (!user || inviteAcceptedRef.current) {
+      if (!user) setCheckingInvite(false);
+      return;
+    }
 
     async function tryAcceptInvite(memberId?: string) {
       inviteAcceptedRef.current = true;
@@ -61,7 +65,11 @@ export default function Auth() {
           toast.success(`🎉 Bem-vindo à equipe ${data.organization?.name}!`, {
             description: `Você entrou como ${data.role === 'admin' ? 'Administrador' : 'Profissional'}.`,
           });
+          // Force reload so useOrgPermissions picks up the now-active membership
+          window.location.replace('/dashboard');
+          return;
         }
+        setCheckingInvite(false);
         return;
       }
 
@@ -72,7 +80,7 @@ export default function Auth() {
         .eq('email', user!.email ?? '')
         .eq('status', 'pending')
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (pending) {
         const { data, error } = await supabase.functions.invoke('accept-invite', {
@@ -82,8 +90,11 @@ export default function Auth() {
           toast.success(`🎉 Bem-vindo à equipe ${data.organization?.name}!`, {
             description: `Você entrou como ${data.role === 'admin' ? 'Administrador' : 'Profissional'}.`,
           });
+          window.location.replace('/dashboard');
+          return;
         }
       }
+      setCheckingInvite(false);
     }
 
     if (pendingInvite) {
@@ -105,7 +116,7 @@ export default function Auth() {
     window.location.hash.includes('type=recovery') ||
     new URLSearchParams(window.location.search).get('reset') === 'true';
 
-  if (!loading && user && !isRecoveryFlow) {
+  if (!loading && user && !isRecoveryFlow && !checkingInvite) {
     return <Navigate to="/dashboard" replace />;
   }
 
