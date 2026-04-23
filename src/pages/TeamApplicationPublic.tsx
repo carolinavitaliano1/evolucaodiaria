@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Loader2, Briefcase, CheckCircle2, Mail } from 'lucide-react';
+import { Loader2, UserPlus, CheckCircle2, Mail } from 'lucide-react';
 
 export default function TeamApplicationPublic() {
   const { organizationId } = useParams<{ organizationId: string }>();
@@ -56,10 +56,13 @@ export default function TeamApplicationPublic() {
         professional_id: professionalId.trim() || null,
         message: message.trim() || null,
       } as any);
-      if (error) throw error;
+      if (error) {
+        console.error('[team-application] insert error', error);
+        throw error;
+      }
       setSubmitted(true);
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao enviar candidatura');
+      toast.error(err.message || 'Erro ao enviar cadastro');
     } finally {
       setSubmitting(false);
     }
@@ -78,7 +81,7 @@ export default function TeamApplicationPublic() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
         <div className="bg-card rounded-2xl border border-border p-8 text-center max-w-md">
           <p className="text-lg font-semibold text-foreground">Link inválido</p>
-          <p className="text-sm text-muted-foreground mt-2">Esta página de candidatura não está disponível.</p>
+          <p className="text-sm text-muted-foreground mt-2">Esta página de cadastro não está disponível.</p>
         </div>
       </div>
     );
@@ -88,9 +91,9 @@ export default function TeamApplicationPublic() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
         <div className="bg-card rounded-2xl border border-border p-8 text-center max-w-md space-y-3">
-          <p className="text-lg font-semibold text-foreground">Candidaturas pausadas</p>
+          <p className="text-lg font-semibold text-foreground">Cadastros pausados</p>
           <p className="text-sm text-muted-foreground">
-            <strong>{orgName}</strong> não está aceitando novas candidaturas no momento.
+            <strong>{orgName}</strong> não está aceitando novos cadastros de funcionários no momento.
           </p>
         </div>
       </div>
@@ -104,10 +107,10 @@ export default function TeamApplicationPublic() {
           <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8 text-success" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Candidatura enviada!</h2>
+          <h2 className="text-xl font-bold text-foreground">Cadastro enviado!</h2>
           <p className="text-sm text-muted-foreground">
-            Recebemos sua candidatura para a equipe <strong>{orgName}</strong>. A administração irá analisar
-            e, caso aprovada, você receberá um e-mail com seus dados de acesso.
+            Recebemos seu cadastro para fazer parte da equipe de <strong>{orgName}</strong>. A administração
+            irá revisar seus dados e, ao aprovar, você receberá um e-mail com o convite e seus dados de acesso ao portal.
           </p>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
             <Mail className="w-3.5 h-3.5" />
@@ -123,11 +126,11 @@ export default function TeamApplicationPublic() {
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6 space-y-2">
           <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <Briefcase className="w-7 h-7 text-primary" />
+            <UserPlus className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Candidatura para Equipe</h1>
+          <h1 className="text-2xl font-bold text-foreground">Cadastro de Funcionário</h1>
           <p className="text-sm text-muted-foreground">
-            Inscreva-se para fazer parte da equipe terapêutica
+            Preencha seus dados para fazer parte da equipe e receber acesso ao portal
           </p>
           <p className="text-xs text-primary font-medium">{orgName}</p>
         </div>
@@ -192,12 +195,12 @@ export default function TeamApplicationPublic() {
           </div>
 
           <Button type="submit" className="w-full gap-2" disabled={submitting || !name.trim() || !email.trim()}>
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Briefcase className="w-4 h-4" />}
-            Enviar candidatura
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+            Enviar cadastro
           </Button>
 
           <p className="text-[10px] text-muted-foreground text-center">
-            Seus dados serão tratados com sigilo. A administração analisará sua candidatura e entrará em contato.
+            Seus dados serão tratados com sigilo. A administração revisará seu cadastro antes de liberar o acesso ao portal.
           </p>
         </form>
       </div>
