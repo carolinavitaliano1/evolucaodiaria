@@ -186,20 +186,36 @@ export default function TeamApplicationPublic() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Especialidade</Label>
-              <Input value={specialty} onChange={e => setSpecialty(e.target.value)} placeholder="Ex: Fonoaudiologia" className="h-9 text-sm" />
+              <Label className="text-xs">Especialidades</Label>
+              <div className="flex gap-1">
+                <Input
+                  value={specialtyInput}
+                  onChange={e => setSpecialtyInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSpecialty(); } }}
+                  placeholder="Ex: Fonoaudiologia"
+                  className="h-9 text-sm"
+                />
+                <Button type="button" size="icon" variant="outline" className="h-9 w-9 shrink-0" onClick={addSpecialty}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              {specialties.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {specialties.map(s => (
+                    <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px]">
+                      {s}
+                      <button type="button" onClick={() => removeSpecialty(s)} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Registro profissional</Label>
               <Input value={professionalId} onChange={e => setProfessionalId(e.target.value)} placeholder="Ex: CRP 06/12345" className="h-9 text-sm" />
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Mensagem (opcional)</Label>
-            <Textarea value={message} onChange={e => setMessage(e.target.value)}
-              placeholder="Conte um pouco sobre sua experiência e por que quer fazer parte da equipe..."
-              className="text-sm min-h-[80px] resize-none" />
           </div>
 
           <Button type="submit" className="w-full gap-2" disabled={submitting || !name.trim() || !email.trim()}>
