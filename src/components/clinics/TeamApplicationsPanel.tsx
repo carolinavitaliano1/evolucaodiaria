@@ -13,6 +13,7 @@ interface TeamApplication {
   email: string;
   whatsapp: string | null;
   specialty: string | null;
+  specialties: string[] | null;
   professional_id: string | null;
   message: string | null;
   role: string | null;
@@ -70,7 +71,7 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
           organization_id: organizationId,
           email: app.email,
           role: 'professional',
-          role_label: app.role || app.specialty || null,
+          role_label: app.role || (app.specialties && app.specialties[0]) || app.specialty || null,
         },
       });
       if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
@@ -170,11 +171,14 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-sm text-foreground">{app.name}</p>
-                        {app.specialty && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                            {app.specialty}
+                        {(app.specialties && app.specialties.length > 0
+                          ? app.specialties
+                          : app.specialty ? [app.specialty] : []
+                        ).map(s => (
+                          <span key={s} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            {s}
                           </span>
-                        )}
+                        ))}
                       </div>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                         <Mail className="w-3 h-3" /> {app.email}

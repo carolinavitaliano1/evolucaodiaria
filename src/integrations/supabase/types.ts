@@ -2740,6 +2740,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by_user_id: string | null
           role: string | null
+          specialties: string[] | null
           specialty: string | null
           status: string
           updated_at: string
@@ -2757,6 +2758,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by_user_id?: string | null
           role?: string | null
+          specialties?: string[] | null
           specialty?: string | null
           status?: string
           updated_at?: string
@@ -2774,6 +2776,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by_user_id?: string | null
           role?: string | null
+          specialties?: string[] | null
           specialty?: string | null
           status?: string
           updated_at?: string
