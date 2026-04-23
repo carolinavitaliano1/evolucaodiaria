@@ -126,11 +126,11 @@ export default function TeamApplicationPublic() {
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6 space-y-2">
           <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <Briefcase className="w-7 h-7 text-primary" />
+            <UserPlus className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Candidatura para Equipe</h1>
+          <h1 className="text-2xl font-bold text-foreground">Cadastro de Funcionário</h1>
           <p className="text-sm text-muted-foreground">
-            Inscreva-se para fazer parte da equipe terapêutica
+            Preencha seus dados para fazer parte da equipe e receber acesso ao portal
           </p>
           <p className="text-xs text-primary font-medium">{orgName}</p>
         </div>
@@ -195,12 +195,12 @@ export default function TeamApplicationPublic() {
           </div>
 
           <Button type="submit" className="w-full gap-2" disabled={submitting || !name.trim() || !email.trim()}>
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Briefcase className="w-4 h-4" />}
-            Enviar candidatura
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+            Enviar cadastro
           </Button>
 
           <p className="text-[10px] text-muted-foreground text-center">
-            Seus dados serão tratados com sigilo. A administração analisará sua candidatura e entrará em contato.
+            Seus dados serão tratados com sigilo. A administração revisará seu cadastro antes de liberar o acesso ao portal.
           </p>
         </form>
       </div>
