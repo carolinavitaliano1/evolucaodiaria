@@ -494,13 +494,42 @@ export function useOrgPermissions(): OrgMembershipInfo {
 
     (async () => {
       try {
-        const { data } = await supabase
+        let { data } = await supabase
           .from('organization_members')
           .select('id, role, role_label, permissions, status, organization_id')
           .eq('user_id', user.id)
           .eq('status', 'active')
           .limit(1)
           .maybeSingle();
+
+        if (!data) {
+          // Maybe there is a pending invite for this email that was never
+          // accepted (user signed up directly without the invite link). Try
+          // to auto-accept it so they don't get redirected to /pricing.
+          const { data: pending } = await supabase
+            .from('organization_members')
+            .select('id')
+            .eq('email', user.email ?? '')
+            .eq('status', 'pending')
+            .limit(1)
+            .maybeSingle();
+
+          if (pending) {
+            const { error: acceptErr } = await supabase.functions.invoke('accept-invite', {
+              body: { member_id: pending.id },
+            });
+            if (!acceptErr) {
+              const { data: refreshed } = await supabase
+                .from('organization_members')
+                .select('id, role, role_label, permissions, status, organization_id')
+                .eq('user_id', user.id)
+                .eq('status', 'active')
+                .limit(1)
+                .maybeSingle();
+              data = refreshed ?? null;
+            }
+          }
+        }
 
         if (!data) {
           setInfo({ isOrgMember: false, isOwner: false, role: null, roleLabel: null, permissions: [], loading: false });
