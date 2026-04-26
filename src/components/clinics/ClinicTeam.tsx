@@ -964,6 +964,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       setNewPlanName('');
       setNewPlanValue('');
       setNewPlanType('por_sessao');
+      setLinkedPackageId('');
       await loadMemberPlans(manageMember.id);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao adicionar plano');
