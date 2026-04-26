@@ -55,7 +55,7 @@ export function MobileNav() {
   const { unreadCount: noticesCount } = useUnreadNotices();
   const { unreadCount: supportCount } = useUnreadSupportCount();
   const { count: pendingCount } = usePendingEnrollments();
-  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const { isOrgMember, isOwner, role, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
 
@@ -66,20 +66,41 @@ export function MobileNav() {
     return days > 0 ? days : null;
   })();
 
-  const allowedMain = mainNavItems.filter(i => {
+  const isTherapistView = isOrgMember && !isOwner && role === 'professional';
+
+  // Visão dedicada do terapeuta no mobile
+  const therapistMain = [
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Home',      perm: 'dashboard.view' as const },
+    { to: '/calendar',  icon: Calendar,        label: 'Agenda',    perm: 'calendar.view'  as const },
+    { to: '/patients',  icon: Users,           label: 'Pacientes', perm: 'patients.view'  as const, badge: 'pending' as const },
+    { to: '/minhas-comissoes', icon: DollarSign, label: 'Comissões', perm: 'commissions.view' as const },
+  ];
+
+  const baseMain = isTherapistView ? therapistMain : mainNavItems;
+
+  const allowedMain = baseMain.filter(i => {
     if (!isOrgMember) return true;
     return permissions.includes(i.perm as any);
   });
 
-  const allowedMore = moreNavItems.filter(i => {
+  const therapistMore = [
+    { to: '/tasks',   icon: ClipboardList,  label: 'Tarefas', perm: 'tasks.view' as const, badge: null },
+    { to: '/mural',   icon: Megaphone,      label: 'Mural',   perm: 'mural.view' as const, badge: 'notices' as const },
+    { to: '/suporte', icon: HeadphonesIcon, label: 'Suporte', perm: null as any,           badge: 'support' as const },
+    { to: '/profile', icon: User,           label: 'Perfil',  perm: null as any,           badge: null },
+  ];
+
+  const sourceMore = isTherapistView ? therapistMore : moreNavItems;
+
+  const allowedMore = sourceMore.filter(i => {
     if (!isOrgMember) return true;
     if (i.to === '/profile') return true;
-    if (i.to === '/doc-ia') return true;
+    if (i.to === '/doc-ia' && !isTherapistView) return true;
     if (i.perm === null) return false;
     return permissions.includes(i.perm as any);
   });
 
-  const showTeam = (!isOrgMember || isOwner || permissions.includes('team.view' as any)) && hasTeam;
+  const showTeam = !isTherapistView && (!isOrgMember || isOwner || permissions.includes('team.view' as any)) && hasTeam;
   const teamItem = showTeam ? [{ to: '/team', icon: UsersRound, label: 'Equipe', perm: 'team.view' as const, badge: null as any }] : [];
   const baseMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any, badge: null as any }, ...allowedMore.filter(i => i.to !== '/profile')];
   const muralIdx = baseMore.findIndex(i => i.to === '/mural');
