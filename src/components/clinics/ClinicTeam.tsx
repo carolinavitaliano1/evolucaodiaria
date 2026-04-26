@@ -1412,10 +1412,14 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       </div>
 
       <Tabs defaultValue="members" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-11 bg-muted/50 p-1 rounded-xl mb-6">
+        <TabsList className="grid w-full grid-cols-4 h-11 bg-muted/50 p-1 rounded-xl mb-6">
           <TabsTrigger value="members" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <Users className="w-4 h-4" />
             Equipe
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+            <CalendarDays className="w-4 h-4" />
+            Resumo Semanal
           </TabsTrigger>
           <TabsTrigger value="attendance" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <CalendarDays className="w-4 h-4" />
@@ -1428,6 +1432,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         </TabsList>
 
         <TabsContent value="members">{MembersView}</TabsContent>
+        <TabsContent value="schedule">{ScheduleSummaryView}</TabsContent>
         <TabsContent value="attendance">{AttendanceView}</TabsContent>
         <TabsContent value="frequency">{FrequencyView}</TabsContent>
       </Tabs>
