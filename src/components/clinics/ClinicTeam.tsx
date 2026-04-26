@@ -518,7 +518,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                     variant="outline"
                     size="sm"
                     className="flex-1 h-7 text-[11px] gap-1 px-2"
-                    onClick={e => { e.stopPropagation(); navigate('/calendar'); }}
+                    onClick={e => { e.stopPropagation(); setAgendaMember(member); }}
                   >
                     <CalendarDays className="w-3 h-3" />
                     Ver Agenda
