@@ -26,12 +26,27 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const [viewDate, setViewDate] = useState(new Date());
   const [filterUserId, setFilterUserId] = useState<string>('all');
   const [therapistName, setTherapistName] = useState<string>('');
+  const [clinicType, setClinicType] = useState<string | null>(null);
+  const [scheduleSlots, setScheduleSlots] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
     supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
   }, [user]);
+
+  useEffect(() => {
+    supabase.from('clinics').select('type').eq('id', clinicId).maybeSingle()
+      .then(({ data }) => setClinicType((data as any)?.type || null));
+  }, [clinicId]);
+
+  useEffect(() => {
+    if (clinicType !== 'clinica') { setScheduleSlots([]); return; }
+    supabase.from('patient_schedule_slots' as any)
+      .select('*')
+      .eq('clinic_id', clinicId)
+      .then(({ data }) => setScheduleSlots((data || []) as any[]));
+  }, [clinicId, clinicType]);
 
   const clinicPatients = patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p));
 
@@ -40,10 +55,30 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const dateStr = format(viewDate, 'yyyy-MM-dd');
 
   const scheduledPatients = useMemo(() => {
+    if (clinicType === 'clinica') {
+      // For clinic-type units, derive entries from patient_schedule_slots
+      const daySlots = scheduleSlots.filter(s => s.weekday === weekday);
+      const filtered = filterUserId === 'all'
+        ? daySlots
+        : daySlots.filter(s => {
+            const m = members.find(mm => mm.memberId === s.member_id);
+            return m?.userId === filterUserId;
+          });
+      const list = filtered
+        .map(s => {
+          const patient = clinicPatients.find(p => p.id === s.patient_id);
+          if (!patient) return null;
+          const time = (s.start_time || '').slice(0, 5);
+          const endTime = (s.end_time || '').slice(0, 5);
+          return { ...patient, scheduleTime: time, _slotEnd: endTime, _slotMemberId: s.member_id };
+        })
+        .filter(Boolean) as any[];
+      return list.sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
+    }
     return clinicPatients
       .filter(p => p.weekdays?.includes(weekday))
       .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
-  }, [clinicPatients, weekday]);
+  }, [clinicPatients, weekday, clinicType, scheduleSlots, filterUserId, members]);
 
   // Get evolution for a patient on view date, optionally filtering by author
   const getEvolution = (patientId: string) => {
@@ -177,6 +212,16 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                         {timeDisplay}
                         {patient.clinicalArea && ` • ${patient.clinicalArea}`}
                       </p>
+                      {clinicType === 'clinica' && (patient as any)._slotMemberId && (() => {
+                        const m = members.find(mm => mm.memberId === (patient as any)._slotMemberId);
+                        if (!m) return null;
+                        return (
+                          <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
+                            <User className="w-2.5 h-2.5" />
+                            {m.name || m.email}
+                          </p>
+                        );
+                      })()}
                       {showAuthor && (
                         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                           <User className="w-2.5 h-2.5" />
