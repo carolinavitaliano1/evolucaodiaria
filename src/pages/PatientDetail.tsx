@@ -317,6 +317,8 @@ export default function PatientDetail() {
   const [feedbackEvolution, setFeedbackEvolution] = useState<Evolution | null>(null);
   const [feedbackBulkOpen, setFeedbackBulkOpen] = useState(false);
   const [evoTypeFilter, setEvoTypeFilter] = useState<'all' | 'group' | 'individual'>('all');
+  // Author filter (admins/owners only) — lets the manager focus on a single therapist's evolutions
+  const [evoAuthorFilter, setEvoAuthorFilter] = useState<string>('all');
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [archivePatientOpen, setArchivePatientOpen] = useState(false);
@@ -2570,6 +2572,21 @@ export default function PatientDetail() {
               </h2>
               {patientEvolutions.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
+                  {isOrg && !restrictToOwn && members.length > 1 && (
+                    <Select value={evoAuthorFilter} onValueChange={setEvoAuthorFilter}>
+                      <SelectTrigger className="h-8 w-[180px] text-xs">
+                        <SelectValue placeholder="Profissional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os profissionais</SelectItem>
+                        {members.map(m => (
+                          <SelectItem key={m.userId} value={m.userId}>
+                            {(m.name || m.email)}{m.userId === user?.id ? ' (você)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <Select value={evoTypeFilter} onValueChange={(v: any) => setEvoTypeFilter(v)}>
                     <SelectTrigger className="h-8 w-[150px] text-xs">
                       <SelectValue />
@@ -2650,6 +2667,10 @@ export default function PatientDetail() {
                     if (evoTypeFilter === 'group') return !!evo.groupId;
                     if (evoTypeFilter === 'individual') return !evo.groupId;
                     return true;
+                  }).filter(evo => {
+                    if (evoAuthorFilter === 'all') return true;
+                    const authorId = (evo as any).user_id || (evo as any).userId;
+                    return authorId === evoAuthorFilter;
                   }).map((evo) => {
                     const moodInfo = getMoodInfo(evo.mood, customMoods);
                     const evoAuthorId = (evo as any).user_id;
