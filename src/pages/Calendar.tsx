@@ -72,6 +72,7 @@ export default function CalendarPage() {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const { getBlockForDate } = useCalendarBlocks();
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [scheduleSlots, setScheduleSlots] = useState<Array<{ id: string; weekday: string; start_time: string; end_time: string; patient_id: string; clinic_id: string; member_id: string }>>([]);
   const [popupItem, setPopupItem] = useState<CalItem | null>(null);
   
   const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -97,6 +98,24 @@ export default function CalendarPage() {
   }, [user?.id]);
 
   useEffect(() => { loadCalendarEvents(); }, [loadCalendarEvents]);
+
+  // Load recurring patient schedule slots (visible to user via RLS)
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('patient_schedule_slots' as any)
+        .select('id, weekday, start_time, end_time, patient_id, clinic_id, member_id');
+      if (cancelled) return;
+      setScheduleSlots(((data as any[]) || []).map(s => ({
+        ...s,
+        start_time: (s.start_time || '').slice(0, 5),
+        end_time: (s.end_time || '').slice(0, 5),
+      })));
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // Close popups on outside click
   useEffect(() => {
