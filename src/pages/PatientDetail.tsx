@@ -183,6 +183,10 @@ export default function PatientDetail() {
   const restrictToOwn = isOrgMember && !isOrgOwner && orgPermissions.includes('evolutions.own_only');
   // Terapeutas/colaboradores (não-donos) não devem gerenciar o Portal do Paciente.
   const canManagePortal = !isOrgMember || isOrgOwner;
+  // Aba "Financeiro" do paciente é redundante para terapeutas convidados —
+  // eles têm a página dedicada "Minhas Comissões". Só donos e admins (com
+  // permissão financeira) veem essa aba aqui.
+  const canSeeFinancialTab = !isOrgMember || isOrgOwner || orgPermissions.includes('financial.view');
   const { isPro } = useFeatureAccess();
   const { blocks: calendarBlocks } = useCalendarBlocks();
 
