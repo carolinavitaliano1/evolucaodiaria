@@ -1,97 +1,62 @@
-## Visão Dedicada do Terapeuta Convidado
 
-Atualmente o terapeuta convidado vê o mesmo sidebar de um dono de clínica (com itens "trancados" 🔒). Vou criar uma experiência **enxuta, focada e personalizada** para ele.
+## Objetivo
 
----
+Garantir que terapeutas convidados vejam **apenas suas próprias evoluções, anexos e documentos** por padrão, mesmo dentro de um paciente compartilhado. Acesso ampliado precisa ser concedido explicitamente no momento do convite (ou na edição de permissões), através do nível **"Acesso Total"** já existente no Módulo Clínico.
 
-### 1. Novo Sidebar Simplificado para Terapeutas
+## Contexto técnico encontrado
 
-Quando o usuário for `isOrgMember && !isOwner && role === 'professional'`, o sidebar exibirá APENAS:
+- A permissão `evolutions.own_only` já existe em `useOrgPermissions.ts` e está no `DEFAULT_THERAPIST_PERMISSIONS`, mas **não está sendo aplicada como filtro** no UI.
+- `Patients.tsx` já filtra a lista por `useMyAssignedPatientIds()` quando `patients.own_only` está ativo. ✅
+- O nível **"Acesso Total"** do Módulo Clínico já remove `evolutions.own_only` e `patients.own_only` corretamente — então admins podem liberar visão completa pelo `PermissionEditor` no convite.
+- Pontos onde a filtragem por autor está faltando hoje:
+  1. `src/pages/PatientDetail.tsx` → `patientEvolutions` (linha 232) — lista todas as evoluções do paciente.
+  2. `src/components/clinics/ClinicEvolutionsTab.tsx` → `dayEvolutions` (linha 66) — lista evoluções do dia de toda a clínica.
+  3. `PatientDetail` aba **Documentos** (linha 3005) — `patientAttachments` mostra anexos do paciente sem filtrar autor; "Anexos das Evoluções" também mostra de todos.
+  4. `Tarefas` e `Notas` do paciente — também listam de todos os usuários da org.
 
-- **Meu Perfil**
-- 📊 **Dashboard** — visão pessoal (seus pacientes, suas evoluções pendentes, próximos atendimentos)
-- 📅 **Agenda** — somente seus atendimentos
-- 👥 **Pacientes** — somente os atribuídos a ele (já filtrado por `patients.own_only`)
-- ✅ **Tarefas** — suas tarefas
-- 💰 **Minhas Comissões** *(NOVO — substitui "Financeiro")* — ganhos pessoais, sessões realizadas, repasses
-- 📢 **Mural** (se tiver permissão)
-- 🎧 **Suporte**
+## Mudanças propostas
 
-**Itens removidos** dessa visão: Clínicas, Financeiro global, Relatórios globais, Relatórios IA, Doc IA, Equipe, Planos, Instalar App.
-(Estes ficam reservados para owners/admins.)
+### 1. Helper de filtro `evolutions.own_only`
+Em `src/hooks/useOrgPermissions.ts`, exportar uma função utilitária `shouldFilterOwnOnly(permissions, key)` para padronizar a checagem (`isOrgMember && !isOwner && hasPermission(permissions, key)`). Isso evita duplicar a lógica.
 
-**Implementação:** em `AppSidebar.tsx`, criar uma nova lista `therapistNavItems` e usar quando o usuário for terapeuta não-owner. O item "Financeiro" será trocado por "Minhas Comissões" apontando para uma nova rota `/minhas-comissoes`.
+### 2. `PatientDetail.tsx` — filtrar evoluções por `user_id`
+- Quando `evolutions.own_only` estiver ativo (e o usuário não for owner), `patientEvolutions` filtra somente `evo.userId === user.id`.
+- Os "feriados automáticos" (gerados a partir de `calendar_blocks`) continuam visíveis para todos (são contexto, não conteúdo clínico).
+- Adicionar um aviso sutil no topo da aba Evoluções: *"Você está vendo apenas as evoluções registradas por você."* com botão para o admin entender o porquê.
 
----
+### 3. `PatientDetail.tsx` — filtrar Documentos por `user_id`
+- `patientAttachments` (linha 294): aplicar mesmo filtro quando `evolutions.own_only` estiver ativo (anexos têm `user_id` no schema da tabela `attachments`).
+- "Anexos das Evoluções" (linha 3015): só mostrar anexos das evoluções já filtradas.
+- O `FileUpload` continua permitindo o terapeuta anexar novos documentos (RLS permite).
 
-### 2. Nova Página: `/minhas-comissoes` (Financeiro do Terapeuta)
+### 4. `PatientDetail.tsx` — filtrar Notas e Tarefas
+- `patientTasksList` e `clinic_notes` exibidos no paciente: aplicar o mesmo filtro por `user_id` quando `evolutions.own_only` estiver ativo (alinhamento de comportamento).
 
-Página dedicada mostrando os **ganhos do próprio terapeuta** com base no modelo de remuneração configurado pelo admin (`organization_members.payment_*`).
+### 5. `ClinicEvolutionsTab.tsx` — filtrar lista da clínica
+- Em `dayEvolutions` (linha 66), forçar `filterUserId = user.id` quando `evolutions.own_only` estiver ativo, e **desabilitar** o seletor "Filtrar por profissional" (mostrar bloqueado com tooltip).
 
-**Conteúdo:**
-- **Cards de resumo do mês:** Total a Receber, Sessões Realizadas, Faltas, Pacientes Atendidos.
-- **Navegador de mês** (igual aos outros relatórios financeiros).
-- **Detalhamento por paciente:** lista de cada paciente com nº de sessões, valor unitário, subtotal.
-- **Histórico mensal (últimos 6 meses)** em mini-gráfico.
-- **Botão "Exportar PDF"** com extrato pessoal.
+### 6. `ClinicTeam.tsx` — clarear o convite
+- No modal "Gerenciar permissões", deixar mais visível qual nível do **Módulo Clínico** está selecionado, com texto destacando: *"Padrão: o terapeuta vê apenas seus próprios pacientes, evoluções e documentos. Selecione 'Acesso Total' para liberar visão de toda a clínica."*
+- **Não é necessária migração de banco**: as permissões padrão já existem e o nível "Acesso Total" já está implementado.
 
-**Cálculo:** reutilizar `calculateMemberRemuneration` de `src/utils/financialHelpers.ts`, filtrando evoluções por `user_id = user.id` no mês selecionado.
+### 7. RLS — segurança em nível de banco (opcional, recomendado)
+As políticas atuais permitem que qualquer membro da org leia todas as evoluções/anexos da clínica compartilhada. O filtro acima é apenas no UI. Para reforçar de fato no backend, eu poderia atualizar as policies de `evolutions` e `attachments` para também checar:
+- `evolutions`: se `evolutions.own_only` estiver nas permissões do usuário, restringir a `user_id = auth.uid()`.
+- Isso exige uma função SECURITY DEFINER que lê `organization_members.permissions` do solicitante.
 
-**Acesso:** requer permissão nova `commissions.view` (auto-incluída em `DEFAULT_THERAPIST_PERMISSIONS`).
+⚠️ **Decisão necessária**: Confirme se quer que eu inclua o passo 7 (RLS reforçado no banco) ou apenas a filtragem na UI (passos 1–6). Sem o passo 7, um terapeuta com conhecimento técnico ainda conseguiria ler dados de colegas via API direta.
 
----
+## Arquivos a editar
+- `src/hooks/useOrgPermissions.ts` (adicionar helper)
+- `src/pages/PatientDetail.tsx` (filtros de evoluções, anexos, notas, tarefas)
+- `src/components/clinics/ClinicEvolutionsTab.tsx` (forçar filtro por usuário)
+- `src/components/clinics/ClinicTeam.tsx` / `PermissionEditor.tsx` (texto explicativo)
+- (Opcional) Nova migração SQL para RLS reforçada
 
-### 3. Dashboard Personalizado do Terapeuta
-
-Quando `isOrgMember && !isOwner`, o `Dashboard.tsx` exibirá uma versão simplificada:
-- **Removidos:** PendingEnrollmentsCard, ClinicAlertsCard global, MuralNoticesBell de admin.
-- **Mantidos/Destacados:** Saudação, MiniCalendar, Resumo do Dia (atendimentos próprios), TodayAppointments (apenas seus), TaskList (suas tarefas), MissingEvolutionsAlert (suas evoluções atrasadas), BirthdayCard.
-- **Adicionado:** Card "Resumo de Comissões do Mês" (total a receber + nº de sessões) com link para `/minhas-comissoes`.
-
----
-
-### 4. Anexar Documentos a Pacientes (visão Terapeuta)
-
-Hoje o terapeuta consegue criar evoluções, mas não tem um espaço para **anexar documentos avulsos** (PDFs, exames, declarações externas) que apareçam direto na aba "Documentos" do paciente.
-
-**Implementação:**
-- Na aba "Anexos" / "Documentos" do `PatientDetail.tsx` (que já existe via `loadAttachmentsForPatient`), adicionar um botão **"+ Anexar Documento"** visível para terapeutas com acesso àquele paciente.
-- Permitir upload via `FileUpload` (bucket `patient-attachments`), categorizando como `parent_type = 'patient_doc'` e `uploaded_by_user_id = user.id`.
-- Os anexos enviados pelo terapeuta aparecerão imediatamente na aba **Documentos** do paciente, com tag mostrando o nome de quem anexou e data.
-- Compatível com a permissão `patients.own_only` (RLS já restringe a pacientes atribuídos).
-
----
-
-### 5. Mobile Nav
-
-Atualizar `MobileNav.tsx` espelhando o mesmo conjunto reduzido para terapeutas (Dashboard, Agenda, Pacientes, Comissões, Tarefas).
-
----
-
-### 6. Migration / Permissões
-
-- Adicionar a permissão `commissions.view` em `ALL_PERMISSIONS` (`useOrgPermissions.ts`).
-- Incluir `commissions.view` em `DEFAULT_THERAPIST_PERMISSIONS`.
-- Migration retroativa: dar `commissions.view` a todos os membros `professional` ativos existentes.
-
----
-
-### Arquivos a editar/criar
-
-**Editar:**
-- `src/components/layout/AppSidebar.tsx` — bifurcar nav por papel
-- `src/components/layout/MobileNav.tsx` — espelhar
-- `src/pages/Dashboard.tsx` — variante terapeuta
-- `src/pages/PatientDetail.tsx` — botão de anexar documento
-- `src/hooks/useOrgPermissions.ts` — nova permissão
-- `src/App.tsx` — registrar rota `/minhas-comissoes`
-
-**Criar:**
-- `src/pages/MyCommissions.tsx` — nova página financeira pessoal
-- Migration SQL para `commissions.view`
-
----
-
-### Resultado esperado
-
-Após login, o terapeuta convidado verá um app **limpo, com 7 itens no menu**, focado no que importa pra ele: agenda, pacientes, evoluções, tarefas e seus ganhos — exatamente como o exemplo da imagem (Agenda, Pacientes, Minhas Comissões).
+## Comportamento final
+| Cenário | Antes | Depois |
+|---|---|---|
+| Terapeuta abre paciente vinculado | Vê todas as evoluções da equipe | Vê só as próprias |
+| Terapeuta abre aba Documentos | Vê todos anexos | Vê só os próprios |
+| Admin libera "Acesso Total" no convite | (já funcionava) | (continua) Vê tudo |
+| Owner | Vê tudo | Vê tudo |
