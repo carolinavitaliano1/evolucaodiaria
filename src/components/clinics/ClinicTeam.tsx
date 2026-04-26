@@ -253,6 +253,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [editRemunerationType, setEditRemunerationType] = useState<'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('definir_depois');
   const [editRemunerationValue, setEditRemunerationValue] = useState<string>('');
   const [editWeekdays, setEditWeekdays] = useState<string[]>([]);
+  const [editScheduleByDay, setEditScheduleByDay] = useState<Record<string, { start: string; end: string }>>({});
   const [savingAssign, setSavingAssign] = useState(false);
 
   // Plans management for the member being managed
