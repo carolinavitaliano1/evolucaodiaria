@@ -818,7 +818,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           </div>
 
           {canManage && (
-          <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); setInvitePreset('terapeuta'); } }}>
+          <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); setInvitePreset('terapeuta'); setInviteRemunerationType('definir_depois'); setInviteRemunerationValue(''); setInviteWeekdays([]); } }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2 shrink-0">
                 <UserPlus className="w-4 h-4" />
