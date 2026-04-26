@@ -85,6 +85,11 @@ export function PermissionEditor({ permissions, onChange, compact = false }: Per
 
   return (
     <div className="space-y-5">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-[11px] leading-snug text-foreground/80">
+        <strong>Padrão:</strong> o terapeuta vê apenas seus próprios pacientes,
+        evoluções, anexos e tarefas. Selecione <strong>Acesso Total</strong> no
+        Módulo Clínico para liberar visão de todos os profissionais da clínica.
+      </div>
       {/* ── Tiered modules ── */}
       {PERMISSION_MODULES.map(module => {
         const Icon = getModuleIcon(module.icon);
