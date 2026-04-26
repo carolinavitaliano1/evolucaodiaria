@@ -1709,7 +1709,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                                     title={plan.is_default ? 'Plano padrão' : 'Marcar como padrão'}
                                     className={cn(
                                       'shrink-0 p-1 rounded hover:bg-muted',
-                                      plan.is_default ? 'text-amber-500' : 'text-muted-foreground/50'
+                                      plan.is_default ? 'text-primary' : 'text-muted-foreground/50'
                                     )}
                                   >
                                     <Star className={cn('w-3.5 h-3.5', plan.is_default && 'fill-current')} />
