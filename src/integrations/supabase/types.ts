@@ -1974,6 +1974,7 @@ export type Database = {
           organization_id: string | null
           package_link_id: string | null
           patient_id: string
+          remuneration_plan_id: string | null
           start_time: string
           updated_at: string
           weekday: string
@@ -1989,6 +1990,7 @@ export type Database = {
           organization_id?: string | null
           package_link_id?: string | null
           patient_id: string
+          remuneration_plan_id?: string | null
           start_time: string
           updated_at?: string
           weekday: string
@@ -2004,11 +2006,20 @@ export type Database = {
           organization_id?: string | null
           package_link_id?: string | null
           patient_id?: string
+          remuneration_plan_id?: string | null
           start_time?: string
           updated_at?: string
           weekday?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patient_schedule_slots_remuneration_plan_id_fkey"
+            columns: ["remuneration_plan_id"]
+            isOneToOne: false
+            referencedRelation: "member_remuneration_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patients: {
         Row: {
