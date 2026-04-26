@@ -41,16 +41,17 @@ export function usePatientAssignments(patientId: string, clinicId: string) {
       if (!clinic?.organization_id) { setLoading(false); return; }
       setOrgId(clinic.organization_id);
 
-      // Load all active members + their assignments for this patient in parallel
-      const [membersRes, assignmentsRes] = await Promise.all([
+      // Load all active members + scheduled slots for this patient in parallel.
+      // The source of truth for "Terapeutas Responsáveis" is the patient's agenda
+      // (patient_schedule_slots) — any therapist with at least one slot is responsible.
+      const [membersRes, slotsRes] = await Promise.all([
         supabase.from('organization_members')
           .select('id, user_id, email, role')
           .eq('organization_id', clinic.organization_id)
           .eq('status', 'active'),
-        supabase.from('therapist_patient_assignments')
-          .select('member_id, schedule_time')
-          .eq('patient_id', patientId)
-          .eq('organization_id', clinic.organization_id),
+        supabase.from('patient_schedule_slots' as any)
+          .select('member_id, weekday, start_time, end_time')
+          .eq('patient_id', patientId),
       ]);
 
       if (!membersRes.data) { setLoading(false); return; }
@@ -63,9 +64,30 @@ export function usePatientAssignments(patientId: string, clinicId: string) {
         profiles?.forEach(p => { profilesMap[p.user_id] = { name: p.name, avatar_url: p.avatar_url }; });
       }
 
-      const assignedMemberIds = new Set((assignmentsRes.data || []).map(a => a.member_id));
+      // Group slots by member to build a friendly schedule label per therapist
+      const slotsByMember: Record<string, Array<{ weekday: string; start: string; end: string }>> = {};
+      ((slotsRes.data || []) as any[]).forEach(s => {
+        const arr = slotsByMember[s.member_id] || (slotsByMember[s.member_id] = []);
+        arr.push({
+          weekday: s.weekday,
+          start: (s.start_time || '').slice(0, 5),
+          end: (s.end_time || '').slice(0, 5),
+        });
+      });
+      const assignedMemberIds = new Set(Object.keys(slotsByMember));
+      const WEEKDAY_ORDER = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
       const scheduleMap: Record<string, string | null> = {};
-      (assignmentsRes.data || []).forEach(a => { scheduleMap[a.member_id] = a.schedule_time; });
+      Object.entries(slotsByMember).forEach(([mid, arr]) => {
+        const sorted = [...arr].sort((a, b) => {
+          const da = WEEKDAY_ORDER.indexOf(a.weekday);
+          const db = WEEKDAY_ORDER.indexOf(b.weekday);
+          if (da !== db) return da - db;
+          return a.start.localeCompare(b.start);
+        });
+        scheduleMap[mid] = sorted
+          .map(s => `${s.weekday} ${s.start}–${s.end}`)
+          .join(' • ');
+      });
 
       const mapped: TherapistAssignment[] = membersRes.data.map(m => ({
         memberId: m.id,
