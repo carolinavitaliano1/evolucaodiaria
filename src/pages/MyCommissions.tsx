@@ -470,6 +470,7 @@ export default function MyCommissions() {
                 <TableHead className="text-center">Sessões</TableHead>
                 <TableHead className="text-center">Faturáveis</TableHead>
                 <TableHead className="text-center">Faltas</TableHead>
+                {showPerSessionColumn && <TableHead className="text-right">Valor/sessão</TableHead>}
                 {showSubtotalColumn && <TableHead className="text-right">Subtotal</TableHead>}
               </TableRow>
             </TableHeader>
@@ -477,6 +478,7 @@ export default function MyCommissions() {
               {perPatient.map(p => {
                 const plan = resolvePlanForPatient(p.id);
                 const subtotal = subtotalForPatient(p.id, p.billable);
+                const perSessionVal = perSessionForPatient(p.id, p.billable);
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name}</TableCell>
@@ -494,6 +496,13 @@ export default function MyCommissions() {
                     <TableCell className="text-center">{p.sessions}</TableCell>
                     <TableCell className="text-center">{p.billable}</TableCell>
                     <TableCell className="text-center">{p.absences}</TableCell>
+                    {showPerSessionColumn && (
+                      <TableCell className="text-right text-xs text-muted-foreground">
+                        {perSessionVal !== null
+                          ? `R$ ${perSessionVal.toFixed(2)}`
+                          : <span>—</span>}
+                      </TableCell>
+                    )}
                     {showSubtotalColumn && (
                       <TableCell className="text-right font-medium">
                         {subtotal !== null
