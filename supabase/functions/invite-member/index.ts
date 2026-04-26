@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const { organization_id, email, role, patient_assignments, permissions, role_label } = await req.json();
+    const { organization_id, email, role, patient_assignments, permissions, role_label, remuneration_type, remuneration_value, weekdays } = await req.json();
     if (!organization_id || !email || !role) {
       return new Response(JSON.stringify({ error: 'organization_id, email e role são obrigatórios' }), { status: 400, headers: corsHeaders });
     }
@@ -252,6 +252,9 @@ Deno.serve(async (req) => {
       role,
       role_label: role_label ?? null,
       permissions: Array.isArray(permissions) ? permissions : [],
+      remuneration_type: remuneration_type ?? 'definir_depois',
+      remuneration_value: typeof remuneration_value === 'number' ? remuneration_value : null,
+      weekdays: Array.isArray(weekdays) && weekdays.length > 0 ? weekdays : null,
       status: 'pending',
       invited_by: userId,
     }).select().single();

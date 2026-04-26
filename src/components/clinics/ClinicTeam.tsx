@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -153,6 +154,10 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [invitePermissions, setInvitePermissions] = useState<PermissionKey[]>([...DEFAULT_THERAPIST_PERMISSIONS]);
   const [inviting, setInviting] = useState(false);
   const [invitePreset, setInvitePreset] = useState<string>('terapeuta');
+  // Remuneration & weekdays for new collaborators
+  const [inviteRemunerationType, setInviteRemunerationType] = useState<'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('definir_depois');
+  const [inviteRemunerationValue, setInviteRemunerationValue] = useState<string>('');
+  const [inviteWeekdays, setInviteWeekdays] = useState<string[]>([]);
 
   // Member management modal
   const [manageMember, setManageMember] = useState<OrganizationMember | null>(null);
@@ -559,6 +564,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           role: inviteRole,
           role_label: inviteRoleLabel || null,
           permissions: permissionsMap,
+          remuneration_type: inviteRemunerationType,
+          remuneration_value: inviteRemunerationValue ? Number(inviteRemunerationValue) : null,
+          weekdays: inviteWeekdays.length > 0 ? inviteWeekdays : null,
           patient_assignments: Object.entries(selectedPatients).map(([patient_id, schedule_time]) => ({
             patient_id, schedule_time,
           })),
@@ -571,6 +579,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       setSelectedPatients({});
       setInvitePermissions([...DEFAULT_THERAPIST_PERMISSIONS]);
       setInvitePreset('terapeuta');
+      setInviteRemunerationType('definir_depois');
+      setInviteRemunerationValue('');
+      setInviteWeekdays([]);
       setInviteOpen(false);
       loadTeam();
     } catch (err: any) {
@@ -808,7 +819,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           </div>
 
           {canManage && (
-          <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); setInvitePreset('terapeuta'); } }}>
+          <Dialog open={inviteOpen} onOpenChange={open => { setInviteOpen(open); if (!open) { setInviteEmail(''); setInviteRoleLabel(''); setSelectedPatients({}); setInvitePreset('terapeuta'); setInviteRemunerationType('definir_depois'); setInviteRemunerationValue(''); setInviteWeekdays([]); } }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2 shrink-0">
                 <UserPlus className="w-4 h-4" />
@@ -872,6 +883,70 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                     <div className="space-y-1.5">
                       <Label>Especialidade / Título personalizado <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
                       <Input placeholder="Ex: Fonoaudióloga, Aux. Administrativo..." value={inviteRoleLabel} onChange={e => setInviteRoleLabel(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Remuneration */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Remuneração</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Tipo</Label>
+                        <Select value={inviteRemunerationType} onValueChange={(v: any) => setInviteRemunerationType(v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="definir_depois">Definir depois</SelectItem>
+                            <SelectItem value="por_sessao">Por sessão</SelectItem>
+                            <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
+                            <SelectItem value="fixo_dia">Fixo por dia</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Valor (R$)</Label>
+                        <Input
+                          type="number" step="0.01" min="0"
+                          placeholder="0,00"
+                          value={inviteRemunerationValue}
+                          onChange={e => setInviteRemunerationValue(e.target.value)}
+                          disabled={inviteRemunerationType === 'definir_depois'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Weekdays */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dias de atendimento <span className="font-normal normal-case">(opcional)</span></p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { v: 'seg', l: 'Seg' }, { v: 'ter', l: 'Ter' }, { v: 'qua', l: 'Qua' },
+                        { v: 'qui', l: 'Qui' }, { v: 'sex', l: 'Sex' }, { v: 'sab', l: 'Sáb' }, { v: 'dom', l: 'Dom' },
+                      ].map(d => {
+                        const active = inviteWeekdays.includes(d.v);
+                        return (
+                          <button
+                            key={d.v}
+                            type="button"
+                            onClick={() => setInviteWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v])}
+                            className={cn(
+                              'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
+                              active
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-card text-foreground border-border hover:border-primary/40'
+                            )}
+                          >
+                            {d.l}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
