@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
+import { useMyAssignedPatientIds } from '@/hooks/usePatientAssignments';
 import { AIUpgradeDialog } from '@/components/AIUpgradeDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
