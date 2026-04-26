@@ -876,19 +876,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       }).eq('id', manageMember.id);
       if (updateError) throw updateError;
 
-      await supabase.from('therapist_patient_assignments').delete().eq('member_id', manageMember.id);
-      const toInsert = Object.entries(editPatients).map(([patient_id, schedule_time]) => ({
-        organization_id: organization.id,
-        member_id: manageMember.id,
-        patient_id,
-        schedule_time: schedule_time || null,
-        remuneration_plan_id: editPatientPlans[patient_id] || null,
-      }));
-      if (toInsert.length > 0) {
-        const { error } = await supabase.from('therapist_patient_assignments').insert(toInsert);
-        if (error) throw error;
-      }
-      toast.success('Permissões e pacientes atualizados');
+      toast.success('Configurações atualizadas');
       await loadTeam(); // refresh grid after save
       setManageMember(null);
     } catch (err) {
