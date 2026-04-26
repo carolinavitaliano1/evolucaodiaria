@@ -1054,9 +1054,11 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                             </div>
                             {selectedPatients[patient.id] !== undefined && (
                               <div className="pl-8 pb-1">
-                                <Input placeholder="Horário (ex: 14:00)" value={selectedPatients[patient.id]}
-                                  onChange={e => setSelectedPatients(prev => ({ ...prev, [patient.id]: e.target.value }))}
-                                  className="h-7 text-xs" onClick={e => e.stopPropagation()} />
+                                <PatientScheduleField
+                                  patient={patient}
+                                  value={selectedPatients[patient.id]}
+                                  onChange={(v) => setSelectedPatients(prev => ({ ...prev, [patient.id]: v }))}
+                                />
                               </div>
                             )}
                           </div>
