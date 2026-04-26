@@ -2947,6 +2947,21 @@ export default function ClinicDetail() {
             patients={clinicPatients.map(p => ({ id: p.id, name: p.name }))}
           />
         </TabsContent>
+        {/* Equipe Tab — apenas para clínicas */}
+        {clinic.type === 'clinica' && (
+          <TabsContent value="team" className="space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Equipe da Clínica</h2>
+                <p className="text-sm text-muted-foreground">Gerencie os profissionais vinculados a esta clínica.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate('/team')}>
+                <UsersRound className="w-4 h-4 mr-2" /> Gestão completa
+              </Button>
+            </div>
+            <ClinicTeam clinicId={clinic.id} clinicName={clinic.name} />
+          </TabsContent>
+        )}
       </Tabs>
 
 
