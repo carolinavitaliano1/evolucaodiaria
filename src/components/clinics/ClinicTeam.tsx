@@ -807,43 +807,11 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const pendingMembers = members.filter(m => m.status === 'pending');
   const inactiveMembers = members.filter(m => m.status === 'inactive');
 
-  // ─── Schedule Summary: which therapists work on which weekdays ───
   const WEEK_DAYS = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
   const WEEK_LABELS: Record<string, string> = {
     segunda: 'Segunda', 'terça': 'Terça', quarta: 'Quarta', quinta: 'Quinta',
     sexta: 'Sexta', 'sábado': 'Sábado', domingo: 'Domingo',
   };
-  const normalizeDay = (d: string) => d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const scheduleByDay = useMemo(() => {
-    const map: Record<string, Array<{ member: OrganizationMember; patients: PatientAssignment[] }>> = {};
-    WEEK_DAYS.forEach(d => { map[d] = []; });
-    activeMembers.forEach(member => {
-      // Days the member declared as work days
-      const memberDays = new Set((member.weekdays || []).map(normalizeDay));
-      // Days inferred from assigned patients
-      const dayPatients: Record<string, PatientAssignment[]> = {};
-      (member.assignments || []).forEach(a => {
-        const patient = clinicPatients.find(p => p.id === a.patient_id);
-        if (!patient) return;
-        const days = new Set<string>();
-        (patient.weekdays || []).forEach(d => days.add(normalizeDay(d)));
-        if (patient.scheduleByDay) Object.keys(patient.scheduleByDay).forEach(d => days.add(normalizeDay(d)));
-        days.forEach(d => {
-          if (!dayPatients[d]) dayPatients[d] = [];
-          dayPatients[d].push(a);
-        });
-      });
-      WEEK_DAYS.forEach(day => {
-        const norm = normalizeDay(day);
-        const inMember = memberDays.has(norm);
-        const inPatients = dayPatients[norm] || [];
-        if (inMember || inPatients.length > 0) {
-          map[day].push({ member, patients: inPatients });
-        }
-      });
-    });
-    return map;
-  }, [activeMembers, clinicPatients]);
 
   const ScheduleSummaryView = (
     <div className="space-y-4">
