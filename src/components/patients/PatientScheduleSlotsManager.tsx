@@ -24,6 +24,7 @@ interface OrgMember {
   user_id: string | null;
   email: string;
   name?: string | null;
+  weekdays?: string[] | null;
 }
 
 interface Props {
@@ -38,6 +39,8 @@ export function PatientScheduleSlotsManager({ patientId, clinicId, organizationI
   const { slots, loading, addSlot, removeSlot } = usePatientScheduleSlots(patientId);
   const { links: packageLinks } = usePatientPackages(patientId);
   const [members, setMembers] = useState<OrgMember[]>([]);
+  const [memberBusy, setMemberBusy] = useState<Array<{ weekday: string; start_time: string; end_time: string }>>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   const [memberId, setMemberId] = useState('');
   const [weekday, setWeekday] = useState('');
@@ -54,7 +57,7 @@ export function PatientScheduleSlotsManager({ patientId, clinicId, organizationI
       if (!organizationId) { setMembers([]); return; }
       const { data: m } = await supabase
         .from('organization_members')
-        .select('id, user_id, email')
+        .select('id, user_id, email, weekdays')
         .eq('organization_id', organizationId)
         .eq('status', 'active');
       if (cancelled) return;
@@ -69,14 +72,84 @@ export function PatientScheduleSlotsManager({ patientId, clinicId, organizationI
         user_id: row.user_id,
         email: row.email,
         name: row.user_id ? profileMap.get(row.user_id) : null,
+        weekdays: row.weekdays || [],
       })));
     }
     load();
     return () => { cancelled = true; };
   }, [organizationId]);
 
+  // Load all existing slots (across all patients) for the selected therapist to detect conflicts
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBusy() {
+      if (!memberId) { setMemberBusy([]); return; }
+      setLoadingAvailability(true);
+      try {
+        const { data } = await supabase
+          .from('patient_schedule_slots' as any)
+          .select('weekday, start_time, end_time, patient_id')
+          .eq('member_id', memberId);
+        if (cancelled) return;
+        const busy = ((data || []) as any[])
+          .filter(s => s.patient_id !== patientId)
+          .map(s => ({
+            weekday: s.weekday,
+            start_time: (s.start_time || '').slice(0, 5),
+            end_time: (s.end_time || '').slice(0, 5),
+          }));
+        setMemberBusy(busy);
+      } finally {
+        if (!cancelled) setLoadingAvailability(false);
+      }
+    }
+    loadBusy();
+    return () => { cancelled = true; };
+  }, [memberId, patientId]);
+
   // Filter packages to those linked to selected therapist
   const availablePackages = packageLinks.filter(l => !memberId || l.memberId === memberId);
+
+  const selectedMember = members.find(m => m.id === memberId);
+  const memberWeekdays = selectedMember?.weekdays && selectedMember.weekdays.length > 0
+    ? selectedMember.weekdays
+    : null; // null = no restriction defined
+
+  // Available weekdays for this therapist
+  const availableWeekdays = WEEKDAYS.filter(d =>
+    !memberWeekdays || memberWeekdays.includes(d.value)
+  );
+
+  // Check if a proposed slot conflicts with existing busy slots
+  const conflictsWithBusy = (day: string, start: string, end: string) => {
+    return memberBusy.some(b =>
+      b.weekday === day && start < b.end_time && end > b.start_time
+    );
+  };
+
+  // Build a list of free hourly windows for the selected weekday (08:00 to 20:00)
+  const buildFreeWindows = (day: string): Array<{ start: string; end: string }> => {
+    if (!day) return [];
+    const dayBusy = memberBusy
+      .filter(b => b.weekday === day)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    const windows: Array<{ start: string; end: string }> = [];
+    let cursor = '08:00';
+    const dayEnd = '20:00';
+    for (const b of dayBusy) {
+      if (b.start_time > cursor) {
+        windows.push({ start: cursor, end: b.start_time });
+      }
+      if (b.end_time > cursor) cursor = b.end_time;
+    }
+    if (cursor < dayEnd) windows.push({ start: cursor, end: dayEnd });
+    return windows;
+  };
+
+  const freeWindows = weekday ? buildFreeWindows(weekday) : [];
+  const proposedConflict = memberId && weekday && startTime && endTime
+    ? conflictsWithBusy(weekday, startTime, endTime)
+    : false;
 
   const handleAdd = async () => {
     if (!memberId || !weekday || !startTime || !endTime) {
@@ -85,6 +158,14 @@ export function PatientScheduleSlotsManager({ patientId, clinicId, organizationI
     }
     if (endTime <= startTime) {
       toast.error('O horário de fim deve ser maior que o de início');
+      return;
+    }
+    if (memberWeekdays && !memberWeekdays.includes(weekday)) {
+      toast.error('Profissional não atende neste dia da semana');
+      return;
+    }
+    if (conflictsWithBusy(weekday, startTime, endTime)) {
+      toast.error('Este profissional já tem outro paciente neste horário');
       return;
     }
     const conflict = slots.some(s =>
@@ -205,24 +286,59 @@ export function PatientScheduleSlotsManager({ patientId, clinicId, organizationI
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label className="text-[11px]">Dia</Label>
-                  <Select value={weekday} onValueChange={setWeekday}>
+                  <Select value={weekday} onValueChange={setWeekday} disabled={!memberId}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Dia" /></SelectTrigger>
                     <SelectContent>
-                      {WEEKDAYS.map(d => (
+                      {availableWeekdays.map(d => (
                         <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
                       ))}
+                      {availableWeekdays.length === 0 && (
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">Sem dias disponíveis</div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label className="text-[11px]">Início</Label>
-                  <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-9" />
+                  <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-9" disabled={!memberId || !weekday} />
                 </div>
                 <div>
                   <Label className="text-[11px]">Fim</Label>
-                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9" />
+                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9" disabled={!memberId || !weekday} />
                 </div>
               </div>
+              {memberId && weekday && (
+                <div className="rounded-md border bg-muted/30 p-2 space-y-1">
+                  <div className="text-[11px] font-semibold text-foreground">
+                    Janelas disponíveis ({weekday})
+                    {loadingAvailability && <span className="ml-1 text-muted-foreground">…</span>}
+                  </div>
+                  {freeWindows.length === 0 ? (
+                    <div className="text-[11px] text-muted-foreground">Nenhum horário livre nesta data.</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {freeWindows.map((w, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => { setStartTime(w.start); setEndTime(w.end); }}
+                          className="text-[11px] px-2 py-0.5 rounded border bg-background hover:bg-primary hover:text-primary-foreground transition-colors"
+                        >
+                          {w.start} – {w.end}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {memberBusy.filter(b => b.weekday === weekday).length > 0 && (
+                    <div className="text-[11px] text-muted-foreground pt-1 border-t">
+                      Ocupado: {memberBusy.filter(b => b.weekday === weekday).map(b => `${b.start_time}-${b.end_time}`).join(', ')}
+                    </div>
+                  )}
+                  {proposedConflict && (
+                    <div className="text-[11px] text-destructive font-medium">⚠ Horário proposto conflita com outro paciente</div>
+                  )}
+                </div>
+              )}
               {memberId && availablePackages.length > 0 && (
                 <div>
                   <Label className="text-[11px]">Pacote (opcional)</Label>
@@ -243,7 +359,7 @@ export function PatientScheduleSlotsManager({ patientId, clinicId, organizationI
                 type="button"
                 size="sm"
                 onClick={handleAdd}
-                disabled={adding}
+                disabled={adding || proposedConflict}
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-1" /> Adicionar horário
