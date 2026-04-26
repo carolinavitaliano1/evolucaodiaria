@@ -163,12 +163,19 @@ export function useMyAssignedPatientIds() {
       if (!membership?.length) { setAssignedPatientIds(new Set()); setLoading(false); return; }
 
       const memberIds = membership.map(m => m.id);
-      const { data: assignments } = await supabase
-        .from('therapist_patient_assignments')
-        .select('patient_id')
-        .in('member_id', memberIds);
+      const [assignmentsRes, slotsRes] = await Promise.all([
+        supabase.from('therapist_patient_assignments')
+          .select('patient_id')
+          .in('member_id', memberIds),
+        supabase.from('patient_schedule_slots' as any)
+          .select('patient_id')
+          .in('member_id', memberIds),
+      ]);
 
-      setAssignedPatientIds(new Set((assignments || []).map(a => a.patient_id)));
+      const ids = new Set<string>();
+      ((assignmentsRes.data || []) as any[]).forEach(a => ids.add(a.patient_id));
+      ((slotsRes.data || []) as any[]).forEach(s => ids.add(s.patient_id));
+      setAssignedPatientIds(ids);
     } catch (e) {
       console.error('useMyAssignedPatientIds error', e);
     } finally {
