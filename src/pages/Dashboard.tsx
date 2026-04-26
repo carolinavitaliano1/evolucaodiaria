@@ -176,7 +176,7 @@ export default function Dashboard() {
           </div>
 
           {/* Alerts & Pending */}
-          <ClinicAlertsCard />
+          {!isTherapistView && <ClinicAlertsCard />}
 
           {/* Birthdays */}
           <BirthdayCard />
