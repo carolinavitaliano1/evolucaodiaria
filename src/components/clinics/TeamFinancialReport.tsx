@@ -336,7 +336,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           <div className="space-y-2">
             {memberStats
               .sort((a, b) => b.revenue - a.revenue)
-              .map(({ member, sessions, absences, paidAbsences, revenue, evos }) => (
+              .map(({ member, sessions, absences, paidAbsences, revenue, breakdown, evos }) => (
                 <div key={member.userId} className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border gap-3">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
@@ -360,6 +360,21 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                         {paidAbsences > 0 && ` • ${paidAbsences} faltas rem.`}
                         {absences > 0 && ` • ${absences} faltas`}
                       </p>
+                      {breakdown && breakdown.length > 1 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {breakdown.map((b: PlanBreakdownEntry) => (
+                            <span
+                              key={b.planId}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium"
+                            >
+                              {b.planName}: R$ {b.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              <span className="opacity-60">
+                                ({b.type === 'por_sessao' ? `${b.sessionsCount} sess.` : b.type === 'fixo_dia' ? `${b.sessionsCount} sess.` : 'mensal'})
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <p className="font-bold text-foreground shrink-0">
