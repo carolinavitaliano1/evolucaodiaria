@@ -83,6 +83,7 @@ function mapClinic(c: Record<string, unknown>): Clinic {
     phone: (c.phone as string) || undefined, servicesDescription: (c.services_description as string) || undefined,
     discountPercentage: c.discount_percentage ? Number(c.discount_percentage) : 0,
     isArchived: (c.is_archived as boolean) || false, createdAt: c.created_at as string,
+    organizationId: (c.organization_id as string) || null,
   };
 }
 
