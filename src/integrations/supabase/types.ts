@@ -1411,6 +1411,7 @@ export type Database = {
           remuneration_value: number | null
           role: string
           role_label: string | null
+          schedule_by_day: Json | null
           status: string
           updated_at: string
           user_id: string | null
@@ -1428,6 +1429,7 @@ export type Database = {
           remuneration_value?: number | null
           role?: string
           role_label?: string | null
+          schedule_by_day?: Json | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -1445,6 +1447,7 @@ export type Database = {
           remuneration_value?: number | null
           role?: string
           role_label?: string | null
+          schedule_by_day?: Json | null
           status?: string
           updated_at?: string
           user_id?: string | null
