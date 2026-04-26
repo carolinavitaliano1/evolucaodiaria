@@ -120,6 +120,8 @@ interface OrganizationMember {
   joined_at: string | null;
   created_at: string;
   weekdays?: string[] | null;
+  remuneration_type?: 'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia' | null;
+  remuneration_value?: number | null;
   profile?: { name: string | null; avatar_url: string | null };
   assignments?: PatientAssignment[];
 }
