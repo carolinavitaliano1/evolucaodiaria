@@ -42,13 +42,15 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
       const memberIds = Array.from(new Set(rows.map(r => r.member_id).filter(Boolean)));
       const pkgLinkIds = Array.from(new Set(rows.map(r => r.package_link_id).filter(Boolean)));
 
-      const [memberRes, pkgLinkRes] = await Promise.all([
+      const [memberRes, pkgLinkRes, allPkgLinksRes] = await Promise.all([
         memberIds.length
           ? supabase.from('organization_members').select('id, email, user_id').in('id', memberIds)
           : Promise.resolve({ data: [] as any[] }),
         pkgLinkIds.length
           ? supabase.from('patient_packages' as any).select('id, package_id').in('id', pkgLinkIds)
           : Promise.resolve({ data: [] as any[] }),
+        // Fallback: buscar todos os pacotes do paciente para mapear por member_id quando package_link_id estiver nulo
+        supabase.from('patient_packages' as any).select('id, package_id, member_id').eq('patient_id', patientId),
       ]);
 
       const userIds = ((memberRes.data || []) as any[]).map(m => m.user_id).filter(Boolean);
@@ -56,7 +58,11 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
         ? await supabase.from('profiles').select('user_id, name').in('user_id', userIds)
         : { data: [] as any[] };
 
-      const pkgIds = Array.from(new Set(((pkgLinkRes.data || []) as any[]).map(p => p.package_id).filter(Boolean)));
+      const allPkgLinks = (allPkgLinksRes.data || []) as any[];
+      const pkgIds = Array.from(new Set([
+        ...((pkgLinkRes.data || []) as any[]).map(p => p.package_id),
+        ...allPkgLinks.map(p => p.package_id),
+      ].filter(Boolean)));
       const pkgRes = pkgIds.length
         ? await supabase.from('clinic_packages').select('id, name, price, package_type').in('id', pkgIds)
         : { data: [] as any[] };
@@ -69,12 +75,22 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
       (pkgLinkRes.data || []).forEach((p: any) => pkgLinkMap.set(p.id, p));
       const pkgMap = new Map<string, any>();
       (pkgRes.data || []).forEach((p: any) => pkgMap.set(p.id, p));
+      // Mapa member_id -> pacote (usado como fallback quando o slot não tem package_link_id)
+      const pkgByMemberMap = new Map<string, any>();
+      allPkgLinks.forEach((link: any) => {
+        if (link.member_id && link.package_id) {
+          const pkg = pkgMap.get(link.package_id);
+          if (pkg && !pkgByMemberMap.has(link.member_id)) {
+            pkgByMemberMap.set(link.member_id, pkg);
+          }
+        }
+      });
 
       const mapped: PatientScheduleSlot[] = rows.map(r => {
         const member = memberMap.get(r.member_id);
         const profile = member?.user_id ? profileMap.get(member.user_id) : null;
         const pkgLink = r.package_link_id ? pkgLinkMap.get(r.package_link_id) : null;
-        const pkg = pkgLink ? pkgMap.get(pkgLink.package_id) : null;
+        const pkg = pkgLink ? pkgMap.get(pkgLink.package_id) : pkgByMemberMap.get(r.member_id) || null;
         return {
           id: r.id,
           patientId: r.patient_id,
