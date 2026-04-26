@@ -177,6 +177,28 @@ export default function CalendarPage() {
       isDraggable: false,
     }));
 
+    // Recurring slots from patient_schedule_slots (clinic agenda)
+    const norm = (d: string) => d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const dayNorm = norm(dayOfWeek);
+    const slotItems: CalItem[] = scheduleSlots
+      .filter(s => norm(s.weekday) === dayNorm)
+      .filter(s => !scheduledPatientIds.has(s.patient_id))
+      .map(s => {
+        const patient = patients.find(p => p.id === s.patient_id);
+        const clinic = clinics.find(c => c.id === s.clinic_id);
+        const hasEvolution = evolutions.some(e => e.patientId === s.patient_id && e.date === dateStr);
+        return {
+          id: `slot-${s.id}-${dateStr}`,
+          time: s.start_time,
+          title: patient?.name || 'Paciente',
+          sub: (clinic?.name || '') + ` · ${s.start_time}–${s.end_time}` + (hasEvolution ? ' ✓' : ''),
+          type: 'atendimento',
+          color: hasEvolution ? 'bg-emerald-500' : EVENT_COLORS.atendimento.bg,
+          bgColor: hasEvolution ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : EVENT_COLORS.atendimento.pill,
+          isDraggable: false,
+        };
+      });
+
     const evts: CalItem[] = calendarEvents
       .filter(e => e.date === dateStr)
       .map(e => ({
@@ -187,8 +209,8 @@ export default function CalendarPage() {
         isDraggable: true,
       }));
 
-    return [...appts, ...scheduledPatients, ...privAppts, ...evts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-  }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate, evolutions]);
+    return [...appts, ...scheduledPatients, ...slotItems, ...privAppts, ...evts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate, evolutions, scheduleSlots]);
 
   // --- Appointment form ---
   const clinicPatients = patients.filter(p => p.clinicId === formData.clinicId);
