@@ -887,6 +887,70 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
                   <Separator />
 
+                  {/* Remuneration */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Remuneração</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Tipo</Label>
+                        <Select value={inviteRemunerationType} onValueChange={(v: any) => setInviteRemunerationType(v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="definir_depois">Definir depois</SelectItem>
+                            <SelectItem value="por_sessao">Por sessão</SelectItem>
+                            <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
+                            <SelectItem value="fixo_dia">Fixo por dia</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Valor (R$)</Label>
+                        <Input
+                          type="number" step="0.01" min="0"
+                          placeholder="0,00"
+                          value={inviteRemunerationValue}
+                          onChange={e => setInviteRemunerationValue(e.target.value)}
+                          disabled={inviteRemunerationType === 'definir_depois'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Weekdays */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dias de atendimento <span className="font-normal normal-case">(opcional)</span></p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { v: 'seg', l: 'Seg' }, { v: 'ter', l: 'Ter' }, { v: 'qua', l: 'Qua' },
+                        { v: 'qui', l: 'Qui' }, { v: 'sex', l: 'Sex' }, { v: 'sab', l: 'Sáb' }, { v: 'dom', l: 'Dom' },
+                      ].map(d => {
+                        const active = inviteWeekdays.includes(d.v);
+                        return (
+                          <button
+                            key={d.v}
+                            type="button"
+                            onClick={() => setInviteWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v])}
+                            className={cn(
+                              'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
+                              active
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-card text-foreground border-border hover:border-primary/40'
+                            )}
+                          >
+                            {d.l}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <Separator />
+
                   {/* Permissions */}
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Permissões de acesso</p>
