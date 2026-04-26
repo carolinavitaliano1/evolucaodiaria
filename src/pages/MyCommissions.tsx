@@ -237,25 +237,50 @@ export default function MyCommissions() {
   }, [evolutions, patientsMap]);
 
   // Subtotal por linha (só faz sentido para planos por_sessao)
+  // Subtotal por linha — agora também suporta plano "pacote" (valor fixo por paciente/mês).
   const subtotalForPatient = (patientId: string, billable: number): number | null => {
     const plan = resolvePlanForPatient(patientId);
     if (!plan) {
       if (member?.remuneration_type === 'por_sessao' && member.remuneration_value) {
         return billable * Number(member.remuneration_value);
       }
+      if (member?.remuneration_type === 'pacote' && member.remuneration_value) {
+        return billable > 0 ? Number(member.remuneration_value) : 0;
+      }
       return null;
     }
     if (plan.remuneration_type === 'por_sessao') {
       return billable * Number(plan.remuneration_value);
     }
+    if (plan.remuneration_type === 'pacote') {
+      return billable > 0 ? Number(plan.remuneration_value) : 0;
+    }
+    return null;
+  };
+
+  // Valor por sessão exibido na tabela: pacote → total ÷ sessões realizadas no mês
+  // (ex: R$ 300 / 4 sessões = R$ 75 por sessão). Por sessão → o próprio valor do plano.
+  const perSessionForPatient = (patientId: string, billable: number): number | null => {
+    const plan = resolvePlanForPatient(patientId);
+    const type = plan?.remuneration_type ?? member?.remuneration_type ?? null;
+    const value = plan ? Number(plan.remuneration_value) : Number(member?.remuneration_value ?? 0);
+    if (!type || !value) return null;
+    if (type === 'por_sessao') return value;
+    if (type === 'pacote') return billable > 0 ? value / billable : value;
     return null;
   };
 
   const showSubtotalColumn = perPatient.some(p => {
     const plan = resolvePlanForPatient(p.id);
-    if (plan) return plan.remuneration_type === 'por_sessao';
-    return member?.remuneration_type === 'por_sessao' && !!member.remuneration_value;
+    const type = plan?.remuneration_type ?? member?.remuneration_type ?? null;
+    if (type === 'por_sessao' || type === 'pacote') {
+      const value = plan ? Number(plan.remuneration_value) : Number(member?.remuneration_value ?? 0);
+      return !!value;
+    }
+    return false;
   });
+
+  const showPerSessionColumn = showSubtotalColumn;
 
   const maxHist = Math.max(...history.map(h => h.total), 1);
 
