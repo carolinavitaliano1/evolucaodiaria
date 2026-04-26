@@ -572,6 +572,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
             patient_id: a.patient_id,
             schedule_time: a.schedule_time,
             patient_name: patient?.name,
+            remuneration_plan_id: a.remuneration_plan_id ?? null,
           });
         });
 
