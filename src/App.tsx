@@ -35,6 +35,7 @@ const DocIA = lazy(() => import("./pages/DocIA"));
 const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Mural = lazy(() => import("./pages/Mural"));
 const Team = lazy(() => import("./pages/Team"));
+const MyCommissions = lazy(() => import("./pages/MyCommissions"));
 const Support = lazy(() => import("./pages/Support"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 const PatientIntakePublic = lazy(() => import("./pages/PatientIntakePublic"));
@@ -148,6 +149,7 @@ const App = () => (
                     <Route path="/install" element={<InstallApp />} />
                     <Route path="/mural" element={<Mural />} />
                     <Route path="/team" element={<Team />} />
+                    <Route path="/minhas-comissoes" element={<MyCommissions />} />
                     <Route path="/suporte" element={<Support />} />
                     <Route path="/admin/suporte" element={<AdminSupport />} />
                   </Route>

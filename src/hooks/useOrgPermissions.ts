@@ -37,6 +37,8 @@ export const ALL_PERMISSIONS = [
   'financial.view',
   'financial.edit',
   'financial.export',
+  // Comissões pessoais (visão do terapeuta)
+  'commissions.view',
   // Relatórios
   'reports.view',
   'ai_reports.view',
@@ -75,6 +77,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'financial.view': 'Ver Financeiro',
   'financial.edit': 'Editar Financeiro',
   'financial.export': 'Exportar Financeiro',
+  'commissions.view': 'Ver Minhas Comissões',
   'reports.view': 'Ver Relatórios',
   'ai_reports.view': 'Ver Relatórios IA',
   'tasks.view': 'Ver Tarefas',
@@ -367,6 +370,7 @@ export const DEFAULT_THERAPIST_PERMISSIONS: PermissionKey[] = [
   'ai_evolutions.use',
   'mural.view',
   'tasks.view',
+  'commissions.view',
 ];
 
 /** Default permissions for an admin */
