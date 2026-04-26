@@ -2691,9 +2691,11 @@ export default function PatientDetail() {
                     return authorId === evoAuthorFilter;
                   }).map((evo) => {
                     const moodInfo = getMoodInfo(evo.mood, customMoods);
-                    const evoAuthorId = (evo as any).user_id;
-                    const evoAuthor = isOrg && evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
-                    const authorLabel = evoAuthor ? (evoAuthor.name || evoAuthor.email) : null;
+                    const evoAuthorId = (evo as any).userId || (evo as any).user_id;
+                    const evoAuthor = evoAuthorId ? members.find(m => m.userId === evoAuthorId) : null;
+                    const authorLabel = evoAuthor
+                      ? (evoAuthor.name || evoAuthor.email)
+                      : (evoAuthorId === user?.id ? (user?.user_metadata?.full_name || user?.email || 'Você') : null);
                     const isAutoHoliday = Boolean((evo as any).isAutoHoliday);
                     const holidayLabel = (evo as any).holidayLabel as string | undefined;
                     const holidayCreatedAt = (evo as any).holidayCreatedAt as string | undefined;
