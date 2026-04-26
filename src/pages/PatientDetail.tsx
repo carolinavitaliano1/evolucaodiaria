@@ -2446,8 +2446,6 @@ export default function PatientDetail() {
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
-
-
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-primary" /> Nova Evolução
