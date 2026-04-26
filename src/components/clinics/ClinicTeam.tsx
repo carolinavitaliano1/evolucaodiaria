@@ -153,6 +153,10 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [invitePermissions, setInvitePermissions] = useState<PermissionKey[]>([...DEFAULT_THERAPIST_PERMISSIONS]);
   const [inviting, setInviting] = useState(false);
   const [invitePreset, setInvitePreset] = useState<string>('terapeuta');
+  // Remuneration & weekdays for new collaborators
+  const [inviteRemunerationType, setInviteRemunerationType] = useState<'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('definir_depois');
+  const [inviteRemunerationValue, setInviteRemunerationValue] = useState<string>('');
+  const [inviteWeekdays, setInviteWeekdays] = useState<string[]>([]);
 
   // Member management modal
   const [manageMember, setManageMember] = useState<OrganizationMember | null>(null);
