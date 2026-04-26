@@ -245,12 +245,20 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   // Member management modal
   const [manageMember, setManageMember] = useState<OrganizationMember | null>(null);
   const [editPatients, setEditPatients] = useState<Record<string, string>>({});
+  const [editPatientPlans, setEditPatientPlans] = useState<Record<string, string>>({}); // patient_id → plan_id
   const [editPermissions, setEditPermissions] = useState<PermissionKey[]>([]);
   const [editRoleLabel, setEditRoleLabel] = useState('');
   const [editRemunerationType, setEditRemunerationType] = useState<'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('definir_depois');
   const [editRemunerationValue, setEditRemunerationValue] = useState<string>('');
   const [editWeekdays, setEditWeekdays] = useState<string[]>([]);
   const [savingAssign, setSavingAssign] = useState(false);
+
+  // Plans management for the member being managed
+  const [memberPlans, setMemberPlans] = useState<RemunerationPlanRow[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [newPlanName, setNewPlanName] = useState('');
+  const [newPlanType, setNewPlanType] = useState<'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('por_sessao');
+  const [newPlanValue, setNewPlanValue] = useState('');
 
   // Remove confirm
   const [removeMemberId, setRemoveMemberId] = useState<string | null>(null);
