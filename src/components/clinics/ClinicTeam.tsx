@@ -39,6 +39,7 @@ import {
 import { PermissionEditor } from '@/components/clinics/PermissionEditor';
 import { TeamPublicLinkCard } from '@/components/clinics/TeamPublicLinkCard';
 import { TeamApplicationsPanel } from '@/components/clinics/TeamApplicationsPanel';
+import { TherapistAgendaModal } from '@/components/clinics/TherapistAgendaModal';
 import { cn } from '@/lib/utils';
 
 // Helper: extracts the patient's known schedule slots (from scheduleByDay or fallback scheduleTime)
@@ -265,6 +266,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
   // Resend
   const [resendingId, setResendingId] = useState<string | null>(null);
+
+  // Agenda modal
+  const [agendaMember, setAgendaMember] = useState<OrganizationMember | null>(null);
 
   const clinicPatients = patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p));
   const isOwner = organization?.owner_id === user?.id;
@@ -514,7 +518,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                     variant="outline"
                     size="sm"
                     className="flex-1 h-7 text-[11px] gap-1 px-2"
-                    onClick={e => { e.stopPropagation(); navigate('/calendar'); }}
+                    onClick={e => { e.stopPropagation(); setAgendaMember(member); }}
                   >
                     <CalendarDays className="w-3 h-3" />
                     Ver Agenda
@@ -1817,6 +1821,15 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <TherapistAgendaModal
+        open={!!agendaMember}
+        onOpenChange={(v) => { if (!v) setAgendaMember(null); }}
+        memberId={agendaMember?.id || null}
+        memberName={agendaMember?.profile?.name || agendaMember?.email || ''}
+        memberWeekdays={agendaMember?.weekdays || []}
+        clinicId={clinicId}
+      />
     </div>
   );
 }
