@@ -3161,11 +3161,6 @@ export default function PatientDetail() {
         {/* Financial Tab — oculta para terapeutas convidados (eles veem em "Minhas Comissões") */}
         {canSeeFinancialTab && (
         <TabsContent value="financial" className="space-y-4">
-          {/* "Plano & Financeiro" só faz sentido para owner/admin (configuração do plano do paciente).
-              Terapeutas convidados não precisam ver/editar essa configuração. */}
-          {(!isOrgMember || isOrgOwner) && (
-            <PatientPlanCard patient={patient} canEdit={true} />
-          )}
           {/* Month navigator */}
           <div className="bg-card rounded-xl px-4 py-3 shadow-sm border border-border flex items-center justify-between">
             <button
