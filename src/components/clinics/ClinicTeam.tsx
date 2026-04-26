@@ -122,6 +122,7 @@ interface OrganizationMember {
   joined_at: string | null;
   created_at: string;
   weekdays?: string[] | null;
+  schedule_by_day?: Record<string, { start: string; end: string }> | null;
   remuneration_type?: 'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia' | null;
   remuneration_value?: number | null;
   profile?: { name: string | null; avatar_url: string | null };
@@ -252,6 +253,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [editRemunerationType, setEditRemunerationType] = useState<'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('definir_depois');
   const [editRemunerationValue, setEditRemunerationValue] = useState<string>('');
   const [editWeekdays, setEditWeekdays] = useState<string[]>([]);
+  const [editScheduleByDay, setEditScheduleByDay] = useState<Record<string, { start: string; end: string }>>({});
   const [savingAssign, setSavingAssign] = useState(false);
 
   // Plans management for the member being managed
@@ -870,6 +872,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           ? Number(editRemunerationValue)
           : null,
         weekdays: editWeekdays.length > 0 ? editWeekdays : null,
+        schedule_by_day: Object.keys(editScheduleByDay).length > 0 ? editScheduleByDay : null,
       }).eq('id', manageMember.id);
       if (updateError) throw updateError;
 
@@ -912,6 +915,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
     setEditRemunerationType((member.remuneration_type as any) || 'definir_depois');
     setEditRemunerationValue(member.remuneration_value != null ? String(member.remuneration_value) : '');
     setEditWeekdays(member.weekdays || []);
+    setEditScheduleByDay((member as any).schedule_by_day || {});
     setManageMember(member);
     loadMemberPlans(member.id);
   }
@@ -1673,7 +1677,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         <div className="flex items-center gap-2">
                           <CalendarDays className="w-4 h-4 text-primary" />
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Dias de atendimento <span className="font-normal normal-case">(opcional)</span>
+                            Dias e horários de atendimento <span className="font-normal normal-case">(opcional)</span>
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -1686,7 +1690,21 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                               <button
                                 key={d.v}
                                 type="button"
-                                onClick={() => setEditWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v])}
+                                onClick={() => {
+                                  setEditWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v]);
+                                  if (active) {
+                                    setEditScheduleByDay(prev => {
+                                      const next = { ...prev };
+                                      delete next[d.v];
+                                      return next;
+                                    });
+                                  } else {
+                                    setEditScheduleByDay(prev => ({
+                                      ...prev,
+                                      [d.v]: prev[d.v] || { start: '08:00', end: '18:00' },
+                                    }));
+                                  }
+                                }}
                                 className={cn(
                                   'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
                                   active
@@ -1699,6 +1717,44 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                             );
                           })}
                         </div>
+                        {editWeekdays.length > 0 && (
+                          <div className="space-y-1.5 pt-2">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Horário de disponibilidade nesta clínica
+                            </p>
+                            {editWeekdays.map(d => {
+                              const labels: Record<string, string> = {
+                                seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta',
+                                sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
+                              };
+                              const range = editScheduleByDay[d] || { start: '08:00', end: '18:00' };
+                              return (
+                                <div key={d} className="flex items-center gap-2 text-xs">
+                                  <span className="w-20 text-muted-foreground">{labels[d] || d}</span>
+                                  <Input
+                                    type="time"
+                                    value={range.start}
+                                    onChange={e => setEditScheduleByDay(prev => ({
+                                      ...prev,
+                                      [d]: { ...range, start: e.target.value },
+                                    }))}
+                                    className="h-7 w-28 text-xs"
+                                  />
+                                  <span className="text-muted-foreground">até</span>
+                                  <Input
+                                    type="time"
+                                    value={range.end}
+                                    onChange={e => setEditScheduleByDay(prev => ({
+                                      ...prev,
+                                      [d]: { ...range, end: e.target.value },
+                                    }))}
+                                    className="h-7 w-28 text-xs"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </TabsContent>
 
@@ -1828,6 +1884,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         memberId={agendaMember?.id || null}
         memberName={agendaMember?.profile?.name || agendaMember?.email || ''}
         memberWeekdays={agendaMember?.weekdays || []}
+        memberScheduleByDay={(agendaMember as any)?.schedule_by_day || null}
         clinicId={clinicId}
       />
     </div>

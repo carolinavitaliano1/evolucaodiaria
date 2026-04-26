@@ -19,6 +19,7 @@ interface Props {
   memberId: string | null;
   memberName: string;
   memberWeekdays: string[];
+  memberScheduleByDay?: Record<string, { start: string; end: string }> | null;
   clinicId: string;
 }
 
@@ -34,9 +35,25 @@ const WEEKDAYS = [
 
 const norm = (d: string) => d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+// Map between short keys (seg/ter/...) used in schedule_by_day and full names used in patient_schedule_slots
+const SHORT_TO_FULL: Record<string, string> = {
+  seg: 'segunda', ter: 'terça', qua: 'quarta', qui: 'quinta',
+  sex: 'sexta', sab: 'sábado', dom: 'domingo',
+};
+function normDay(d: string) {
+  const n = norm(d);
+  return norm(SHORT_TO_FULL[n] || n);
+}
+
 function buildFreeWindows(busy: Slot[], day: string, dayStart = '08:00', dayEnd = '20:00') {
   const sorted = busy
-    .filter(b => norm(b.weekday) === norm(day))
+    .filter(b => normDay(b.weekday) === normDay(day))
+    .filter(b => b.end_time > dayStart && b.start_time < dayEnd)
+    .map(b => ({
+      ...b,
+      start_time: b.start_time < dayStart ? dayStart : b.start_time,
+      end_time: b.end_time > dayEnd ? dayEnd : b.end_time,
+    }))
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
   const windows: Array<{ start: string; end: string }> = [];
   let cursor = dayStart;
@@ -48,7 +65,7 @@ function buildFreeWindows(busy: Slot[], day: string, dayStart = '08:00', dayEnd 
   return windows;
 }
 
-export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName, memberWeekdays, clinicId }: Props) {
+export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName, memberWeekdays, memberScheduleByDay, clinicId }: Props) {
   const [loading, setLoading] = useState(false);
   const [slots, setSlots] = useState<Slot[]>([]);
 
@@ -90,9 +107,16 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
   }, [open, memberId, clinicId]);
 
   const availableDays = useMemo(() => {
-    const setDays = new Set((memberWeekdays || []).map(norm));
-    return WEEKDAYS.filter(w => setDays.size === 0 || setDays.has(norm(w.value)));
+    const setDays = new Set((memberWeekdays || []).map(normDay));
+    return WEEKDAYS.filter(w => setDays.size === 0 || setDays.has(normDay(w.value)));
   }, [memberWeekdays]);
+
+  // Lookup schedule range for a given full-name day from schedule_by_day (keyed by seg/ter/...)
+  function getDayRange(dayValue: string): { start: string; end: string } {
+    if (!memberScheduleByDay) return { start: '08:00', end: '20:00' };
+    const entry = Object.entries(memberScheduleByDay).find(([k]) => normDay(k) === normDay(dayValue));
+    return entry ? entry[1] : { start: '08:00', end: '20:00' };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -122,13 +146,19 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {availableDays.map(day => {
                 const daySlots = slots
-                  .filter(s => norm(s.weekday) === norm(day.value))
+                  .filter(s => normDay(s.weekday) === normDay(day.value))
                   .sort((a, b) => a.start_time.localeCompare(b.start_time));
-                const free = buildFreeWindows(slots, day.value);
+                const range = getDayRange(day.value);
+                const free = buildFreeWindows(slots, day.value, range.start, range.end);
                 return (
                   <div key={day.value} className="rounded-xl border bg-card p-3 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-foreground">{day.label}</h4>
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground">{day.label}</h4>
+                        <p className="text-[10px] text-muted-foreground font-mono">
+                          Disponível {range.start}–{range.end}
+                        </p>
+                      </div>
                       <Badge variant="outline" className="text-[10px]">
                         {daySlots.length} {daySlots.length === 1 ? 'sessão' : 'sessões'}
                       </Badge>
