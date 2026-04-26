@@ -329,6 +329,18 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
   useEffect(() => { loadTeam(); }, [clinicId]);
 
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('clinic_packages')
+        .select('id, name, price, package_type')
+        .eq('clinic_id', clinicId)
+        .eq('is_active', true)
+        .order('name');
+      setClinicPackagesList((data as any) || []);
+    })();
+  }, [clinicId]);
+
   const MembersView = (
     <div className="space-y-6">
       {/* Search and Filters */}
