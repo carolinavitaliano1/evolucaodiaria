@@ -754,6 +754,11 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         permissions: permissionsMap,
         role_label: editRoleLabel || null,
         role: manageMember.role, // persist the role selected via preset cards
+        remuneration_type: editRemunerationType,
+        remuneration_value: editRemunerationType !== 'definir_depois' && editRemunerationValue
+          ? Number(editRemunerationValue)
+          : null,
+        weekdays: editWeekdays.length > 0 ? editWeekdays : null,
       }).eq('id', manageMember.id);
       if (updateError) throw updateError;
 
