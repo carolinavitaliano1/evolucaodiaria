@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Lock } from 'lucide-react';
+import { PatientPackagesManager } from './PatientPackagesManager';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -41,6 +42,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   // Terapeutas/colaboradores sem permissão de editar pacientes veem o modal em modo somente-leitura.
   const isReadOnly = isOrgMember && !isOwner && !permissions.includes('patients.edit');
+  const [clinicOrgId, setClinicOrgId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     birthdate: '',
@@ -138,6 +140,16 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             setInitialPaymentStatus((data as any)?.paid || false);
             setInitialPaymentDate((data as any)?.payment_date || '');
           });
+      }
+
+      // Load clinic organization id (for multi-package manager scoping)
+      if (patient.clinicId) {
+        supabase
+          .from('clinics')
+          .select('organization_id')
+          .eq('id', patient.clinicId)
+          .maybeSingle()
+          .then(({ data }) => setClinicOrgId((data as any)?.organization_id || null));
       }
     }
   }, [open, patient, isPropria, user]);
