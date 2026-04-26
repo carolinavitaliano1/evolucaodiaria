@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApp } from '@/contexts/AppContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { TeamFinancialReport } from './TeamFinancialReport';
 import { format, subMonths, addMonths, isSameDay, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -54,6 +55,10 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const { clinics, patients, evolutions, updateClinic, clinicPackages } = useApp();
   const { user } = useAuth();
   const { isOrg } = useClinicOrg(clinicId);
+  const { isOrgMember, isOwner } = useOrgPermissions();
+  // Terapeuta colaborador (não-owner): vê apenas seus próprios atendimentos,
+  // como se fosse seu consultório. Owner/admin vê tudo da clínica.
+  const restrictToOwnRevenue = isOrgMember && !isOwner;
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
   const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
@@ -257,7 +262,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const monthName = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
 
   const periodStartDate = startOfMonth(new Date(selectedYear, selectedMonth, 1));
-  const clinicPatients = patients.filter(p => {
+  const allClinicPatients = patients.filter(p => {
     if (p.clinicId !== clinicId) return false;
     const hasMonthlyActivity = evolutions.some(e => {
       if (e.patientId !== p.id) return false;
@@ -267,11 +272,18 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     return hasMonthlyActivity || isPatientActiveOn(p, periodStartDate);
   });
 
+  // Quando colaborador, mantém apenas evoluções registradas pelo próprio usuário.
   const monthlyEvolutions = evolutions.filter(e => {
-    if (!clinicPatients.some(p => p.id === e.patientId)) return false;
+    if (!allClinicPatients.some(p => p.id === e.patientId)) return false;
+    if (restrictToOwnRevenue && e.userId !== user?.id) return false;
     const date = new Date(e.date + 'T12:00:00');
     return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
   });
+
+  // Quando colaborador, restringe pacientes àqueles em que ele atendeu no mês.
+  const clinicPatients = restrictToOwnRevenue
+    ? allClinicPatients.filter(p => monthlyEvolutions.some(e => e.patientId === p.id))
+    : allClinicPatients;
 
   const presentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
   const absentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
