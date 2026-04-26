@@ -1,4 +1,4 @@
-import { Calendar, Clock, User, Package } from 'lucide-react';
+import { Calendar, Clock, User, Wallet } from 'lucide-react';
 import { usePatientScheduleSlots } from '@/hooks/usePatientScheduleSlots';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -53,7 +53,7 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                 <TableHead className="w-[110px]">Dia</TableHead>
                 <TableHead className="w-[140px]">Horário</TableHead>
                 <TableHead>Profissional</TableHead>
-                <TableHead>Pacote</TableHead>
+                <TableHead>Plano de remuneração</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -73,20 +73,23 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                     </span>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {s.packageName ? (
+                    {s.remunerationPlanName ? (
                       <div className="flex flex-col gap-0.5">
                         <span className="inline-flex items-center gap-1.5 text-foreground">
-                          <Package className="w-3.5 h-3.5" />
-                          {s.packageName}
+                          <Wallet className="w-3.5 h-3.5" />
+                          {s.remunerationPlanName}
                         </span>
-                        {s.packagePrice != null && (
+                        {s.remunerationPlanValue != null && (
                           <span className="text-[11px] font-semibold text-success ml-5">
-                            R$ {s.packagePrice.toFixed(2)}
-                            {s.packageType === 'por_sessao' && (
+                            R$ {s.remunerationPlanValue.toFixed(2)}
+                            {s.remunerationPlanType === 'por_sessao' && (
                               <span className="text-muted-foreground font-normal"> / sessão</span>
                             )}
-                            {s.packageType === 'mensal' && (
+                            {s.remunerationPlanType === 'fixo_mensal' && (
                               <span className="text-muted-foreground font-normal"> / mês</span>
+                            )}
+                            {s.remunerationPlanType === 'pacote' && (
+                              <span className="text-muted-foreground font-normal"> (pacote)</span>
                             )}
                           </span>
                         )}
