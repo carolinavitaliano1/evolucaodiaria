@@ -2432,7 +2432,7 @@ export default function PatientDetail() {
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
             { value: 'session', icon: Brain, label: 'Sessão' },
             { value: 'reports', icon: BarChart3, label: 'Rel. Mensal' },
-            { value: 'financial', icon: DollarSign, label: 'Financeiro' },
+            ...(canSeeFinancialTab ? [{ value: 'financial', icon: DollarSign, label: 'Financeiro' }] : []),
             { value: 'documents', icon: Paperclip, label: 'Documentos' },
             { value: 'tasks', icon: ListTodo, label: 'Tarefas' },
             { value: 'notes', icon: PenLine, label: 'Notas' },
