@@ -1665,6 +1665,7 @@ export default function ClinicDetail() {
 
 
                     {/* Package selection and payment info */}
+                    {clinic.type !== 'clinica' && (
                     <div className="border-t pt-4">
                       <p className="font-semibold mb-2">💰 Pagamento</p>
                       
@@ -1755,8 +1756,10 @@ export default function ClinicDetail() {
                         </div>
                       )}
                     </div>
+                    )}
 
 
+                    {clinic.type !== 'clinica' && (
                     <div className="border-t pt-4">
                       <p className="font-semibold mb-3">📅 Horários de Atendimento</p>
                       
@@ -1847,6 +1850,7 @@ export default function ClinicDetail() {
                         </Select>
                       </div>
                     </div>
+                    )}
 
                     <div className="flex gap-2 pt-4">
                       <Button type="submit" className="flex-1 gradient-primary">
