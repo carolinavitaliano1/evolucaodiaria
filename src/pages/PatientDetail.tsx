@@ -2446,6 +2446,16 @@ export default function PatientDetail() {
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
+          {restrictToOwn && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-foreground/80 flex items-start gap-2">
+              <Lock className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+              <p>
+                Você está vendo apenas as evoluções, anexos e tarefas registrados por você.
+                Para liberar a visão de todos os profissionais, peça ao administrador para alterar
+                seu nível de acesso para <strong>Acesso Total</strong> no Módulo Clínico.
+              </p>
+            </div>
+          )}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-primary" /> Nova Evolução
