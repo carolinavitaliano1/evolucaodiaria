@@ -576,3 +576,17 @@ export function useOrgPermissions(): OrgMembershipInfo {
 export function hasPermission(permissions: PermissionKey[], key: PermissionKey): boolean {
   return permissions.includes(key);
 }
+
+/**
+ * Returns true when the current user should be restricted to records they
+ * created themselves (e.g. evolutions, attachments, notes, tasks). Owner
+ * always sees everything. Non-org users (sole therapists) also see everything.
+ */
+export function shouldFilterOwnOnly(
+  info: { isOrgMember: boolean; isOwner: boolean; permissions: PermissionKey[] },
+  key: PermissionKey,
+): boolean {
+  if (!info.isOrgMember) return false;
+  if (info.isOwner) return false;
+  return info.permissions.includes(key);
+}
