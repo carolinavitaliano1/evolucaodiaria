@@ -370,6 +370,7 @@ export const DEFAULT_THERAPIST_PERMISSIONS: PermissionKey[] = [
   'ai_evolutions.use',
   'mural.view',
   'tasks.view',
+  'commissions.view',
 ];
 
 /** Default permissions for an admin */
