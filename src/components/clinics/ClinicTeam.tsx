@@ -263,6 +263,44 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
     });
   }, [members, searchQuery, statusFilter]);
 
+  // ─── Schedule Summary by weekday (must be declared before any early return) ───
+  const scheduleByDay = useMemo(() => {
+    const WD = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
+    const norm = (d: string) => d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const map: Record<string, Array<{ member: OrganizationMember; patients: PatientAssignment[] }>> = {};
+    WD.forEach(d => { map[d] = []; });
+    members.filter(m => m.status === 'active').forEach(member => {
+      const memberDays = new Set((member.weekdays || []).map(norm));
+      const dayPatients: Record<string, PatientAssignment[]> = {};
+      (member.assignments || []).forEach(a => {
+        const patient = clinicPatients.find(p => p.id === a.patient_id);
+        if (!patient) return;
+        const days = new Set<string>();
+        (patient.weekdays || []).forEach(d => days.add(norm(d)));
+        if (patient.scheduleByDay) Object.keys(patient.scheduleByDay).forEach(d => days.add(norm(d)));
+        days.forEach(d => {
+          if (!dayPatients[d]) dayPatients[d] = [];
+          dayPatients[d].push(a);
+        });
+      });
+      WD.forEach(day => {
+        const n = norm(day);
+        if (memberDays.has(n) || (dayPatients[n] || []).length > 0) {
+          map[day].push({ member, patients: dayPatients[n] || [] });
+        }
+      });
+    });
+    return map;
+  }, [members, clinicPatients]);
+
+  // (filteredMembers original closing replaced — keep stub to avoid duplicate declarations)
+  const _filterStub = useMemo(() => {
+    return null;
+  }, []);
+      return matchesSearch && matchesStatus;
+    });
+  }, [members, searchQuery, statusFilter]);
+
   useEffect(() => { loadTeam(); }, [clinicId]);
 
   const MembersView = (
