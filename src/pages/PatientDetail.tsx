@@ -317,6 +317,8 @@ export default function PatientDetail() {
   const [feedbackEvolution, setFeedbackEvolution] = useState<Evolution | null>(null);
   const [feedbackBulkOpen, setFeedbackBulkOpen] = useState(false);
   const [evoTypeFilter, setEvoTypeFilter] = useState<'all' | 'group' | 'individual'>('all');
+  // Author filter (admins/owners only) — lets the manager focus on a single therapist's evolutions
+  const [evoAuthorFilter, setEvoAuthorFilter] = useState<string>('all');
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [deletePatientOpen, setDeletePatientOpen] = useState(false);
   const [archivePatientOpen, setArchivePatientOpen] = useState(false);
