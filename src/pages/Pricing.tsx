@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,7 @@ import { Check, X, Loader2, Sparkles, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { BASIC_PRICE_ID, PRO_PRICE_ID, CLINICA_PRO_PRICE_ID } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
@@ -83,6 +85,14 @@ const COMPARISON: { label: string; basic: boolean; pro: boolean; clinicaPro: boo
 export default function Pricing() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const { subscribed, tier } = useSubscription();
+  const { isOrgMember, isOwner, loading: permsLoading } = useOrgPermissions();
+
+  // Terapeutas / colaboradores convidados não devem ver/visitar a página de Planos.
+  // Quem decide a assinatura é o dono da conta. Redireciona para o dashboard.
+  if (permsLoading) return null;
+  if (isOrgMember && !isOwner) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   async function handleSubscribe(priceId: string) {
     setLoadingPlan(priceId);
