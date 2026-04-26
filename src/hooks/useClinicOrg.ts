@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import type { RemunerationPlan } from '@/utils/financialHelpers';
 
 export interface OrgMemberProfile {
   memberId: string;
@@ -11,6 +12,9 @@ export interface OrgMemberProfile {
   role: 'owner' | 'admin' | 'professional';
   remunerationType: string | null;
   remunerationValue: number | null;
+  plans: RemunerationPlan[];
+  /** Mapa patient_id → remuneration_plan_id escolhido no vínculo. */
+  assignmentPlanMap: Record<string, string | null>;
 }
 
 export function useClinicOrg(clinicId: string | undefined) {
@@ -55,6 +59,7 @@ export function useClinicOrg(clinicId: string | undefined) {
       }
 
       const userIds = membersData.filter(m => m.user_id).map(m => m.user_id!);
+      const memberIds = membersData.map(m => m.id);
       let profilesMap: Record<string, { name: string | null; avatar_url: string | null }> = {};
 
       if (userIds.length > 0) {
@@ -64,6 +69,37 @@ export function useClinicOrg(clinicId: string | undefined) {
           .in('user_id', userIds);
         profiles?.forEach(p => { profilesMap[p.user_id] = { name: p.name, avatar_url: p.avatar_url }; });
       }
+
+      // Carrega planos de remuneração + assignments (com plano escolhido por paciente)
+      const [plansRes, assignmentsRes] = await Promise.all([
+        supabase
+          .from('member_remuneration_plans' as any)
+          .select('id, member_id, name, remuneration_type, remuneration_value, is_default')
+          .in('member_id', memberIds),
+        supabase
+          .from('therapist_patient_assignments')
+          .select('member_id, patient_id, remuneration_plan_id')
+          .in('member_id', memberIds),
+      ]);
+
+      const plansByMember: Record<string, RemunerationPlan[]> = {};
+      ((plansRes.data ?? []) as any[]).forEach((p: any) => {
+        if (!plansByMember[p.member_id]) plansByMember[p.member_id] = [];
+        plansByMember[p.member_id].push({
+          id: p.id,
+          member_id: p.member_id,
+          name: p.name,
+          remuneration_type: p.remuneration_type,
+          remuneration_value: Number(p.remuneration_value) || 0,
+          is_default: !!p.is_default,
+        });
+      });
+
+      const assignmentMapByMember: Record<string, Record<string, string | null>> = {};
+      ((assignmentsRes.data ?? []) as any[]).forEach((a: any) => {
+        if (!assignmentMapByMember[a.member_id]) assignmentMapByMember[a.member_id] = {};
+        assignmentMapByMember[a.member_id][a.patient_id] = a.remuneration_plan_id ?? null;
+      });
 
       setMembers(membersData
         .filter(m => m.user_id)
@@ -76,6 +112,8 @@ export function useClinicOrg(clinicId: string | undefined) {
           role: m.role as OrgMemberProfile['role'],
           remunerationType: m.remuneration_type ?? null,
           remunerationValue: m.remuneration_value ? Number(m.remuneration_value) : null,
+          plans: plansByMember[m.id] || [],
+          assignmentPlanMap: assignmentMapByMember[m.id] || {},
         }))
       );
     } catch (e) {
