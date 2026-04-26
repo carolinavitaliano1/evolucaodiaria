@@ -1976,8 +1976,8 @@ export default function PatientDetail() {
   };
 
   const handleBack = () => {
-    if (currentClinic) navigate(`/clinics/${currentClinic.id}`);
-    else navigate('/clinics');
+    // Voltar sempre para a lista de pacientes (em vez de mergulhar de volta na clínica)
+    navigate('/patients');
   };
 
   const handleAddPatientTask = () => {
