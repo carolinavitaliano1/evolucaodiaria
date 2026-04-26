@@ -523,7 +523,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                     onClick={e => { e.stopPropagation(); setAgendaMember(member); }}
                   >
                     <CalendarDays className="w-3 h-3" />
-                    Ver Agenda
+                    Gerenciar Agenda
                   </Button>
                   {member.status !== 'pending' && (
                     <Button
