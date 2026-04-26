@@ -3421,6 +3421,7 @@ export default function PatientDetail() {
             )}
           </div>
         </TabsContent>
+        )}
 
         {/* Notes Tab */}
         <TabsContent value="notes">
