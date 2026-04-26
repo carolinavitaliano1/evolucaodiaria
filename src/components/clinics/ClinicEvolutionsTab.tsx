@@ -51,6 +51,10 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
   // Status-only: can see if evolution exists but not read its content
   const canViewContent = !isOrgMember || isOwner || hasPermission(permissions, 'evolutions.view');
   const canSeeStatus = canViewContent || hasPermission(permissions, 'evolutions.status_only');
+  // Therapists with `evolutions.own_only` are forced to see only their own evolutions
+  // (the user-filter selector is also disabled below).
+  const restrictToOwn = isOrgMember && !isOwner && hasPermission(permissions, 'evolutions.own_only');
+  const effectiveFilterUserId = restrictToOwn ? (user?.id || 'all') : filterUserId;
 
   useEffect(() => {
     if (!user) return;
@@ -67,9 +71,11 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
     return evolutions.filter(e =>
       e.clinicId === clinicId &&
       e.date === dateStr &&
-      (filterUserId === 'all' || (e as any).user_id === filterUserId || (e as any).userId === filterUserId)
+      (effectiveFilterUserId === 'all'
+        || (e as any).user_id === effectiveFilterUserId
+        || (e as any).userId === effectiveFilterUserId)
     );
-  }, [evolutions, clinicId, dateStr, filterUserId]);
+  }, [evolutions, clinicId, dateStr, effectiveFilterUserId]);
 
   const evolutionsByPatient = useMemo(() => {
     return dayEvolutions.map(evo => {
