@@ -156,8 +156,15 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
           <div className="flex flex-wrap items-center gap-2">
             {/* Professional filter */}
             {isOrg && members.length > 1 && (
-              <Select value={filterUserId} onValueChange={setFilterUserId}>
-                <SelectTrigger className="h-8 text-sm w-auto min-w-[150px]">
+              <Select
+                value={effectiveFilterUserId}
+                onValueChange={setFilterUserId}
+                disabled={restrictToOwn}
+              >
+                <SelectTrigger
+                  className="h-8 text-sm w-auto min-w-[150px]"
+                  title={restrictToOwn ? 'Você só pode ver suas próprias evoluções' : undefined}
+                >
                   <SelectValue placeholder="Profissional" />
                 </SelectTrigger>
                 <SelectContent>
