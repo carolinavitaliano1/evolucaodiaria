@@ -24,7 +24,7 @@ import {
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
   Settings, Lock, MoreVertical, UserCheck, UserX,
   Briefcase, Banknote, Search, SlidersHorizontal, UserCircle, Activity,
-  Plus, Star, Pencil, X
+  Plus, Star, Pencil, X, DollarSign
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
@@ -40,6 +40,7 @@ import { PermissionEditor } from '@/components/clinics/PermissionEditor';
 import { TeamPublicLinkCard } from '@/components/clinics/TeamPublicLinkCard';
 import { TeamApplicationsPanel } from '@/components/clinics/TeamApplicationsPanel';
 import { TherapistAgendaModal } from '@/components/clinics/TherapistAgendaModal';
+import { MemberRemunerationLinkModal } from '@/components/clinics/MemberRemunerationLinkModal';
 import { cn } from '@/lib/utils';
 
 // Helper: extracts the patient's known schedule slots (from scheduleByDay or fallback scheduleTime)
@@ -271,6 +272,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
   // Agenda modal
   const [agendaMember, setAgendaMember] = useState<OrganizationMember | null>(null);
+  const [remunMember, setRemunMember] = useState<OrganizationMember | null>(null);
 
   const clinicPatients = patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p));
   const isOwner = organization?.owner_id === user?.id;
@@ -414,6 +416,10 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                       <DropdownMenuItem onClick={() => openManageModal(member)}>
                         <Settings className="w-3.5 h-3.5 mr-2" />
                         Gerenciar acesso
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setRemunMember(member)}>
+                        <DollarSign className="w-3.5 h-3.5 mr-2" />
+                        Remuneração
                       </DropdownMenuItem>
                       {member.status === 'pending' && (
                         <DropdownMenuItem onClick={() => handleResendInvite(member)} disabled={resendingId === member.id}>
@@ -876,19 +882,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       }).eq('id', manageMember.id);
       if (updateError) throw updateError;
 
-      await supabase.from('therapist_patient_assignments').delete().eq('member_id', manageMember.id);
-      const toInsert = Object.entries(editPatients).map(([patient_id, schedule_time]) => ({
-        organization_id: organization.id,
-        member_id: manageMember.id,
-        patient_id,
-        schedule_time: schedule_time || null,
-        remuneration_plan_id: editPatientPlans[patient_id] || null,
-      }));
-      if (toInsert.length > 0) {
-        const { error } = await supabase.from('therapist_patient_assignments').insert(toInsert);
-        if (error) throw error;
-      }
-      toast.success('Permissões e pacientes atualizados');
+      toast.success('Configurações atualizadas');
       await loadTeam(); // refresh grid after save
       setManageMember(null);
     } catch (err) {
@@ -1537,10 +1531,6 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         <Lock className="w-3.5 h-3.5" />
                         Permissões
                       </TabsTrigger>
-                      <TabsTrigger value="patients" className="flex-1 gap-1.5">
-                        <CalendarDays className="w-3.5 h-3.5" />
-                        Pacientes
-                      </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="profissional" className="mt-4 space-y-4">
@@ -1767,84 +1757,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         onChange={setEditPermissions}
                       />
                     </TabsContent>
-
-                    <TabsContent value="patients" className="mt-4 space-y-2">
-                      <p className="text-xs text-muted-foreground">
-                        Selecione quais pacientes este profissional pode visualizar e atender.
-                      </p>
-                      {clinicPatients.length === 0 ? (
-                        <p className="text-sm text-muted-foreground italic">Nenhum paciente nesta clínica.</p>
-                      ) : (
-                        <div className="border rounded-md p-2 max-h-52 overflow-y-auto space-y-1">
-                          {clinicPatients.map(patient => (
-                            <div key={patient.id} className="space-y-1.5">
-                              <div
-                                className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
-                                onClick={() => toggleEditPatient(patient.id)}
-                              >
-                                <Checkbox
-                                  checked={editPatients[patient.id] !== undefined}
-                                  onCheckedChange={() => toggleEditPatient(patient.id)}
-                                />
-                                <span className="text-sm">{patient.name}</span>
-                                {editPatients[patient.id] !== undefined && editPatients[patient.id] && (
-                                  <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {editPatients[patient.id]}
-                                  </span>
-                                )}
-                              </div>
-                              {editPatients[patient.id] !== undefined && (
-                                <div className="pl-8 pb-1">
-                                  <PatientScheduleField
-                                    patient={patient}
-                                    value={editPatients[patient.id]}
-                                    onChange={(v) => setEditPatients(prev => ({ ...prev, [patient.id]: v }))}
-                                  />
-                                  {memberPlans.length > 0 && (
-                                    <div className="mt-1.5 flex items-center gap-2">
-                                      <Label className="text-[11px] text-muted-foreground shrink-0">
-                                        Plano:
-                                      </Label>
-                                      <Select
-                                        value={editPatientPlans[patient.id] || '__default__'}
-                                        onValueChange={(v) =>
-                                          setEditPatientPlans(prev => {
-                                            const n = { ...prev };
-                                            if (v === '__default__') delete n[patient.id];
-                                            else n[patient.id] = v;
-                                            return n;
-                                          })
-                                        }
-                                      >
-                                        <SelectTrigger className="h-7 text-xs flex-1">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="__default__">
-                                            Usar plano padrão
-                                          </SelectItem>
-                                          {memberPlans.map(p => (
-                                            <SelectItem key={p.id} value={p.id}>
-                                              {p.name} · R$ {Number(p.remuneration_value).toFixed(2).replace('.', ',')}
-                                              {p.is_default ? ' (padrão)' : ''}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {Object.keys(editPatients).length} paciente(s) selecionado(s)
-                      </p>
-                    </TabsContent>
-                  </Tabs>
+                    </Tabs>
                 </div>
               </ScrollArea>
 
@@ -1887,6 +1800,14 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         memberScheduleByDay={(agendaMember as any)?.schedule_by_day || null}
         clinicId={clinicId}
         organizationId={organization?.id || null}
+      />
+
+      <MemberRemunerationLinkModal
+        open={!!remunMember}
+        onOpenChange={(v) => { if (!v) setRemunMember(null); }}
+        memberId={remunMember?.id || null}
+        memberName={remunMember?.profile?.name || remunMember?.email || ''}
+        clinicId={clinicId}
       />
     </div>
   );

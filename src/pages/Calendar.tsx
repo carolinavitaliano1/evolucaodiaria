@@ -72,6 +72,7 @@ export default function CalendarPage() {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const { getBlockForDate } = useCalendarBlocks();
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [scheduleSlots, setScheduleSlots] = useState<Array<{ id: string; weekday: string; start_time: string; end_time: string; patient_id: string; clinic_id: string; member_id: string }>>([]);
   const [popupItem, setPopupItem] = useState<CalItem | null>(null);
   
   const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -97,6 +98,24 @@ export default function CalendarPage() {
   }, [user?.id]);
 
   useEffect(() => { loadCalendarEvents(); }, [loadCalendarEvents]);
+
+  // Load recurring patient schedule slots (visible to user via RLS)
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('patient_schedule_slots' as any)
+        .select('id, weekday, start_time, end_time, patient_id, clinic_id, member_id');
+      if (cancelled) return;
+      setScheduleSlots(((data as any[]) || []).map(s => ({
+        ...s,
+        start_time: (s.start_time || '').slice(0, 5),
+        end_time: (s.end_time || '').slice(0, 5),
+      })));
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // Close popups on outside click
   useEffect(() => {
@@ -158,6 +177,28 @@ export default function CalendarPage() {
       isDraggable: false,
     }));
 
+    // Recurring slots from patient_schedule_slots (clinic agenda)
+    const norm = (d: string) => d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const dayNorm = norm(dayOfWeek);
+    const slotItems: CalItem[] = scheduleSlots
+      .filter(s => norm(s.weekday) === dayNorm)
+      .filter(s => !scheduledPatientIds.has(s.patient_id))
+      .map(s => {
+        const patient = patients.find(p => p.id === s.patient_id);
+        const clinic = clinics.find(c => c.id === s.clinic_id);
+        const hasEvolution = evolutions.some(e => e.patientId === s.patient_id && e.date === dateStr);
+        return {
+          id: `slot-${s.id}-${dateStr}`,
+          time: s.start_time,
+          title: patient?.name || 'Paciente',
+          sub: (clinic?.name || '') + ` · ${s.start_time}–${s.end_time}` + (hasEvolution ? ' ✓' : ''),
+          type: 'atendimento',
+          color: hasEvolution ? 'bg-emerald-500' : EVENT_COLORS.atendimento.bg,
+          bgColor: hasEvolution ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : EVENT_COLORS.atendimento.pill,
+          isDraggable: false,
+        };
+      });
+
     const evts: CalItem[] = calendarEvents
       .filter(e => e.date === dateStr)
       .map(e => ({
@@ -168,8 +209,8 @@ export default function CalendarPage() {
         isDraggable: true,
       }));
 
-    return [...appts, ...scheduledPatients, ...privAppts, ...evts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-  }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate, evolutions]);
+    return [...appts, ...scheduledPatients, ...slotItems, ...privAppts, ...evts].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }, [appointments, patients, clinics, calendarEvents, getAppointmentsForDate, evolutions, scheduleSlots]);
 
   // --- Appointment form ---
   const clinicPatients = patients.filter(p => p.clinicId === formData.clinicId);
