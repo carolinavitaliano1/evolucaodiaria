@@ -236,6 +236,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [editPatients, setEditPatients] = useState<Record<string, string>>({});
   const [editPermissions, setEditPermissions] = useState<PermissionKey[]>([]);
   const [editRoleLabel, setEditRoleLabel] = useState('');
+  const [editRemunerationType, setEditRemunerationType] = useState<'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('definir_depois');
+  const [editRemunerationValue, setEditRemunerationValue] = useState<string>('');
+  const [editWeekdays, setEditWeekdays] = useState<string[]>([]);
   const [savingAssign, setSavingAssign] = useState(false);
 
   // Remove confirm
