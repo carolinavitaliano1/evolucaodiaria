@@ -181,6 +181,8 @@ export default function PatientDetail() {
   // see only records (evolutions / anexos / notas / tarefas) they themselves
   // created. Owners and admins with the "Acesso Total" level keep full visibility.
   const restrictToOwn = isOrgMember && !isOrgOwner && orgPermissions.includes('evolutions.own_only');
+  // Terapeutas/colaboradores (não-donos) não devem gerenciar o Portal do Paciente.
+  const canManagePortal = !isOrgMember || isOrgOwner;
   const { isPro } = useFeatureAccess();
   const { blocks: calendarBlocks } = useCalendarBlocks();
 
@@ -2430,7 +2432,7 @@ export default function PatientDetail() {
             { value: 'documents', icon: Paperclip, label: 'Documentos' },
             { value: 'tasks', icon: ListTodo, label: 'Tarefas' },
             { value: 'notes', icon: PenLine, label: 'Notas' },
-            { value: 'portal', icon: Users, label: 'Portal' },
+            ...(canManagePortal ? [{ value: 'portal', icon: Users, label: 'Portal' }] : []),
             { value: 'mural', icon: Newspaper, label: 'Mural' },
             { value: 'attendance', icon: ClipboardList, label: 'Frequência' },
             ...(isOrg ? [{ value: 'therapists', icon: UserCheck, label: 'Terapeutas' }] : []),
@@ -3525,16 +3527,18 @@ export default function PatientDetail() {
           </div>
         </TabsContent>
 
-        {/* Portal Tab */}
-        <TabsContent value="portal">
-          <PortalTab
-            patientId={patient.id}
-            patientEmail={patient.email}
-            patientName={patient.name}
-            responsibleEmail={patient.responsibleEmail}
-            responsibleName={patient.responsibleName}
-          />
-        </TabsContent>
+        {/* Portal Tab — restrito a donos/administradores */}
+        {canManagePortal && (
+          <TabsContent value="portal">
+            <PortalTab
+              patientId={patient.id}
+              patientEmail={patient.email}
+              patientName={patient.name}
+              responsibleEmail={patient.responsibleEmail}
+              responsibleName={patient.responsibleName}
+            />
+          </TabsContent>
+        )}
 
 
         {/* Mural Tab */}
