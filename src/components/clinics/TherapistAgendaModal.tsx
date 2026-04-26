@@ -9,6 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Slot {
   id?: string;
@@ -82,6 +86,8 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
   const [newEnd, setNewEnd] = useState('');
   const [saving, setSaving] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [conflictSlots, setConflictSlots] = useState<Slot[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !memberId) return;
@@ -157,15 +163,7 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
     setReloadKey(k => k + 1);
   }
 
-  async function handleAdd() {
-    if (!memberId || !newPatientId || !newWeekday || !newStart || !newEnd) {
-      toast.error('Preencha paciente, dia e horários');
-      return;
-    }
-    if (newEnd <= newStart) {
-      toast.error('Horário final deve ser após o inicial');
-      return;
-    }
+  async function performInsert() {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return; }
@@ -183,7 +181,31 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
     if (error) { toast.error(error.message || 'Erro ao adicionar'); return; }
     toast.success('Horário adicionado');
     setNewPatientId(''); setNewWeekday(''); setNewStart(''); setNewEnd('');
+    setConflictSlots([]);
+    setConfirmOpen(false);
     setReloadKey(k => k + 1);
+  }
+
+  async function handleAdd() {
+    if (!memberId || !newPatientId || !newWeekday || !newStart || !newEnd) {
+      toast.error('Preencha paciente, dia e horários');
+      return;
+    }
+    if (newEnd <= newStart) {
+      toast.error('Horário final deve ser após o inicial');
+      return;
+    }
+    // Detect overlapping slots for the same therapist on the same weekday
+    const overlaps = slots.filter(s =>
+      normDay(s.weekday) === normDay(newWeekday) &&
+      s.start_time < newEnd && s.end_time > newStart
+    );
+    if (overlaps.length > 0) {
+      setConflictSlots(overlaps);
+      setConfirmOpen(true);
+      return;
+    }
+    await performInsert();
   }
 
   return (
