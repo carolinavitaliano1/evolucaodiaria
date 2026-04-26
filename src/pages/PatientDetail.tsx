@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, LogOut, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, LogOut, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink, Lock as LockIcon } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
@@ -176,7 +176,11 @@ export default function PatientDetail() {
     addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages, loadEvolutionsForClinic, loadAttachmentsForPatient, isLoading: appLoading } = useApp();
   const { user } = useAuth();
   const { customMoods } = useCustomMoods();
-  const { permissions: orgPermissions, isOwner: isOrgOwner } = useOrgPermissions();
+  const { permissions: orgPermissions, isOwner: isOrgOwner, isOrgMember } = useOrgPermissions();
+  // When the user is a non-owner org member with `evolutions.own_only`, they
+  // see only records (evolutions / anexos / notas / tarefas) they themselves
+  // created. Owners and admins with the "Acesso Total" level keep full visibility.
+  const restrictToOwn = isOrgMember && !isOrgOwner && orgPermissions.includes('evolutions.own_only');
   const { isPro } = useFeatureAccess();
   const { blocks: calendarBlocks } = useCalendarBlocks();
 
@@ -231,7 +235,7 @@ export default function PatientDetail() {
 
   const patientEvolutions = useMemo(() => {
     const evos = evolutions
-      .filter(e => e.patientId === id)
+      .filter(e => e.patientId === id && (!restrictToOwn || e.userId === user?.id))
       .map(evo => ({
       ...evo,
       attachments: evo.attachments && evo.attachments.length > 0
@@ -288,10 +292,16 @@ export default function PatientDetail() {
 
     return [...evos, ...holidayEvolutions]
       .sort((a, b) => new Date(b.date + 'T12:00:00').getTime() - new Date(a.date + 'T12:00:00').getTime());
-  }, [evolutions, attachments, id, patient, calendarBlocks, user?.id]);
+  }, [evolutions, attachments, id, patient, calendarBlocks, user?.id, restrictToOwn]);
 
-  const patientTasksList = id ? getPatientTasks(id) : [];
-  const patientAttachments = id ? getPatientAttachments(id) : [];
+  const allPatientTasks = id ? getPatientTasks(id) : [];
+  const allPatientAttachments = id ? getPatientAttachments(id) : [];
+  const patientTasksList = restrictToOwn
+    ? allPatientTasks.filter(t => !t.userId || t.userId === user?.id)
+    : allPatientTasks;
+  const patientAttachments = restrictToOwn
+    ? allPatientAttachments.filter(a => !a.userId || a.userId === user?.id)
+    : allPatientAttachments;
   const patientPackage = patient?.packageId ? clinicPackages.find(p => p.id === patient.packageId) : null;
 
   const [evolutionText, setEvolutionText] = useState('');
@@ -2436,8 +2446,16 @@ export default function PatientDetail() {
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
-
-
+          {restrictToOwn && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-foreground/80 flex items-start gap-2">
+              <LockIcon className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+              <p>
+                Você está vendo apenas as evoluções, anexos e tarefas registrados por você.
+                Para liberar a visão de todos os profissionais, peça ao administrador para alterar
+                seu nível de acesso para <strong>Acesso Total</strong> no Módulo Clínico.
+              </p>
+            </div>
+          )}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-primary" /> Nova Evolução

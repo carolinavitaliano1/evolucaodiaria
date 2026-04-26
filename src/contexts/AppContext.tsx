@@ -153,6 +153,7 @@ function mapTask(t: Record<string, unknown>): Task {
     dueDate: (t.due_date as string) || undefined,
     priority: ((t.priority as string) as 'low' | 'medium' | 'high') || 'medium',
     createdAt: t.created_at as string,
+    userId: (t.user_id as string) || undefined,
   };
 }
 
@@ -173,6 +174,7 @@ function mapAttachment(a: Record<string, unknown>): Attachment {
     parentType: a.parent_type as Attachment['parentType'],
     name: a.name as string, data: a.file_path as string,
     type: a.file_type as string, createdAt: a.created_at as string,
+    userId: (a.user_id as string) || undefined,
   };
 }
 
