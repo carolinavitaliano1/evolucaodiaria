@@ -17,6 +17,8 @@ export interface PatientScheduleSlot {
   therapistName?: string | null;
   therapistEmail?: string | null;
   packageName?: string | null;
+  packagePrice?: number | null;
+  packageType?: string | null;
 }
 
 export function usePatientScheduleSlots(patientId: string | undefined) {
@@ -56,7 +58,7 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
 
       const pkgIds = Array.from(new Set(((pkgLinkRes.data || []) as any[]).map(p => p.package_id).filter(Boolean)));
       const pkgRes = pkgIds.length
-        ? await supabase.from('clinic_packages').select('id, name').in('id', pkgIds)
+        ? await supabase.from('clinic_packages').select('id, name, price, package_type').in('id', pkgIds)
         : { data: [] as any[] };
 
       const memberMap = new Map<string, any>();
@@ -87,6 +89,8 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
           therapistName: profile?.name || null,
           therapistEmail: member?.email || null,
           packageName: pkg?.name || null,
+          packagePrice: pkg?.price != null ? Number(pkg.price) : null,
+          packageType: pkg?.package_type || null,
         };
       });
 
