@@ -369,7 +369,13 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                             >
                               {b.planName}: R$ {b.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                               <span className="opacity-60">
-                                ({b.type === 'por_sessao' ? `${b.sessionsCount} sess.` : b.type === 'fixo_dia' ? `${b.sessionsCount} sess.` : 'mensal'})
+                                ({b.type === 'por_sessao'
+                                  ? `${b.sessionsCount} sess.`
+                                  : b.type === 'fixo_dia'
+                                    ? `${b.sessionsCount} sess.`
+                                    : b.type === 'pacote'
+                                      ? `${b.patientsCount} pac.`
+                                      : 'mensal'})
                               </span>
                             </span>
                           ))}
