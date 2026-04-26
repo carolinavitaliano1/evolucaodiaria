@@ -18,7 +18,11 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
-import { calculateMemberRemuneration as calculateMemberRemunerationHelper } from '@/utils/financialHelpers';
+import {
+  calculateMemberRemuneration as calculateMemberRemunerationHelper,
+  calculateMemberRemunerationByPlans,
+  type PlanBreakdownEntry,
+} from '@/utils/financialHelpers';
 
 interface TeamFinancialDashboardProps {
   clinicId: string;
@@ -57,18 +61,25 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
 
   const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
 
-  // 🔒 Comissão delegada ao helper central — inclui faltas remuneradas e feriados
-  // remunerados nos modelos "por sessão" e "fixo_dia".
-  const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof evolutions) => {
-    return calculateMemberRemunerationHelper({
-      remunerationType: member.remunerationType,
-      remunerationValue: member.remunerationValue,
-      evolutions: memberEvos.map(e => ({
-        id: e.id, patientId: e.patientId, groupId: e.groupId,
-        date: e.date, attendanceStatus: e.attendanceStatus,
-        confirmedAttendance: e.confirmedAttendance, userId: e.userId,
-      })),
+  // 🔒 Comissão delegada ao helper central. Quando o membro tem múltiplos planos
+  // cadastrados, usa a função baseada em planos (com breakdown por modalidade);
+  // caso contrário, cai no fallback legacy single-plan.
+  const calculateMemberBreakdown = (member: typeof members[0], memberEvos: typeof evolutions) => {
+    const evos = memberEvos.map(e => ({
+      id: e.id, patientId: e.patientId, groupId: e.groupId,
+      date: e.date, attendanceStatus: e.attendanceStatus,
+      confirmedAttendance: e.confirmedAttendance, userId: e.userId,
+    }));
+    return calculateMemberRemunerationByPlans({
+      plans: member.plans || [],
+      assignmentPlanMap: member.assignmentPlanMap || {},
+      evolutions: evos,
+      legacyType: member.remunerationType,
+      legacyValue: member.remunerationValue,
     });
+  };
+  const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof evolutions) => {
+    return calculateMemberBreakdown(member, memberEvos).total;
   };
 
   // Current month evolutions
@@ -106,15 +117,15 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
     }
   }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId]);
 
-  // Per-member stats
+  // Per-member stats — inclui o breakdown por plano para exibição
   const memberStats = useMemo(() => {
     return members.map(member => {
       const memberEvos = monthlyEvolutions.filter(e => e.userId === member.userId);
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const revenue = calculateMemberRemuneration(member, memberEvos);
-      return { member, sessions, absences, paidAbsences, revenue };
+      const calc = calculateMemberBreakdown(member, memberEvos);
+      return { member, sessions, absences, paidAbsences, revenue: calc.total, breakdown: calc.breakdown };
     }).sort((a, b) => b.revenue - a.revenue);
   }, [members, monthlyEvolutions]);
 
