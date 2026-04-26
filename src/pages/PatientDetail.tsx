@@ -2428,6 +2428,13 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+        {clinic?.type === 'clinica' && (!isOrgMember || isOrgOwner) && (
+          <PatientScheduleCard
+            patientId={patient.id}
+            clinicId={patient.clinicId}
+            organizationId={(clinic as any)?.organization_id || (clinic as any)?.organizationId || null}
+          />
+        )}
         <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-4 sm:grid-cols-4 gap-2.5">
           {[
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
