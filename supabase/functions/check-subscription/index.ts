@@ -89,7 +89,11 @@ serve(async (req) => {
       });
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2023-10-16",
+      httpClient: Stripe.createFetchHttpClient(),
+      timeout: 8000,
+    });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
