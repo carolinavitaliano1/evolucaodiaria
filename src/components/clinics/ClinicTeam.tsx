@@ -40,6 +40,7 @@ import { PermissionEditor } from '@/components/clinics/PermissionEditor';
 import { TeamPublicLinkCard } from '@/components/clinics/TeamPublicLinkCard';
 import { TeamApplicationsPanel } from '@/components/clinics/TeamApplicationsPanel';
 import { TherapistAgendaModal } from '@/components/clinics/TherapistAgendaModal';
+import { MemberRemunerationLinkModal } from '@/components/clinics/MemberRemunerationLinkModal';
 import { cn } from '@/lib/utils';
 
 // Helper: extracts the patient's known schedule slots (from scheduleByDay or fallback scheduleTime)
@@ -271,6 +272,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
   // Agenda modal
   const [agendaMember, setAgendaMember] = useState<OrganizationMember | null>(null);
+  const [remunMember, setRemunMember] = useState<OrganizationMember | null>(null);
 
   const clinicPatients = patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p));
   const isOwner = organization?.owner_id === user?.id;
