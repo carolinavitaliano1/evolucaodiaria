@@ -293,14 +293,6 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
     return map;
   }, [members, clinicPatients]);
 
-  // (filteredMembers original closing replaced — keep stub to avoid duplicate declarations)
-  const _filterStub = useMemo(() => {
-    return null;
-  }, []);
-      return matchesSearch && matchesStatus;
-    });
-  }, [members, searchQuery, statusFilter]);
-
   useEffect(() => { loadTeam(); }, [clinicId]);
 
   const MembersView = (
