@@ -502,6 +502,19 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Dias e Horários</Label>
+            {isClinica ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] text-muted-foreground">
+                  Monte a agenda do paciente vinculando cada horário a um terapeuta cadastrado (e, opcionalmente, a um pacote daquele profissional). Você pode pular esta etapa e gerenciar depois pelo card "Agenda do Paciente" no prontuário.
+                </p>
+                <PatientScheduleSlotsManager
+                  patientId={patient.id}
+                  clinicId={patient.clinicId}
+                  organizationId={clinicOrgId}
+                  disabled={isReadOnly}
+                />
+              </div>
+            ) : (
             <div className="space-y-3 mt-3">
               {WEEKDAYS.map((day) => {
                 const isSelected = formData.weekdays.includes(day.value);
@@ -580,6 +593,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                 );
               })}
             </div>
+            )}
           </div>
 
           {!isTerceirizada && (
