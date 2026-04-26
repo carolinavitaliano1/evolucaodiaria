@@ -1884,6 +1884,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         memberId={agendaMember?.id || null}
         memberName={agendaMember?.profile?.name || agendaMember?.email || ''}
         memberWeekdays={agendaMember?.weekdays || []}
+        memberScheduleByDay={(agendaMember as any)?.schedule_by_day || null}
         clinicId={clinicId}
       />
     </div>
