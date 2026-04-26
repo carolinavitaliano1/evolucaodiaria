@@ -1250,6 +1250,47 @@ export type Database = {
         }
         Relationships: []
       }
+      member_remuneration_plans: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          member_id: string
+          name: string
+          remuneration_type: string
+          remuneration_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          member_id: string
+          name?: string
+          remuneration_type?: string
+          remuneration_value?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          member_id?: string
+          name?: string
+          remuneration_type?: string
+          remuneration_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_remuneration_plans_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_templates: {
         Row: {
           category: string
@@ -3038,6 +3079,7 @@ export type Database = {
           member_id: string
           organization_id: string
           patient_id: string
+          remuneration_plan_id: string | null
           schedule_time: string | null
           updated_at: string
         }
@@ -3047,6 +3089,7 @@ export type Database = {
           member_id: string
           organization_id: string
           patient_id: string
+          remuneration_plan_id?: string | null
           schedule_time?: string | null
           updated_at?: string
         }
@@ -3056,6 +3099,7 @@ export type Database = {
           member_id?: string
           organization_id?: string
           patient_id?: string
+          remuneration_plan_id?: string | null
           schedule_time?: string | null
           updated_at?: string
         }
@@ -3079,6 +3123,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "therapist_patient_assignments_remuneration_plan_id_fkey"
+            columns: ["remuneration_plan_id"]
+            isOneToOne: false
+            referencedRelation: "member_remuneration_plans"
             referencedColumns: ["id"]
           },
         ]

@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import { calculateMemberRemunerationByPlans, type PlanBreakdownEntry } from '@/utils/financialHelpers';
 
 interface TeamFinancialReportProps {
   clinicId: string;
@@ -55,35 +56,22 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
 
   const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
 
-  // Calculate member remuneration based on their configured model
+  // Calcula remuneração e breakdown por planos. Inclui fallback legacy.
+  const calculateMemberBreakdown = (member: typeof members[0], memberEvos: typeof monthlyEvolutions) => {
+    return calculateMemberRemunerationByPlans({
+      plans: member.plans || [],
+      assignmentPlanMap: member.assignmentPlanMap || {},
+      evolutions: memberEvos.map(e => ({
+        id: e.id, patientId: e.patientId, groupId: e.groupId,
+        date: e.date, attendanceStatus: e.attendanceStatus,
+        confirmedAttendance: e.confirmedAttendance, userId: e.userId,
+      })),
+      legacyType: member.remunerationType,
+      legacyValue: member.remunerationValue,
+    });
+  };
   const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof monthlyEvolutions) => {
-    const { remunerationType, remunerationValue } = member;
-    if (!remunerationValue || remunerationType === 'definir_depois' || !remunerationType) return 0;
-
-    if (remunerationType === 'fixo_mensal') {
-      // Fixed monthly salary — always the same value, regardless of sessions
-      return remunerationValue;
-    }
-
-    if (remunerationType === 'fixo_dia') {
-      // Fixed daily rate × distinct days with "presente" evolutions
-      const presentDays = new Set(
-        memberEvos
-          .filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')
-          .map(e => e.date)
-      );
-      return presentDays.size * remunerationValue;
-    }
-
-    if (remunerationType === 'por_sessao') {
-      // Per session: count presente + reposicao
-      const sessions = memberEvos.filter(e =>
-        e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao'
-      ).length;
-      return sessions * remunerationValue;
-    }
-
-    return 0;
+    return calculateMemberBreakdown(member, memberEvos).total;
   };
 
   // Stats per member — use each member's own remuneration model
@@ -93,8 +81,8 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
-      const revenue = calculateMemberRemuneration(member, memberEvos);
-      return { member, sessions, absences, paidAbsences, revenue, evos: memberEvos };
+      const calc = calculateMemberBreakdown(member, memberEvos);
+      return { member, sessions, absences, paidAbsences, revenue: calc.total, breakdown: calc.breakdown, evos: memberEvos };
     });
   }, [members, monthlyEvolutions]);
 
@@ -348,7 +336,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
           <div className="space-y-2">
             {memberStats
               .sort((a, b) => b.revenue - a.revenue)
-              .map(({ member, sessions, absences, paidAbsences, revenue, evos }) => (
+              .map(({ member, sessions, absences, paidAbsences, revenue, breakdown, evos }) => (
                 <div key={member.userId} className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border gap-3">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
@@ -372,6 +360,21 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                         {paidAbsences > 0 && ` • ${paidAbsences} faltas rem.`}
                         {absences > 0 && ` • ${absences} faltas`}
                       </p>
+                      {breakdown && breakdown.length > 1 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {breakdown.map((b: PlanBreakdownEntry) => (
+                            <span
+                              key={b.planId}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium"
+                            >
+                              {b.planName}: R$ {b.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              <span className="opacity-60">
+                                ({b.type === 'por_sessao' ? `${b.sessionsCount} sess.` : b.type === 'fixo_dia' ? `${b.sessionsCount} sess.` : 'mensal'})
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <p className="font-bold text-foreground shrink-0">
