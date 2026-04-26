@@ -122,9 +122,8 @@ export function AppSidebar() {
     return { ...item, locked: !hasAccess, hidden: false };
   }).filter(i => !i.hidden);
 
-  // Show /team apenas para owners e admins — terapeuta NÃO vê
-  const showTeam = !isTherapistView && (!isOrgMember || isOwner || permissions.includes('team.view' as any));
-  const teamLocked = !hasTeam;
+  // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
+  // Mantém-se a rota /team acessível via botão dentro da clínica.
 
   return (
     <TooltipProvider delayDuration={200}>
