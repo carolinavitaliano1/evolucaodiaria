@@ -1,51 +1,95 @@
+## Objetivo
 
-## Problema identificado
+Quando o **plano da unidade for "Clínica"** (`clinics.type = 'clinica'`), a seção **"Dias e Horários"** do modal de cadastro/edição do paciente deve mudar: em vez de marcar apenas dias da semana com entrada/saída genéricos, o ADM poderá montar a **agenda do paciente vinculando cada slot a um terapeuta cadastrado e (opcionalmente) a um pacote específico daquele profissional**. Caso o ADM queira pular essa etapa, ele clica em **"Configurar depois"** e, ao reabrir o paciente, encontra um **novo card "Gerenciar Agenda"** dentro da aba do paciente para fazer isso depois.
 
-A página **`src/pages/MyCommissions.tsx`** (acessada pelo terapeuta no dashboard via "Minhas Comissões") ainda usa a função legada `calculateMemberRemuneration`, que lê apenas os campos `remuneration_type` / `remuneration_value` direto da tabela `organization_members`.
+Também é necessário **restaurar o card "Plano & Financeiro"** na aba do paciente (que foi removido por engano — a remoção solicitada era apenas dos itens já discutidos: aba "Portal", propaganda de planos, etc., e não desse card).
 
-Resultado: quando o gestor cadastra/edita os **Planos de Remuneração** (tabela `member_remuneration_plans`) e atribui planos específicos por paciente (campo `remuneration_plan_id` em `therapist_patient_assignments`), nada disso aparece para o terapeuta — ele continua vendo o valor antigo (ou zero, se nunca houve um valor legado).
+---
 
-As telas do gestor (`TeamFinancialDashboard`, `TeamFinancialReport`) já foram migradas; falta apenas espelhar a mesma lógica do lado do colaborador.
+## 1. Banco de dados
 
-## Correção proposta
+A tabela `therapist_patient_assignments` hoje tem apenas um `schedule_time` (texto livre) por par terapeuta+paciente, sem dia da semana nem ligação com pacote. Isso não suporta a agenda multi-terapeuta solicitada.
 
-### 1. `src/pages/MyCommissions.tsx` — usar `calculateMemberRemunerationByPlans`
+**Migration nova**: criar tabela `patient_schedule_slots`:
 
-**a) Carregar os planos do membro e o mapa de atribuições por paciente** logo após carregar o `organization_members` do usuário:
-- `SELECT * FROM member_remuneration_plans WHERE member_id = m.id ORDER BY is_default DESC, name`
-- `SELECT patient_id, remuneration_plan_id FROM therapist_patient_assignments WHERE member_id = m.id` → montar `assignmentPlanMap: Record<patientId, planId | null>`
+| Coluna | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `patient_id` | uuid not null | FK lógico para `patients.id` |
+| `clinic_id` | uuid not null | FK lógico para `clinics.id` |
+| `organization_id` | uuid | FK para `organizations.id` (escopo de acesso) |
+| `member_id` | uuid not null | FK para `organization_members.id` (terapeuta) |
+| `weekday` | text not null | Um de `Segunda`/`Terça`/.../`Sábado` |
+| `start_time` | time not null | ex: `09:00` |
+| `end_time` | time not null | ex: `10:00` |
+| `package_link_id` | uuid | FK opcional para `patient_packages.id` (pacote daquele terapeuta) |
+| `notes` | text | livre |
+| `created_by` | uuid not null | `auth.uid()` |
+| `created_at` / `updated_at` | timestamptz | `now()` |
 
-**b) Substituir o cálculo do mês corrente** (`totalCommission`) por `calculateMemberRemunerationByPlans({ plans, assignmentPlanMap, evolutions, legacyType, legacyValue })`, mantendo o fallback legado quando o membro ainda não tem planos.
+**RLS**: dono do paciente pode tudo; admins/owners da organização podem tudo; o terapeuta vinculado (`member_id` mapeado para `auth.uid()`) pode SELECT.
+**Índices**: `(patient_id)`, `(clinic_id, weekday)`.
 
-**c) Substituir o cálculo do histórico de 6 meses** pela mesma função (atualmente roda `calculateMemberRemuneration` em loop). Reutilizar `plans` e `assignmentPlanMap` já carregados.
+Não vamos remover `weekdays`/`schedule_by_day` do paciente — eles continuam sendo a fonte para clínicas tipo `propria`/`terceirizada`. Para clínicas tipo `clinica`, a agenda passa a vir de `patient_schedule_slots`. Os componentes que hoje leem `patient.scheduleByDay` (ex.: `ClinicAgenda`) continuam funcionando para os outros tipos.
 
-**d) Exibir o breakdown por plano** (já produzido pela função) abaixo do card "Total a receber":
-- Lista compacta com nome do plano, tipo (Por sessão / Mensal / Diário / Pacote), valor unitário, contagem (sessões ou pacientes) e subtotal.
-- Quando `usedLegacy = true`, esconder o breakdown e manter o comportamento atual.
+---
 
-**e) Atualizar o "Modelo de remuneração"** no card do topo:
-- Se houver múltiplos planos: mostrar a quantidade ("3 planos cadastrados") e listar os nomes dos planos como badges, ao invés do badge único "R$ X / sessão".
-- Se houver apenas o plano padrão (ou fallback legado): manter o visual atual.
+## 2. `EditPatientDialog.tsx`
 
-**f) Atualizar o "Detalhamento por paciente"**:
-- Adicionar coluna "Plano" mostrando o nome do plano que se aplica àquele paciente (resolvido via `assignmentPlanMap[patientId] || planoDefault`).
-- Recalcular a coluna "Subtotal" usando o valor do plano específico de cada paciente (não mais um único `valuePerSession` global). Para planos `fixo_mensal`/`fixo_dia`/`pacote`, mostrar `—` no subtotal por linha (o subtotal real desses tipos aparece no breakdown geral, não por paciente).
+- Detectar `isClinica = clinicType === 'clinica'`.
+- **Quando `isClinica`**: substituir o bloco atual "Dias e Horários" (linhas 501-581) por um novo componente `PatientScheduleSlotsManager` (criado abaixo). Os campos antigos `weekdays` / `scheduleByDay` deixam de ser editados manualmente nesse caso (o resumo é derivado dos slots).
+- **Quando NÃO `isClinica`**: manter o bloco atual exatamente como está hoje.
+- No rodapé do form, quando `isClinica` e o paciente ainda não tem nenhum slot, mostrar botão alternativo **"Configurar agenda depois"** (apenas fecha o modal sem exigir slots — não bloqueia o cadastro).
 
-### 2. Realtime / atualização imediata (opcional, mas recomendado)
+## 3. Novo componente `src/components/patients/PatientScheduleSlotsManager.tsx`
 
-Adicionar uma assinatura simples para que, se o gestor alterar planos enquanto o terapeuta está com a tela aberta, o valor recalcule:
-- Subscription em `member_remuneration_plans` filtrando por `member_id`
-- Subscription em `therapist_patient_assignments` filtrando por `member_id`
+- Hook auxiliar novo `src/hooks/usePatientScheduleSlots.ts` (CRUD dos slots, similar a `usePatientPackages`).
+- UI:
+  - Lista os slots existentes agrupados por dia da semana, mostrando: terapeuta, horário (`start–end`), pacote vinculado (se houver) e botão remover.
+  - Form "Adicionar slot" com selects de:
+    - **Terapeuta** → carregado de `organization_members` ativos da `organizationId` da clínica (mesmo padrão do `PatientPackagesManager`).
+    - **Dia da semana** → 6 opções fixas (Seg–Sáb).
+    - **Início** / **Fim** → `<Input type="time" />`.
+    - **Pacote (opcional)** → mostra apenas pacotes já vinculados àquele terapeuta no `patient_packages` (chamada ao `usePatientPackages`); se vazio, mostra link "vincular pacote primeiro" que rola até a seção de pacotes.
+  - Botão `Adicionar slot`, com validação para não duplicar mesmo terapeuta no mesmo dia/horário.
+- Permissões: somente `isOwner` ou `role === 'admin'` ou conta sem organização podem editar; demais veem apenas lista.
 
-Cada evento dispara um reload dos planos + assignments + recálculo. Usar nomes de canais únicos (`my-commissions-plans-${user.id}`) conforme a convenção do projeto.
+## 4. Card "Gerenciar Agenda" na aba do paciente (`PatientDetail.tsx`)
 
-### 3. Verificação
+- Renderizar um novo card no topo (ou logo abaixo do card de informações do paciente) **somente quando `clinicType === 'clinica'` e (`!isOrgMember || isOrgOwner`)**.
+- O card terá:
+  - Título "Agenda do Paciente" + ícone de calendário.
+  - Resumo: "X horários cadastrados com Y profissionais".
+  - Botão `Gerenciar Agenda` que abre um Dialog reutilizando `PatientScheduleSlotsManager` (passando `patientId`, `clinicId`, `organizationId`).
+  - Estado vazio explícito: "Nenhum horário configurado ainda. Adicione horários e terapeutas para montar a agenda do paciente."
 
-- Rodar `tsc` para garantir que os tipos do `MemberRemunerationByPlansContext` estão corretos.
-- Confirmar visualmente que: (i) ao cadastrar um plano novo no gestor, o terapeuta vê refletido; (ii) ao trocar o plano de um paciente, o subtotal daquele paciente muda; (iii) o total bate com o que o gestor vê em `TeamFinancialDashboard` para o mesmo membro/mês.
+## 5. Restaurar card "Plano & Financeiro"
 
-## Arquivos a editar
+Em `src/pages/PatientDetail.tsx` (linhas 3154-3160), o `PatientPlanCard` está hoje renderizado dentro do bloco `{canSeeFinancialTab && ...}` mas com gate adicional `(!isOrgMember || isOrgOwner)`. Isso já está OK conforme regras anteriores. **A solicitação atual** ("retornar o card Financeiro do paciente") refere-se a confirmar que esse card continua aparecendo para owner/admin da clínica e para contas sem organização. **Ação**: garantir que o card é renderizado para `(!isOrgMember || isOrgOwner)` independentemente de `canSeeFinancialTab` — atualmente, se o owner por algum motivo perdesse `financial.view`, o card sumiria. Mover o `PatientPlanCard` para fora do `{canSeeFinancialTab && ...}` (mantendo apenas o gate de owner) para evitar a regressão relatada.
 
-- `src/pages/MyCommissions.tsx` (única alteração de código)
+## 6. Integração com agenda existente
 
-Nenhuma migração de banco é necessária — a infraestrutura (`member_remuneration_plans`, `remuneration_plan_id` em assignments, RLS "Members can view own remuneration plans") já existe e permite que o próprio terapeuta leia seus planos.
+- `ClinicAgenda.tsx` continua lendo `patient.scheduleByDay` para clínicas `propria`/`terceirizada`.
+- Para clínicas `clinica`, alterar `ClinicAgenda` para também consultar `patient_schedule_slots` do dia: cada slot vira uma linha "Paciente X — 09:00 com Dra. Maria". Isso garante que a agenda da clínica realmente reflita os slots cadastrados (sem isso, o trabalho do ADM no novo modal não apareceria na agenda).
+- Filtro por terapeuta já existente (`filterUserId`) passa a filtrar pelo `member_id` do slot.
+
+## 7. Componentes/arquivos novos ou alterados
+
+**Novos**
+- `supabase/migrations/<timestamp>_patient_schedule_slots.sql` (tabela + RLS + índices)
+- `src/hooks/usePatientScheduleSlots.ts`
+- `src/components/patients/PatientScheduleSlotsManager.tsx`
+- `src/components/patients/PatientScheduleCard.tsx` (card "Gerenciar Agenda" no detalhe)
+
+**Editados**
+- `src/components/patients/EditPatientDialog.tsx` — render condicional do bloco de horários quando `clinicType === 'clinica'` + opção "Configurar depois".
+- `src/pages/PatientDetail.tsx` — montar o novo card de agenda; ajustar gate do `PatientPlanCard` para garantir que não seja escondido por engano.
+- `src/components/clinics/ClinicAgenda.tsx` — quando clínica é `clinica`, juntar slots de `patient_schedule_slots` ao render do dia.
+- `src/integrations/supabase/types.ts` — regenerado automaticamente pela migration.
+
+## 8. O que **não** muda
+
+- Lógica financeira (`MyCommissions`, `ClinicFinancial`, `PatientPlanCard`, pacotes por terapeuta) permanece intacta.
+- A aba "Portal" continua oculta para terapeuta convidado.
+- O pricing continua bloqueado para terapeuta.
+- O bloco atual de "Dias e Horários" é preservado para os outros tipos de clínica.

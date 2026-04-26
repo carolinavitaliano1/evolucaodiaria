@@ -1959,6 +1959,54 @@ export type Database = {
           },
         ]
       }
+      patient_schedule_slots: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          created_by: string
+          end_time: string
+          id: string
+          member_id: string
+          notes: string | null
+          organization_id: string | null
+          package_link_id: string | null
+          patient_id: string
+          start_time: string
+          updated_at: string
+          weekday: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          created_by: string
+          end_time: string
+          id?: string
+          member_id: string
+          notes?: string | null
+          organization_id?: string | null
+          package_link_id?: string | null
+          patient_id: string
+          start_time: string
+          updated_at?: string
+          weekday: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          created_by?: string
+          end_time?: string
+          id?: string
+          member_id?: string
+          notes?: string | null
+          organization_id?: string | null
+          package_link_id?: string | null
+          patient_id?: string
+          start_time?: string
+          updated_at?: string
+          weekday?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           avatar_url: string | null
