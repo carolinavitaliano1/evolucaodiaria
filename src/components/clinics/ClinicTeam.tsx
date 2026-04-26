@@ -872,6 +872,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           ? Number(editRemunerationValue)
           : null,
         weekdays: editWeekdays.length > 0 ? editWeekdays : null,
+        schedule_by_day: Object.keys(editScheduleByDay).length > 0 ? editScheduleByDay : null,
       }).eq('id', manageMember.id);
       if (updateError) throw updateError;
 
