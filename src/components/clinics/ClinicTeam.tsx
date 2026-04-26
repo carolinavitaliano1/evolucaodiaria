@@ -40,6 +40,75 @@ import { TeamPublicLinkCard } from '@/components/clinics/TeamPublicLinkCard';
 import { TeamApplicationsPanel } from '@/components/clinics/TeamApplicationsPanel';
 import { cn } from '@/lib/utils';
 
+// Helper: extracts the patient's known schedule slots (from scheduleByDay or fallback scheduleTime)
+// and renders them as clickable suggestion chips + a native time input for free entry.
+function PatientScheduleField({
+  patient,
+  value,
+  onChange,
+}: {
+  patient: { weekdays?: string[]; scheduleTime?: string; scheduleByDay?: Record<string, { start: string; end: string }> };
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  // Build unique time suggestions
+  const suggestions = useMemo(() => {
+    const set = new Set<string>();
+    if (patient.scheduleByDay) {
+      Object.entries(patient.scheduleByDay).forEach(([_, range]) => {
+        if (range?.start) set.add(range.start);
+      });
+    }
+    if (patient.scheduleTime) set.add(patient.scheduleTime);
+    return Array.from(set).sort();
+  }, [patient]);
+
+  return (
+    <div className="space-y-1.5">
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Horários do paciente:</span>
+          {suggestions.map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onChange(t); }}
+              className={cn(
+                "text-xs px-2 py-0.5 rounded border transition-colors",
+                value === t
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted hover:bg-muted/70 border-border"
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+        <Input
+          type="time"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="h-7 text-xs w-32"
+          onClick={e => e.stopPropagation()}
+          placeholder="--:--"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onChange(''); }}
+            className="text-[10px] text-muted-foreground hover:text-destructive underline"
+          >
+            limpar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface OrganizationMember {
   id: string;
   user_id: string | null;
