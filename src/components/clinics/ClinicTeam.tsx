@@ -1538,69 +1538,6 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                     </div>
                   </div>
 
-                  {/* Remuneração */}
-                  <div className="space-y-3 p-3 rounded-lg border bg-muted/20">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Remuneração</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Tipo</Label>
-                        <Select value={editRemunerationType} onValueChange={(v: any) => setEditRemunerationType(v)}>
-                          <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="definir_depois">Definir depois</SelectItem>
-                            <SelectItem value="por_sessao">Por sessão</SelectItem>
-                            <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
-                            <SelectItem value="fixo_dia">Fixo por dia</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Valor (R$)</Label>
-                        <Input
-                          type="number" step="0.01" min="0"
-                          placeholder="0,00"
-                          value={editRemunerationValue}
-                          onChange={e => setEditRemunerationValue(e.target.value)}
-                          disabled={editRemunerationType === 'definir_depois'}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Dias de atendimento */}
-                  <div className="space-y-2 p-3 rounded-lg border bg-muted/20">
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4 text-primary" />
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Dias de atendimento <span className="font-normal normal-case">(opcional)</span>
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        { v: 'seg', l: 'Seg' }, { v: 'ter', l: 'Ter' }, { v: 'qua', l: 'Qua' },
-                        { v: 'qui', l: 'Qui' }, { v: 'sex', l: 'Sex' }, { v: 'sab', l: 'Sáb' }, { v: 'dom', l: 'Dom' },
-                      ].map(d => {
-                        const active = editWeekdays.includes(d.v);
-                        return (
-                          <button
-                            key={d.v}
-                            type="button"
-                            onClick={() => setEditWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v])}
-                            className={cn(
-                              'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
-                              active
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-card text-foreground border-border hover:border-primary/40'
-                            )}
-                          >
-                            {d.l}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   {/* Access toggle */}
                   {manageMember.status !== 'pending' && (
                     <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
@@ -1621,8 +1558,12 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
                   <Separator />
 
-                  <Tabs defaultValue="permissions">
+                  <Tabs defaultValue="profissional">
                     <TabsList className="w-full">
+                      <TabsTrigger value="profissional" className="flex-1 gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        Profissional
+                      </TabsTrigger>
                       <TabsTrigger value="permissions" className="flex-1 gap-1.5">
                         <Lock className="w-3.5 h-3.5" />
                         Permissões
@@ -1632,6 +1573,71 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         Pacientes
                       </TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="profissional" className="mt-4 space-y-4">
+                      {/* Remuneração */}
+                      <div className="space-y-3 p-3 rounded-lg border bg-muted/20">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Remuneração</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Tipo</Label>
+                            <Select value={editRemunerationType} onValueChange={(v: any) => setEditRemunerationType(v)}>
+                              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="definir_depois">Definir depois</SelectItem>
+                                <SelectItem value="por_sessao">Por sessão</SelectItem>
+                                <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
+                                <SelectItem value="fixo_dia">Fixo por dia</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Valor (R$)</Label>
+                            <Input
+                              type="number" step="0.01" min="0"
+                              placeholder="0,00"
+                              value={editRemunerationValue}
+                              onChange={e => setEditRemunerationValue(e.target.value)}
+                              disabled={editRemunerationType === 'definir_depois'}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dias de atendimento */}
+                      <div className="space-y-2 p-3 rounded-lg border bg-muted/20">
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="w-4 h-4 text-primary" />
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Dias de atendimento <span className="font-normal normal-case">(opcional)</span>
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { v: 'seg', l: 'Seg' }, { v: 'ter', l: 'Ter' }, { v: 'qua', l: 'Qua' },
+                            { v: 'qui', l: 'Qui' }, { v: 'sex', l: 'Sex' }, { v: 'sab', l: 'Sáb' }, { v: 'dom', l: 'Dom' },
+                          ].map(d => {
+                            const active = editWeekdays.includes(d.v);
+                            return (
+                              <button
+                                key={d.v}
+                                type="button"
+                                onClick={() => setEditWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v])}
+                                className={cn(
+                                  'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
+                                  active
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-card text-foreground border-border hover:border-primary/40'
+                                )}
+                              >
+                                {d.l}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </TabsContent>
 
                     <TabsContent value="permissions" className="mt-4">
                       <p className="text-xs text-muted-foreground mb-4">
