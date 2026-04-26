@@ -120,6 +120,8 @@ interface OrganizationMember {
   joined_at: string | null;
   created_at: string;
   weekdays?: string[] | null;
+  remuneration_type?: 'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia' | null;
+  remuneration_value?: number | null;
   profile?: { name: string | null; avatar_url: string | null };
   assignments?: PatientAssignment[];
 }
@@ -234,6 +236,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [editPatients, setEditPatients] = useState<Record<string, string>>({});
   const [editPermissions, setEditPermissions] = useState<PermissionKey[]>([]);
   const [editRoleLabel, setEditRoleLabel] = useState('');
+  const [editRemunerationType, setEditRemunerationType] = useState<'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('definir_depois');
+  const [editRemunerationValue, setEditRemunerationValue] = useState<string>('');
+  const [editWeekdays, setEditWeekdays] = useState<string[]>([]);
   const [savingAssign, setSavingAssign] = useState(false);
 
   // Remove confirm
@@ -749,6 +754,11 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         permissions: permissionsMap,
         role_label: editRoleLabel || null,
         role: manageMember.role, // persist the role selected via preset cards
+        remuneration_type: editRemunerationType,
+        remuneration_value: editRemunerationType !== 'definir_depois' && editRemunerationValue
+          ? Number(editRemunerationValue)
+          : null,
+        weekdays: editWeekdays.length > 0 ? editWeekdays : null,
       }).eq('id', manageMember.id);
       if (updateError) throw updateError;
 
@@ -784,6 +794,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         : [...DEFAULT_THERAPIST_PERMISSIONS]
     );
     setEditRoleLabel(member.role_label || '');
+    setEditRemunerationType((member.remuneration_type as any) || 'definir_depois');
+    setEditRemunerationValue(member.remuneration_value != null ? String(member.remuneration_value) : '');
+    setEditWeekdays(member.weekdays || []);
     setManageMember(member);
   }
 
@@ -1522,6 +1535,69 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         onChange={e => setEditRoleLabel(e.target.value)}
                         className="h-8 text-sm"
                       />
+                    </div>
+                  </div>
+
+                  {/* Remuneração */}
+                  <div className="space-y-3 p-3 rounded-lg border bg-muted/20">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Remuneração</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Tipo</Label>
+                        <Select value={editRemunerationType} onValueChange={(v: any) => setEditRemunerationType(v)}>
+                          <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="definir_depois">Definir depois</SelectItem>
+                            <SelectItem value="por_sessao">Por sessão</SelectItem>
+                            <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
+                            <SelectItem value="fixo_dia">Fixo por dia</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Valor (R$)</Label>
+                        <Input
+                          type="number" step="0.01" min="0"
+                          placeholder="0,00"
+                          value={editRemunerationValue}
+                          onChange={e => setEditRemunerationValue(e.target.value)}
+                          disabled={editRemunerationType === 'definir_depois'}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dias de atendimento */}
+                  <div className="space-y-2 p-3 rounded-lg border bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Dias de atendimento <span className="font-normal normal-case">(opcional)</span>
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { v: 'seg', l: 'Seg' }, { v: 'ter', l: 'Ter' }, { v: 'qua', l: 'Qua' },
+                        { v: 'qui', l: 'Qui' }, { v: 'sex', l: 'Sex' }, { v: 'sab', l: 'Sáb' }, { v: 'dom', l: 'Dom' },
+                      ].map(d => {
+                        const active = editWeekdays.includes(d.v);
+                        return (
+                          <button
+                            key={d.v}
+                            type="button"
+                            onClick={() => setEditWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v])}
+                            className={cn(
+                              'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
+                              active
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-card text-foreground border-border hover:border-primary/40'
+                            )}
+                          >
+                            {d.l}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
