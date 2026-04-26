@@ -49,6 +49,18 @@ const allNavItems = [
   { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null             },
 ];
 
+// Visão dedicada — terapeuta convidado (não-owner, role=professional).
+// Menu enxuto e focado: agenda, pacientes, evoluções, tarefas e ganhos pessoais.
+const therapistNavItems = [
+  { to: '/dashboard',         icon: LayoutDashboard, label: 'Dashboard',        perm: 'dashboard.view'  as const },
+  { to: '/calendar',          icon: Calendar,        label: 'Agenda',           perm: 'calendar.view'   as const },
+  { to: '/patients',          icon: Users,           label: 'Pacientes',        perm: 'patients.view'   as const, badge: 'pending' as const },
+  { to: '/tasks',             icon: ClipboardList,   label: 'Tarefas',          perm: 'tasks.view'      as const },
+  { to: '/minhas-comissoes',  icon: DollarSign,      label: 'Minhas Comissões', perm: 'commissions.view' as const },
+  { to: '/mural',             icon: Megaphone,       label: 'Mural',            perm: 'mural.view'      as const, badge: 'notices' as const },
+  { to: '/suporte',           icon: HeadphonesIcon,  label: 'Suporte',          perm: null,             badge: 'support' as const },
+];
+
 export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
@@ -56,7 +68,7 @@ export function AppSidebar() {
   const { unreadCount } = useUnreadNotices();
   const { unreadCount: supportUnread } = useUnreadSupportCount();
   const { count: pendingCount } = usePendingEnrollments();
-  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  const { isOrgMember, isOwner, role, permissions } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
 
@@ -73,18 +85,24 @@ export function AppSidebar() {
     toast.success('Você saiu do sistema');
   };
 
+  // Terapeuta convidado (profissional, não-owner): visão dedicada e enxuta
+  const isTherapistView = isOrgMember && !isOwner && role === 'professional';
+  const sourceNavItems = isTherapistView ? therapistNavItems : allNavItems;
+
   // Build nav list: org members see all items but restricted ones are shown as locked
   // Non-org users / owners see everything normally; pricing/install hidden for org members
-  const navItemsWithAccess = allNavItems.map(item => {
+  const navItemsWithAccess = sourceNavItems.map(item => {
     // AI feature pages stay clickable so Basic users can see the upgrade message inside the page
     if (!isOrgMember) return { ...item, locked: false, hidden: false };
     if (item.perm === null) return { ...item, locked: false, hidden: true }; // hide pricing/install
     const hasAccess = permissions.includes(item.perm as any);
+    // Na visão de terapeuta, escondemos itens sem acesso (em vez de mostrá-los trancados)
+    if (isTherapistView && !hasAccess) return { ...item, locked: true, hidden: true };
     return { ...item, locked: !hasAccess, hidden: false };
   }).filter(i => !i.hidden);
 
-  // Show /team for everyone (non-owners see "em breve" page) — but lock if Basic plan
-  const showTeam = !isOrgMember || isOwner || permissions.includes('team.view' as any);
+  // Show /team apenas para owners e admins — terapeuta NÃO vê
+  const showTeam = !isTherapistView && (!isOrgMember || isOwner || permissions.includes('team.view' as any));
   const teamLocked = !hasTeam;
 
   return (
