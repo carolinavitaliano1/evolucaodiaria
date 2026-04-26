@@ -119,6 +119,7 @@ interface OrganizationMember {
   permissions: PermissionKey[];
   joined_at: string | null;
   created_at: string;
+  weekdays?: string[] | null;
   profile?: { name: string | null; avatar_url: string | null };
   assignments?: PatientAssignment[];
 }
