@@ -19,6 +19,10 @@ export interface PatientScheduleSlot {
   packageName?: string | null;
   packagePrice?: number | null;
   packageType?: string | null;
+  remunerationPlanId?: string | null;
+  remunerationPlanName?: string | null;
+  remunerationPlanType?: string | null;
+  remunerationPlanValue?: number | null;
 }
 
 export function usePatientScheduleSlots(patientId: string | undefined) {
@@ -41,6 +45,7 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
       const rows = (data || []) as any[];
       const memberIds = Array.from(new Set(rows.map(r => r.member_id).filter(Boolean)));
       const pkgLinkIds = Array.from(new Set(rows.map(r => r.package_link_id).filter(Boolean)));
+      const remPlanIds = Array.from(new Set(rows.map(r => r.remuneration_plan_id).filter(Boolean)));
 
       const [memberRes, pkgLinkRes, allPkgLinksRes] = await Promise.all([
         memberIds.length
@@ -51,6 +56,16 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
           : Promise.resolve({ data: [] as any[] }),
         // Fallback: buscar todos os pacotes do paciente para mapear por member_id quando package_link_id estiver nulo
         supabase.from('patient_packages' as any).select('id, package_id, member_id').eq('patient_id', patientId),
+      ]);
+
+      // Carregar planos de remuneração específicos dos slots + planos default dos membros
+      const [remPlanRes, defaultPlansRes] = await Promise.all([
+        remPlanIds.length
+          ? supabase.from('member_remuneration_plans' as any).select('id, member_id, name, remuneration_type, remuneration_value').in('id', remPlanIds)
+          : Promise.resolve({ data: [] as any[] }),
+        memberIds.length
+          ? supabase.from('member_remuneration_plans' as any).select('id, member_id, name, remuneration_type, remuneration_value, is_default').in('member_id', memberIds).eq('is_default', true)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
 
       const userIds = ((memberRes.data || []) as any[]).map(m => m.user_id).filter(Boolean);
@@ -75,6 +90,10 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
       (pkgLinkRes.data || []).forEach((p: any) => pkgLinkMap.set(p.id, p));
       const pkgMap = new Map<string, any>();
       (pkgRes.data || []).forEach((p: any) => pkgMap.set(p.id, p));
+      const remPlanMap = new Map<string, any>();
+      ((remPlanRes.data || []) as any[]).forEach((p: any) => remPlanMap.set(p.id, p));
+      const defaultPlanByMember = new Map<string, any>();
+      ((defaultPlansRes.data || []) as any[]).forEach((p: any) => defaultPlanByMember.set(p.member_id, p));
       // Mapa member_id -> pacote (usado como fallback quando o slot não tem package_link_id)
       const pkgByMemberMap = new Map<string, any>();
       allPkgLinks.forEach((link: any) => {
@@ -91,6 +110,9 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
         const profile = member?.user_id ? profileMap.get(member.user_id) : null;
         const pkgLink = r.package_link_id ? pkgLinkMap.get(r.package_link_id) : null;
         const pkg = pkgLink ? pkgMap.get(pkgLink.package_id) : pkgByMemberMap.get(r.member_id) || null;
+        const remPlan = r.remuneration_plan_id
+          ? remPlanMap.get(r.remuneration_plan_id)
+          : defaultPlanByMember.get(r.member_id) || null;
         return {
           id: r.id,
           patientId: r.patient_id,
@@ -107,6 +129,10 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
           packageName: pkg?.name || null,
           packagePrice: pkg?.price != null ? Number(pkg.price) : null,
           packageType: pkg?.package_type || null,
+          remunerationPlanId: r.remuneration_plan_id || null,
+          remunerationPlanName: remPlan?.name || null,
+          remunerationPlanType: remPlan?.remuneration_type || null,
+          remunerationPlanValue: remPlan?.remuneration_value != null ? Number(remPlan.remuneration_value) : null,
         };
       });
 
