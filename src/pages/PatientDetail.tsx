@@ -2435,7 +2435,7 @@ export default function PatientDetail() {
             organizationId={(clinic as any)?.organization_id || (clinic as any)?.organizationId || null}
           />
         )}
-        <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-4 sm:grid-cols-4 gap-2.5">
+        <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-11 gap-2.5">
           {[
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
             { value: 'session', icon: Brain, label: 'Sessão' },
