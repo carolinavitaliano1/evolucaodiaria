@@ -807,6 +807,114 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const pendingMembers = members.filter(m => m.status === 'pending');
   const inactiveMembers = members.filter(m => m.status === 'inactive');
 
+  // ─── Schedule Summary: which therapists work on which weekdays ───
+  const WEEK_DAYS = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
+  const WEEK_LABELS: Record<string, string> = {
+    segunda: 'Segunda', 'terça': 'Terça', quarta: 'Quarta', quinta: 'Quinta',
+    sexta: 'Sexta', 'sábado': 'Sábado', domingo: 'Domingo',
+  };
+  const normalizeDay = (d: string) => d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const scheduleByDay = useMemo(() => {
+    const map: Record<string, Array<{ member: OrganizationMember; patients: PatientAssignment[] }>> = {};
+    WEEK_DAYS.forEach(d => { map[d] = []; });
+    activeMembers.forEach(member => {
+      // Days the member declared as work days
+      const memberDays = new Set((member.weekdays || []).map(normalizeDay));
+      // Days inferred from assigned patients
+      const dayPatients: Record<string, PatientAssignment[]> = {};
+      (member.assignments || []).forEach(a => {
+        const patient = clinicPatients.find(p => p.id === a.patient_id);
+        if (!patient) return;
+        const days = new Set<string>();
+        (patient.weekdays || []).forEach(d => days.add(normalizeDay(d)));
+        if (patient.scheduleByDay) Object.keys(patient.scheduleByDay).forEach(d => days.add(normalizeDay(d)));
+        days.forEach(d => {
+          if (!dayPatients[d]) dayPatients[d] = [];
+          dayPatients[d].push(a);
+        });
+      });
+      WEEK_DAYS.forEach(day => {
+        const norm = normalizeDay(day);
+        const inMember = memberDays.has(norm);
+        const inPatients = dayPatients[norm] || [];
+        if (inMember || inPatients.length > 0) {
+          map[day].push({ member, patients: inPatients });
+        }
+      });
+    });
+    return map;
+  }, [activeMembers, clinicPatients]);
+
+  const ScheduleSummaryView = (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+        <CalendarDays className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          Resumo dos dias de atendimento de cada terapeuta nesta clínica. Considera os
+          <strong className="text-foreground"> dias declarados</strong> no cadastro do colaborador
+          e os <strong className="text-foreground">pacientes vinculados</strong>.
+        </div>
+      </div>
+
+      {activeMembers.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          Nenhum colaborador ativo nesta clínica.
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {WEEK_DAYS.map(day => {
+            const entries = scheduleByDay[day];
+            return (
+              <div key={day} className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="px-4 py-2.5 bg-muted/40 border-b border-border flex items-center justify-between">
+                  <span className="font-semibold text-sm">{WEEK_LABELS[day]}</span>
+                  <Badge variant="secondary" className="text-xs">{entries.length}</Badge>
+                </div>
+                {entries.length === 0 ? (
+                  <div className="px-4 py-6 text-xs text-muted-foreground text-center">
+                    Sem atendimentos
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {entries.map(({ member, patients }) => {
+                      const name = member.profile?.name || member.email;
+                      return (
+                        <div key={member.id} className="px-4 py-3 flex items-start gap-3">
+                          <Avatar className="w-8 h-8 shrink-0">
+                            {member.profile?.avatar_url && <AvatarImage src={member.profile.avatar_url} />}
+                            <AvatarFallback className={cn('text-xs text-white', getAvatarColor(name))}>
+                              {getInitials(name, member.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{name}</div>
+                            {member.role_label && (
+                              <div className="text-xs text-muted-foreground truncate">{member.role_label}</div>
+                            )}
+                            {patients.length > 0 && (
+                              <div className="mt-1.5 flex flex-wrap gap-1">
+                                {patients.map(p => (
+                                  <span key={p.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[11px]">
+                                    {p.patient_name || 'Paciente'}
+                                    {p.schedule_time && <span className="opacity-70">· {p.schedule_time}</span>}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Late Evolutions Alert */}
