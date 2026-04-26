@@ -2432,7 +2432,7 @@ export default function PatientDetail() {
           <PatientScheduleCard
             patientId={patient.id}
             clinicId={patient.clinicId}
-            organizationId={(clinic as any)?.organization_id || (clinic as any)?.organizationId || null}
+            organizationId={clinic?.organizationId || (clinic as any)?.organization_id || null}
           />
         )}
         <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-11 gap-2.5">

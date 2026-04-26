@@ -31,6 +31,7 @@ export interface Clinic {
   discountPercentage?: number;
   isArchived?: boolean;
   createdAt: string;
+  organizationId?: string | null;
 }
 
 export interface Patient {
