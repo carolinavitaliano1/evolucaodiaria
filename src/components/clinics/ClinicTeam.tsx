@@ -1677,7 +1677,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         <div className="flex items-center gap-2">
                           <CalendarDays className="w-4 h-4 text-primary" />
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Dias de atendimento <span className="font-normal normal-case">(opcional)</span>
+                            Dias e horários de atendimento <span className="font-normal normal-case">(opcional)</span>
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -1690,7 +1690,21 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                               <button
                                 key={d.v}
                                 type="button"
-                                onClick={() => setEditWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v])}
+                                onClick={() => {
+                                  setEditWeekdays(prev => active ? prev.filter(x => x !== d.v) : [...prev, d.v]);
+                                  if (active) {
+                                    setEditScheduleByDay(prev => {
+                                      const next = { ...prev };
+                                      delete next[d.v];
+                                      return next;
+                                    });
+                                  } else {
+                                    setEditScheduleByDay(prev => ({
+                                      ...prev,
+                                      [d.v]: prev[d.v] || { start: '08:00', end: '18:00' },
+                                    }));
+                                  }
+                                }}
                                 className={cn(
                                   'px-3 py-1.5 rounded-md text-xs font-medium border transition-colors',
                                   active
@@ -1703,6 +1717,44 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                             );
                           })}
                         </div>
+                        {editWeekdays.length > 0 && (
+                          <div className="space-y-1.5 pt-2">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Horário de disponibilidade nesta clínica
+                            </p>
+                            {editWeekdays.map(d => {
+                              const labels: Record<string, string> = {
+                                seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta',
+                                sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
+                              };
+                              const range = editScheduleByDay[d] || { start: '08:00', end: '18:00' };
+                              return (
+                                <div key={d} className="flex items-center gap-2 text-xs">
+                                  <span className="w-20 text-muted-foreground">{labels[d] || d}</span>
+                                  <Input
+                                    type="time"
+                                    value={range.start}
+                                    onChange={e => setEditScheduleByDay(prev => ({
+                                      ...prev,
+                                      [d]: { ...range, start: e.target.value },
+                                    }))}
+                                    className="h-7 w-28 text-xs"
+                                  />
+                                  <span className="text-muted-foreground">até</span>
+                                  <Input
+                                    type="time"
+                                    value={range.end}
+                                    onChange={e => setEditScheduleByDay(prev => ({
+                                      ...prev,
+                                      [d]: { ...range, end: e.target.value },
+                                    }))}
+                                    className="h-7 w-28 text-xs"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </TabsContent>
 
