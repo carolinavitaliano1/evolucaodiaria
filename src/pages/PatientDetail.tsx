@@ -3150,7 +3150,8 @@ export default function PatientDetail() {
           </div>
         </TabsContent>
 
-        {/* Financial Tab */}
+        {/* Financial Tab — oculta para terapeutas convidados (eles veem em "Minhas Comissões") */}
+        {canSeeFinancialTab && (
         <TabsContent value="financial" className="space-y-4">
           <PatientPlanCard patient={patient} canEdit={true} />
           {/* Month navigator */}
