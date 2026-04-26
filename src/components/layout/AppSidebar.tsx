@@ -32,6 +32,7 @@ import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const allNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const },
@@ -68,7 +69,7 @@ export function AppSidebar() {
   const { unreadCount } = useUnreadNotices();
   const { unreadCount: supportUnread } = useUnreadSupportCount();
   const { count: pendingCount } = usePendingEnrollments();
-  const { isOrgMember, isOwner, role, permissions } = useOrgPermissions();
+  const { isOrgMember, isOwner, role, permissions, loading: permsLoading } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
 
@@ -84,6 +85,26 @@ export function AppSidebar() {
     await signOut();
     toast.success('Você saiu do sistema');
   };
+
+  // Evita "flash" do menu de admin antes de sabermos a função real do usuário.
+  // Renderiza um esqueleto até o hook de permissões resolver.
+  if (permsLoading) {
+    return (
+      <aside className={cn(
+        "hidden lg:flex flex-col w-60 min-h-screen border-r border-border",
+        theme === 'lilas' ? 'sidebar-lilas' : 'bg-card'
+      )}>
+        <div className="p-5 border-b border-border">
+          <Skeleton className="h-9 w-40" />
+        </div>
+        <div className="flex-1 p-3 space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </aside>
+    );
+  }
 
   // Terapeuta convidado (profissional, não-owner): visão dedicada e enxuta
   const isTherapistView = isOrgMember && !isOwner && role === 'professional';
@@ -233,8 +254,8 @@ export function AppSidebar() {
 
       {/* Footer */}
       <div className="p-3 border-t border-border space-y-0.5">
-        {/* Trial badge */}
-        {trialDaysLeft !== null && (
+        {/* Trial badge — apenas para o dono da conta (não exibir para terapeutas/colaboradores) */}
+        {trialDaysLeft !== null && (!isOrgMember || isOwner) && (
           <NavLink
             to="/pricing"
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 mb-2 hover:bg-warning/20 transition-colors"
