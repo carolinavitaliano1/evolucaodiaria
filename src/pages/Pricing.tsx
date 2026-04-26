@@ -86,6 +86,14 @@ const COMPARISON: { label: string; basic: boolean; pro: boolean; clinicaPro: boo
 export default function Pricing() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const { subscribed, tier } = useSubscription();
+  const { isOrgMember, isOwner, loading: permsLoading } = useOrgPermissions();
+
+  // Terapeutas / colaboradores convidados não devem ver/visitar a página de Planos.
+  // Quem decide a assinatura é o dono da conta. Redireciona para o dashboard.
+  if (permsLoading) return null;
+  if (isOrgMember && !isOwner) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   async function handleSubscribe(priceId: string) {
     setLoadingPlan(priceId);
