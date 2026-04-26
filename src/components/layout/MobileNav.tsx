@@ -100,13 +100,9 @@ export function MobileNav() {
     return permissions.includes(i.perm as any);
   });
 
-  const showTeam = !isTherapistView && (!isOrgMember || isOwner || permissions.includes('team.view' as any)) && hasTeam;
-  const teamItem = showTeam ? [{ to: '/team', icon: UsersRound, label: 'Equipe', perm: 'team.view' as const, badge: null as any }] : [];
+  // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
   const baseMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any, badge: null as any }, ...allowedMore.filter(i => i.to !== '/profile')];
-  const muralIdx = baseMore.findIndex(i => i.to === '/mural');
-  const finalMore = muralIdx >= 0 && teamItem.length > 0
-    ? [...baseMore.slice(0, muralIdx + 1), ...teamItem, ...baseMore.slice(muralIdx + 1)]
-    : [...baseMore, ...teamItem];
+  const finalMore = baseMore;
 
   // Total unread for the "Mais" button dot
   const totalMoreUnread = noticesCount + supportCount;

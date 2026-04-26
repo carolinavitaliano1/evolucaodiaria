@@ -3,6 +3,7 @@ import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { toLocalDateString } from '@/lib/utils';
 import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck, ShieldCheck } from 'lucide-react';
 import { PackagePatientsModal } from '@/components/clinics/PackagePatientsModal';
+import { ClinicTeam } from '@/components/clinics/ClinicTeam';
 import { EditableReceiptModal } from '@/components/financial/EditableReceiptModal';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { PendingEnrollmentsPanel } from '@/components/clinics/PendingEnrollmentsPanel';
@@ -1340,6 +1341,7 @@ export default function ClinicDetail() {
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
             ...(isPropria ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
             { value: 'groups', icon: <UsersRound className="w-5 h-5" />, label: 'Grupos', color: 'text-indigo-500' },
+            ...(clinic.type === 'clinica' ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
           ].map(tab => (
             <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
               <TabsTrigger
@@ -2945,6 +2947,21 @@ export default function ClinicDetail() {
             patients={clinicPatients.map(p => ({ id: p.id, name: p.name }))}
           />
         </TabsContent>
+        {/* Equipe Tab — apenas para clínicas */}
+        {clinic.type === 'clinica' && (
+          <TabsContent value="team" className="space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Equipe da Clínica</h2>
+                <p className="text-sm text-muted-foreground">Gerencie os profissionais vinculados a esta clínica.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate('/team')}>
+                <UsersRound className="w-4 h-4 mr-2" /> Gestão completa
+              </Button>
+            </div>
+            <ClinicTeam clinicId={clinic.id} clinicName={clinic.name} />
+          </TabsContent>
+        )}
       </Tabs>
 
 

@@ -122,9 +122,8 @@ export function AppSidebar() {
     return { ...item, locked: !hasAccess, hidden: false };
   }).filter(i => !i.hidden);
 
-  // Show /team apenas para owners e admins — terapeuta NÃO vê
-  const showTeam = !isTherapistView && (!isOrgMember || isOwner || permissions.includes('team.view' as any));
-  const teamLocked = !hasTeam;
+  // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
+  // Mantém-se a rota /team acessível via botão dentro da clínica.
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -223,30 +222,7 @@ export function AppSidebar() {
                 </NavLink>
               )}
 
-              {/* Equipe — logo após Mural. Sempre clicável: a página /team
-                   já exibe a mensagem de "Em desenvolvimento" / upsell Pro. */}
-              {to === '/mural' && showTeam && (
-                <NavLink
-                  to="/team"
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                    'hover:bg-accent group',
-                    location.pathname.startsWith('/team') && 'bg-primary text-primary-foreground'
-                  )}
-                >
-                  <UsersRound className={cn(
-                    'w-[18px] h-[18px]',
-                    location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
-                  )} />
-                  <span className={cn(
-                    'text-sm font-medium flex-1',
-                    location.pathname.startsWith('/team') ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
-                  )}>
-                    Equipe
-                  </span>
-                  {teamLocked && <Lock className="w-3 h-3 text-muted-foreground shrink-0" />}
-                </NavLink>
-              )}
+              {/* "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe). */}
             </div>
           );
         })}
