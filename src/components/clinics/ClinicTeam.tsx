@@ -1886,6 +1886,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         memberWeekdays={agendaMember?.weekdays || []}
         memberScheduleByDay={(agendaMember as any)?.schedule_by_day || null}
         clinicId={clinicId}
+        organizationId={organization?.id || null}
       />
     </div>
   );
