@@ -794,6 +794,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         : [...DEFAULT_THERAPIST_PERMISSIONS]
     );
     setEditRoleLabel(member.role_label || '');
+    setEditRemunerationType((member.remuneration_type as any) || 'definir_depois');
+    setEditRemunerationValue(member.remuneration_value != null ? String(member.remuneration_value) : '');
+    setEditWeekdays(member.weekdays || []);
     setManageMember(member);
   }
 
