@@ -915,6 +915,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
     setEditRemunerationType((member.remuneration_type as any) || 'definir_depois');
     setEditRemunerationValue(member.remuneration_value != null ? String(member.remuneration_value) : '');
     setEditWeekdays(member.weekdays || []);
+    setEditScheduleByDay((member as any).schedule_by_day || {});
     setManageMember(member);
     loadMemberPlans(member.id);
   }
