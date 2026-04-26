@@ -23,7 +23,8 @@ import {
   UserPlus, Mail, Trash2, Crown, Shield, User, Loader2, Users,
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
   Settings, Lock, MoreVertical, UserCheck, UserX,
-  Briefcase, Banknote, Search, SlidersHorizontal, UserCircle, Activity
+  Briefcase, Banknote, Search, SlidersHorizontal, UserCircle, Activity,
+  Plus, Star, Pencil, X
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
@@ -131,6 +132,16 @@ interface PatientAssignment {
   patient_id: string;
   schedule_time: string | null;
   patient_name?: string;
+  remuneration_plan_id?: string | null;
+}
+
+interface RemunerationPlanRow {
+  id: string;
+  member_id: string;
+  name: string;
+  remuneration_type: 'por_sessao' | 'fixo_mensal' | 'fixo_dia';
+  remuneration_value: number;
+  is_default: boolean;
 }
 
 interface Organization {
