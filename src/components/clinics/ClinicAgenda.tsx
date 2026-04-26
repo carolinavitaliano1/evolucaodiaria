@@ -61,7 +61,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
       const filtered = filterUserId === 'all'
         ? daySlots
         : daySlots.filter(s => {
-            const m = members.find(mm => mm.id === s.member_id);
+            const m = members.find(mm => mm.memberId === s.member_id);
             return m?.userId === filterUserId;
           });
       const list = filtered
@@ -213,7 +213,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                         {patient.clinicalArea && ` • ${patient.clinicalArea}`}
                       </p>
                       {clinicType === 'clinica' && (patient as any)._slotMemberId && (() => {
-                        const m = members.find(mm => mm.id === (patient as any)._slotMemberId);
+                        const m = members.find(mm => mm.memberId === (patient as any)._slotMemberId);
                         if (!m) return null;
                         return (
                           <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
