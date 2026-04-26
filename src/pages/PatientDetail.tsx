@@ -297,10 +297,10 @@ export default function PatientDetail() {
   const allPatientTasks = id ? getPatientTasks(id) : [];
   const allPatientAttachments = id ? getPatientAttachments(id) : [];
   const patientTasksList = restrictToOwn
-    ? allPatientTasks.filter(t => (t as any).user_id === user?.id || (t as any).userId === user?.id)
+    ? allPatientTasks.filter(t => !t.userId || t.userId === user?.id)
     : allPatientTasks;
   const patientAttachments = restrictToOwn
-    ? allPatientAttachments.filter(a => (a as any).user_id === user?.id || (a as any).userId === user?.id)
+    ? allPatientAttachments.filter(a => !a.userId || a.userId === user?.id)
     : allPatientAttachments;
   const patientPackage = patient?.packageId ? clinicPackages.find(p => p.id === patient.packageId) : null;
 
