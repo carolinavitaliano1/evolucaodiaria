@@ -1537,10 +1537,6 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         <Lock className="w-3.5 h-3.5" />
                         Permissões
                       </TabsTrigger>
-                      <TabsTrigger value="patients" className="flex-1 gap-1.5">
-                        <CalendarDays className="w-3.5 h-3.5" />
-                        Pacientes
-                      </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="profissional" className="mt-4 space-y-4">
