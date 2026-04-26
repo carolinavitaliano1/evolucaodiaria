@@ -416,6 +416,142 @@ export function calculateMemberRemuneration(ctx: MemberRemunerationContext): num
 }
 
 // ============================================================================
+//  Múltiplos planos de remuneração por terapeuta (member_remuneration_plans)
+// ============================================================================
+
+export type RemunerationPlanType = 'por_sessao' | 'fixo_mensal' | 'fixo_dia';
+
+export interface RemunerationPlan {
+  id: string;
+  member_id?: string;
+  name: string;
+  remuneration_type: RemunerationPlanType | string;
+  remuneration_value: number;
+  is_default?: boolean;
+}
+
+export interface PlanBreakdownEntry {
+  planId: string;
+  planName: string;
+  type: RemunerationPlanType | string;
+  value: number;
+  sessionsCount: number;
+  patientsCount: number;
+  subtotal: number;
+}
+
+export interface MemberRemunerationByPlansContext {
+  /** Planos cadastrados para este membro. */
+  plans: RemunerationPlan[];
+  /** Mapa patient_id → plan_id escolhido no vínculo (assignment). */
+  assignmentPlanMap: Record<string, string | null | undefined>;
+  /** Evoluções DESTE membro no período (mês). */
+  evolutions: EvolutionLike[];
+  /** Fallback (legacy): tipo/valor diretos do `organization_members`, usados se não houver planos. */
+  legacyType?: string | null;
+  legacyValue?: number | null;
+}
+
+export interface MemberRemunerationBreakdown {
+  total: number;
+  breakdown: PlanBreakdownEntry[];
+  /** True quando caiu no caminho legacy (membro sem planos cadastrados). */
+  usedLegacy: boolean;
+}
+
+/**
+ * Calcula a remuneração de um membro respeitando MÚLTIPLOS planos:
+ * cada paciente atendido pode usar um plano diferente. Retorna o total e
+ * um detalhamento por plano (para exibição no dashboard/relatório).
+ *
+ * Regras por tipo:
+ *   • por_sessao  → nº de evoluções billable (do paciente nesse plano) × valor
+ *   • fixo_dia    → nº de DIAS únicos com sessões billable (do plano) × valor
+ *   • fixo_mensal → valor cobrado UMA vez por plano se houve ao menos uma sessão
+ *                   billable no mês (independe de quantos pacientes/sessões).
+ */
+export function calculateMemberRemunerationByPlans(
+  ctx: MemberRemunerationByPlansContext,
+): MemberRemunerationBreakdown {
+  const { plans, assignmentPlanMap, evolutions, legacyType, legacyValue } = ctx;
+
+  // Fallback legacy: nenhum plano cadastrado → usa função antiga.
+  if (!plans || plans.length === 0) {
+    const total = calculateMemberRemuneration({
+      remunerationType: legacyType,
+      remunerationValue: legacyValue ?? null,
+      evolutions,
+    });
+    return { total, breakdown: [], usedLegacy: true };
+  }
+
+  const defaultPlan = plans.find(p => p.is_default) || plans[0];
+
+  // Agrupa evoluções por planId
+  const evosByPlan: Record<string, EvolutionLike[]> = {};
+  const patientsByPlan: Record<string, Set<string>> = {};
+
+  for (const evo of evolutions) {
+    if (!isBillableStatus(evo.attendanceStatus)) continue;
+    const chosen = assignmentPlanMap[evo.patientId] || defaultPlan?.id;
+    if (!chosen) continue;
+    // valida que o plano existe (caso o assignment aponte para um plano deletado)
+    const planExists = plans.some(p => p.id === chosen);
+    const planId = planExists ? chosen : defaultPlan?.id;
+    if (!planId) continue;
+    if (!evosByPlan[planId]) evosByPlan[planId] = [];
+    evosByPlan[planId].push(evo);
+    if (!patientsByPlan[planId]) patientsByPlan[planId] = new Set();
+    patientsByPlan[planId].add(evo.patientId);
+  }
+
+  const breakdown: PlanBreakdownEntry[] = [];
+  let total = 0;
+
+  for (const plan of plans) {
+    const evos = evosByPlan[plan.id] || [];
+    const sessionsCount = evos.length;
+    const patientsCount = patientsByPlan[plan.id]?.size || 0;
+    const value = Number(plan.remuneration_value) || 0;
+    let subtotal = 0;
+
+    if (sessionsCount === 0 && plan.remuneration_type !== 'fixo_mensal') {
+      // sem sessões nesse plano e não é mensalista → não aparece no breakdown
+      continue;
+    }
+
+    if (plan.remuneration_type === 'fixo_mensal') {
+      // Cobra valor fixo se houve qualquer atividade OU se é o plano default
+      // de algum paciente vinculado (mesmo sem sessões no mês).
+      const hasActivityOrAssigned =
+        sessionsCount > 0 ||
+        Object.values(assignmentPlanMap).includes(plan.id) ||
+        (plan.is_default && Object.values(assignmentPlanMap).some(v => !v));
+      subtotal = hasActivityOrAssigned ? value : 0;
+      if (subtotal === 0) continue;
+    } else if (plan.remuneration_type === 'fixo_dia') {
+      const days = new Set(evos.map(e => e.date));
+      subtotal = days.size * value;
+    } else if (plan.remuneration_type === 'por_sessao') {
+      subtotal = sessionsCount * value;
+    }
+
+    breakdown.push({
+      planId: plan.id,
+      planName: plan.name,
+      type: plan.remuneration_type,
+      value,
+      sessionsCount,
+      patientsCount,
+      subtotal,
+    });
+    total += subtotal;
+  }
+
+  return { total, breakdown, usedLegacy: false };
+}
+
+// ============================================================================
 //  Faturamento da CLÍNICA (respeita modelo de pagamento da clínica ao terapeuta)
 // ============================================================================
 
