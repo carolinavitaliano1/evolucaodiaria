@@ -1801,6 +1801,14 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         clinicId={clinicId}
         organizationId={organization?.id || null}
       />
+
+      <MemberRemunerationLinkModal
+        open={!!remunMember}
+        onOpenChange={(v) => { if (!v) setRemunMember(null); }}
+        memberId={remunMember?.id || null}
+        memberName={remunMember?.profile?.name || remunMember?.email || ''}
+        clinicId={clinicId}
+      />
     </div>
   );
 }
