@@ -1865,6 +1865,39 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                                     value={editPatients[patient.id]}
                                     onChange={(v) => setEditPatients(prev => ({ ...prev, [patient.id]: v }))}
                                   />
+                                  {memberPlans.length > 0 && (
+                                    <div className="mt-1.5 flex items-center gap-2">
+                                      <Label className="text-[11px] text-muted-foreground shrink-0">
+                                        Plano:
+                                      </Label>
+                                      <Select
+                                        value={editPatientPlans[patient.id] || '__default__'}
+                                        onValueChange={(v) =>
+                                          setEditPatientPlans(prev => {
+                                            const n = { ...prev };
+                                            if (v === '__default__') delete n[patient.id];
+                                            else n[patient.id] = v;
+                                            return n;
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger className="h-7 text-xs flex-1">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="__default__">
+                                            Usar plano padrão
+                                          </SelectItem>
+                                          {memberPlans.map(p => (
+                                            <SelectItem key={p.id} value={p.id}>
+                                              {p.name} · R$ {Number(p.remuneration_value).toFixed(2).replace('.', ',')}
+                                              {p.is_default ? ' (padrão)' : ''}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
