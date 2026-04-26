@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
         if (!onTrial) {
           const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
           if (stripeKey && userEmail) {
-            const Stripe = (await import('npm:stripe@14.21.0')).default;
+            const Stripe = (await import('npm:stripe@^18')).default;
             const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' as any });
             const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
             if (customers.data.length > 0) {
