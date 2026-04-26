@@ -160,6 +160,7 @@ export interface Task {
   dueDate?: string;
   priority?: 'low' | 'medium' | 'high';
   createdAt: string;
+  userId?: string;
 }
 
 export interface Payment {
@@ -178,6 +179,7 @@ export interface Attachment {
   data: string;
   type: string;
   createdAt: string;
+  userId?: string;
 }
 
 export interface ClinicNote {
