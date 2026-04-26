@@ -263,6 +263,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [newPlanName, setNewPlanName] = useState('');
   const [newPlanType, setNewPlanType] = useState<'por_sessao' | 'fixo_mensal' | 'fixo_dia' | 'pacote'>('por_sessao');
   const [newPlanValue, setNewPlanValue] = useState('');
+  const [linkedPackageId, setLinkedPackageId] = useState<string>('');
+  const [clinicPackagesList, setClinicPackagesList] = useState<Array<{ id: string; name: string; price: number; package_type: string }>>([]);
 
   // Remove confirm
   const [removeMemberId, setRemoveMemberId] = useState<string | null>(null);
@@ -326,6 +328,18 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   }, [members, clinicPatients]);
 
   useEffect(() => { loadTeam(); }, [clinicId]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('clinic_packages')
+        .select('id, name, price, package_type')
+        .eq('clinic_id', clinicId)
+        .eq('is_active', true)
+        .order('name');
+      setClinicPackagesList((data as any) || []);
+    })();
+  }, [clinicId]);
 
   const MembersView = (
     <div className="space-y-6">
@@ -950,6 +964,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       setNewPlanName('');
       setNewPlanValue('');
       setNewPlanType('por_sessao');
+      setLinkedPackageId('');
       await loadMemberPlans(manageMember.id);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao adicionar plano');
@@ -1649,6 +1664,40 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                               <Plus className="w-3.5 h-3.5" /> Adicionar
                             </Button>
                           </div>
+                          {newPlanType === 'pacote' && clinicPackagesList.length > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                Vincular a um pacote existente da clínica (opcional)
+                              </p>
+                              <Select
+                                value={linkedPackageId || '__none__'}
+                                onValueChange={(v) => {
+                                  if (v === '__none__') {
+                                    setLinkedPackageId('');
+                                    return;
+                                  }
+                                  const pkg = clinicPackagesList.find(p => p.id === v);
+                                  if (pkg) {
+                                    setLinkedPackageId(v);
+                                    setNewPlanName(pkg.name);
+                                    setNewPlanValue(String(pkg.price));
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="Selecione um pacote para preencher automaticamente" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">Não vincular (preencher manualmente)</SelectItem>
+                                  {clinicPackagesList.map(pkg => (
+                                    <SelectItem key={pkg.id} value={pkg.id}>
+                                      {pkg.name} · R$ {Number(pkg.price).toFixed(2).replace('.', ',')}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                           {newPlanType === 'fixo_mensal' && (
                             <p className="text-[10px] text-muted-foreground italic">
                               Planos "Fixo mensal" são contados uma única vez no mês, mesmo se vinculados a vários pacientes.
