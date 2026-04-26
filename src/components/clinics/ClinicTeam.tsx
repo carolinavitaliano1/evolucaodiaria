@@ -788,6 +788,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         member_id: manageMember.id,
         patient_id,
         schedule_time: schedule_time || null,
+        remuneration_plan_id: editPatientPlans[patient_id] || null,
       }));
       if (toInsert.length > 0) {
         const { error } = await supabase.from('therapist_patient_assignments').insert(toInsert);
@@ -806,8 +807,11 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   function openManageModal(member: OrganizationMember) {
     if (!canManage || member.role === 'owner') return;
     const current: Record<string, string> = {};
+    const currentPlans: Record<string, string> = {};
     member.assignments?.forEach(a => { current[a.patient_id] = a.schedule_time || ''; });
+    member.assignments?.forEach(a => { if (a.remuneration_plan_id) currentPlans[a.patient_id] = a.remuneration_plan_id; });
     setEditPatients(current);
+    setEditPatientPlans(currentPlans);
     setEditPermissions(
       member.permissions.length > 0
         ? [...member.permissions]
@@ -818,6 +822,75 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
     setEditRemunerationValue(member.remuneration_value != null ? String(member.remuneration_value) : '');
     setEditWeekdays(member.weekdays || []);
     setManageMember(member);
+    loadMemberPlans(member.id);
+  }
+
+  async function loadMemberPlans(memberId: string) {
+    setLoadingPlans(true);
+    try {
+      const { data } = await supabase
+        .from('member_remuneration_plans' as any)
+        .select('*')
+        .eq('member_id', memberId)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: true });
+      setMemberPlans((data as any) || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingPlans(false);
+    }
+  }
+
+  async function addPlan() {
+    if (!manageMember || !newPlanName.trim() || !newPlanValue) {
+      toast.error('Preencha nome e valor do plano');
+      return;
+    }
+    try {
+      const isFirstPlan = memberPlans.length === 0;
+      const { error } = await supabase.from('member_remuneration_plans' as any).insert({
+        member_id: manageMember.id,
+        name: newPlanName.trim(),
+        remuneration_type: newPlanType,
+        remuneration_value: Number(newPlanValue),
+        is_default: isFirstPlan,
+      });
+      if (error) throw error;
+      toast.success('Plano adicionado');
+      setNewPlanName('');
+      setNewPlanValue('');
+      setNewPlanType('por_sessao');
+      await loadMemberPlans(manageMember.id);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao adicionar plano');
+    }
+  }
+
+  async function deletePlan(planId: string) {
+    if (!manageMember) return;
+    try {
+      const { error } = await supabase.from('member_remuneration_plans' as any).delete().eq('id', planId);
+      if (error) throw error;
+      toast.success('Plano removido');
+      await loadMemberPlans(manageMember.id);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao remover plano');
+    }
+  }
+
+  async function setPlanAsDefault(planId: string) {
+    if (!manageMember) return;
+    try {
+      // Remove default from all and set on chosen
+      await supabase.from('member_remuneration_plans' as any)
+        .update({ is_default: false }).eq('member_id', manageMember.id);
+      await supabase.from('member_remuneration_plans' as any)
+        .update({ is_default: true }).eq('id', planId);
+      await loadMemberPlans(manageMember.id);
+    } catch (err: any) {
+      toast.error('Erro ao definir padrão');
+    }
   }
 
   function toggleInvitePatient(patientId: string) {
