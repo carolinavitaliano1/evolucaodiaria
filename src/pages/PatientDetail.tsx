@@ -183,6 +183,10 @@ export default function PatientDetail() {
   const restrictToOwn = isOrgMember && !isOrgOwner && orgPermissions.includes('evolutions.own_only');
   // Terapeutas/colaboradores (não-donos) não devem gerenciar o Portal do Paciente.
   const canManagePortal = !isOrgMember || isOrgOwner;
+  // Aba "Financeiro" do paciente é redundante para terapeutas convidados —
+  // eles têm a página dedicada "Minhas Comissões". Só donos e admins (com
+  // permissão financeira) veem essa aba aqui.
+  const canSeeFinancialTab = !isOrgMember || isOrgOwner || orgPermissions.includes('financial.view');
   const { isPro } = useFeatureAccess();
   const { blocks: calendarBlocks } = useCalendarBlocks();
 
@@ -1976,8 +1980,8 @@ export default function PatientDetail() {
   };
 
   const handleBack = () => {
-    if (currentClinic) navigate(`/clinics/${currentClinic.id}`);
-    else navigate('/clinics');
+    // Voltar sempre para a lista de pacientes (em vez de mergulhar de volta na clínica)
+    navigate('/patients');
   };
 
   const handleAddPatientTask = () => {
@@ -2428,7 +2432,7 @@ export default function PatientDetail() {
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
             { value: 'session', icon: Brain, label: 'Sessão' },
             { value: 'reports', icon: BarChart3, label: 'Rel. Mensal' },
-            { value: 'financial', icon: DollarSign, label: 'Financeiro' },
+            ...(canSeeFinancialTab ? [{ value: 'financial', icon: DollarSign, label: 'Financeiro' }] : []),
             { value: 'documents', icon: Paperclip, label: 'Documentos' },
             { value: 'tasks', icon: ListTodo, label: 'Tarefas' },
             { value: 'notes', icon: PenLine, label: 'Notas' },
@@ -3146,7 +3150,8 @@ export default function PatientDetail() {
           </div>
         </TabsContent>
 
-        {/* Financial Tab */}
+        {/* Financial Tab — oculta para terapeutas convidados (eles veem em "Minhas Comissões") */}
+        {canSeeFinancialTab && (
         <TabsContent value="financial" className="space-y-4">
           <PatientPlanCard patient={patient} canEdit={true} />
           {/* Month navigator */}
@@ -3416,6 +3421,7 @@ export default function PatientDetail() {
             )}
           </div>
         </TabsContent>
+        )}
 
         {/* Notes Tab */}
         <TabsContent value="notes">
