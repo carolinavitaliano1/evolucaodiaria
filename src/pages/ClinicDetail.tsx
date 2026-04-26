@@ -360,7 +360,15 @@ export default function ClinicDetail() {
   }, [user, id]);
 
   const clinic = clinics.find(c => c.id === id);
-  const allClinicPatients = patients.filter(p => p.clinicId === id);
+  const { isOrgMember, isOwner, permissions: orgPerms } = useOrgPermissions();
+  const { assignedPatientIds } = useMyAssignedPatientIds();
+  const restrictToOwnPatients =
+    isOrgMember && !isOwner && hasPermission(orgPerms, 'patients.own_only');
+  const allClinicPatients = patients.filter(p => {
+    if (p.clinicId !== id) return false;
+    if (restrictToOwnPatients && !assignedPatientIds.has(p.id)) return false;
+    return true;
+  });
   const clinicPatients = allClinicPatients.filter(p => isPatientActiveOn(p));
 
   // Get today's weekday for filtering patients
