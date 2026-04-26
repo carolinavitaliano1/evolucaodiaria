@@ -18,9 +18,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Crown, CalendarClock } from 'lucide-react';
+import { Crown, CalendarClock, DollarSign, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const PLAN_NAMES: Record<string, string> = {
@@ -42,6 +44,8 @@ export default function Dashboard() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
+  const { isOrgMember, isOwner, role } = useOrgPermissions();
+  const isTherapistView = isOrgMember && !isOwner && role === 'professional';
 
   const todayStr = toLocalDateString(new Date());
   const todayEvolutions = evolutions.filter(e => e.date === todayStr);
@@ -180,8 +184,27 @@ export default function Dashboard() {
 
         {/* Right Column - Appointments + Tasks + Notifications */}
         <div className="lg:col-span-8 space-y-5">
-          <PendingEnrollmentsCard />
-          <PaymentReminders />
+          {!isTherapistView && <PendingEnrollmentsCard />}
+          {!isTherapistView && <PaymentReminders />}
+          {isTherapistView && (
+            <Link
+              to="/minhas-comissoes"
+              className="block rounded-xl border border-primary/20 bg-primary/5 p-4 hover:bg-primary/10 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Minhas Comissões</p>
+                    <p className="text-xs text-muted-foreground">Veja seus ganhos e sessões do mês</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-primary" />
+              </div>
+            </Link>
+          )}
           <MissingEvolutionsAlert />
           <TodayAppointments />
           <TaskList />
