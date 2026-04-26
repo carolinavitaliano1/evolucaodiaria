@@ -16,6 +16,7 @@ import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Lock } from 'lucide-react';
 import { PatientPackagesManager } from './PatientPackagesManager';
+import { PatientScheduleSlotsManager } from './PatientScheduleSlotsManager';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -85,6 +86,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
   const isPropria = clinicType === 'propria';
   const isTerceirizada = clinicType === 'terceirizada';
+  const isClinica = clinicType === 'clinica';
   const isClinicFixedMonthly = clinicPaymentType === 'fixo_mensal';
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
