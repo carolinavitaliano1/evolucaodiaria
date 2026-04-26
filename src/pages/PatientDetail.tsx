@@ -3587,7 +3587,9 @@ export default function PatientDetail() {
                   )}
                 </div>
                 {canManageAssignments && (
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setAssignmentDialogOpen(true)}>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => {
+                    document.getElementById('team-members-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}>
                     <Pencil className="w-3 h-3" /> Gerenciar vínculos
                   </Button>
                 )}
@@ -3611,7 +3613,9 @@ export default function PatientDetail() {
                       </p>
                     </div>
                     {canManageAssignments && (
-                      <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={() => setAssignmentDialogOpen(true)}>
+                      <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={() => {
+                        document.getElementById('team-members-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}>
                         <Plus className="w-3.5 h-3.5" /> Adicionar terapeuta
                       </Button>
                     )}
@@ -3646,7 +3650,7 @@ export default function PatientDetail() {
 
             {/* Inline management panel for owners/admins */}
             {canManageAssignments && orgMembers.length > 0 && (
-              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+              <div id="team-members-panel" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden scroll-mt-4">
                 <div className="px-5 py-4 border-b border-border bg-muted/30">
                   <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
                     <Users className="w-4 h-4 text-primary" /> Todos os membros da equipe
