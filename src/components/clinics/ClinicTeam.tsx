@@ -417,6 +417,10 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                         <Settings className="w-3.5 h-3.5 mr-2" />
                         Gerenciar acesso
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setRemunMember(member)}>
+                        <DollarSign className="w-3.5 h-3.5 mr-2" />
+                        Remuneração
+                      </DropdownMenuItem>
                       {member.status === 'pending' && (
                         <DropdownMenuItem onClick={() => handleResendInvite(member)} disabled={resendingId === member.id}>
                           {resendingId === member.id
