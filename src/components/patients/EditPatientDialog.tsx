@@ -584,32 +584,19 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Financeiro</Label>
             <div className="space-y-3 mt-2">
-              {clinicPackages.length > 0 && !isClinicFixedMonthly && (
+              {!isClinicFixedMonthly && (
                 <div>
-                  <Label className="text-xs">Pacote</Label>
-                  <Select
-                    value={formData.packageId}
-                    onValueChange={(v) => {
-                      const pkg = clinicPackages.find(p => p.id === v);
-                      setFormData({
-                        ...formData,
-                        packageId: v,
-                        paymentValue: pkg ? pkg.price.toString() : formData.paymentValue,
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um pacote" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sem pacote</SelectItem>
-                      {clinicPackages.filter(p => p.isActive).map(pkg => (
-                        <SelectItem key={pkg.id} value={pkg.id}>
-                          {pkg.name} - R$ {pkg.price.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs">Pacotes</Label>
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    Vincule um ou mais pacotes ao paciente. Você pode atribuir um pacote diferente para cada profissional (ex.: Psicologia e Fonoaudiologia).
+                  </p>
+                  <PatientPackagesManager
+                    patientId={patient.id}
+                    clinicId={patient.clinicId}
+                    clinicPackages={clinicPackages}
+                    organizationId={clinicOrgId}
+                    disabled={isReadOnly}
+                  />
                 </div>
               )}
 
