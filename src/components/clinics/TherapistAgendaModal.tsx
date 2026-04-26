@@ -2,10 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CalendarDays, Clock, User } from 'lucide-react';
+import { Loader2, CalendarDays, Clock, User, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface Slot {
+  id?: string;
   weekday: string;
   start_time: string;
   end_time: string;
@@ -21,6 +27,7 @@ interface Props {
   memberWeekdays: string[];
   memberScheduleByDay?: Record<string, { start: string; end: string }> | null;
   clinicId: string;
+  organizationId?: string | null;
 }
 
 const WEEKDAYS = [
@@ -65,9 +72,16 @@ function buildFreeWindows(busy: Slot[], day: string, dayStart = '08:00', dayEnd 
   return windows;
 }
 
-export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName, memberWeekdays, memberScheduleByDay, clinicId }: Props) {
+export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName, memberWeekdays, memberScheduleByDay, clinicId, organizationId }: Props) {
   const [loading, setLoading] = useState(false);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [patients, setPatients] = useState<Array<{ id: string; name: string }>>([]);
+  const [newPatientId, setNewPatientId] = useState('');
+  const [newWeekday, setNewWeekday] = useState('');
+  const [newStart, setNewStart] = useState('');
+  const [newEnd, setNewEnd] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!open || !memberId) return;
@@ -76,7 +90,7 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
       setLoading(true);
       const { data, error } = await supabase
         .from('patient_schedule_slots' as any)
-        .select('weekday, start_time, end_time, patient_id')
+        .select('id, weekday, start_time, end_time, patient_id')
         .eq('member_id', memberId)
         .eq('clinic_id', clinicId);
       if (cancelled) return;
@@ -95,6 +109,7 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
         (pats || []).forEach(p => { nameMap[p.id] = p.name; });
       }
       setSlots((data as any[]).map(s => ({
+        id: s.id,
         weekday: s.weekday,
         start_time: (s.start_time || '').slice(0, 5),
         end_time: (s.end_time || '').slice(0, 5),
@@ -104,7 +119,23 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [open, memberId, clinicId]);
+  }, [open, memberId, clinicId, reloadKey]);
+
+  // Load active patients of the clinic for the add-form selector
+  useEffect(() => {
+    if (!open || !clinicId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('patients')
+        .select('id, name')
+        .eq('clinic_id', clinicId)
+        .or('is_archived.is.null,is_archived.eq.false')
+        .order('name');
+      if (!cancelled) setPatients((data || []) as any);
+    })();
+    return () => { cancelled = true; };
+  }, [open, clinicId]);
 
   const availableDays = useMemo(() => {
     const setDays = new Set((memberWeekdays || []).map(normDay));
@@ -118,16 +149,53 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
     return entry ? entry[1] : { start: '08:00', end: '20:00' };
   }
 
+  async function handleRemove(slotId?: string) {
+    if (!slotId) return;
+    const { error } = await supabase.from('patient_schedule_slots' as any).delete().eq('id', slotId);
+    if (error) { toast.error('Erro ao remover'); return; }
+    toast.success('Horário removido');
+    setReloadKey(k => k + 1);
+  }
+
+  async function handleAdd() {
+    if (!memberId || !newPatientId || !newWeekday || !newStart || !newEnd) {
+      toast.error('Preencha paciente, dia e horários');
+      return;
+    }
+    if (newEnd <= newStart) {
+      toast.error('Horário final deve ser após o inicial');
+      return;
+    }
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSaving(false); return; }
+    const { error } = await supabase.from('patient_schedule_slots' as any).insert({
+      patient_id: newPatientId,
+      member_id: memberId,
+      clinic_id: clinicId,
+      organization_id: organizationId || null,
+      weekday: newWeekday,
+      start_time: newStart,
+      end_time: newEnd,
+      created_by: user.id,
+    });
+    setSaving(false);
+    if (error) { toast.error(error.message || 'Erro ao adicionar'); return; }
+    toast.success('Horário adicionado');
+    setNewPatientId(''); setNewWeekday(''); setNewStart(''); setNewEnd('');
+    setReloadKey(k => k + 1);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-primary" />
-            Agenda de {memberName}
+            Gerenciar agenda de {memberName}
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Visualização de horários ocupados e janelas livres (08:00 – 20:00) por dia de atendimento.
+            Adicione, remova e visualize pacientes nos horários disponíveis do profissional.
           </p>
         </DialogHeader>
 
@@ -137,6 +205,44 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Add patient form */}
+            <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+              <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> Adicionar paciente à agenda
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                <div className="md:col-span-2">
+                  <Label className="text-[10px] text-muted-foreground">Paciente</Label>
+                  <Select value={newPatientId} onValueChange={setNewPatientId}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                    <SelectContent>
+                      {patients.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Dia</Label>
+                  <Select value={newWeekday} onValueChange={setNewWeekday}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Dia..." /></SelectTrigger>
+                    <SelectContent>
+                      {availableDays.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Início</Label>
+                  <Input type="time" value={newStart} onChange={e => setNewStart(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Fim</Label>
+                  <Input type="time" value={newEnd} onChange={e => setNewEnd(e.target.value)} className="h-8 text-xs" />
+                </div>
+              </div>
+              <Button size="sm" className="h-8 text-xs gap-1" onClick={handleAdd} disabled={saving}>
+                <Plus className="w-3 h-3" /> {saving ? 'Adicionando...' : 'Adicionar horário'}
+              </Button>
+            </div>
+
             {availableDays.length === 0 && (
               <p className="text-sm text-muted-foreground italic text-center py-6">
                 Este profissional não possui dias de atendimento marcados em "Gerenciar acesso".
@@ -174,15 +280,25 @@ export function TherapistAgendaModal({ open, onOpenChange, memberId, memberName,
                       ) : (
                         <ul className="space-y-1">
                           {daySlots.map((s, i) => (
-                            <li key={i} className="flex items-center justify-between gap-2 text-xs bg-primary/5 border border-primary/20 rounded px-2 py-1.5">
+                            <li key={s.id || i} className="flex items-center justify-between gap-2 text-xs bg-primary/5 border border-primary/20 rounded px-2 py-1.5 group">
                               <span className="flex items-center gap-1.5 font-mono text-primary">
                                 <Clock className="w-3 h-3" />
                                 {s.start_time}–{s.end_time}
                               </span>
-                              <span className="flex items-center gap-1 text-foreground/80 truncate">
-                                <User className="w-3 h-3 shrink-0" />
-                                <span className="truncate">{s.patient_name}</span>
-                              </span>
+                              <div className="flex items-center gap-1 min-w-0">
+                                <span className="flex items-center gap-1 text-foreground/80 truncate min-w-0">
+                                  <User className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{s.patient_name}</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemove(s.id)}
+                                  className="text-destructive hover:bg-destructive/10 rounded p-0.5 shrink-0"
+                                  title="Remover"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
                             </li>
                           ))}
                         </ul>
