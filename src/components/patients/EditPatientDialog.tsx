@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Lock } from 'lucide-react';
+import { PatientPackagesManager } from './PatientPackagesManager';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -41,6 +42,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   // Terapeutas/colaboradores sem permissão de editar pacientes veem o modal em modo somente-leitura.
   const isReadOnly = isOrgMember && !isOwner && !permissions.includes('patients.edit');
+  const [clinicOrgId, setClinicOrgId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     birthdate: '',
@@ -138,6 +140,16 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             setInitialPaymentStatus((data as any)?.paid || false);
             setInitialPaymentDate((data as any)?.payment_date || '');
           });
+      }
+
+      // Load clinic organization id (for multi-package manager scoping)
+      if (patient.clinicId) {
+        supabase
+          .from('clinics')
+          .select('organization_id')
+          .eq('id', patient.clinicId)
+          .maybeSingle()
+          .then(({ data }) => setClinicOrgId((data as any)?.organization_id || null));
       }
     }
   }, [open, patient, isPropria, user]);
@@ -572,32 +584,19 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Financeiro</Label>
             <div className="space-y-3 mt-2">
-              {clinicPackages.length > 0 && !isClinicFixedMonthly && (
+              {!isClinicFixedMonthly && (
                 <div>
-                  <Label className="text-xs">Pacote</Label>
-                  <Select
-                    value={formData.packageId}
-                    onValueChange={(v) => {
-                      const pkg = clinicPackages.find(p => p.id === v);
-                      setFormData({
-                        ...formData,
-                        packageId: v,
-                        paymentValue: pkg ? pkg.price.toString() : formData.paymentValue,
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um pacote" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sem pacote</SelectItem>
-                      {clinicPackages.filter(p => p.isActive).map(pkg => (
-                        <SelectItem key={pkg.id} value={pkg.id}>
-                          {pkg.name} - R$ {pkg.price.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs">Pacotes</Label>
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    Vincule um ou mais pacotes ao paciente. Você pode atribuir um pacote diferente para cada profissional (ex.: Psicologia e Fonoaudiologia).
+                  </p>
+                  <PatientPackagesManager
+                    patientId={patient.id}
+                    clinicId={patient.clinicId}
+                    clinicPackages={clinicPackages}
+                    organizationId={clinicOrgId}
+                    disabled={isReadOnly}
+                  />
                 </div>
               )}
 

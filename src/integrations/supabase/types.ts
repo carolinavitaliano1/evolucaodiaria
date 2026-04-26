@@ -1714,6 +1714,74 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_packages: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          member_id: string | null
+          notes: string | null
+          organization_id: string | null
+          package_id: string
+          patient_id: string
+          therapist_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          package_id: string
+          patient_id: string
+          therapist_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          package_id?: string
+          patient_id?: string
+          therapist_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_packages_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_packages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_packages_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_packages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_payment_records: {
         Row: {
           amount: number
