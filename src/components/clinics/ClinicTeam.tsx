@@ -263,6 +263,8 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [newPlanName, setNewPlanName] = useState('');
   const [newPlanType, setNewPlanType] = useState<'por_sessao' | 'fixo_mensal' | 'fixo_dia' | 'pacote'>('por_sessao');
   const [newPlanValue, setNewPlanValue] = useState('');
+  const [linkedPackageId, setLinkedPackageId] = useState<string>('');
+  const [clinicPackagesList, setClinicPackagesList] = useState<Array<{ id: string; name: string; price: number; package_type: string }>>([]);
 
   // Remove confirm
   const [removeMemberId, setRemoveMemberId] = useState<string | null>(null);
