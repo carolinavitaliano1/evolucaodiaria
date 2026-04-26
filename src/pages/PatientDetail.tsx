@@ -3598,22 +3598,13 @@ export default function PatientDetail() {
         {isOrg && (
           <TabsContent value="therapists" className="space-y-4">
             <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-border bg-muted/30 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-primary" />
-                  <h2 className="font-semibold text-foreground text-sm">Terapeutas Responsáveis</h2>
-                  {therapistAssignments.length > 0 && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary/10 text-primary">
-                      {therapistAssignments.length}
-                    </span>
-                  )}
-                </div>
-                {canManageAssignments && (
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => {
-                    document.getElementById('team-members-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}>
-                    <Pencil className="w-3 h-3" /> Gerenciar vínculos
-                  </Button>
+              <div className="px-5 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-primary" />
+                <h2 className="font-semibold text-foreground text-sm">Terapeutas Responsáveis</h2>
+                {therapistAssignments.length > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary/10 text-primary">
+                    {therapistAssignments.length}
+                  </span>
                 )}
               </div>
               <div className="p-5">
@@ -3629,18 +3620,9 @@ export default function PatientDetail() {
                     <div>
                       <p className="text-sm font-medium text-foreground">Nenhum terapeuta vinculado</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {canManageAssignments
-                          ? 'Clique em "Gerenciar vínculos" para adicionar terapeutas responsáveis por este paciente.'
-                          : 'Nenhum terapeuta foi vinculado a este paciente ainda.'}
+                        Os terapeutas vinculados a este paciente aparecerão aqui automaticamente quando agendados pela clínica.
                       </p>
                     </div>
-                    {canManageAssignments && (
-                      <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={() => {
-                        document.getElementById('team-members-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }}>
-                        <Plus className="w-3.5 h-3.5" /> Adicionar terapeuta
-                      </Button>
-                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3670,65 +3652,6 @@ export default function PatientDetail() {
               </div>
             </div>
 
-            {/* Inline management panel for owners/admins */}
-            {canManageAssignments && orgMembers.length > 0 && (
-              <div id="team-members-panel" className="bg-card rounded-xl border border-border shadow-sm overflow-hidden scroll-mt-4">
-                <div className="px-5 py-4 border-b border-border bg-muted/30">
-                  <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-                    <Users className="w-4 h-4 text-primary" /> Todos os membros da equipe
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Clique em um membro para vincular ou desvincular deste paciente.</p>
-                </div>
-                <div className="p-4 space-y-2">
-                  {orgMembers.map(member => {
-                    const isAssigned = therapistAssignments.some(a => a.memberId === member.memberId);
-                    const localTime = assignmentScheduleTimes[member.memberId] ?? (isAssigned ? member.scheduleTime || '' : '');
-                    return (
-                      <div key={member.memberId} className="space-y-1.5">
-                        <div
-                          className={cn(
-                            'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                            isAssigned ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
-                          )}
-                          onClick={() => toggleAssignment(member, localTime || undefined)}
-                        >
-                          <Avatar className="w-9 h-9 shrink-0">
-                            {member.avatarUrl && <AvatarImage src={member.avatarUrl} />}
-                            <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-                              {(member.name || member.email)[0].toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{member.name || member.email}</p>
-                            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                          </div>
-                          <div className={cn(
-                            'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full shrink-0',
-                            isAssigned ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                          )}>
-                            <UserCheck className="w-3.5 h-3.5" />
-                            {isAssigned ? 'Vinculado' : 'Vincular'}
-                          </div>
-                        </div>
-                        {isAssigned && (
-                          <div className="pl-12">
-                            <input
-                              type="text"
-                              placeholder="Horário do atendimento (ex: 14:00)"
-                              defaultValue={member.scheduleTime || ''}
-                              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                              onChange={e => setAssignmentScheduleTimes(prev => ({ ...prev, [member.memberId]: e.target.value }))}
-                              onBlur={e => updateScheduleTime(member.memberId, e.target.value)}
-                              onClick={e => e.stopPropagation()}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </TabsContent>
         )}
 
