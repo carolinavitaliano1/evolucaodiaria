@@ -508,7 +508,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
             Ranking de Profissionais
           </h3>
           <div className="space-y-3">
-            {memberStats.map(({ member, sessions, absences, paidAbsences, revenue }, i) => (
+            {memberStats.map(({ member, sessions, absences, paidAbsences, revenue, breakdown }, i) => (
               <div key={member.userId} className={cn(
                 'flex items-center gap-3 p-3 rounded-xl border transition-colors',
                 i === 0 ? 'bg-primary/5 border-primary/20' : 'bg-secondary/30 border-border'
@@ -543,6 +543,25 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
                     {paidAbsences > 0 && ` · ${paidAbsences} faltas rem.`}
                     {absences > 0 && ` · ${absences} faltas`}
                   </p>
+                  {breakdown.length > 1 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {breakdown.map((b: PlanBreakdownEntry) => (
+                        <span
+                          key={b.planId}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium"
+                          title={
+                            b.type === 'fixo_mensal'
+                              ? `${b.planName} — ${b.patientsCount} paciente(s)`
+                              : b.type === 'fixo_dia'
+                              ? `${b.planName} — ${new Set((monthlyEvolutions.filter(e => e.userId === member.userId && e.attendanceStatus !== 'falta' && e.attendanceStatus !== 'feriado_nao_remunerado').map(e => e.date))).size} dias`
+                              : `${b.planName} — ${b.sessionsCount} sessão(ões)`
+                          }
+                        >
+                          {b.planName}: R$ {b.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <p className={cn('font-bold shrink-0 text-sm', i === 0 ? 'text-primary' : 'text-foreground')}>
                   R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
