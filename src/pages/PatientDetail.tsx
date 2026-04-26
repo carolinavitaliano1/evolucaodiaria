@@ -1981,8 +1981,12 @@ export default function PatientDetail() {
   };
 
   const handleBack = () => {
-    // Voltar sempre para a lista de pacientes (em vez de mergulhar de volta na clínica)
-    navigate('/patients');
+    // Voltar para a clínica onde o paciente está cadastrado; fallback para lista de pacientes
+    if (patient?.clinicId) {
+      navigate(`/clinics/${patient.clinicId}`);
+    } else {
+      navigate('/patients');
+    }
   };
 
   const handleAddPatientTask = () => {
