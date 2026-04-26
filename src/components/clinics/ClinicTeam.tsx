@@ -563,6 +563,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           role: inviteRole,
           role_label: inviteRoleLabel || null,
           permissions: permissionsMap,
+          remuneration_type: inviteRemunerationType,
+          remuneration_value: inviteRemunerationValue ? Number(inviteRemunerationValue) : null,
+          weekdays: inviteWeekdays.length > 0 ? inviteWeekdays : null,
           patient_assignments: Object.entries(selectedPatients).map(([patient_id, schedule_time]) => ({
             patient_id, schedule_time,
           })),
@@ -575,6 +578,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       setSelectedPatients({});
       setInvitePermissions([...DEFAULT_THERAPIST_PERMISSIONS]);
       setInvitePreset('terapeuta');
+      setInviteRemunerationType('definir_depois');
+      setInviteRemunerationValue('');
+      setInviteWeekdays([]);
       setInviteOpen(false);
       loadTeam();
     } catch (err: any) {
