@@ -55,7 +55,7 @@ export function MobileNav() {
   const { unreadCount: noticesCount } = useUnreadNotices();
   const { unreadCount: supportCount } = useUnreadSupportCount();
   const { count: pendingCount } = usePendingEnrollments();
-  const { isOrgMember, isOwner, role, permissions } = useOrgPermissions();
+  const { isOrgMember, isOwner, role, permissions, loading: permsLoading } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
 
@@ -111,6 +111,15 @@ export function MobileNav() {
     location.pathname === item.to ||
     (item.to !== '/' && location.pathname.startsWith(item.to))
   );
+
+  // Evita flash da visão admin antes de sabermos a função real do usuário
+  if (permsLoading) {
+    return (
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/98 backdrop-blur-sm border-t border-border">
+        <div className="flex justify-around items-center py-1.5 px-2 h-[62px]" />
+      </nav>
+    );
+  }
 
   const getBadgeCount = (badge: string | null) => {
     if (badge === 'notices') return noticesCount;

@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { toLocalDateString } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
+import { useMyAssignedPatientIds } from '@/hooks/usePatientAssignments';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect, useMemo } from 'react';
 import { startOfMonth } from 'date-fns';
@@ -12,8 +14,18 @@ import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/finan
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 
 export function StatsCards() {
-  const { clinics, patients, appointments, evolutions, clinicPackages } = useApp();
+  const { clinics, patients: allPatients, appointments, evolutions: allEvolutions, clinicPackages } = useApp();
   const { user } = useAuth();
+  const { isOrgMember, isOwner, permissions: orgPerms } = useOrgPermissions();
+  const { assignedPatientIds } = useMyAssignedPatientIds();
+  const restrictToOwn = isOrgMember && !isOwner && hasPermission(orgPerms, 'patients.own_only');
+  // Quando colaborador, filtra pacientes vinculados a ele e evoluções por ele.
+  const patients = restrictToOwn
+    ? allPatients.filter(p => assignedPatientIds.has(p.id))
+    : allPatients;
+  const evolutions = restrictToOwn
+    ? allEvolutions.filter(e => e.userId === user?.id)
+    : allEvolutions;
 
   const today = toLocalDateString(new Date());
   const todayWeekday = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][new Date().getDay()];
