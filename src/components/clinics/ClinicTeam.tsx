@@ -1664,6 +1664,40 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                               <Plus className="w-3.5 h-3.5" /> Adicionar
                             </Button>
                           </div>
+                          {newPlanType === 'pacote' && clinicPackagesList.length > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                Vincular a um pacote existente da clínica (opcional)
+                              </p>
+                              <Select
+                                value={linkedPackageId || '__none__'}
+                                onValueChange={(v) => {
+                                  if (v === '__none__') {
+                                    setLinkedPackageId('');
+                                    return;
+                                  }
+                                  const pkg = clinicPackagesList.find(p => p.id === v);
+                                  if (pkg) {
+                                    setLinkedPackageId(v);
+                                    setNewPlanName(pkg.name);
+                                    setNewPlanValue(String(pkg.price));
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="Selecione um pacote para preencher automaticamente" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">Não vincular (preencher manualmente)</SelectItem>
+                                  {clinicPackagesList.map(pkg => (
+                                    <SelectItem key={pkg.id} value={pkg.id}>
+                                      {pkg.name} · R$ {Number(pkg.price).toFixed(2).replace('.', ',')}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                           {newPlanType === 'fixo_mensal' && (
                             <p className="text-[10px] text-muted-foreground italic">
                               Planos "Fixo mensal" são contados uma única vez no mês, mesmo se vinculados a vários pacientes.
