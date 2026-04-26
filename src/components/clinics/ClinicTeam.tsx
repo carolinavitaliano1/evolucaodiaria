@@ -353,96 +353,183 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {filteredMembers.length === 0 && members.length > 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4 italic">
+          Nenhum colaborador encontrado para "{searchQuery}"
+        </p>
+      )}
+
+      {/* ── Collaborators Grid (visual rico) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredMembers.map(member => {
+          const displayName = member.profile?.name || member.email;
           const initials = getInitials(member.profile?.name, member.email);
-          const color = getAvatarColor(member.email);
-          const roleLabel = member.role_label || ROLE_LABELS[member.role] || member.role;
-          const isMe = member.user_id === user?.id;
+          const avatarColor = getAvatarColor(member.email);
+          const isClickable = canManage && member.role !== 'owner';
 
           return (
             <div
               key={member.id}
-              onClick={() => canManage && setManageMember(member)}
               className={cn(
-                'group p-4 rounded-2xl border bg-card transition-all flex flex-col',
-                canManage ? 'cursor-pointer hover:border-primary/40 hover:shadow-md' : 'cursor-default'
+                'relative rounded-xl border bg-card p-4 flex flex-col gap-3 transition-all',
+                isClickable && 'hover:border-primary/40 hover:shadow-sm cursor-pointer',
+                member.status === 'inactive' && 'opacity-60'
               )}
+              onClick={() => isClickable && openManageModal(member)}
             >
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-11 h-11 ring-2 ring-background ring-offset-2 ring-offset-border/20">
+              {/* Top row: avatar + actions menu */}
+              <div className="flex items-start justify-between">
+                <div className="relative">
+                  <Avatar className="w-14 h-14">
                     {member.profile?.avatar_url && (
-                      <AvatarImage src={member.profile.avatar_url} />
+                      <AvatarImage src={member.profile.avatar_url} alt={displayName} />
                     )}
-                    <AvatarFallback className={cn('text-white font-bold', color)}>
+                    <AvatarFallback className={cn('text-white font-bold text-base', avatarColor)}>
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="min-w-0">
-                    <p className="font-bold text-foreground text-sm truncate">
-                      {member.profile?.name || member.email.split('@')[0]}
-                      {isMe && <span className="ml-1.5 text-[10px] font-normal text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Você</span>}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <Badge variant="outline" className={cn('text-[10px] h-4 px-1.5 font-medium border-0', STATUS_COLORS[member.status])}>
-                        {STATUS_LABELS[member.status]}
-                      </Badge>
-                      <span className="text-[10px] text-muted-foreground truncate">{roleLabel}</span>
-                    </div>
-                  </div>
+                  {/* Status dot */}
+                  <span className={cn(
+                    'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card',
+                    member.status === 'active' ? 'bg-success' :
+                    member.status === 'pending' ? 'bg-warning' : 'bg-muted-foreground'
+                  )} />
                 </div>
-                {canManage && (
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                    {!isMe && member.status === 'pending' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-primary hover:bg-primary/10"
-                        onClick={e => handleResendInvite(member, e)}
-                        disabled={resendingId === member.id}
-                        title="Reenviar convite"
-                      >
-                        {resendingId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+
+                {/* Actions dropdown */}
+                {canManage && member.role !== 'owner' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
+                        <MoreVertical className="w-4 h-4" />
                       </Button>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
-                      <MoreVertical className="w-3.5 h-3.5" />
-                    </Button>
-                    {isOwner && !isMe && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-success hover:bg-success/10')}
-                        onClick={e => { e.stopPropagation(); handleToggleMemberStatus(member); }}
-                        title={member.status === 'active' ? 'Suspender acesso' : 'Reativar acesso'}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                      <DropdownMenuItem onClick={() => openManageModal(member)}>
+                        <Settings className="w-3.5 h-3.5 mr-2" />
+                        Gerenciar acesso
+                      </DropdownMenuItem>
+                      {member.status === 'pending' && (
+                        <DropdownMenuItem onClick={() => handleResendInvite(member)} disabled={resendingId === member.id}>
+                          {resendingId === member.id
+                            ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                            : <RefreshCw className="w-3.5 h-3.5 mr-2" />}
+                          Reenviar convite
+                        </DropdownMenuItem>
+                      )}
+                      {member.status !== 'pending' && (
+                        <DropdownMenuItem onClick={() => handleToggleMemberStatus(member)}>
+                          {member.status === 'active'
+                            ? <><UserX className="w-3.5 h-3.5 mr-2" />Suspender acesso</>
+                            : <><UserCheck className="w-3.5 h-3.5 mr-2" />Reativar acesso</>}
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setRemoveMemberId(member.id)}
                       >
-                        {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
-                      </Button>
-                    )}
-                  </div>
+                        <Trash2 className="w-3.5 h-3.5 mr-2" />
+                        Remover da equipe
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
 
-              {/* Assignments preview */}
-              {member.assignments && member.assignments.length > 0 && (
-                <div className="mt-auto pt-4 border-t border-border/50">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <UserCircle className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Pacientes ({member.assignments.length})</span>
-                  </div>
+              {/* Name + email */}
+              <div className="min-w-0">
+                <p className={cn('font-semibold text-sm leading-tight truncate', member.status === 'inactive' && 'line-through text-muted-foreground')}>
+                  {member.profile?.name || <span className="text-muted-foreground font-normal text-xs">{member.email}</span>}
+                </p>
+                {member.profile?.name && (
+                  <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                )}
+              </div>
+
+              {/* Role + specialty badges */}
+              <div className="flex flex-wrap gap-1.5">
+                {member.role === 'owner' ? (
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-warning/40 text-warning bg-warning/10">
+                    <Crown className="w-2.5 h-2.5" />
+                    Dono
+                  </Badge>
+                ) : member.role === 'admin' ? (
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5 border-primary/40 text-primary bg-primary/10">
+                    <Shield className="w-2.5 h-2.5" />
+                    Administrador
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] gap-1 py-0 h-5">
+                    <User className="w-2.5 h-2.5" />
+                    Profissional
+                  </Badge>
+                )}
+                {member.role_label && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 py-0 h-5">
+                    <Briefcase className="w-2.5 h-2.5" />
+                    {member.role_label}
+                  </Badge>
+                )}
+                <Badge variant="outline" className={cn('text-[10px] py-0 h-5 border', STATUS_COLORS[member.status])}>
+                  {STATUS_LABELS[member.status]}
+                </Badge>
+              </div>
+
+              {/* Patients + joined info */}
+              <div className="space-y-1 mt-auto">
+                {member.status === 'active' && (member.assignments?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {member.assignments.slice(0, 3).map(a => (
-                      <span key={a.id} className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border/50">
-                        {a.patient_name || '...'}
+                    {member.assignments!.slice(0, 3).map(a => (
+                      <span key={a.id} className="inline-flex items-center gap-1 bg-muted/60 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        <User className="w-2.5 h-2.5" />
+                        {a.patient_name?.split(' ')[0] || '—'}
+                        {a.schedule_time && <span className="text-primary font-medium">· {a.schedule_time}</span>}
                       </span>
                     ))}
-                    {member.assignments.length > 3 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
-                        +{member.assignments.length - 3}
+                    {(member.assignments?.length ?? 0) > 3 && (
+                      <span className="inline-flex items-center bg-muted/60 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        +{(member.assignments?.length ?? 0) - 3}
                       </span>
                     )}
                   </div>
+                )}
+                {member.status === 'pending' && (
+                  <p className="text-[10px] text-warning flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    Aguardando aceite do convite
+                  </p>
+                )}
+                {member.status === 'active' && member.joined_at && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Entrou em {format(new Date(member.joined_at), "dd/MM/yyyy", { locale: ptBR })}
+                  </p>
+                )}
+              </div>
+
+              {/* Quick Actions */}
+              {canManage && member.role !== 'owner' && (
+                <div className="flex gap-1.5 pt-2 border-t border-border mt-auto" onClick={e => e.stopPropagation()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] gap-1 px-2"
+                    onClick={e => { e.stopPropagation(); navigate('/calendar'); }}
+                  >
+                    <CalendarDays className="w-3 h-3" />
+                    Ver Agenda
+                  </Button>
+                  {member.status !== 'pending' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn('h-7 w-7 p-0 shrink-0', member.status === 'active' ? 'text-destructive hover:bg-destructive/10' : 'text-success hover:bg-success/10')}
+                      onClick={e => { e.stopPropagation(); handleToggleMemberStatus(member); }}
+                      title={member.status === 'active' ? 'Suspender acesso' : 'Reativar acesso'}
+                    >
+                      {member.status === 'active' ? <UserX className="w-3 h-3" /> : <UserCheck className="w-3 h-3" />}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
