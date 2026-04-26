@@ -2447,7 +2447,7 @@ export default function PatientDetail() {
             ...(canManagePortal ? [{ value: 'portal', icon: Users, label: 'Portal' }] : []),
             { value: 'mural', icon: Newspaper, label: 'Mural' },
             { value: 'attendance', icon: ClipboardList, label: 'Frequência' },
-            ...(isOrg ? [{ value: 'therapists', icon: UserCheck, label: 'Terapeutas' }] : []),
+            ...(isOrg && clinic?.type !== 'propria' ? [{ value: 'therapists', icon: UserCheck, label: 'Terapeutas' }] : []),
           ].map(({ value, icon: Icon, label }) => (
             <TabsTrigger
               key={value}
