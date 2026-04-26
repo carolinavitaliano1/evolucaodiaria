@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import { Lock } from 'lucide-react';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -36,6 +38,9 @@ interface EditPatientDialogProps {
 
 export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicPackages = [], clinicType, clinicPaymentType, clinicPaymentAmount }: EditPatientDialogProps) {
   const { user } = useAuth();
+  const { isOrgMember, isOwner, permissions } = useOrgPermissions();
+  // Terapeutas/colaboradores sem permissão de editar pacientes veem o modal em modo somente-leitura.
+  const isReadOnly = isOrgMember && !isOwner && !permissions.includes('patients.edit');
   const [formData, setFormData] = useState({
     name: '',
     birthdate: '',
@@ -167,6 +172,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) { onOpenChange(false); return; }
     if (!formData.name.trim() || !formData.birthdate) return;
 
     const firstDayTime = formData.weekdays.length > 0
@@ -229,9 +235,18 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Paciente</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {isReadOnly && <Lock className="w-4 h-4 text-muted-foreground" />}
+            {isReadOnly ? 'Informações do Paciente' : 'Editar Paciente'}
+          </DialogTitle>
+          {isReadOnly && (
+            <p className="text-xs text-muted-foreground">
+              Você está visualizando os dados do paciente. Apenas administradores podem editar estas informações.
+            </p>
+          )}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <fieldset disabled={isReadOnly} className={cn("space-y-4 contents", isReadOnly && "opacity-90")}>
           <div>
             <Label>Nome *</Label>
             <Input
@@ -687,11 +702,12 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             </div>
           )}
 
+          </fieldset>
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {isReadOnly ? 'Fechar' : 'Cancelar'}
             </Button>
-            <Button type="submit">Salvar Alterações</Button>
+            {!isReadOnly && <Button type="submit">Salvar Alterações</Button>}
           </div>
         </form>
       </DialogContent>
