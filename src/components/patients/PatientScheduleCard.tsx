@@ -74,10 +74,23 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {s.packageName ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Package className="w-3.5 h-3.5" />
-                        {s.packageName}
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="inline-flex items-center gap-1.5 text-foreground">
+                          <Package className="w-3.5 h-3.5" />
+                          {s.packageName}
+                        </span>
+                        {s.packagePrice != null && (
+                          <span className="text-[11px] font-semibold text-success ml-5">
+                            R$ {s.packagePrice.toFixed(2)}
+                            {s.packageType === 'por_sessao' && (
+                              <span className="text-muted-foreground font-normal"> / sessão</span>
+                            )}
+                            {s.packageType === 'mensal' && (
+                              <span className="text-muted-foreground font-normal"> / mês</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-muted-foreground/60">—</span>
                     )}
