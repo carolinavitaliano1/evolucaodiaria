@@ -419,7 +419,7 @@ export function calculateMemberRemuneration(ctx: MemberRemunerationContext): num
 //  Múltiplos planos de remuneração por terapeuta (member_remuneration_plans)
 // ============================================================================
 
-export type RemunerationPlanType = 'por_sessao' | 'fixo_mensal' | 'fixo_dia';
+export type RemunerationPlanType = 'por_sessao' | 'fixo_mensal' | 'fixo_dia' | 'pacote';
 
 export interface RemunerationPlan {
   id: string;
@@ -534,6 +534,9 @@ export function calculateMemberRemunerationByPlans(
       subtotal = days.size * value;
     } else if (plan.remuneration_type === 'por_sessao') {
       subtotal = sessionsCount * value;
+    } else if (plan.remuneration_type === 'pacote') {
+      // Pacote: cobra valor fixo por paciente que teve ao menos 1 sessão billable no mês
+      subtotal = patientsCount * value;
     }
 
     breakdown.push({
