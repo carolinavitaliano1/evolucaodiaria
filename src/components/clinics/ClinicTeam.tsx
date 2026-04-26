@@ -1821,6 +1821,15 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <TherapistAgendaModal
+        open={!!agendaMember}
+        onOpenChange={(v) => { if (!v) setAgendaMember(null); }}
+        memberId={agendaMember?.id || null}
+        memberName={agendaMember?.profile?.name || agendaMember?.email || ''}
+        memberWeekdays={agendaMember?.weekdays || []}
+        clinicId={clinicId}
+      />
     </div>
   );
 }
