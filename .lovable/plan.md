@@ -1,108 +1,51 @@
-## Objetivo
 
-Permitir que cada terapeuta colaborador tenha **vários planos de remuneração** cadastrados (ex.: "Por Sessão R$ 80", "Pacote Mensal R$ 1.200"), e que cada **vínculo terapeuta↔paciente** escolha qual desses planos se aplica àquele paciente. O cálculo financeiro do mês soma automaticamente todos os pacientes atendidos respeitando o plano de cada um, e exibe o total quebrado por modalidade.
+## Problema identificado
 
----
+A página **`src/pages/MyCommissions.tsx`** (acessada pelo terapeuta no dashboard via "Minhas Comissões") ainda usa a função legada `calculateMemberRemuneration`, que lê apenas os campos `remuneration_type` / `remuneration_value` direto da tabela `organization_members`.
 
-## 1. Banco de Dados (migração)
+Resultado: quando o gestor cadastra/edita os **Planos de Remuneração** (tabela `member_remuneration_plans`) e atribui planos específicos por paciente (campo `remuneration_plan_id` em `therapist_patient_assignments`), nada disso aparece para o terapeuta — ele continua vendo o valor antigo (ou zero, se nunca houve um valor legado).
 
-### Nova tabela `member_remuneration_plans`
-Lista os planos cadastrados para cada membro da organização.
-- `id` (uuid, PK)
-- `member_id` (uuid, FK → `organization_members.id`, on delete cascade)
-- `name` (text) — ex.: "Plano Sessão Padrão", "Pacote Premium"
-- `remuneration_type` (text) — `por_sessao`, `fixo_mensal`, `fixo_dia`
-- `remuneration_value` (numeric)
-- `is_default` (boolean) — plano usado quando paciente não tem escolha explícita
-- `created_at`, `updated_at`
-- **RLS**: dono/admin da organização gerencia; membros visualizam seus próprios planos.
+As telas do gestor (`TeamFinancialDashboard`, `TeamFinancialReport`) já foram migradas; falta apenas espelhar a mesma lógica do lado do colaborador.
 
-### Coluna nova em `therapist_patient_assignments`
-- `remuneration_plan_id` (uuid, FK → `member_remuneration_plans.id`, nullable) — qual plano se aplica a este vínculo. Se `null`, usa o `is_default` do membro.
+## Correção proposta
 
-### Compatibilidade retroativa
-Os campos `remuneration_type` / `remuneration_value` na `organization_members` continuam existindo. Uma migração de dados criará automaticamente um plano "Plano Padrão" para cada membro existente que tenha valores preenchidos, marcado como `is_default = true`. A UI antiga continua funcionando como fallback até que o admin cadastre planos novos.
+### 1. `src/pages/MyCommissions.tsx` — usar `calculateMemberRemunerationByPlans`
 
----
+**a) Carregar os planos do membro e o mapa de atribuições por paciente** logo após carregar o `organization_members` do usuário:
+- `SELECT * FROM member_remuneration_plans WHERE member_id = m.id ORDER BY is_default DESC, name`
+- `SELECT patient_id, remuneration_plan_id FROM therapist_patient_assignments WHERE member_id = m.id` → montar `assignmentPlanMap: Record<patientId, planId | null>`
 
-## 2. UI — Modal "Gerenciar" do colaborador (`ClinicTeam.tsx`)
+**b) Substituir o cálculo do mês corrente** (`totalCommission`) por `calculateMemberRemunerationByPlans({ plans, assignmentPlanMap, evolutions, legacyType, legacyValue })`, mantendo o fallback legado quando o membro ainda não tem planos.
 
-Na aba **Profissional** (já existente), substituir o bloco atual de Remuneração por:
+**c) Substituir o cálculo do histórico de 6 meses** pela mesma função (atualmente roda `calculateMemberRemuneration` em loop). Reutilizar `plans` e `assignmentPlanMap` já carregados.
 
-### Bloco "Planos de Remuneração"
-- Lista os planos do membro em cards com nome, modalidade e valor.
-- Botão **"+ Adicionar plano"** abre formulário inline: nome, tipo (Select com `Por Sessão` / `Fixo Mensal` / `Fixo Diário`), valor.
-- Cada plano tem ações: editar, excluir, marcar como padrão (estrela).
-- Validação: ao menos um plano deve ser marcado como padrão.
+**d) Exibir o breakdown por plano** (já produzido pela função) abaixo do card "Total a receber":
+- Lista compacta com nome do plano, tipo (Por sessão / Mensal / Diário / Pacote), valor unitário, contagem (sessões ou pacientes) e subtotal.
+- Quando `usedLegacy = true`, esconder o breakdown e manter o comportamento atual.
 
-### Aba "Pacientes" (já existente)
-Em cada paciente vinculado, ao lado do horário, adicionar **Select "Plano de remuneração"** com as opções dos planos do terapeuta + opção "Usar padrão". O valor escolhido é persistido em `therapist_patient_assignments.remuneration_plan_id` no `saveAssignments()`.
+**e) Atualizar o "Modelo de remuneração"** no card do topo:
+- Se houver múltiplos planos: mostrar a quantidade ("3 planos cadastrados") e listar os nomes dos planos como badges, ao invés do badge único "R$ X / sessão".
+- Se houver apenas o plano padrão (ou fallback legado): manter o visual atual.
 
----
+**f) Atualizar o "Detalhamento por paciente"**:
+- Adicionar coluna "Plano" mostrando o nome do plano que se aplica àquele paciente (resolvido via `assignmentPlanMap[patientId] || planoDefault`).
+- Recalcular a coluna "Subtotal" usando o valor do plano específico de cada paciente (não mais um único `valuePerSession` global). Para planos `fixo_mensal`/`fixo_dia`/`pacote`, mostrar `—` no subtotal por linha (o subtotal real desses tipos aparece no breakdown geral, não por paciente).
 
-## 3. Lógica de Cálculo (`src/utils/financialHelpers.ts`)
+### 2. Realtime / atualização imediata (opcional, mas recomendado)
 
-### Nova função `calculateMemberRemunerationByPlans(ctx)`
-Recebe:
-- `member` (com seus planos)
-- `evolutions` do mês deste membro
-- `assignments` (mapa `patient_id → remuneration_plan_id`)
+Adicionar uma assinatura simples para que, se o gestor alterar planos enquanto o terapeuta está com a tela aberta, o valor recalcule:
+- Subscription em `member_remuneration_plans` filtrando por `member_id`
+- Subscription em `therapist_patient_assignments` filtrando por `member_id`
 
-Retorna:
-```ts
-{
-  total: number,
-  breakdown: Array<{
-    planId: string,
-    planName: string,
-    type: 'por_sessao' | 'fixo_mensal' | 'fixo_dia',
-    value: number,
-    sessionsCount: number,
-    subtotal: number,
-    patientsCount: number,
-  }>
-}
-```
+Cada evento dispara um reload dos planos + assignments + recálculo. Usar nomes de canais únicos (`my-commissions-plans-${user.id}`) conforme a convenção do projeto.
 
-**Algoritmo:**
-1. Agrupa as evoluções do mês por `patient_id`.
-2. Para cada paciente, descobre o plano via `assignment.remuneration_plan_id` (ou plano default do membro como fallback, ou os campos legados em `organization_members` como último recurso).
-3. Aplica regra do plano:
-   - `por_sessao`: nº de evoluções billable × valor.
-   - `fixo_dia`: nº de dias únicos com evoluções billable × valor.
-   - `fixo_mensal`: valor fixo (uma vez por plano, não por paciente — soma uma única vez se o plano tiver pelo menos 1 paciente atendido no mês).
-4. Acumula no `breakdown` por `planId` e soma o total geral.
+### 3. Verificação
 
-A função antiga `calculateMemberRemuneration` continua existindo como fallback para membros sem planos cadastrados.
+- Rodar `tsc` para garantir que os tipos do `MemberRemunerationByPlansContext` estão corretos.
+- Confirmar visualmente que: (i) ao cadastrar um plano novo no gestor, o terapeuta vê refletido; (ii) ao trocar o plano de um paciente, o subtotal daquele paciente muda; (iii) o total bate com o que o gestor vê em `TeamFinancialDashboard` para o mesmo membro/mês.
 
----
+## Arquivos a editar
 
-## 4. Relatórios financeiros
+- `src/pages/MyCommissions.tsx` (única alteração de código)
 
-### `TeamFinancialDashboard.tsx` e `TeamFinancialReport.tsx`
-- Substituir chamadas de `calculateMemberRemuneration` por `calculateMemberRemunerationByPlans` quando o membro tem planos.
-- Card de cada membro passa a mostrar o **breakdown** abaixo do total: chips com `Por Sessão: R$ 1.600 (20 sess.)`, `Pacote Mensal: R$ 1.200 (1 pac.)`, etc.
-- PDF de exportação ganha sub-seção "Detalhamento por modalidade" dentro de cada membro.
-
-### `MyCommissions.tsx` (visão do próprio terapeuta)
-Espelha o mesmo breakdown para o profissional ver quanto recebeu por modalidade.
-
----
-
-## 5. Arquivos a editar
-
-- **Migração SQL**: nova tabela `member_remuneration_plans`, coluna `remuneration_plan_id` em `therapist_patient_assignments`, RLS, e seed dos planos default a partir dos dados legados.
-- `src/components/clinics/ClinicTeam.tsx` — UI de gerenciamento de planos + select por paciente.
-- `src/utils/financialHelpers.ts` — nova função de cálculo com breakdown.
-- `src/components/clinics/TeamFinancialDashboard.tsx` — exibir breakdown.
-- `src/components/clinics/TeamFinancialReport.tsx` — exibir breakdown + PDF.
-- `src/pages/MyCommissions.tsx` — breakdown na visão do profissional.
-
----
-
-## 6. Pontos importantes
-
-- **Sem perda de dados**: membros existentes ganham automaticamente um "Plano Padrão" com seus valores atuais.
-- **Realtime**: a lista de planos é recarregada via `loadTeam()` após qualquer alteração.
-- **Validação**: impede excluir o último plano default; impede excluir plano que está vinculado a pacientes (avisa para reatribuir antes).
-- **Fixo Mensal especial**: como é um valor fixo independente de sessões, decidimos contar **uma vez por plano** (não por paciente), evitando dobra. Isso será destacado no tooltip do plano.
+Nenhuma migração de banco é necessária — a infraestrutura (`member_remuneration_plans`, `remuneration_plan_id` em assignments, RLS "Members can view own remuneration plans") já existe e permite que o próprio terapeuta leia seus planos.
