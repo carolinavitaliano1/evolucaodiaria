@@ -176,7 +176,11 @@ export default function PatientDetail() {
     addTask, toggleTask, deleteTask, getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment, clinicPackages, updatePatient, deletePatient, getClinicPackages, loadEvolutionsForClinic, loadAttachmentsForPatient, isLoading: appLoading } = useApp();
   const { user } = useAuth();
   const { customMoods } = useCustomMoods();
-  const { permissions: orgPermissions, isOwner: isOrgOwner } = useOrgPermissions();
+  const { permissions: orgPermissions, isOwner: isOrgOwner, isOrgMember } = useOrgPermissions();
+  // When the user is a non-owner org member with `evolutions.own_only`, they
+  // see only records (evolutions / anexos / notas / tarefas) they themselves
+  // created. Owners and admins with the "Acesso Total" level keep full visibility.
+  const restrictToOwn = isOrgMember && !isOrgOwner && orgPermissions.includes('evolutions.own_only');
   const { isPro } = useFeatureAccess();
   const { blocks: calendarBlocks } = useCalendarBlocks();
 
@@ -231,7 +235,7 @@ export default function PatientDetail() {
 
   const patientEvolutions = useMemo(() => {
     const evos = evolutions
-      .filter(e => e.patientId === id)
+      .filter(e => e.patientId === id && (!restrictToOwn || e.userId === user?.id))
       .map(evo => ({
       ...evo,
       attachments: evo.attachments && evo.attachments.length > 0
@@ -288,10 +292,16 @@ export default function PatientDetail() {
 
     return [...evos, ...holidayEvolutions]
       .sort((a, b) => new Date(b.date + 'T12:00:00').getTime() - new Date(a.date + 'T12:00:00').getTime());
-  }, [evolutions, attachments, id, patient, calendarBlocks, user?.id]);
+  }, [evolutions, attachments, id, patient, calendarBlocks, user?.id, restrictToOwn]);
 
-  const patientTasksList = id ? getPatientTasks(id) : [];
-  const patientAttachments = id ? getPatientAttachments(id) : [];
+  const allPatientTasks = id ? getPatientTasks(id) : [];
+  const allPatientAttachments = id ? getPatientAttachments(id) : [];
+  const patientTasksList = restrictToOwn
+    ? allPatientTasks.filter(t => (t as any).user_id === user?.id || (t as any).userId === user?.id)
+    : allPatientTasks;
+  const patientAttachments = restrictToOwn
+    ? allPatientAttachments.filter(a => (a as any).user_id === user?.id || (a as any).userId === user?.id)
+    : allPatientAttachments;
   const patientPackage = patient?.packageId ? clinicPackages.find(p => p.id === patient.packageId) : null;
 
   const [evolutionText, setEvolutionText] = useState('');
