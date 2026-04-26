@@ -139,7 +139,7 @@ interface RemunerationPlanRow {
   id: string;
   member_id: string;
   name: string;
-  remuneration_type: 'por_sessao' | 'fixo_mensal' | 'fixo_dia';
+  remuneration_type: 'por_sessao' | 'fixo_mensal' | 'fixo_dia' | 'pacote';
   remuneration_value: number;
   is_default: boolean;
 }
@@ -257,7 +257,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [memberPlans, setMemberPlans] = useState<RemunerationPlanRow[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [newPlanName, setNewPlanName] = useState('');
-  const [newPlanType, setNewPlanType] = useState<'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('por_sessao');
+  const [newPlanType, setNewPlanType] = useState<'por_sessao' | 'fixo_mensal' | 'fixo_dia' | 'pacote'>('por_sessao');
   const [newPlanValue, setNewPlanValue] = useState('');
 
   // Remove confirm
@@ -1697,7 +1697,9 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                                 ? 'Por sessão'
                                 : plan.remuneration_type === 'fixo_mensal'
                                   ? 'Fixo mensal'
-                                  : 'Fixo por dia';
+                                  : plan.remuneration_type === 'pacote'
+                                    ? 'Pacote'
+                                    : 'Fixo por dia';
                               return (
                                 <div
                                   key={plan.id}
@@ -1760,6 +1762,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                                 <SelectItem value="por_sessao">Por sessão</SelectItem>
                                 <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
                                 <SelectItem value="fixo_dia">Fixo por dia</SelectItem>
+                                <SelectItem value="pacote">Pacote</SelectItem>
                               </SelectContent>
                             </Select>
                             <Input
@@ -1783,6 +1786,11 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                           {newPlanType === 'fixo_mensal' && (
                             <p className="text-[10px] text-muted-foreground italic">
                               Planos "Fixo mensal" são contados uma única vez no mês, mesmo se vinculados a vários pacientes.
+                            </p>
+                          )}
+                          {newPlanType === 'pacote' && (
+                            <p className="text-[10px] text-muted-foreground italic">
+                              Planos "Pacote" cobram o valor uma vez por paciente que teve ao menos uma sessão no mês (ex.: pacote mensal independente do nº de sessões).
                             </p>
                           )}
                         </div>
