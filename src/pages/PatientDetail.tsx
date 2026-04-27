@@ -197,6 +197,10 @@ export default function PatientDetail() {
   const clinic = clinics.find(c => c.id === patient?.clinicId);
   const { isOrg, members } = useClinicOrg(patient?.clinicId || '');
   const { assignments: therapistAssignments, allMembers: orgMembers, loading: assignmentsLoading, canManage: canManageAssignments, toggleAssignment, updateScheduleTime } = usePatientAssignments(id || '', patient?.clinicId || '');
+  // Slots de agenda do paciente (planos de remuneração por profissional).
+  // Usados como fallback de faturamento quando o paciente não tem
+  // paymentValue/package próprios mas tem planos atrelados aos slots.
+  const { slots: patientScheduleSlots } = usePatientScheduleSlots(id);
 
   // Whether current user can see clinical content
   const canSeeClinical = !orgPermissions.includes('patients.own_only') || isOrgOwner ||
