@@ -2824,6 +2824,38 @@ export default function PatientDetail() {
                             <span className="font-semibold text-foreground text-sm">
                               {format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                             </span>
+                            {(() => {
+                              // Display the session time. If not stored on the evolution, try to infer
+                              // it from the patient's recurring schedule slots (matched by therapist + weekday).
+                              const evoMember = members.find(m => m.userId === (evo as any).userId);
+                              const inferred = !evo.sessionTime
+                                ? findSlotsForEvolution(patientScheduleSlots, evo.date, undefined, evoMember?.memberId)
+                                : [];
+                              const time = evo.sessionTime
+                                || (inferred.length === 1 ? inferred[0].startTime : null);
+                              if (time) {
+                                return (
+                                  <span
+                                    className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium"
+                                    title={evo.sessionTime ? 'Horário registrado' : 'Horário estimado pela agenda'}
+                                  >
+                                    🕐 {time}{!evo.sessionTime ? ' *' : ''}
+                                  </span>
+                                );
+                              }
+                              if (inferred.length > 1) {
+                                return (
+                                  <span
+                                    className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning font-medium cursor-pointer"
+                                    title="Há mais de uma sessão neste dia. Edite a evolução para indicar o horário."
+                                    onClick={() => setEditingEvolution(evo)}
+                                  >
+                                    🕐 Indicar horário
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                             <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
                               evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
                               evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
