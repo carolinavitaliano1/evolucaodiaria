@@ -158,6 +158,17 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
 
           <MoodSelector value={mood} onChange={setMood} />
 
+          <SessionSlotSelector
+            patientId={(evolution as any).patientId}
+            date={date}
+            scheduleSlotId={scheduleSlotId}
+            sessionTime={sessionTime}
+            onChange={({ scheduleSlotId: s, sessionTime: t }) => {
+              setScheduleSlotId(s);
+              setSessionTime(t);
+            }}
+          />
+
           {/* Template selector */}
           {clinicTemplates.length > 0 && (
             <div>
