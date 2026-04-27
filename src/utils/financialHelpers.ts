@@ -333,6 +333,11 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
     });
 
   const perSession = getIndividualPerSessionValue(patient, month, year, pkg);
+  // Valor "base" do paciente: usa paymentValue OU, se vazio, o preço do pacote.
+  const baseValue = (patient.paymentValue && patient.paymentValue > 0)
+    ? patient.paymentValue
+    : (pkg?.price ?? 0);
+  const isMensal = patient.paymentType === 'fixo' || pkg?.packageType === 'mensal';
 
   // Separar evoluções
   const billable = evolutions.filter(e => isBillableStatus(e.attendanceStatus));
@@ -349,19 +354,19 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   // sessions ≤ occurrences. Caso registre mais sessões que ocorrências,
   // limitamos ao monthlyValue para evitar inflar.
   let individualRevenue = 0;
-  if (billableIndividual.length > 0 && patient.paymentValue) {
-    if (patient.paymentType === 'fixo') {
-      const dyn = getMensalDynamic(patient, month, year);
+  if (billableIndividual.length > 0 && baseValue) {
+    if (isMensal) {
+      const dyn = getMensalDynamicWithBaseLocal(patient, baseValue, month, year);
       if (dyn.isDynamic) {
         const raw = billableIndividual.length * dyn.perSession;
         // Trava: nunca ultrapassa o valor mensal contratado
-        individualRevenue = Math.min(raw, patient.paymentValue);
+        individualRevenue = Math.min(raw, baseValue);
       } else {
         // Mensalista sem dias: usa o valor mensal "cheio" UMA vez (não por sessão)
-        individualRevenue = patient.paymentValue;
+        individualRevenue = baseValue;
       }
     } else {
-      individualRevenue = billableIndividual.length * (perSession || patient.paymentValue);
+      individualRevenue = billableIndividual.length * (perSession || baseValue);
     }
   }
 
@@ -371,11 +376,11 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
 
   const chargedAbsenceRevenue = chargedAbsences.reduce((sum, e) => {
     if (e.groupId) return sum + groupValue(e.groupId);
-    return sum + (perSession || patient.paymentValue || 0);
+    return sum + (perSession || baseValue || 0);
   }, 0);
 
   // Perda: faltas que NÃO foram cobradas
-  const loss = uncoveredAbsences * (perSession || patient.paymentValue || 0);
+  const loss = uncoveredAbsences * (perSession || baseValue || 0);
 
   const total = individualRevenue + groupRevenue + chargedAbsenceRevenue;
 
