@@ -13,8 +13,8 @@ interface Props {
 
 const WEEKDAY_ORDER = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
-const normalizeWeekday = (w: string) => {
-  if (!w) return '';
+const normalizeWeekday = (w: string): number => {
+  if (!w) return 99;
   const s = w.trim().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   if (s.startsWith('seg')) return 0;
