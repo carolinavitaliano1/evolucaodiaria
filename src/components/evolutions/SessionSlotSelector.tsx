@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Clock } from 'lucide-react';
 import { usePatientScheduleSlots, PatientScheduleSlot } from '@/hooks/usePatientScheduleSlots';
 import { supabase } from '@/integrations/supabase/client';
+import { useApp } from '@/contexts/AppContext';
 
 const WEEKDAY_BY_INDEX = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
 
@@ -59,6 +60,16 @@ export function SessionSlotSelector({
   const slots = presetSlots ?? hookData.slots;
   const loading = presetSlots ? false : hookData.loading;
 
+  // React to context evolutions so that as soon as a new evolution is saved,
+  // the slot's status flips from "pendente" to "já evoluída" automatically.
+  const { evolutions: ctxEvolutions } = useApp();
+  const ctxKey = useMemo(() => {
+    return ctxEvolutions
+      .filter(e => e.patientId === patientId && e.date === date)
+      .map(e => `${e.id}:${e.scheduleSlotId || ''}:${e.sessionTime || ''}`)
+      .join('|');
+  }, [ctxEvolutions, patientId, date]);
+
   const matching = useMemo(
     () => findSlotsForEvolution(slots, date, undefined, memberId),
     [slots, date, memberId],
@@ -92,7 +103,10 @@ export function SessionSlotSelector({
       setEvolvedTimes(times);
     }
     loadEvolved();
-  }, [patientId, date, excludeEvolutionId]);
+    return () => { cancelled = true; };
+    // ctxKey is included so the list refreshes the moment the AppContext
+    // receives a newly-created/updated/deleted evolution.
+  }, [patientId, date, excludeEvolutionId, ctxKey]);
 
   const isSlotEvolved = (s: PatientScheduleSlot) =>
     evolvedSlotIds.has(s.id) || evolvedTimes.has((s.startTime || '').slice(0, 5));
