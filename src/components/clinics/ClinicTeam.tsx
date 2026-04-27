@@ -958,6 +958,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         remuneration_type: newPlanType,
         remuneration_value: Number(newPlanValue),
         is_default: isFirstPlan,
+        package_id: newPlanType === 'pacote' && linkedPackageId ? linkedPackageId : null,
       });
       if (error) throw error;
       toast.success('Plano adicionado');
