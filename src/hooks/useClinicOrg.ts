@@ -74,7 +74,7 @@ export function useClinicOrg(clinicId: string | undefined) {
       const [plansRes, assignmentsRes] = await Promise.all([
         supabase
           .from('member_remuneration_plans' as any)
-          .select('id, member_id, name, remuneration_type, remuneration_value, is_default')
+          .select('id, member_id, name, remuneration_type, remuneration_value, is_default, package_id')
           .in('member_id', memberIds),
         supabase
           .from('therapist_patient_assignments')
@@ -92,6 +92,7 @@ export function useClinicOrg(clinicId: string | undefined) {
           remuneration_type: p.remuneration_type,
           remuneration_value: Number(p.remuneration_value) || 0,
           is_default: !!p.is_default,
+          package_id: p.package_id ?? null,
         });
       });
 
