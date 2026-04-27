@@ -331,7 +331,9 @@ export async function generateMultipleEvolutionsPdf({
     pdf.roundedRect(margin, y, contentWidth, 10, 2, 2, 'F');
     pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
     const [yr, mo, da] = evo.date.split('-').map(Number);
-    pdf.text(format(new Date(yr, mo - 1, da), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }), textX, y + 7);
+    const evoDateLabel = format(new Date(yr, mo - 1, da), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+    const evoTimeLabel = (evo as any).sessionTime ? `  ·  🕐 ${(evo as any).sessionTime}` : '';
+    pdf.text(`${evoDateLabel}${evoTimeLabel}`, textX, y + 7);
 
     const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
       : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'
