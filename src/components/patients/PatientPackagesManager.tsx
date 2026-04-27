@@ -9,6 +9,7 @@ import { usePatientPackages, type PatientPackageLink } from '@/hooks/usePatientP
 import { ClinicPackage } from '@/types';
 import { Plus, X, Package } from 'lucide-react';
 import { toast } from 'sonner';
+import { getDynamicSessionValue } from '@/utils/dateHelpers';
 
 interface OrgMemberOption {
   id: string;
@@ -23,13 +24,15 @@ interface Props {
   clinicPackages: ClinicPackage[];
   organizationId?: string | null;
   disabled?: boolean;
+  /** Weekdays the patient attends — used to prorate "Mensal" packages dynamically. */
+  patientWeekdays?: string[];
 }
 
 /**
  * Manage multiple package links per patient (one package per therapist/specialty).
  * Each link displays the linked therapist (optional) and total/per-session value.
  */
-export function PatientPackagesManager({ patientId, clinicId, clinicPackages, organizationId, disabled }: Props) {
+export function PatientPackagesManager({ patientId, clinicId, clinicPackages, organizationId, disabled, patientWeekdays = [] }: Props) {
   const { user } = useAuth();
   const { isOwner, role } = useOrgPermissions();
   const { links, loading, addLink, removeLink } = usePatientPackages(patientId);
@@ -69,13 +72,25 @@ export function PatientPackagesManager({ patientId, clinicId, clinicPackages, or
 
   const activePackages = clinicPackages.filter(p => p.isActive);
 
-  const formatPerSession = (link: PatientPackageLink) => {
+  const formatPerSession = (link: PatientPackageLink): string | null => {
     if (!link.packagePrice) return null;
-    if (link.packageType === 'mensal' || link.packageType === 'personalizado') {
-      const limit = link.packageSessionLimit || 0;
-      if (limit > 0) {
-        return `R$ ${(link.packagePrice / limit).toFixed(2)} por sessão`;
+    if (link.packageType === 'mensal') {
+      // Prefer dynamic proration based on the patient's weekdays in the
+      // current month (same logic shown for "Consultório" patients).
+      const now = new Date();
+      const dyn = getDynamicSessionValue(link.packagePrice, patientWeekdays, now.getMonth(), now.getFullYear());
+      if (dyn.occurrences > 0) {
+        return `Mês de ${dyn.occurrences} semanas: R$ ${dyn.perSession.toFixed(2)}/sessão`;
       }
+      // Fallback to a static division if weekdays aren't configured yet.
+      const limit = link.packageSessionLimit || 0;
+      if (limit > 0) return `R$ ${(link.packagePrice / limit).toFixed(2)} por sessão`;
+      return null;
+    }
+    if (link.packageType === 'personalizado') {
+      const limit = link.packageSessionLimit || 0;
+      if (limit > 0) return `R$ ${(link.packagePrice / limit).toFixed(2)} por sessão`;
+      return null;
     }
     if (link.packageType === 'por_sessao') {
       return `R$ ${link.packagePrice.toFixed(2)} por sessão`;
