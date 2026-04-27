@@ -479,6 +479,15 @@ export interface MemberRemunerationByPlansContext {
   /** Fallback (legacy): tipo/valor diretos do `organization_members`, usados se não houver planos. */
   legacyType?: string | null;
   legacyValue?: number | null;
+  /** Clínica onde as evoluções ocorreram. Quando a clínica define um modelo
+   *  fixo (fixo_mensal/fixo_diario/sessao), os planos do terapeuta são
+   *  IGNORADOS — a remuneração vem direto do cadastro da clínica. */
+  clinic?: ClinicLike | null;
+  /** Pacotes da clínica (clinic_packages) para resolver planos do tipo 'pacote'. */
+  packages?: PackageLike[];
+  /** Mês (0-indexed) e ano para cálculo de pacotes mensais (ocorrências). */
+  month?: number;
+  year?: number;
 }
 
 export interface MemberRemunerationBreakdown {
@@ -502,7 +511,65 @@ export interface MemberRemunerationBreakdown {
 export function calculateMemberRemunerationByPlans(
   ctx: MemberRemunerationByPlansContext,
 ): MemberRemunerationBreakdown {
-  const { plans, assignmentPlanMap, evolutions, legacyType, legacyValue } = ctx;
+  const { plans, assignmentPlanMap, evolutions, legacyType, legacyValue, clinic, packages = [], month, year } = ctx;
+
+  // 🔒 Override: quando a clínica define um modelo fixo, ignora planos do
+  // membro e usa o cadastro da clínica como fonte única.
+  if (clinic) {
+    const clinicAmount = clinic.paymentAmount ?? 0;
+    const billable = evolutions.filter(e => isBillableStatus(e.attendanceStatus));
+
+    if (isClinicFixedMonthly(clinic.paymentType)) {
+      // Salário mensal: terapeuta recebe o valor cheio se teve qualquer atividade.
+      const subtotal = billable.length > 0 ? clinicAmount : 0;
+      return {
+        total: subtotal,
+        breakdown: subtotal > 0 ? [{
+          planId: 'clinic-fixed-monthly',
+          planName: 'Modelo da clínica · Mensal',
+          type: 'fixo_mensal',
+          value: clinicAmount,
+          sessionsCount: billable.length,
+          patientsCount: new Set(billable.map(e => e.patientId)).size,
+          subtotal,
+        }] : [],
+        usedLegacy: false,
+      };
+    }
+    if (isClinicFixedDaily(clinic.paymentType)) {
+      const days = new Set(billable.map(e => e.date)).size;
+      const subtotal = days * clinicAmount;
+      return {
+        total: subtotal,
+        breakdown: subtotal > 0 ? [{
+          planId: 'clinic-fixed-daily',
+          planName: 'Modelo da clínica · Diário',
+          type: 'fixo_dia',
+          value: clinicAmount,
+          sessionsCount: billable.length,
+          patientsCount: new Set(billable.map(e => e.patientId)).size,
+          subtotal,
+        }] : [],
+        usedLegacy: false,
+      };
+    }
+    if (clinic.paymentType === 'sessao') {
+      const subtotal = billable.length * clinicAmount;
+      return {
+        total: subtotal,
+        breakdown: subtotal > 0 ? [{
+          planId: 'clinic-per-session',
+          planName: 'Modelo da clínica · Por sessão',
+          type: 'por_sessao',
+          value: clinicAmount,
+          sessionsCount: billable.length,
+          patientsCount: new Set(billable.map(e => e.patientId)).size,
+          subtotal,
+        }] : [],
+        usedLegacy: false,
+      };
+    }
+  }
 
   // Fallback legacy: nenhum plano cadastrado → usa função antiga.
   if (!plans || plans.length === 0) {
@@ -564,8 +631,40 @@ export function calculateMemberRemunerationByPlans(
     } else if (plan.remuneration_type === 'por_sessao') {
       subtotal = sessionsCount * value;
     } else if (plan.remuneration_type === 'pacote') {
-      // Pacote: cobra valor fixo por paciente que teve ao menos 1 sessão billable no mês
-      subtotal = patientsCount * value;
+      // Pacote: deriva o valor por SESSÃO a partir do clinic_package vinculado.
+      // - mensal       → preço ÷ sessões previstas no mês (por paciente)
+      // - personalizado→ preço ÷ session_limit
+      // - por_sessao   → preço × nº sessões
+      const pkg = plan.package_id ? packages.find(p => p.id === plan.package_id) : null;
+      const pkgPrice = pkg ? Number(pkg.price) || 0 : value;
+      const pkgType = pkg?.packageType || 'mensal';
+      const limit = pkg?.sessionLimit || 0;
+
+      // Sessões billable agrupadas por paciente
+      const byPatient: Record<string, EvolutionLike[]> = {};
+      evos.forEach(e => {
+        if (!byPatient[e.patientId]) byPatient[e.patientId] = [];
+        byPatient[e.patientId].push(e);
+      });
+
+      let pkgSubtotal = 0;
+      for (const patientId of Object.keys(byPatient)) {
+        const patientSessions = byPatient[patientId].length;
+        if (pkgType === 'personalizado' && limit > 0) {
+          // valor por sessão = preço/limit; cobra por sessão realizada (até o limite)
+          const perSession = pkgPrice / limit;
+          pkgSubtotal += Math.min(patientSessions, limit) * perSession;
+        } else if (pkgType === 'por_sessao') {
+          pkgSubtotal += patientSessions * pkgPrice;
+        } else {
+          // mensal (default): divide o pacote pelas sessões previstas no mês.
+          // Sem limit/dias claros, assume 4 sessões/mês como referência.
+          const expected = limit && limit > 0 ? limit : 4;
+          const perSession = pkgPrice / expected;
+          pkgSubtotal += Math.min(patientSessions, expected) * perSession;
+        }
+      }
+      subtotal = pkgSubtotal;
     }
 
     breakdown.push({
