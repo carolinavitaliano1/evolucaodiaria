@@ -2610,6 +2610,21 @@ export default function PatientDetail() {
                 </div>
               </div>
 
+              {/* Session time selector — disambiguates which session this evolution refers to
+                  when the same patient is seen multiple times in the same day. */}
+              <SessionSlotSelector
+                patientId={patient.id}
+                date={evolutionDate}
+                memberId={members.find(m => m.userId === user?.id)?.memberId || null}
+                presetSlots={patientScheduleSlots}
+                scheduleSlotId={evolutionScheduleSlotId}
+                sessionTime={evolutionSessionTime}
+                onChange={({ scheduleSlotId, sessionTime }) => {
+                  setEvolutionScheduleSlotId(scheduleSlotId);
+                  setEvolutionSessionTime(sessionTime);
+                }}
+              />
+
               {clinicTemplates.length > 0 && (
                 <div>
                   <Label className="text-xs flex items-center gap-2 mb-1">📋 Modelo de Evolução</Label>
