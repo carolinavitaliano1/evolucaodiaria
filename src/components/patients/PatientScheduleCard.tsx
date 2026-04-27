@@ -3,6 +3,7 @@ import { usePatientScheduleSlots } from '@/hooks/usePatientScheduleSlots';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { countWeekdayOccurrencesInMonth } from '@/utils/dateHelpers';
 
 interface Props {
   patientId: string;
@@ -20,6 +21,21 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
     const db = WEEKDAY_ORDER.indexOf(b.weekday);
     if (da !== db) return da - db;
     return a.startTime.localeCompare(b.startTime);
+  });
+
+  // Para pacotes "Mensal", calcula ocorrências totais (no mês atual) de TODOS
+  // os slots vinculados ao mesmo pacote, para dividir o valor proporcionalmente.
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  const occurrencesByPackageKey = new Map<string, number>();
+  slots.forEach(s => {
+    if (s.packageType === 'mensal' && s.packageName) {
+      // Agrupa por (memberId + packageName) para somar dias do mesmo pacote por terapeuta
+      const key = `${s.memberId}|${s.packageName}`;
+      const prev = occurrencesByPackageKey.get(key) || 0;
+      occurrencesByPackageKey.set(key, prev + countWeekdayOccurrencesInMonth(s.weekday, month, year));
+    }
   });
 
   return (
@@ -93,6 +109,23 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                             )}
                           </span>
                         )}
+                        {/* Detalhamento dinâmico para pacote MENSAL — igual ao consultório */}
+                        {s.remunerationPlanType === 'pacote'
+                          && s.packageType === 'mensal'
+                          && s.packagePrice != null
+                          && s.packagePrice > 0
+                          && (() => {
+                            const key = `${s.memberId}|${s.packageName}`;
+                            const occ = occurrencesByPackageKey.get(key) || 0;
+                            if (occ <= 0) return null;
+                            const perSession = s.packagePrice! / occ;
+                            return (
+                              <span className="text-[11px] text-primary/80 ml-5">
+                                Mês de {occ} {occ === 1 ? 'semana' : 'semanas'}: R$ {perSession.toFixed(2)}/sessão
+                              </span>
+                            );
+                          })()
+                        }
                       </div>
                     ) : (
                       <span className="text-muted-foreground/60">—</span>
