@@ -830,7 +830,7 @@ export default function PatientDetail() {
       // organization_members.user_id é o id do auth user. O slot tem memberId.
       // Mapeamos via `members` (organization_members do clínica) carregado pelo useClinicOrg.
       const member = members.find((m: any) => m.id === s.memberId);
-      const uid = member?.userId || member?.user_id;
+      const uid = (member as any)?.userId || (member as any)?.user_id;
       if (!uid) return;
       const arr = map.get(uid) || [];
       arr.push(s);
