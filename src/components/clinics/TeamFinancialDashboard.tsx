@@ -42,7 +42,7 @@ const RANK_ICONS = [
 ];
 
 export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps) {
-  const { clinics, patients, evolutions } = useApp();
+  const { clinics, patients, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
   const { isOrg, members, loading: orgLoading } = useClinicOrg(clinicId);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -76,6 +76,12 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       evolutions: evos,
       legacyType: member.remunerationType,
       legacyValue: member.remunerationValue,
+      clinic,
+      packages: clinicPackages.filter(p => p.clinicId === clinicId).map(p => ({
+        id: p.id, price: p.price, packageType: p.packageType, sessionLimit: p.sessionLimit,
+      })),
+      month: selectedMonth,
+      year: selectedYear,
     });
   };
   const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof evolutions) => {
