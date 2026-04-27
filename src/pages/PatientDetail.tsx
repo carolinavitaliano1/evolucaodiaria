@@ -845,13 +845,30 @@ export default function PatientDetail() {
     const month = now.getMonth();
     const year = now.getFullYear();
     let total = 0;
+    // Helper: extrai nº de sessões de um pacote quando o session_limit não
+    // está definido formalmente — tenta achar dígitos no nome do plano
+    // (ex.: "pacote 2 sessoes" → 2). Retorna 0 se nada for encontrado.
+    const extractSessionsFromName = (name?: string | null): number => {
+      if (!name) return 0;
+      const m = name.match(/(\d+)\s*(sess|sessao|sessoes|sessões)/i);
+      if (m) return parseInt(m[1], 10);
+      const m2 = name.match(/\b(\d+)\b/);
+      return m2 ? parseInt(m2[1], 10) : 0;
+    };
     for (const evo of totalIndividualBillableEvos) {
       const userSlots = slotByUserId.get(evo.userId) || [];
-      // Escolhe o slot do mesmo dia da semana, ou o primeiro disponível.
+      // Escolhe o slot do mesmo dia da semana se possível; senão, prefere
+      // qualquer slot do mesmo profissional que TENHA plano de remuneração
+      // definido (ignora slots vazios).
       const evoDate = new Date(evo.date + 'T12:00:00');
       const wdNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
       const wd = wdNames[evoDate.getDay()];
-      const slot = userSlots.find(s => (s.weekday || '').toLowerCase() === wd.toLowerCase()) || userSlots[0];
+      const slotsWithPlan = userSlots.filter(s => s.remunerationPlanValue != null);
+      const slot =
+        slotsWithPlan.find(s => (s.weekday || '').toLowerCase() === wd.toLowerCase())
+        || slotsWithPlan[0]
+        || userSlots.find(s => (s.weekday || '').toLowerCase() === wd.toLowerCase())
+        || userSlots[0];
       if (!slot || slot.remunerationPlanValue == null) continue;
       const planType = slot.remunerationPlanType;
       const planName = (slot.remunerationPlanName || '').toLowerCase();
@@ -863,6 +880,16 @@ export default function PatientDetail() {
         // Para fixo mensal, o valor do plano é por mês — não somar por sessão.
         // O total mensal é adicionado uma vez abaixo.
         continue;
+      } else if (planType === 'pacote') {
+        // Pacote (não mensal): se tiver session_limit definido OU número
+        // mencionado no nome, ratear o valor pelo nº de sessões.
+        const limit = (slot as any).packageSessionLimit
+          || extractSessionsFromName(slot.remunerationPlanName);
+        if (limit > 0) {
+          total += Number(slot.remunerationPlanValue) / limit;
+        } else {
+          total += Number(slot.remunerationPlanValue);
+        }
       } else {
         total += Number(slot.remunerationPlanValue);
       }
