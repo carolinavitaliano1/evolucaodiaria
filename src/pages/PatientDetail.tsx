@@ -39,6 +39,7 @@ import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 import { DeparturePatientDialog } from '@/components/patients/DeparturePatientDialog';
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { MoodSelector, DEFAULT_MOOD_OPTIONS } from '@/components/evolutions/MoodSelector';
+import { SessionSlotSelector, findSlotsForEvolution } from '@/components/evolutions/SessionSlotSelector';
 import { useCustomMoods } from '@/hooks/useCustomMoods';
 import { EvolutionTemplate, TemplateField } from '@/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -341,6 +342,8 @@ export default function PatientDetail() {
   const [clinicTemplates, setClinicTemplates] = useState<EvolutionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
+  const [evolutionScheduleSlotId, setEvolutionScheduleSlotId] = useState<string | undefined>(undefined);
+  const [evolutionSessionTime, setEvolutionSessionTime] = useState<string | undefined>(undefined);
 
   // Monthly report state
   const [reportMonth, setReportMonth] = useState(new Date());
@@ -2068,6 +2071,8 @@ export default function PatientDetail() {
       stampId: selectedStampId && selectedStampId !== 'none' ? selectedStampId : undefined,
       templateId: selectedTemplateId || undefined,
       templateData: Object.keys(templateFormValues).length > 0 ? templateFormValues : undefined,
+      scheduleSlotId: evolutionScheduleSlotId,
+      sessionTime: evolutionSessionTime,
       attachments: attachedFiles.map(f => ({
         id: f.id, parentId: '', parentType: 'evolution' as const,
         name: f.name, data: f.filePath, type: f.fileType, createdAt: new Date().toISOString(),
@@ -2075,6 +2080,7 @@ export default function PatientDetail() {
     });
     setEvolutionText(''); setAttachedFiles([]); setSelectedMood('');
     setSelectedTemplateId(''); setTemplateFormValues({});
+    setEvolutionScheduleSlotId(undefined); setEvolutionSessionTime(undefined);
   };
 
   const handleBack = () => {
@@ -2604,6 +2610,21 @@ export default function PatientDetail() {
                 </div>
               </div>
 
+              {/* Session time selector — disambiguates which session this evolution refers to
+                  when the same patient is seen multiple times in the same day. */}
+              <SessionSlotSelector
+                patientId={patient.id}
+                date={evolutionDate}
+                memberId={members.find(m => m.userId === user?.id)?.memberId || null}
+                presetSlots={patientScheduleSlots}
+                scheduleSlotId={evolutionScheduleSlotId}
+                sessionTime={evolutionSessionTime}
+                onChange={({ scheduleSlotId, sessionTime }) => {
+                  setEvolutionScheduleSlotId(scheduleSlotId);
+                  setEvolutionSessionTime(sessionTime);
+                }}
+              />
+
               {clinicTemplates.length > 0 && (
                 <div>
                   <Label className="text-xs flex items-center gap-2 mb-1">📋 Modelo de Evolução</Label>
@@ -2803,6 +2824,38 @@ export default function PatientDetail() {
                             <span className="font-semibold text-foreground text-sm">
                               {format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                             </span>
+                            {(() => {
+                              // Display the session time. If not stored on the evolution, try to infer
+                              // it from the patient's recurring schedule slots (matched by therapist + weekday).
+                              const evoMember = members.find(m => m.userId === (evo as any).userId);
+                              const inferred = !evo.sessionTime
+                                ? findSlotsForEvolution(patientScheduleSlots, evo.date, undefined, evoMember?.memberId)
+                                : [];
+                              const time = evo.sessionTime
+                                || (inferred.length === 1 ? inferred[0].startTime : null);
+                              if (time) {
+                                return (
+                                  <span
+                                    className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium"
+                                    title={evo.sessionTime ? 'Horário registrado' : 'Horário estimado pela agenda'}
+                                  >
+                                    🕐 {time}{!evo.sessionTime ? ' *' : ''}
+                                  </span>
+                                );
+                              }
+                              if (inferred.length > 1) {
+                                return (
+                                  <span
+                                    className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning font-medium cursor-pointer"
+                                    title="Há mais de uma sessão neste dia. Edite a evolução para indicar o horário."
+                                    onClick={() => setEditingEvolution(evo)}
+                                  >
+                                    🕐 Indicar horário
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                             <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
                               evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
                               evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :

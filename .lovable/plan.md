@@ -1,95 +1,62 @@
-## Objetivo
+## Problema
 
-Quando o **plano da unidade for "Clínica"** (`clinics.type = 'clinica'`), a seção **"Dias e Horários"** do modal de cadastro/edição do paciente deve mudar: em vez de marcar apenas dias da semana com entrada/saída genéricos, o ADM poderá montar a **agenda do paciente vinculando cada slot a um terapeuta cadastrado e (opcionalmente) a um pacote específico daquele profissional**. Caso o ADM queira pular essa etapa, ele clica em **"Configurar depois"** e, ao reabrir o paciente, encontra um **novo card "Gerenciar Agenda"** dentro da aba do paciente para fazer isso depois.
+Hoje, a aba "Evoluções do Dia" (na clínica) e o histórico de evoluções no prontuário do paciente mostram apenas o profissional que assinou e o status, mas **não mostram o horário da sessão**. Quando o mesmo paciente é atendido várias vezes no mesmo dia (ex.: terapeuta A das 10:00–10:40, terapeuta B das 11:00–11:40, terapeuta A novamente das 12:40–13:20), fica impossível identificar a qual sessão cada evolução se refere.
 
-Também é necessário **restaurar o card "Plano & Financeiro"** na aba do paciente (que foi removido por engano — a remoção solicitada era apenas dos itens já discutidos: aba "Portal", propaganda de planos, etc., e não desse card).
+A tabela `evolutions` no banco não tem coluna de horário — só `date` + `user_id` (profissional). O horário da sessão só existe nos `patient_schedule_slots` (recorrência semanal: profissional + dia da semana + start_time/end_time).
 
----
+## Solução
 
-## 1. Banco de dados
+### 1. Persistir o slot/horário em cada evolução (banco)
+- Adicionar colunas em `evolutions`:
+  - `schedule_slot_id uuid` (FK lógica para `patient_schedule_slots.id`, nullable)
+  - `session_time time` (nullable — denormalizado para exibir mesmo se o slot for excluído depois)
 
-A tabela `therapist_patient_assignments` hoje tem apenas um `schedule_time` (texto livre) por par terapeuta+paciente, sem dia da semana nem ligação com pacote. Isso não suporta a agenda multi-terapeuta solicitada.
+### 2. Ao criar a evolução, perguntar/inferir o horário
+No formulário "Nova Evolução" do prontuário (`PatientDetail.tsx` aba Evoluções):
+- Carregar `patient_schedule_slots` do paciente e filtrar pelos slots cujo `weekday` bate com o dia da semana de `evolutionDate` **e** cujo `member_id` pertence ao usuário logado (terapeuta atual).
+- Mostrar um seletor "Horário da sessão":
+  - Se houver **0 slots** correspondentes → input de horário livre (opcional).
+  - Se houver **1 slot** → preenche automaticamente (ex.: "10:00–10:40") com possibilidade de trocar.
+  - Se houver **2+ slots** (caso do exemplo: 10:00 e 12:40) → o terapeuta **escolhe obrigatoriamente** qual sessão está evoluindo. Esse é o cenário central do pedido.
+- Salvar `schedule_slot_id` + `session_time` junto com a evolução.
 
-**Migration nova**: criar tabela `patient_schedule_slots`:
+Mesma lógica no `EditEvolutionDialog` para corrigir evoluções antigas.
 
-| Coluna | Tipo | Notas |
-|---|---|---|
-| `id` | uuid PK | `gen_random_uuid()` |
-| `patient_id` | uuid not null | FK lógico para `patients.id` |
-| `clinic_id` | uuid not null | FK lógico para `clinics.id` |
-| `organization_id` | uuid | FK para `organizations.id` (escopo de acesso) |
-| `member_id` | uuid not null | FK para `organization_members.id` (terapeuta) |
-| `weekday` | text not null | Um de `Segunda`/`Terça`/.../`Sábado` |
-| `start_time` | time not null | ex: `09:00` |
-| `end_time` | time not null | ex: `10:00` |
-| `package_link_id` | uuid | FK opcional para `patient_packages.id` (pacote daquele terapeuta) |
-| `notes` | text | livre |
-| `created_by` | uuid not null | `auth.uid()` |
-| `created_at` / `updated_at` | timestamptz | `now()` |
+### 3. Exibir o horário em todos os pontos onde a evolução aparece
+- **`ClinicEvolutionsTab.tsx`** (Evoluções do Dia da clínica): badge com 🕐 horário ao lado do nome do profissional.
+- **`PatientDetail.tsx`** lista de evoluções no prontuário: mesma badge.
+- **`generateEvolutionPdf`** / exportações PDF: incluir "Horário: HH:MM–HH:MM" no cabeçalho.
+- **`AttendanceSheetPrint`** / lista de frequência: coluna horário.
 
-**RLS**: dono do paciente pode tudo; admins/owners da organização podem tudo; o terapeuta vinculado (`member_id` mapeado para `auth.uid()`) pode SELECT.
-**Índices**: `(patient_id)`, `(clinic_id, weekday)`.
+### 4. Backfill (preencher horário em evoluções antigas)
+Para evoluções existentes sem `session_time`, mostrar um fallback inferido em runtime: cruzar `evo.user_id` + dia da semana de `evo.date` com os `patient_schedule_slots` do paciente. Se houver exatamente 1 match, mostrar entre parênteses como "(horário estimado: 10:00)". Se houver múltiplos, mostrar "Horário não registrado" e oferecer botão de editar.
 
-Não vamos remover `weekdays`/`schedule_by_day` do paciente — eles continuam sendo a fonte para clínicas tipo `propria`/`terceirizada`. Para clínicas tipo `clinica`, a agenda passa a vir de `patient_schedule_slots`. Os componentes que hoje leem `patient.scheduleByDay` (ex.: `ClinicAgenda`) continuam funcionando para os outros tipos.
+## Detalhes técnicos
 
----
+**Migração (schema only):**
+```sql
+ALTER TABLE evolutions
+  ADD COLUMN schedule_slot_id uuid,
+  ADD COLUMN session_time time;
+CREATE INDEX idx_evolutions_schedule_slot ON evolutions(schedule_slot_id);
+```
 
-## 2. `EditPatientDialog.tsx`
+**Tipo `Evolution`** (`src/types/index.ts`): adicionar `scheduleSlotId?: string` e `sessionTime?: string`.
 
-- Detectar `isClinica = clinicType === 'clinica'`.
-- **Quando `isClinica`**: substituir o bloco atual "Dias e Horários" (linhas 501-581) por um novo componente `PatientScheduleSlotsManager` (criado abaixo). Os campos antigos `weekdays` / `scheduleByDay` deixam de ser editados manualmente nesse caso (o resumo é derivado dos slots).
-- **Quando NÃO `isClinica`**: manter o bloco atual exatamente como está hoje.
-- No rodapé do form, quando `isClinica` e o paciente ainda não tem nenhum slot, mostrar botão alternativo **"Configurar agenda depois"** (apenas fecha o modal sem exigir slots — não bloqueia o cadastro).
+**`AppContext` `addEvolution` / `updateEvolution`**: mapear os novos campos para snake_case ao gravar.
 
-## 3. Novo componente `src/components/patients/PatientScheduleSlotsManager.tsx`
+**Componente novo `SessionSlotSelector`** (reusável) que recebe `patientId`, `date`, `userId` (profissional) e devolve o slot/horário escolhido. Usado na criação e na edição.
 
-- Hook auxiliar novo `src/hooks/usePatientScheduleSlots.ts` (CRUD dos slots, similar a `usePatientPackages`).
-- UI:
-  - Lista os slots existentes agrupados por dia da semana, mostrando: terapeuta, horário (`start–end`), pacote vinculado (se houver) e botão remover.
-  - Form "Adicionar slot" com selects de:
-    - **Terapeuta** → carregado de `organization_members` ativos da `organizationId` da clínica (mesmo padrão do `PatientPackagesManager`).
-    - **Dia da semana** → 6 opções fixas (Seg–Sáb).
-    - **Início** / **Fim** → `<Input type="time" />`.
-    - **Pacote (opcional)** → mostra apenas pacotes já vinculados àquele terapeuta no `patient_packages` (chamada ao `usePatientPackages`); se vazio, mostra link "vincular pacote primeiro" que rola até a seção de pacotes.
-  - Botão `Adicionar slot`, com validação para não duplicar mesmo terapeuta no mesmo dia/horário.
-- Permissões: somente `isOwner` ou `role === 'admin'` ou conta sem organização podem editar; demais veem apenas lista.
+**Helper `inferSlotForEvolution(evolution, slots)`**: usado no fallback de exibição.
 
-## 4. Card "Gerenciar Agenda" na aba do paciente (`PatientDetail.tsx`)
+## Arquivos afetados
 
-- Renderizar um novo card no topo (ou logo abaixo do card de informações do paciente) **somente quando `clinicType === 'clinica'` e (`!isOrgMember || isOrgOwner`)**.
-- O card terá:
-  - Título "Agenda do Paciente" + ícone de calendário.
-  - Resumo: "X horários cadastrados com Y profissionais".
-  - Botão `Gerenciar Agenda` que abre um Dialog reutilizando `PatientScheduleSlotsManager` (passando `patientId`, `clinicId`, `organizationId`).
-  - Estado vazio explícito: "Nenhum horário configurado ainda. Adicione horários e terapeutas para montar a agenda do paciente."
-
-## 5. Restaurar card "Plano & Financeiro"
-
-Em `src/pages/PatientDetail.tsx` (linhas 3154-3160), o `PatientPlanCard` está hoje renderizado dentro do bloco `{canSeeFinancialTab && ...}` mas com gate adicional `(!isOrgMember || isOrgOwner)`. Isso já está OK conforme regras anteriores. **A solicitação atual** ("retornar o card Financeiro do paciente") refere-se a confirmar que esse card continua aparecendo para owner/admin da clínica e para contas sem organização. **Ação**: garantir que o card é renderizado para `(!isOrgMember || isOrgOwner)` independentemente de `canSeeFinancialTab` — atualmente, se o owner por algum motivo perdesse `financial.view`, o card sumiria. Mover o `PatientPlanCard` para fora do `{canSeeFinancialTab && ...}` (mantendo apenas o gate de owner) para evitar a regressão relatada.
-
-## 6. Integração com agenda existente
-
-- `ClinicAgenda.tsx` continua lendo `patient.scheduleByDay` para clínicas `propria`/`terceirizada`.
-- Para clínicas `clinica`, alterar `ClinicAgenda` para também consultar `patient_schedule_slots` do dia: cada slot vira uma linha "Paciente X — 09:00 com Dra. Maria". Isso garante que a agenda da clínica realmente reflita os slots cadastrados (sem isso, o trabalho do ADM no novo modal não apareceria na agenda).
-- Filtro por terapeuta já existente (`filterUserId`) passa a filtrar pelo `member_id` do slot.
-
-## 7. Componentes/arquivos novos ou alterados
-
-**Novos**
-- `supabase/migrations/<timestamp>_patient_schedule_slots.sql` (tabela + RLS + índices)
-- `src/hooks/usePatientScheduleSlots.ts`
-- `src/components/patients/PatientScheduleSlotsManager.tsx`
-- `src/components/patients/PatientScheduleCard.tsx` (card "Gerenciar Agenda" no detalhe)
-
-**Editados**
-- `src/components/patients/EditPatientDialog.tsx` — render condicional do bloco de horários quando `clinicType === 'clinica'` + opção "Configurar depois".
-- `src/pages/PatientDetail.tsx` — montar o novo card de agenda; ajustar gate do `PatientPlanCard` para garantir que não seja escondido por engano.
-- `src/components/clinics/ClinicAgenda.tsx` — quando clínica é `clinica`, juntar slots de `patient_schedule_slots` ao render do dia.
-- `src/integrations/supabase/types.ts` — regenerado automaticamente pela migration.
-
-## 8. O que **não** muda
-
-- Lógica financeira (`MyCommissions`, `ClinicFinancial`, `PatientPlanCard`, pacotes por terapeuta) permanece intacta.
-- A aba "Portal" continua oculta para terapeuta convidado.
-- O pricing continua bloqueado para terapeuta.
-- O bloco atual de "Dias e Horários" é preservado para os outros tipos de clínica.
+- `supabase/migrations/` — nova migração
+- `src/types/index.ts` — campos novos
+- `src/contexts/AppContext.tsx` — addEvolution/updateEvolution
+- `src/components/evolutions/SessionSlotSelector.tsx` — **novo**
+- `src/components/evolutions/EditEvolutionDialog.tsx`
+- `src/pages/PatientDetail.tsx` — formulário e lista de evoluções
+- `src/components/clinics/ClinicEvolutionsTab.tsx` — exibir horário
+- `src/utils/generateEvolutionPdf.ts` — incluir horário no PDF
+- `src/components/attendance/AttendanceSheetPrint.tsx` — coluna horário (se aplicável)

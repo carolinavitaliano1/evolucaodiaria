@@ -159,7 +159,8 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps, prof
     pdf.setFillColor(240, 240, 255);
     pdf.roundedRect(margin, y, contentWidth, 12, 2, 2, 'F');
     pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(0, 0, 0);
-    pdf.text(patient.name, textX, y + 8);
+    const sessionTimeLabel = (evo as any).sessionTime ? `   ·   🕐 ${(evo as any).sessionTime}` : '';
+    pdf.text(`${patient.name}${sessionTimeLabel}`, textX, y + 8);
     if (patient.clinicalArea) {
       pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(120, 120, 120);
       pdf.text(patient.clinicalArea, pageWidth - margin - 5, y + 8, { align: 'right' });
@@ -331,7 +332,9 @@ export async function generateMultipleEvolutionsPdf({
     pdf.roundedRect(margin, y, contentWidth, 10, 2, 2, 'F');
     pdf.setFontSize(10); pdf.setFont('helvetica', 'bold');
     const [yr, mo, da] = evo.date.split('-').map(Number);
-    pdf.text(format(new Date(yr, mo - 1, da), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }), textX, y + 7);
+    const evoDateLabel = format(new Date(yr, mo - 1, da), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+    const evoTimeLabel = (evo as any).sessionTime ? `  ·  🕐 ${(evo as any).sessionTime}` : '';
+    pdf.text(`${evoDateLabel}${evoTimeLabel}`, textX, y + 7);
 
     const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
       : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'

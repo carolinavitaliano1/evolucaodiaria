@@ -638,6 +638,8 @@ export type Database = {
           mood: string | null
           patient_id: string
           portal_visible: boolean
+          schedule_slot_id: string | null
+          session_time: string | null
           signature: string | null
           stamp_id: string | null
           template_data: Json | null
@@ -657,6 +659,8 @@ export type Database = {
           mood?: string | null
           patient_id: string
           portal_visible?: boolean
+          schedule_slot_id?: string | null
+          session_time?: string | null
           signature?: string | null
           stamp_id?: string | null
           template_data?: Json | null
@@ -676,6 +680,8 @@ export type Database = {
           mood?: string | null
           patient_id?: string
           portal_visible?: boolean
+          schedule_slot_id?: string | null
+          session_time?: string | null
           signature?: string | null
           stamp_id?: string | null
           template_data?: Json | null

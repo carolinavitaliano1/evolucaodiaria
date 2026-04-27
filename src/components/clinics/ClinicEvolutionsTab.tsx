@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle, Lock, Sparkles } from 'lucide-react';
+import { CalendarIcon, Download, FileText, User, CheckCircle2, XCircle, AlertCircle, Lock, Sparkles, Clock } from 'lucide-react';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { BulkDayFeedbackModal } from '@/components/evolutions/BulkDayFeedbackModal';
 import { format } from 'date-fns';
@@ -242,6 +242,12 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-foreground">{patient.name}</p>
+                        {(evo as any).sessionTime && (
+                          <Badge variant="outline" className="text-xs gap-1 flex items-center bg-primary/10 text-primary border-primary/20">
+                            <Clock className="w-3 h-3" />
+                            {(evo as any).sessionTime}
+                          </Badge>
+                        )}
                         <Badge variant="outline" className={cn('text-xs gap-1 flex items-center', statusCfg.color)}>
                           {typeof statusCfg.icon === 'string' ? statusCfg.icon : statusCfg.icon}
                           {statusCfg.label}

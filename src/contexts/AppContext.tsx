@@ -133,6 +133,8 @@ function mapEvolution(e: Record<string, unknown>): Evolution {
     mood: (e.mood as Evolution['mood']) || undefined, signature: (e.signature as string) || undefined,
     stampId: (e.stamp_id as string) || undefined, createdAt: e.created_at as string,
     groupId: (e.group_id as string) || undefined,
+    scheduleSlotId: (e.schedule_slot_id as string) || undefined,
+    sessionTime: e.session_time ? String(e.session_time).slice(0, 5) : undefined,
   };
 }
 
@@ -671,6 +673,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         signature: evolution.signature || null, stamp_id: evolution.stampId || null,
         confirmed_attendance: evolution.confirmedAttendance || false, mood: evolution.mood || null,
         template_id: evolution.templateId || null, template_data: evolution.templateData || null,
+        schedule_slot_id: evolution.scheduleSlotId || null,
+        session_time: evolution.sessionTime || null,
       }).select().single();
       if (error) throw error;
 
@@ -713,6 +717,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.mood !== undefined) updateData.mood = updates.mood || null;
       if (updates.templateId !== undefined) updateData.template_id = updates.templateId || null;
       if (updates.templateData !== undefined) updateData.template_data = updates.templateData || null;
+      if (updates.scheduleSlotId !== undefined) updateData.schedule_slot_id = updates.scheduleSlotId || null;
+      if (updates.sessionTime !== undefined) updateData.session_time = updates.sessionTime || null;
       const { error } = await supabase.from('evolutions').update(updateData).eq('id', id);
       if (error) throw error;
 

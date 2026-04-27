@@ -15,6 +15,7 @@ import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import TemplateForm from './TemplateForm';
 import { MoodSelector } from './MoodSelector';
+import { SessionSlotSelector } from './SessionSlotSelector';
 import { cn } from '@/lib/utils';
 
 
@@ -35,6 +36,8 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
   const [date, setDate] = useState(evolution.date);
   const [attendanceStatus, setAttendanceStatus] = useState(evolution.attendanceStatus);
   const [mood, setMood] = useState<string>(evolution.mood || '');
+  const [scheduleSlotId, setScheduleSlotId] = useState<string | undefined>(evolution.scheduleSlotId);
+  const [sessionTime, setSessionTime] = useState<string | undefined>(evolution.sessionTime);
   const [isImprovingText, setIsImprovingText] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>(
     evolution.attachments?.map(att => ({
@@ -110,6 +113,8 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
       mood: (mood || undefined) as Evolution['mood'],
       templateId: selectedTemplateId || undefined,
       templateData: Object.keys(templateFormValues).length > 0 ? templateFormValues : undefined,
+      scheduleSlotId: scheduleSlotId || undefined,
+      sessionTime: sessionTime || undefined,
       attachments: attachedFiles.map(f => ({
         id: f.id, parentId: evolution.id, parentType: 'evolution' as const,
         name: f.name, data: f.filePath, type: f.fileType, createdAt: new Date().toISOString(),
@@ -152,6 +157,17 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
           </div>
 
           <MoodSelector value={mood} onChange={setMood} />
+
+          <SessionSlotSelector
+            patientId={(evolution as any).patientId}
+            date={date}
+            scheduleSlotId={scheduleSlotId}
+            sessionTime={sessionTime}
+            onChange={({ scheduleSlotId: s, sessionTime: t }) => {
+              setScheduleSlotId(s);
+              setSessionTime(t);
+            }}
+          />
 
           {/* Template selector */}
           {clinicTemplates.length > 0 && (
