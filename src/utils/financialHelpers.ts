@@ -220,18 +220,39 @@ export function getIndividualPerSessionValue(
   year: number,
   pkg?: PackageLike | null,
 ): number {
-  if (!patient.paymentValue) return 0;
+  // 🔁 Fallback: paciente sem valor próprio mas com pacote vinculado → usa preço do pacote.
+  const baseValue = patient.paymentValue && patient.paymentValue > 0
+    ? patient.paymentValue
+    : (pkg?.price ?? 0);
+  if (!baseValue) return 0;
 
   if (pkg?.packageType === 'personalizado' && (pkg.sessionLimit ?? 0) > 0) {
-    return patient.paymentValue / (pkg.sessionLimit as number);
+    return baseValue / (pkg.sessionLimit as number);
   }
 
-  if (patient.paymentType === 'fixo') {
-    const dyn = getMensalDynamic(patient, month, year);
+  // Mensalistas (paciente com paymentType 'fixo' OU pacote 'mensal' vinculado)
+  const isMensal = patient.paymentType === 'fixo' || pkg?.packageType === 'mensal';
+  if (isMensal) {
+    const dyn = getMensalDynamicWithBase(patient, baseValue, month, year);
     return dyn.isDynamic ? dyn.perSession : 0;
   }
 
-  return patient.paymentValue;
+  return baseValue;
+}
+
+/** Variante de getMensalDynamic que aceita um valor mensal explícito (ex.: do pacote). */
+function getMensalDynamicWithBase(
+  patient: PatientLike,
+  monthly: number,
+  month: number,
+  year: number,
+): MensalDynamic {
+  const weekdays = getPatientWeekdays(patient);
+  const dyn = getDynamicSessionValue(monthly, weekdays, month, year);
+  if (!weekdays.length || dyn.occurrences === 0) {
+    return { perSession: 0, occurrences: 0, isDynamic: false };
+  }
+  return { perSession: dyn.perSession, occurrences: dyn.occurrences, isDynamic: true };
 }
 
 // ============================================================================
