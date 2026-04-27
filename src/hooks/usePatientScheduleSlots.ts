@@ -19,6 +19,7 @@ export interface PatientScheduleSlot {
   packageName?: string | null;
   packagePrice?: number | null;
   packageType?: string | null;
+  packageSessionLimit?: number | null;
   remunerationPlanId?: string | null;
   remunerationPlanName?: string | null;
   remunerationPlanType?: string | null;
@@ -79,7 +80,7 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
         ...allPkgLinks.map(p => p.package_id),
       ].filter(Boolean)));
       const pkgRes = pkgIds.length
-        ? await supabase.from('clinic_packages').select('id, name, price, package_type').in('id', pkgIds)
+        ? await supabase.from('clinic_packages').select('id, name, price, package_type, session_limit').in('id', pkgIds)
         : { data: [] as any[] };
 
       const memberMap = new Map<string, any>();
@@ -129,6 +130,7 @@ export function usePatientScheduleSlots(patientId: string | undefined) {
           packageName: pkg?.name || null,
           packagePrice: pkg?.price != null ? Number(pkg.price) : null,
           packageType: pkg?.package_type || null,
+          packageSessionLimit: pkg?.session_limit != null ? Number(pkg.session_limit) : null,
           remunerationPlanId: r.remuneration_plan_id || null,
           remunerationPlanName: remPlan?.name || null,
           remunerationPlanType: remPlan?.remuneration_type || null,
