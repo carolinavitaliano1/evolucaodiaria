@@ -133,6 +133,8 @@ function mapEvolution(e: Record<string, unknown>): Evolution {
     mood: (e.mood as Evolution['mood']) || undefined, signature: (e.signature as string) || undefined,
     stampId: (e.stamp_id as string) || undefined, createdAt: e.created_at as string,
     groupId: (e.group_id as string) || undefined,
+    scheduleSlotId: (e.schedule_slot_id as string) || undefined,
+    sessionTime: e.session_time ? String(e.session_time).slice(0, 5) : undefined,
   };
 }
 

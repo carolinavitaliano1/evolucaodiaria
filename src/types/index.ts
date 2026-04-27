@@ -116,6 +116,9 @@ export interface Evolution {
   stampId?: string;
   templateId?: string;
   templateData?: Record<string, any>;
+  scheduleSlotId?: string;
+  /** HH:MM (24h). Quando preenchido, identifica qual sessão do dia esta evolução representa. */
+  sessionTime?: string;
   attachments?: Attachment[];
   createdAt: string;
 }
