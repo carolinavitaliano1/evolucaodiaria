@@ -780,7 +780,12 @@ export default function PatientDetail() {
   const clPaymentType = clinic?.paymentType as string | undefined;
   const isFixoDiario = ptType === 'fixo_diaria' || clPaymentType === 'fixo_diario';
   const isFixoMensal = ptType === 'fixo' || clPaymentType === 'fixo_mensal';
-  const paymentValue = patient?.paymentValue || 0;
+  // 🔁 Fallback: paciente sem valor próprio mas com pacote vinculado → usa preço do pacote.
+  // Mantém paridade com getIndividualPerSessionValue (financialHelpers.ts).
+  const rawPatientValue = patient?.paymentValue || 0;
+  const paymentValue = rawPatientValue > 0
+    ? rawPatientValue
+    : (patientPackage?.price ?? 0);
   // Package personalizado: per-session value = total / sessionLimit
   const isPackagePersonalizado = patientPackage?.packageType === 'personalizado' && (patientPackage?.sessionLimit ?? 0) > 0;
   const isPackageMensal = patientPackage?.packageType === 'mensal';
