@@ -428,6 +428,9 @@ export interface RemunerationPlan {
   remuneration_type: RemunerationPlanType | string;
   remuneration_value: number;
   is_default?: boolean;
+  /** Quando o plano é do tipo 'pacote', vincula a um clinic_packages para
+   *  derivar o valor por sessão (preço / sessões previstas). */
+  package_id?: string | null;
 }
 
 export interface PlanBreakdownEntry {
