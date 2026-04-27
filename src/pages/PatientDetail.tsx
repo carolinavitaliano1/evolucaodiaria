@@ -341,6 +341,8 @@ export default function PatientDetail() {
   const [clinicTemplates, setClinicTemplates] = useState<EvolutionTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [templateFormValues, setTemplateFormValues] = useState<Record<string, any>>({});
+  const [evolutionScheduleSlotId, setEvolutionScheduleSlotId] = useState<string | undefined>(undefined);
+  const [evolutionSessionTime, setEvolutionSessionTime] = useState<string | undefined>(undefined);
 
   // Monthly report state
   const [reportMonth, setReportMonth] = useState(new Date());
