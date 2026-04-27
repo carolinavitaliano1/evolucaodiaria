@@ -2070,6 +2070,8 @@ export default function PatientDetail() {
       stampId: selectedStampId && selectedStampId !== 'none' ? selectedStampId : undefined,
       templateId: selectedTemplateId || undefined,
       templateData: Object.keys(templateFormValues).length > 0 ? templateFormValues : undefined,
+      scheduleSlotId: evolutionScheduleSlotId,
+      sessionTime: evolutionSessionTime,
       attachments: attachedFiles.map(f => ({
         id: f.id, parentId: '', parentType: 'evolution' as const,
         name: f.name, data: f.filePath, type: f.fileType, createdAt: new Date().toISOString(),
@@ -2077,6 +2079,7 @@ export default function PatientDetail() {
     });
     setEvolutionText(''); setAttachedFiles([]); setSelectedMood('');
     setSelectedTemplateId(''); setTemplateFormValues({});
+    setEvolutionScheduleSlotId(undefined); setEvolutionSessionTime(undefined);
   };
 
   const handleBack = () => {
