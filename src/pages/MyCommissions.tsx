@@ -73,7 +73,7 @@ export default function MyCommissions() {
       const [plansRes, assignsRes] = await Promise.all([
         supabase
           .from('member_remuneration_plans' as any)
-          .select('id, member_id, name, remuneration_type, remuneration_value, is_default')
+          .select('id, member_id, name, remuneration_type, remuneration_value, is_default, package_id')
           .eq('member_id', m.id)
           .order('is_default', { ascending: false })
           .order('name', { ascending: true }),
@@ -89,6 +89,7 @@ export default function MyCommissions() {
         remuneration_type: p.remuneration_type,
         remuneration_value: Number(p.remuneration_value) || 0,
         is_default: !!p.is_default,
+        package_id: p.package_id ?? null,
       }));
       ((assignsRes.data ?? []) as any[]).forEach((a: any) => {
         planMap[a.patient_id] = a.remuneration_plan_id ?? null;
