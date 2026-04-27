@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Clock } from 'lucide-react';
 import { usePatientScheduleSlots, PatientScheduleSlot } from '@/hooks/usePatientScheduleSlots';
+import { supabase } from '@/integrations/supabase/client';
 
 const WEEKDAY_BY_INDEX = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
 
@@ -41,6 +42,8 @@ interface Props {
   presetSlots?: PatientScheduleSlot[];
   className?: string;
   required?: boolean;
+  /** Quando informado, ignora esta evolução ao calcular quais slots já foram evoluídos (uso na edição). */
+  excludeEvolutionId?: string;
 }
 
 /**
@@ -50,7 +53,7 @@ interface Props {
  */
 export function SessionSlotSelector({
   patientId, date, memberId, scheduleSlotId, sessionTime, onChange,
-  presetSlots, className, required,
+  presetSlots, className, required, excludeEvolutionId,
 }: Props) {
   const hookData = usePatientScheduleSlots(presetSlots ? undefined : patientId);
   const slots = presetSlots ?? hookData.slots;
@@ -61,8 +64,40 @@ export function SessionSlotSelector({
     [slots, date, memberId],
   );
 
-  // If a slot is selected but the date no longer matches, clear it.
-  // Otherwise show free-time input when nothing matches.
+  // Carrega evoluções do paciente naquele dia para indicar quais sessões já
+  // foram evoluídas e quais ainda estão pendentes.
+  const [evolvedSlotIds, setEvolvedSlotIds] = useState<Set<string>>(new Set());
+  const [evolvedTimes, setEvolvedTimes] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    async function loadEvolved() {
+      if (!patientId || !date) {
+        setEvolvedSlotIds(new Set()); setEvolvedTimes(new Set());
+        return;
+      }
+      const { data } = await supabase
+        .from('evolutions')
+        .select('id, schedule_slot_id, session_time')
+        .eq('patient_id', patientId)
+        .eq('date', date);
+      if (cancelled) return;
+      const ids = new Set<string>();
+      const times = new Set<string>();
+      (data || []).forEach((e: any) => {
+        if (excludeEvolutionId && e.id === excludeEvolutionId) return;
+        if (e.schedule_slot_id) ids.add(e.schedule_slot_id);
+        if (e.session_time) times.add(String(e.session_time).slice(0, 5));
+      });
+      setEvolvedSlotIds(ids);
+      setEvolvedTimes(times);
+    }
+    loadEvolved();
+  }, [patientId, date, excludeEvolutionId]);
+
+  const isSlotEvolved = (s: PatientScheduleSlot) =>
+    evolvedSlotIds.has(s.id) || evolvedTimes.has((s.startTime || '').slice(0, 5));
+
+  const pendingCount = matching.filter(s => !isSlotEvolved(s)).length;
   const showCustomTime = matching.length === 0;
 
   return (
@@ -99,15 +134,43 @@ export function SessionSlotSelector({
           }}
         >
           <SelectTrigger className="h-9">
-            <SelectValue placeholder={matching.length > 1 ? 'Selecione qual sessão você está evoluindo' : 'Selecione o horário'} />
+            <SelectValue placeholder={
+              pendingCount === 0
+                ? 'Todas as sessões deste dia já foram evoluídas'
+                : (matching.length > 1 ? 'Selecione qual sessão você está evoluindo' : 'Selecione a sessão')
+            } />
           </SelectTrigger>
           <SelectContent>
-            {matching.map(s => (
-              <SelectItem key={s.id} value={s.id}>
-                🕐 {s.startTime}{s.endTime ? `–${s.endTime}` : ''}
-                {s.therapistName ? ` · ${s.therapistName}` : ''}
-              </SelectItem>
-            ))}
+            {matching.map(s => {
+              const evolved = isSlotEvolved(s);
+              return (
+                <SelectItem key={s.id} value={s.id}>
+                  {evolved ? '✅' : '🕐'} {s.startTime}{s.endTime ? `–${s.endTime}` : ''}
+                  {s.therapistName ? ` · ${s.therapistName}` : ''}
+                  {evolved ? ' (já evoluída)' : ' · pendente'}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      )}
+
+      {!showCustomTime && (
+        <p className="text-[11px] text-muted-foreground mt-1">
+          {pendingCount > 0
+            ? <>📌 <strong>{pendingCount}</strong> sessão(ões) pendente(s) de evolução neste dia.</>
+            : <>✅ Todas as sessões agendadas para hoje já foram evoluídas.</>}
+        </p>
+      )}
+
+      {matching.length > 1 && !scheduleSlotId && pendingCount > 0 && (
+        <p className="text-[11px] text-warning mt-1">
+          ⚠️ Este paciente tem mais de um atendimento neste dia. Escolha qual sessão você está evoluindo.
+        </p>
+      )}
+    </div>
+  );
+}
           </SelectContent>
         </Select>
       )}
