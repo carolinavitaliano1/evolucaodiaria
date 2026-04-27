@@ -600,6 +600,11 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
                     clinicPackages={clinicPackages}
                     organizationId={clinicOrgId}
                     disabled={isReadOnly}
+                    patientWeekdays={
+                      formData.weekdays && formData.weekdays.length > 0
+                        ? formData.weekdays
+                        : Object.keys(formData.scheduleByDay || {})
+                    }
                   />
                 </div>
               )}
