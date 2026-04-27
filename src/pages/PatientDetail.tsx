@@ -24,6 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PatientPlanCard } from '@/components/patients/PatientPlanCard';
 import { PatientScheduleCard } from '@/components/patients/PatientScheduleCard';
+import { usePatientScheduleSlots } from '@/hooks/usePatientScheduleSlots';
+import { countWeekdayOccurrencesInMonth } from '@/utils/dateHelpers';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
