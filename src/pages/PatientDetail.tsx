@@ -39,6 +39,7 @@ import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 import { DeparturePatientDialog } from '@/components/patients/DeparturePatientDialog';
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { MoodSelector, DEFAULT_MOOD_OPTIONS } from '@/components/evolutions/MoodSelector';
+import { SessionSlotSelector, findSlotsForEvolution } from '@/components/evolutions/SessionSlotSelector';
 import { useCustomMoods } from '@/hooks/useCustomMoods';
 import { EvolutionTemplate, TemplateField } from '@/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
