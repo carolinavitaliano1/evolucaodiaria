@@ -1257,6 +1257,7 @@ export type Database = {
           is_default: boolean
           member_id: string
           name: string
+          package_id: string | null
           remuneration_type: string
           remuneration_value: number
           updated_at: string
@@ -1267,6 +1268,7 @@ export type Database = {
           is_default?: boolean
           member_id: string
           name?: string
+          package_id?: string | null
           remuneration_type?: string
           remuneration_value?: number
           updated_at?: string
@@ -1277,6 +1279,7 @@ export type Database = {
           is_default?: boolean
           member_id?: string
           name?: string
+          package_id?: string | null
           remuneration_type?: string
           remuneration_value?: number
           updated_at?: string
@@ -1287,6 +1290,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "organization_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_remuneration_plans_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_packages"
             referencedColumns: ["id"]
           },
         ]
