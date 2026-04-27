@@ -171,15 +171,3 @@ export function SessionSlotSelector({
     </div>
   );
 }
-          </SelectContent>
-        </Select>
-      )}
-
-      {matching.length > 1 && !scheduleSlotId && (
-        <p className="text-[11px] text-warning mt-1">
-          ⚠️ Este paciente tem mais de um atendimento neste dia. Escolha qual sessão você está evoluindo.
-        </p>
-      )}
-    </div>
-  );
-}
