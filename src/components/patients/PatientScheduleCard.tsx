@@ -129,6 +129,22 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                             </span>
                           );
                         })()}
+                        {/* Detalhamento para pacote PERSONALIZADO (N sessões fixas) */}
+                        {s.remunerationPlanType === 'pacote' && !isMensalPlan(s) && s.remunerationPlanValue != null && s.remunerationPlanValue > 0 && (() => {
+                          // Usa session_limit do pacote vinculado, ou tenta extrair do nome do plano
+                          let limit = s.packageSessionLimit || 0;
+                          if (!limit) {
+                            const m = (s.remunerationPlanName || '').match(/(\d+)\s*(sess|sessao|sessão|sessoes|sessões)/i);
+                            if (m) limit = parseInt(m[1], 10);
+                          }
+                          if (limit <= 0) return null;
+                          const perSession = s.remunerationPlanValue! / limit;
+                          return (
+                            <span className="text-[11px] text-primary/80 ml-5">
+                              Pacote {limit} {limit === 1 ? 'sessão' : 'sessões'}: R$ {perSession.toFixed(2)}/sessão
+                            </span>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <span className="text-muted-foreground/60">—</span>
