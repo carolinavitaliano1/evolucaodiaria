@@ -13,12 +13,26 @@ interface Props {
 
 const WEEKDAY_ORDER = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
+const normalizeWeekday = (w: string) => {
+  if (!w) return '';
+  const s = w.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (s.startsWith('seg')) return 0;
+  if (s.startsWith('ter')) return 1;
+  if (s.startsWith('qua')) return 2;
+  if (s.startsWith('qui')) return 3;
+  if (s.startsWith('sex')) return 4;
+  if (s.startsWith('sab')) return 5;
+  if (s.startsWith('dom')) return 6;
+  return 99;
+};
+
 export function PatientScheduleCard({ patientId, clinicId, organizationId }: Props) {
   const { slots, loading } = usePatientScheduleSlots(patientId);
   const therapistCount = new Set(slots.map(s => s.memberId)).size;
   const sortedSlots = [...slots].sort((a, b) => {
-    const da = WEEKDAY_ORDER.indexOf(a.weekday);
-    const db = WEEKDAY_ORDER.indexOf(b.weekday);
+    const da = normalizeWeekday(a.weekday);
+    const db = normalizeWeekday(b.weekday);
     if (da !== db) return da - db;
     return a.startTime.localeCompare(b.startTime);
   });
