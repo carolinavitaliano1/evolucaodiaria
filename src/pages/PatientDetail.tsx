@@ -819,6 +819,65 @@ export default function PatientDetail() {
   const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
   const totalIndividualBillableCount = totalIndividualBillableEvos.length;
   const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  // 🔁 Fallback baseado em slots da agenda: quando o paciente NÃO tem
+  // paymentValue próprio nem pacote vinculado, mas possui planos de
+  // remuneração definidos por profissional nos slots da agenda, calculamos
+  // o faturamento individual a partir desses planos.
+  const hasOwnPricing = (rawPatientValue > 0) || !!patientPackage;
+  const slotByUserId = useMemo(() => {
+    const map = new Map<string, typeof patientScheduleSlots>();
+    patientScheduleSlots.forEach(s => {
+      // organization_members.user_id é o id do auth user. O slot tem memberId.
+      // Mapeamos via `members` (organization_members do clínica) carregado pelo useClinicOrg.
+      const member = members.find((m: any) => m.id === s.memberId);
+      const uid = member?.userId || member?.user_id;
+      if (!uid) return;
+      const arr = map.get(uid) || [];
+      arr.push(s);
+      map.set(uid, arr);
+    });
+    return map;
+  }, [patientScheduleSlots, members]);
+  const slotsRevenue = useMemo(() => {
+    if (hasOwnPricing) return 0;
+    if (!totalIndividualBillableEvos.length) return 0;
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    let total = 0;
+    for (const evo of totalIndividualBillableEvos) {
+      const userSlots = slotByUserId.get(evo.userId) || [];
+      // Escolhe o slot do mesmo dia da semana, ou o primeiro disponível.
+      const evoDate = new Date(evo.date + 'T12:00:00');
+      const wdNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+      const wd = wdNames[evoDate.getDay()];
+      const slot = userSlots.find(s => (s.weekday || '').toLowerCase() === wd.toLowerCase()) || userSlots[0];
+      if (!slot || slot.remunerationPlanValue == null) continue;
+      const planType = slot.remunerationPlanType;
+      const planName = (slot.remunerationPlanName || '').toLowerCase();
+      const isMensal = planType === 'pacote' && (slot.packageType === 'mensal' || planName.includes('mensal'));
+      if (isMensal) {
+        const occ = countWeekdayOccurrencesInMonth(slot.weekday, month, year) || 1;
+        total += Number(slot.remunerationPlanValue) / occ;
+      } else if (planType === 'fixo_mensal') {
+        // Para fixo mensal, o valor do plano é por mês — não somar por sessão.
+        // O total mensal é adicionado uma vez abaixo.
+        continue;
+      } else {
+        total += Number(slot.remunerationPlanValue);
+      }
+    }
+    // Adiciona valores de planos fixo_mensal (uma vez por plano único)
+    const seenFixedPlans = new Set<string>();
+    patientScheduleSlots.forEach(s => {
+      if (s.remunerationPlanType !== 'fixo_mensal' || s.remunerationPlanValue == null) return;
+      const key = s.remunerationPlanId || `${s.memberId}|${s.remunerationPlanName}`;
+      if (seenFixedPlans.has(key)) return;
+      seenFixedPlans.add(key);
+      total += Number(s.remunerationPlanValue);
+    });
+    return total;
+  }, [hasOwnPricing, totalIndividualBillableEvos, slotByUserId, patientScheduleSlots]);
   // Sum of all-time services (não cancelados) for this patient
   const totalServicesRevenue = patientServices
     .filter(s => s.status !== 'cancelado')
@@ -827,7 +886,7 @@ export default function PatientDetail() {
     ? paymentValue + totalGroupRevenue
     : isFixoDiario
       ? totalIndividualUniqueDays * perSessionValue + totalGroupRevenue
-      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue) + totalServicesRevenue;
+      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue) + totalServicesRevenue + slotsRevenue;
   const totalFinancialSubtitle = isFixoMensal
     ? 'Valor Fixo Mensal'
     : isFixoDiario
