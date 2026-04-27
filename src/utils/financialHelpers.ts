@@ -356,7 +356,7 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   let individualRevenue = 0;
   if (billableIndividual.length > 0 && baseValue) {
     if (isMensal) {
-      const dyn = getMensalDynamicWithBaseLocal(patient, baseValue, month, year);
+      const dyn = getMensalDynamicWithBase(patient, baseValue, month, year);
       if (dyn.isDynamic) {
         const raw = billableIndividual.length * dyn.perSession;
         // Trava: nunca ultrapassa o valor mensal contratado
