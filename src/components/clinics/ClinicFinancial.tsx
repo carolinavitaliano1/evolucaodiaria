@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApp } from '@/contexts/AppContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
-import { TeamFinancialReport } from './TeamFinancialReport';
+// TeamFinancialReport movido para o módulo "Equipe" (página /team)
 import { format, subMonths, addMonths, isSameDay, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -1255,27 +1255,6 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       <TabsContent value="dias">{DaysView}</TabsContent>
     </Tabs>
   );
-
-  if (isOrg) {
-    return (
-      <Tabs defaultValue="meu" className="space-y-4">
-        <TabsList className="h-auto p-0.5 gap-0.5">
-          <TabsTrigger value="meu" className="text-xs px-3 py-1.5 gap-1">
-            <DollarSign className="w-3 h-3" />
-            Meu Financeiro
-          </TabsTrigger>
-          <TabsTrigger value="equipe" className="text-xs px-3 py-1.5 gap-1">
-            <Users className="w-3 h-3" />
-            Equipe
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="meu">{FinancialWithDays}</TabsContent>
-        <TabsContent value="equipe">
-          <TeamFinancialReport clinicId={clinicId} />
-        </TabsContent>
-      </Tabs>
-    );
-  }
 
   return FinancialWithDays;
 }
