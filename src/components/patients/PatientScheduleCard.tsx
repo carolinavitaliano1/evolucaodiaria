@@ -24,18 +24,26 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
   });
 
   // Para pacotes "Mensal", calcula ocorrências totais (no mês atual) de TODOS
-  // os slots vinculados ao mesmo pacote, para dividir o valor proporcionalmente.
+  // os slots vinculados ao mesmo plano de remuneração, para dividir o valor
+  // proporcionalmente.
   const now = new Date();
   const month = now.getMonth();
   const year = now.getFullYear();
-  const occurrencesByPackageKey = new Map<string, number>();
+  // Detecta pacote mensal por: (a) packageType vindo de clinic_packages OU
+  // (b) nome do plano de remuneração contendo "mensal" (caso comum quando o
+  //    plano é avulso, sem vínculo com clinic_packages).
+  const isMensalPlan = (s: typeof slots[number]) => {
+    if (s.remunerationPlanType !== 'pacote') return false;
+    if (s.packageType === 'mensal') return true;
+    const name = (s.remunerationPlanName || '').toLowerCase();
+    return name.includes('mensal');
+  };
+  const occurrencesByPlan = new Map<string, number>();
   slots.forEach(s => {
-    if (s.packageType === 'mensal' && s.packageName) {
-      // Agrupa por (memberId + packageName) para somar dias do mesmo pacote por terapeuta
-      const key = `${s.memberId}|${s.packageName}`;
-      const prev = occurrencesByPackageKey.get(key) || 0;
-      occurrencesByPackageKey.set(key, prev + countWeekdayOccurrencesInMonth(s.weekday, month, year));
-    }
+    if (!isMensalPlan(s)) return;
+    const key = s.remunerationPlanId || `${s.memberId}|${s.remunerationPlanName}`;
+    const prev = occurrencesByPlan.get(key) || 0;
+    occurrencesByPlan.set(key, prev + countWeekdayOccurrencesInMonth(s.weekday, month, year));
   });
 
   return (
@@ -110,22 +118,17 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                           </span>
                         )}
                         {/* Detalhamento dinâmico para pacote MENSAL — igual ao consultório */}
-                        {s.remunerationPlanType === 'pacote'
-                          && s.packageType === 'mensal'
-                          && s.packagePrice != null
-                          && s.packagePrice > 0
-                          && (() => {
-                            const key = `${s.memberId}|${s.packageName}`;
-                            const occ = occurrencesByPackageKey.get(key) || 0;
-                            if (occ <= 0) return null;
-                            const perSession = s.packagePrice! / occ;
-                            return (
-                              <span className="text-[11px] text-primary/80 ml-5">
-                                Mês de {occ} {occ === 1 ? 'semana' : 'semanas'}: R$ {perSession.toFixed(2)}/sessão
-                              </span>
-                            );
-                          })()
-                        }
+                        {isMensalPlan(s) && s.remunerationPlanValue != null && s.remunerationPlanValue > 0 && (() => {
+                          const key = s.remunerationPlanId || `${s.memberId}|${s.remunerationPlanName}`;
+                          const occ = occurrencesByPlan.get(key) || 0;
+                          if (occ <= 0) return null;
+                          const perSession = s.remunerationPlanValue! / occ;
+                          return (
+                            <span className="text-[11px] text-primary/80 ml-5">
+                              Mês de {occ} {occ === 1 ? 'semana' : 'semanas'}: R$ {perSession.toFixed(2)}/sessão
+                            </span>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <span className="text-muted-foreground/60">—</span>
