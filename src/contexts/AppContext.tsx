@@ -168,6 +168,13 @@ function mapPackage(p: Record<string, unknown>): ClinicPackage {
     packageType: (p.package_type as 'mensal' | 'por_sessao' | 'personalizado') || 'mensal',
     sessionLimit: p.session_limit != null ? Number(p.session_limit) : null,
     createdAt: p.created_at as string,
+    lancamentoTipo: (p.lancamento_tipo as 'valor_total' | 'valor_procedimento') || 'valor_total',
+    valorTotal: p.valor_total != null ? Number(p.valor_total) : null,
+    accountName: (p.account_name as string) || null,
+    commissionPaymentMethod: (p.commission_payment_method as 'sem_comissao' | 'integral' | 'por_atendimento') || 'sem_comissao',
+    commissionType: (p.commission_type as 'valor_fixo' | 'porcentagem') || 'valor_fixo',
+    commissionPerProfessional: (p.commission_per_professional as boolean) ?? false,
+    commissions: [],
   };
 }
 
