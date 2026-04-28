@@ -198,43 +198,61 @@ export type Database = {
       }
       clinic_packages: {
         Row: {
+          account_name: string | null
           clinic_id: string
+          commission_payment_method: string
+          commission_per_professional: boolean
+          commission_type: string
           created_at: string | null
           description: string | null
           id: string
           is_active: boolean | null
+          lancamento_tipo: string
           name: string
           package_type: string
           price: number
           session_limit: number | null
           updated_at: string | null
           user_id: string
+          valor_total: number | null
         }
         Insert: {
+          account_name?: string | null
           clinic_id: string
+          commission_payment_method?: string
+          commission_per_professional?: boolean
+          commission_type?: string
           created_at?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
+          lancamento_tipo?: string
           name: string
           package_type?: string
           price?: number
           session_limit?: number | null
           updated_at?: string | null
           user_id: string
+          valor_total?: number | null
         }
         Update: {
+          account_name?: string | null
           clinic_id?: string
+          commission_payment_method?: string
+          commission_per_professional?: boolean
+          commission_type?: string
           created_at?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
+          lancamento_tipo?: string
           name?: string
           package_type?: string
           price?: number
           session_limit?: number | null
           updated_at?: string | null
           user_id?: string
+          valor_total?: number | null
         }
         Relationships: [
           {
@@ -1505,6 +1523,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      package_commissions: {
+        Row: {
+          commission_type: string
+          commission_value: number
+          created_at: string
+          id: string
+          member_id: string
+          package_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          id?: string
+          member_id: string
+          package_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          id?: string
+          member_id?: string
+          package_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_commissions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_packages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patient_contracts: {
         Row: {
