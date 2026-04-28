@@ -56,6 +56,10 @@ interface AppContextType extends AppState {
   updatePackage: (id: string, updates: Partial<ClinicPackage>) => void;
   deletePackage: (id: string) => void;
   getClinicPackages: (clinicId: string) => ClinicPackage[];
+  setPackageCommissions: (
+    packageId: string,
+    commissions: Array<{ memberId: string; commissionValue: number; commissionType: 'valor_fixo' | 'porcentagem' }>
+  ) => Promise<void>;
   loadEvolutionsForClinic: (clinicId: string) => Promise<void>;
   loadAppointmentsForClinic: (clinicId: string) => Promise<void>;
   loadAttachmentsForPatient: (patientId: string) => Promise<void>;
@@ -168,6 +172,13 @@ function mapPackage(p: Record<string, unknown>): ClinicPackage {
     packageType: (p.package_type as 'mensal' | 'por_sessao' | 'personalizado') || 'mensal',
     sessionLimit: p.session_limit != null ? Number(p.session_limit) : null,
     createdAt: p.created_at as string,
+    lancamentoTipo: (p.lancamento_tipo as 'valor_total' | 'valor_procedimento') || 'valor_total',
+    valorTotal: p.valor_total != null ? Number(p.valor_total) : null,
+    accountName: (p.account_name as string) || null,
+    commissionPaymentMethod: (p.commission_payment_method as 'sem_comissao' | 'integral' | 'por_atendimento') || 'sem_comissao',
+    commissionType: (p.commission_type as 'valor_fixo' | 'porcentagem') || 'valor_fixo',
+    commissionPerProfessional: (p.commission_per_professional as boolean) ?? false,
+    commissions: [],
   };
 }
 
@@ -291,6 +302,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         clinicsRaw = clinicsRaw.filter(c => orgClinicIds!.has(c.id));
         patientsRaw = patientsRaw.filter(p => orgClinicIds!.has(p.clinicId));
         clinicPackages = clinicPackages.filter(p => orgClinicIds!.has(p.clinicId));
+      }
+
+      // Fetch commissions for all visible packages (best-effort, non-blocking on failure)
+      if (clinicPackages.length > 0) {
+        try {
+          const pkgIds = clinicPackages.map(p => p.id);
+          const { data: commData } = await supabase
+            .from('package_commissions')
+            .select('*')
+            .in('package_id', pkgIds);
+          if (commData) {
+            const byPkg = new Map<string, any[]>();
+            (commData as any[]).forEach(r => {
+              const arr = byPkg.get(r.package_id) || [];
+              arr.push({
+                id: r.id, packageId: r.package_id, memberId: r.member_id,
+                commissionValue: Number(r.commission_value),
+                commissionType: r.commission_type,
+              });
+              byPkg.set(r.package_id, arr);
+            });
+            clinicPackages = clinicPackages.map(p => ({ ...p, commissions: byPkg.get(p.id) || [] }));
+          }
+        } catch (e) {
+          console.warn('Failed to load package commissions', e);
+        }
       }
 
       // Deduplicate by id
@@ -833,9 +870,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
         description: pkg.description || null, price: pkg.price, is_active: pkg.isActive,
         package_type: pkg.packageType || 'mensal',
         session_limit: pkg.sessionLimit ?? null,
+        lancamento_tipo: pkg.lancamentoTipo || 'valor_total',
+        valor_total: pkg.valorTotal ?? null,
+        account_name: pkg.accountName ?? null,
+        commission_payment_method: pkg.commissionPaymentMethod || 'sem_comissao',
+        commission_type: pkg.commissionType || 'valor_fixo',
+        commission_per_professional: pkg.commissionPerProfessional ?? false,
       }).select().single();
       if (error) throw error;
-      setState(prev => ({ ...prev, clinicPackages: [mapPackage(data as Record<string, unknown>), ...prev.clinicPackages] }));
+      const created = mapPackage(data as Record<string, unknown>);
+      // Persist commissions if provided
+      if (pkg.commissions && pkg.commissions.length > 0) {
+        const rows = pkg.commissions.map(c => ({
+          package_id: created.id,
+          member_id: c.memberId,
+          commission_value: c.commissionValue,
+          commission_type: c.commissionType,
+        }));
+        const { data: cData, error: cError } = await supabase
+          .from('package_commissions').insert(rows).select();
+        if (!cError && cData) {
+          created.commissions = (cData as any[]).map(r => ({
+            id: r.id, packageId: r.package_id, memberId: r.member_id,
+            commissionValue: Number(r.commission_value),
+            commissionType: r.commission_type,
+          }));
+        }
+      }
+      setState(prev => ({ ...prev, clinicPackages: [created, ...prev.clinicPackages] }));
       toast.success('Pacote adicionado!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar pacote'); }
   }, [user]);
@@ -850,6 +912,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
       if (updates.packageType !== undefined) updateData.package_type = updates.packageType;
       if (updates.sessionLimit !== undefined) updateData.session_limit = updates.sessionLimit ?? null;
+      if (updates.lancamentoTipo !== undefined) updateData.lancamento_tipo = updates.lancamentoTipo;
+      if (updates.valorTotal !== undefined) updateData.valor_total = updates.valorTotal ?? null;
+      if (updates.accountName !== undefined) updateData.account_name = updates.accountName ?? null;
+      if (updates.commissionPaymentMethod !== undefined) updateData.commission_payment_method = updates.commissionPaymentMethod;
+      if (updates.commissionType !== undefined) updateData.commission_type = updates.commissionType;
+      if (updates.commissionPerProfessional !== undefined) updateData.commission_per_professional = updates.commissionPerProfessional;
       const { error } = await supabase.from('clinic_packages').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, clinicPackages: prev.clinicPackages.map(p => p.id === id ? { ...p, ...updates } : p) }));
@@ -864,6 +932,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState(prev => ({ ...prev, clinicPackages: prev.clinicPackages.filter(p => p.id !== id) }));
       toast.success('Pacote excluído!');
     } catch (error) { console.error(error); toast.error('Erro ao excluir pacote'); }
+  }, [user]);
+
+  const setPackageCommissions = useCallback(async (
+    packageId: string,
+    commissions: Array<{ memberId: string; commissionValue: number; commissionType: 'valor_fixo' | 'porcentagem' }>
+  ) => {
+    if (!user) return;
+    try {
+      // Replace strategy: delete-all then insert
+      const { error: delErr } = await supabase.from('package_commissions').delete().eq('package_id', packageId);
+      if (delErr) throw delErr;
+      let mapped: any[] = [];
+      if (commissions.length > 0) {
+        const rows = commissions.map(c => ({
+          package_id: packageId,
+          member_id: c.memberId,
+          commission_value: c.commissionValue,
+          commission_type: c.commissionType,
+        }));
+        const { data, error: insErr } = await supabase.from('package_commissions').insert(rows).select();
+        if (insErr) throw insErr;
+        mapped = (data || []).map((r: any) => ({
+          id: r.id, packageId: r.package_id, memberId: r.member_id,
+          commissionValue: Number(r.commission_value),
+          commissionType: r.commission_type,
+        }));
+      }
+      setState(prev => ({
+        ...prev,
+        clinicPackages: prev.clinicPackages.map(p => p.id === packageId ? { ...p, commissions: mapped } : p),
+      }));
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao salvar comissões');
+    }
   }, [user]);
 
   // === Attachments CRUD ===
@@ -918,7 +1021,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addTask, toggleTask, deleteTask, updateTaskNotes,
       addPayment,
       getClinicPatients, getPatientEvolutions, getDateAppointments,
-      addPackage, updatePackage, deletePackage, getClinicPackages,
+      addPackage, updatePackage, deletePackage, getClinicPackages, setPackageCommissions,
       getPatientTasks, getPatientAttachments, addAttachment, deleteAttachment,
       loadEvolutionsForClinic, loadAppointmentsForClinic, loadAttachmentsForPatient,
       loadAllEvolutions, refreshData, addPatientToState,

@@ -80,6 +80,22 @@ export interface ClinicPackage {
   packageType?: 'mensal' | 'por_sessao' | 'personalizado';
   sessionLimit?: number | null;
   createdAt: string;
+  // ===== Financeiro e Comissionamento =====
+  lancamentoTipo?: 'valor_total' | 'valor_procedimento';
+  valorTotal?: number | null;
+  accountName?: string | null;
+  commissionPaymentMethod?: 'sem_comissao' | 'integral' | 'por_atendimento';
+  commissionType?: 'valor_fixo' | 'porcentagem';
+  commissionPerProfessional?: boolean;
+  commissions?: PackageCommission[];
+}
+
+export interface PackageCommission {
+  id: string;
+  packageId: string;
+  memberId: string;
+  commissionValue: number;
+  commissionType: 'valor_fixo' | 'porcentagem';
 }
 
 export interface TemplateField {

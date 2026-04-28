@@ -3,14 +3,11 @@ import { Package, Plus, Edit, Trash2, Users, Download, FileText } from 'lucide-r
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { PackagePatientsModal } from '@/components/clinics/PackagePatientsModal';
+import { PackageFormDialog } from '@/components/clinics/PackageFormDialog';
+import { ClinicPackage } from '@/types';
 
 interface Props {
   clinicId: string;
@@ -19,13 +16,12 @@ interface Props {
 type PackageType = 'mensal' | 'por_sessao' | 'personalizado';
 
 export function ClinicPackagesPanel({ clinicId }: Props) {
-  const { clinics, patients, getClinicPackages, addPackage, updatePackage, deletePackage } = useApp();
+  const { clinics, patients, getClinicPackages, deletePackage } = useApp();
   const clinic = clinics.find(c => c.id === clinicId);
   const clinicPackages = getClinicPackages(clinicId);
 
-  const [packageDialogOpen, setPackageDialogOpen] = useState(false);
-  const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '', packageType: 'mensal' as PackageType, sessionLimit: '' });
-  const [editingPackage, setEditingPackage] = useState<{ id: string; name: string; description: string; price: string; packageType: PackageType; sessionLimit: string } | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<ClinicPackage | null>(null);
   const [viewingPackagePatients, setViewingPackagePatients] = useState<any | null>(null);
 
   const buildExportData = () =>
@@ -173,75 +169,9 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
           <Button size="sm" variant="outline" className="gap-2" onClick={exportPDF} disabled={clinicPackages.length === 0} title="Exportar lista em PDF">
             <FileText className="w-4 h-4" /> PDF
           </Button>
-          <Dialog open={packageDialogOpen} onOpenChange={setPackageDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
-                <Plus className="w-4 h-4" /> Novo Pacote
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>Novo Pacote</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div>
-                  <Label>Nome do Pacote *</Label>
-                  <Input value={newPackage.name} onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })} placeholder="Ex: Pacote Social, Pacote Premium" />
-                </div>
-                <div>
-                  <Label>Descrição</Label>
-                  <Textarea value={newPackage.description} onChange={(e) => setNewPackage({ ...newPackage, description: e.target.value })} placeholder="Detalhes do pacote..." rows={2} />
-                </div>
-                <div>
-                  <Label>Tipo de Pacote</Label>
-                  <Select value={newPackage.packageType} onValueChange={(v) => setNewPackage({ ...newPackage, packageType: v as PackageType, sessionLimit: '' })}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mensal">Mensal</SelectItem>
-                      <SelectItem value="por_sessao">Por Sessão</SelectItem>
-                      <SelectItem value="personalizado">Personalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {newPackage.packageType === 'personalizado' && (
-                  <div className="animate-in fade-in duration-200">
-                    <Label>Quantidade de Sessões</Label>
-                    <Input type="number" min={1} value={newPackage.sessionLimit} onChange={(e) => setNewPackage({ ...newPackage, sessionLimit: e.target.value })} placeholder="Ex: 8" className="mt-1" />
-                  </div>
-                )}
-                <div>
-                  <Label>Valor Total (R$) *</Label>
-                  <Input type="number" step="0.01" value={newPackage.price} onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })} placeholder="0.00" />
-                  {newPackage.packageType === 'personalizado' && newPackage.price && newPackage.sessionLimit && Number(newPackage.sessionLimit) > 0 && (
-                    <p className="mt-1.5 text-sm text-muted-foreground animate-in fade-in duration-200">
-                      Valor equivalente por sessão:{' '}
-                      <span className="font-semibold">
-                        {(parseFloat(newPackage.price) / parseInt(newPackage.sessionLimit)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                    </p>
-                  )}
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={!newPackage.name.trim() || !newPackage.price}
-                  onClick={() => {
-                    addPackage({
-                      userId: '',
-                      clinicId: clinic.id,
-                      name: newPackage.name,
-                      description: newPackage.description || undefined,
-                      price: parseFloat(newPackage.price),
-                      isActive: true,
-                      packageType: newPackage.packageType,
-                      sessionLimit: newPackage.packageType === 'personalizado' && newPackage.sessionLimit ? parseInt(newPackage.sessionLimit) : null,
-                    });
-                    setNewPackage({ name: '', description: '', price: '', packageType: 'mensal', sessionLimit: '' });
-                    setPackageDialogOpen(false);
-                  }}
-                >
-                  Criar Pacote
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
+            <Plus className="w-4 h-4" /> Novo Pacote
+          </Button>
         </div>
       </div>
 
@@ -262,14 +192,7 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => setEditingPackage({
-                      id: pkg.id,
-                      name: pkg.name,
-                      description: pkg.description || '',
-                      price: pkg.price.toString(),
-                      packageType: (pkg.packageType || 'mensal') as PackageType,
-                      sessionLimit: pkg.sessionLimit?.toString() || '',
-                    })}
+                    onClick={() => setEditingPackage(pkg)}
                   >
                     <Edit className="w-3.5 h-3.5" />
                   </Button>
@@ -320,69 +243,21 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
         pkg={viewingPackagePatients}
       />
 
-      {editingPackage && (
-        <Dialog open={!!editingPackage} onOpenChange={(open) => !open && setEditingPackage(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Editar Pacote</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div>
-                <Label>Nome do Pacote *</Label>
-                <Input value={editingPackage.name} onChange={(e) => setEditingPackage({ ...editingPackage, name: e.target.value })} placeholder="Ex: Pacote Social" />
-              </div>
-              <div>
-                <Label>Descrição</Label>
-                <Textarea value={editingPackage.description} onChange={(e) => setEditingPackage({ ...editingPackage, description: e.target.value })} placeholder="Detalhes do pacote..." rows={2} />
-              </div>
-              <div>
-                <Label>Tipo de Pacote</Label>
-                <Select value={editingPackage.packageType} onValueChange={(v) => setEditingPackage({ ...editingPackage, packageType: v as PackageType, sessionLimit: '' })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                    <SelectItem value="por_sessao">Por Sessão</SelectItem>
-                    <SelectItem value="personalizado">Personalizado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {editingPackage.packageType === 'personalizado' && (
-                <div className="animate-in fade-in duration-200">
-                  <Label>Quantidade de Sessões</Label>
-                  <Input type="number" min={1} value={editingPackage.sessionLimit} onChange={(e) => setEditingPackage({ ...editingPackage, sessionLimit: e.target.value })} placeholder="Ex: 8" className="mt-1" />
-                </div>
-              )}
-              <div>
-                <Label>Valor Total (R$) *</Label>
-                <Input type="number" step="0.01" value={editingPackage.price} onChange={(e) => setEditingPackage({ ...editingPackage, price: e.target.value })} placeholder="0.00" />
-                {editingPackage.packageType === 'personalizado' && editingPackage.price && editingPackage.sessionLimit && Number(editingPackage.sessionLimit) > 0 && (
-                  <p className="mt-1.5 text-sm text-muted-foreground animate-in fade-in duration-200">
-                    Valor equivalente por sessão:{' '}
-                    <span className="font-semibold">
-                      {(parseFloat(editingPackage.price) / parseInt(editingPackage.sessionLimit)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
-                  </p>
-                )}
-              </div>
-              <Button
-                className="w-full"
-                disabled={!editingPackage.name.trim() || !editingPackage.price}
-                onClick={() => {
-                  updatePackage(editingPackage.id, {
-                    name: editingPackage.name,
-                    description: editingPackage.description || undefined,
-                    price: parseFloat(editingPackage.price),
-                    packageType: editingPackage.packageType,
-                    sessionLimit: editingPackage.packageType === 'personalizado' && editingPackage.sessionLimit ? parseInt(editingPackage.sessionLimit) : null,
-                  });
-                  setEditingPackage(null);
-                  toast.success('Pacote atualizado!');
-                }}
-              >
-                Salvar Alterações
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* Create dialog */}
+      <PackageFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        clinicId={clinicId}
+      />
+
+      {/* Edit dialog */}
+      <PackageFormDialog
+        key={editingPackage?.id || 'edit'}
+        open={!!editingPackage}
+        onOpenChange={(o) => !o && setEditingPackage(null)}
+        clinicId={clinicId}
+        pkg={editingPackage}
+      />
     </div>
   );
 }

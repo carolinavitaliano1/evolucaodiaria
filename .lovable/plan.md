@@ -1,84 +1,113 @@
 ## Objetivo
+Adicionar uma seção avançada **"Financeiro e Comissionamento"** ao modal de criação/edição de Pacotes da Clínica (`ClinicPackagesPanel.tsx`), com regras flexíveis de lançamento financeiro, comissões e atribuição de profissionais (suportando múltiplos profissionais com regras distintas).
 
-Unificar tudo que é financeiro da clínica dentro da aba **Financeiro** de `/clinics/:id`, organizado em **sub-abas em cards** no mesmo estilo visual da barra de abas principal da clínica (cards com ícone colorido + label).
+---
 
-Hoje está espalhado:
-- **Financeiro** (aba atual) → receita da clínica, cobranças de pacientes, serviços particulares
-- **Pacotes** (aba separada) → CRUD de pacotes
-- **Equipe → Financeiro** (em `/team`) → remuneração da equipe e planos de remuneração
+## Alterações no Banco de Dados
 
-## O que muda
+### 1. Adicionar colunas em `clinic_packages`
+- `lancamento_tipo` (text) — `'valor_total'` | `'valor_procedimento'` (default `'valor_total'`)
+- `valor_total` (numeric) — valor financeiro do lançamento
+- `account_id` (uuid) — FK lógica para a conta/caixa de destino
+- `commission_payment_method` (text) — `'sem_comissao'` | `'integral'` | `'por_atendimento'` (default `'sem_comissao'`)
+- `commission_type` (text) — `'valor_fixo'` | `'porcentagem'` (default `'valor_fixo'`)
+- `commission_per_professional` (boolean) — toggle "comissão diferente por profissional" (default `false`)
 
-### 1. Aba "Pacotes" deixa de existir como aba principal
-- Removida do array de tabs em `ClinicDetail.tsx` (linha ~1347).
-- Todo o conteúdo (CRUD, dialogs de criar/editar, exportação CSV/PDF, modal de pacientes do pacote) é movido para um novo componente `ClinicPackagesPanel` e renderizado dentro de uma sub-aba do Financeiro.
+### 2. Criar tabela auxiliar `package_commissions`
+Para suportar múltiplos profissionais com regras distintas:
+- `id`, `package_id` (FK clinic_packages), `member_id` (FK organization_members), `commission_value` (numeric), `commission_type` (text — herda ou sobrescreve), `created_at`, `updated_at`
+- RLS: dono do pacote (via `clinic_packages.user_id`) e membros da org da clínica podem ler; apenas dono/admins podem escrever.
 
-### 2. Aba "Financeiro" passa a ter 4 sub-abas em cards
+### 3. Reusar `accounts` (caixa)
+Verificar se já existe tabela de contas/caixas no projeto. Se não existir, usar um `Input` simples de texto livre `account_name` (campo string) em vez de FK — para evitar criar uma feature inteira nova de "contas". **Decisão proposta:** usar campo texto `account_name` por simplicidade, marcando como obrigatório no form.
 
-Layout idêntico ao grid de abas principais (cards com ícone colorido, borda, bg-card, hover):
+---
 
-```text
-┌─────────────┬─────────────┬─────────────┬─────────────┐
-│  💰         │  👥         │  🧑‍⚕️       │  📦         │
-│ Visão Geral │  Pacientes  │   Equipe    │  Pacotes    │
-│ (success)   │  (violet)   │ (fuchsia)   │  (pink)     │
-└─────────────┴─────────────┴─────────────┴─────────────┘
+## Alterações no Frontend
+
+### 1. `src/types/index.ts`
+Adicionar campos à interface `ClinicPackage`:
+```ts
+lancamentoTipo?: 'valor_total' | 'valor_procedimento';
+valorTotal?: number;
+accountName?: string;
+commissionPaymentMethod?: 'sem_comissao' | 'integral' | 'por_atendimento';
+commissionType?: 'valor_fixo' | 'porcentagem';
+commissionPerProfessional?: boolean;
+commissions?: PackageCommission[];
+```
+Nova interface `PackageCommission { id, packageId, memberId, commissionValue, commissionType }`.
+
+### 2. `src/contexts/AppContext.tsx`
+Mapear novas colunas snake_case ↔ camelCase em `addPackage`/`updatePackage`. Carregar `package_commissions` junto com pacotes.
+
+### 3. Novo componente `src/components/clinics/PackageFormDialog.tsx`
+Extrair os modais "Novo Pacote" e "Editar Pacote" (atualmente duplicados em `ClinicPackagesPanel.tsx`) para um único componente reutilizável com:
+
+- **React Hook Form + Zod** para validação
+- Schema Zod garantindo: `name`, `valorTotal`, `accountName` obrigatórios; comissões com `memberId` + `commissionValue` quando `commissionPaymentMethod !== 'sem_comissao'`
+- **Layout em Cards** (shadcn `Card`) agrupando:
+  - Card 1: Dados básicos (nome, descrição, tipo, sessões)
+  - Card 2: **Lançamento Financeiro** — RadioGroup (valor total / valor procedimento), Input "Valor total (R$)*", Input "Conta*"
+  - Card 3: **Comissão** — Select forma de pagamento (com texto de ajuda "Um lançamento de comissão será gerado a cada atendimento" se `por_atendimento`), RadioGroup tipo (fixo/%), Switch "comissão diferente por profissional"
+  - Card 4: **Profissionais** — bloco dinâmico (repeater via `useFieldArray`):
+    - Se toggle OFF → 1 bloco fixo (Profissional + Comissão)
+    - Se toggle ON → lista com botão "+ Adicionar outro profissional" e remover
+    - Prefixo do input muda dinamicamente: `R$` ou `%` conforme `commissionType`
+    - Texto-resumo dinâmico: *"Será lançado o valor de R$ X a cada atendimento que o profissional fizer para este pacote."*
+  - Select de profissional busca membros via `useApp().orgMembers` filtrando ativos da org da clínica
+
+### 4. Refatorar `ClinicPackagesPanel.tsx`
+Substituir os dois `<Dialog>` inline pelo novo `<PackageFormDialog mode="create"|"edit" pkg={...} />`. Remover state local duplicado.
+
+### 5. Persistência
+Após salvar pacote, sincronizar `package_commissions` (delete-all + insert atual) na mesma transação lógica via novo método `setPackageCommissions(packageId, commissions[])` no `AppContext`.
+
+---
+
+## Validação Zod (esquema resumido)
+
+```ts
+const commissionSchema = z.object({
+  memberId: z.string().uuid('Selecione um profissional'),
+  commissionValue: z.number().positive('Valor obrigatório'),
+});
+
+const packageSchema = z.object({
+  name: z.string().trim().min(1, 'Nome obrigatório').max(100),
+  description: z.string().max(500).optional(),
+  packageType: z.enum(['mensal','por_sessao','personalizado']),
+  sessionLimit: z.number().int().positive().optional(),
+  lancamentoTipo: z.enum(['valor_total','valor_procedimento']),
+  valorTotal: z.number().positive('Valor total obrigatório'),
+  accountName: z.string().trim().min(1, 'Conta obrigatória'),
+  commissionPaymentMethod: z.enum(['sem_comissao','integral','por_atendimento']),
+  commissionType: z.enum(['valor_fixo','porcentagem']),
+  commissionPerProfessional: z.boolean(),
+  commissions: z.array(commissionSchema),
+}).refine(d => d.commissionPaymentMethod === 'sem_comissao' || d.commissions.length > 0, {
+  message: 'Adicione ao menos um profissional',
+  path: ['commissions'],
+});
 ```
 
-| Sub-aba | Conteúdo |
-|---|---|
-| **Visão Geral** | Tudo do `ClinicFinancial` atual: KPIs do mês, navegação por mês, breakdown por paciente, serviços particulares, pagamento da clínica contratante, exports e dias específicos. |
-| **Pacientes** | A seção `PatientBillingManager` (gestão de cobranças mensais por paciente) extraída para destaque próprio com filtros pago/pendente. |
-| **Equipe** | O `TeamFinancialDashboard` (hoje em `/team`) renderizado aqui usando o `clinicId` atual + `organizationId` da clínica. Visível **somente quando** `clinic.type === 'clinica'` e o usuário é owner/admin da org (mesma regra usada hoje em Team). Inclui também acesso aos **planos de remuneração** dos terapeutas (gerenciados via `MemberRemunerationLinkModal` e CRUD de planos). |
-| **Pacotes** | O novo `ClinicPackagesPanel` com a UI de pacotes movida da aba antiga. |
+---
 
-### 3. Equipe continua acessível via `/team`
-Não removemos do menu Equipe — apenas duplicamos o acesso ao dashboard financeiro dentro da clínica para conveniência (compartilhando o mesmo componente, sem duplicar lógica).
+## Arquivos Afetados
 
-### 4. Permissões
-- Sub-aba **Equipe** só aparece para `clinic.type === 'clinica'` + `isOwner` ou role admin (espelhando a lógica de `Team.tsx`).
-- Sub-aba **Pacotes** sempre visível (já era pública para o owner da clínica hoje).
-- Visão Geral e Pacientes seguem regras atuais do `ClinicFinancial` (colaborador vê só os próprios atendimentos).
+**Novos:**
+- `src/components/clinics/PackageFormDialog.tsx`
+- Migration SQL (colunas + tabela `package_commissions` + RLS)
 
-## Detalhes técnicos
+**Editados:**
+- `src/types/index.ts` — interfaces
+- `src/contexts/AppContext.tsx` — mapeamento + CRUD de commissions
+- `src/components/clinics/ClinicPackagesPanel.tsx` — usar novo dialog
 
-### Arquivos a editar
-- `src/components/clinics/ClinicFinancial.tsx`
-  - Envolver o conteúdo atual em `<Tabs defaultValue="overview">` com os 4 cards-trigger no topo.
-  - O conteúdo atual vira o `<TabsContent value="overview">`.
-  - Importar e renderizar `PatientBillingManager`, `TeamFinancialDashboard`, `ClinicPackagesPanel` nas demais sub-abas.
-  - Para a sub-aba **Equipe**: buscar `organization_id` da clínica via `useClinicOrg` (já usado no arquivo) e passar para `TeamFinancialDashboard`. Renderizar fallback "Disponível apenas para clínicas com equipe" se não houver org.
+---
 
-### Arquivos a criar
-- `src/components/clinics/ClinicPackagesPanel.tsx`
-  - Recebe `clinicId`.
-  - Encapsula: lista de pacotes, dialogs de novo/editar, export CSV/PDF, `PackagePatientsModal`.
-  - Reaproveita `useApp()` para `clinicPackages`, `addPackage`, `updatePackage`, `deletePackage`.
-  - As funções `exportPackagesCSV` e `exportPackagesPDF` (hoje em `ClinicDetail.tsx`) são movidas para dentro deste componente.
+## Pontos a Confirmar
 
-### Arquivos a editar (remoção)
-- `src/pages/ClinicDetail.tsx`
-  - Remover `{ value: 'packages', ... }` do array de tabs (linha ~1347).
-  - Remover o `<TabsContent value="packages">` inteiro (linhas ~2054–2266) e o dialog de "Editar Pacote" (linhas ~2987+) — passam para `ClinicPackagesPanel`.
-  - Remover funções `exportPackagesCSV`/`exportPackagesPDF` e estados `packageDialogOpen`, `newPackage`, `editingPackage`, `viewingPackagePatients` (movidos para o novo componente).
-
-### Sub-aba "Equipe" — sem duplicar lógica
-- `TeamFinancialDashboard` já recebe `clinicId` + `organizationId` como props e renderiza tudo (membros, KPIs, breakdown, planos). Apenas reusamos.
-- Os planos de remuneração já são acessíveis a partir desse dashboard (via `MemberRemunerationLinkModal` aberto pelos membros).
-
-## Não faz parte deste plano
-- Não alterar lógica de cálculo financeiro.
-- Não alterar o módulo `/team` (apenas adicionar atalho na clínica).
-- Não mover Convênios (`health-plans`) — continua aba própria.
-- Não mover Frequência ou Serviços particulares para sub-abas separadas (Serviços já fica embutido na Visão Geral como hoje).
-
-## Resultado visual final na aba Financeiro
-
-```text
-[Cards de sub-abas]
- Visão Geral │ Pacientes │ Equipe │ Pacotes
-
-[Conteúdo da sub-aba ativa]
-```
-
-Mesma estética dos cards do topo de `ClinicDetail` (rounded-xl, border, bg-card, ícone colorido, ativo com ring-primary).
+1. **Conta/Caixa:** Usar campo de texto livre `accountName` (proposto) **ou** você quer que eu crie uma tabela `accounts` real com CRUD próprio? Criar tabela `accounts` aumentaria o escopo significativamente.
+2. **Lista de profissionais:** Usar `organization_members` (membros da equipe da org da clínica). OK?
+3. **Pacotes existentes:** Os pacotes já criados ficarão sem essas configs (campos opcionais/null). OK não migrar dados antigos?
