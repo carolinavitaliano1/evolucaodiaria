@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { DollarSign, Loader2, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase, CheckCircle2, Clock, XCircle, CalendarIcon, FileDown, CalendarDays, Receipt } from 'lucide-react';
+import { DollarSign, Loader2, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Percent, Users, Briefcase, CheckCircle2, Clock, XCircle, CalendarIcon, FileDown, CalendarDays, Receipt, Package, UserCheck } from 'lucide-react';
 import { PatientBillingManager } from './PatientBillingManager';
+import { ClinicPackagesPanel } from './ClinicPackagesPanel';
+import { TeamFinancialDashboard } from './TeamFinancialDashboard';
 import { calculatePatientMonthlyRevenue, calculateClinicMonthlyRevenue, getIndividualPerSessionValue, resolveAbsencePaymentType, shouldChargeAbsence, isBillableStatus, isClinicFixedMonthly, isClinicFixedDaily, type EvolutionLike } from '@/utils/financialHelpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1232,16 +1234,13 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     </div>
   );
 
-  const FinancialWithDays = (
+  // Sub-aba "Visão Geral" mantém os dois recortes internos (mensal + dias específicos)
+  const OverviewView = (
     <Tabs defaultValue="mensal" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3 h-11 bg-muted/50 p-1 rounded-xl mb-4">
+      <TabsList className="grid w-full grid-cols-2 h-11 bg-muted/50 p-1 rounded-xl mb-4">
         <TabsTrigger value="mensal" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
           <DollarSign className="w-4 h-4" />
           Faturamento
-        </TabsTrigger>
-        <TabsTrigger value="billing" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
-          <Receipt className="w-4 h-4" />
-          Cobranças
         </TabsTrigger>
         <TabsTrigger value="dias" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
           <CalendarDays className="w-4 h-4" />
@@ -1249,12 +1248,51 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         </TabsTrigger>
       </TabsList>
       <TabsContent value="mensal">{SoloView}</TabsContent>
-      <TabsContent value="billing">
-        <PatientBillingManager clinicId={clinicId} />
-      </TabsContent>
       <TabsContent value="dias">{DaysView}</TabsContent>
     </Tabs>
   );
 
-  return FinancialWithDays;
+  // Sub-abas em cards (mesmo estilo da barra de abas principal de ClinicDetail)
+  const showTeam = clinic.type === 'clinica' && (isOwner || !restrictToOwnRevenue);
+
+  const subTabs: { value: string; icon: React.ReactNode; label: string; color: string }[] = [
+    { value: 'overview', icon: <DollarSign className="w-5 h-5" />, label: 'Visão Geral', color: 'text-success' },
+    { value: 'patients', icon: <Users className="w-5 h-5" />, label: 'Cobranças', color: 'text-violet-500' },
+    ...(showTeam ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
+    { value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' },
+  ];
+
+  return (
+    <Tabs defaultValue="overview" className="space-y-4 lg:space-y-6">
+      <div className={cn(
+        'grid gap-2',
+        showTeam ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'
+      )}>
+        {subTabs.map(tab => (
+          <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
+            <TabsTrigger
+              value={tab.value}
+              className="flex flex-col items-center gap-1.5 w-full h-auto py-3 px-2 rounded-xl border border-border bg-card data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:ring-2 data-[state=active]:ring-primary/40 transition-all hover:bg-muted/50"
+            >
+              <span className={cn('flex items-center justify-center', tab.color)}>{tab.icon}</span>
+              <span className="text-xs font-medium text-foreground">{tab.label}</span>
+            </TabsTrigger>
+          </TabsList>
+        ))}
+      </div>
+
+      <TabsContent value="overview">{OverviewView}</TabsContent>
+      <TabsContent value="patients">
+        <PatientBillingManager clinicId={clinicId} />
+      </TabsContent>
+      {showTeam && (
+        <TabsContent value="team">
+          <TeamFinancialDashboard clinicId={clinicId} />
+        </TabsContent>
+      )}
+      <TabsContent value="packages">
+        <ClinicPackagesPanel clinicId={clinicId} />
+      </TabsContent>
+    </Tabs>
+  );
 }

@@ -1,62 +1,84 @@
-## Problema
+## Objetivo
 
-Hoje, a aba "Evoluções do Dia" (na clínica) e o histórico de evoluções no prontuário do paciente mostram apenas o profissional que assinou e o status, mas **não mostram o horário da sessão**. Quando o mesmo paciente é atendido várias vezes no mesmo dia (ex.: terapeuta A das 10:00–10:40, terapeuta B das 11:00–11:40, terapeuta A novamente das 12:40–13:20), fica impossível identificar a qual sessão cada evolução se refere.
+Unificar tudo que é financeiro da clínica dentro da aba **Financeiro** de `/clinics/:id`, organizado em **sub-abas em cards** no mesmo estilo visual da barra de abas principal da clínica (cards com ícone colorido + label).
 
-A tabela `evolutions` no banco não tem coluna de horário — só `date` + `user_id` (profissional). O horário da sessão só existe nos `patient_schedule_slots` (recorrência semanal: profissional + dia da semana + start_time/end_time).
+Hoje está espalhado:
+- **Financeiro** (aba atual) → receita da clínica, cobranças de pacientes, serviços particulares
+- **Pacotes** (aba separada) → CRUD de pacotes
+- **Equipe → Financeiro** (em `/team`) → remuneração da equipe e planos de remuneração
 
-## Solução
+## O que muda
 
-### 1. Persistir o slot/horário em cada evolução (banco)
-- Adicionar colunas em `evolutions`:
-  - `schedule_slot_id uuid` (FK lógica para `patient_schedule_slots.id`, nullable)
-  - `session_time time` (nullable — denormalizado para exibir mesmo se o slot for excluído depois)
+### 1. Aba "Pacotes" deixa de existir como aba principal
+- Removida do array de tabs em `ClinicDetail.tsx` (linha ~1347).
+- Todo o conteúdo (CRUD, dialogs de criar/editar, exportação CSV/PDF, modal de pacientes do pacote) é movido para um novo componente `ClinicPackagesPanel` e renderizado dentro de uma sub-aba do Financeiro.
 
-### 2. Ao criar a evolução, perguntar/inferir o horário
-No formulário "Nova Evolução" do prontuário (`PatientDetail.tsx` aba Evoluções):
-- Carregar `patient_schedule_slots` do paciente e filtrar pelos slots cujo `weekday` bate com o dia da semana de `evolutionDate` **e** cujo `member_id` pertence ao usuário logado (terapeuta atual).
-- Mostrar um seletor "Horário da sessão":
-  - Se houver **0 slots** correspondentes → input de horário livre (opcional).
-  - Se houver **1 slot** → preenche automaticamente (ex.: "10:00–10:40") com possibilidade de trocar.
-  - Se houver **2+ slots** (caso do exemplo: 10:00 e 12:40) → o terapeuta **escolhe obrigatoriamente** qual sessão está evoluindo. Esse é o cenário central do pedido.
-- Salvar `schedule_slot_id` + `session_time` junto com a evolução.
+### 2. Aba "Financeiro" passa a ter 4 sub-abas em cards
 
-Mesma lógica no `EditEvolutionDialog` para corrigir evoluções antigas.
+Layout idêntico ao grid de abas principais (cards com ícone colorido, borda, bg-card, hover):
 
-### 3. Exibir o horário em todos os pontos onde a evolução aparece
-- **`ClinicEvolutionsTab.tsx`** (Evoluções do Dia da clínica): badge com 🕐 horário ao lado do nome do profissional.
-- **`PatientDetail.tsx`** lista de evoluções no prontuário: mesma badge.
-- **`generateEvolutionPdf`** / exportações PDF: incluir "Horário: HH:MM–HH:MM" no cabeçalho.
-- **`AttendanceSheetPrint`** / lista de frequência: coluna horário.
+```text
+┌─────────────┬─────────────┬─────────────┬─────────────┐
+│  💰         │  👥         │  🧑‍⚕️       │  📦         │
+│ Visão Geral │  Pacientes  │   Equipe    │  Pacotes    │
+│ (success)   │  (violet)   │ (fuchsia)   │  (pink)     │
+└─────────────┴─────────────┴─────────────┴─────────────┘
+```
 
-### 4. Backfill (preencher horário em evoluções antigas)
-Para evoluções existentes sem `session_time`, mostrar um fallback inferido em runtime: cruzar `evo.user_id` + dia da semana de `evo.date` com os `patient_schedule_slots` do paciente. Se houver exatamente 1 match, mostrar entre parênteses como "(horário estimado: 10:00)". Se houver múltiplos, mostrar "Horário não registrado" e oferecer botão de editar.
+| Sub-aba | Conteúdo |
+|---|---|
+| **Visão Geral** | Tudo do `ClinicFinancial` atual: KPIs do mês, navegação por mês, breakdown por paciente, serviços particulares, pagamento da clínica contratante, exports e dias específicos. |
+| **Pacientes** | A seção `PatientBillingManager` (gestão de cobranças mensais por paciente) extraída para destaque próprio com filtros pago/pendente. |
+| **Equipe** | O `TeamFinancialDashboard` (hoje em `/team`) renderizado aqui usando o `clinicId` atual + `organizationId` da clínica. Visível **somente quando** `clinic.type === 'clinica'` e o usuário é owner/admin da org (mesma regra usada hoje em Team). Inclui também acesso aos **planos de remuneração** dos terapeutas (gerenciados via `MemberRemunerationLinkModal` e CRUD de planos). |
+| **Pacotes** | O novo `ClinicPackagesPanel` com a UI de pacotes movida da aba antiga. |
+
+### 3. Equipe continua acessível via `/team`
+Não removemos do menu Equipe — apenas duplicamos o acesso ao dashboard financeiro dentro da clínica para conveniência (compartilhando o mesmo componente, sem duplicar lógica).
+
+### 4. Permissões
+- Sub-aba **Equipe** só aparece para `clinic.type === 'clinica'` + `isOwner` ou role admin (espelhando a lógica de `Team.tsx`).
+- Sub-aba **Pacotes** sempre visível (já era pública para o owner da clínica hoje).
+- Visão Geral e Pacientes seguem regras atuais do `ClinicFinancial` (colaborador vê só os próprios atendimentos).
 
 ## Detalhes técnicos
 
-**Migração (schema only):**
-```sql
-ALTER TABLE evolutions
-  ADD COLUMN schedule_slot_id uuid,
-  ADD COLUMN session_time time;
-CREATE INDEX idx_evolutions_schedule_slot ON evolutions(schedule_slot_id);
+### Arquivos a editar
+- `src/components/clinics/ClinicFinancial.tsx`
+  - Envolver o conteúdo atual em `<Tabs defaultValue="overview">` com os 4 cards-trigger no topo.
+  - O conteúdo atual vira o `<TabsContent value="overview">`.
+  - Importar e renderizar `PatientBillingManager`, `TeamFinancialDashboard`, `ClinicPackagesPanel` nas demais sub-abas.
+  - Para a sub-aba **Equipe**: buscar `organization_id` da clínica via `useClinicOrg` (já usado no arquivo) e passar para `TeamFinancialDashboard`. Renderizar fallback "Disponível apenas para clínicas com equipe" se não houver org.
+
+### Arquivos a criar
+- `src/components/clinics/ClinicPackagesPanel.tsx`
+  - Recebe `clinicId`.
+  - Encapsula: lista de pacotes, dialogs de novo/editar, export CSV/PDF, `PackagePatientsModal`.
+  - Reaproveita `useApp()` para `clinicPackages`, `addPackage`, `updatePackage`, `deletePackage`.
+  - As funções `exportPackagesCSV` e `exportPackagesPDF` (hoje em `ClinicDetail.tsx`) são movidas para dentro deste componente.
+
+### Arquivos a editar (remoção)
+- `src/pages/ClinicDetail.tsx`
+  - Remover `{ value: 'packages', ... }` do array de tabs (linha ~1347).
+  - Remover o `<TabsContent value="packages">` inteiro (linhas ~2054–2266) e o dialog de "Editar Pacote" (linhas ~2987+) — passam para `ClinicPackagesPanel`.
+  - Remover funções `exportPackagesCSV`/`exportPackagesPDF` e estados `packageDialogOpen`, `newPackage`, `editingPackage`, `viewingPackagePatients` (movidos para o novo componente).
+
+### Sub-aba "Equipe" — sem duplicar lógica
+- `TeamFinancialDashboard` já recebe `clinicId` + `organizationId` como props e renderiza tudo (membros, KPIs, breakdown, planos). Apenas reusamos.
+- Os planos de remuneração já são acessíveis a partir desse dashboard (via `MemberRemunerationLinkModal` aberto pelos membros).
+
+## Não faz parte deste plano
+- Não alterar lógica de cálculo financeiro.
+- Não alterar o módulo `/team` (apenas adicionar atalho na clínica).
+- Não mover Convênios (`health-plans`) — continua aba própria.
+- Não mover Frequência ou Serviços particulares para sub-abas separadas (Serviços já fica embutido na Visão Geral como hoje).
+
+## Resultado visual final na aba Financeiro
+
+```text
+[Cards de sub-abas]
+ Visão Geral │ Pacientes │ Equipe │ Pacotes
+
+[Conteúdo da sub-aba ativa]
 ```
 
-**Tipo `Evolution`** (`src/types/index.ts`): adicionar `scheduleSlotId?: string` e `sessionTime?: string`.
-
-**`AppContext` `addEvolution` / `updateEvolution`**: mapear os novos campos para snake_case ao gravar.
-
-**Componente novo `SessionSlotSelector`** (reusável) que recebe `patientId`, `date`, `userId` (profissional) e devolve o slot/horário escolhido. Usado na criação e na edição.
-
-**Helper `inferSlotForEvolution(evolution, slots)`**: usado no fallback de exibição.
-
-## Arquivos afetados
-
-- `supabase/migrations/` — nova migração
-- `src/types/index.ts` — campos novos
-- `src/contexts/AppContext.tsx` — addEvolution/updateEvolution
-- `src/components/evolutions/SessionSlotSelector.tsx` — **novo**
-- `src/components/evolutions/EditEvolutionDialog.tsx`
-- `src/pages/PatientDetail.tsx` — formulário e lista de evoluções
-- `src/components/clinics/ClinicEvolutionsTab.tsx` — exibir horário
-- `src/utils/generateEvolutionPdf.ts` — incluir horário no PDF
-- `src/components/attendance/AttendanceSheetPrint.tsx` — coluna horário (se aplicável)
+Mesma estética dos cards do topo de `ClinicDetail` (rounded-xl, border, bg-card, ícone colorido, ativo com ring-primary).
