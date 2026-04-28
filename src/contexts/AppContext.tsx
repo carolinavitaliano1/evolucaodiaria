@@ -304,6 +304,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         clinicPackages = clinicPackages.filter(p => orgClinicIds!.has(p.clinicId));
       }
 
+      // Fetch commissions for all visible packages (best-effort, non-blocking on failure)
+      if (clinicPackages.length > 0) {
+        try {
+          const pkgIds = clinicPackages.map(p => p.id);
+          const { data: commData } = await supabase
+            .from('package_commissions')
+            .select('*')
+            .in('package_id', pkgIds);
+          if (commData) {
+            const byPkg = new Map<string, any[]>();
+            (commData as any[]).forEach(r => {
+              const arr = byPkg.get(r.package_id) || [];
+              arr.push({
+                id: r.id, packageId: r.package_id, memberId: r.member_id,
+                commissionValue: Number(r.commission_value),
+                commissionType: r.commission_type,
+              });
+              byPkg.set(r.package_id, arr);
+            });
+            clinicPackages = clinicPackages.map(p => ({ ...p, commissions: byPkg.get(p.id) || [] }));
+          }
+        } catch (e) {
+          console.warn('Failed to load package commissions', e);
+        }
+      }
+
       // Deduplicate by id
       const seenClinics = new Set<string>();
       const clinics = clinicsRaw.filter(c => { if (seenClinics.has(c.id)) return false; seenClinics.add(c.id); return true; });
