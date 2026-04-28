@@ -192,14 +192,7 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => setEditingPackage({
-                      id: pkg.id,
-                      name: pkg.name,
-                      description: pkg.description || '',
-                      price: pkg.price.toString(),
-                      packageType: (pkg.packageType || 'mensal') as PackageType,
-                      sessionLimit: pkg.sessionLimit?.toString() || '',
-                    })}
+                    onClick={() => setEditingPackage(pkg)}
                   >
                     <Edit className="w-3.5 h-3.5" />
                   </Button>
