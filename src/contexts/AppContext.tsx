@@ -844,9 +844,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
         description: pkg.description || null, price: pkg.price, is_active: pkg.isActive,
         package_type: pkg.packageType || 'mensal',
         session_limit: pkg.sessionLimit ?? null,
+        lancamento_tipo: pkg.lancamentoTipo || 'valor_total',
+        valor_total: pkg.valorTotal ?? null,
+        account_name: pkg.accountName ?? null,
+        commission_payment_method: pkg.commissionPaymentMethod || 'sem_comissao',
+        commission_type: pkg.commissionType || 'valor_fixo',
+        commission_per_professional: pkg.commissionPerProfessional ?? false,
       }).select().single();
       if (error) throw error;
-      setState(prev => ({ ...prev, clinicPackages: [mapPackage(data as Record<string, unknown>), ...prev.clinicPackages] }));
+      const created = mapPackage(data as Record<string, unknown>);
+      // Persist commissions if provided
+      if (pkg.commissions && pkg.commissions.length > 0) {
+        const rows = pkg.commissions.map(c => ({
+          package_id: created.id,
+          member_id: c.memberId,
+          commission_value: c.commissionValue,
+          commission_type: c.commissionType,
+        }));
+        const { data: cData, error: cError } = await supabase
+          .from('package_commissions').insert(rows).select();
+        if (!cError && cData) {
+          created.commissions = (cData as any[]).map(r => ({
+            id: r.id, packageId: r.package_id, memberId: r.member_id,
+            commissionValue: Number(r.commission_value),
+            commissionType: r.commission_type,
+          }));
+        }
+      }
+      setState(prev => ({ ...prev, clinicPackages: [created, ...prev.clinicPackages] }));
       toast.success('Pacote adicionado!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar pacote'); }
   }, [user]);
@@ -861,6 +886,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
       if (updates.packageType !== undefined) updateData.package_type = updates.packageType;
       if (updates.sessionLimit !== undefined) updateData.session_limit = updates.sessionLimit ?? null;
+      if (updates.lancamentoTipo !== undefined) updateData.lancamento_tipo = updates.lancamentoTipo;
+      if (updates.valorTotal !== undefined) updateData.valor_total = updates.valorTotal ?? null;
+      if (updates.accountName !== undefined) updateData.account_name = updates.accountName ?? null;
+      if (updates.commissionPaymentMethod !== undefined) updateData.commission_payment_method = updates.commissionPaymentMethod;
+      if (updates.commissionType !== undefined) updateData.commission_type = updates.commissionType;
+      if (updates.commissionPerProfessional !== undefined) updateData.commission_per_professional = updates.commissionPerProfessional;
       const { error } = await supabase.from('clinic_packages').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, clinicPackages: prev.clinicPackages.map(p => p.id === id ? { ...p, ...updates } : p) }));
@@ -875,6 +906,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState(prev => ({ ...prev, clinicPackages: prev.clinicPackages.filter(p => p.id !== id) }));
       toast.success('Pacote excluído!');
     } catch (error) { console.error(error); toast.error('Erro ao excluir pacote'); }
+  }, [user]);
+
+  const setPackageCommissions = useCallback(async (
+    packageId: string,
+    commissions: Array<{ memberId: string; commissionValue: number; commissionType: 'valor_fixo' | 'porcentagem' }>
+  ) => {
+    if (!user) return;
+    try {
+      // Replace strategy: delete-all then insert
+      const { error: delErr } = await supabase.from('package_commissions').delete().eq('package_id', packageId);
+      if (delErr) throw delErr;
+      let mapped: any[] = [];
+      if (commissions.length > 0) {
+        const rows = commissions.map(c => ({
+          package_id: packageId,
+          member_id: c.memberId,
+          commission_value: c.commissionValue,
+          commission_type: c.commissionType,
+        }));
+        const { data, error: insErr } = await supabase.from('package_commissions').insert(rows).select();
+        if (insErr) throw insErr;
+        mapped = (data || []).map((r: any) => ({
+          id: r.id, packageId: r.package_id, memberId: r.member_id,
+          commissionValue: Number(r.commission_value),
+          commissionType: r.commission_type,
+        }));
+      }
+      setState(prev => ({
+        ...prev,
+        clinicPackages: prev.clinicPackages.map(p => p.id === packageId ? { ...p, commissions: mapped } : p),
+      }));
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao salvar comissões');
+    }
   }, [user]);
 
   // === Attachments CRUD ===
