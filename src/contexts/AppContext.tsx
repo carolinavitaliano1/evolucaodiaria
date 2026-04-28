@@ -56,6 +56,10 @@ interface AppContextType extends AppState {
   updatePackage: (id: string, updates: Partial<ClinicPackage>) => void;
   deletePackage: (id: string) => void;
   getClinicPackages: (clinicId: string) => ClinicPackage[];
+  setPackageCommissions: (
+    packageId: string,
+    commissions: Array<{ memberId: string; commissionValue: number; commissionType: 'valor_fixo' | 'porcentagem' }>
+  ) => Promise<void>;
   loadEvolutionsForClinic: (clinicId: string) => Promise<void>;
   loadAppointmentsForClinic: (clinicId: string) => Promise<void>;
   loadAttachmentsForPatient: (patientId: string) => Promise<void>;
