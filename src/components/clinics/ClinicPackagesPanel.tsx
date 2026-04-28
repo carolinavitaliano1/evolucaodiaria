@@ -169,75 +169,9 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
           <Button size="sm" variant="outline" className="gap-2" onClick={exportPDF} disabled={clinicPackages.length === 0} title="Exportar lista em PDF">
             <FileText className="w-4 h-4" /> PDF
           </Button>
-          <Dialog open={packageDialogOpen} onOpenChange={setPackageDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
-                <Plus className="w-4 h-4" /> Novo Pacote
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>Novo Pacote</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div>
-                  <Label>Nome do Pacote *</Label>
-                  <Input value={newPackage.name} onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })} placeholder="Ex: Pacote Social, Pacote Premium" />
-                </div>
-                <div>
-                  <Label>Descrição</Label>
-                  <Textarea value={newPackage.description} onChange={(e) => setNewPackage({ ...newPackage, description: e.target.value })} placeholder="Detalhes do pacote..." rows={2} />
-                </div>
-                <div>
-                  <Label>Tipo de Pacote</Label>
-                  <Select value={newPackage.packageType} onValueChange={(v) => setNewPackage({ ...newPackage, packageType: v as PackageType, sessionLimit: '' })}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mensal">Mensal</SelectItem>
-                      <SelectItem value="por_sessao">Por Sessão</SelectItem>
-                      <SelectItem value="personalizado">Personalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {newPackage.packageType === 'personalizado' && (
-                  <div className="animate-in fade-in duration-200">
-                    <Label>Quantidade de Sessões</Label>
-                    <Input type="number" min={1} value={newPackage.sessionLimit} onChange={(e) => setNewPackage({ ...newPackage, sessionLimit: e.target.value })} placeholder="Ex: 8" className="mt-1" />
-                  </div>
-                )}
-                <div>
-                  <Label>Valor Total (R$) *</Label>
-                  <Input type="number" step="0.01" value={newPackage.price} onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })} placeholder="0.00" />
-                  {newPackage.packageType === 'personalizado' && newPackage.price && newPackage.sessionLimit && Number(newPackage.sessionLimit) > 0 && (
-                    <p className="mt-1.5 text-sm text-muted-foreground animate-in fade-in duration-200">
-                      Valor equivalente por sessão:{' '}
-                      <span className="font-semibold">
-                        {(parseFloat(newPackage.price) / parseInt(newPackage.sessionLimit)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                    </p>
-                  )}
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={!newPackage.name.trim() || !newPackage.price}
-                  onClick={() => {
-                    addPackage({
-                      userId: '',
-                      clinicId: clinic.id,
-                      name: newPackage.name,
-                      description: newPackage.description || undefined,
-                      price: parseFloat(newPackage.price),
-                      isActive: true,
-                      packageType: newPackage.packageType,
-                      sessionLimit: newPackage.packageType === 'personalizado' && newPackage.sessionLimit ? parseInt(newPackage.sessionLimit) : null,
-                    });
-                    setNewPackage({ name: '', description: '', price: '', packageType: 'mensal', sessionLimit: '' });
-                    setPackageDialogOpen(false);
-                  }}
-                >
-                  Criar Pacote
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
+            <Plus className="w-4 h-4" /> Novo Pacote
+          </Button>
         </div>
       </div>
 
