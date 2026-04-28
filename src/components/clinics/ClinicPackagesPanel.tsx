@@ -3,14 +3,11 @@ import { Package, Plus, Edit, Trash2, Users, Download, FileText } from 'lucide-r
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { PackagePatientsModal } from '@/components/clinics/PackagePatientsModal';
+import { PackageFormDialog } from '@/components/clinics/PackageFormDialog';
+import { ClinicPackage } from '@/types';
 
 interface Props {
   clinicId: string;
@@ -19,13 +16,12 @@ interface Props {
 type PackageType = 'mensal' | 'por_sessao' | 'personalizado';
 
 export function ClinicPackagesPanel({ clinicId }: Props) {
-  const { clinics, patients, getClinicPackages, addPackage, updatePackage, deletePackage } = useApp();
+  const { clinics, patients, getClinicPackages, deletePackage } = useApp();
   const clinic = clinics.find(c => c.id === clinicId);
   const clinicPackages = getClinicPackages(clinicId);
 
-  const [packageDialogOpen, setPackageDialogOpen] = useState(false);
-  const [newPackage, setNewPackage] = useState({ name: '', description: '', price: '', packageType: 'mensal' as PackageType, sessionLimit: '' });
-  const [editingPackage, setEditingPackage] = useState<{ id: string; name: string; description: string; price: string; packageType: PackageType; sessionLimit: string } | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<ClinicPackage | null>(null);
   const [viewingPackagePatients, setViewingPackagePatients] = useState<any | null>(null);
 
   const buildExportData = () =>
