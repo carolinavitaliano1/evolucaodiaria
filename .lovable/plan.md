@@ -1,113 +1,99 @@
 ## Objetivo
-Adicionar uma seção avançada **"Financeiro e Comissionamento"** ao modal de criação/edição de Pacotes da Clínica (`ClinicPackagesPanel.tsx`), com regras flexíveis de lançamento financeiro, comissões e atribuição de profissionais (suportando múltiplos profissionais com regras distintas).
+
+Garantir que o campo **"Tipo de lançamento"** do pacote (já existente no `PackageFormDialog`) controle de fato **como o valor aparece no Financeiro**, em todos os tipos (Consultório, Contratante e Clínica), espelhando o comportamento de planos como o Psicoativamente:
+
+- **Valor total do pacote** → entra no Financeiro **uma vez só**, na contratação/início do pacote, pelo valor cheio.
+- **Valor de cada procedimento (sessão)** → o valor total é **fracionado por sessão**, e cada sessão concluída debita/lança proporcionalmente conforme as evoluções vão sendo registradas (igual ao modelo "recebo conforme faço as sessões").
 
 ---
 
-## Alterações no Banco de Dados
+## Situação atual
 
-### 1. Adicionar colunas em `clinic_packages`
-- `lancamento_tipo` (text) — `'valor_total'` | `'valor_procedimento'` (default `'valor_total'`)
-- `valor_total` (numeric) — valor financeiro do lançamento
-- `account_id` (uuid) — FK lógica para a conta/caixa de destino
-- `commission_payment_method` (text) — `'sem_comissao'` | `'integral'` | `'por_atendimento'` (default `'sem_comissao'`)
-- `commission_type` (text) — `'valor_fixo'` | `'porcentagem'` (default `'valor_fixo'`)
-- `commission_per_professional` (boolean) — toggle "comissão diferente por profissional" (default `false`)
-
-### 2. Criar tabela auxiliar `package_commissions`
-Para suportar múltiplos profissionais com regras distintas:
-- `id`, `package_id` (FK clinic_packages), `member_id` (FK organization_members), `commission_value` (numeric), `commission_type` (text — herda ou sobrescreve), `created_at`, `updated_at`
-- RLS: dono do pacote (via `clinic_packages.user_id`) e membros da org da clínica podem ler; apenas dono/admins podem escrever.
-
-### 3. Reusar `accounts` (caixa)
-Verificar se já existe tabela de contas/caixas no projeto. Se não existir, usar um `Input` simples de texto livre `account_name` (campo string) em vez de FK — para evitar criar uma feature inteira nova de "contas". **Decisão proposta:** usar campo texto `account_name` por simplicidade, marcando como obrigatório no form.
+1. O campo `lancamentoTipo` (`valor_total` | `valor_procedimento`) **já existe** na tabela `clinic_packages` e no `PackageFormDialog`, e já aparece para Clínica, Consultório e Contratante (a restrição que fizemos antes foi apenas para a seção de **Comissão**, não para Lançamento).
+2. **Porém**, hoje o Financeiro (`ClinicFinancial.tsx`, `Financial.tsx`, `PatientBillingManager.tsx`, `get_patient_monthly_revenue` no banco) ainda calcula a receita do paciente como se sempre fosse "por sessão" (valor por evolução presente/reposição/falta_remunerada). O campo `lancamentoTipo` é **persistido mas ignorado** na hora de gerar a receita.
+3. Resultado: a escolha do usuário no modal não tem efeito no Financeiro — exatamente o que ele está reportando.
 
 ---
 
-## Alterações no Frontend
+## O que muda
 
-### 1. `src/types/index.ts`
-Adicionar campos à interface `ClinicPackage`:
-```ts
-lancamentoTipo?: 'valor_total' | 'valor_procedimento';
-valorTotal?: number;
-accountName?: string;
-commissionPaymentMethod?: 'sem_comissao' | 'integral' | 'por_atendimento';
-commissionType?: 'valor_fixo' | 'porcentagem';
-commissionPerProfessional?: boolean;
-commissions?: PackageCommission[];
-```
-Nova interface `PackageCommission { id, packageId, memberId, commissionValue, commissionType }`.
+### A) Regras de negócio (espelhamento no Financeiro)
 
-### 2. `src/contexts/AppContext.tsx`
-Mapear novas colunas snake_case ↔ camelCase em `addPackage`/`updatePackage`. Carregar `package_commissions` junto com pacotes.
+Para um paciente vinculado a um pacote (`patients.package_id` aponta para `clinic_packages.id`):
 
-### 3. Novo componente `src/components/clinics/PackageFormDialog.tsx`
-Extrair os modais "Novo Pacote" e "Editar Pacote" (atualmente duplicados em `ClinicPackagesPanel.tsx`) para um único componente reutilizável com:
+**1. `lancamentoTipo = 'valor_total'`**
+- Lança no Financeiro **um único valor** (= `valorTotal` do pacote) no mês/data da **contratação do pacote** (usar `patients.contract_start_date`, ou data de associação do pacote ao paciente).
+- Sessões posteriores **não geram receita adicional** (já está paga "à vista" naquele lançamento único).
+- Mostra na tela do Financeiro como linha: `"Pacote {nome} (valor total)"` com o valor cheio.
 
-- **React Hook Form + Zod** para validação
-- Schema Zod garantindo: `name`, `valorTotal`, `accountName` obrigatórios; comissões com `memberId` + `commissionValue` quando `commissionPaymentMethod !== 'sem_comissao'`
-- **Layout em Cards** (shadcn `Card`) agrupando:
-  - Card 1: Dados básicos (nome, descrição, tipo, sessões)
-  - Card 2: **Lançamento Financeiro** — RadioGroup (valor total / valor procedimento), Input "Valor total (R$)*", Input "Conta*"
-  - Card 3: **Comissão** — Select forma de pagamento (com texto de ajuda "Um lançamento de comissão será gerado a cada atendimento" se `por_atendimento`), RadioGroup tipo (fixo/%), Switch "comissão diferente por profissional"
-  - Card 4: **Profissionais** — bloco dinâmico (repeater via `useFieldArray`):
-    - Se toggle OFF → 1 bloco fixo (Profissional + Comissão)
-    - Se toggle ON → lista com botão "+ Adicionar outro profissional" e remover
-    - Prefixo do input muda dinamicamente: `R$` ou `%` conforme `commissionType`
-    - Texto-resumo dinâmico: *"Será lançado o valor de R$ X a cada atendimento que o profissional fizer para este pacote."*
-  - Select de profissional busca membros via `useApp().orgMembers` filtrando ativos da org da clínica
+**2. `lancamentoTipo = 'valor_procedimento'`**
+- Calcula **valor por sessão** = `valorTotal / sessionLimit` (quando `packageType = 'personalizado'` com limite definido) **ou** = `valorTotal` (quando `packageType = 'por_sessao'`, já é unitário) **ou** = `valorTotal / 4` como fallback para `'mensal'` (4 semanas).
+- Cada **evolução elegível** (`presente`, `reposicao`, `falta_remunerada`, `feriado_remunerado` — seguindo a regra já existente em [Session Counting](mem://financial/session-counting-rules)) lança esse valor por sessão no mês daquela evolução.
+- Mostra na tela do Financeiro como múltiplas linhas: `"Pacote {nome} — sessão {data}"` com o valor fracionado, somando até o total conforme as sessões avançam.
 
-### 4. Refatorar `ClinicPackagesPanel.tsx`
-Substituir os dois `<Dialog>` inline pelo novo `<PackageFormDialog mode="create"|"edit" pkg={...} />`. Remover state local duplicado.
+**3. Pacotes consumidos (saldo)**
+- Quando o paciente atinge `sessionLimit` sessões pagas pelo pacote, parar de lançar mais receita pelo pacote nesse "ciclo". (Renovação do pacote é fora deste escopo — manter comportamento atual.)
 
-### 5. Persistência
-Após salvar pacote, sincronizar `package_commissions` (delete-all + insert atual) na mesma transação lógica via novo método `setPackageCommissions(packageId, commissions[])` no `AppContext`.
+> Pacientes **sem pacote** continuam usando o fluxo atual (`payment_value` + `payment_type` em `patients`). Nada muda para eles.
 
----
+### B) Camada de dados/backend
 
-## Validação Zod (esquema resumido)
+Atualizar a função SQL `get_patient_monthly_revenue(_patient_id, _month, _year)` para:
 
-```ts
-const commissionSchema = z.object({
-  memberId: z.string().uuid('Selecione um profissional'),
-  commissionValue: z.number().positive('Valor obrigatório'),
-});
+1. Antes do loop de evoluções, verificar se o paciente tem `package_id`. Se sim, ler `lancamento_tipo`, `valor_total`, `session_limit`, `package_type` do `clinic_packages`.
+2. Se `lancamento_tipo = 'valor_total'`:
+   - Retornar `valor_total` **apenas se** `EXTRACT(MONTH/YEAR FROM patients.contract_start_date) = _month/_year`.
+   - Caso contrário, retornar `0` para receita do pacote (mas continuar somando `private_appointments` / serviços avulsos como hoje).
+3. Se `lancamento_tipo = 'valor_procedimento'`:
+   - Calcular `per_session_value` conforme regra acima.
+   - Substituir, no loop de evoluções, o uso de `_payment_value` por `per_session_value` para sessões elegíveis (apenas quando o paciente tem pacote ativo).
+   - Respeitar o teto de `session_limit` (não lançar além do total contratado por ciclo).
+4. Manter intacto o fluxo de grupos (`group_id`) e `private_appointments`.
 
-const packageSchema = z.object({
-  name: z.string().trim().min(1, 'Nome obrigatório').max(100),
-  description: z.string().max(500).optional(),
-  packageType: z.enum(['mensal','por_sessao','personalizado']),
-  sessionLimit: z.number().int().positive().optional(),
-  lancamentoTipo: z.enum(['valor_total','valor_procedimento']),
-  valorTotal: z.number().positive('Valor total obrigatório'),
-  accountName: z.string().trim().min(1, 'Conta obrigatória'),
-  commissionPaymentMethod: z.enum(['sem_comissao','integral','por_atendimento']),
-  commissionType: z.enum(['valor_fixo','porcentagem']),
-  commissionPerProfessional: z.boolean(),
-  commissions: z.array(commissionSchema),
-}).refine(d => d.commissionPaymentMethod === 'sem_comissao' || d.commissions.length > 0, {
-  message: 'Adicione ao menos um profissional',
-  path: ['commissions'],
-});
-```
+### C) Camada de frontend
+
+1. **`src/utils/financialHelpers.ts`** (e/ou helpers usados em `PatientBillingManager.tsx`, `ClinicFinancial.tsx`, `Financial.tsx`, `Reports.tsx`):
+   - Criar/atualizar função `computePatientPackageRevenue(patient, pkg, evolutionsOfPeriod, contractStartDate)` que aplica a mesma regra do SQL no cliente, para que as telas que calculam receita em JS (sem chamar a RPC) também reflitam o `lancamentoTipo`.
+   - Reutilizar este helper em `MyCommissions`, relatórios e dashboards de receita.
+
+2. **`PatientBillingManager.tsx`**: ao listar lançamentos do mês, gerar:
+   - 1 linha "Pacote — Valor total" (mês de contratação) **ou**
+   - N linhas "Pacote — Sessão {data}" (uma por evolução elegível).
+
+3. **`ClinicFinancial.tsx` / `Financial.tsx` / `Reports.tsx`**: usar o novo helper para o total de receita por paciente/clínica/período.
+
+4. **`PackageFormDialog.tsx`**: já está pronto (campo existe). Apenas adicionar um pequeno texto de ajuda abaixo do RadioGroup explicando o efeito financeiro:
+   - "Valor total": *"O valor cheio do pacote será lançado no Financeiro na data de contratação."*
+   - "Valor de cada procedimento": *"O valor será fracionado e lançado conforme cada sessão for concluída."*
+
+### D) Comissões (consistência)
+
+A regra de comissão **`por_atendimento`** (que só existe para Clínica) continua disparando a cada evolução, independente do `lancamentoTipo`. Já a comissão **`integral`** (também só Clínica) deve seguir o mesmo princípio: lançar uma única vez quando o pacote for "ativado" no mês de contratação. Isso já é tratado fora desse fluxo de receita do paciente, então **não faremos mudança de comissão neste plano** — apenas garantimos que a escolha do `lancamentoTipo` não conflita.
 
 ---
 
-## Arquivos Afetados
+## Arquivos afetados
 
-**Novos:**
-- `src/components/clinics/PackageFormDialog.tsx`
-- Migration SQL (colunas + tabela `package_commissions` + RLS)
+**Migration nova:**
+- Atualizar a função `public.get_patient_monthly_revenue` (CREATE OR REPLACE) para considerar `clinic_packages.lancamento_tipo`, `valor_total`, `session_limit` e `patients.contract_start_date`.
 
 **Editados:**
-- `src/types/index.ts` — interfaces
-- `src/contexts/AppContext.tsx` — mapeamento + CRUD de commissions
-- `src/components/clinics/ClinicPackagesPanel.tsx` — usar novo dialog
+- `src/utils/financialHelpers.ts` — novo helper `computePatientPackageRevenue` + integração nos cálculos.
+- `src/components/clinics/PatientBillingManager.tsx` — gerar linhas conforme `lancamentoTipo`.
+- `src/components/clinics/ClinicFinancial.tsx` — usar helper.
+- `src/pages/Financial.tsx` e `src/pages/Reports.tsx` — usar helper.
+- `src/components/clinics/PackageFormDialog.tsx` — texto de ajuda explicativo abaixo do radio "Tipo de lançamento".
+
+**Não alterados:**
+- Tabela `clinic_packages` (colunas já existem).
+- `PackageFormDialog` no que diz respeito à seção Comissão (segue restrita a Clínica).
+- Receita de pacientes sem pacote (segue inalterada).
+- Receita de grupos (segue inalterada).
 
 ---
 
-## Pontos a Confirmar
+## Pontos a confirmar antes de implementar
 
-1. **Conta/Caixa:** Usar campo de texto livre `accountName` (proposto) **ou** você quer que eu crie uma tabela `accounts` real com CRUD próprio? Criar tabela `accounts` aumentaria o escopo significativamente.
-2. **Lista de profissionais:** Usar `organization_members` (membros da equipe da org da clínica). OK?
-3. **Pacotes existentes:** Os pacotes já criados ficarão sem essas configs (campos opcionais/null). OK não migrar dados antigos?
+1. **Mês de lançamento do "valor_total"**: usar `patients.contract_start_date` como referência. Se o paciente não tiver `contract_start_date`, usar a data em que o `package_id` foi atribuído (criação do paciente). OK?
+2. **Pacote `mensal` com `lancamentoTipo = valor_procedimento`**: dividir por **4** (semanas) ou pelo **número real de sessões agendadas no mês** (via `schedule_by_day`)? Proponho **dividir pela quantidade real de sessões agendadas no mês** — mais fiel ao consumo real. Confirma?
+3. **Renovação/ciclo do pacote**: por enquanto, considerar que o pacote roda em **ciclo único** a partir de `contract_start_date`. Quando atingir `sessionLimit`, não lança mais. Renovação automática fica para outro escopo. OK?
