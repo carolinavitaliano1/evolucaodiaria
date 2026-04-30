@@ -48,6 +48,8 @@ export interface PatientLike {
   weekdays?: string[] | null;
   scheduleByDay?: Record<string, any> | null;
   packageId?: string | null;
+  /** ISO timestamp — quando o pacote foi associado a este paciente. */
+  packageAssignedAt?: string | null;
 }
 
 export interface ClinicLike {
@@ -79,6 +81,10 @@ export interface PackageLike {
   price: number;
   packageType?: 'mensal' | 'por_sessao' | 'personalizado' | string | null;
   sessionLimit?: number | null;
+  /** Como o pacote é lançado no Financeiro. */
+  lancamentoTipo?: 'valor_total' | 'valor_procedimento' | string | null;
+  /** Valor total contratado do pacote (preferido sobre `price` quando existir). */
+  valorTotal?: number | null;
 }
 
 export interface EvolutionLike {
@@ -321,6 +327,117 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   }
 
   const pkg = patient.packageId ? packages.find(p => p.id === patient.packageId) ?? null : null;
+
+  // ============================================================================
+  //  Regra "Tipo de lançamento" do pacote (espelha get_patient_monthly_revenue)
+  // ============================================================================
+  if (pkg && pkg.lancamentoTipo) {
+    const pkgTotal = (pkg.valorTotal ?? pkg.price ?? 0) as number;
+
+    // A) valor_total → lança 1× no mês de associação
+    if (pkg.lancamentoTipo === 'valor_total') {
+      let isAssignedMonth = false;
+      if (patient.packageAssignedAt) {
+        const assigned = new Date(patient.packageAssignedAt);
+        isAssignedMonth =
+          assigned.getFullYear() === year && assigned.getMonth() + 1 === month;
+      }
+      const total = isAssignedMonth ? pkgTotal : 0;
+      return {
+        individualRevenue: total,
+        groupRevenue: 0,
+        chargedAbsenceRevenue: 0,
+        total,
+        loss: 0,
+        details: {
+          billableIndividual: 0,
+          billableGroup: 0,
+          chargedAbsences: 0,
+          uncoveredAbsences: 0,
+          perSessionValue: 0,
+        },
+      };
+    }
+
+    // B) valor_procedimento → fraciona por sessão
+    if (pkg.lancamentoTipo === 'valor_procedimento') {
+      // Calcula valor por sessão conforme tipo do pacote
+      let perSessionPkg = 0;
+      if (pkg.packageType === 'por_sessao') {
+        perSessionPkg = pkgTotal;
+      } else if (pkg.packageType === 'personalizado' && (pkg.sessionLimit ?? 0) > 0) {
+        perSessionPkg = pkgTotal / (pkg.sessionLimit as number);
+      } else if (pkg.packageType === 'mensal') {
+        // dividir pelo nº real de sessões agendadas no mês
+        const weekdays = getPatientWeekdays(patient);
+        const dyn = getDynamicSessionValue(pkgTotal, weekdays, month, year);
+        perSessionPkg = dyn.occurrences > 0 ? dyn.perSession : 0;
+      }
+
+      const billable = evolutions.filter(e => isBillableStatus(e.attendanceStatus));
+      const billableGroup = billable.filter(e => e.groupId);
+      const billableIndividual = billable.filter(e => !e.groupId);
+
+      // Receita de grupos segue regra antiga
+      const groupValue = (groupId?: string | null) =>
+        getGroupSessionValue({
+          groupId: groupId ?? undefined,
+          patientId: patient.id,
+          groupBillingMap,
+          memberPaymentMap,
+          packages: packages.map(p => ({ id: p.id, price: p.price, sessionLimit: p.sessionLimit })),
+        });
+      const groupRevenue = billableGroup.reduce((sum, e) => sum + groupValue(e.groupId), 0);
+
+      // Para 'personalizado' (ciclo único): respeitar teto de sessionLimit
+      // contando sessões individuais já consumidas DESDE packageAssignedAt.
+      let countablePerSession = billableIndividual.length;
+      if (pkg.packageType === 'personalizado' && (pkg.sessionLimit ?? 0) > 0) {
+        const limit = pkg.sessionLimit as number;
+        // Sessões individuais já consumidas antes deste mês, dentro do ciclo.
+        const monthStart = new Date(year, month - 1, 1);
+        const usedBeforeMonth = billableIndividual.length === 0
+          ? 0
+          : evolutions.filter(e => {
+              if (e.groupId) return false;
+              if (!isBillableStatus(e.attendanceStatus)) return false;
+              const d = new Date(`${e.date}T12:00:00`);
+              if (patient.packageAssignedAt && d < new Date(patient.packageAssignedAt)) return false;
+              return d < monthStart;
+            }).length;
+        const remaining = Math.max(0, limit - usedBeforeMonth);
+        countablePerSession = Math.min(billableIndividual.length, remaining);
+      }
+
+      const individualRevenue = countablePerSession * perSessionPkg;
+
+      // Faltas cobráveis (mesma regra da clínica)
+      const absences = evolutions.filter(e => e.attendanceStatus === 'falta');
+      const chargedAbsences = absences.filter(e => shouldChargeAbsence(e, clinic));
+      const uncoveredAbsences = absences.length - chargedAbsences.length;
+      const chargedAbsenceRevenue = chargedAbsences.reduce((sum, e) => {
+        if (e.groupId) return sum + groupValue(e.groupId);
+        return sum + perSessionPkg;
+      }, 0);
+      const loss = uncoveredAbsences * perSessionPkg;
+
+      const total = individualRevenue + groupRevenue + chargedAbsenceRevenue;
+      return {
+        individualRevenue,
+        groupRevenue,
+        chargedAbsenceRevenue,
+        total,
+        loss,
+        details: {
+          billableIndividual: countablePerSession,
+          billableGroup: billableGroup.length,
+          chargedAbsences: chargedAbsences.length,
+          uncoveredAbsences,
+          perSessionValue: perSessionPkg,
+        },
+      };
+    }
+  }
 
   // Helper: valor de uma sessão de grupo para este paciente
   const groupValue = (groupId?: string | null) =>

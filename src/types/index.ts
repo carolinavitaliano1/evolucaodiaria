@@ -67,6 +67,8 @@ export interface Patient {
   departureReason?: string;
   avatarUrl?: string;
   createdAt: string;
+  /** Data em que o pacote foi associado/trocado (preenchida automaticamente por trigger). */
+  packageAssignedAt?: string;
 }
 
 export interface ClinicPackage {

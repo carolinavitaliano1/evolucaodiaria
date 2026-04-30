@@ -343,6 +343,11 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
                     </RadioGroup>
                   )}
                 />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {watch('lancamentoTipo') === 'valor_total'
+                    ? 'O valor cheio do pacote será lançado no Financeiro uma única vez, no mês em que o pacote for associado ao paciente.'
+                    : 'O valor será fracionado e lançado no Financeiro conforme cada sessão for sendo concluída.'}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

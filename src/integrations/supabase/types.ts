@@ -2124,6 +2124,7 @@ export type Database = {
           is_virtual: boolean
           name: string
           observations: string | null
+          package_assigned_at: string | null
           package_id: string | null
           payment_due_day: number | null
           payment_info: string | null
@@ -2176,6 +2177,7 @@ export type Database = {
           is_virtual?: boolean
           name: string
           observations?: string | null
+          package_assigned_at?: string | null
           package_id?: string | null
           payment_due_day?: number | null
           payment_info?: string | null
@@ -2228,6 +2230,7 @@ export type Database = {
           is_virtual?: boolean
           name?: string
           observations?: string | null
+          package_assigned_at?: string | null
           package_id?: string | null
           payment_due_day?: number | null
           payment_info?: string | null

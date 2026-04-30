@@ -124,6 +124,7 @@ function mapPatient(p: Record<string, unknown>): Patient {
     departureDate: (p.departure_date as string) || undefined,
     departureReason: (p.departure_reason as string) || undefined,
     avatarUrl: (p.avatar_url as string) || undefined, createdAt: p.created_at as string,
+    packageAssignedAt: (p.package_assigned_at as string) || undefined,
   } as any;
 }
 
