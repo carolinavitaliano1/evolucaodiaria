@@ -76,6 +76,9 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
   const { clinics, addPackage, updatePackage, setPackageCommissions } = useApp();
   const clinic = clinics.find((c) => c.id === clinicId);
   const isEdit = !!pkg;
+  // Comissão só se aplica a Clínicas (modo multi-profissional).
+  // Consultório/Contratante não usam comissionamento de pacotes.
+  const showCommission = clinic?.type === 'clinica';
 
   const [members, setMembers] = useState<Member[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -164,8 +167,10 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     try {
+      // Força sem comissão para tipos que não usam comissionamento
+      const effectiveMethod = showCommission ? values.commissionPaymentMethod : 'sem_comissao';
       const commissionsPayload =
-        values.commissionPaymentMethod === 'sem_comissao'
+        effectiveMethod === 'sem_comissao'
           ? []
           : values.commissions.map((c) => ({
               memberId: c.memberId,
@@ -186,7 +191,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
           lancamentoTipo: values.lancamentoTipo,
           valorTotal: values.valorTotal,
           accountName: values.accountName,
-          commissionPaymentMethod: values.commissionPaymentMethod,
+          commissionPaymentMethod: effectiveMethod,
           commissionType: values.commissionType,
           commissionPerProfessional: values.commissionPerProfessional,
         });
@@ -208,7 +213,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
           lancamentoTipo: values.lancamentoTipo,
           valorTotal: values.valorTotal,
           accountName: values.accountName,
-          commissionPaymentMethod: values.commissionPaymentMethod,
+          commissionPaymentMethod: effectiveMethod,
           commissionType: values.commissionType,
           commissionPerProfessional: values.commissionPerProfessional,
           commissions: commissionsPayload.map((c) => ({
@@ -381,6 +386,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
           </Card>
 
           {/* ============ Card 3: Comissão ============ */}
+          {showCommission && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -463,9 +469,10 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* ============ Card 4: Profissionais ============ */}
-          {watchedMethod !== 'sem_comissao' && (
+          {showCommission && watchedMethod !== 'sem_comissao' && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
