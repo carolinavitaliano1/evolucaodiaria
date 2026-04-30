@@ -386,6 +386,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
           </Card>
 
           {/* ============ Card 3: Comissão ============ */}
+          {showCommission && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -468,9 +469,10 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* ============ Card 4: Profissionais ============ */}
-          {watchedMethod !== 'sem_comissao' && (
+          {showCommission && watchedMethod !== 'sem_comissao' && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
