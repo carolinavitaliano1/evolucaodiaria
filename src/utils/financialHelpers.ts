@@ -48,6 +48,8 @@ export interface PatientLike {
   weekdays?: string[] | null;
   scheduleByDay?: Record<string, any> | null;
   packageId?: string | null;
+  /** ISO timestamp — quando o pacote foi associado a este paciente. */
+  packageAssignedAt?: string | null;
 }
 
 export interface ClinicLike {
@@ -79,6 +81,10 @@ export interface PackageLike {
   price: number;
   packageType?: 'mensal' | 'por_sessao' | 'personalizado' | string | null;
   sessionLimit?: number | null;
+  /** Como o pacote é lançado no Financeiro. */
+  lancamentoTipo?: 'valor_total' | 'valor_procedimento' | string | null;
+  /** Valor total contratado do pacote (preferido sobre `price` quando existir). */
+  valorTotal?: number | null;
 }
 
 export interface EvolutionLike {
