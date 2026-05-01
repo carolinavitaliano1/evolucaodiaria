@@ -161,7 +161,7 @@ export function buildGroupedAttendanceRows(
       return e.patientId === patient.id && d.getMonth() === month && d.getFullYear() === year;
     });
 
-    const expectedDates = getExpectedDates(patient.weekdays, month, year);
+    const expectedDates = getExpectedDates(patient, month, year);
     const sessions: SessionEntry[] = [];
 
     // Add filled sessions from evolutions
