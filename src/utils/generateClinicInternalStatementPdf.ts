@@ -419,7 +419,7 @@ export async function generateClinicInternalStatementPdf(
         });
       });
 
-      if (breakdown.loss > 0) {
+      if (pkg?.lancamento_tipo !== 'valor_procedimento' && breakdown.loss > 0) {
         rows.push({
           date: `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
           type: 'Dedução',
