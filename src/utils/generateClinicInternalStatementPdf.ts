@@ -141,7 +141,7 @@ export async function generateClinicInternalStatementPdf(
       .eq('clinic_id', clinicId),
     supabase
       .from('evolutions')
-      .select('id, date, patient_id, attendance_status')
+      .select('id, date, patient_id, attendance_status, confirmed_attendance')
       .eq('clinic_id', clinicId)
       .gte('date', startStr)
       .lte('date', endStr),
