@@ -1780,19 +1780,7 @@ export default function PatientDetail() {
       const tIndividualBillable = tBillableEvos.filter(e => !e.groupId);
       const tIndividualBillableCount = tIndividualBillable.length;
       const tIndividualUniqueDays = new Set(tIndividualBillable.map(e => e.date)).size;
-      const tRevenue = (isPackageMensal || isFixoMensal)
-        ? (() => {
-            const dynVal = getDynamicSessionValue(paymentValue, patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []), targetMonth.getMonth(), targetMonth.getFullYear());
-            if (dynVal) {
-              const deductible = targetEvolutions.filter(e => e.attendanceStatus === 'falta').length;
-              const ded = calculateMensalRevenueWithDeductions(paymentValue, deductible, dynVal.occurrences);
-              return ded.finalRevenue + tGroupRevenue;
-            }
-            return paymentValue + tGroupRevenue;
-          })()
-        : isFixoDiario
-          ? tIndividualUniqueDays * perSessionValue + tGroupRevenue
-          : tIndividualBillableCount * perSessionValue + tGroupRevenue;
+      const tRevenue = calculatePatientRevenueForMonth(targetEvolutions, targetMonth);
       const tRegistros = targetEvolutions.length;
       const tAttendanceRate = tRegistros > 0 ? Math.round(((tPresent + tReposicao) / tRegistros) * 100) : 0;
 
