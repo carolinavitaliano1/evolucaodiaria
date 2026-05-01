@@ -67,6 +67,9 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
     weekdays: patient.weekdays,
     scheduleTime: patient.scheduleTime,
     scheduleByDay: patient.scheduleByDay as any,
+    createdAt: patient.createdAt,
+    departureDate: patient.departureDate,
+    isArchived: patient.isArchived,
   }), [patient]);
 
   const groupedRows = useMemo(() =>

@@ -3,7 +3,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
+import { getDynamicSessionValue } from '@/utils/dateHelpers';
+import { calculatePatientMonthlyRevenue } from '@/utils/financialHelpers';
 
 interface PatientLite {
   id: string;
@@ -48,6 +49,7 @@ interface EvolutionRow {
   date: string;
   patient_id: string;
   attendance_status: string;
+  confirmed_attendance?: boolean | null;
 }
 
 interface PaymentRecord {
@@ -64,6 +66,8 @@ interface PatientFull {
   payment_value: number | null;
   weekdays: string[] | null;
   package_id: string | null;
+  package_assigned_at: string | null;
+  departure_date: string | null;
 }
 
 interface PackageRow {
@@ -72,6 +76,8 @@ interface PackageRow {
   package_type: string;
   price: number;
   session_limit: number | null;
+  lancamento_tipo: string | null;
+  valor_total: number | null;
 }
 
 const fmtBRL = (v: number) =>
@@ -131,21 +137,21 @@ export async function generateClinicInternalStatementPdf(
       .eq('year', year),
     supabase
       .from('patients')
-      .select('id, name, payment_type, payment_value, weekdays, package_id')
+      .select('id, name, payment_type, payment_value, weekdays, package_id, package_assigned_at, departure_date')
       .eq('clinic_id', clinicId),
     supabase
       .from('evolutions')
-      .select('id, date, patient_id, attendance_status')
+      .select('id, date, patient_id, attendance_status, confirmed_attendance')
       .eq('clinic_id', clinicId)
       .gte('date', startStr)
       .lte('date', endStr),
     supabase
       .from('clinic_packages')
-      .select('id, name, package_type, price, session_limit')
+      .select('id, name, package_type, price, session_limit, lancamento_tipo, valor_total')
       .eq('clinic_id', clinicId),
     supabase
       .from('clinics')
-      .select('payment_type, payment_amount, discount_percentage')
+      .select('payment_type, payment_amount, discount_percentage, absence_payment_type, pays_on_absence')
       .eq('id', clinicId)
       .maybeSingle(),
     supabase
@@ -157,7 +163,7 @@ export async function generateClinicInternalStatementPdf(
       .maybeSingle(),
   ]);
 
-  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null } | null =
+  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null; absence_payment_type?: string | null; pays_on_absence?: boolean | null } | null =
     (clinicRes.data as any) ?? null;
 
   const isClinicFixedSalary =
@@ -192,7 +198,7 @@ export async function generateClinicInternalStatementPdf(
   allPatients.forEach(p => patientMap.set(p.id, p));
   patientsHint?.forEach(p => {
     if (!patientMap.has(p.id))
-      patientMap.set(p.id, { id: p.id, name: p.name, payment_type: null, payment_value: null, weekdays: null, package_id: null });
+      patientMap.set(p.id, { id: p.id, name: p.name, payment_type: null, payment_value: null, weekdays: null, package_id: null, package_assigned_at: null, departure_date: null });
   });
   const pkgMap = new Map<string, PackageRow>();
   packages.forEach(p => pkgMap.set(p.id, p));
@@ -357,14 +363,45 @@ export async function generateClinicInternalStatementPdf(
       });
       sessionsTotal = 0;
     } else if (isMensal) {
-      // For mensalistas: monthly fee divided per actual occurrences
-      const billableEvos = pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status));
-      const absences = pEvos.filter(e => e.attendance_status === 'falta');
-      const calc = calculateMensalRevenueWithDeductions(monthlyValue, perSession, absences.length);
+      // Mensal com lançamento por procedimento: cobra somente sessões/faltas
+      // remuneradas registradas dentro do período ativo do paciente.
+      const breakdown = calculatePatientMonthlyRevenue({
+        patient: {
+          id: info.id,
+          paymentType: info.payment_type,
+          paymentValue: Number(info.payment_value || 0),
+          weekdays: info.weekdays,
+          packageId: info.package_id,
+          packageAssignedAt: info.package_assigned_at,
+          departureDate: info.departure_date,
+        },
+        evolutions: pEvos.map(e => ({
+          id: e.id,
+          patientId: e.patient_id,
+          date: e.date,
+          attendanceStatus: e.attendance_status,
+          confirmedAttendance: e.confirmed_attendance,
+        })),
+        clinic: {
+          paymentType: clinicPayInfo?.payment_type,
+          paymentAmount: clinicPayInfo?.payment_amount,
+          absencePaymentType: clinicPayInfo?.absence_payment_type,
+          paysOnAbsence: clinicPayInfo?.pays_on_absence,
+        },
+        month,
+        year,
+        packages: packages.map(pk => ({
+          id: pk.id,
+          price: Number(pk.price || 0),
+          packageType: pk.package_type,
+          sessionLimit: pk.session_limit,
+          lancamentoTipo: pk.lancamento_tipo,
+          valorTotal: pk.valor_total,
+        })),
+      });
 
-      // Use dynamic occurrences from weekday count (not actual evolutions logged)
       const dynInfo = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
-      const totalSessionsInMonth = dynInfo.occurrences || billableEvos.length || 1;
+      const totalSessionsInMonth = dynInfo.occurrences || pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status)).length || 1;
 
       let billableCounter = 0;
       pEvos.forEach(e => {
@@ -382,19 +419,19 @@ export async function generateClinicInternalStatementPdf(
         });
       });
 
-      if (calc.hasDeduction && calc.deduction > 0) {
+      if (pkg?.lancamento_tipo !== 'valor_procedimento' && breakdown.loss > 0) {
         rows.push({
           date: `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
           type: 'Dedução',
-          description: `Desconto por ${absences.length} falta(s) não cobrada(s)`,
+          description: `Falta(s) não cobrada(s)`,
           status: '—',
-          amount: -calc.deduction,
+          amount: -breakdown.loss,
           paid: false,
         });
-        deductionTotal = calc.deduction;
+        deductionTotal = breakdown.loss;
       }
 
-      sessionsTotal = calc.finalRevenue;
+      sessionsTotal = breakdown.total;
     } else {
       // Per session / personalizado / avulso: each session has its own value
       pEvos.forEach(e => {

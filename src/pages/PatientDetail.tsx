@@ -48,6 +48,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { generateReportPdf } from '@/utils/generateReportPdf';
 import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
 import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
+import { calculatePatientMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import { PatientServicesSection } from '@/components/patients/PatientServicesSection';
@@ -817,6 +818,28 @@ export default function PatientDetail() {
     }, 0);
   };
 
+  const calculatePatientRevenueForMonth = (evos: typeof patientEvolutions, targetDate: Date) => {
+    if (!patient) return 0;
+    return calculatePatientMonthlyRevenue({
+      patient,
+      clinic,
+      evolutions: evos.map((e): EvolutionLike => ({
+        id: e.id,
+        patientId: e.patientId,
+        groupId: e.groupId,
+        date: e.date,
+        attendanceStatus: e.attendanceStatus,
+        confirmedAttendance: e.confirmedAttendance,
+        userId: e.userId,
+      })),
+      month: targetDate.getMonth(),
+      year: targetDate.getFullYear(),
+      packages: clinicPackages,
+      groupBillingMap,
+      memberPaymentMap,
+    }).total;
+  };
+
   const totalGroupBillableEvos = totalBillableEvos.filter(e => e.groupId);
   const totalIndividualBillableEvos = totalBillableEvos.filter(e => !e.groupId);
   const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
@@ -996,13 +1019,8 @@ export default function PatientDetail() {
       return d.getMonth() === reportMonth.getMonth() && d.getFullYear() === reportMonth.getFullYear();
     })
     .reduce((sum, s) => sum + Number(s.price || 0), 0);
-  const monthlyRevenue = (monthlyMensalDeduction
-    ? monthlyMensalDeduction.finalRevenue + monthlyGroupRevenue
-    : isFixoMensal
-      ? paymentValue + monthlyGroupRevenue
-      : isFixoDiario
-        ? monthlyIndividualUniqueDays * perSessionValue + monthlyGroupRevenue
-        : monthlyIndividualBillableCount * perSessionValue + monthlyGroupRevenue) + monthlyServicesRevenue;
+  const monthlyPatientRevenue = calculatePatientRevenueForMonth(monthlyEvolutions, reportMonth);
+  const monthlyRevenue = monthlyPatientRevenue + monthlyServicesRevenue;
   const monthlyRevenueSubtitle = monthlyMensalDeduction
     ? `${monthlyDynamic!.occurrences} sessões previstas`
     : isFixoMensal
@@ -1056,13 +1074,7 @@ export default function PatientDetail() {
   const finIndividualBillable = finBillableEvos.filter(e => !e.groupId);
   const finIndividualBillableCount = finIndividualBillable.length;
   const finIndividualUniqueDays = new Set(finIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const finRevenue = finMensalDeduction
-    ? finMensalDeduction.finalRevenue + finGroupRevenue
-    : isFixoMensal
-      ? paymentValue + finGroupRevenue
-      : isFixoDiario
-        ? finIndividualUniqueDays * perSessionValue + finGroupRevenue
-        : finIndividualBillableCount * perSessionValue + finGroupRevenue;
+  const finRevenue = calculatePatientRevenueForMonth(financialEvolutions, financialMonth);
   const finRegistros = financialEvolutions.length;
   const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
 
@@ -1768,19 +1780,7 @@ export default function PatientDetail() {
       const tIndividualBillable = tBillableEvos.filter(e => !e.groupId);
       const tIndividualBillableCount = tIndividualBillable.length;
       const tIndividualUniqueDays = new Set(tIndividualBillable.map(e => e.date)).size;
-      const tRevenue = (isPackageMensal || isFixoMensal)
-        ? (() => {
-            const dynVal = getDynamicSessionValue(paymentValue, patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []), targetMonth.getMonth(), targetMonth.getFullYear());
-            if (dynVal) {
-              const deductible = targetEvolutions.filter(e => e.attendanceStatus === 'falta').length;
-              const ded = calculateMensalRevenueWithDeductions(paymentValue, deductible, dynVal.occurrences);
-              return ded.finalRevenue + tGroupRevenue;
-            }
-            return paymentValue + tGroupRevenue;
-          })()
-        : isFixoDiario
-          ? tIndividualUniqueDays * perSessionValue + tGroupRevenue
-          : tIndividualBillableCount * perSessionValue + tGroupRevenue;
+      const tRevenue = calculatePatientRevenueForMonth(targetEvolutions, targetMonth);
       const tRegistros = targetEvolutions.length;
       const tAttendanceRate = tRegistros > 0 ? Math.round(((tPresent + tReposicao) / tRegistros) * 100) : 0;
 
@@ -1935,6 +1935,20 @@ export default function PatientDetail() {
         | { kind: 'session'; date: string; statusLabel: string; isPaid: boolean; isGroup: boolean; value: number }
         | { kind: 'service'; date: string; statusLabel: string; isPaid: boolean; description: string; value: number };
 
+      const revenueBreakdown = calculatePatientMonthlyRevenue({
+        patient,
+        clinic,
+        evolutions: targetEvolutions.map((e): EvolutionLike => ({
+          id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
+          attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance, userId: e.userId,
+        })),
+        month: targetMonth.getMonth(),
+        year: targetMonth.getFullYear(),
+        packages: clinicPackages,
+        groupBillingMap,
+        memberPaymentMap,
+      });
+      let remainingIndividualCharged = revenueBreakdown.individualRevenue + revenueBreakdown.chargedAbsenceRevenue;
       const sessionRows: UnifiedRow[] = targetEvolutions.map(evo => {
         const isPaid = paidStatuses.includes(evo.attendanceStatus);
         const isGroup = !!evo.groupId;
@@ -1949,7 +1963,8 @@ export default function PatientDetail() {
               packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
             });
           } else {
-            sessionValue = pdfPerSession;
+            sessionValue = Math.min(pdfPerSession, remainingIndividualCharged);
+            remainingIndividualCharged = Math.max(0, remainingIndividualCharged - sessionValue);
           }
         }
         return {

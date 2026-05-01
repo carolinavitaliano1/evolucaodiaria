@@ -72,8 +72,21 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
     return Array.from(set).sort();
   }, [patients]);
 
-  const patientInfos: PatientInfo[] = useMemo(() =>
-    patients.filter(p => isPatientActiveOn(p)).map(p => ({
+  const patientInfos: PatientInfo[] = useMemo(() => {
+    const periodStart = new Date(year, month, 1);
+    const periodEnd = new Date(year, month + 1, 0, 12);
+    return patients.filter(p => {
+      if (isPatientActiveOn(p)) return true;
+      if (p.departureDate) {
+        const departure = new Date(`${p.departureDate}T12:00:00`);
+        return departure >= periodStart && departure <= periodEnd;
+      }
+      return evolutions.some(e => {
+        if (e.patientId !== p.id) return false;
+        const d = new Date(`${e.date}T12:00:00`);
+        return d >= periodStart && d <= periodEnd;
+      });
+    }).map(p => ({
       id: p.id,
       name: p.name,
       responsibleName: p.responsibleName,
@@ -82,7 +95,11 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
       weekdays: p.weekdays,
       scheduleTime: p.scheduleTime,
       scheduleByDay: p.scheduleByDay as any,
-    })), [patients]);
+      createdAt: p.createdAt,
+      departureDate: p.departureDate,
+      isArchived: p.isArchived,
+    }));
+  }, [patients, evolutions, month, year]);
 
   // Build synthetic "feriado" evolutions from calendar blocks so the clinic
   // attendance sheet mirrors the individual sheet (which already injects them).
@@ -97,7 +114,10 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
 
     const synthetic: Evolution[] = [];
     for (const patient of patients) {
-      if (!isPatientActiveOn(patient)) continue;
+      if (!isPatientActiveOn(patient)) {
+        const departure = patient.departureDate ? new Date(`${patient.departureDate}T12:00:00`) : null;
+        if (!departure || departure.getMonth() !== month || departure.getFullYear() !== year) continue;
+      }
       const scheduledDays = patient.scheduleByDay
         ? Object.keys(patient.scheduleByDay)
         : (patient.weekdays || []);
@@ -116,6 +136,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
           if (
             dateStr <= todayStr &&
             (!createdStr || dateStr >= createdStr) &&
+            (!patient.departureDate || dateStr < patient.departureDate) &&
             !filled.has(dateStr) &&
             scheduledDays.includes(weekday)
           ) {
@@ -137,7 +158,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
       }
     }
     return synthetic.length ? [...evolutions, ...synthetic] : evolutions;
-  }, [evolutions, patients, calendarBlocks, clinicId, user?.id]);
+  }, [evolutions, patients, calendarBlocks, clinicId, user?.id, month, year]);
 
   const groupedRows = useMemo(() =>
     buildGroupedAttendanceRows(
