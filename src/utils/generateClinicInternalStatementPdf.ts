@@ -363,14 +363,39 @@ export async function generateClinicInternalStatementPdf(
       });
       sessionsTotal = 0;
     } else if (isMensal) {
-      // For mensalistas: monthly fee divided per actual occurrences
-      const billableEvos = pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status));
-      const absences = pEvos.filter(e => e.attendance_status === 'falta');
-      const calc = calculateMensalRevenueWithDeductions(monthlyValue, perSession, absences.length);
+      // Mensal com lançamento por procedimento: cobra somente sessões/faltas
+      // remuneradas registradas dentro do período ativo do paciente.
+      const breakdown = calculatePatientMonthlyRevenue({
+        patient: {
+          id: info.id,
+          paymentType: info.payment_type,
+          paymentValue: Number(info.payment_value || 0),
+          weekdays: info.weekdays,
+          packageId: info.package_id,
+          packageAssignedAt: info.package_assigned_at,
+          departureDate: info.departure_date,
+        },
+        evolutions: pEvos.map(e => ({
+          id: e.id,
+          patientId: e.patient_id,
+          date: e.date,
+          attendanceStatus: e.attendance_status,
+          confirmedAttendance: e.confirmed_attendance,
+        })),
+        month: month + 1,
+        year,
+        packages: packages.map(pk => ({
+          id: pk.id,
+          price: Number(pk.price || 0),
+          packageType: pk.package_type,
+          sessionLimit: pk.session_limit,
+          lancamentoTipo: pk.lancamento_tipo,
+          valorTotal: pk.valor_total,
+        })),
+      });
 
-      // Use dynamic occurrences from weekday count (not actual evolutions logged)
       const dynInfo = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
-      const totalSessionsInMonth = dynInfo.occurrences || billableEvos.length || 1;
+      const totalSessionsInMonth = dynInfo.occurrences || pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status)).length || 1;
 
       let billableCounter = 0;
       pEvos.forEach(e => {
@@ -388,19 +413,19 @@ export async function generateClinicInternalStatementPdf(
         });
       });
 
-      if (calc.hasDeduction && calc.deduction > 0) {
+      if (breakdown.loss > 0) {
         rows.push({
           date: `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
           type: 'Dedução',
-          description: `Desconto por ${absences.length} falta(s) não cobrada(s)`,
+          description: `Falta(s) não cobrada(s)`,
           status: '—',
-          amount: -calc.deduction,
+          amount: -breakdown.loss,
           paid: false,
         });
-        deductionTotal = calc.deduction;
+        deductionTotal = breakdown.loss;
       }
 
-      sessionsTotal = calc.finalRevenue;
+      sessionsTotal = breakdown.total;
     } else {
       // Per session / personalizado / avulso: each session has its own value
       pEvos.forEach(e => {
