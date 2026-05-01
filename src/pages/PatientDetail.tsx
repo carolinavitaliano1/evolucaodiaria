@@ -1430,28 +1430,26 @@ export default function PatientDetail() {
       const dynResult = getDynamicSessionValue(rawPaymentValue, patientWeekdays, fiscalStartDate.getMonth(), fiscalStartDate.getFullYear());
       fiscalPerSession = dynResult.perSession;
     }
-    const calculatedTotal = (isPackageMensal || isFixoMensal)
+    // Total faturado = sessões cobráveis + serviços avulsos do período (com valor)
+    const sessionsBilled = (isPackageMensal || isFixoMensal)
       ? rawPaymentValue
       : billableCount * fiscalPerSession;
-
-    // For "total" mode: calculate paid sessions (those whose month/year has paid=true)
-    // We use the paid amount from the record if available, otherwise calculate from sessions
-    let totalPaidValue: number;
-    let paidSubtotal: number | undefined;
-    let pendingSubtotal: number | undefined;
-
-    if (fiscalPaymentStatus === 'paid') {
-      totalPaidValue = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : calculatedTotal;
-    } else if (fiscalPaymentStatus === 'total') {
-      // Split evolutions by month and check which months are paid
-      // Use the fiscalTotalPaid as paid amount if available
-      totalPaidValue = calculatedTotal;
-      paidSubtotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : 0;
-      pendingSubtotal = calculatedTotal - (paidSubtotal || 0);
-      if (pendingSubtotal < 0) pendingSubtotal = 0;
-    } else {
-      totalPaidValue = calculatedTotal;
-    }
+    const servicesInRange = patientServices.filter(s => {
+      if (!fiscalStartDate || !fiscalEndDate) return false;
+      const d = new Date(s.date + 'T12:00:00');
+      return d >= fiscalStartDate && d <= fiscalEndDate;
+    });
+    const servicesBilled = servicesInRange.reduce((sum, s) => sum + (s.price || 0), 0);
+    const totalFaturado = sessionsBilled + servicesBilled;
+    // Total descontado (não cobrado) = soma do que seria por sessão das faltas/feriados não remunerados
+    const nonBillableEvos = evos.filter(e => !(STATUS_BILLABLE[e.attendanceStatus] ?? false));
+    const totalDescontado = (isPackageMensal || isFixoMensal)
+      ? 0
+      : nonBillableEvos.length * fiscalPerSession;
+    // Total pago = vem do registro financeiro do paciente (apenas se realmente marcado como pago)
+    const totalPago = fiscalPaymentStatus === 'paid'
+      ? (fiscalTotalPaidFromApp ?? 0)
+      : 0;
 
     return {
       patient: {
@@ -1491,11 +1489,10 @@ export default function PatientDetail() {
       professionalId: therapistProfile?.professional_id || undefined,
       therapistCpf: therapistProfile?.cpf || undefined,
       cbo: fiscalStamp?.cbo || undefined,
-      totalPaid: totalPaidValue,
-      paidSubtotal,
-      pendingSubtotal,
-      paymentStatus: fiscalPaymentStatus,
-      paymentDate: fiscalPaymentDate || null,
+      totalFaturado,
+      totalDescontado,
+      totalPago,
+      paymentDate: fiscalPaymentStatus === 'paid' ? (fiscalPaymentDate || null) : null,
     };
   };
 
