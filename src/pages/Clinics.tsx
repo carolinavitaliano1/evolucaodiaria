@@ -520,7 +520,7 @@ export default function Clinics() {
                           )}
                           {!hasTeam && (
                             <p className="text-xs text-muted-foreground mt-2">
-                              Quer cadastrar uma <strong>Clínica com equipe</strong>? Faça upgrade para o plano <a href="/pricing" className="text-primary underline">Clínica Pro</a>.
+                              Quer cadastrar uma <strong>Clínica com equipe</strong>? O plano <strong>Clínica Pro</strong> estará disponível em breve.
                             </p>
                           )}
                         </>
