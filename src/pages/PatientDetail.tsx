@@ -1935,6 +1935,20 @@ export default function PatientDetail() {
         | { kind: 'session'; date: string; statusLabel: string; isPaid: boolean; isGroup: boolean; value: number }
         | { kind: 'service'; date: string; statusLabel: string; isPaid: boolean; description: string; value: number };
 
+      const revenueBreakdown = calculatePatientMonthlyRevenue({
+        patient,
+        clinic,
+        evolutions: targetEvolutions.map((e): EvolutionLike => ({
+          id: e.id, patientId: e.patientId, groupId: e.groupId, date: e.date,
+          attendanceStatus: e.attendanceStatus, confirmedAttendance: e.confirmedAttendance, userId: e.userId,
+        })),
+        month: targetMonth.getMonth(),
+        year: targetMonth.getFullYear(),
+        packages: clinicPackages,
+        groupBillingMap,
+        memberPaymentMap,
+      });
+      let remainingIndividualCharged = revenueBreakdown.individualRevenue + revenueBreakdown.chargedAbsenceRevenue;
       const sessionRows: UnifiedRow[] = targetEvolutions.map(evo => {
         const isPaid = paidStatuses.includes(evo.attendanceStatus);
         const isGroup = !!evo.groupId;
@@ -1949,7 +1963,8 @@ export default function PatientDetail() {
               packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
             });
           } else {
-            sessionValue = pdfPerSession;
+            sessionValue = Math.min(pdfPerSession, remainingIndividualCharged);
+            remainingIndividualCharged = Math.max(0, remainingIndividualCharged - sessionValue);
           }
         }
         return {
