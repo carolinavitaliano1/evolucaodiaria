@@ -164,9 +164,6 @@ export function PatientPackagesManager({ patientId, clinicId, clinicPackages, or
                         — R$ {(link.packagePrice ?? 0).toFixed(2)}
                       </span>
                     </div>
-                    {formatPerSession(link) && (
-                      <div className="text-xs text-muted-foreground">{formatPerSession(link)}</div>
-                    )}
                     <div className="text-xs text-muted-foreground">
                       {link.therapistName || link.therapistEmail
                         ? `Profissional: ${link.therapistName || link.therapistEmail}`
