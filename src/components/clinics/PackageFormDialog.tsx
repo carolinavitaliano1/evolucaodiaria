@@ -350,7 +350,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <Label>Valor total (R$) *</Label>
                   <Input
@@ -374,17 +374,6 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
                         </span>
                       </p>
                     )}
-                </div>
-                <div>
-                  <Label>Conta *</Label>
-                  <Input
-                    {...register('accountName')}
-                    placeholder="Ex: Caixa Principal"
-                    className="mt-1"
-                  />
-                  {errors.accountName && (
-                    <p className="text-xs text-destructive mt-1">{errors.accountName.message}</p>
-                  )}
                 </div>
               </div>
             </CardContent>
