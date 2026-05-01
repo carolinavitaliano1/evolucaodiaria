@@ -62,7 +62,7 @@ const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sext
 const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function CalendarPage() {
-  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, evolutions } = useApp();
+  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, addEvolution, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
@@ -86,6 +86,9 @@ export default function CalendarPage() {
   const [formData, setFormData] = useState({
     clinicId: '', patientId: '',
     date: format(selectedDate, 'yyyy-MM-dd'), time: '', notes: '',
+    sessionType: 'regular' as 'regular' | 'avulsa' | 'reposicao',
+    chargeEnabled: false,
+    chargeValue: '' as string,
   });
   const [whatsappTarget, setWhatsappTarget] = useState<{ name: string; phone: string; date: string; time: string } | null>(null);
 
@@ -214,11 +217,90 @@ export default function CalendarPage() {
 
   // --- Appointment form ---
   const clinicPatients = patients.filter(p => p.clinicId === formData.clinicId);
-  const handleApptSubmit = (e: React.FormEvent) => {
+  const selectedPatient = patients.find(p => p.id === formData.patientId);
+  const selectedPatientPackage = selectedPatient?.packageId
+    ? clinicPackages.find(p => p.id === selectedPatient.packageId)
+    : undefined;
+  // Valor padrão "do pacote" para sugerir como cobrança da avulsa/reposição
+  const defaultPackageValue = (() => {
+    if (selectedPatientPackage) {
+      const v = selectedPatientPackage.valorTotal ?? selectedPatientPackage.price ?? 0;
+      if (selectedPatientPackage.packageType === 'por_sessao') return v;
+      if (selectedPatientPackage.packageType === 'personalizado' && selectedPatientPackage.sessionLimit) {
+        return Math.round((Number(v) / selectedPatientPackage.sessionLimit) * 100) / 100;
+      }
+      return v;
+    }
+    return selectedPatient?.paymentValue ?? 0;
+  })();
+
+  const resetForm = () => setFormData({
+    clinicId: '', patientId: '', date: format(selectedDate, 'yyyy-MM-dd'),
+    time: '', notes: '', sessionType: 'regular', chargeEnabled: false, chargeValue: '',
+  });
+
+  const handleApptSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.clinicId || !formData.patientId || !formData.date || !formData.time) return;
-    addAppointment({ clinicId: formData.clinicId, patientId: formData.patientId, date: formData.date, time: formData.time, notes: formData.notes });
-    setFormData({ clinicId: '', patientId: '', date: format(selectedDate, 'yyyy-MM-dd'), time: '', notes: '' });
+
+    const isAvulsaOrReposicao = formData.sessionType !== 'regular';
+    const typeTag = formData.sessionType === 'reposicao'
+      ? '[tipo:reposicao]'
+      : formData.sessionType === 'avulsa' ? '[tipo:avulsa]' : '';
+    const baseNotes = [typeTag, formData.notes].filter(Boolean).join(' ').trim();
+
+    // 1) Cria o agendamento normal (aparece na agenda)
+    addAppointment({
+      clinicId: formData.clinicId,
+      patientId: formData.patientId,
+      date: formData.date,
+      time: formData.time,
+      notes: baseNotes,
+    });
+
+    // 2) Para avulsa/reposição: já cria a evolução com status correto
+    //    (aparece em frequência geral/individual e relatórios)
+    if (isAvulsaOrReposicao) {
+      const labelTipo = formData.sessionType === 'reposicao' ? 'Reposição' : 'Sessão Avulsa';
+      await addEvolution({
+        patientId: formData.patientId,
+        clinicId: formData.clinicId,
+        date: formData.date,
+        sessionTime: formData.time,
+        text: `${labelTipo} agendada via agenda.`,
+        attendanceStatus: formData.sessionType === 'reposicao' ? 'reposicao' : 'presente',
+      } as any);
+    }
+
+    // 3) Se cobrar: cria private_appointment (Serviço Avulso) — entra no Financeiro,
+    //    extrato fiscal e relatórios automaticamente
+    if (isAvulsaOrReposicao && formData.chargeEnabled && user?.id) {
+      const valor = Number(formData.chargeValue || defaultPackageValue || 0);
+      const tituloLinha = formData.sessionType === 'reposicao' ? 'Reposição cobrada' : 'Sessão avulsa';
+      try {
+        const { error } = await supabase.from('private_appointments').insert({
+          user_id: user.id,
+          clinic_id: formData.clinicId,
+          patient_id: formData.patientId,
+          client_name: selectedPatient?.name || tituloLinha,
+          date: formData.date,
+          time: formData.time,
+          price: valor,
+          status: 'agendado',
+          notes: `${tituloLinha} (gerada pela agenda)`,
+        });
+        if (error) throw error;
+        await refetchPrivate();
+      } catch (err) {
+        console.error(err);
+        toast.error('Erro ao registrar cobrança avulsa');
+      }
+    }
+
+    if (isAvulsaOrReposicao) {
+      toast.success(formData.sessionType === 'reposicao' ? 'Reposição agendada!' : 'Sessão avulsa agendada!');
+    }
+    resetForm();
     setIsApptDialogOpen(false);
   };
 
@@ -401,7 +483,7 @@ export default function CalendarPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Agendar Atendimento</DialogTitle></DialogHeader>
-              <form onSubmit={handleApptSubmit} className="space-y-4">
+              <form onSubmit={handleApptSubmit} className="space-y-4 max-h-[80dvh] overflow-y-auto pr-1">
                 <div>
                   <Label>Clínica *</Label>
                   <Select value={formData.clinicId} onValueChange={v => setFormData({ ...formData, clinicId: v, patientId: '' })}>
@@ -420,6 +502,74 @@ export default function CalendarPage() {
                   <div><Label>Data *</Label><Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} required /></div>
                   <div><Label>Horário *</Label><Input type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} required /></div>
                 </div>
+                <div>
+                  <Label>Tipo de sessão *</Label>
+                  <Select
+                    value={formData.sessionType}
+                    onValueChange={(v: 'regular' | 'avulsa' | 'reposicao') =>
+                      setFormData({ ...formData, sessionType: v, chargeEnabled: false, chargeValue: '' })
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="regular">Sessão regular</SelectItem>
+                      <SelectItem value="avulsa">Sessão avulsa</SelectItem>
+                      <SelectItem value="reposicao">Reposição</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {formData.sessionType !== 'regular' && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Será criada automaticamente uma evolução {formData.sessionType === 'reposicao' ? '(status: Reposição)' : '(status: Presente)'} para aparecer na frequência.
+                    </p>
+                  )}
+                </div>
+                {formData.sessionType !== 'regular' && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={formData.chargeEnabled}
+                        onChange={e => setFormData({
+                          ...formData,
+                          chargeEnabled: e.target.checked,
+                          chargeValue: e.target.checked ? String(defaultPackageValue || '') : '',
+                        })}
+                        className="w-4 h-4 accent-primary"
+                      />
+                      <span className="text-sm font-medium">Cobrar esta sessão</span>
+                    </label>
+                    {formData.chargeEnabled && (
+                      <div className="space-y-2">
+                        <div>
+                          <Label className="text-xs">Valor (R$)</Label>
+                          <Input
+                            type="number" step="0.01" min="0"
+                            value={formData.chargeValue}
+                            onChange={e => setFormData({ ...formData, chargeValue: e.target.value })}
+                            placeholder={defaultPackageValue ? `Padrão do pacote: R$ ${Number(defaultPackageValue).toFixed(2)}` : '0,00'}
+                          />
+                          {defaultPackageValue > 0 && (
+                            <button
+                              type="button"
+                              className="text-[11px] text-primary mt-1 hover:underline"
+                              onClick={() => setFormData({ ...formData, chargeValue: String(defaultPackageValue) })}
+                            >
+                              Usar valor padrão do pacote (R$ {Number(defaultPackageValue).toFixed(2)})
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Será lançado como Serviço Avulso no Financeiro do paciente — aparece no extrato fiscal e nos relatórios.
+                        </p>
+                      </div>
+                    )}
+                    {!formData.chargeEnabled && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Sem cobrança extra — a sessão entra apenas na frequência.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-2 pt-2">
                   <Button type="submit" className="flex-1 gradient-primary">Agendar</Button>
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsApptDialogOpen(false)}>Cancelar</Button>
