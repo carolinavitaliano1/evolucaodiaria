@@ -48,10 +48,13 @@ export interface FiscalReceiptOptions {
   professionalId?: string;
   therapistCpf?: string;
   cbo?: string;
-  totalPaid?: number;
-  paidSubtotal?: number;
-  pendingSubtotal?: number;
-  paymentStatus?: 'paid' | 'pending' | 'total';
+  /** Total faturado (sessões cobráveis + serviços com valor) */
+  totalFaturado?: number;
+  /** Total descontado / não cobrado (faltas/feriados não remunerados) */
+  totalDescontado?: number;
+  /** Total efetivamente pago, vindo do registro financeiro do paciente */
+  totalPago?: number;
+  /** Data do pagamento, se houver */
   paymentDate?: string | null;
 }
 
@@ -74,7 +77,7 @@ function formatCpf(cpf: string): string {
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: false): Promise<void>;
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob?: true): Promise<Blob>;
 export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, returnBlob = false): Promise<void | Blob> {
-  const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, therapistCpf, cbo, totalPaid, paidSubtotal, pendingSubtotal, paymentStatus, paymentDate } = opts;
+  const { patient, clinic, evolutions, startDate, endDate, stamp, therapistName, professionalId, therapistCpf, cbo, totalFaturado, totalDescontado, totalPago, paymentDate } = opts;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
@@ -303,23 +306,22 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
         ['Valor por sessão:', `R$ ${paymentValue.toFixed(2)}`],
       ];
 
-  const displayTotal = totalPaid !== undefined ? totalPaid : sessionTotal;
+  const faturado = totalFaturado !== undefined ? totalFaturado : sessionTotal;
+  const descontado = totalDescontado ?? 0;
+  const pago = totalPago ?? 0;
 
-  // For "total" status: add paid and pending subtotals before grand total
-  if (paymentStatus === 'total') {
-    const paid    = paidSubtotal    ?? 0;
-    const pending = pendingSubtotal ?? Math.max(0, displayTotal - paid);
-    summaryRows.push(['Subtotal Pago:', `R$ ${paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
-    summaryRows.push(['Subtotal Pendente:', `R$ ${pending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
-  }
-
-  summaryRows.push(['TOTAL DO PERÍODO:', `R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+  summaryRows.push(['Total Faturado:', `R$ ${faturado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+  summaryRows.push(['Total Descontado (não cobrado):', `R$ ${descontado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]);
+  const pagoLabel = paymentDate
+    ? `R$ ${pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}  ·  em ${format(new Date(paymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`
+    : `R$ ${pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  summaryRows.push(['TOTAL PAGO:', pagoLabel]);
 
   summaryRows.forEach(([label, value], i) => {
     ensureSpace(LH + 1);
     const isTotal = i === summaryRows.length - 1;
-    const isPaidSub    = label === 'Subtotal Pago:';
-    const isPendingSub = label === 'Subtotal Pendente:';
+    const isFaturado   = label === 'Total Faturado:';
+    const isDescontado = label === 'Total Descontado (não cobrado):';
     doc.setFontSize(isTotal ? 9.5 : 8.5);
     doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
     doc.setTextColor(...(isTotal ? darkText : mutedText));
@@ -327,9 +329,9 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     doc.setFont('helvetica', 'bold');
     const valueColor: [number, number, number] = isTotal
       ? accentColor
-      : isPaidSub
+      : isFaturado
         ? successColor
-        : isPendingSub
+        : isDescontado
           ? warningColor
           : darkText;
     doc.setTextColor(...valueColor);
@@ -337,22 +339,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     y += isTotal ? LH + 1.5 : LH;
   });
 
-  // payment status
-  ensureSpace(10);
   y += 1;
-  const statusText  = paymentStatus === 'paid' ? 'PAGO' : paymentStatus === 'total' ? 'TOTAL (PAGO + PENDENTE)' : 'PENDENTE';
-  const statusColor: [number, number, number] = paymentStatus === 'paid' ? successColor : paymentStatus === 'total' ? accentColor : warningColor;
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...statusColor);
-  doc.text(`Status: ${statusText}`, margin + 2, y);
-  if (paymentDate && paymentStatus === 'paid') {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...mutedText);
-    const lw = doc.getTextWidth(`Status: ${statusText}`);
-    doc.text(`   ·   Recebido em: ${format(new Date(paymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`, margin + 2 + lw, y);
-  }
-  y += LH;
 
   // ─── DECLARAÇÃO ─────────────────────────────────────────────────────────
   drawDivider(3, 4);

@@ -1430,28 +1430,26 @@ export default function PatientDetail() {
       const dynResult = getDynamicSessionValue(rawPaymentValue, patientWeekdays, fiscalStartDate.getMonth(), fiscalStartDate.getFullYear());
       fiscalPerSession = dynResult.perSession;
     }
-    const calculatedTotal = (isPackageMensal || isFixoMensal)
+    // Total faturado = sessões cobráveis + serviços avulsos do período (com valor)
+    const sessionsBilled = (isPackageMensal || isFixoMensal)
       ? rawPaymentValue
       : billableCount * fiscalPerSession;
-
-    // For "total" mode: calculate paid sessions (those whose month/year has paid=true)
-    // We use the paid amount from the record if available, otherwise calculate from sessions
-    let totalPaidValue: number;
-    let paidSubtotal: number | undefined;
-    let pendingSubtotal: number | undefined;
-
-    if (fiscalPaymentStatus === 'paid') {
-      totalPaidValue = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : calculatedTotal;
-    } else if (fiscalPaymentStatus === 'total') {
-      // Split evolutions by month and check which months are paid
-      // Use the fiscalTotalPaid as paid amount if available
-      totalPaidValue = calculatedTotal;
-      paidSubtotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : 0;
-      pendingSubtotal = calculatedTotal - (paidSubtotal || 0);
-      if (pendingSubtotal < 0) pendingSubtotal = 0;
-    } else {
-      totalPaidValue = calculatedTotal;
-    }
+    const servicesInRange = patientServices.filter(s => {
+      if (!fiscalStartDate || !fiscalEndDate) return false;
+      const d = new Date(s.date + 'T12:00:00');
+      return d >= fiscalStartDate && d <= fiscalEndDate;
+    });
+    const servicesBilled = servicesInRange.reduce((sum, s) => sum + (s.price || 0), 0);
+    const totalFaturado = sessionsBilled + servicesBilled;
+    // Total descontado (não cobrado) = soma do que seria por sessão das faltas/feriados não remunerados
+    const nonBillableEvos = evos.filter(e => !(STATUS_BILLABLE[e.attendanceStatus] ?? false));
+    const totalDescontado = (isPackageMensal || isFixoMensal)
+      ? 0
+      : nonBillableEvos.length * fiscalPerSession;
+    // Total pago = vem do registro financeiro do paciente (apenas se realmente marcado como pago)
+    const totalPago = fiscalPaymentStatus === 'paid'
+      ? (fiscalTotalPaidFromApp ?? 0)
+      : 0;
 
     return {
       patient: {
@@ -1491,11 +1489,10 @@ export default function PatientDetail() {
       professionalId: therapistProfile?.professional_id || undefined,
       therapistCpf: therapistProfile?.cpf || undefined,
       cbo: fiscalStamp?.cbo || undefined,
-      totalPaid: totalPaidValue,
-      paidSubtotal,
-      pendingSubtotal,
-      paymentStatus: fiscalPaymentStatus,
-      paymentDate: fiscalPaymentDate || null,
+      totalFaturado,
+      totalDescontado,
+      totalPago,
+      paymentDate: fiscalPaymentStatus === 'paid' ? (fiscalPaymentDate || null) : null,
     };
   };
 
@@ -1555,8 +1552,16 @@ export default function PatientDetail() {
         sessionTotal = rawPayVal; // Total is the monthly value
         sessionCount = fiscalEvos.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
       }
-      const displayTotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : sessionTotal;
-      const payStatusLabel = fiscalPaymentStatus === 'paid' ? 'PAGO' : fiscalPaymentStatus === 'total' ? 'TOTAL (PAGO + PENDENTE)' : 'PENDENTE';
+      // Serviços avulsos no período (faturado adicional)
+      const wServicesInRange = patientServices.filter(s => {
+        const d = new Date(s.date + 'T12:00:00');
+        return d >= fiscalStartDate! && d <= fiscalEndDate!;
+      });
+      const wServicesBilled = wServicesInRange.reduce((sum, s) => sum + (s.price || 0), 0);
+      const wTotalFaturado = sessionTotal + wServicesBilled;
+      const wNonBillable = fiscalEvos.filter(e => !(STATUS_LABELS[e.attendanceStatus]?.billable));
+      const wTotalDescontado = (isPackageMensal || isFixoMensal) ? 0 : wNonBillable.length * payVal;
+      const wTotalPago = fiscalPaymentStatus === 'paid' ? (fiscalTotalPaidFromApp ?? 0) : 0;
       const patCpf = (patient as any).cpf;
       const respCpf = (patient as any).responsible_cpf || (patient as any).responsibleCpf;
 
@@ -1602,8 +1607,9 @@ export default function PatientDetail() {
         <hr/>
         <h3 style="color:#1e3a8a">RESUMO FINANCEIRO</h3>
         ${(isPackageMensal || isFixoMensal) ? `<p>Modalidade: Mensalidade fixa &nbsp;|&nbsp; Sessões: ${sessionCount} &nbsp;|&nbsp; Valor/sessão: R$ ${payVal.toFixed(2)} &nbsp;|&nbsp; Mensal: R$ ${rawPayVal.toFixed(2)}</p>` : `<p>Modalidade: Por sessão &nbsp;|&nbsp; Sessões cobráveis: ${sessionCount} &nbsp;|&nbsp; Valor/sessão: R$ ${payVal.toFixed(2)}</p>`}
-        <p style="font-size:13pt"><strong>TOTAL DO PERÍODO: R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
-        <p><strong>Status:</strong> ${payStatusLabel}${fiscalPaymentDate && fiscalPaymentStatus === 'paid' ? ` &nbsp;·&nbsp; Recebido em: ${format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}` : ''}</p>
+        <p><strong style="color:#1e7a1e">Total Faturado:</strong> R$ ${wTotalFaturado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        <p><strong style="color:#a85f00">Total Descontado (não cobrado):</strong> R$ ${wTotalDescontado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        <p style="font-size:13pt"><strong>TOTAL PAGO: R$ ${wTotalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>${fiscalPaymentStatus === 'paid' && fiscalPaymentDate ? ` &nbsp;·&nbsp; em ${format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}` : ''}</p>
         <hr/>
         <p style="color:#555;font-size:9pt">Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.</p>
         <br/><br/>
@@ -4363,45 +4369,18 @@ export default function PatientDetail() {
               </div>
             )}
 
-            {/* Payment info */}
-            <div className="space-y-3 bg-muted/30 rounded-lg p-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Informações de Pagamento</p>
-              <div>
-                <Label className="text-xs mb-1.5 block">Status</Label>
-                <div className="flex gap-2">
-                  {(['pending', 'paid', 'total'] as const).map(s => (
-                    <button key={s} onClick={() => setFiscalPaymentStatus(s)}
-                      className={cn('flex-1 text-xs py-1.5 rounded-lg border font-medium transition-colors',
-                        fiscalPaymentStatus === s
-                          ? s === 'paid' ? 'bg-success/10 border-success text-success'
-                            : s === 'total' ? 'bg-primary/10 border-primary text-primary'
-                            : 'bg-muted border-border text-foreground'
-                          : 'border-border text-muted-foreground hover:border-foreground/30')}>
-                      {s === 'paid' ? '✓ Pago' : s === 'total' ? '∑ Total' : '⏳ Pendente'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {fiscalPaymentStatus === 'paid' && fiscalPaymentDate && (
-                <p className="text-xs text-muted-foreground">
-                  Recebido em: <span className="font-medium text-foreground">{format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</span> <span className="text-muted-foreground/60">(registrado no financeiro)</span>
+            {/* Payment info — somente leitura, vem do financeiro */}
+            <div className="space-y-1.5 bg-muted/30 rounded-lg p-3 text-xs">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Resumo do período</p>
+              {fiscalPaymentStatus === 'paid' && fiscalPaymentDate ? (
+                <p className="text-success">
+                  ✓ Pagamento registrado em <span className="font-semibold">{format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                  {fiscalTotalPaidFromApp !== null && <span> — R$ {fiscalTotalPaidFromApp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                 </p>
+              ) : (
+                <p className="text-muted-foreground">Sem pagamento registrado neste período (Total Pago = R$ 0,00 no extrato).</p>
               )}
-              <div>
-                <Label className="text-xs mb-1 block flex items-center gap-1.5">
-                  Valor Total Pago
-                  <span className="text-muted-foreground font-normal">
-                    {fiscalTotalPaidFromApp !== null ? '— calculado automaticamente (editável)' : '— opcional'}
-                  </span>
-                </Label>
-                <Input
-                  type="number" step="0.01" min="0"
-                  value={fiscalTotalPaid}
-                  onChange={e => setFiscalTotalPaid(e.target.value)}
-                  placeholder="R$ calculado automaticamente pelas sessões"
-                  className="h-9 text-xs"
-                />
-              </div>
+              <p className="text-muted-foreground/80 text-[11px]">O Total Pago é extraído automaticamente do financeiro do paciente quando marcado como pago.</p>
             </div>
 
             {/* CPF warning */}
