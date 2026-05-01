@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getDynamicSessionValue } from '@/utils/dateHelpers';
+import { calculatePatientMonthlyRevenue } from '@/utils/financialHelpers';
 
 interface PatientLite {
   id: string;
@@ -48,6 +49,7 @@ interface EvolutionRow {
   date: string;
   patient_id: string;
   attendance_status: string;
+  confirmed_attendance?: boolean | null;
 }
 
 interface PaymentRecord {
