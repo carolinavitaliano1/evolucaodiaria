@@ -3460,23 +3460,6 @@ export default function PatientDetail() {
                   <p className="text-xs text-muted-foreground mt-0.5">Sessões por período</p>
                 </div>
               </button>
-
-              <button
-                onClick={() => handleExportFinancialPDF()}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-primary/40 transition-colors text-left group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-colors">
-                  {isExportingFinancial ? (
-                    <Loader2 className="w-5 h-5 text-warning animate-spin" />
-                  ) : (
-                    <BarChart3 className="w-5 h-5 text-warning" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">Relatório Financeiro</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">PDF com histórico completo</p>
-                </div>
-              </button>
             </div>
           </div>
 
