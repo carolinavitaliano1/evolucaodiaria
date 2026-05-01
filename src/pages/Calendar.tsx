@@ -62,7 +62,7 @@ const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sext
 const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function CalendarPage() {
-  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, evolutions } = useApp();
+  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, addEvolution, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
@@ -86,6 +86,9 @@ export default function CalendarPage() {
   const [formData, setFormData] = useState({
     clinicId: '', patientId: '',
     date: format(selectedDate, 'yyyy-MM-dd'), time: '', notes: '',
+    sessionType: 'regular' as 'regular' | 'avulsa' | 'reposicao',
+    chargeEnabled: false,
+    chargeValue: '' as string,
   });
   const [whatsappTarget, setWhatsappTarget] = useState<{ name: string; phone: string; date: string; time: string } | null>(null);
 
