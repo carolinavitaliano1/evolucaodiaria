@@ -2381,6 +2381,7 @@ export default function ClinicDetail() {
             clinicName={clinic.name}
             patients={clinicPatients}
             evolutions={evolutions.filter(e => e.clinicId === clinic.id)}
+            clinicId={clinic.id}
           />
         </TabsContent>
 
