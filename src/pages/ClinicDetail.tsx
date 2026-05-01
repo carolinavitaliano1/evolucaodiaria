@@ -1540,7 +1540,7 @@ export default function ClinicDetail() {
                       
                       {clinicPackages.length > 0 && (
                         <div className="mb-3">
-                          <Label>Pacote</Label>
+                          <Label>Pacote de Atendimento</Label>
                           <Select
                             value={formData.packageId}
                             onValueChange={(v) => setFormData({ ...formData, packageId: v === 'none' ? '' : v })}
@@ -1562,7 +1562,7 @@ export default function ClinicDetail() {
 
                       {formData.packageId ? (
                         <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
-                          Pacote: <span className="font-semibold text-foreground">{clinicPackages.find(p => p.id === formData.packageId)?.name}</span>
+                          Pacote de Atendimento: <span className="font-semibold text-foreground">{clinicPackages.find(p => p.id === formData.packageId)?.name}</span>
                           {' - '}
                           <span className="font-semibold text-success">R$ {clinicPackages.find(p => p.id === formData.packageId)?.price.toFixed(2)}</span>
                         </p>
@@ -1822,7 +1822,7 @@ export default function ClinicDetail() {
                           <span className="text-success font-semibold">
                             R$ {displayValue.toFixed(2)}/sessão
                             {isPersonalizado && (
-                              <span className="text-xs text-muted-foreground font-normal ml-1">(Pacote de {pkg!.sessionLimit})</span>
+                              <span className="text-xs text-muted-foreground font-normal ml-1">(Pacote de Atendimento de {pkg!.sessionLimit})</span>
                             )}
                           </span>
                         </div>

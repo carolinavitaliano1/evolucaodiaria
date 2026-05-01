@@ -29,7 +29,7 @@ const REM_TYPE_LABEL: Record<string, string> = {
   por_sessao: 'Por sessão',
   fixo_mensal: 'Fixo mensal',
   fixo_dia: 'Fixo por dia trabalhado',
-  pacote: 'Pacote',
+  pacote: 'Pacote de Atendimento',
   definir_depois: 'A definir',
 };
 

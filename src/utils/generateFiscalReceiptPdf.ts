@@ -289,7 +289,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
       ]
     : isPersonalizado
     ? [
-        ['Modalidade:', `Pacote Personalizado (${patient.packageSessionLimit} sessões)`],
+        ['Modalidade:', `Pacote de Atendimento Personalizado (${patient.packageSessionLimit} sessões)`],
         ['Sessões Realizadas:', String(realizedCount)],
         ['Faltas Remuneradas:', String(paidAbsenceCount)],
         ['Sessões Cobráveis (Total):', String(billableCount)],

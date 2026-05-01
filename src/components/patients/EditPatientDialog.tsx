@@ -590,7 +590,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
             <div className="space-y-3 mt-2">
               {!isClinicFixedMonthly && (
                 <div>
-                  <Label className="text-xs">Pacotes</Label>
+                  <Label className="text-xs">Pacotes de Atendimento</Label>
                   <p className="text-[11px] text-muted-foreground mb-2">
                     Vincule um ou mais pacotes ao paciente. Você pode atribuir um pacote diferente para cada profissional (ex.: Psicologia e Fonoaudiologia).
                   </p>

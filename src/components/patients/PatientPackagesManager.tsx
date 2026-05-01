@@ -121,7 +121,7 @@ export function PatientPackagesManager({ patientId, clinicId, clinicPackages, or
       });
       setNewPackageId('');
       setNewMemberId('none');
-      toast.success('Pacote vinculado!');
+      toast.success('Pacote de Atendimento vinculado!');
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || 'Erro ao vincular pacote');
@@ -141,7 +141,7 @@ export function PatientPackagesManager({ patientId, clinicId, clinicPackages, or
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-xs">Pacotes vinculados</Label>
+        <Label className="text-xs">Pacotes de Atendimento vinculados</Label>
         {loading ? (
           <div className="text-xs text-muted-foreground mt-2">Carregando...</div>
         ) : links.length === 0 ? (

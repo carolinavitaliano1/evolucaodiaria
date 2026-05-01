@@ -422,7 +422,7 @@ export function PendingEnrollmentsCard() {
                       <option value="sessao">Por Sessão</option>
                       <option value="fixo">Fixo Mensal</option>
                       {packages.length > 0 && (
-                        <optgroup label="Pacotes">
+                        <optgroup label="Pacotes de Atendimento">
                           {packages.map(pkg => (
                             <option key={pkg.id} value={pkg.id}>
                               {pkg.name} — R$ {pkg.price.toFixed(2).replace('.', ',')}

@@ -359,13 +359,13 @@ function GroupInfoTab({ group, setGroup, members, memberPaymentConfigs, setMembe
                 <SelectContent>
                   <SelectItem value="por_sessao">Por Sessão</SelectItem>
                   <SelectItem value="mensal">Mensal</SelectItem>
-                  <SelectItem value="pacote">Pacote</SelectItem>
+                  <SelectItem value="pacote">Pacote de Atendimento</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {group.payment_type === 'pacote' && (
               <div>
-                <Label className="text-sm font-medium">Pacote da clínica</Label>
+                <Label className="text-sm font-medium">Pacote de Atendimento da clínica</Label>
                 {clinicPackages.length === 0 ? (
                   <p className="text-xs text-muted-foreground mt-1">Nenhum pacote ativo nesta clínica.</p>
                 ) : (

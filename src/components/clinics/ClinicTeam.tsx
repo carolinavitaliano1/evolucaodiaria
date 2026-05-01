@@ -1570,7 +1570,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                           </div>
                         ) : memberPlans.length === 0 ? (
                           <p className="text-xs text-muted-foreground italic">
-                            Nenhum plano cadastrado. Adicione abaixo as modalidades de pagamento (ex.: "Por Sessão R$ 80", "Pacote Mensal R$ 1.200").
+                            Nenhum plano cadastrado. Adicione abaixo as modalidades de pagamento (ex.: "Por Sessão R$ 80", "Pacote de Atendimento Mensal R$ 1.200").
                           </p>
                         ) : (
                           <div className="space-y-1.5">
@@ -1580,7 +1580,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                                 : plan.remuneration_type === 'fixo_mensal'
                                   ? 'Fixo mensal'
                                   : plan.remuneration_type === 'pacote'
-                                    ? 'Pacote'
+                                    ? 'Pacote de Atendimento'
                                     : 'Fixo por dia';
                               return (
                                 <div
@@ -1644,7 +1644,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                                 <SelectItem value="por_sessao">Por sessão</SelectItem>
                                 <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
                                 <SelectItem value="fixo_dia">Fixo por dia</SelectItem>
-                                <SelectItem value="pacote">Pacote</SelectItem>
+                                <SelectItem value="pacote">Pacote de Atendimento</SelectItem>
                               </SelectContent>
                             </Select>
                             <Input
@@ -1706,7 +1706,7 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                           )}
                           {newPlanType === 'pacote' && (
                             <p className="text-[10px] text-muted-foreground italic">
-                              Planos "Pacote" cobram o valor uma vez por paciente que teve ao menos uma sessão no mês (ex.: pacote mensal independente do nº de sessões).
+                              Planos "Pacote de Atendimento" cobram o valor uma vez por paciente que teve ao menos uma sessão no mês (ex.: pacote mensal independente do nº de sessões).
                             </p>
                           )}
                         </div>

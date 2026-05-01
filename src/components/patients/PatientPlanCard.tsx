@@ -104,7 +104,7 @@ export function PatientPlanCard({ patient, canEdit }: PatientPlanCardProps) {
     const value = newPkgId === 'none' ? null : newPkgId;
     try {
       await updatePatient(patient.id, { packageId: value as any });
-      toast.success(value ? 'Pacote vinculado' : 'Pacote removido');
+      toast.success(value ? 'Pacote de Atendimento vinculado' : 'Pacote de Atendimento removido');
     } catch {
       toast.error('Erro ao atualizar pacote');
     }
@@ -200,11 +200,11 @@ export function PatientPlanCard({ patient, canEdit }: PatientPlanCardProps) {
           )}
         </div>
 
-        {/* Pacote contratado */}
+        {/* Pacote de Atendimento contratado */}
         <div className="rounded-lg border border-border bg-secondary/30 p-4">
           <div className="flex items-center gap-1.5 mb-3">
             <Package className="w-3.5 h-3.5 text-primary" />
-            <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Pacote contratado</p>
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Pacote de Atendimento contratado</p>
           </div>
 
           {canEdit ? (

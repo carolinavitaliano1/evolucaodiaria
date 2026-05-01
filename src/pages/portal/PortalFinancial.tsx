@@ -91,11 +91,11 @@ function formatPaymentType(type: string | null, packageData?: PackageData | null
   // If patient has a package, show the package type label
   if (packageData) {
     const pkgMap: Record<string, string> = {
-      mensal: 'Pacote Mensal',
-      por_sessao: 'Pacote por Sessão',
-      personalizado: 'Pacote Personalizado',
+      mensal: 'Pacote de Atendimento Mensal',
+      por_sessao: 'Pacote de Atendimento por Sessão',
+      personalizado: 'Pacote de Atendimento Personalizado',
     };
-    return pkgMap[packageData.package_type] || `Pacote (${packageData.package_type})`;
+    return pkgMap[packageData.package_type] || `Pacote de Atendimento (${packageData.package_type})`;
   }
   const map: Record<string, string> = {
     sessao: 'Por Sessão',
@@ -454,7 +454,7 @@ export default function PortalFinancial() {
               </div>
               {packageData?.name && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Pacote</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Pacote de Atendimento</p>
                   <p className="font-semibold text-foreground">{packageData.name}</p>
                 </div>
               )}

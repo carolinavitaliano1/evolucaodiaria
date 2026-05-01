@@ -50,7 +50,7 @@ const packageSchema = z
     valorTotal: z
       .number({ invalid_type_error: 'Valor total obrigatório' })
       .positive('Valor total obrigatório'),
-    accountName: z.string().trim().min(1, 'Conta obrigatória').max(80),
+    accountName: z.string().trim().max(80).optional(),
     commissionPaymentMethod: z.enum(['sem_comissao', 'integral', 'por_atendimento']),
     commissionType: z.enum(['valor_fixo', 'porcentagem']),
     commissionPerProfessional: z.boolean(),
@@ -196,7 +196,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
           commissionPerProfessional: values.commissionPerProfessional,
         });
         await setPackageCommissions(pkg.id, commissionsPayload);
-        toast.success('Pacote atualizado');
+        toast.success('Pacote de Atendimento atualizado');
       } else {
         await addPackage({
           userId: '',
@@ -238,7 +238,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Editar Pacote' : 'Novo Pacote'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Editar Pacote de Atendimento' : 'Novo Pacote de Atendimento'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
@@ -249,10 +249,10 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Label>Nome do Pacote *</Label>
+                <Label>Nome do Pacote de Atendimento *</Label>
                 <Input
                   {...register('name')}
-                  placeholder="Ex: Pacote Social, Pacote Premium"
+                  placeholder="Ex: Pacote de Atendimento Social, Pacote de Atendimento Premium"
                   className="mt-1"
                 />
                 {errors.name && (
@@ -270,7 +270,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label>Tipo de Pacote</Label>
+                  <Label>Tipo de Pacote de Atendimento</Label>
                   <Controller
                     control={control}
                     name="packageType"
@@ -350,7 +350,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <Label>Valor total (R$) *</Label>
                   <Input
@@ -374,17 +374,6 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
                         </span>
                       </p>
                     )}
-                </div>
-                <div>
-                  <Label>Conta *</Label>
-                  <Input
-                    {...register('accountName')}
-                    placeholder="Ex: Caixa Principal"
-                    className="mt-1"
-                  />
-                  {errors.accountName && (
-                    <p className="text-xs text-destructive mt-1">{errors.accountName.message}</p>
-                  )}
                 </div>
               </div>
             </CardContent>
@@ -612,7 +601,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
               Cancelar
             </Button>
             <Button type="submit" className="flex-1" disabled={submitting}>
-              {submitting ? 'Salvando...' : isEdit ? 'Salvar alterações' : 'Criar Pacote'}
+              {submitting ? 'Salvando...' : isEdit ? 'Salvar alterações' : 'Criar Pacote de Atendimento'}
             </Button>
           </div>
         </form>

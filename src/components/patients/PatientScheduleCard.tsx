@@ -155,7 +155,7 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                           const perSession = s.remunerationPlanValue! / limit;
                           return (
                             <span className="text-[11px] text-primary/80 ml-5">
-                              Pacote {limit} {limit === 1 ? 'sessão' : 'sessões'}: R$ {perSession.toFixed(2)}/sessão
+                              Pacote de Atendimento {limit} {limit === 1 ? 'sessão' : 'sessões'}: R$ {perSession.toFixed(2)}/sessão
                             </span>
                           );
                         })()}

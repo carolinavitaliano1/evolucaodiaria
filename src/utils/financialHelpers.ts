@@ -216,7 +216,7 @@ export function getMensalDynamic(
 
 /**
  * Valor "por sessão" universal para um paciente, independente do tipo:
- * - Pacote personalizado: preço ÷ sessionLimit
+ * - Pacote de Atendimento personalizado: preço ÷ sessionLimit
  * - Mensalista: usa cálculo dinâmico (perSession do mês corrente)
  * - Por sessão: o próprio paymentValue
  *
@@ -612,7 +612,7 @@ export interface MemberRemunerationByPlansContext {
    *  fixo (fixo_mensal/fixo_diario/sessao), os planos do terapeuta são
    *  IGNORADOS — a remuneração vem direto do cadastro da clínica. */
   clinic?: ClinicLike | null;
-  /** Pacotes da clínica (clinic_packages) para resolver planos do tipo 'pacote'. */
+  /** Pacotes de Atendimento da clínica (clinic_packages) para resolver planos do tipo 'pacote'. */
   packages?: PackageLike[];
   /** Mês (0-indexed) e ano para cálculo de pacotes mensais (ocorrências). */
   month?: number;
@@ -760,7 +760,7 @@ export function calculateMemberRemunerationByPlans(
     } else if (plan.remuneration_type === 'por_sessao') {
       subtotal = sessionsCount * value;
     } else if (plan.remuneration_type === 'pacote') {
-      // Pacote: deriva o valor por SESSÃO a partir do clinic_package vinculado.
+      // Pacote de Atendimento: deriva o valor por SESSÃO a partir do clinic_package vinculado.
       // - mensal       → preço ÷ sessões previstas no mês (por paciente)
       // - personalizado→ preço ÷ session_limit
       // - por_sessao   → preço × nº sessões

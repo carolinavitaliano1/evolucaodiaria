@@ -341,7 +341,7 @@ export function PatientScheduleSlotsManager({ patientId, clinicId, organizationI
               )}
               {memberId && availablePackages.length > 0 && (
                 <div>
-                  <Label className="text-[11px]">Pacote (opcional)</Label>
+                  <Label className="text-[11px]">Pacote de Atendimento (opcional)</Label>
                   <Select value={packageLinkId} onValueChange={setPackageLinkId}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>

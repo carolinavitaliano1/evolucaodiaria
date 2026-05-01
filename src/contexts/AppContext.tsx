@@ -899,7 +899,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
       setState(prev => ({ ...prev, clinicPackages: [created, ...prev.clinicPackages] }));
-      toast.success('Pacote adicionado!');
+      toast.success('Pacote de Atendimento adicionado!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar pacote'); }
   }, [user]);
 
@@ -931,7 +931,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.from('clinic_packages').delete().eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, clinicPackages: prev.clinicPackages.filter(p => p.id !== id) }));
-      toast.success('Pacote excluído!');
+      toast.success('Pacote de Atendimento excluído!');
     } catch (error) { console.error(error); toast.error('Erro ao excluir pacote'); }
   }, [user]);
 

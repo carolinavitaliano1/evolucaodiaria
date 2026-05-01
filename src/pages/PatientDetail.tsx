@@ -884,7 +884,7 @@ export default function PatientDetail() {
         // O total mensal é adicionado uma vez abaixo.
         continue;
       } else if (planType === 'pacote') {
-        // Pacote (não mensal): se tiver session_limit definido OU número
+        // Pacote de Atendimento (não mensal): se tiver session_limit definido OU número
         // mencionado no nome, ratear o valor pelo nº de sessões.
         const limit = (slot as any).packageSessionLimit
           || extractSessionsFromName(slot.remunerationPlanName);
@@ -1812,7 +1812,7 @@ export default function PatientDetail() {
       if (patient.professionals) idLines.push(['Profissional(is):', patient.professionals]);
       if (patient.paymentValue) {
         if (isPackagePersonalizado) {
-          idLines.push(['Valor por Sessão:', `R$ ${perSessionValue.toFixed(2)} (Pacote ${patientPackage!.name} — ${patientPackage!.sessionLimit} sessões)`]);
+          idLines.push(['Valor por Sessão:', `R$ ${perSessionValue.toFixed(2)} (Pacote de Atendimento ${patientPackage!.name} — ${patientPackage!.sessionLimit} sessões)`]);
         } else if (pdfDynamic) {
           idLines.push(['Valor Mensal:', `R$ ${paymentValue.toFixed(2)}/mês (Mês de ${pdfDynamic.occurrences} semanas: R$ ${pdfDynamic.perSession.toFixed(2)}/sessão)`]);
         } else {
@@ -1846,7 +1846,7 @@ export default function PatientDetail() {
         ['Feriados remunerados:', String(tFeriadoRem)],
         ['Total de sessões cobradas:', String(paidSessions)],
         ...(isPackagePersonalizado
-          ? [['Pacote:', `${paidSessions} sessão(ões) utilizadas de ${patientPackage!.sessionLimit} (${patientPackage!.name})`] as [string, string],
+          ? [['Pacote de Atendimento:', `${paidSessions} sessão(ões) utilizadas de ${patientPackage!.sessionLimit} (${patientPackage!.name})`] as [string, string],
              ['Valor por sessão (fracionado):', `R$ ${perSessionValue.toFixed(2)}`] as [string, string]]
           : pdfDynamic
             ? [['Valor mensal:', `R$ ${paymentValue.toFixed(2)}`] as [string, string],
@@ -2253,7 +2253,7 @@ export default function PatientDetail() {
                     <span className="flex items-center gap-1">
                       <DollarSign className="w-3.5 h-3.5" />
                       {isPackagePersonalizado
-                        ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit})`
+                        ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de Atendimento de ${patientPackage!.sessionLimit})`
                         : `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
                       }
                     </span>

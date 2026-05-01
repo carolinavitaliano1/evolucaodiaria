@@ -1259,7 +1259,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     { value: 'overview', icon: <DollarSign className="w-5 h-5" />, label: 'Visão Geral', color: 'text-success' },
     { value: 'patients', icon: <Users className="w-5 h-5" />, label: 'Cobranças', color: 'text-violet-500' },
     ...(showTeam ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
-    { value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' },
+    { value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes de Atendimento', color: 'text-pink-500' },
   ];
 
   return (
