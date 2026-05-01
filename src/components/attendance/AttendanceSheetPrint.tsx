@@ -8,7 +8,7 @@ import {
   Header, ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { GroupedPatientRow, getStatusLabel, getProfessionalTitle } from './attendanceUtils';
+import { GroupedPatientRow, getStatusLabel, getProfessionalTitle, buildDateColumns, buildSessionMap } from './attendanceUtils';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -23,14 +23,8 @@ export interface ExportOptions {
   stampImageBase64: string | null;
 }
 
-function getMaxSessions(rows: GroupedPatientRow[]): number {
-  return rows.reduce((max, r) => Math.max(max, r.sessions.length), 0);
-}
-
 function formatSessionCell(s: GroupedPatientRow['sessions'][0]): string {
-  const dateStr = format(new Date(s.date + 'T00:00:00'), 'dd/MM', { locale: ptBR });
-  const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agend.';
-  return `${dateStr}\n${label}`;
+  return s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agendado';
 }
 
 function base64ToUint8Array(dataUrl: string): { bytes: Uint8Array; type: string } {
