@@ -151,7 +151,7 @@ export async function generateClinicInternalStatementPdf(
       .eq('clinic_id', clinicId),
     supabase
       .from('clinics')
-      .select('payment_type, payment_amount, discount_percentage')
+      .select('payment_type, payment_amount, discount_percentage, absence_payment_type, pays_on_absence')
       .eq('id', clinicId)
       .maybeSingle(),
     supabase
@@ -163,7 +163,7 @@ export async function generateClinicInternalStatementPdf(
       .maybeSingle(),
   ]);
 
-  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null } | null =
+  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null; absence_payment_type?: string | null; pays_on_absence?: boolean | null } | null =
     (clinicRes.data as any) ?? null;
 
   const isClinicFixedSalary =
@@ -382,7 +382,13 @@ export async function generateClinicInternalStatementPdf(
           attendanceStatus: e.attendance_status,
           confirmedAttendance: e.confirmed_attendance,
         })),
-        month: month + 1,
+        clinic: {
+          paymentType: clinicPayInfo?.payment_type,
+          paymentAmount: clinicPayInfo?.payment_amount,
+          absencePaymentType: clinicPayInfo?.absence_payment_type,
+          paysOnAbsence: clinicPayInfo?.pays_on_absence,
+        },
+        month,
         year,
         packages: packages.map(pk => ({
           id: pk.id,
