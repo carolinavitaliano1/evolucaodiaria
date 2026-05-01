@@ -1552,8 +1552,16 @@ export default function PatientDetail() {
         sessionTotal = rawPayVal; // Total is the monthly value
         sessionCount = fiscalEvos.filter(e => STATUS_LABELS[e.attendanceStatus]?.billable).length;
       }
-      const displayTotal = fiscalTotalPaid ? parseFloat(fiscalTotalPaid) : sessionTotal;
-      const payStatusLabel = fiscalPaymentStatus === 'paid' ? 'PAGO' : fiscalPaymentStatus === 'total' ? 'TOTAL (PAGO + PENDENTE)' : 'PENDENTE';
+      // Serviços avulsos no período (faturado adicional)
+      const wServicesInRange = patientServices.filter(s => {
+        const d = new Date(s.date + 'T12:00:00');
+        return d >= fiscalStartDate! && d <= fiscalEndDate!;
+      });
+      const wServicesBilled = wServicesInRange.reduce((sum, s) => sum + (s.price || 0), 0);
+      const wTotalFaturado = sessionTotal + wServicesBilled;
+      const wNonBillable = fiscalEvos.filter(e => !(STATUS_LABELS[e.attendanceStatus]?.billable));
+      const wTotalDescontado = (isPackageMensal || isFixoMensal) ? 0 : wNonBillable.length * payVal;
+      const wTotalPago = fiscalPaymentStatus === 'paid' ? (fiscalTotalPaidFromApp ?? 0) : 0;
       const patCpf = (patient as any).cpf;
       const respCpf = (patient as any).responsible_cpf || (patient as any).responsibleCpf;
 
@@ -1599,8 +1607,9 @@ export default function PatientDetail() {
         <hr/>
         <h3 style="color:#1e3a8a">RESUMO FINANCEIRO</h3>
         ${(isPackageMensal || isFixoMensal) ? `<p>Modalidade: Mensalidade fixa &nbsp;|&nbsp; Sessões: ${sessionCount} &nbsp;|&nbsp; Valor/sessão: R$ ${payVal.toFixed(2)} &nbsp;|&nbsp; Mensal: R$ ${rawPayVal.toFixed(2)}</p>` : `<p>Modalidade: Por sessão &nbsp;|&nbsp; Sessões cobráveis: ${sessionCount} &nbsp;|&nbsp; Valor/sessão: R$ ${payVal.toFixed(2)}</p>`}
-        <p style="font-size:13pt"><strong>TOTAL DO PERÍODO: R$ ${displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></p>
-        <p><strong>Status:</strong> ${payStatusLabel}${fiscalPaymentDate && fiscalPaymentStatus === 'paid' ? ` &nbsp;·&nbsp; Recebido em: ${format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}` : ''}</p>
+        <p><strong style="color:#1e7a1e">Total Faturado:</strong> R$ ${wTotalFaturado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        <p><strong style="color:#a85f00">Total Descontado (não cobrado):</strong> R$ ${wTotalDescontado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        <p style="font-size:13pt"><strong>TOTAL PAGO: R$ ${wTotalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>${fiscalPaymentStatus === 'paid' && fiscalPaymentDate ? ` &nbsp;·&nbsp; em ${format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}` : ''}</p>
         <hr/>
         <p style="color:#555;font-size:9pt">Declaro, para os devidos fins fiscais e legais, que prestei os serviços de ${areaLabel.toLowerCase()} ao(à) paciente ${patient.name} conforme sessões discriminadas neste documento, no período de ${periodLabel}.</p>
         <br/><br/>
