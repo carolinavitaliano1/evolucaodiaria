@@ -13,6 +13,9 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+
+const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -32,10 +35,13 @@ interface ClinicAttendanceSheetProps {
   clinicName: string;
   patients: Patient[];
   evolutions: Evolution[];
+  /** Optional clinic id to scope calendar blocks (feriado/ferias). */
+  clinicId?: string;
 }
 
-export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: ClinicAttendanceSheetProps) {
+export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinicId }: ClinicAttendanceSheetProps) {
   const { user } = useAuth();
+  const { blocks: calendarBlocks } = useCalendarBlocks();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
@@ -78,11 +84,66 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions }: Clin
       scheduleByDay: p.scheduleByDay as any,
     })), [patients]);
 
+  // Build synthetic "feriado" evolutions from calendar blocks so the clinic
+  // attendance sheet mirrors the individual sheet (which already injects them).
+  const evolutionsWithHolidays = useMemo(() => {
+    if (!calendarBlocks || calendarBlocks.length === 0) return evolutions;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const existingByPatient = new Map<string, Set<string>>();
+    evolutions.forEach(e => {
+      if (!existingByPatient.has(e.patientId)) existingByPatient.set(e.patientId, new Set());
+      existingByPatient.get(e.patientId)!.add(e.date);
+    });
+
+    const synthetic: Evolution[] = [];
+    for (const patient of patients) {
+      if (!isPatientActiveOn(patient)) continue;
+      const scheduledDays = patient.scheduleByDay
+        ? Object.keys(patient.scheduleByDay)
+        : (patient.weekdays || []);
+      if (scheduledDays.length === 0) continue;
+      const createdStr = patient.createdAt ? format(new Date(patient.createdAt), 'yyyy-MM-dd') : '';
+      const filled = existingByPatient.get(patient.id) || new Set<string>();
+
+      for (const block of calendarBlocks) {
+        if (block.clinic_id && block.clinic_id !== patient.clinicId) continue;
+        if (clinicId && block.clinic_id && block.clinic_id !== clinicId) continue;
+        const cur = new Date(block.start_date + 'T12:00:00');
+        const end = new Date(block.end_date + 'T12:00:00');
+        while (cur <= end) {
+          const dateStr = format(cur, 'yyyy-MM-dd');
+          const weekday = WEEKDAY_NAMES[cur.getDay()];
+          if (
+            dateStr <= todayStr &&
+            (!createdStr || dateStr >= createdStr) &&
+            !filled.has(dateStr) &&
+            scheduledDays.includes(weekday)
+          ) {
+            synthetic.push({
+              id: `calendar-block-${block.id}-${patient.id}-${dateStr}`,
+              patientId: patient.id,
+              clinicId: patient.clinicId,
+              userId: user?.id,
+              date: dateStr,
+              text: '',
+              attendanceStatus: 'feriado_nao_remunerado',
+              createdAt: `${dateStr}T12:00:00.000Z`,
+              attachments: [],
+            } as Evolution);
+            filled.add(dateStr);
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+    }
+    return synthetic.length ? [...evolutions, ...synthetic] : evolutions;
+  }, [evolutions, patients, calendarBlocks, clinicId, user?.id]);
+
   const groupedRows = useMemo(() =>
     buildGroupedAttendanceRows(
-      patientInfos, evolutions, month, year,
+      patientInfos, evolutionsWithHolidays, month, year,
       filterProfessional !== 'all' ? filterProfessional : undefined
-    ), [patientInfos, evolutions, month, year, filterProfessional]);
+    ), [patientInfos, evolutionsWithHolidays, month, year, filterProfessional]);
 
   const maxSessions = useMemo(() =>
     groupedRows.reduce((max, row) => Math.max(max, row.sessions.length), 0),
