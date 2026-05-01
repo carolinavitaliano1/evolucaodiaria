@@ -236,7 +236,8 @@ export async function downloadAttendanceDOCX(
   options: ExportOptions
 ) {
   const monthLabel = `${MONTHS[month]} de ${year}`;
-  const maxSessions = getMaxSessions(rows);
+  const dateColumns = buildDateColumns(rows);
+  const maxSessions = dateColumns.length;
 
   const contentWidth = 14400;
   const patientW = 2600;
@@ -254,7 +255,9 @@ export async function downloadAttendanceDOCX(
   const headerCells = [
     makeHeaderCell('Paciente', patientW),
     makeHeaderCell('Terapia', therapyW),
-    ...Array.from({ length: maxSessions }, (_, i) => makeHeaderCell(`S${i + 1}`, sessionW)),
+    ...dateColumns.map(d =>
+      makeHeaderCell(format(new Date(d + 'T00:00:00'), 'dd/MM', { locale: ptBR }), sessionW)
+    ),
   ];
   if (options.showSignatureCol) headerCells.push(makeHeaderCell('Assinatura', signatureW));
   if (options.showObsCol) headerCells.push(makeHeaderCell('Obs.', obsW));
@@ -264,12 +267,12 @@ export async function downloadAttendanceDOCX(
   const dataRows = rows.length > 0
     ? rows.map(row => {
         const nameText = row.patientName;
-        const sessionCells = Array.from({ length: maxSessions }, (_, i) => {
-          const s = row.sessions[i];
+        const sessionMap = buildSessionMap(row);
+        const sessionCells = dateColumns.map(d => {
+          const s = sessionMap[d];
           if (!s) return makeEmptyCell(sessionW);
-          const dateStr = format(new Date(s.date + 'T00:00:00'), 'dd/MM', { locale: ptBR });
-          const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agend.';
-          return makeCell(`${dateStr}\n${label}`, sessionW, AlignmentType.CENTER);
+          const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agendado';
+          return makeCell(label, sessionW, AlignmentType.CENTER);
         });
         const cells = [
           makeCell(nameText, patientW),
