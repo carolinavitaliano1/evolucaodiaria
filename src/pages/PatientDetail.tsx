@@ -818,6 +818,28 @@ export default function PatientDetail() {
     }, 0);
   };
 
+  const calculatePatientRevenueForMonth = (evos: typeof patientEvolutions, targetDate: Date) => {
+    if (!patient) return 0;
+    return calculatePatientMonthlyRevenue({
+      patient,
+      clinic,
+      evolutions: evos.map((e): EvolutionLike => ({
+        id: e.id,
+        patientId: e.patientId,
+        groupId: e.groupId,
+        date: e.date,
+        attendanceStatus: e.attendanceStatus,
+        confirmedAttendance: e.confirmedAttendance,
+        userId: e.userId,
+      })),
+      month: targetDate.getMonth(),
+      year: targetDate.getFullYear(),
+      packages: clinicPackages,
+      groupBillingMap,
+      memberPaymentMap,
+    }).total;
+  };
+
   const totalGroupBillableEvos = totalBillableEvos.filter(e => e.groupId);
   const totalIndividualBillableEvos = totalBillableEvos.filter(e => !e.groupId);
   const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
