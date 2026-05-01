@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ClipboardList, FileDown, FileText } from 'lucide-react';
 import { downloadAttendancePDF, downloadAttendanceDOCX, ExportOptions } from './AttendanceSheetPrint';
-import { buildGroupedAttendanceRows, getStatusLabel, PatientInfo } from './attendanceUtils';
+import { buildGroupedAttendanceRows, getStatusLabel, PatientInfo, buildDateColumns, buildSessionMap } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -145,9 +145,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
       filterProfessional !== 'all' ? filterProfessional : undefined
     ), [patientInfos, evolutionsWithHolidays, month, year, filterProfessional]);
 
-  const maxSessions = useMemo(() =>
-    groupedRows.reduce((max, row) => Math.max(max, row.sessions.length), 0),
-    [groupedRows]);
+  const dateColumns = useMemo(() => buildDateColumns(groupedRows), [groupedRows]);
 
   const selectedStamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
 
@@ -290,9 +288,9 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
                   <tr className="bg-muted/50">
                     <th className="border border-border px-2 py-1.5 text-left text-xs font-semibold text-foreground whitespace-nowrap">Paciente</th>
                     <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">Terapia</th>
-                    {Array.from({ length: maxSessions }, (_, i) => (
-                      <th key={i} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
-                        S{i + 1}
+                    {dateColumns.map(d => (
+                      <th key={d} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
+                        {format(new Date(d + 'T00:00:00'), 'dd/MM')}
                       </th>
                     ))}
                     {showSignatureCol && (
@@ -304,7 +302,9 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
                   </tr>
                 </thead>
                 <tbody>
-                  {groupedRows.map(row => (
+                  {groupedRows.map(row => {
+                    const sessionMap = buildSessionMap(row);
+                    return (
                     <tr key={row.patientId}>
                       <td className="border border-border px-2 py-1.5 align-top">
                         <div className="font-medium text-foreground text-xs leading-tight">{row.patientName}</div>
@@ -312,15 +312,14 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
                         {row.specialty || '—'}
                       </td>
-                      {Array.from({ length: maxSessions }, (_, i) => {
-                        const s = row.sessions[i];
-                        if (!s) return <td key={i} className="border border-border px-1 py-1.5" />;
-                        const dateStr = format(new Date(s.date + 'T00:00:00'), 'dd/MM');
-                        const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agend.';
+                      {dateColumns.map(d => {
+                        const s = sessionMap[d];
+                        if (!s) return <td key={d} className="border border-border px-1 py-1.5" />;
+                        const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agendado';
                         const isPresent = s.attendanceStatus === 'presente' || s.attendanceStatus === 'reposicao';
                         const isAbsent = s.attendanceStatus === 'falta';
                         return (
-                          <td key={i} className="border border-border px-1 py-1.5 text-center align-top">
+                          <td key={d} className="border border-border px-1 py-1.5 text-center align-top">
                             <div className={cn(
                               'text-[10px] leading-tight rounded px-0.5 py-0.5',
                               isPresent && 'text-green-700 dark:text-green-400',
@@ -328,8 +327,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
                               !s.isFilled && 'text-muted-foreground',
                               s.isFilled && !isPresent && !isAbsent && 'text-yellow-700 dark:text-yellow-400'
                             )}>
-                              <div className="font-medium">{dateStr}</div>
-                              <div>{label}</div>
+                              <div className="font-medium">{label}</div>
                             </div>
                           </td>
                         );
@@ -337,7 +335,8 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
                       {showSignatureCol && <td className="border border-border px-2 py-1.5" />}
                       {showObsCol && <td className="border border-border px-2 py-1.5" />}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
