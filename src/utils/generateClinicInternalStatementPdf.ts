@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
+import { getDynamicSessionValue } from '@/utils/dateHelpers';
 
 interface PatientLite {
   id: string;
@@ -64,6 +64,8 @@ interface PatientFull {
   payment_value: number | null;
   weekdays: string[] | null;
   package_id: string | null;
+  package_assigned_at: string | null;
+  departure_date: string | null;
 }
 
 interface PackageRow {
@@ -72,6 +74,8 @@ interface PackageRow {
   package_type: string;
   price: number;
   session_limit: number | null;
+  lancamento_tipo: string | null;
+  valor_total: number | null;
 }
 
 const fmtBRL = (v: number) =>
