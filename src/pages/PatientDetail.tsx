@@ -1431,9 +1431,9 @@ export default function PatientDetail() {
       fiscalPerSession = dynResult.perSession;
     }
     // Total faturado = sessões cobráveis + serviços avulsos do período (com valor)
-    const sessionsBilled = (isPackageMensal || isFixoMensal)
-      ? rawPaymentValue
-      : billableCount * fiscalPerSession;
+    // Regra única: sempre contabiliza apenas o que efetivamente aconteceu (sessões cobráveis × valor/sessão).
+    // Mensal/Fixo usam fiscalPerSession dinâmico (valor mensal ÷ sessões agendadas no mês).
+    const sessionsBilled = billableCount * fiscalPerSession;
     const servicesInRange = patientServices.filter(s => {
       if (!fiscalStartDate || !fiscalEndDate) return false;
       const d = new Date(s.date + 'T12:00:00');
@@ -1443,9 +1443,7 @@ export default function PatientDetail() {
     const totalFaturado = sessionsBilled + servicesBilled;
     // Total descontado (não cobrado) = soma do que seria por sessão das faltas/feriados não remunerados
     const nonBillableEvos = evos.filter(e => !(STATUS_BILLABLE[e.attendanceStatus] ?? false));
-    const totalDescontado = (isPackageMensal || isFixoMensal)
-      ? 0
-      : nonBillableEvos.length * fiscalPerSession;
+    const totalDescontado = nonBillableEvos.length * fiscalPerSession;
     // Total pago = vem do registro financeiro do paciente (apenas se realmente marcado como pago)
     const totalPago = fiscalPaymentStatus === 'paid'
       ? (fiscalTotalPaidFromApp ?? 0)
