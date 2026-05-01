@@ -32,6 +32,9 @@ export interface PatientInfo {
   weekdays?: string[];
   scheduleTime?: string;
   scheduleByDay?: Record<string, { start: string; end: string }>;
+  createdAt?: string;
+  departureDate?: string | null;
+  isArchived?: boolean | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -41,6 +44,7 @@ const STATUS_LABELS: Record<string, string> = {
   reposicao: 'Reposição',
   feriado_remunerado: 'Feriado Rem.',
   feriado_nao_remunerado: 'Feriado',
+  saida: 'Saída',
 };
 
 export function getStatusLabel(status?: string): string {
@@ -109,18 +113,22 @@ export function getProfessionalTitle(clinicalArea?: string): string {
   return clinicalArea;
 }
 
-function getExpectedDates(weekdays: string[] | undefined, month: number, year: number): string[] {
+function getExpectedDates(patient: PatientInfo, month: number, year: number): string[] {
+  const weekdays = patient.weekdays;
   if (!weekdays || weekdays.length === 0) return [];
   const dates: string[] = [];
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const createdAt = patient.createdAt ? patient.createdAt.slice(0, 10) : null;
+  const departureDate = patient.departureDate || null;
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
     const dayName = REVERSE_WEEKDAY[date.getDay()];
-    if (dayName && weekdays.includes(dayName)) {
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      dates.push(`${year}-${mm}-${dd}`);
-    }
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${mm}-${dd}`;
+    if (createdAt && dateStr < createdAt) continue;
+    if (departureDate && dateStr >= departureDate) continue;
+    if (dayName && weekdays.includes(dayName)) dates.push(dateStr);
   }
   return dates;
 }
