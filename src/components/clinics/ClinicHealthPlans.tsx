@@ -287,7 +287,7 @@ export function ClinicHealthPlans({ clinicId }: Props) {
                     <SelectContent>
                       <SelectItem value="por_sessao">Por Sessão</SelectItem>
                       <SelectItem value="mensal">Mensal</SelectItem>
-                      <SelectItem value="pacote">Por Pacote</SelectItem>
+                      <SelectItem value="pacote">Por Pacote de Atendimento</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

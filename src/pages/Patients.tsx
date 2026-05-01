@@ -553,7 +553,7 @@ export default function Patients() {
 
       if (patientPackage) {
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Pacote:', margin + 5, y + 21);
+        pdf.text('Pacote de Atendimento:', margin + 5, y + 21);
         pdf.setFont('helvetica', 'normal');
         pdf.text(`${patientPackage.name} — R$ ${patientPackage.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + 22, y + 21);
       }
@@ -574,13 +574,13 @@ export default function Patients() {
       y += 12;
 
       const financialRows = [
-        ...(patientPackage ? [{ label: 'Pacote / Modalidade', value: patientPackage.name }] : []),
+        ...(patientPackage ? [{ label: 'Pacote de Atendimento / Modalidade', value: patientPackage.name }] : []),
         { label: 'Sessões Realizadas (Presenças + Reposições)', value: String(presences) },
         { label: 'Faltas Remuneradas', value: String(faltasRem) },
         { label: 'Faltas (sem cobrança)', value: String(absences) },
         { label: 'Total de Sessões no Período', value: String(patientEvolutions.length) },
         _isMensal
-          ? { label: 'Valor Mensal do Pacote', value: `R$ ${baseValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }
+          ? { label: 'Valor Mensal do Pacote de Atendimento', value: `R$ ${baseValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }
           : { label: 'Valor por Sessão', value: `R$ ${valuePerSession.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
       ];
 

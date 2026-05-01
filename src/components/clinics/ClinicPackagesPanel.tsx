@@ -37,7 +37,7 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
       const s = String(v ?? '');
       return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ['Pacote', 'Tipo', 'Valor (R$)', 'Sessões', 'Paciente', 'Telefone', 'Início do contrato'];
+    const header = ['Pacote de Atendimento', 'Tipo', 'Valor (R$)', 'Sessões', 'Paciente', 'Telefone', 'Início do contrato'];
     const rows: string[] = [header.join(';')];
     data.forEach(({ pkg, patients: pts }) => {
       const tipo = pkg.packageType === 'por_sessao' ? 'Por Sessão' : pkg.packageType === 'personalizado' ? 'Personalizado' : 'Mensal';
@@ -75,7 +75,7 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Pacotes e Pacientes', pageW / 2, y, { align: 'center' });
+    doc.text('Pacotes de Atendimento e Pacientes', pageW / 2, y, { align: 'center' });
     y += 7;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -159,7 +159,7 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
           <Package className="w-5 h-5 text-primary" />
-          Pacotes
+          Pacotes de Atendimento
         </h2>
 
         <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ export function ClinicPackagesPanel({ clinicId }: Props) {
             <FileText className="w-4 h-4" /> PDF
           </Button>
           <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
-            <Plus className="w-4 h-4" /> Novo Pacote
+            <Plus className="w-4 h-4" /> Novo Pacote de Atendimento
           </Button>
         </div>
       </div>
