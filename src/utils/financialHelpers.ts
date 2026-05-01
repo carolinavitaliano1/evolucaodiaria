@@ -374,7 +374,17 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
         perSessionPkg = dyn.occurrences > 0 ? dyn.perSession : 0;
       }
 
-      const billable = evolutions.filter(e => isBillableStatus(e.attendanceStatus));
+      // 🔒 Se o paciente saiu no meio do mês, ignorar qualquer
+      // evolução/falta com data >= departureDate (pacote 'valor_procedimento'
+      // só cobra presenças/faltas remuneradas efetivas).
+      const departureCutoff = patient.departureDate
+        ? new Date(`${patient.departureDate}T12:00:00`)
+        : null;
+      const evolutionsInScope = departureCutoff
+        ? evolutions.filter(e => new Date(`${e.date}T12:00:00`) < departureCutoff)
+        : evolutions;
+
+      const billable = evolutionsInScope.filter(e => isBillableStatus(e.attendanceStatus));
       const billableGroup = billable.filter(e => e.groupId);
       const billableIndividual = billable.filter(e => !e.groupId);
 
@@ -412,7 +422,7 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
       const individualRevenue = countablePerSession * perSessionPkg;
 
       // Faltas cobráveis (mesma regra da clínica)
-      const absences = evolutions.filter(e => e.attendanceStatus === 'falta');
+      const absences = evolutionsInScope.filter(e => e.attendanceStatus === 'falta');
       const chargedAbsences = absences.filter(e => shouldChargeAbsence(e, clinic));
       const uncoveredAbsences = absences.length - chargedAbsences.length;
       const chargedAbsenceRevenue = chargedAbsences.reduce((sum, e) => {
