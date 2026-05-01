@@ -1019,13 +1019,8 @@ export default function PatientDetail() {
       return d.getMonth() === reportMonth.getMonth() && d.getFullYear() === reportMonth.getFullYear();
     })
     .reduce((sum, s) => sum + Number(s.price || 0), 0);
-  const monthlyRevenue = (monthlyMensalDeduction
-    ? monthlyMensalDeduction.finalRevenue + monthlyGroupRevenue
-    : isFixoMensal
-      ? paymentValue + monthlyGroupRevenue
-      : isFixoDiario
-        ? monthlyIndividualUniqueDays * perSessionValue + monthlyGroupRevenue
-        : monthlyIndividualBillableCount * perSessionValue + monthlyGroupRevenue) + monthlyServicesRevenue;
+  const monthlyPatientRevenue = calculatePatientRevenueForMonth(monthlyEvolutions, reportMonth);
+  const monthlyRevenue = monthlyPatientRevenue + monthlyServicesRevenue;
   const monthlyRevenueSubtitle = monthlyMensalDeduction
     ? `${monthlyDynamic!.occurrences} sessões previstas`
     : isFixoMensal
@@ -1079,13 +1074,7 @@ export default function PatientDetail() {
   const finIndividualBillable = finBillableEvos.filter(e => !e.groupId);
   const finIndividualBillableCount = finIndividualBillable.length;
   const finIndividualUniqueDays = new Set(finIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
-  const finRevenue = finMensalDeduction
-    ? finMensalDeduction.finalRevenue + finGroupRevenue
-    : isFixoMensal
-      ? paymentValue + finGroupRevenue
-      : isFixoDiario
-        ? finIndividualUniqueDays * perSessionValue + finGroupRevenue
-        : finIndividualBillableCount * perSessionValue + finGroupRevenue;
+  const finRevenue = calculatePatientRevenueForMonth(financialEvolutions, financialMonth);
   const finRegistros = financialEvolutions.length;
   const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
 
