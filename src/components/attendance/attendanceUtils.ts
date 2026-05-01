@@ -186,6 +186,18 @@ export function buildGroupedAttendanceRows(
       }
     }
 
+    if (patient.departureDate) {
+      const departure = new Date(`${patient.departureDate}T12:00:00`);
+      if (departure.getMonth() === month && departure.getFullYear() === year && !filledDates.has(patient.departureDate)) {
+        sessions.push({
+          date: patient.departureDate,
+          time: '',
+          isFilled: true,
+          attendanceStatus: 'saida',
+        });
+      }
+    }
+
     sessions.sort((a, b) => a.date.localeCompare(b.date));
 
     if (sessions.length > 0) {
