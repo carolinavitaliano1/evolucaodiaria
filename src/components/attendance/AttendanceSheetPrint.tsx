@@ -50,7 +50,8 @@ export function downloadAttendancePDF(
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const maxSessions = getMaxSessions(rows);
+  const dateColumns = buildDateColumns(rows);
+  const maxSessions = dateColumns.length;
 
   // Header
   doc.setFontSize(12);
@@ -64,17 +65,18 @@ export function downloadAttendancePDF(
 
   // Build columns
   const headRow: string[] = ['Paciente', 'Terapia'];
-  for (let i = 0; i < maxSessions; i++) headRow.push(`S${i + 1}`);
+  for (const d of dateColumns) headRow.push(format(new Date(d + 'T00:00:00'), 'dd/MM', { locale: ptBR }));
   if (options.showSignatureCol) headRow.push('Assinatura');
   if (options.showObsCol) headRow.push('Obs.');
 
   const tableData = rows.map(row => {
+    const sessionMap = buildSessionMap(row);
     const cells: string[] = [
       row.patientName,
       row.specialty || '—',
     ];
-    for (let i = 0; i < maxSessions; i++) {
-      cells.push(row.sessions[i] ? formatSessionCell(row.sessions[i]) : '');
+    for (const d of dateColumns) {
+      cells.push(sessionMap[d] ? formatSessionCell(sessionMap[d]) : '');
     }
     if (options.showSignatureCol) cells.push('');
     if (options.showObsCol) cells.push('');
