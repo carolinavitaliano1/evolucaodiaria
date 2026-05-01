@@ -2379,7 +2379,7 @@ export default function ClinicDetail() {
         <TabsContent value="attendance">
           <ClinicAttendanceSheet
             clinicName={clinic.name}
-            patients={clinicPatients}
+            patients={allClinicPatients}
             evolutions={evolutions.filter(e => e.clinicId === clinic.id)}
             clinicId={clinic.id}
           />
