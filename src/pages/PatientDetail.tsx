@@ -935,16 +935,16 @@ export default function PatientDetail() {
   const totalServicesRevenue = patientServices
     .filter(s => s.status !== 'cancelado')
     .reduce((sum, s) => sum + Number(s.price || 0), 0);
-  const totalFinancial = (isFixoMensal
-    ? paymentValue + totalGroupRevenue
-    : isFixoDiario
-      ? totalIndividualUniqueDays * perSessionValue + totalGroupRevenue
-      : totalIndividualBillableCount * perSessionValue + totalGroupRevenue) + totalServicesRevenue + slotsRevenue;
-  const totalFinancialSubtitle = isFixoMensal
-    ? 'Valor Fixo Mensal'
-    : isFixoDiario
-      ? `Total de ${totalUniqueDays} diária(s)`
-      : `Total de ${totalBillableCount} sessões`;
+  // Receita total acumulada desde a entrada do paciente:
+  // sempre conta sessões cobráveis × valor/sessão (mesma regra do extrato fiscal).
+  // Para fixo_diario, mantemos a contagem por dia único.
+  const totalFinancial = (isFixoDiario
+    ? totalIndividualUniqueDays * perSessionValue + totalGroupRevenue
+    : totalIndividualBillableCount * perSessionValue + totalGroupRevenue
+  ) + totalServicesRevenue + slotsRevenue;
+  const totalFinancialSubtitle = isFixoDiario
+    ? `Total de ${totalUniqueDays} diária(s)`
+    : `Total de ${totalBillableCount} sessões`;
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
