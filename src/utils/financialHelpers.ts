@@ -50,6 +50,8 @@ export interface PatientLike {
   packageId?: string | null;
   /** ISO timestamp — quando o pacote foi associado a este paciente. */
   packageAssignedAt?: string | null;
+  /** ISO date (YYYY-MM-DD) — quando o paciente saiu da clínica. */
+  departureDate?: string | null;
 }
 
 export interface ClinicLike {
