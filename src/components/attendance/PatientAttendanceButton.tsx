@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipboardList, FileDown, FileText } from 'lucide-react';
 import { downloadAttendancePDF, downloadAttendanceDOCX, ExportOptions } from './AttendanceSheetPrint';
-import { buildGroupedAttendanceRows, PatientInfo, getStatusLabel } from './attendanceUtils';
+import { buildGroupedAttendanceRows, PatientInfo, getStatusLabel, buildDateColumns, buildSessionMap } from './attendanceUtils';
 import { Evolution, Patient } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,9 +73,7 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
     buildGroupedAttendanceRows([patientInfo], evolutions, month, year),
     [patientInfo, evolutions, month, year]);
 
-  const maxSessions = useMemo(() =>
-    groupedRows.reduce((max, row) => Math.max(max, row.sessions.length), 0),
-    [groupedRows]);
+  const dateColumns = useMemo(() => buildDateColumns(groupedRows), [groupedRows]);
 
   const selectedStamp = selectedStampId !== 'none' ? stamps.find(s => s.id === selectedStampId) : null;
 
@@ -197,9 +195,9 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
                   <tr className="bg-muted/50">
                     <th className="border border-border px-2 py-1.5 text-left text-xs font-semibold text-foreground whitespace-nowrap">Paciente</th>
                     <th className="border border-border px-2 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">Terapia</th>
-                    {Array.from({ length: maxSessions }, (_, i) => (
-                      <th key={i} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
-                        S{i + 1}
+                    {dateColumns.map(d => (
+                      <th key={d} className="border border-border px-1 py-1.5 text-center text-xs font-semibold text-foreground whitespace-nowrap">
+                        {format(new Date(d + 'T00:00:00'), 'dd/MM')}
                       </th>
                     ))}
                     {showSignatureCol && (
@@ -211,7 +209,9 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
                   </tr>
                 </thead>
                 <tbody>
-                  {groupedRows.map(row => (
+                  {groupedRows.map(row => {
+                    const sessionMap = buildSessionMap(row);
+                    return (
                     <tr key={row.patientId}>
                       <td className="border border-border px-2 py-1.5 align-top">
                         <div className="font-medium text-foreground text-xs leading-tight">{row.patientName}</div>
@@ -219,25 +219,24 @@ export function PatientAttendanceButton({ patient, clinicName, evolutions }: Pat
                       <td className="border border-border px-2 py-1.5 text-xs text-center text-muted-foreground align-top whitespace-nowrap">
                         {row.specialty || '—'}
                       </td>
-                      {Array.from({ length: maxSessions }, (_, i) => {
-                        const s = row.sessions[i];
-                        if (!s) return <td key={i} className="border border-border px-1 py-1" />;
-                        const dateLabel = format(new Date(s.date + 'T00:00:00'), 'dd/MM');
-                        const statusLabel = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agend.';
+                      {dateColumns.map(d => {
+                        const s = sessionMap[d];
+                        if (!s) return <td key={d} className="border border-border px-1 py-1" />;
+                        const statusLabel = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agendado';
                         const statusColor = s.isFilled
                           ? s.attendanceStatus === 'presente' ? 'text-emerald-600' : 'text-amber-600'
                           : 'text-muted-foreground';
                         return (
-                          <td key={i} className="border border-border px-1 py-1 text-center align-top">
-                            <div className="text-[10px] text-muted-foreground">{dateLabel}</div>
-                            <div className={cn('text-[9px] font-medium', statusColor)}>{statusLabel}</div>
+                          <td key={d} className="border border-border px-1 py-1 text-center align-top">
+                            <div className={cn('text-[10px] font-medium', statusColor)}>{statusLabel}</div>
                           </td>
                         );
                       })}
                       {showSignatureCol && <td className="border border-border px-2 py-1.5" />}
                       {showObsCol && <td className="border border-border px-2 py-1.5" />}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

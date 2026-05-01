@@ -8,7 +8,7 @@ import {
   Header, ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { GroupedPatientRow, getStatusLabel, getProfessionalTitle } from './attendanceUtils';
+import { GroupedPatientRow, getStatusLabel, getProfessionalTitle, buildDateColumns, buildSessionMap } from './attendanceUtils';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -23,14 +23,8 @@ export interface ExportOptions {
   stampImageBase64: string | null;
 }
 
-function getMaxSessions(rows: GroupedPatientRow[]): number {
-  return rows.reduce((max, r) => Math.max(max, r.sessions.length), 0);
-}
-
 function formatSessionCell(s: GroupedPatientRow['sessions'][0]): string {
-  const dateStr = format(new Date(s.date + 'T00:00:00'), 'dd/MM', { locale: ptBR });
-  const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agend.';
-  return `${dateStr}\n${label}`;
+  return s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agendado';
 }
 
 function base64ToUint8Array(dataUrl: string): { bytes: Uint8Array; type: string } {
@@ -56,7 +50,8 @@ export function downloadAttendancePDF(
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const maxSessions = getMaxSessions(rows);
+  const dateColumns = buildDateColumns(rows);
+  const maxSessions = dateColumns.length;
 
   // Header
   doc.setFontSize(12);
@@ -70,17 +65,18 @@ export function downloadAttendancePDF(
 
   // Build columns
   const headRow: string[] = ['Paciente', 'Terapia'];
-  for (let i = 0; i < maxSessions; i++) headRow.push(`S${i + 1}`);
+  for (const d of dateColumns) headRow.push(format(new Date(d + 'T00:00:00'), 'dd/MM', { locale: ptBR }));
   if (options.showSignatureCol) headRow.push('Assinatura');
   if (options.showObsCol) headRow.push('Obs.');
 
   const tableData = rows.map(row => {
+    const sessionMap = buildSessionMap(row);
     const cells: string[] = [
       row.patientName,
       row.specialty || '—',
     ];
-    for (let i = 0; i < maxSessions; i++) {
-      cells.push(row.sessions[i] ? formatSessionCell(row.sessions[i]) : '');
+    for (const d of dateColumns) {
+      cells.push(sessionMap[d] ? formatSessionCell(sessionMap[d]) : '');
     }
     if (options.showSignatureCol) cells.push('');
     if (options.showObsCol) cells.push('');
@@ -240,7 +236,8 @@ export async function downloadAttendanceDOCX(
   options: ExportOptions
 ) {
   const monthLabel = `${MONTHS[month]} de ${year}`;
-  const maxSessions = getMaxSessions(rows);
+  const dateColumns = buildDateColumns(rows);
+  const maxSessions = dateColumns.length;
 
   const contentWidth = 14400;
   const patientW = 2600;
@@ -258,7 +255,9 @@ export async function downloadAttendanceDOCX(
   const headerCells = [
     makeHeaderCell('Paciente', patientW),
     makeHeaderCell('Terapia', therapyW),
-    ...Array.from({ length: maxSessions }, (_, i) => makeHeaderCell(`S${i + 1}`, sessionW)),
+    ...dateColumns.map(d =>
+      makeHeaderCell(format(new Date(d + 'T00:00:00'), 'dd/MM', { locale: ptBR }), sessionW)
+    ),
   ];
   if (options.showSignatureCol) headerCells.push(makeHeaderCell('Assinatura', signatureW));
   if (options.showObsCol) headerCells.push(makeHeaderCell('Obs.', obsW));
@@ -268,12 +267,12 @@ export async function downloadAttendanceDOCX(
   const dataRows = rows.length > 0
     ? rows.map(row => {
         const nameText = row.patientName;
-        const sessionCells = Array.from({ length: maxSessions }, (_, i) => {
-          const s = row.sessions[i];
+        const sessionMap = buildSessionMap(row);
+        const sessionCells = dateColumns.map(d => {
+          const s = sessionMap[d];
           if (!s) return makeEmptyCell(sessionW);
-          const dateStr = format(new Date(s.date + 'T00:00:00'), 'dd/MM', { locale: ptBR });
-          const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agend.';
-          return makeCell(`${dateStr}\n${label}`, sessionW, AlignmentType.CENTER);
+          const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agendado';
+          return makeCell(label, sessionW, AlignmentType.CENTER);
         });
         const cells = [
           makeCell(nameText, patientW),

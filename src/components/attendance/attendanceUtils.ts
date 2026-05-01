@@ -195,3 +195,22 @@ export function buildGroupedAttendanceRows(
   rows.sort((a, b) => a.patientName.localeCompare(b.patientName));
   return rows;
 }
+
+/**
+ * Build the union of all session dates across the rows (sorted ASC, YYYY-MM-DD).
+ * Used as the column headers in the attendance grid (real calendar dates instead of S1/S2…).
+ */
+export function buildDateColumns(rows: GroupedPatientRow[]): string[] {
+  const set = new Set<string>();
+  for (const row of rows) {
+    for (const s of row.sessions) set.add(s.date);
+  }
+  return Array.from(set).sort();
+}
+
+/** Build a map date -> session for a given row. */
+export function buildSessionMap(row: GroupedPatientRow): Record<string, SessionEntry> {
+  const m: Record<string, SessionEntry> = {};
+  for (const s of row.sessions) m[s.date] = s;
+  return m;
+}
