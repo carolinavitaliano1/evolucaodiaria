@@ -187,21 +187,36 @@ export default function Pricing() {
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button
-                  className="w-full"
-                  variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => handleSubscribe(plan.priceId)}
-                  disabled={loadingPlan !== null || isCurrent}
-                >
-                  {loadingPlan === plan.priceId ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    buttonLabelFor(plan.key)
-                  )}
-                </Button>
+                {plan.key === 'clinica_pro' ? (
+                  <div className="w-full flex flex-col items-center gap-2">
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      disabled
+                    >
+                      Em breve disponível
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Estamos finalizando os últimos detalhes. Em breve você poderá assinar este plano.
+                    </p>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full"
+                    variant={plan.popular ? 'default' : 'outline'}
+                    onClick={() => handleSubscribe(plan.priceId)}
+                    disabled={loadingPlan !== null || isCurrent}
+                  >
+                    {loadingPlan === plan.priceId ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      buttonLabelFor(plan.key)
+                    )}
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           );
