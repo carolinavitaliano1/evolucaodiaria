@@ -4369,45 +4369,18 @@ export default function PatientDetail() {
               </div>
             )}
 
-            {/* Payment info */}
-            <div className="space-y-3 bg-muted/30 rounded-lg p-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Informações de Pagamento</p>
-              <div>
-                <Label className="text-xs mb-1.5 block">Status</Label>
-                <div className="flex gap-2">
-                  {(['pending', 'paid', 'total'] as const).map(s => (
-                    <button key={s} onClick={() => setFiscalPaymentStatus(s)}
-                      className={cn('flex-1 text-xs py-1.5 rounded-lg border font-medium transition-colors',
-                        fiscalPaymentStatus === s
-                          ? s === 'paid' ? 'bg-success/10 border-success text-success'
-                            : s === 'total' ? 'bg-primary/10 border-primary text-primary'
-                            : 'bg-muted border-border text-foreground'
-                          : 'border-border text-muted-foreground hover:border-foreground/30')}>
-                      {s === 'paid' ? '✓ Pago' : s === 'total' ? '∑ Total' : '⏳ Pendente'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {fiscalPaymentStatus === 'paid' && fiscalPaymentDate && (
-                <p className="text-xs text-muted-foreground">
-                  Recebido em: <span className="font-medium text-foreground">{format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</span> <span className="text-muted-foreground/60">(registrado no financeiro)</span>
+            {/* Payment info — somente leitura, vem do financeiro */}
+            <div className="space-y-1.5 bg-muted/30 rounded-lg p-3 text-xs">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Resumo do período</p>
+              {fiscalPaymentStatus === 'paid' && fiscalPaymentDate ? (
+                <p className="text-success">
+                  ✓ Pagamento registrado em <span className="font-semibold">{format(new Date(fiscalPaymentDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                  {fiscalTotalPaidFromApp !== null && <span> — R$ {fiscalTotalPaidFromApp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                 </p>
+              ) : (
+                <p className="text-muted-foreground">Sem pagamento registrado neste período (Total Pago = R$ 0,00 no extrato).</p>
               )}
-              <div>
-                <Label className="text-xs mb-1 block flex items-center gap-1.5">
-                  Valor Total Pago
-                  <span className="text-muted-foreground font-normal">
-                    {fiscalTotalPaidFromApp !== null ? '— calculado automaticamente (editável)' : '— opcional'}
-                  </span>
-                </Label>
-                <Input
-                  type="number" step="0.01" min="0"
-                  value={fiscalTotalPaid}
-                  onChange={e => setFiscalTotalPaid(e.target.value)}
-                  placeholder="R$ calculado automaticamente pelas sessões"
-                  className="h-9 text-xs"
-                />
-              </div>
+              <p className="text-muted-foreground/80 text-[11px]">O Total Pago é extraído automaticamente do financeiro do paciente quando marcado como pago.</p>
             </div>
 
             {/* CPF warning */}
