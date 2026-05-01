@@ -135,7 +135,7 @@ export async function generateClinicInternalStatementPdf(
       .eq('year', year),
     supabase
       .from('patients')
-      .select('id, name, payment_type, payment_value, weekdays, package_id')
+      .select('id, name, payment_type, payment_value, weekdays, package_id, package_assigned_at, departure_date')
       .eq('clinic_id', clinicId),
     supabase
       .from('evolutions')
@@ -145,7 +145,7 @@ export async function generateClinicInternalStatementPdf(
       .lte('date', endStr),
     supabase
       .from('clinic_packages')
-      .select('id, name, package_type, price, session_limit')
+      .select('id, name, package_type, price, session_limit, lancamento_tipo, valor_total')
       .eq('clinic_id', clinicId),
     supabase
       .from('clinics')
@@ -196,7 +196,7 @@ export async function generateClinicInternalStatementPdf(
   allPatients.forEach(p => patientMap.set(p.id, p));
   patientsHint?.forEach(p => {
     if (!patientMap.has(p.id))
-      patientMap.set(p.id, { id: p.id, name: p.name, payment_type: null, payment_value: null, weekdays: null, package_id: null });
+      patientMap.set(p.id, { id: p.id, name: p.name, payment_type: null, payment_value: null, weekdays: null, package_id: null, package_assigned_at: null, departure_date: null });
   });
   const pkgMap = new Map<string, PackageRow>();
   packages.forEach(p => pkgMap.set(p.id, p));
