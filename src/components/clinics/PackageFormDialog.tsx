@@ -50,7 +50,7 @@ const packageSchema = z
     valorTotal: z
       .number({ invalid_type_error: 'Valor total obrigatório' })
       .positive('Valor total obrigatório'),
-    accountName: z.string().trim().min(1, 'Conta obrigatória').max(80),
+    accountName: z.string().trim().max(80).optional(),
     commissionPaymentMethod: z.enum(['sem_comissao', 'integral', 'por_atendimento']),
     commissionType: z.enum(['valor_fixo', 'porcentagem']),
     commissionPerProfessional: z.boolean(),
