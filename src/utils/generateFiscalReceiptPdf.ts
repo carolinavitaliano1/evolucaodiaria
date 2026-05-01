@@ -48,10 +48,13 @@ export interface FiscalReceiptOptions {
   professionalId?: string;
   therapistCpf?: string;
   cbo?: string;
-  totalPaid?: number;
-  paidSubtotal?: number;
-  pendingSubtotal?: number;
-  paymentStatus?: 'paid' | 'pending' | 'total';
+  /** Total faturado (sessões cobráveis + serviços com valor) */
+  totalFaturado?: number;
+  /** Total descontado / não cobrado (faltas/feriados não remunerados) */
+  totalDescontado?: number;
+  /** Total efetivamente pago, vindo do registro financeiro do paciente */
+  totalPago?: number;
+  /** Data do pagamento, se houver */
   paymentDate?: string | null;
 }
 
