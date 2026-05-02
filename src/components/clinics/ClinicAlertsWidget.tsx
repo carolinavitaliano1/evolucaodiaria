@@ -33,6 +33,22 @@ interface AlertGroup {
   patients: PatientRef[];
 }
 
+interface AppointmentRow {
+  patient_id: string;
+  date: string;
+  time: string | null;
+  notes: string | null;
+}
+
+interface PatientIdRow {
+  patient_id: string;
+}
+
+interface EnrollmentRow {
+  id: string;
+  name: string;
+}
+
 interface ClinicAlertsWidgetProps {
   clinicId: string;
 }
@@ -77,7 +93,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       .gte('date', startDate)
       .lte('date', endDate)
       .then(({ data }) => {
-        const extras = ((data as any[]) || [])
+        const extras = ((data as AppointmentRow[] | null) || [])
           .filter(a => getSessionKind(a.notes as string | null) !== 'regular')
           .map(a => ({
             patientId: a.patient_id as string,
@@ -220,16 +236,16 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
         }).map(i => findPatient(i.patient_id));
       };
 
-      setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as any[]) || []));
+      setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as PatientIdRow[] | null) || []));
       setPendingEnrollmentPatients(
-        ((enrollmentsRes.data as any[]) || []).map((p: any) => ({ id: p.id, name: p.name }))
+        ((enrollmentsRes.data as EnrollmentRow[] | null) || []).map(p => ({ id: p.id, name: p.name }))
       );
-      setUnreadMessagePatients(uniqueByPatient((messagesRes.data as any[]) || []));
-      setIntakeReviewPatients(uniqueByPatient((intakesRes.data as any[]) || []));
-      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as any[]) || []));
+      setUnreadMessagePatients(uniqueByPatient((messagesRes.data as PatientIdRow[] | null) || []));
+      setIntakeReviewPatients(uniqueByPatient((intakesRes.data as PatientIdRow[] | null) || []));
+      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as PatientIdRow[] | null) || []));
       setLoading(false);
     });
-  }, [user, clinicId, clinicPatients.length]);
+  }, [user, clinicId, clinicPatients]);
 
   const alerts = useMemo(() => {
     const items: AlertGroup[] = [];
