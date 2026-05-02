@@ -11,6 +11,7 @@ import { Image, PenLine, Save, Wand2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
 import { useOrgPermissions, hasPermission } from '@/hooks/useOrgPermissions';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import TemplateForm from './TemplateForm';
@@ -29,6 +30,9 @@ interface EditEvolutionDialogProps {
 
 export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, showFaltaRemunerada = true }: EditEvolutionDialogProps) {
   const { user } = useAuth();
+  const { clinics } = useApp();
+  const clinicType = clinics.find(c => c.id === evolution.clinicId)?.type as
+    | 'propria' | 'terceirizada' | 'clinica' | undefined;
   const { isOrgMember, isOwner, permissions } = useOrgPermissions();
   const { hasAI } = useFeatureAccess();
   const canUseAI = hasAI && (!isOrgMember || isOwner || hasPermission(permissions, 'ai_evolutions.use'));
@@ -173,6 +177,7 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
             date={date}
             scheduleSlotId={scheduleSlotId}
             sessionTime={sessionTime}
+            clinicType={clinicType}
             onChange={({ scheduleSlotId: s, sessionTime: t }) => {
               setScheduleSlotId(s);
               setSessionTime(t);
