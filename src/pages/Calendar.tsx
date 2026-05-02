@@ -28,6 +28,7 @@ import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE } from '@/utils/sessionTypeTags';
 
 type ViewMode = 'month' | 'week' | 'day';
 
@@ -41,6 +42,8 @@ interface CalItem {
   bgColor: string;
   rawEvent?: any;
   isDraggable: boolean;
+  /** Tag visual de tipo extra (Avulso/Reposição/Anteposição). */
+  kind?: 'avulsa' | 'reposicao' | 'anteposicao';
 }
 
 const EVENT_COLORS: Record<string, { bg: string; pill: string }> = {
@@ -86,7 +89,9 @@ export default function CalendarPage() {
   const [formData, setFormData] = useState({
     clinicId: '', patientId: '',
     date: format(selectedDate, 'yyyy-MM-dd'), time: '', notes: '',
-    sessionType: 'regular' as 'regular' | 'avulsa' | 'reposicao',
+    sessionType: 'avulsa' as 'avulsa' | 'reposicao' | 'anteposicao',
+    /** ID da evolução-falta que está sendo reposta/anteposta (opcional). */
+    linkedAbsenceId: '' as string,
     chargeEnabled: false,
     chargeValue: '' as string,
   });
@@ -140,12 +145,14 @@ export default function CalendarPage() {
       .map(a => {
         const patient = patients.find(p => p.id === a.patientId);
         const clinic = clinics.find(c => c.id === a.clinicId);
+        const kind = getSessionKind(a.notes);
         return {
           id: a.id, time: a.time, title: patient?.name || '—',
           sub: clinic?.name, type: 'atendimento',
           color: EVENT_COLORS.atendimento.bg,
           bgColor: EVENT_COLORS.atendimento.pill,
           isDraggable: false,
+          kind: kind === 'regular' ? undefined : kind,
         };
       });
 
@@ -236,18 +243,22 @@ export default function CalendarPage() {
 
   const resetForm = () => setFormData({
     clinicId: '', patientId: '', date: format(selectedDate, 'yyyy-MM-dd'),
-    time: '', notes: '', sessionType: 'regular', chargeEnabled: false, chargeValue: '',
+    time: '', notes: '', sessionType: 'avulsa', linkedAbsenceId: '', chargeEnabled: false, chargeValue: '',
   });
 
   const handleApptSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.clinicId || !formData.patientId || !formData.date || !formData.time) return;
 
-    const isAvulsaOrReposicao = formData.sessionType !== 'regular';
-    const typeTag = formData.sessionType === 'reposicao'
-      ? '[tipo:reposicao]'
-      : formData.sessionType === 'avulsa' ? '[tipo:avulsa]' : '';
-    const baseNotes = [typeTag, formData.notes].filter(Boolean).join(' ').trim();
+    // Sempre é avulsa/reposição/anteposição (não há mais "regular" aqui).
+    const isAvulsaOrReposicao = true;
+    const typeTag = `[tipo:${formData.sessionType}]`;
+    const linkTag = (formData.sessionType === 'reposicao' && formData.linkedAbsenceId)
+      ? `[reposicao:${formData.linkedAbsenceId}]`
+      : (formData.sessionType === 'anteposicao' && formData.linkedAbsenceId)
+        ? `[anteposicao:${formData.linkedAbsenceId}]`
+        : '';
+    const baseNotes = [typeTag, linkTag, formData.notes].filter(Boolean).join(' ').trim();
 
     // 1) Cria o agendamento normal (aparece na agenda)
     addAppointment({
@@ -268,22 +279,45 @@ export default function CalendarPage() {
     const isFutureDate = formData.date > todayStr;
 
     if (isAvulsaOrReposicao && !isFutureDate) {
-      const labelTipo = formData.sessionType === 'reposicao' ? 'Reposição' : 'Sessão Avulsa';
+      const labelTipo =
+        formData.sessionType === 'reposicao' ? 'Reposição' :
+        formData.sessionType === 'anteposicao' ? 'Anteposição' : 'Sessão Avulsa';
+      const evoText = [linkTag, `${labelTipo} agendada via agenda.`].filter(Boolean).join(' ').trim();
       await addEvolution({
         patientId: formData.patientId,
         clinicId: formData.clinicId,
         date: formData.date,
         sessionTime: formData.time,
-        text: `${labelTipo} agendada via agenda.`,
-        attendanceStatus: formData.sessionType === 'reposicao' ? 'reposicao' : 'presente',
+        text: evoText,
+        // Anteposição reusa o status 'reposicao' (UI a diferencia pela tag).
+        attendanceStatus: (formData.sessionType === 'reposicao' || formData.sessionType === 'anteposicao')
+          ? 'reposicao'
+          : 'presente',
       } as any);
+
+      // Marcar a falta original como reposta (best-effort, não bloqueia o fluxo).
+      if (formData.linkedAbsenceId) {
+        try {
+          const { data: orig } = await supabase
+            .from('evolutions')
+            .select('id, text')
+            .eq('id', formData.linkedAbsenceId)
+            .maybeSingle();
+          if (orig && !/\[reposta_por:/i.test(orig.text || '')) {
+            const newText = `${orig.text || ''} [reposta_por:pendente]`.trim();
+            await supabase.from('evolutions').update({ text: newText }).eq('id', orig.id);
+          }
+        } catch {/* silencioso */}
+      }
     }
 
     // 3) Se cobrar: cria private_appointment (Serviço Avulso) — entra no Financeiro,
     //    extrato fiscal e relatórios automaticamente
     if (isAvulsaOrReposicao && formData.chargeEnabled && user?.id) {
       const valor = Number(formData.chargeValue || defaultPackageValue || 0);
-      const tituloLinha = formData.sessionType === 'reposicao' ? 'Reposição cobrada' : 'Sessão avulsa';
+      const tituloLinha =
+        formData.sessionType === 'reposicao' ? 'Reposição cobrada' :
+        formData.sessionType === 'anteposicao' ? 'Anteposição cobrada' : 'Sessão avulsa';
       try {
         const { error } = await supabase.from('private_appointments').insert({
           user_id: user.id,
@@ -305,7 +339,11 @@ export default function CalendarPage() {
     }
 
     if (isAvulsaOrReposicao) {
-      toast.success(formData.sessionType === 'reposicao' ? 'Reposição agendada!' : 'Sessão avulsa agendada!');
+      const okMsg =
+        formData.sessionType === 'reposicao' ? 'Reposição agendada!' :
+        formData.sessionType === 'anteposicao' ? 'Anteposição agendada!' :
+        'Sessão avulsa agendada!';
+      toast.success(okMsg);
     }
     resetForm();
     setIsApptDialogOpen(false);
