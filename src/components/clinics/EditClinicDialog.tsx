@@ -408,9 +408,11 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
                     <SelectItem value="never">Nunca cobrar faltas</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Define se as faltas comuns desta contratante entram como receita no financeiro.
-                </p>
+                <div className="text-[11px] text-muted-foreground mt-2 p-3 rounded-lg bg-secondary/50 space-y-1.5">
+                  <p><strong>Sempre cobrar faltas:</strong> toda falta registrada entra como receita no financeiro, mesmo sem confirmação prévia do paciente.</p>
+                  <p><strong>Cobrar apenas se houve confirmação prévia:</strong> a falta só vira receita quando o paciente havia confirmado presença antes da sessão.</p>
+                  <p><strong>Nunca cobrar faltas:</strong> faltas comuns não entram como receita — aparecem apenas como perda no relatório. Use "Falta Remunerada" pontualmente quando quiser cobrar uma falta específica.</p>
+                </div>
               </div>
             </div>
           )}
