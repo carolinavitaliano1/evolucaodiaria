@@ -65,7 +65,7 @@ const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sext
 const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function CalendarPage() {
-  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, addEvolution, evolutions, clinicPackages } = useApp();
+  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
