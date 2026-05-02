@@ -82,6 +82,8 @@ function mapClinic(c: Record<string, unknown>): Clinic {
     paymentAmount: c.payment_amount ? Number(c.payment_amount) : undefined,
     paysOnAbsence: c.pays_on_absence as boolean,
     absencePaymentType: c.absence_payment_type as 'always' | 'never' | 'confirmed_only' | undefined,
+    absenceChargeMode: (c.absence_charge_mode as 'integral' | 'parcial' | undefined) || 'integral',
+    absenceChargeAmount: c.absence_charge_amount != null ? Number(c.absence_charge_amount) : undefined,
     letterhead: (c.letterhead as string) || undefined, stamp: (c.stamp as string) || undefined,
     email: (c.email as string) || undefined, cnpj: (c.cnpj as string) || undefined,
     phone: (c.phone as string) || undefined, servicesDescription: (c.services_description as string) || undefined,
