@@ -1163,7 +1163,7 @@ export default function CalendarPage() {
             </div>
           )}
           {!popupItem.isDraggable && (() => {
-            const rawAppt = popupItem.rawEvent;
+            const rawAppt = popupItem.rawAppointment || popupItem.rawEvent;
             const patient = rawAppt ? patients.find(p => p.id === rawAppt.patientId) : null;
             if (patient?.phone) {
               return (
