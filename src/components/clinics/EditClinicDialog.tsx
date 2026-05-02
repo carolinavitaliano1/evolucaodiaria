@@ -337,56 +337,58 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             </div>
           </div>
 
-          {/* Payment */}
-          <div className="border-t pt-4 space-y-3">
-            <Label className="text-sm font-medium">Pagamento</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Tipo de Pagamento</Label>
-                <Select
-                  value={formData.paymentType}
-                  onValueChange={(v) => setFormData({ ...formData, paymentType: v as any })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sessao">Por sessão</SelectItem>
-                    <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
-                    <SelectItem value="fixo_diario">Fixo diário</SelectItem>
-                    <SelectItem value="variado">Variado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {formData.paymentType !== 'variado' && (
+          {/* Payment - only for Contratante (terceirizada) */}
+          {formData.type === 'terceirizada' && (
+            <div className="border-t pt-4 space-y-3">
+              <Label className="text-sm font-medium">Pagamento</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Valor (R$)</Label>
-                  <Input
-                    type="number"
-                    value={formData.paymentAmount}
-                    onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
-                    placeholder="0,00"
-                    className="mt-1"
-                  />
+                  <Label className="text-xs">Tipo de Pagamento</Label>
+                  <Select
+                    value={formData.paymentType}
+                    onValueChange={(v) => setFormData({ ...formData, paymentType: v as any })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sessao">Por sessão</SelectItem>
+                      <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
+                      <SelectItem value="fixo_diario">Fixo diário</SelectItem>
+                      <SelectItem value="variado">Variado</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                {formData.paymentType !== 'variado' && (
+                  <div>
+                    <Label className="text-xs">Valor (R$)</Label>
+                    <Input
+                      type="number"
+                      value={formData.paymentAmount}
+                      onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
+                      placeholder="0,00"
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+              </div>
+              {formData.paymentType === 'variado' && (
+                <p className="text-xs text-muted-foreground p-3 rounded-lg bg-secondary/50">
+                  Valor variado: o recebimento é definido individualmente por paciente ou pacote cadastrado na contratante.
+                </p>
               )}
+              <div>
+                <Label className="text-xs">Porcentagem retida pela clínica</Label>
+                <Input
+                  type="number"
+                  value={formData.discountPercentage}
+                  onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })}
+                  placeholder="0"
+                  className="mt-1"
+                />
+              </div>
             </div>
-            {formData.paymentType === 'variado' && (
-              <p className="text-xs text-muted-foreground p-3 rounded-lg bg-secondary/50">
-                Valor variado: o recebimento é definido individualmente por paciente ou pacote cadastrado na contratante.
-              </p>
-            )}
-            <div>
-              <Label className="text-xs">Porcentagem retida pela clínica</Label>
-              <Input
-                type="number"
-                value={formData.discountPercentage}
-                onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })}
-                placeholder="0"
-                className="mt-1"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Absence payment */}
           <div className="border-t pt-4">
