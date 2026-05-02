@@ -454,9 +454,24 @@ export default function ClinicDetail() {
       });
     });
 
+    // Adiciona agendamentos do dia (avulsa/reposição/anteposição) que não
+    // estão na recorrência semanal — pacientes vinculados à clínica.
+    todayAppointments.forEach(appt => {
+      if (scheduleMap.has(appt.patientId)) return;
+      const patient = clinicPatients.find(p => p.id === appt.patientId);
+      if (!patient) return;
+      const evolution = getPatientTodayEvolution(patient.id);
+      scheduleMap.set(patient.id, {
+        patient,
+        time: (appt.time || '00:00').slice(0, 5),
+        hasEvolution: !!evolution,
+        evolution
+      });
+    });
+
     // Sort by time
     return Array.from(scheduleMap.values()).sort((a, b) => a.time.localeCompare(b.time));
-  }, [todayPatients, evolutions]);
+  }, [todayPatients, evolutions, todayAppointments, clinicPatients]);
 
   const [formData, setFormData] = useState({
     name: '',
