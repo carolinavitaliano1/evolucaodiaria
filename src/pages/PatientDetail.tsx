@@ -811,7 +811,7 @@ export default function PatientDetail() {
   const totalRegistros = patientEvolutions.length;
   const attendanceRate = totalRegistros > 0 ? Math.round(((totalPresent + totalReposicao) / totalRegistros) * 100) : 0;
   const totalBillableEvos = patientEvolutions.filter(e => ['presente','reposicao','anteposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
-  const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
+  const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   const ptType = patient?.paymentType as string | undefined;
   // Effective billing mode: patient override → then check clinic payment type
   const clPaymentType = clinic?.paymentType as string | undefined;
@@ -1001,7 +1001,7 @@ export default function PatientDetail() {
   const totalIndividualBillableEvos = totalBillableEvos.filter(e => !e.groupId);
   const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
   const totalIndividualBillableCount = totalIndividualBillableEvos.length;
-  const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
+  const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   // 🔁 Fallback baseado em slots da agenda: quando o paciente NÃO tem
   // paymentValue próprio nem pacote vinculado, mas possui planos de
   // remuneração definidos por profissional nos slots da agenda, calculamos
@@ -1144,7 +1144,7 @@ export default function PatientDetail() {
   const monthlyFeriadoNaoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const monthlyTotal = monthlyPresent + monthlyReposicao;
   const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
-  const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
+  const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   // Dynamic proration for Mensal packages
   const monthlyDynamic = useMemo(() => {
     if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado) && paymentValue > 0) {
@@ -1166,7 +1166,7 @@ export default function PatientDetail() {
   const monthlyGroupRevenue = computeGroupRevenue(monthlyBillableEvos);
   const monthlyIndividualBillable = monthlyBillableEvos.filter(e => !e.groupId);
   const monthlyIndividualBillableCount = monthlyIndividualBillable.length;
-  const monthlyIndividualUniqueDays = new Set(monthlyIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
+  const monthlyIndividualUniqueDays = new Set(monthlyIndividualBillable.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   // Services revenue for the report month
   const monthlyServicesRevenue = patientServices
     .filter(s => {
@@ -1207,7 +1207,7 @@ export default function PatientDetail() {
   const finFeriadoRem = financialEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const finTotal = finPresent + finReposicao;
   const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
-  const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
+  const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   // Dynamic proration for financial tab
   const finDynamic = useMemo(() => {
     if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado) && paymentValue > 0) {
@@ -1229,7 +1229,7 @@ export default function PatientDetail() {
   const finGroupRevenue = computeGroupRevenue(finBillableEvos);
   const finIndividualBillable = finBillableEvos.filter(e => !e.groupId);
   const finIndividualBillableCount = finIndividualBillable.length;
-  const finIndividualUniqueDays = new Set(finIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
+  const finIndividualUniqueDays = new Set(finIndividualBillable.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   const finRevenue = calculatePatientRevenueForMonth(financialEvolutions, financialMonth);
   const finRegistros = financialEvolutions.length;
   const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
