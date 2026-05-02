@@ -349,7 +349,12 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     }
 
     if (isBillableStatus(evolution.attendanceStatus)) return perSession;
-    if (shouldChargeAbsence(evolution, clinic)) return perSession;
+    if (shouldChargeAbsence(evolution, clinic)) {
+      // Respeita modo de cobrança parcial: usa absenceChargeAmount se configurado
+      const isParcial = clinic?.absenceChargeMode === 'parcial';
+      if (isParcial) return Number(clinic?.absenceChargeAmount ?? 0);
+      return perSession;
+    }
     return 0;
   };
 
