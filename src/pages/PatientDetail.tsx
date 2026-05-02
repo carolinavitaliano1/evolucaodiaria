@@ -835,6 +835,77 @@ export default function PatientDetail() {
     : paymentValue;
   const totalBillableCount = totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem;
 
+  // ============================================================
+  // 📦 Pacote PERSONALIZADO — controle de renovação
+  // ============================================================
+  // Conta quantas sessões "billable" foram usadas DESDE que o pacote
+  // atual foi atribuído (`packageAssignedAt`). Se o paciente não tem
+  // a data, considera todas as evoluções billable.
+  const personalizadoSessionsUsed = useMemo(() => {
+    if (!isPackagePersonalizado) return 0;
+    const assignedAt = (patient as any)?.packageAssignedAt
+      ? new Date((patient as any).packageAssignedAt as string)
+      : null;
+    return patientEvolutions.filter(e => {
+      if (!['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus)) return false;
+      if (!assignedAt) return true;
+      const evoDate = new Date(e.date + 'T12:00:00');
+      return evoDate >= new Date(assignedAt.toISOString().slice(0, 10) + 'T00:00:00');
+    }).length;
+  }, [isPackagePersonalizado, patient, patientEvolutions]);
+
+  const personalizadoLimit = isPackagePersonalizado ? (patientPackage!.sessionLimit || 0) : 0;
+  const personalizadoExhausted = isPackagePersonalizado && personalizadoSessionsUsed >= personalizadoLimit;
+  const renewalDecision = (patient as any)?.packageRenewalDecision as ('renewed' | 'declined' | undefined);
+  // Mostra o banner só quando: pacote personalizado terminou e ainda não decidiu.
+  const showRenewalPrompt = personalizadoExhausted && !renewalDecision;
+  // Trava o cadastro/edição de evoluções quando o paciente optou por NÃO renovar.
+  const evolutionLocked = renewalDecision === 'declined';
+
+  const handleRenewPackage = async () => {
+    if (!patient) return;
+    try {
+      await updatePatient(patient.id, {
+        packageAssignedAt: new Date().toISOString(),
+        packageRenewalDecision: undefined,
+        packageDecisionAt: new Date().toISOString(),
+      } as any);
+      toast.success('Pacote renovado! Um novo ciclo foi iniciado.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao renovar pacote');
+    }
+  };
+
+  const handleDeclineRenewal = async () => {
+    if (!patient) return;
+    try {
+      await updatePatient(patient.id, {
+        packageRenewalDecision: 'declined',
+        packageDecisionAt: new Date().toISOString(),
+      } as any);
+      toast.success('Pacote encerrado. As sessões foram travadas.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao registrar decisão');
+    }
+  };
+
+  const handleReactivatePackage = async () => {
+    if (!patient) return;
+    try {
+      await updatePatient(patient.id, {
+        packageAssignedAt: new Date().toISOString(),
+        packageRenewalDecision: undefined,
+        packageDecisionAt: new Date().toISOString(),
+      } as any);
+      toast.success('Pacote reativado!');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao reativar pacote');
+    }
+  };
+
   // Helper: compute group revenue from a set of billable evolutions
   const computeGroupRevenue = (evos: typeof patientEvolutions) => {
     if (!patient) return 0;
@@ -2593,6 +2664,63 @@ export default function PatientDetail() {
               </p>
             </div>
           )}
+
+          {/* 📦 Pacote PERSONALIZADO encerrado: pergunta sobre renovação */}
+          {showRenewalPrompt && (
+            <div className="rounded-xl border-2 border-primary/40 bg-gradient-to-br from-primary/5 to-accent/5 p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <Package className="w-6 h-6 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-foreground text-sm">
+                      Pacote de Atendimento concluído
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      O paciente já utilizou as <strong>{personalizadoLimit} sessões</strong> do
+                      pacote <strong>{patientPackage?.name}</strong>. Para continuar registrando
+                      evoluções é necessário decidir se o pacote será renovado.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={handleRenewPackage} className="gap-2">
+                      <Plus className="w-4 h-4" /> Renovar pacote
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleDeclineRenewal}>
+                      Não renovar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 🔒 Pacote encerrado e paciente decidiu NÃO renovar: aba travada */}
+          {evolutionLocked && (
+            <div className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <LockIcon className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-foreground text-sm">
+                      Sessões encerradas — pacote não renovado
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      As sessões deste paciente foram encerradas porque o Pacote de Atendimento
+                      <strong> {patientPackage?.name}</strong> não foi renovado. Não é possível
+                      adicionar, editar ou excluir evoluções até que o pacote seja reativado.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={handleReactivatePackage} className="gap-2">
+                      <Plus className="w-4 h-4" /> Reativar pacote
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!evolutionLocked && (
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-primary" /> Nova Evolução
@@ -2718,6 +2846,7 @@ export default function PatientDetail() {
               <Button type="submit" className="gap-2"><Plus className="w-4 h-4" /> Salvar Evolução</Button>
             </form>
           </div>
+          )}
 
           {/* History */}
           <div className="bg-card rounded-xl shadow-sm border border-border">
@@ -2925,7 +3054,14 @@ export default function PatientDetail() {
                                   <Sparkles className="w-3 h-3" />
                                   <span className="hidden sm:inline">Feedback IA</span>
                                 </Button>
-                                <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1 h-7 px-2 text-xs"
+                                  disabled={evolutionLocked}
+                                  title={evolutionLocked ? 'Pacote encerrado — reative para editar' : undefined}
+                                  onClick={() => setEditingEvolution(evo)}
+                                >
                                   <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
                                 </Button>
                               </>
@@ -2935,7 +3071,14 @@ export default function PatientDetail() {
                               <Download className="w-3 h-3" /> PDF
                             </Button>
                             {!isAutoHoliday && (
-                              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => deleteEvolution(evo.id)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive h-7 w-7 p-0"
+                                disabled={evolutionLocked}
+                                title={evolutionLocked ? 'Pacote encerrado — reative para excluir' : undefined}
+                                onClick={() => deleteEvolution(evo.id)}
+                              >
                                 <X className="w-3 h-3" />
                               </Button>
                             )}

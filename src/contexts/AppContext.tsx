@@ -125,6 +125,8 @@ function mapPatient(p: Record<string, unknown>): Patient {
     departureReason: (p.departure_reason as string) || undefined,
     avatarUrl: (p.avatar_url as string) || undefined, createdAt: p.created_at as string,
     packageAssignedAt: (p.package_assigned_at as string) || undefined,
+    packageRenewalDecision: (p.package_renewal_decision as 'renewed' | 'declined') || undefined,
+    packageDecisionAt: (p.package_decision_at as string) || undefined,
   } as any;
 }
 
@@ -686,6 +688,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl || null;
       if (updates.packageId !== undefined) updateData.package_id = updates.packageId || null;
       if ((updates as any).payment_info !== undefined) updateData.payment_info = (updates as any).payment_info || null;
+      if ((updates as any).packageRenewalDecision !== undefined) updateData.package_renewal_decision = (updates as any).packageRenewalDecision || null;
+      if ((updates as any).packageDecisionAt !== undefined) updateData.package_decision_at = (updates as any).packageDecisionAt || null;
+      if ((updates as any).packageAssignedAt !== undefined) updateData.package_assigned_at = (updates as any).packageAssignedAt || null;
       const { error } = await supabase.from('patients').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, patients: prev.patients.map(p => p.id === id ? { ...p, ...updates } : p) }));
@@ -710,6 +715,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       if (evolution.date > todayStr) {
         toast.error('Não é permitido registrar evoluções com data futura.');
+        return;
+      }
+    }
+    // 🔒 Bloqueia novas evoluções quando o paciente decidiu NÃO renovar
+    // o Pacote de Atendimento personalizado encerrado.
+    {
+      const pat = state.patients.find(p => p.id === evolution.patientId) as any;
+      if (pat?.packageRenewalDecision === 'declined') {
+        toast.error('Pacote encerrado. Renove o pacote para registrar novas sessões.');
         return;
       }
     }
@@ -750,7 +764,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
       toast.success('Evolução adicionada!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar evolução'); }
-  }, [user]);
+  }, [user, state.patients]);
 
   const updateEvolution = useCallback(async (id: string, updates: Partial<Evolution>) => {
     if (!user) return;
