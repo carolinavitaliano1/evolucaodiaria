@@ -143,6 +143,14 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
   const watchedValorTotal = watch('valorTotal');
   const watchedSessionLimit = watch('sessionLimit');
 
+  // Pacotes "Por Sessão" sempre lançam fracionado (uma sessão = um lançamento).
+  // Forçamos o tipo de lançamento e bloqueamos a edição para evitar inconsistências.
+  useEffect(() => {
+    if (watchedPackageType === 'por_sessao') {
+      setValue('lancamentoTipo', 'valor_procedimento', { shouldDirty: false });
+    }
+  }, [watchedPackageType, setValue]);
+
   // Keep at least one commission row when method != sem_comissao
   useEffect(() => {
     if (watchedMethod !== 'sem_comissao' && fields.length === 0) {
