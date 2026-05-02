@@ -2219,6 +2219,12 @@ export default function PatientDetail() {
       toast.error('Não é permitido registrar evoluções com data futura.');
       return;
     }
+    // Pacote com lançamento por valor total: faltas comuns não são permitidas,
+    // pois entende-se que o pacote inteiro será cobrado independentemente.
+    if (isPackageValorTotal && attendanceStatus === 'falta') {
+      toast.error('Pacote com valor total: registre como Falta Remunerada (o pacote já será cobrado integralmente).');
+      return;
+    }
     const isAbsence = ['falta', 'falta_remunerada', 'feriado_remunerado', 'feriado_nao_remunerado'].includes(attendanceStatus);
     if (!isAbsence && !evolutionText.trim() && attachedFiles.length === 0 && Object.keys(templateFormValues).length === 0) return;
 
