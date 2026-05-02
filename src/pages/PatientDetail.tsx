@@ -49,6 +49,7 @@ import { generateReportPdf } from '@/utils/generateReportPdf';
 import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
 import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { calculatePatientMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
+import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE } from '@/utils/sessionTypeTags';
 import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import { PatientServicesSection } from '@/components/patients/PatientServicesSection';
