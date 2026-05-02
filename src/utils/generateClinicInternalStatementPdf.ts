@@ -166,6 +166,28 @@ export async function generateClinicInternalStatementPdf(
   const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null; absence_payment_type?: string | null; pays_on_absence?: boolean | null; absence_charge_mode?: string | null; absence_charge_amount?: number | null } | null =
     (clinicRes.data as any) ?? null;
 
+  const shouldBillEvolution = (e: EvolutionRow) => {
+    if (COUNTS_AS_BILLABLE(e.attendance_status)) return true;
+    if (e.attendance_status !== 'falta') return false;
+    const absenceType = clinicPayInfo?.absence_payment_type || (clinicPayInfo?.pays_on_absence === false ? 'never' : 'always');
+    if (absenceType === 'never') return false;
+    if (absenceType === 'confirmed_only') return !!e.confirmed_attendance;
+    return true;
+  };
+
+  const isPartialChargedAbsence = (e: EvolutionRow) =>
+    clinicPayInfo?.absence_charge_mode === 'parcial' &&
+    shouldBillEvolution(e) &&
+    (e.attendance_status === 'falta' || e.attendance_status === 'falta_cobrada' || e.attendance_status === 'falta_remunerada');
+
+  const getStatusLabel = (e: EvolutionRow) => {
+    if (e.attendance_status === 'falta' && shouldBillEvolution(e)) {
+      return isPartialChargedAbsence(e) ? 'Falta Cobrada (parcial)' : 'Falta Cobrada';
+    }
+    if (isPartialChargedAbsence(e)) return 'Falta Cobrada (parcial)';
+    return STATUS_LABEL[e.attendance_status] || e.attendance_status;
+  };
+
   const isClinicFixedSalary =
     clinicPayInfo?.payment_type === 'fixo_mensal' ||
     clinicPayInfo?.payment_type === 'fixo' ||
