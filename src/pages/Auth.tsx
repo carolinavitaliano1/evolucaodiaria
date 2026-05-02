@@ -267,17 +267,43 @@ export default function Auth() {
                 <CardDescription>Digite e confirme sua nova senha de acesso</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {recoveryError && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    {recoveryError}
+                    <div className="mt-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowNewPassword(false);
+                          setRecoveryError(null);
+                          setShowForgotPassword(true);
+                          window.history.replaceState(null, '', window.location.pathname);
+                        }}
+                      >
+                        Solicitar novo link
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {!recoverySessionReady && !recoveryError && (
+                  <div className="rounded-lg border border-muted bg-muted/40 p-3 text-sm text-muted-foreground flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Validando link de redefinição...
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="new-password">Nova Senha</Label>
-                  <Input id="new-password" type="password" placeholder="Mínimo 6 caracteres" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                  <Input id="new-password" type="password" placeholder="Mínimo 6 caracteres" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required disabled={!recoverySessionReady} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-password-confirm">Confirmar Nova Senha</Label>
-                  <Input id="new-password-confirm" type="password" placeholder="Repita a nova senha" value={newPasswordConfirm} onChange={(e) => setNewPasswordConfirm(e.target.value)} required />
+                  <Input id="new-password-confirm" type="password" placeholder="Repita a nova senha" value={newPasswordConfirm} onChange={(e) => setNewPasswordConfirm(e.target.value)} required disabled={!recoverySessionReady} />
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                <Button type="submit" className="w-full" disabled={isSubmitting || !recoverySessionReady}>
                   {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando...</> : 'Salvar Nova Senha'}
                 </Button>
               </CardFooter>
