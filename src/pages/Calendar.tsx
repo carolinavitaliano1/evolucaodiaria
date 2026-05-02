@@ -650,7 +650,6 @@ export default function CalendarPage() {
                       </p>
                     )}
                   </div>
-                )}
                 <div className="flex gap-2 pt-2">
                   <Button type="submit" className="flex-1 gradient-primary">Agendar</Button>
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsApptDialogOpen(false)}>Cancelar</Button>
