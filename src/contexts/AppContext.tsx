@@ -758,11 +758,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     try {
+      // 🔎 Herda pré-confirmação de presença, se houver registro em
+      // attendance_confirmations para este paciente/clínica/data. Isso permite
+      // que clínicas no modo 'Cobrar apenas se houve confirmação prévia'
+      // cobrem corretamente faltas de pacientes que confirmaram antes.
+      let confirmedAttendance = evolution.confirmedAttendance || false;
+      if (!confirmedAttendance && evolution.patientId && evolution.clinicId && evolution.date) {
+        try {
+          const { data: confirmRow } = await supabase
+            .from('attendance_confirmations' as any)
+            .select('id')
+            .eq('patient_id', evolution.patientId)
+            .eq('clinic_id', evolution.clinicId)
+            .eq('date', evolution.date)
+            .maybeSingle();
+          if (confirmRow) confirmedAttendance = true;
+        } catch (_e) { /* ignora — fallback ao valor original */ }
+      }
       const { data, error } = await supabase.from('evolutions').insert({
         user_id: user.id, patient_id: evolution.patientId, clinic_id: evolution.clinicId,
         date: evolution.date, text: evolution.text, attendance_status: evolution.attendanceStatus,
         signature: evolution.signature || null, stamp_id: evolution.stampId || null,
-        confirmed_attendance: evolution.confirmedAttendance || false, mood: evolution.mood || null,
+        confirmed_attendance: confirmedAttendance, mood: evolution.mood || null,
         template_id: evolution.templateId || null, template_data: evolution.templateData || null,
         schedule_slot_id: evolution.scheduleSlotId || null,
         session_time: evolution.sessionTime || null,
