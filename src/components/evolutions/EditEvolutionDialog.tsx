@@ -26,9 +26,10 @@ interface EditEvolutionDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (updates: Partial<Evolution>) => void;
   showFaltaRemunerada?: boolean;
+  disableFalta?: boolean;
 }
 
-export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, showFaltaRemunerada = true }: EditEvolutionDialogProps) {
+export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, showFaltaRemunerada = true, disableFalta = false }: EditEvolutionDialogProps) {
   const { user } = useAuth();
   const { clinics } = useApp();
   const clinicType = clinics.find(c => c.id === evolution.clinicId)?.type as
@@ -98,6 +99,10 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
       toast.error('Não é permitido registrar evoluções com data futura.');
       return;
     }
+    if (disableFalta && attendanceStatus === 'falta') {
+      toast.error('Pacote com valor total: registre como Falta Remunerada (o pacote já é cobrado integralmente).');
+      return;
+    }
     const selectedTemplate = clinicTemplates.find(t => t.id === selectedTemplateId);
     let finalText = text;
 
@@ -154,11 +159,22 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
             </div>
             <div>
               <Label>Presença</Label>
-              <Select value={attendanceStatus} onValueChange={(v) => setAttendanceStatus(v as any)}>
+              <Select
+                value={attendanceStatus}
+                onValueChange={(v) => {
+                  if (disableFalta && v === 'falta') {
+                    toast.error('Pacote com valor total: registre como Falta Remunerada.');
+                    return;
+                  }
+                  setAttendanceStatus(v as any);
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="presente">✅ Presente</SelectItem>
-                  <SelectItem value="falta">❌ Falta</SelectItem>
+                  <SelectItem value="falta" disabled={disableFalta}>
+                    ❌ Falta {disableFalta ? '(indisponível — pacote por valor total)' : ''}
+                  </SelectItem>
                   {showFaltaRemunerada && (
                     <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                   )}
@@ -167,6 +183,11 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
                   <SelectItem value="feriado_nao_remunerado">📅 Feriado Não Remunerado</SelectItem>
                 </SelectContent>
               </Select>
+              {disableFalta && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Pacote configurado como <strong>Valor Total</strong>: o pacote é cobrado integralmente, por isso “Falta” fica indisponível. Use <strong>Falta Remunerada</strong>.
+                </p>
+              )}
             </div>
           </div>
 

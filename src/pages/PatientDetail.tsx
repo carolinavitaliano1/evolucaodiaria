@@ -830,6 +830,10 @@ export default function PatientDetail() {
   // (mensal ÷ semanas agendadas no mês), independentemente de o paciente
   // estar marcado como "fixo mensal" ou não.
   const isPackageMensalFracionado = isPackageMensal && patientPackage?.lancamentoTipo === 'valor_procedimento';
+  // Pacote (qualquer tipo) com lançamento por VALOR TOTAL: o pacote inteiro
+  // é cobrado de uma vez, então faltas comuns não são permitidas (somente
+  // falta remunerada, presença, reposição e feriados).
+  const isPackageValorTotal = !!patientPackage && patientPackage?.lancamentoTipo === 'valor_total';
   const perSessionValue = isPackagePersonalizado
     ? paymentValue / (patientPackage!.sessionLimit!)
     : paymentValue;
@@ -2219,6 +2223,12 @@ export default function PatientDetail() {
       toast.error('Não é permitido registrar evoluções com data futura.');
       return;
     }
+    // Pacote com lançamento por valor total: faltas comuns não são permitidas,
+    // pois entende-se que o pacote inteiro será cobrado independentemente.
+    if (isPackageValorTotal && attendanceStatus === 'falta') {
+      toast.error('Pacote com valor total: registre como Falta Remunerada (o pacote já será cobrado integralmente).');
+      return;
+    }
     const isAbsence = ['falta', 'falta_remunerada', 'feriado_remunerado', 'feriado_nao_remunerado'].includes(attendanceStatus);
     if (!isAbsence && !evolutionText.trim() && attachedFiles.length === 0 && Object.keys(templateFormValues).length === 0) return;
 
@@ -2855,17 +2865,36 @@ export default function PatientDetail() {
                 </div>
                 <div>
                   <Label className="text-xs">Presença</Label>
-                  <Select value={attendanceStatus} onValueChange={(v) => setAttendanceStatus(v as any)}>
+                  <Select
+                    value={attendanceStatus}
+                    onValueChange={(v) => {
+                      if (isPackageValorTotal && v === 'falta') {
+                        toast.error('Pacote com valor total: registre como Falta Remunerada (o pacote já é cobrado integralmente).');
+                        return;
+                      }
+                      setAttendanceStatus(v as any);
+                    }}
+                  >
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="presente">✅ Presente</SelectItem>
-                      <SelectItem value="falta">❌ Falta</SelectItem>
+                      <SelectItem value="falta" disabled={isPackageValorTotal}>
+                        ❌ Falta {isPackageValorTotal ? '(indisponível — pacote por valor total)' : ''}
+                      </SelectItem>
                       <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                       <SelectItem value="reposicao">🔄 Reposição</SelectItem>
                       <SelectItem value="feriado_remunerado">🎉 Feriado Remunerado</SelectItem>
                       <SelectItem value="feriado_nao_remunerado">📅 Feriado Não Remunerado</SelectItem>
                     </SelectContent>
                   </Select>
+                  {isPackageValorTotal && (
+                    <p className="mt-1 text-[11px] text-muted-foreground flex items-start gap-1">
+                      <AlertCircle className="w-3 h-3 mt-[2px] text-warning shrink-0" />
+                      <span>
+                        Pacote configurado como <strong>Valor Total</strong>: o valor integral do pacote será cobrado independentemente de faltas, por isso a opção “Falta” fica indisponível. Use <strong>Falta Remunerada</strong> para registrar ausências.
+                      </span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <MoodSelector value={selectedMood} onChange={setSelectedMood} />
@@ -4091,7 +4120,8 @@ export default function PatientDetail() {
         <EditEvolutionDialog evolution={editingEvolution} open={!!editingEvolution}
           onOpenChange={(open) => !open && setEditingEvolution(null)}
           onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
-          showFaltaRemunerada={true} />
+          showFaltaRemunerada={true}
+          disableFalta={isPackageValorTotal} />
       )}
 
       {/* Feedback IA — individual */}
