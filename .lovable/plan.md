@@ -1,118 +1,57 @@
+## O que vai mudar
 
-## Objetivo
+Hoje a opção **"Cobrar apenas se houve confirmação prévia"** já existe no cadastro da clínica e a lógica financeira (`shouldBillEvolution`) já respeita o campo `confirmedAttendance`. Porém, não há nenhum lugar para o terapeuta **registrar a confirmação ANTES da sessão acontecer** — hoje o campo só é salvo junto com a evolução, o que torna a regra impossível de aplicar na prática.
 
-Remodelar o sistema de **Reposição/Avulso** na agenda e prontuário, com 4 mudanças principais:
+Este plano adiciona o registro de confirmação prévia diretamente na **Agenda da Clínica**.
 
-1. **Remover "Sessão regular"** do seletor de tipo ao agendar (já existe agendamento normal por outras vias).
-2. Permitir **Anteposição** (sessão antecipada) vinculada a uma falta futura específica.
-3. Mostrar **descrição visual** (Avulso / Reposição / Anteposição) na agenda, na aba Sessões do prontuário e na lista de pendências.
-4. Gerar **alerta de evolução pendente** para avulsas/reposições/anteposições **confirmadas/cobradas** sem evolução registrada.
+## Funcionamento
 
----
+1. **Cada paciente agendado do dia** ganha um botão **"Confirmar presença"** ao lado do botão de WhatsApp existente.
+2. Ao clicar, é criado um registro de "pré-confirmação" para aquele paciente naquela data. O botão troca para um **badge verde "✓ Confirmado"** (clicável para desfazer).
+3. Quando a evolução for criada depois (presente ou falta), ela herda automaticamente o `confirmedAttendance = true` se houver pré-confirmação para a data.
+4. O botão fica disponível **até o fim do dia da sessão** (00h do dia seguinte). Após isso, vira somente leitura.
+5. **Resultado financeiro:** em clínicas com modo "Cobrar apenas se houve confirmação prévia":
+   - Falta **com** pré-confirmação → cobra (vira receita / desconto parcial conforme `absence_charge_mode`).
+   - Falta **sem** pré-confirmação → não cobra (entra em "Total Descontado").
 
-## 1. Tipos de sessão (novo modelo)
+## Onde aparece
 
-Tipos disponíveis ao agendar via "Agendar Atendimento":
-
-- **Sessão avulsa** — atendimento pontual fora do plano recorrente.
-- **Reposição** — repõe uma falta **passada** (já registrada como `falta` no prontuário).
-- **Anteposição** — adianta uma sessão de uma data **futura** que será falta (ex: paciente avisa que vai faltar dia 10, e antecipa a sessão para o dia 5).
-
-A opção **"Sessão regular"** será removida do seletor — agendamentos regulares continuam acontecendo automaticamente pelo `scheduleByDay` do paciente.
-
----
-
-## 2. Vincular Reposição/Anteposição a uma falta original
-
-Quando o usuário escolher **Reposição** ou **Anteposição**, aparece um seletor extra:
-
-- **Reposição** → lista as faltas (`attendance_status = 'falta'`) **anteriores** à data do agendamento, ainda não repostas.
-- **Anteposição** → lista as faltas **posteriores** à data do agendamento (faltas planejadas/confirmadas que o paciente já avisou).
-
-O usuário escolhe qual falta está sendo reposta/anteposta. O sistema:
-
-- Marca a evolução criada com a tag `[reposicao:<evolution_id>]` ou `[anteposicao:<evolution_id>]` no campo `text` (e `attendance_status='reposicao'`).
-- Marca a evolução-falta original com `[reposta_por:<id>]` para evitar dupla vinculação.
-
-> **Nota:** Como o tipo "Anteposição" não existe em `attendance_status`, ela continua sendo gravada como `reposicao` no banco (mantém a contagem para receita), mas a UI a apresenta como "Anteposição" via tag no texto.
-
----
-
-## 3. Descrição visual (badges)
-
-### a) Card da agenda (Calendar.tsx)
-Adicionar badge ao lado do nome do paciente quando o `appointment.notes` contiver tag de tipo:
-- `[tipo:avulsa]` → badge **"Avulso"** (cor laranja).
-- `[tipo:reposicao]` → badge **"Reposição"** (cor azul).
-- `[tipo:anteposicao]` → badge **"Anteposição"** (cor roxa).
-
-### b) Aba Sessões do prontuário (PatientDetail.tsx)
-Na lista/tabela de evoluções, mostrar a tag colorida (mesma paleta acima) ao lado da data, derivada do conteúdo do `text` da evolução (`[reposicao:..]`, `[anteposicao:..]`, `[tipo:avulsa]`).
-
-### c) Lista de pendências (MissingEvolutionsAlert.tsx)
-Exibir o tipo no item da pendência: "Maria às 14:00 · Reposição · sem evolução".
-
----
-
-## 4. Alerta de evolução pendente
-
-Hoje o `MissingEvolutionsAlert` só considera **sessões recorrentes** (via `scheduleByDay`) e ignora avulsas/reposições.
-
-Mudança: incluir como candidatos a pendência os **`appointments`** cujas `notes` contenham `[tipo:avulsa]`, `[tipo:reposicao]` ou `[tipo:anteposicao]` **E** estejam marcados como cobrados/confirmados (ou seja, tenham um `private_appointments` correspondente OU uma flag de confirmação no agendamento).
-
-Critério prático de "confirmada/cobrada":
-- Existe `private_appointments` para o mesmo `patient_id + date + time`, OU
-- O agendamento foi criado com `chargeEnabled = true` (já registra `private_appointments`).
-
-Para esses, se não existir evolução em `(patient_id, date)` após o horário de fim, entra na lista de pendências como qualquer sessão regular.
-
----
+- **Componente:** `src/components/clinics/ClinicAgenda.tsx` — bloco de cada paciente agendado e bloco de `oneOffAppointments` (serviços avulsos).
+- Visual: badge verde `✓ Confirmado` junto do status, ao lado do botão WhatsApp.
+- Tooltip explicativo no botão deixando claro o impacto financeiro quando a clínica está em modo `confirmed_only`.
 
 ## Detalhes técnicos
 
-### Arquivos a editar
+### Nova tabela `attendance_confirmations`
+Campos relevantes:
+- `patient_id`, `clinic_id`, `date`, `confirmed_by_user_id`, `confirmed_at`
+- Único por (`patient_id`, `clinic_id`, `date`)
+- RLS: dono da clínica + membros da organização da clínica podem inserir/ler/excluir.
 
-- **`src/pages/Calendar.tsx`**
-  - Remover `'regular'` do `sessionType` (default vira `'avulsa'`).
-  - Remover `<SelectItem value="regular">` e ajustar lógica `isAvulsaOrReposicao` para sempre `true`.
-  - Adicionar opção `'anteposicao'` no Select.
-  - Adicionar segundo Select condicional: "Vincular à falta" — popular com evoluções `falta` do paciente filtradas por data (anteriores se reposição, posteriores se anteposição). Mostrar data/horário da falta.
-  - Ao submeter:
-    - `typeTag` agora cobre `[tipo:anteposicao]`.
-    - `text` da evolução criada inclui `[reposicao:<id>]` ou `[anteposicao:<id>]` se vinculada.
-    - Atualizar a evolução-falta original adicionando `[reposta_por:<nova_id>]` no `text`.
-  - Adicionar badge visual no `CalItem` (renderização do card na agenda) lendo a tag do `notes`.
+Motivo de tabela separada (em vez de reusar `evolutions.confirmed_attendance`): a evolução só existe depois da sessão; precisamos do registro **antes**.
 
-- **`src/components/dashboard/MissingEvolutionsAlert.tsx`**
-  - Carregar `private_appointments` do período (ou cruzar com `appointments` cujas notes tenham `[tipo:...]`).
-  - Para cada `appointment` "cobrado/confirmado" sem evolução correspondente, criar um `PendingEntry` com campo extra `kind: 'avulsa' | 'reposicao' | 'anteposicao'`.
-  - Renderizar o tipo no texto do item ("Reposição · sem evolução").
+### Integração com a criação de evolução (`AppContext.tsx` `addEvolution`)
+- Antes de inserir a evolução, consultar `attendance_confirmations` para `(patient_id, clinic_id, date)`.
+- Se existir, forçar `confirmed_attendance = true` no insert (sobrescreve o default).
+- Não alterar evoluções já existentes — apenas o caminho de criação.
 
-- **`src/pages/PatientDetail.tsx`** (aba Sessões / lista de evoluções)
-  - Função utilitária para extrair tipo (`avulsa | reposicao | anteposicao | regular`) do campo `text` ou do `appointment.notes` correspondente.
-  - Renderizar badge ao lado da data/horário de cada evolução listada.
+### UI em `ClinicAgenda.tsx`
+- Carregar via `useEffect` as confirmações da `viewDate` para a `clinicId`.
+- Função `toggleConfirmation(patientId)`: insere ou remove o registro otimisticamente.
+- Botão fica desabilitado se `viewDate < hoje` (passado) — só permite marcar para hoje ou futuro.
+- Badge verde `✓ Confirmado` substitui o estado padrão "⏳ Aguardando" quando a confirmação existe e não há evolução ainda.
+- Quando já existe evolução, badge de confirmação aparece pequeno ao lado do status atual (informativo).
 
-- **`src/components/evolutions/EditEvolutionDialog.tsx`** (opcional, leve)
-  - Quando `attendanceStatus === 'reposicao'`, mostrar um pequeno seletor para vincular/alterar a falta original (mesma lógica do Calendar). Isso permite registrar reposição/anteposição diretamente pelo prontuário também, sem precisar passar pela agenda.
+### Aviso visual contextual
+- Se a clínica está com `absence_payment_type = 'confirmed_only'`, mostrar uma faixa pequena no topo da agenda explicando: *"Esta clínica cobra faltas apenas quando houve confirmação prévia. Use o botão ✓ para registrar."*
 
-### Sem mudanças de schema
+### Sem mudanças na lógica financeira
+- `financialHelpers.ts`, `fiscalTotals.ts`, `PatientBillingManager.tsx`, `PatientDetail.tsx`, `generateClinicInternalStatementPdf.ts` continuam inalterados — eles já respeitam `confirmedAttendance` corretamente. A mudança apenas garante que esse campo seja preenchido a partir das pré-confirmações.
 
-- A coluna `attendance_status` continua com os 6 valores existentes; **anteposição reusa `'reposicao'`** + tag no `text`.
-- Vínculo entre reposição e falta original também via tag no `text` (não exige nova coluna). Isso preserva todas as queries de receita (`get_patient_monthly_revenue`) sem migração.
-- Se o usuário pedir relatórios/contagens dedicadas mais tarde, criamos coluna `replaces_evolution_id uuid` em uma migration separada.
+### Memory
+- Adicionar memory `mem://features/attendance-pre-confirmation` documentando o fluxo: tabela `attendance_confirmations`, regra de cobrança em modo `confirmed_only`, herança automática do flag na criação da evolução.
 
-### Cores dos badges (semantic tokens)
-
-- Avulso → `bg-orange-100 text-orange-800 border-orange-300`
-- Reposição → `bg-blue-100 text-blue-800 border-blue-300`
-- Anteposição → `bg-purple-100 text-purple-800 border-purple-300`
-
-(Mantendo o padrão já usado no `EVENT_COLORS` da agenda.)
-
----
-
-## Fora de escopo
-
-- Migration para criar coluna formal de vínculo (faremos só se você pedir relatórios cruzados depois).
-- Notificação push/WhatsApp da pendência (já existe outro fluxo).
-- Mudança no Compliance Dashboard (continua usando regra própria de 24h).
+## Não inclui
+- Notificações automáticas / lembretes (regra de "não usar push reminders" do projeto).
+- Confirmação pelo paciente via portal (escopo futuro, se desejado).
+- Mudanças em relatórios PDF — os totais já refletirão corretamente porque a lógica financeira não muda.
