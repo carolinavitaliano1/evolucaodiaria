@@ -338,7 +338,7 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
                       </label>
                       <label className="flex items-center gap-2 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
                         <RadioGroupItem value="valor_procedimento" id="lt-proc" />
-                        <span className="text-sm">Valor de cada procedimento</span>
+                        <span className="text-sm">Valor fracionado</span>
                       </label>
                     </RadioGroup>
                   )}
