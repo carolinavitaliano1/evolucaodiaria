@@ -67,7 +67,7 @@ const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sext
 const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function CalendarPage() {
-  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, evolutions, clinicPackages } = useApp();
+  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, deleteAppointment, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
@@ -98,6 +98,8 @@ export default function CalendarPage() {
     chargeValue: '' as string,
   });
   const [whatsappTarget, setWhatsappTarget] = useState<{ name: string; phone: string; date: string; time: string } | null>(null);
+  /** Se preenchido, o submit do formulário irá ATUALIZAR este appointment em vez de criar um novo. */
+  const [editingApptId, setEditingApptId] = useState<string | null>(null);
 
   const loadCalendarEvents = useCallback(async () => {
     if (!user?.id) return;
