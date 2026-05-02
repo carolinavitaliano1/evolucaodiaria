@@ -41,6 +41,8 @@ interface CalItem {
   color: string;
   bgColor: string;
   rawEvent?: any;
+  /** Quando o item é um appointment (atendimento), mantém o objeto bruto. */
+  rawAppointment?: any;
   isDraggable: boolean;
   /** Tag visual de tipo extra (Avulso/Reposição/Anteposição). */
   kind?: 'avulsa' | 'reposicao' | 'anteposicao';
