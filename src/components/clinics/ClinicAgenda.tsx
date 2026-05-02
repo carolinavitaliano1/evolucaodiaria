@@ -268,6 +268,16 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
           Agenda do Dia ({scheduledPatients.length + oneOffAppointments.length} pacientes)
         </h3>
 
+        {absencePaymentType === 'confirmed_only' && (
+          <div className="mb-4 flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-foreground">
+            <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+            <span>
+              Esta clínica cobra faltas <strong>apenas quando houve confirmação prévia</strong>.
+              Use o botão <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-success/15 text-success font-medium">✓ Confirmar</span> em cada paciente que confirmou a presença antes da sessão.
+            </span>
+          </div>
+        )}
+
         {scheduledPatients.length === 0 && oneOffAppointments.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-4">📅</div>
