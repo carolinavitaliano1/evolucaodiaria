@@ -361,6 +361,11 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
                     ? 'O valor cheio do pacote será lançado no Financeiro uma única vez, no mês em que o pacote for associado ao paciente.'
                     : 'O valor será fracionado e lançado no Financeiro conforme cada sessão for sendo concluída.'}
                 </p>
+                {watchedPackageType !== 'por_sessao' && watch('lancamentoTipo') === 'valor_total' && (
+                  <div className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2.5 text-xs text-foreground">
+                    ⚠️ Como o pacote será cobrado integralmente, no registro de evoluções deste paciente a opção <strong>“Falta”</strong> ficará <strong>indisponível</strong>. Estarão disponíveis apenas: <strong>Presente</strong>, <strong>Falta Remunerada</strong>, <strong>Reposição</strong>, <strong>Feriado Remunerado</strong> e <strong>Feriado Não Remunerado</strong>.
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-3">
