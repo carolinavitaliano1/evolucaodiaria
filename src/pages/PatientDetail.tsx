@@ -2664,6 +2664,63 @@ export default function PatientDetail() {
               </p>
             </div>
           )}
+
+          {/* 📦 Pacote PERSONALIZADO encerrado: pergunta sobre renovação */}
+          {showRenewalPrompt && (
+            <div className="rounded-xl border-2 border-primary/40 bg-gradient-to-br from-primary/5 to-accent/5 p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <Package className="w-6 h-6 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-foreground text-sm">
+                      Pacote de Atendimento concluído
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      O paciente já utilizou as <strong>{personalizadoLimit} sessões</strong> do
+                      pacote <strong>{patientPackage?.name}</strong>. Para continuar registrando
+                      evoluções é necessário decidir se o pacote será renovado.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={handleRenewPackage} className="gap-2">
+                      <Plus className="w-4 h-4" /> Renovar pacote
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleDeclineRenewal}>
+                      Não renovar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 🔒 Pacote encerrado e paciente decidiu NÃO renovar: aba travada */}
+          {evolutionLocked && (
+            <div className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <LockIcon className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-foreground text-sm">
+                      Sessões encerradas — pacote não renovado
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      As sessões deste paciente foram encerradas porque o Pacote de Atendimento
+                      <strong> {patientPackage?.name}</strong> não foi renovado. Não é possível
+                      adicionar, editar ou excluir evoluções até que o pacote seja reativado.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={handleReactivatePackage} className="gap-2">
+                      <Plus className="w-4 h-4" /> Reativar pacote
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!evolutionLocked && (
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border">
             <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-primary" /> Nova Evolução
