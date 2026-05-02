@@ -367,6 +367,9 @@ export default function PatientDetail() {
   // Patient services (private_appointments) for revenue calculations
   const [patientServices, setPatientServices] = useState<{ id: string; date: string; price: number; status: string; paid: boolean | null }[]>([]);
 
+  // All paid payment records for this patient (used for "Receita total" = total efetivamente pago)
+  const [allPaidRecords, setAllPaidRecords] = useState<{ amount: number; payment_date: string | null; month: number; year: number }[]>([]);
+
   // Patient notes state
   const [patientNotes, setPatientNotes] = useState<{ id: string; title: string; content: string; created_at: string; updated_at: string }[]>([]);
   const [newNoteTitle, setNewNoteTitle] = useState('');
@@ -540,6 +543,24 @@ export default function PatientDetail() {
       .eq('patient_id', patient.id)
       .then(({ data }) => {
         setPatientServices((data || []) as any);
+      });
+  }, [patient?.id]);
+
+  // Load ALL paid payment records for this patient (lifetime) for total revenue calc
+  useEffect(() => {
+    if (!patient?.id) return;
+    supabase
+      .from('patient_payment_records')
+      .select('amount, payment_date, month, year, paid')
+      .eq('patient_id', patient.id)
+      .eq('paid', true)
+      .then(({ data }) => {
+        setAllPaidRecords(((data || []) as any[]).map(r => ({
+          amount: Number(r.amount || 0),
+          payment_date: r.payment_date,
+          month: r.month,
+          year: r.year,
+        })));
       });
   }, [patient?.id]);
 
@@ -935,16 +956,15 @@ export default function PatientDetail() {
   const totalServicesRevenue = patientServices
     .filter(s => s.status !== 'cancelado')
     .reduce((sum, s) => sum + Number(s.price || 0), 0);
-  // Receita total acumulada desde a entrada do paciente:
-  // sempre conta sessões cobráveis × valor/sessão (mesma regra do extrato fiscal).
-  // Para fixo_diario, mantemos a contagem por dia único.
-  const totalFinancial = (isFixoDiario
-    ? totalIndividualUniqueDays * perSessionValue + totalGroupRevenue
-    : totalIndividualBillableCount * perSessionValue + totalGroupRevenue
-  ) + totalServicesRevenue + slotsRevenue;
-  const totalFinancialSubtitle = isFixoDiario
-    ? `Total de ${totalUniqueDays} diária(s)`
-    : `Total de ${totalBillableCount} sessões`;
+  // Receita total acumulada: soma de TODOS os pagamentos efetivamente marcados como pagos
+  // no app (patient_payment_records.paid = true) + serviços avulsos pagos.
+  // Não calcula mais por sessões × valor — reflete o que o paciente realmente pagou.
+  const totalPaidFromRecords = allPaidRecords.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  const totalServicesPaid = patientServices
+    .filter(s => s.status !== 'cancelado' && s.paid === true)
+    .reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const totalFinancial = totalPaidFromRecords + totalServicesPaid;
+  const totalFinancialSubtitle = `Total efetivamente pago (${allPaidRecords.length} mês${allPaidRecords.length === 1 ? '' : 'es'})`;
 
   const allMoodOptions = [
     ...MOOD_OPTIONS,
