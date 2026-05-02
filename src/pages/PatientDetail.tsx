@@ -2715,6 +2715,71 @@ export default function PatientDetail() {
             </div>
           )}
 
+          {/* 📊 Contador do Pacote PERSONALIZADO */}
+          {isPackagePersonalizado && (
+            <div className={cn(
+              "rounded-xl border p-4 shadow-sm",
+              personalizadoExhausted
+                ? "border-warning/40 bg-warning/5"
+                : "border-primary/20 bg-primary/5"
+            )}>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-primary" />
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">
+                      Pacote {patientPackage?.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      <strong className={personalizadoExhausted ? 'text-warning' : 'text-primary'}>
+                        {personalizadoSessionsUsed}
+                      </strong> de <strong>{personalizadoLimit}</strong> sessões usadas
+                      {!personalizadoExhausted && (
+                        <> · <strong>{personalizadoRemaining}</strong> restante{personalizadoRemaining !== 1 ? 's' : ''}</>
+                      )}
+                      {personalizadoExhausted && <> · <span className="text-warning font-semibold">Pacote concluído</span></>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-[140px] max-w-[280px]">
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full transition-all",
+                        personalizadoExhausted ? "bg-warning" : "bg-primary"
+                      )}
+                      style={{ width: `${Math.min(100, (personalizadoSessionsUsed / Math.max(1, personalizadoLimit)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              {renewalHistory.length > 0 && (
+                <details className="mt-3">
+                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                    📜 Histórico de renovações ({renewalHistory.length})
+                  </summary>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {renewalHistory.map((r: any) => (
+                      <li key={r.id} className="flex items-center gap-2 text-muted-foreground">
+                        <span className={r.decision === 'renewed' ? 'text-primary' : 'text-destructive'}>
+                          {r.decision === 'renewed' ? '🔄 Renovou' : '🚫 Não renovou'}
+                        </span>
+                        <span>·</span>
+                        <span>{format(new Date(r.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                        {typeof r.sessions_used_in_cycle === 'number' && (
+                          <>
+                            <span>·</span>
+                            <span>{r.sessions_used_in_cycle}/{r.session_limit ?? '?'} sessões</span>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+
           {/* 📦 Pacote PERSONALIZADO encerrado: pergunta sobre renovação */}
           {showRenewalPrompt && (
             <div className="rounded-xl border-2 border-primary/40 bg-gradient-to-br from-primary/5 to-accent/5 p-5 shadow-sm">
