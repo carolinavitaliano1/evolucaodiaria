@@ -820,6 +820,11 @@ export default function PatientDetail() {
   // Package personalizado: per-session value = total / sessionLimit
   const isPackagePersonalizado = patientPackage?.packageType === 'personalizado' && (patientPackage?.sessionLimit ?? 0) > 0;
   const isPackageMensal = patientPackage?.packageType === 'mensal';
+  // Pacote mensal com lançamento "valor fracionado" deve se comportar como
+  // mensalista do Psicoativamente: mostrar valor mensal + valor por sessão
+  // (mensal ÷ semanas agendadas no mês), independentemente de o paciente
+  // estar marcado como "fixo mensal" ou não.
+  const isPackageMensalFracionado = isPackageMensal && patientPackage?.lancamentoTipo === 'valor_procedimento';
   const perSessionValue = isPackagePersonalizado
     ? paymentValue / (patientPackage!.sessionLimit!)
     : paymentValue;
@@ -1011,12 +1016,12 @@ export default function PatientDetail() {
   const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   // Dynamic proration for Mensal packages
   const monthlyDynamic = useMemo(() => {
-    if (isPackageMensal && isFixoMensal && paymentValue > 0) {
+    if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado) && paymentValue > 0) {
       const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
       return getDynamicSessionValue(paymentValue, patientWeekdays, reportMonth.getMonth(), reportMonth.getFullYear());
     }
     return null;
-  }, [isPackageMensal, isFixoMensal, paymentValue, patient?.weekdays, patient?.scheduleByDay, reportMonth]);
+  }, [isPackageMensal, isFixoMensal, isPackageMensalFracionado, paymentValue, patient?.weekdays, patient?.scheduleByDay, reportMonth]);
 
   const monthlyDeductibleAbsences = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const monthlyMensalDeduction = useMemo(() => {
@@ -1074,12 +1079,12 @@ export default function PatientDetail() {
   const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   // Dynamic proration for financial tab
   const finDynamic = useMemo(() => {
-    if (isPackageMensal && isFixoMensal && paymentValue > 0) {
+    if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado) && paymentValue > 0) {
       const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
       return getDynamicSessionValue(paymentValue, patientWeekdays, financialMonth.getMonth(), financialMonth.getFullYear());
     }
     return null;
-  }, [isPackageMensal, isFixoMensal, paymentValue, patient?.weekdays, patient?.scheduleByDay, financialMonth]);
+  }, [isPackageMensal, isFixoMensal, isPackageMensalFracionado, paymentValue, patient?.weekdays, patient?.scheduleByDay, financialMonth]);
 
   const finDeductibleAbsences = finAbsent;
   const finMensalDeduction = useMemo(() => {
@@ -2275,7 +2280,7 @@ export default function PatientDetail() {
                 {(patient.paymentValue || (patientPackage?.price ?? 0) > 0) && (() => {
                   // Dynamic proration for header display (current month)
                   const now = new Date();
-                  if (isPackageMensal && isFixoMensal) {
+                  if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado)) {
                     const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
                     const headerDynamic = getDynamicSessionValue(paymentValue, patientWeekdays, now.getMonth(), now.getFullYear());
                     if (headerDynamic.occurrences > 0) {
@@ -3347,11 +3352,15 @@ export default function PatientDetail() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {paymentValue > 0
-                    ? `R$ ${paymentValue.toFixed(2)}${
-                        isPackageMensal || patientPackage?.lancamentoTipo === 'valor_total' || patient.paymentType === 'fixo'
-                          ? '/mês'
-                          : ' por sessão'
-                      }`
+                    ? (isPackagePersonalizado
+                        ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit} sessões — total R$ ${paymentValue.toFixed(2)})`
+                        : (isPackageMensalFracionado && finDynamic && finDynamic.occurrences > 0
+                            ? `R$ ${paymentValue.toFixed(2)}/mês (Mês de ${finDynamic.occurrences} semanas: R$ ${finDynamic.perSession.toFixed(2)}/sessão)`
+                            : `R$ ${paymentValue.toFixed(2)}${
+                                isPackageMensal || patientPackage?.lancamentoTipo === 'valor_total' || patient.paymentType === 'fixo'
+                                  ? '/mês'
+                                  : ' por sessão'
+                              }`))
                     : 'Valor não configurado'}
                 </p>
               </div>
