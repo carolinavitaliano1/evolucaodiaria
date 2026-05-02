@@ -3347,7 +3347,11 @@ export default function PatientDetail() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {paymentValue > 0
-                    ? `R$ ${paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? ' por sessão' : '/mês'}`
+                    ? `R$ ${paymentValue.toFixed(2)}${
+                        isPackageMensal || patientPackage?.lancamentoTipo === 'valor_total' || patient.paymentType === 'fixo'
+                          ? '/mês'
+                          : ' por sessão'
+                      }`
                     : 'Valor não configurado'}
                 </p>
               </div>
