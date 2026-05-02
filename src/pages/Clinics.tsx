@@ -683,6 +683,53 @@ export default function Clinics() {
                             O valor é definido individualmente por paciente/pacote. Os valores serão calculados conforme cada tipo de cobrança cadastrado.
                           </p>
                         )}
+
+                        <div className="mt-4 space-y-2">
+                          <Label className="text-xs">Pagamento em caso de falta</Label>
+                          <Select
+                            value={formData.absencePaymentType}
+                            onValueChange={(v) => setFormData({ ...formData, absencePaymentType: v as 'always' | 'never' | 'confirmed_only' })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="always">Sempre cobrar faltas</SelectItem>
+                              <SelectItem value="confirmed_only">Cobrar apenas se houve confirmação prévia</SelectItem>
+                              <SelectItem value="never">Nunca cobrar faltas</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {formData.absencePaymentType !== 'never' && (
+                            <div className="space-y-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                              <Label className="text-xs">Quanto o terapeuta recebe pela falta cobrada</Label>
+                              <Select
+                                value={formData.absenceChargeMode}
+                                onValueChange={(v) => setFormData({ ...formData, absenceChargeMode: v as 'integral' | 'parcial' })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="integral">Integral (valor cheio da sessão)</SelectItem>
+                                  <SelectItem value="parcial">Parcial (valor fixo em R$)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {formData.absenceChargeMode === 'parcial' && (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={formData.absenceChargeAmount}
+                                  onChange={(e) => setFormData({ ...formData, absenceChargeAmount: e.target.value })}
+                                  placeholder="Valor por falta (R$)"
+                                />
+                              )}
+                              <p className="text-[11px] text-muted-foreground">
+                                <strong>Integral:</strong> terapeuta recebe o valor cheio da sessão.{' '}
+                                <strong>Parcial:</strong> terapeuta recebe o valor fixo informado e a clínica retém a diferença.
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </>
                     )}
 
