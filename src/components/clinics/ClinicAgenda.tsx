@@ -222,7 +222,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                   className={cn(
                     "flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-colors gap-2",
                     evo
-                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao'
+                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao','anteposicao'
                         ? "bg-success/10 border-success/30"
                         : evo.attendanceStatus === 'falta_remunerada'
                           ? "bg-warning/10 border-warning/30"
@@ -300,7 +300,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                   className={cn(
                     'flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-colors gap-2',
                     evo
-                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao'
+                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao','anteposicao'
                         ? 'bg-success/10 border-success/30'
                         : evo.attendanceStatus === 'falta_remunerada'
                           ? 'bg-warning/10 border-warning/30'

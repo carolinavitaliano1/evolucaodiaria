@@ -156,7 +156,7 @@ export default function Financial() {
     [monthlyEvolutions],
   );
 
-  const presentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
+  const presentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao');
   const absentEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
   const reposicaoEvolutions = monthlyEvolutions.filter(e => e.attendanceStatus === 'reposicao');

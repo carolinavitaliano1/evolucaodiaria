@@ -78,7 +78,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
   const memberStats = useMemo(() => {
     return members.map(member => {
       const memberEvos = monthlyEvolutions.filter(e => e.userId === member.userId);
-      const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
+      const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       const calc = calculateMemberBreakdown(member, memberEvos);
@@ -92,7 +92,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
     return monthlyEvolutions.filter(e => e.userId === filterMemberId);
   }, [monthlyEvolutions, filterMemberId]);
 
-  const totalSessions = filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
+  const totalSessions = filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').length;
   const totalAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const totalPaidAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
 
@@ -118,7 +118,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
         const patient = clinicPatients.find(p => p.id === patientId);
         if (!patient) return null;
         const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-        const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
+        const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').length;
         const absences = patientEvos.filter(e => e.attendanceStatus === 'falta').length;
         const paidAbsences = patientEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
         // Author of the first evo (for org view)
@@ -302,7 +302,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
             if (!selM) return null;
             if (selM.remunerationType === 'fixo_mensal') return <p className="text-[10px] text-muted-foreground mt-0.5">💼 Valor Fixo Mensal (salário)</p>;
             if (selM.remunerationType === 'fixo_dia') {
-              const days = new Set(filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+              const days = new Set(filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
               return <p className="text-[10px] text-muted-foreground mt-0.5">📅 Baseado em {days} dia{days !== 1 ? 's' : ''} trabalhado{days !== 1 ? 's' : ''}</p>;
             }
             if (selM.remunerationType === 'por_sessao') return <p className="text-[10px] text-muted-foreground mt-0.5">🔄 Baseado em {totalSessions} sessão{totalSessions !== 1 ? 'ões' : ''}</p>;
@@ -352,7 +352,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
                       <p className="text-xs text-muted-foreground">
                         {member.remunerationType === 'fixo_mensal' && '💼 Salário fixo mensal'}
                         {member.remunerationType === 'fixo_dia' && (() => {
-                          const days = new Set(evos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+                          const days = new Set(evos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
                           return `📅 ${days} dia${days !== 1 ? 's' : ''} trabalhado${days !== 1 ? 's' : ''}`;
                         })()}
                         {member.remunerationType === 'por_sessao' && `🔄 ${sessions} sessão${sessions !== 1 ? 'ões' : ''}`}

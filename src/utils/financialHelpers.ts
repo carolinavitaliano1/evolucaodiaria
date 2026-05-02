@@ -153,7 +153,7 @@ export const BILLABLE_STATUSES: ReadonlyArray<string> = [
 ];
 
 /** Status que contam como "sessão realizada" (produtividade). */
-export const SESSION_STATUSES: ReadonlyArray<string> = ['presente', 'reposicao'];
+export const SESSION_STATUSES: ReadonlyArray<string> = ['presente', 'reposicao','anteposicao'];
 
 export const isBillableStatus = (s: string): boolean => BILLABLE_STATUSES.includes(s);
 export const isSessionStatus = (s: string): boolean => SESSION_STATUSES.includes(s);
