@@ -4120,7 +4120,8 @@ export default function PatientDetail() {
         <EditEvolutionDialog evolution={editingEvolution} open={!!editingEvolution}
           onOpenChange={(open) => !open && setEditingEvolution(null)}
           onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
-          showFaltaRemunerada={true} />
+          showFaltaRemunerada={true}
+          disableFalta={isPackageValorTotal} />
       )}
 
       {/* Feedback IA — individual */}
