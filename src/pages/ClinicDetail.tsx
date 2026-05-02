@@ -392,6 +392,47 @@ export default function ClinicDetail() {
     return appointments.filter(a => a.clinicId === id && a.date === today);
   }, [appointments, id]);
 
+  // Serviços avulsos (private_appointments) de hoje na clínica
+  const [todayPrivate, setTodayPrivate] = useState<any[]>([]);
+  // Bloqueios (feriados / férias) ativos hoje na clínica (ou globais)
+  const [todayBlocks, setTodayBlocks] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!id) return;
+    const todayStr = toLocalDateString(new Date());
+    let cancelled = false;
+    supabase.from('private_appointments')
+      .select('id, patient_id, client_name, date, time, price, status, notes')
+      .eq('clinic_id', id)
+      .eq('date', todayStr)
+      .neq('status', 'cancelado')
+      .then(({ data }) => { if (!cancelled) setTodayPrivate((data || []) as any[]); });
+
+    supabase.from('calendar_blocks')
+      .select('id, block_type, start_date, end_date, description, clinic_id')
+      .lte('start_date', todayStr)
+      .gte('end_date', todayStr)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const filtered = (data || []).filter((b: any) => !b.clinic_id || b.clinic_id === id);
+        setTodayBlocks(filtered as any[]);
+      });
+    return () => { cancelled = true; };
+  }, [id]);
+
+  // Aniversariantes do dia (entre os pacientes da clínica)
+  const todayBirthdays = useMemo(() => {
+    const now = new Date();
+    const m = now.getMonth();
+    const d = now.getDate();
+    return clinicPatients.filter(p => {
+      if (!p.birthdate) return false;
+      const b = new Date(`${p.birthdate}T12:00:00`);
+      if (isNaN(b.getTime())) return false;
+      return b.getMonth() === m && b.getDate() === d;
+    });
+  }, [clinicPatients]);
+
   // Check if evolution already exists for patient today at this clinic
   const getPatientTodayEvolution = (patientId: string) => {
     const today = toLocalDateString(new Date());
