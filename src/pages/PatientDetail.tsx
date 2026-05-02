@@ -4356,9 +4356,9 @@ export default function PatientDetail() {
                   {fiscalTotalPaidFromApp !== null && <span> — R$ {fiscalTotalPaidFromApp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                 </p>
               ) : (
-                <p className="text-muted-foreground">Sem pagamento registrado neste período (Total Pago = R$ 0,00 no extrato).</p>
+                <p className="text-muted-foreground">Sem pagamento registrado neste período. O extrato será gerado normalmente com as sessões realizadas e <span className="font-semibold">Total Pago = R$ 0,00</span> (valores aparecerão como pendentes).</p>
               )}
-              <p className="text-muted-foreground/80 text-[11px]">O Total Pago é extraído automaticamente do financeiro do paciente quando marcado como pago.</p>
+              <p className="text-muted-foreground/80 text-[11px]">O Total Pago é extraído automaticamente do financeiro do paciente quando marcado como pago. O Total Faturado sempre considera as sessões realizadas no período.</p>
             </div>
 
             {/* CPF warning */}
