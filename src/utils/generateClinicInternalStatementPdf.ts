@@ -387,6 +387,8 @@ export async function generateClinicInternalStatementPdf(
           paymentAmount: clinicPayInfo?.payment_amount,
           absencePaymentType: clinicPayInfo?.absence_payment_type,
           paysOnAbsence: clinicPayInfo?.pays_on_absence,
+          absenceChargeMode: (clinicPayInfo?.absence_charge_mode as any) || undefined,
+          absenceChargeAmount: clinicPayInfo?.absence_charge_amount ?? undefined,
         },
         // calculatePatientMonthlyRevenue espera month 1-indexed
         month: month + 1,
