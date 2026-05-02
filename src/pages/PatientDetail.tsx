@@ -2637,6 +2637,7 @@ export default function PatientDetail() {
                 presetSlots={patientScheduleSlots}
                 scheduleSlotId={evolutionScheduleSlotId}
                 sessionTime={evolutionSessionTime}
+                clinicType={clinic?.type as 'propria' | 'terceirizada' | 'clinica' | undefined}
                 onChange={({ scheduleSlotId, sessionTime }) => {
                   setEvolutionScheduleSlotId(scheduleSlotId);
                   setEvolutionSessionTime(sessionTime);
