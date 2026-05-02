@@ -11,10 +11,17 @@ import {
   UserPlus, Sparkles, ChevronDown, ChevronRight, Paperclip,
 } from 'lucide-react';
 import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { getSessionKind, SESSION_KIND_LABEL, type SessionKind } from '@/utils/sessionTypeTags';
+
+const DEFAULT_SESSION_DURATION = 50;
+const DAYS_BACK = 7;
 
 interface PatientRef {
   id: string;
   name: string;
+  date?: string;
+  startTime?: string;
+  kind?: Exclude<SessionKind, 'regular'>;
 }
 
 interface AlertGroup {
@@ -41,6 +48,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
   const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
   const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
+  const [extraAppointments, setExtraAppointments] = useState<Array<{ patientId: string; date: string; time: string; notes: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -49,33 +57,96 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
     [patients, clinicId]
   );
 
+  const toMin = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + (m || 0);
+  };
+
+  useEffect(() => {
+    if (!user || !clinicId) return;
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(start.getDate() - DAYS_BACK);
+    const startDate = toLocalDateString(start);
+    const endDate = toLocalDateString(today);
+
+    supabase
+      .from('appointments')
+      .select('patient_id, date, time, notes')
+      .eq('clinic_id', clinicId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .then(({ data }) => {
+        const extras = ((data as any[]) || [])
+          .filter(a => getSessionKind(a.notes as string | null) !== 'regular')
+          .map(a => ({
+            patientId: a.patient_id as string,
+            date: a.date as string,
+            time: (a.time as string) || '',
+            notes: (a.notes as string) || null,
+          }));
+        setExtraAppointments(extras);
+      });
+  }, [user, clinicId]);
+
   // Missing evolutions for this clinic (last 7 days) — with patient details
   const missingEvolutionPatients = useMemo(() => {
     const today = new Date();
+    const nowMinutes = today.getHours() * 60 + today.getMinutes();
     const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     const patientSet = new Map<string, PatientRef>();
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i <= DAYS_BACK; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = toLocalDateString(d);
       const dayName = days[d.getDay()];
+      const isPast = i > 0;
       // Skip dates marked as holiday/vacation for this clinic
       if (isDateBlocked(dateStr, clinicId)) continue;
 
       for (const p of clinicPatients) {
-        if (new Date(p.createdAt) > d) continue;
-        if (!p.weekdays?.includes(dayName)) continue;
+        if (p.createdAt && toLocalDateString(new Date(p.createdAt)) > dateStr) continue;
+        const schedByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
+        const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
+        if (!scheduledDays.includes(dayName)) continue;
+        const startTime = schedByDay?.[dayName]?.start || p.scheduleTime || '';
+        if (!startTime || startTime === '00:00') continue;
+        const endMin = schedByDay?.[dayName]?.end ? toMin(schedByDay[dayName].end) : toMin(startTime) + DEFAULT_SESSION_DURATION;
+        if (!isPast && nowMinutes <= endMin) continue;
         const hasEvolution = evolutions.some(
           e => e.patientId === p.id && e.clinicId === clinicId && e.date === dateStr
         );
         if (!hasEvolution) {
-          patientSet.set(p.id, { id: p.id, name: p.name });
+          patientSet.set(`${p.id}::${dateStr}`, { id: p.id, name: p.name, date: dateStr, startTime });
         }
       }
+
+      extraAppointments
+        .filter(a => a.date === dateStr)
+        .forEach(a => {
+          const patient = clinicPatients.find(p => p.id === a.patientId);
+          if (!patient) return;
+          const startTime = a.time || '';
+          if (!startTime || startTime === '00:00') return;
+          if (!isPast && nowMinutes <= toMin(startTime) + DEFAULT_SESSION_DURATION) return;
+          const hasEvolution = evolutions.some(
+            e => e.patientId === patient.id && e.clinicId === clinicId && e.date === dateStr
+          );
+          if (hasEvolution) return;
+          const kind = getSessionKind(a.notes);
+          if (kind === 'regular') return;
+          patientSet.set(`${patient.id}::${dateStr}`, {
+            id: patient.id,
+            name: patient.name,
+            date: dateStr,
+            startTime,
+            kind,
+          });
+        });
     }
     return Array.from(patientSet.values());
-  }, [clinicPatients, evolutions, clinicId, isDateBlocked]);
+  }, [clinicPatients, evolutions, clinicId, isDateBlocked, extraAppointments]);
 
   // Fetch clinic-specific detailed data
   useEffect(() => {
