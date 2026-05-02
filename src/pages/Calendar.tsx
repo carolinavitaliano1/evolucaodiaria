@@ -298,14 +298,34 @@ export default function CalendarPage() {
         : '';
     const baseNotes = [typeTag, linkTag, formData.notes].filter(Boolean).join(' ').trim();
 
-    // 1) Cria o agendamento normal (aparece na agenda)
-    addAppointment({
-      clinicId: formData.clinicId,
-      patientId: formData.patientId,
-      date: formData.date,
-      time: formData.time,
-      notes: baseNotes,
-    });
+    // 1) Cria/atualiza o agendamento (aparece na agenda)
+    if (editingApptId) {
+      try {
+        const { error } = await supabase
+          .from('appointments')
+          .update({
+            clinic_id: formData.clinicId,
+            patient_id: formData.patientId,
+            date: formData.date,
+            time: formData.time,
+            notes: baseNotes,
+          })
+          .eq('id', editingApptId);
+        if (error) throw error;
+      } catch (err) {
+        console.error(err);
+        toast.error('Erro ao atualizar agendamento');
+        return;
+      }
+    } else {
+      addAppointment({
+        clinicId: formData.clinicId,
+        patientId: formData.patientId,
+        date: formData.date,
+        time: formData.time,
+        notes: baseNotes,
+      });
+    }
 
     // 2) Marca a falta vinculada (reposição/anteposição) como "reposta_por:pendente"
     //    para preservar a rastreabilidade do histórico. A evolução em si NÃO é
@@ -354,12 +374,13 @@ export default function CalendarPage() {
     }
 
     if (isAvulsaOrReposicao) {
-      const okMsg =
-        formData.sessionType === 'reposicao' ? 'Reposição agendada!' :
-        formData.sessionType === 'anteposicao' ? 'Anteposição agendada!' :
-        'Sessão avulsa agendada!';
-      toast.success(okMsg);
+      const verb = editingApptId ? 'atualizada' : 'agendada';
+      const labelTipo =
+        formData.sessionType === 'reposicao' ? 'Reposição' :
+        formData.sessionType === 'anteposicao' ? 'Anteposição' : 'Sessão avulsa';
+      toast.success(`${labelTipo} ${verb}!`);
     }
+    setEditingApptId(null);
     resetForm();
     setIsApptDialogOpen(false);
   };
