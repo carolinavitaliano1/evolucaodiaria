@@ -58,6 +58,13 @@ export interface ClinicLike {
   id?: string;
   absencePaymentType?: AbsencePaymentType | string | null;
   paysOnAbsence?: boolean | null;
+  /** Modo de cálculo do valor que o terapeuta recebe quando a falta é cobrada
+   *  da contratante. 'integral' (padrão) = valor cheio da sessão;
+   *  'parcial' = valor fixo em R$ informado abaixo. */
+  absenceChargeMode?: 'integral' | 'parcial' | null;
+  /** Valor fixo (R$) que o terapeuta recebe por cada falta cobrada quando o
+   *  modo é 'parcial'. */
+  absenceChargeAmount?: number | null;
   /**
    * Modelo de remuneração que a clínica paga AO TERAPEUTA.
    * - 'fixo_mensal'  → salário mensal fixo (independe de sessões)
@@ -68,6 +75,40 @@ export interface ClinicLike {
    */
   paymentType?: string | null;
   paymentAmount?: number | null;
+}
+
+/** True se a evolução é uma falta que está sendo cobrada (gera receita). */
+export function isChargedAbsence(
+  evo: Pick<EvolutionLike, 'attendanceStatus' | 'confirmedAttendance'>,
+  clinic?: ClinicLike | null,
+): boolean {
+  if (evo.attendanceStatus === 'falta_remunerada') return true;
+  if (evo.attendanceStatus === 'falta') return shouldChargeAbsence(evo, clinic);
+  return false;
+}
+
+/** Aplica o modo "parcial" de remuneração por falta: para evoluções que são
+ *  faltas cobradas, substitui o valor padrão pela `absenceChargeAmount` da
+ *  clínica. Usar apenas em modelos por sessão. */
+export function partialAbsenceAdjustment(
+  evolutions: EvolutionLike[],
+  perSessionValue: number,
+  clinic?: ClinicLike | null,
+): { sessionsTotal: number; absencesTotal: number; total: number; chargedAbsences: number } {
+  const isParcial = clinic?.absenceChargeMode === 'parcial';
+  const absenceValue = isParcial ? Number(clinic?.absenceChargeAmount ?? 0) : perSessionValue;
+  let sessionsTotal = 0;
+  let absencesTotal = 0;
+  let chargedAbsences = 0;
+  for (const e of evolutions) {
+    if (isChargedAbsence(e, clinic)) {
+      absencesTotal += absenceValue;
+      chargedAbsences += 1;
+    } else {
+      sessionsTotal += perSessionValue;
+    }
+  }
+  return { sessionsTotal, absencesTotal, total: sessionsTotal + absencesTotal, chargedAbsences };
 }
 
 /** True se o tipo de pagamento da clínica é "salário fixo mensal". */
