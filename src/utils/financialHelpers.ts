@@ -438,15 +438,14 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
 
       const individualRevenue = countablePerSession * perSessionPkg;
 
-      // Faltas cobráveis (mesma regra da clínica)
+      // No lançamento por valor fracionado, a falta só fatura quando foi
+      // registrada explicitamente como `falta_remunerada` (já incluída em
+      // `billable`). A `falta` comum entra apenas como perda/desconto.
       const absences = evolutionsInScope.filter(e => e.attendanceStatus === 'falta');
-      const chargedAbsences = absences.filter(e => shouldChargeAbsence(e, clinic));
-      const uncoveredAbsences = absences.length - chargedAbsences.length;
-      const chargedAbsenceRevenue = chargedAbsences.reduce((sum, e) => {
-        if (e.groupId) return sum + groupValue(e.groupId);
-        return sum + perSessionPkg;
-      }, 0);
-      const loss = uncoveredAbsences * perSessionPkg;
+      const chargedAbsences: typeof absences = [];
+      const uncoveredAbsences = absences.length;
+      const chargedAbsenceRevenue = 0;
+      const loss = absences.reduce((sum, e) => sum + (e.groupId ? groupValue(e.groupId) : perSessionPkg), 0);
 
       const total = individualRevenue + groupRevenue + chargedAbsenceRevenue;
       return {
