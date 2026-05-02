@@ -26,6 +26,7 @@ import { PatientPlanCard } from '@/components/patients/PatientPlanCard';
 import { PatientScheduleCard } from '@/components/patients/PatientScheduleCard';
 import { usePatientScheduleSlots } from '@/hooks/usePatientScheduleSlots';
 import { countWeekdayOccurrencesInMonth } from '@/utils/dateHelpers';
+import { computeFiscalTotals } from '@/utils/fiscalTotals';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
