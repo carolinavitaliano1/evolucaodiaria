@@ -2822,12 +2822,13 @@ export default function PatientDetail() {
                     <p className="text-xs text-muted-foreground mt-1">
                       As sessões deste paciente foram encerradas porque o Pacote de Atendimento
                       <strong> {patientPackage?.name}</strong> não foi renovado. Não é possível
-                      adicionar, editar ou excluir evoluções até que o pacote seja reativado.
+                      adicionar, editar ou excluir evoluções até que o pacote seja renovado.
+                      Você pode renovar a qualquer momento clicando no botão abaixo.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={handleReactivatePackage} className="gap-2">
-                      <Plus className="w-4 h-4" /> Reativar pacote
+                      <Plus className="w-4 h-4" /> Renovar pacote agora
                     </Button>
                   </div>
                 </div>
