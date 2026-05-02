@@ -260,7 +260,14 @@ export default function CalendarPage() {
 
     // 2) Para avulsa/reposição: já cria a evolução com status correto
     //    (aparece em frequência geral/individual e relatórios)
-    if (isAvulsaOrReposicao) {
+    //    🔒 Só cria evolução se a data NÃO for futura (regra: evoluções
+    //    só podem ser registradas até o dia atual). Para agendamentos
+    //    futuros, a evolução será criada quando a sessão acontecer.
+    const todayRef = new Date();
+    const todayStr = `${todayRef.getFullYear()}-${String(todayRef.getMonth() + 1).padStart(2, '0')}-${String(todayRef.getDate()).padStart(2, '0')}`;
+    const isFutureDate = formData.date > todayStr;
+
+    if (isAvulsaOrReposicao && !isFutureDate) {
       const labelTipo = formData.sessionType === 'reposicao' ? 'Reposição' : 'Sessão Avulsa';
       await addEvolution({
         patientId: formData.patientId,
