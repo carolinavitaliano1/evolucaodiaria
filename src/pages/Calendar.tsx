@@ -250,13 +250,42 @@ export default function CalendarPage() {
     e.preventDefault();
     if (!formData.clinicId || !formData.patientId || !formData.date || !formData.time) return;
 
+    // Se o vínculo é uma opção recorrente (recur:DATE:TIME), materializa
+    // primeiro uma evolução-falta naquele dia para ter um ID real e
+    // manter a integridade do histórico (anteposição/reposição).
+    let resolvedLinkedAbsenceId = formData.linkedAbsenceId;
+    if (formData.linkedAbsenceId.startsWith('recur:')) {
+      const [, recurDate, recurTime] = formData.linkedAbsenceId.split(':');
+      try {
+        const { data: created, error } = await supabase
+          .from('evolutions')
+          .insert({
+            user_id: user!.id,
+            patient_id: formData.patientId,
+            clinic_id: formData.clinicId,
+            date: recurDate,
+            session_time: recurTime || null,
+            text: '[origem:frequencia] Falta marcada automaticamente ao agendar reposição/anteposição.',
+            attendance_status: 'falta',
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+        resolvedLinkedAbsenceId = created.id;
+      } catch (err) {
+        console.error(err);
+        toast.error('Erro ao registrar a falta da frequência');
+        return;
+      }
+    }
+
     // Sempre é avulsa/reposição/anteposição (não há mais "regular" aqui).
     const isAvulsaOrReposicao = true;
     const typeTag = `[tipo:${formData.sessionType}]`;
-    const linkTag = (formData.sessionType === 'reposicao' && formData.linkedAbsenceId)
-      ? `[reposicao:${formData.linkedAbsenceId}]`
-      : (formData.sessionType === 'anteposicao' && formData.linkedAbsenceId)
-        ? `[anteposicao:${formData.linkedAbsenceId}]`
+    const linkTag = (formData.sessionType === 'reposicao' && resolvedLinkedAbsenceId)
+      ? `[reposicao:${resolvedLinkedAbsenceId}]`
+      : (formData.sessionType === 'anteposicao' && resolvedLinkedAbsenceId)
+        ? `[anteposicao:${resolvedLinkedAbsenceId}]`
         : '';
     const baseNotes = [typeTag, linkTag, formData.notes].filter(Boolean).join(' ').trim();
 
@@ -296,12 +325,12 @@ export default function CalendarPage() {
       } as any);
 
       // Marcar a falta original como reposta (best-effort, não bloqueia o fluxo).
-      if (formData.linkedAbsenceId) {
+      if (resolvedLinkedAbsenceId) {
         try {
           const { data: orig } = await supabase
             .from('evolutions')
             .select('id, text')
-            .eq('id', formData.linkedAbsenceId)
+            .eq('id', resolvedLinkedAbsenceId)
             .maybeSingle();
           if (orig && !/\[reposta_por:/i.test(orig.text || '')) {
             const newText = `${orig.text || ''} [reposta_por:pendente]`.trim();
@@ -592,26 +621,85 @@ export default function CalendarPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Sem vínculo</SelectItem>
-                        {evolutions
-                          .filter(ev =>
-                            ev.patientId === formData.patientId
-                            && ev.attendanceStatus === 'falta'
-                            && (formData.sessionType === 'reposicao'
-                              ? (formData.date && ev.date < formData.date)
-                              : (formData.date && ev.date > formData.date))
-                          )
-                          .sort((a, b) => a.date.localeCompare(b.date))
-                          .slice(0, 30)
-                          .map(ev => (
-                            <SelectItem key={ev.id} value={ev.id}>
-                              {format(new Date(ev.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })}
-                              {ev.sessionTime ? ` · ${ev.sessionTime.slice(0,5)}` : ''}
+                        {(() => {
+                          if (!formData.date) return null;
+                          const refDate = new Date(formData.date + 'T12:00:00');
+                          const patient = patients.find(p => p.id === formData.patientId);
+                          const isReposicao = formData.sessionType === 'reposicao';
+
+                          // 1) Faltas já registradas como evolução (status='falta')
+                          const faltasRegistradas = evolutions
+                            .filter(ev =>
+                              ev.patientId === formData.patientId
+                              && ev.attendanceStatus === 'falta'
+                              && (isReposicao ? ev.date < formData.date : ev.date > formData.date)
+                            )
+                            .map(ev => ({
+                              key: ev.id,
+                              value: ev.id,
+                              date: ev.date,
+                              time: ev.sessionTime ? ev.sessionTime.slice(0,5) : '',
+                              label: 'Falta registrada',
+                            }));
+
+                          // 2) Dias da frequência recorrente do paciente no mês de referência
+                          const recurringOpts: Array<{ key: string; value: string; date: string; time: string; label: string }> = [];
+                          if (patient) {
+                            const scheduleByDay = patient.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
+                            const scheduledDays = scheduleByDay ? Object.keys(scheduleByDay) : (patient.weekdays || []);
+                            if (scheduledDays.length > 0) {
+                              const monthStart = startOfMonth(refDate);
+                              const monthEnd = endOfMonth(refDate);
+                              const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+                              for (const d of days) {
+                                const dStr = format(d, 'yyyy-MM-dd');
+                                if (isReposicao ? dStr >= formData.date : dStr <= formData.date) continue;
+                                const dow = WEEKDAY_NAMES[d.getDay()];
+                                if (!scheduledDays.includes(dow)) continue;
+                                // Pula se já tem evolução nesse dia (presente, falta, reposição etc.)
+                                const hasEv = evolutions.some(e => e.patientId === formData.patientId && e.date === dStr);
+                                if (hasEv) continue;
+                                // Pula se já tem appointment avulso nesse dia
+                                const hasAppt = appointments.some(a => a.patientId === formData.patientId && a.date === dStr);
+                                if (hasAppt) continue;
+                                const time = scheduleByDay?.[dow]?.start || patient.scheduleTime || '';
+                                recurringOpts.push({
+                                  key: `recur-${dStr}`,
+                                  value: `recur:${dStr}:${time}`,
+                                  date: dStr,
+                                  time: time ? time.slice(0,5) : '',
+                                  label: isReposicao ? 'Falta implícita (frequência)' : 'Sessão futura agendada',
+                                });
+                              }
+                            }
+                          }
+
+                          const all = [...faltasRegistradas, ...recurringOpts]
+                            .sort((a, b) => isReposicao ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date))
+                            .slice(0, 60);
+
+                          if (all.length === 0) {
+                            return (
+                              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                                {isReposicao
+                                  ? 'Nenhuma falta encontrada no histórico do paciente.'
+                                  : 'Nenhuma sessão futura agendada encontrada na frequência do paciente.'}
+                              </div>
+                            );
+                          }
+
+                          return all.map(opt => (
+                            <SelectItem key={opt.key} value={opt.value}>
+                              {format(new Date(opt.date + 'T12:00:00'), "EEE, dd/MM/yyyy", { locale: ptBR })}
+                              {opt.time ? ` · ${opt.time}` : ''}
+                              {' · '}{opt.label}
                             </SelectItem>
-                          ))}
+                          ));
+                        })()}
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      O vínculo é opcional, mas recomendado para manter o histórico de reposições.
+                      Mostra faltas registradas e dias da frequência recorrente do paciente no mês.
                     </p>
                   </div>
                 )}
