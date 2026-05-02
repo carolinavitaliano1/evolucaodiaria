@@ -2280,7 +2280,7 @@ export default function PatientDetail() {
                 {(patient.paymentValue || (patientPackage?.price ?? 0) > 0) && (() => {
                   // Dynamic proration for header display (current month)
                   const now = new Date();
-                  if (isPackageMensal && isFixoMensal) {
+                  if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado)) {
                     const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
                     const headerDynamic = getDynamicSessionValue(paymentValue, patientWeekdays, now.getMonth(), now.getFullYear());
                     if (headerDynamic.occurrences > 0) {
