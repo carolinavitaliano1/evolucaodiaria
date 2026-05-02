@@ -838,33 +838,81 @@ export default function PatientDetail() {
   // ============================================================
   // 📦 Pacote PERSONALIZADO — controle de renovação
   // ============================================================
-  // Conta quantas sessões "billable" foram usadas DESDE que o pacote
-  // atual foi atribuído (`packageAssignedAt`). Se o paciente não tem
-  // a data, considera todas as evoluções billable.
+  // Histórico de renovações (carregado do banco)
+  const [renewalHistory, setRenewalHistory] = useState<any[]>([]);
+  useEffect(() => {
+    if (!patient?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('patient_package_renewals' as any)
+        .select('*')
+        .eq('patient_id', patient.id)
+        .order('created_at', { ascending: false });
+      if (!cancelled) setRenewalHistory((data as any[]) || []);
+    })();
+    return () => { cancelled = true; };
+  }, [patient?.id]);
+
+  // Conta quantas sessões "billable" foram usadas DESDE o início do ciclo atual.
+  // O ciclo atual começa na última renovação (ou no `packageAssignedAt`, ou na
+  // primeira evolução do paciente caso nenhuma data esteja definida).
   const personalizadoSessionsUsed = useMemo(() => {
     if (!isPackagePersonalizado) return 0;
-    const assignedAt = (patient as any)?.packageAssignedAt
-      ? new Date((patient as any).packageAssignedAt as string)
-      : null;
+    // Última renovação do mesmo pacote (decisão = renewed) define o início do ciclo.
+    const lastRenewal = renewalHistory.find(
+      (r: any) => r.decision === 'renewed' && r.package_id === patient?.packageId,
+    );
+    const cycleStartIso =
+      lastRenewal?.created_at ||
+      (patient as any)?.packageAssignedAt ||
+      null;
+    const cycleStart = cycleStartIso ? new Date(cycleStartIso) : null;
     return patientEvolutions.filter(e => {
       if (!['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus)) return false;
-      if (!assignedAt) return true;
+      if (!cycleStart) return true;
       const evoDate = new Date(e.date + 'T12:00:00');
-      return evoDate >= new Date(assignedAt.toISOString().slice(0, 10) + 'T00:00:00');
+      return evoDate >= new Date(cycleStart.toISOString().slice(0, 10) + 'T00:00:00');
     }).length;
-  }, [isPackagePersonalizado, patient, patientEvolutions]);
+  }, [isPackagePersonalizado, patient, patientEvolutions, renewalHistory]);
 
   const personalizadoLimit = isPackagePersonalizado ? (patientPackage!.sessionLimit || 0) : 0;
+  const personalizadoRemaining = Math.max(0, personalizadoLimit - personalizadoSessionsUsed);
   const personalizadoExhausted = isPackagePersonalizado && personalizadoSessionsUsed >= personalizadoLimit;
   const renewalDecision = (patient as any)?.packageRenewalDecision as ('renewed' | 'declined' | undefined);
-  // Mostra o banner só quando: pacote personalizado terminou e ainda não decidiu.
-  const showRenewalPrompt = personalizadoExhausted && !renewalDecision;
+  // Mostra o banner quando: pacote personalizado terminou e ainda não decidiu (ou último estado não é "declined" tratado).
+  const showRenewalPrompt = personalizadoExhausted && renewalDecision !== 'declined';
   // Trava o cadastro/edição de evoluções quando o paciente optou por NÃO renovar.
   const evolutionLocked = renewalDecision === 'declined';
+
+  // Helper: registra a decisão no histórico (table patient_package_renewals)
+  const logRenewalDecision = async (decision: 'renewed' | 'declined') => {
+    if (!patient || !user) return;
+    const lastRenewal = renewalHistory.find(
+      (r: any) => r.decision === 'renewed' && r.package_id === patient?.packageId,
+    );
+    const cycleStartIso =
+      lastRenewal?.created_at ||
+      (patient as any)?.packageAssignedAt ||
+      null;
+    try {
+      const { data } = await supabase.from('patient_package_renewals' as any).insert({
+        patient_id: patient.id,
+        package_id: patient.packageId || null,
+        decision,
+        sessions_used_in_cycle: personalizadoSessionsUsed,
+        session_limit: personalizadoLimit,
+        cycle_started_at: cycleStartIso,
+        decided_by: user.id,
+      }).select().single();
+      if (data) setRenewalHistory(prev => [data as any, ...prev]);
+    } catch (e) { console.error('Erro ao salvar histórico de renovação', e); }
+  };
 
   const handleRenewPackage = async () => {
     if (!patient) return;
     try {
+      await logRenewalDecision('renewed');
       await updatePatient(patient.id, {
         packageAssignedAt: new Date().toISOString(),
         packageRenewalDecision: undefined,
@@ -880,6 +928,7 @@ export default function PatientDetail() {
   const handleDeclineRenewal = async () => {
     if (!patient) return;
     try {
+      await logRenewalDecision('declined');
       await updatePatient(patient.id, {
         packageRenewalDecision: 'declined',
         packageDecisionAt: new Date().toISOString(),
@@ -894,15 +943,16 @@ export default function PatientDetail() {
   const handleReactivatePackage = async () => {
     if (!patient) return;
     try {
+      await logRenewalDecision('renewed');
       await updatePatient(patient.id, {
         packageAssignedAt: new Date().toISOString(),
         packageRenewalDecision: undefined,
         packageDecisionAt: new Date().toISOString(),
       } as any);
-      toast.success('Pacote reativado!');
+      toast.success('Pacote renovado! Um novo ciclo foi iniciado.');
     } catch (e) {
       console.error(e);
-      toast.error('Erro ao reativar pacote');
+      toast.error('Erro ao renovar pacote');
     }
   };
 
@@ -2665,6 +2715,71 @@ export default function PatientDetail() {
             </div>
           )}
 
+          {/* 📊 Contador do Pacote PERSONALIZADO */}
+          {isPackagePersonalizado && (
+            <div className={cn(
+              "rounded-xl border p-4 shadow-sm",
+              personalizadoExhausted
+                ? "border-warning/40 bg-warning/5"
+                : "border-primary/20 bg-primary/5"
+            )}>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-primary" />
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">
+                      Pacote {patientPackage?.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      <strong className={personalizadoExhausted ? 'text-warning' : 'text-primary'}>
+                        {personalizadoSessionsUsed}
+                      </strong> de <strong>{personalizadoLimit}</strong> sessões usadas
+                      {!personalizadoExhausted && (
+                        <> · <strong>{personalizadoRemaining}</strong> restante{personalizadoRemaining !== 1 ? 's' : ''}</>
+                      )}
+                      {personalizadoExhausted && <> · <span className="text-warning font-semibold">Pacote concluído</span></>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-[140px] max-w-[280px]">
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full transition-all",
+                        personalizadoExhausted ? "bg-warning" : "bg-primary"
+                      )}
+                      style={{ width: `${Math.min(100, (personalizadoSessionsUsed / Math.max(1, personalizadoLimit)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              {renewalHistory.length > 0 && (
+                <details className="mt-3">
+                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                    📜 Histórico de renovações ({renewalHistory.length})
+                  </summary>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {renewalHistory.map((r: any) => (
+                      <li key={r.id} className="flex items-center gap-2 text-muted-foreground">
+                        <span className={r.decision === 'renewed' ? 'text-primary' : 'text-destructive'}>
+                          {r.decision === 'renewed' ? '🔄 Renovou' : '🚫 Não renovou'}
+                        </span>
+                        <span>·</span>
+                        <span>{format(new Date(r.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                        {typeof r.sessions_used_in_cycle === 'number' && (
+                          <>
+                            <span>·</span>
+                            <span>{r.sessions_used_in_cycle}/{r.session_limit ?? '?'} sessões</span>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+
           {/* 📦 Pacote PERSONALIZADO encerrado: pergunta sobre renovação */}
           {showRenewalPrompt && (
             <div className="rounded-xl border-2 border-primary/40 bg-gradient-to-br from-primary/5 to-accent/5 p-5 shadow-sm">
@@ -2707,12 +2822,13 @@ export default function PatientDetail() {
                     <p className="text-xs text-muted-foreground mt-1">
                       As sessões deste paciente foram encerradas porque o Pacote de Atendimento
                       <strong> {patientPackage?.name}</strong> não foi renovado. Não é possível
-                      adicionar, editar ou excluir evoluções até que o pacote seja reativado.
+                      adicionar, editar ou excluir evoluções até que o pacote seja renovado.
+                      Você pode renovar a qualquer momento clicando no botão abaixo.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={handleReactivatePackage} className="gap-2">
-                      <Plus className="w-4 h-4" /> Reativar pacote
+                      <Plus className="w-4 h-4" /> Renovar pacote agora
                     </Button>
                   </div>
                 </div>
