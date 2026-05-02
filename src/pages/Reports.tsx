@@ -140,7 +140,7 @@ export default function Reports() {
         const refDate = pEvolutions[0] ? new Date(pEvolutions[0].date + 'T12:00:00') : new Date();
         revenue = calculatePatientMonthlyRevenue({
           patient, clinic, evolutions: evosLike,
-          month: refDate.getMonth(), year: refDate.getFullYear(),
+          month: refDate.getMonth() + 1, year: refDate.getFullYear(),
           packages: clinicPackages,
         }).total;
       }
