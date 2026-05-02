@@ -38,6 +38,29 @@ export function useCalendarBlocks() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let lastForegroundRefresh = 0;
+    const refreshWhenAppReturns = () => {
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastForegroundRefresh < 30_000) return;
+      lastForegroundRefresh = now;
+      load();
+    };
+
+    window.addEventListener('focus', refreshWhenAppReturns);
+    window.addEventListener('online', refreshWhenAppReturns);
+    document.addEventListener('visibilitychange', refreshWhenAppReturns);
+
+    return () => {
+      window.removeEventListener('focus', refreshWhenAppReturns);
+      window.removeEventListener('online', refreshWhenAppReturns);
+      document.removeEventListener('visibilitychange', refreshWhenAppReturns);
+    };
+  }, [user?.id, load]);
+
   const create = async (input: {
     block_type: 'feriado' | 'ferias';
     start_date: string;
