@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
+import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE } from '@/utils/sessionTypeTags';
+import { Briefcase } from 'lucide-react';
 
 interface ClinicAgendaProps {
   clinicId: string;
@@ -28,6 +30,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const [therapistName, setTherapistName] = useState<string>('');
   const [clinicType, setClinicType] = useState<string | null>(null);
   const [scheduleSlots, setScheduleSlots] = useState<any[]>([]);
+  const [privateForDay, setPrivateForDay] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -54,6 +57,22 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const weekday = dayNames[viewDate.getDay()];
   const dateStr = format(viewDate, 'yyyy-MM-dd');
 
+  // Carrega serviços avulsos (private_appointments) do dia para esta clínica.
+  // Os serviços aparecem na agenda interna/externa (Consultório/Contratante/Clínica)
+  // e em "Hoje" através do dashboard.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from('private_appointments')
+      .select('id, patient_id, client_name, date, time, price, status, notes')
+      .eq('clinic_id', clinicId)
+      .eq('date', dateStr)
+      .neq('status', 'cancelado')
+      .then(({ data }) => {
+        if (!cancelled) setPrivateForDay((data || []) as any[]);
+      });
+    return () => { cancelled = true; };
+  }, [clinicId, dateStr]);
+
   const scheduledPatients = useMemo(() => {
     if (clinicType === 'clinica') {
       // For clinic-type units, derive entries from patient_schedule_slots
@@ -79,6 +98,21 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
       .filter(p => p.weekdays?.includes(weekday))
       .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
   }, [clinicPatients, weekday, clinicType, scheduleSlots, filterUserId, members]);
+
+  // Agendamentos pontuais do dia (avulsa/reposição/anteposição) — entram na
+  // agenda do dia mesmo quando o paciente não tem frequência semanal naquele dia.
+  const oneOffAppointments = useMemo(() => {
+    const recurringIds = new Set(scheduledPatients.map((p: any) => p.id));
+    return appointments
+      .filter(a => a.clinicId === clinicId && a.date === dateStr && !recurringIds.has(a.patientId))
+      .map(a => {
+        const patient = patients.find(p => p.id === a.patientId);
+        if (!patient) return null;
+        const kind = getSessionKind(a.notes);
+        return { appointment: a, patient, kind };
+      })
+      .filter(Boolean) as Array<{ appointment: any; patient: any; kind: ReturnType<typeof getSessionKind> }>;
+  }, [appointments, patients, scheduledPatients, clinicId, dateStr]);
 
   // Get evolution for a patient on view date, optionally filtering by author
   const getEvolution = (patientId: string) => {
@@ -161,10 +195,10 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
       <div className="bg-card rounded-2xl p-6 border border-border">
         <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-primary" />
-          Agenda do Dia ({scheduledPatients.length} pacientes)
+          Agenda do Dia ({scheduledPatients.length + oneOffAppointments.length} pacientes)
         </h3>
 
-        {scheduledPatients.length === 0 ? (
+        {scheduledPatients.length === 0 && oneOffAppointments.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-4">📅</div>
             <p className="text-muted-foreground">Nenhum paciente agendado para {weekday}</p>
@@ -255,9 +289,126 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                 </div>
               );
             })}
+            {oneOffAppointments.map(({ appointment, patient, kind }) => {
+              const evo = evolutions.find(e =>
+                e.patientId === patient.id && e.clinicId === clinicId && e.date === dateStr
+              );
+              const startTime = (appointment.time || '').slice(0, 5);
+              return (
+                <div
+                  key={appointment.id}
+                  className={cn(
+                    'flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-colors gap-2',
+                    evo
+                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao'
+                        ? 'bg-success/10 border-success/30'
+                        : evo.attendanceStatus === 'falta_remunerada'
+                          ? 'bg-warning/10 border-warning/30'
+                          : 'bg-destructive/10 border-destructive/30'
+                      : 'bg-secondary/50 border-border'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                      <Clock className="w-4 h-4 mr-1" />
+                      {startTime || '--'}
+                    </div>
+                    <div>
+                      <p
+                        className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors text-sm flex items-center gap-1.5"
+                        onClick={() => handleOpenPatient(patient.id)}
+                      >
+                        <span className="truncate">{patient.name}</span>
+                        {kind && kind !== 'regular' && (
+                          <span className={cn('px-1.5 rounded-full text-[9px] font-semibold leading-4 shrink-0', SESSION_KIND_BADGE[kind])}>
+                            {SESSION_KIND_LABEL[kind]}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Agendamento pontual
+                        {patient.clinicalArea && ` • ${patient.clinicalArea}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {evo ? (
+                      <span className={cn('text-xs font-medium', statusLabel(evo.attendanceStatus).cls)}>
+                        {statusLabel(evo.attendanceStatus).label}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">⏳ Aguardando evolução</span>
+                    )}
+                    <QuickWhatsAppButton
+                      phone={patient.whatsapp || patient.phone || patient.responsibleWhatsapp}
+                      tooltip="Confirmar sessão via WhatsApp"
+                      message={resolveTemplate(
+                        'Olá, {{nome_paciente}}! 😊 Passando para confirmar sua sessão hoje, {{data_consulta}} às {{horario}}. Por favor, confirme sua presença. — {{nome_terapeuta}}',
+                        {
+                          nome_paciente: patient.name,
+                          data_consulta: format(viewDate, 'dd/MM', { locale: ptBR }),
+                          horario: startTime,
+                          nome_terapeuta: therapistName,
+                        }
+                      )}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Serviços do dia (private_appointments) */}
+      {privateForDay.length > 0 && (
+        <div className="bg-card rounded-2xl p-6 border border-border">
+          <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+            <Briefcase className="w-5 h-5 text-primary" />
+            Serviços do Dia ({privateForDay.length})
+          </h3>
+          <div className="space-y-3">
+            {privateForDay
+              .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+              .map(svc => {
+                const patient = svc.patient_id ? patients.find(p => p.id === svc.patient_id) : null;
+                const displayName = patient?.name || svc.client_name || 'Cliente';
+                return (
+                  <div
+                    key={svc.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border bg-secondary/40 gap-2"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                        <Clock className="w-4 h-4 mr-1" />
+                        {(svc.time || '').slice(0, 5) || '--'}
+                      </div>
+                      <div>
+                        <p
+                          className={cn(
+                            'font-semibold text-foreground text-sm',
+                            patient && 'cursor-pointer hover:text-primary transition-colors'
+                          )}
+                          onClick={() => patient && handleOpenPatient(patient.id)}
+                        >
+                          {displayName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Serviço{svc.notes ? ` • ${svc.notes}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-primary">
+                        R$ {Number(svc.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
