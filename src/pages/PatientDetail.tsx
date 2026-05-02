@@ -3374,9 +3374,14 @@ export default function PatientDetail() {
                               }`))
                     : 'Valor não configurado'}
                 </p>
-                {paymentValue > 0 && finRevenue !== paymentValue && (
+                {paymentValue > 0 && (
                   <p className="text-xs font-semibold text-success mt-1">
                     Faturado no mês: R$ {finRevenue.toFixed(2)}
+                    {Math.abs(finRevenue - paymentValue) > 0.01 && (
+                      <span className="text-muted-foreground font-normal">
+                        {' '}(de R$ {paymentValue.toFixed(2)})
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
