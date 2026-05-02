@@ -316,6 +316,8 @@ export type Database = {
       }
       clinics: {
         Row: {
+          absence_charge_amount: number | null
+          absence_charge_mode: string
           absence_payment_type: string | null
           address: string | null
           cnpj: string | null
@@ -349,6 +351,8 @@ export type Database = {
           weekdays: string[] | null
         }
         Insert: {
+          absence_charge_amount?: number | null
+          absence_charge_mode?: string
           absence_payment_type?: string | null
           address?: string | null
           cnpj?: string | null
@@ -382,6 +386,8 @@ export type Database = {
           weekdays?: string[] | null
         }
         Update: {
+          absence_charge_amount?: number | null
+          absence_charge_mode?: string
           absence_payment_type?: string | null
           address?: string | null
           cnpj?: string | null
