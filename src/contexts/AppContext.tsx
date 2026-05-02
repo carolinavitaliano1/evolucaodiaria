@@ -544,7 +544,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadedAttachmentsForPatients: new Set(),
     }));
     await loadInitialData(true);
-  }, [loadInitialData]);
+    await loadAllEvolutions();
+  }, [loadInitialData, loadAllEvolutions]);
 
   useEffect(() => {
     if (!sessionReady || !user) return;
