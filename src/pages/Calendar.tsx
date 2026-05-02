@@ -444,6 +444,16 @@ export default function CalendarPage() {
     >
       {item.time && <span className="opacity-80 shrink-0 text-[10px]">{item.time.slice(0, 5)}</span>}
       <span className="truncate">{item.title}</span>
+      {item.kind && (
+        <span
+          className={cn(
+            'ml-auto shrink-0 px-1 rounded text-[9px] font-semibold leading-tight',
+            SESSION_KIND_BADGE[item.kind]
+          )}
+        >
+          {SESSION_KIND_LABEL[item.kind]}
+        </span>
+      )}
     </div>
   );
 
