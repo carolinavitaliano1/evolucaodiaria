@@ -9,6 +9,8 @@ import { format, parseISO, isAfter, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { calculatePatientMonthlyRevenue, EvolutionLike } from '@/utils/financialHelpers';
+import type { GroupBillingMap, GroupMemberPaymentMap } from '@/utils/groupFinancial';
 
 interface PatientBillingManagerProps {
   clinicId: string;
@@ -26,7 +28,7 @@ interface PaymentRecord {
 
 export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) {
   const { user } = useAuth();
-  const { patients } = useApp();
+  const { patients, clinics, evolutions, clinicPackages } = useApp();
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -52,6 +54,7 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
       if (error) throw error;
 
       const clinicPatients = patients.filter(p => p.clinicId === clinicId);
+      const clinic = clinics.find(c => c.id === clinicId);
 
       // Reference month boundaries
       const refStart = new Date(y, m - 1, 1);
@@ -84,13 +87,83 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
         return true;
       });
 
+      // Carrega configuração de grupos da clínica para refletir cobranças de grupo
+      const groupBillingMap: GroupBillingMap = {};
+      const memberPaymentMap: GroupMemberPaymentMap = {};
+      try {
+        const { data: groupsData } = await supabase
+          .from('therapeutic_groups')
+          .select('id, default_price, financial_enabled, payment_type, package_id')
+          .eq('clinic_id', clinicId);
+        (groupsData || []).forEach((g: any) => {
+          groupBillingMap[g.id] = {
+            defaultPrice: g.default_price ?? null,
+            paymentType: g.payment_type ?? null,
+            packageId: g.package_id ?? null,
+            financialEnabled: g.financial_enabled ?? false,
+          };
+        });
+        if ((groupsData || []).length > 0) {
+          const groupIds = (groupsData || []).map((g: any) => g.id);
+          const { data: membersData } = await supabase
+            .from('therapeutic_group_members')
+            .select('group_id, patient_id, is_paying, member_payment_value')
+            .in('group_id', groupIds)
+            .eq('status', 'active');
+          (membersData || []).forEach((mem: any) => {
+            if (!memberPaymentMap[mem.group_id]) memberPaymentMap[mem.group_id] = {};
+            memberPaymentMap[mem.group_id][mem.patient_id] = {
+              isPaying: mem.is_paying ?? true,
+              value: mem.member_payment_value ?? null,
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('Falha ao carregar config de grupos para cobranças', e);
+      }
+
       // Map existing records and identify missing ones
       const records: PaymentRecord[] = eligible
         .map(p => {
           const existing = (data || []).find(r => r.patient_id === p.id);
-          const amount = p.paymentType === 'fixo'
-            ? (p.paymentValue || existing?.amount || 0)
-            : (existing?.amount || p.paymentValue || 0);
+
+          // Calcula valor REAL faturado no mês — respeita falta parcial,
+          // pacotes, grupos e demais regras financeiras.
+          let computedAmount = 0;
+          if (clinic) {
+            const patientEvos: EvolutionLike[] = evolutions
+              .filter(e => e.patientId === p.id)
+              .filter(e => {
+                const d = new Date(e.date + 'T12:00:00');
+                return d.getMonth() + 1 === m && d.getFullYear() === y;
+              })
+              .map(e => ({
+                id: e.id,
+                patientId: e.patientId,
+                groupId: e.groupId,
+                date: e.date,
+                attendanceStatus: e.attendanceStatus,
+                confirmedAttendance: e.confirmedAttendance,
+                userId: e.userId,
+              }));
+            const breakdown = calculatePatientMonthlyRevenue({
+              patient: p,
+              clinic,
+              evolutions: patientEvos,
+              month: m,
+              year: y,
+              packages: clinicPackages || [],
+              groupBillingMap,
+              memberPaymentMap,
+            });
+            computedAmount = breakdown.total;
+          }
+
+          // Prioridade: registro salvo > valor calculado > valor fixo do paciente
+          const amount = existing?.amount && existing.amount > 0
+            ? existing.amount
+            : (computedAmount > 0 ? computedAmount : (p.paymentValue || 0));
+
           return {
             id: existing?.id || `temp-${p.id}`,
             patient_id: p.id,
