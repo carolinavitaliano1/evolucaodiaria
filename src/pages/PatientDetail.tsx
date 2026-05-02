@@ -2293,7 +2293,7 @@ export default function PatientDetail() {
                       <DollarSign className="w-3.5 h-3.5" />
                       {isPackagePersonalizado
                         ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de Atendimento de ${patientPackage!.sessionLimit})`
-                        : `R$ ${paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
+                        : `R$ ${paymentValue.toFixed(2)}${(isPackageMensal || isFixoMensal || patient.paymentType === 'fixo') ? '/mês' : '/sessão'}`
                       }
                     </span>
                   );
