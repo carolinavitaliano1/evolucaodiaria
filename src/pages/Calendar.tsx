@@ -669,7 +669,7 @@ export default function CalendarPage() {
                                 const time = scheduleByDay?.[dow]?.start || patient.scheduleTime || '';
                                 recurringOpts.push({
                                   key: `recur-${dStr}`,
-                                  value: `recur:${dStr}:${time}`,
+                                  value: `recur|${dStr}|${time || ''}`,
                                   date: dStr,
                                   time: time ? time.slice(0,5) : '',
                                   label: isReposicao ? 'Falta implícita (frequência)' : 'Sessão futura agendada',
