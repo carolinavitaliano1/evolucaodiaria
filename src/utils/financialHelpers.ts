@@ -564,8 +564,15 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   const chargedAbsences = absences.filter(e => shouldChargeAbsence(e, clinic));
   const uncoveredAbsences = absences.length - chargedAbsences.length;
 
+  // Quando a clínica usa cobrança parcial de falta (`absenceChargeMode='parcial'`),
+  // a falta cobrada gera receita pelo VALOR FIXO informado em `absenceChargeAmount`
+  // — e não pelo valor cheio da sessão. Vale apenas para sessões individuais;
+  // grupos seguem o valor do grupo.
+  const isParcialAbsence = clinic?.absenceChargeMode === 'parcial';
+  const partialAbsenceValue = isParcialAbsence ? Number(clinic?.absenceChargeAmount ?? 0) : 0;
   const chargedAbsenceRevenue = chargedAbsences.reduce((sum, e) => {
     if (e.groupId) return sum + groupValue(e.groupId);
+    if (isParcialAbsence) return sum + partialAbsenceValue;
     return sum + (perSession || baseValue || 0);
   }, 0);
 
