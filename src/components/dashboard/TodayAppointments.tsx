@@ -33,7 +33,7 @@ type ScheduleItem = {
 };
 
 export function TodayAppointments() {
-  const { appointments, patients, evolutions } = useApp();
+  const { appointments, patients, evolutions, refreshData } = useApp();
   const { privateAppointments, refetch } = usePrivateAppointments();
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -52,6 +52,23 @@ export function TodayAppointments() {
     supabase.from('profiles').select('name').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => { if (data?.name) setTherapistName(data.name); });
   }, [user]);
+
+  // Auto-refresh "Hoje" data when returning to the app (mobile PWA / tab switch)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'hidden') return;
+      refetch();
+      refreshData();
+    };
+    window.addEventListener('focus', onVisible);
+    window.addEventListener('online', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', onVisible);
+      window.removeEventListener('online', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [refetch, refreshData]);
 
   // Patients with recurring weekly schedule for today
   const weekdayPatients: ScheduleItem[] = patients
