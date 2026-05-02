@@ -743,7 +743,10 @@ export function calculateMemberRemunerationByPlans(
       };
     }
     if (clinic.paymentType === 'sessao') {
-      const subtotal = billable.length * clinicAmount;
+      // Quando a clínica cobra falta em modo 'parcial', as faltas cobradas
+      // remuneram o terapeuta pelo valor fixo informado, não pelo valor cheio.
+      const adj = partialAbsenceAdjustment(billable, clinicAmount, clinic);
+      const subtotal = adj.total;
       return {
         total: subtotal,
         breakdown: subtotal > 0 ? [{
@@ -818,7 +821,8 @@ export function calculateMemberRemunerationByPlans(
       const days = new Set(evos.map(e => e.date));
       subtotal = days.size * value;
     } else if (plan.remuneration_type === 'por_sessao') {
-      subtotal = sessionsCount * value;
+      const adj = partialAbsenceAdjustment(evos, value, clinic);
+      subtotal = adj.total;
     } else if (plan.remuneration_type === 'pacote') {
       // Pacote de Atendimento: deriva o valor por SESSÃO a partir do clinic_package vinculado.
       // - mensal       → preço ÷ sessões previstas no mês (por paciente)
