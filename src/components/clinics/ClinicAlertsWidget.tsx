@@ -11,10 +11,17 @@ import {
   UserPlus, Sparkles, ChevronDown, ChevronRight, Paperclip,
 } from 'lucide-react';
 import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { getSessionKind, SESSION_KIND_LABEL, type SessionKind } from '@/utils/sessionTypeTags';
+
+const DEFAULT_SESSION_DURATION = 50;
+const DAYS_BACK = 7;
 
 interface PatientRef {
   id: string;
   name: string;
+  date?: string;
+  startTime?: string;
+  kind?: Exclude<SessionKind, 'regular'>;
 }
 
 interface AlertGroup {
@@ -24,6 +31,22 @@ interface AlertGroup {
   count: number;
   color: string;
   patients: PatientRef[];
+}
+
+interface AppointmentRow {
+  patient_id: string;
+  date: string;
+  time: string | null;
+  notes: string | null;
+}
+
+interface PatientIdRow {
+  patient_id: string;
+}
+
+interface EnrollmentRow {
+  id: string;
+  name: string;
 }
 
 interface ClinicAlertsWidgetProps {
@@ -41,6 +64,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
   const [unreadMessagePatients, setUnreadMessagePatients] = useState<PatientRef[]>([]);
   const [intakeReviewPatients, setIntakeReviewPatients] = useState<PatientRef[]>([]);
   const [pendingReceiptPatients, setPendingReceiptPatients] = useState<PatientRef[]>([]);
+  const [extraAppointments, setExtraAppointments] = useState<Array<{ patientId: string; date: string; time: string; notes: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -49,33 +73,97 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
     [patients, clinicId]
   );
 
+  const toMin = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + (m || 0);
+  };
+
+  useEffect(() => {
+    if (!user || !clinicId) return;
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(start.getDate() - DAYS_BACK);
+    const startDate = toLocalDateString(start);
+    const endDate = toLocalDateString(today);
+
+    supabase
+      .from('appointments')
+      .select('patient_id, date, time, notes')
+      .eq('clinic_id', clinicId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .then(({ data }) => {
+        const extras = ((data as AppointmentRow[] | null) || [])
+          .filter(a => getSessionKind(a.notes as string | null) !== 'regular')
+          .map(a => ({
+            patientId: a.patient_id as string,
+            date: a.date as string,
+            time: (a.time as string) || '',
+            notes: (a.notes as string) || null,
+          }));
+        setExtraAppointments(extras);
+      });
+  }, [user, clinicId]);
+
   // Missing evolutions for this clinic (last 7 days) — with patient details
   const missingEvolutionPatients = useMemo(() => {
     const today = new Date();
+    const nowMinutes = today.getHours() * 60 + today.getMinutes();
     const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     const patientSet = new Map<string, PatientRef>();
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i <= DAYS_BACK; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = toLocalDateString(d);
       const dayName = days[d.getDay()];
+      const isPast = i > 0;
       // Skip dates marked as holiday/vacation for this clinic
       if (isDateBlocked(dateStr, clinicId)) continue;
 
       for (const p of clinicPatients) {
-        if (new Date(p.createdAt) > d) continue;
-        if (!p.weekdays?.includes(dayName)) continue;
+        if (p.createdAt && toLocalDateString(new Date(p.createdAt)) > dateStr) continue;
+        const schedByDay = p.scheduleByDay as Record<string, { start?: string; end?: string }> | null;
+        const scheduledDays = schedByDay ? Object.keys(schedByDay) : (p.weekdays || []);
+        if (!scheduledDays.includes(dayName)) continue;
+        const startTime = schedByDay?.[dayName]?.start || p.scheduleTime || '';
+        if (!startTime || startTime === '00:00') continue;
+        const endStr = schedByDay?.[dayName]?.end;
+        const endMin = endStr ? toMin(endStr) : toMin(startTime) + DEFAULT_SESSION_DURATION;
+        if (!isPast && nowMinutes <= endMin) continue;
         const hasEvolution = evolutions.some(
           e => e.patientId === p.id && e.clinicId === clinicId && e.date === dateStr
         );
         if (!hasEvolution) {
-          patientSet.set(p.id, { id: p.id, name: p.name });
+          patientSet.set(`${p.id}::${dateStr}`, { id: p.id, name: p.name, date: dateStr, startTime });
         }
       }
+
+      extraAppointments
+        .filter(a => a.date === dateStr)
+        .forEach(a => {
+          const patient = clinicPatients.find(p => p.id === a.patientId);
+          if (!patient) return;
+          const startTime = a.time || '';
+          if (!startTime || startTime === '00:00') return;
+          if (!isPast && nowMinutes <= toMin(startTime) + DEFAULT_SESSION_DURATION) return;
+          const hasEvolution = evolutions.some(
+            e => e.patientId === patient.id && e.clinicId === clinicId && e.date === dateStr
+          );
+          if (hasEvolution) return;
+          const kind = getSessionKind(a.notes);
+          if (kind === 'regular') return;
+          patientSet.set(`${patient.id}::${dateStr}`, {
+            id: patient.id,
+            name: patient.name,
+            date: dateStr,
+            startTime,
+            kind,
+          });
+        });
     }
     return Array.from(patientSet.values());
-  }, [clinicPatients, evolutions, clinicId, isDateBlocked]);
+  }, [clinicPatients, evolutions, clinicId, isDateBlocked, extraAppointments]);
 
   // Fetch clinic-specific detailed data
   useEffect(() => {
@@ -148,16 +236,16 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
         }).map(i => findPatient(i.patient_id));
       };
 
-      setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as any[]) || []));
+      setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as PatientIdRow[] | null) || []));
       setPendingEnrollmentPatients(
-        ((enrollmentsRes.data as any[]) || []).map((p: any) => ({ id: p.id, name: p.name }))
+        ((enrollmentsRes.data as EnrollmentRow[] | null) || []).map(p => ({ id: p.id, name: p.name }))
       );
-      setUnreadMessagePatients(uniqueByPatient((messagesRes.data as any[]) || []));
-      setIntakeReviewPatients(uniqueByPatient((intakesRes.data as any[]) || []));
-      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as any[]) || []));
+      setUnreadMessagePatients(uniqueByPatient((messagesRes.data as PatientIdRow[] | null) || []));
+      setIntakeReviewPatients(uniqueByPatient((intakesRes.data as PatientIdRow[] | null) || []));
+      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as PatientIdRow[] | null) || []));
       setLoading(false);
     });
-  }, [user, clinicId, clinicPatients.length]);
+  }, [user, clinicId, clinicPatients]);
 
   const alerts = useMemo(() => {
     const items: AlertGroup[] = [];
@@ -177,7 +265,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       items.push({
         key: 'evolutions',
         icon: <FileText className="w-3.5 h-3.5" />,
-        label: `${missingEvolutionPatients.length} paciente${missingEvolutionPatients.length > 1 ? 's' : ''} com evolução em atraso`,
+        label: `${missingEvolutionPatients.length} evolução${missingEvolutionPatients.length > 1 ? 'ões' : ''} em atraso`,
         count: missingEvolutionPatients.length,
         color: 'text-red-500',
         patients: missingEvolutionPatients,
@@ -326,11 +414,16 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
               <div className="ml-6 mt-0.5 mb-1 space-y-0.5">
                 {alert.patients.map(p => (
                   <button
-                    key={p.id}
+                    key={`${p.id}-${p.date || alert.key}`}
                     onClick={() => handlePatientClick(p.id, alert.key)}
                     className="w-full flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/80 transition-colors text-left group"
                   >
-                    <span className="text-xs text-foreground truncate flex-1">{p.name}</span>
+                    <span className="text-xs text-foreground truncate flex-1">
+                      {p.name}
+                      {p.kind ? ` · ${SESSION_KIND_LABEL[p.kind]}` : ''}
+                      {p.date === toLocalDateString(new Date()) ? ' · Hoje' : ''}
+                      {p.startTime ? ` ${p.startTime.slice(0, 5)}` : ''}
+                    </span>
                     <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </button>
                 ))}
