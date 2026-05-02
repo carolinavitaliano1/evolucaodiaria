@@ -20,12 +20,15 @@ export default function Auth() {
   const [pendingInvite, setPendingInvite] = useState<{ memberId: string; orgId: string } | null>(null);
   const inviteAcceptedRef = useRef(false);
   const [checkingInvite, setCheckingInvite] = useState(true);
+  const [recoverySessionReady, setRecoverySessionReady] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const invite = params.get('invite');
     const org = params.get('org');
     const reset = params.get('reset');
+    const errorDescription = params.get('error_description') || params.get('error');
     if (invite && org) setPendingInvite({ memberId: invite, orgId: org });
     if (reset === 'true') setShowNewPassword(true);
 
@@ -33,16 +36,55 @@ export default function Auth() {
     if (hash && hash.includes('type=recovery')) {
       setShowNewPassword(true);
     }
+    // Hash may carry error from Supabase (e.g. expired link)
+    if (hash && hash.includes('error')) {
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+      const desc = hashParams.get('error_description') || hashParams.get('error');
+      if (desc) setRecoveryError(decodeURIComponent(desc.replace(/\+/g, ' ')));
+    }
+    if (errorDescription) {
+      setRecoveryError(decodeURIComponent(errorDescription.replace(/\+/g, ' ')));
+    }
+
+    // PKCE: when the recovery email opens the page with `?code=...`, exchange
+    // it for a session before allowing the user to set a new password.
+    const code = params.get('code');
+    if (code) {
+      setShowNewPassword(true);
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (error) {
+          setRecoveryError(
+            'Não foi possível validar o link de redefinição. Ele pode ter expirado ou ter sido aberto em outro dispositivo. Solicite um novo email.'
+          );
+        } else if (data?.session) {
+          setRecoverySessionReady(true);
+        }
+        // Clean URL so the code is not re-used / cached
+        window.history.replaceState(null, '', window.location.pathname + '?reset=true');
+      });
+    }
   }, []);
 
   useEffect(() => {
-    // Listen only for PASSWORD_RECOVERY event to show the new-password form
-    // (AuthContext already handles all other auth state changes)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setShowNewPassword(true);
+    // Listen for PASSWORD_RECOVERY / SIGNED_IN to know the recovery session
+    // is established (implicit-flow: token comes in URL hash and supabase-js
+    // sets the session automatically; PKCE-flow: handled above).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowNewPassword(true);
+        if (session) setRecoverySessionReady(true);
+      }
+      if (event === 'SIGNED_IN' && (showNewPassword || window.location.search.includes('reset=true'))) {
+        setRecoverySessionReady(true);
+      }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [showNewPassword]);
+
+  // If we already have a session and user is on the recovery screen, mark ready.
+  useEffect(() => {
+    if (showNewPassword && user) setRecoverySessionReady(true);
+  }, [showNewPassword, user]);
 
   // Auto-accept invite: when a logged-in user arrives with invite params,
   // call accept-invite. Also detects pending invites by email for users
@@ -172,6 +214,12 @@ export default function Auth() {
 
   const handleNewPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!recoverySessionReady) {
+      toast.error('Sessão de recuperação inválida', {
+        description: 'O link expirou ou já foi usado. Solicite um novo email de redefinição.',
+      });
+      return;
+    }
     if (newPassword !== newPasswordConfirm) {
       toast.error('As senhas não coincidem');
       return;
@@ -183,7 +231,10 @@ export default function Auth() {
     setIsSubmitting(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
-      toast.error('Erro ao atualizar senha', { description: error.message });
+      const msg = /session|jwt|auth/i.test(error.message)
+        ? 'Sessão de recuperação expirada. Solicite um novo email de redefinição.'
+        : error.message;
+      toast.error('Erro ao atualizar senha', { description: msg });
     } else {
       toast.success('Senha atualizada com sucesso!', { description: 'Você já pode entrar com a nova senha.' });
       window.history.replaceState(null, '', window.location.pathname);
