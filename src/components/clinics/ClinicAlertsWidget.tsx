@@ -112,7 +112,8 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
         if (!scheduledDays.includes(dayName)) continue;
         const startTime = schedByDay?.[dayName]?.start || p.scheduleTime || '';
         if (!startTime || startTime === '00:00') continue;
-        const endMin = schedByDay?.[dayName]?.end ? toMin(schedByDay[dayName].end) : toMin(startTime) + DEFAULT_SESSION_DURATION;
+        const endStr = schedByDay?.[dayName]?.end;
+        const endMin = endStr ? toMin(endStr) : toMin(startTime) + DEFAULT_SESSION_DURATION;
         if (!isPast && nowMinutes <= endMin) continue;
         const hasEvolution = evolutions.some(
           e => e.patientId === p.id && e.clinicId === clinicId && e.date === dateStr
@@ -248,7 +249,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
       items.push({
         key: 'evolutions',
         icon: <FileText className="w-3.5 h-3.5" />,
-        label: `${missingEvolutionPatients.length} paciente${missingEvolutionPatients.length > 1 ? 's' : ''} com evolução em atraso`,
+        label: `${missingEvolutionPatients.length} evolução${missingEvolutionPatients.length > 1 ? 'ões' : ''} em atraso`,
         count: missingEvolutionPatients.length,
         color: 'text-red-500',
         patients: missingEvolutionPatients,
@@ -397,11 +398,16 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
               <div className="ml-6 mt-0.5 mb-1 space-y-0.5">
                 {alert.patients.map(p => (
                   <button
-                    key={p.id}
+                    key={`${p.id}-${p.date || alert.key}`}
                     onClick={() => handlePatientClick(p.id, alert.key)}
                     className="w-full flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/80 transition-colors text-left group"
                   >
-                    <span className="text-xs text-foreground truncate flex-1">{p.name}</span>
+                    <span className="text-xs text-foreground truncate flex-1">
+                      {p.name}
+                      {p.kind ? ` · ${SESSION_KIND_LABEL[p.kind]}` : ''}
+                      {p.date === toLocalDateString(new Date()) ? ' · Hoje' : ''}
+                      {p.startTime ? ` ${p.startTime.slice(0, 5)}` : ''}
+                    </span>
                     <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </button>
                 ))}
