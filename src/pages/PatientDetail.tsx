@@ -3170,12 +3170,12 @@ export default function PatientDetail() {
                                     {moodInfo.emoji} {moodInfo.label}
                                   </span>
                                 )}
-                                {patient.paymentValue && ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(evo.attendanceStatus) && (
+                                {paymentValue > 0 && ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(evo.attendanceStatus) && (
                                   <span className="text-xs text-success font-medium ml-auto">
-                                    + R$ {(monthlyDynamic && isPackageMensal ? monthlyDynamic.perSession : patient.paymentValue).toFixed(2)}
+                                    + R$ {(monthlyDynamic && isPackageMensal ? monthlyDynamic.perSession : perSessionValue).toFixed(2)}
                                   </span>
                                 )}
-                                {patient.paymentValue && isPackageMensal && monthlyDynamic && evo.attendanceStatus === 'falta' && (
+                                {paymentValue > 0 && isPackageMensal && monthlyDynamic && evo.attendanceStatus === 'falta' && (
                                   <span className="text-xs text-destructive font-medium ml-auto">
                                     - R$ {monthlyDynamic.perSession.toFixed(2)}
                                   </span>
