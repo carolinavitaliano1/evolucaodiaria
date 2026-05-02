@@ -3154,13 +3154,13 @@ export default function PatientDetail() {
                             <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
                               evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
                               evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
-                              evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' :
+                              evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' : evo.attendanceStatus === 'anteposicao' ? 'bg-primary/10 text-primary' :
                               evo.attendanceStatus === 'feriado_remunerado' ? 'bg-primary/10 text-primary' :
                               evo.attendanceStatus === 'feriado_nao_remunerado' ? 'bg-muted text-muted-foreground' :
                               'bg-destructive/10 text-destructive')}>
                               {evo.attendanceStatus === 'presente' ? '✅ Presente' :
                                evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Remunerada' :
-                               evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' :
+                               evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' : evo.attendanceStatus === 'anteposicao' ? '⏩ Anteposição' :
                                evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
                                evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' :
                                '❌ Falta'}
@@ -3476,13 +3476,13 @@ export default function PatientDetail() {
                                 <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
                                   evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
                                   evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
-                                  evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' :
+                                  evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' : evo.attendanceStatus === 'anteposicao' ? 'bg-primary/10 text-primary' :
                                   evo.attendanceStatus === 'feriado_remunerado' ? 'bg-primary/10 text-primary' :
                                   evo.attendanceStatus === 'feriado_nao_remunerado' ? 'bg-muted text-muted-foreground' :
                                   'bg-destructive/10 text-destructive')}>
                                   {evo.attendanceStatus === 'presente' ? '✅ Presente' :
                                    evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Rem.' :
-                                   evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' :
+                                   evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' : evo.attendanceStatus === 'anteposicao' ? '⏩ Anteposição' :
                                    evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
                                    evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' : '❌ Falta'}
                                 </span>
