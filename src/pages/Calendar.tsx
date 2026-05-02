@@ -41,6 +41,8 @@ interface CalItem {
   color: string;
   bgColor: string;
   rawEvent?: any;
+  /** Quando o item é um appointment (atendimento), mantém o objeto bruto. */
+  rawAppointment?: any;
   isDraggable: boolean;
   /** Tag visual de tipo extra (Avulso/Reposição/Anteposição). */
   kind?: 'avulsa' | 'reposicao' | 'anteposicao';
@@ -65,7 +67,7 @@ const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sext
 const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function CalendarPage() {
-  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, evolutions, clinicPackages } = useApp();
+  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, deleteAppointment, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
@@ -96,6 +98,8 @@ export default function CalendarPage() {
     chargeValue: '' as string,
   });
   const [whatsappTarget, setWhatsappTarget] = useState<{ name: string; phone: string; date: string; time: string } | null>(null);
+  /** Se preenchido, o submit do formulário irá ATUALIZAR este appointment em vez de criar um novo. */
+  const [editingApptId, setEditingApptId] = useState<string | null>(null);
 
   const loadCalendarEvents = useCallback(async () => {
     if (!user?.id) return;
@@ -153,6 +157,7 @@ export default function CalendarPage() {
           bgColor: EVENT_COLORS.atendimento.pill,
           isDraggable: false,
           kind: kind === 'regular' ? undefined : kind,
+          rawAppointment: a,
         };
       });
 
@@ -293,14 +298,34 @@ export default function CalendarPage() {
         : '';
     const baseNotes = [typeTag, linkTag, formData.notes].filter(Boolean).join(' ').trim();
 
-    // 1) Cria o agendamento normal (aparece na agenda)
-    addAppointment({
-      clinicId: formData.clinicId,
-      patientId: formData.patientId,
-      date: formData.date,
-      time: formData.time,
-      notes: baseNotes,
-    });
+    // 1) Cria/atualiza o agendamento (aparece na agenda)
+    if (editingApptId) {
+      try {
+        const { error } = await supabase
+          .from('appointments')
+          .update({
+            clinic_id: formData.clinicId,
+            patient_id: formData.patientId,
+            date: formData.date,
+            time: formData.time,
+            notes: baseNotes,
+          })
+          .eq('id', editingApptId);
+        if (error) throw error;
+      } catch (err) {
+        console.error(err);
+        toast.error('Erro ao atualizar agendamento');
+        return;
+      }
+    } else {
+      addAppointment({
+        clinicId: formData.clinicId,
+        patientId: formData.patientId,
+        date: formData.date,
+        time: formData.time,
+        notes: baseNotes,
+      });
+    }
 
     // 2) Marca a falta vinculada (reposição/anteposição) como "reposta_por:pendente"
     //    para preservar a rastreabilidade do histórico. A evolução em si NÃO é
@@ -349,12 +374,13 @@ export default function CalendarPage() {
     }
 
     if (isAvulsaOrReposicao) {
-      const okMsg =
-        formData.sessionType === 'reposicao' ? 'Reposição agendada!' :
-        formData.sessionType === 'anteposicao' ? 'Anteposição agendada!' :
-        'Sessão avulsa agendada!';
-      toast.success(okMsg);
+      const verb = editingApptId ? 'atualizada' : 'agendada';
+      const labelTipo =
+        formData.sessionType === 'reposicao' ? 'Reposição' :
+        formData.sessionType === 'anteposicao' ? 'Anteposição' : 'Sessão avulsa';
+      toast.success(`${labelTipo} ${verb}!`);
     }
+    setEditingApptId(null);
     resetForm();
     setIsApptDialogOpen(false);
   };
@@ -409,6 +435,47 @@ export default function CalendarPage() {
     setSelectedDate(new Date(popupItem.rawEvent.date + 'T12:00:00'));
     setEventDialogOpen(true);
     setPopupItem(null);
+  };
+
+  // --- Edit/Delete handlers para AGENDAMENTOS (avulsa/reposição/anteposição) ---
+  const handleEditAppointment = () => {
+    const a = popupItem?.rawAppointment;
+    if (!a) return;
+    const kind = (popupItem?.kind || 'avulsa') as 'avulsa' | 'reposicao' | 'anteposicao';
+    // Extrai um possível linkedAbsenceId das tags [reposicao:ID] ou [anteposicao:ID]
+    const linkMatch = (a.notes || '').match(/\[(?:reposicao|anteposicao):([^\]]+)\]/);
+    const cleanNotes = (a.notes || '')
+      .replace(/\[tipo:[^\]]+\]/g, '')
+      .replace(/\[(?:reposicao|anteposicao):[^\]]+\]/g, '')
+      .trim();
+    setFormData({
+      clinicId: a.clinicId,
+      patientId: a.patientId,
+      date: a.date,
+      time: (a.time || '').slice(0, 5),
+      notes: cleanNotes,
+      sessionType: kind,
+      linkedAbsenceId: linkMatch ? linkMatch[1] : '',
+      chargeEnabled: false,
+      chargeValue: '',
+    });
+    setEditingApptId(a.id);
+    setIsApptDialogOpen(true);
+    setPopupItem(null);
+  };
+
+  const handleDeleteAppointment = async () => {
+    const a = popupItem?.rawAppointment;
+    if (!a) return;
+    if (!confirm('Excluir este agendamento?')) return;
+    try {
+      await deleteAppointment(a.id);
+      toast.success('Agendamento excluído');
+      setPopupItem(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao excluir agendamento');
+    }
   };
 
   // Open day detail (for "+N mais")
@@ -540,14 +607,25 @@ export default function CalendarPage() {
           <Button size="sm" className="gradient-primary gap-1 text-xs h-7 px-2.5" onClick={() => setEventDialogOpen(true)}>
             <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evento</span>
           </Button>
-          <Dialog open={isApptDialogOpen} onOpenChange={setIsApptDialogOpen}>
+          <Dialog
+            open={isApptDialogOpen}
+            onOpenChange={(open) => {
+              setIsApptDialogOpen(open);
+              if (!open) {
+                setEditingApptId(null);
+                resetForm();
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5">
                 <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Atendimento</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Agendar Atendimento</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>{editingApptId ? 'Editar Atendimento' : 'Agendar Atendimento'}</DialogTitle>
+              </DialogHeader>
               <form onSubmit={handleApptSubmit} className="space-y-4 max-h-[80dvh] overflow-y-auto pr-1">
                 <div>
                   <Label>Clínica *</Label>
@@ -1073,8 +1151,19 @@ export default function CalendarPage() {
               </Button>
             </div>
           )}
+          {!popupItem.isDraggable && popupItem.rawAppointment && (
+            <div className="flex gap-2 pt-2 border-t border-border">
+              <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs h-7" onClick={handleEditAppointment}>
+                <Pencil className="w-3 h-3" /> Editar
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 text-destructive hover:text-destructive border-destructive/30"
+                onClick={handleDeleteAppointment}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
           {!popupItem.isDraggable && (() => {
-            const rawAppt = popupItem.rawEvent;
+            const rawAppt = popupItem.rawAppointment || popupItem.rawEvent;
             const patient = rawAppt ? patients.find(p => p.id === rawAppt.patientId) : null;
             if (patient?.phone) {
               return (
