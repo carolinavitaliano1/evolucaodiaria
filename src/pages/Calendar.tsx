@@ -250,12 +250,16 @@ export default function CalendarPage() {
     e.preventDefault();
     if (!formData.clinicId || !formData.patientId || !formData.date || !formData.time) return;
 
-    // Se o vínculo é uma opção recorrente (recur:DATE:TIME), materializa
+    // Se o vínculo é uma opção recorrente (recur|DATE|TIME), materializa
     // primeiro uma evolução-falta naquele dia para ter um ID real e
     // manter a integridade do histórico (anteposição/reposição).
     let resolvedLinkedAbsenceId = formData.linkedAbsenceId;
-    if (formData.linkedAbsenceId.startsWith('recur:')) {
-      const [, recurDate, recurTime] = formData.linkedAbsenceId.split(':');
+    if (formData.linkedAbsenceId.startsWith('recur|')) {
+      const [, recurDate, recurTimeRaw] = formData.linkedAbsenceId.split('|');
+      // Normaliza HH:MM (Postgres rejeita "08" sozinho).
+      const recurTime = recurTimeRaw && /^\d{1,2}:\d{2}/.test(recurTimeRaw)
+        ? recurTimeRaw.slice(0, 5)
+        : null;
       try {
         const { data: created, error } = await supabase
           .from('evolutions')
@@ -264,7 +268,7 @@ export default function CalendarPage() {
             patient_id: formData.patientId,
             clinic_id: formData.clinicId,
             date: recurDate,
-            session_time: recurTime || null,
+            session_time: recurTime,
             text: '[origem:frequencia] Falta marcada automaticamente ao agendar reposição/anteposição.',
             attendance_status: 'falta',
           })
@@ -665,7 +669,7 @@ export default function CalendarPage() {
                                 const time = scheduleByDay?.[dow]?.start || patient.scheduleTime || '';
                                 recurringOpts.push({
                                   key: `recur-${dStr}`,
-                                  value: `recur:${dStr}:${time}`,
+                                  value: `recur|${dStr}|${time || ''}`,
                                   date: dStr,
                                   time: time ? time.slice(0,5) : '',
                                   label: isReposicao ? 'Falta implícita (frequência)' : 'Sessão futura agendada',
