@@ -58,6 +58,7 @@ import { ClinicAlertsWidget } from '@/components/clinics/ClinicAlertsWidget';
 import { TherapeuticGroupsTab } from '@/components/clinics/TherapeuticGroupsTab';
 import { UsersRound } from 'lucide-react';
 import { ClinicHealthPlans } from '@/components/clinics/ClinicHealthPlans';
+import { Cake as CakeIcon, Briefcase as BriefcaseIcon, CalendarOff } from 'lucide-react';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
