@@ -141,7 +141,7 @@ export interface Evolution {
   groupId?: string;
   date: string;
   text: string;
-  attendanceStatus: 'presente' | 'falta' | 'falta_remunerada' | 'reposicao' | 'anteposicao' | 'feriado_remunerado' | 'feriado_nao_remunerado';
+  attendanceStatus: 'presente' | 'falta' | 'falta_remunerada' | 'reposicao','anteposicao' | 'anteposicao' | 'feriado_remunerado' | 'feriado_nao_remunerado';
   confirmedAttendance?: boolean;
   mood?: 'otima' | 'boa' | 'neutra' | 'ruim' | 'muito_ruim';
   signature?: string;

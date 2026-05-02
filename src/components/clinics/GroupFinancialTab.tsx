@@ -51,7 +51,7 @@ interface MemberFinancialRow {
   status: 'em_dia' | 'parcial' | 'inadimplente' | 'nao_pagante';
 }
 
-const BILLABLE_STATUSES = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'];
+const BILLABLE_STATUSES = ['presente', 'reposicao','anteposicao', 'falta_remunerada', 'feriado_remunerado'];
 
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',

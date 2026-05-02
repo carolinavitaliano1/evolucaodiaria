@@ -94,7 +94,7 @@ export default function Reports() {
 
   const attendanceStats = useMemo(() => {
     const present = filteredEvolutions.filter(e => e.attendanceStatus === 'presente').length;
-    const reposicao = filteredEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+    const reposicao = filteredEvolutions.filter(e => e.attendanceStatus === 'reposicao','anteposicao').length;
     const absent = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
     const paidAbsent = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
     const feriadoRem = filteredEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
@@ -123,7 +123,7 @@ export default function Reports() {
       const clinic = clinics.find(c => c.id === patient?.clinicId);
       const pEvolutions = filteredEvolutions.filter(e => e.patientId === pid);
       const present = pEvolutions.filter(e => e.attendanceStatus === 'presente').length;
-      const reposicao = pEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+      const reposicao = pEvolutions.filter(e => e.attendanceStatus === 'reposicao','anteposicao').length;
       const absent = pEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsent = pEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       const feriadoRem = pEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
@@ -174,7 +174,7 @@ export default function Reports() {
       const dayStr = format(day, 'yyyy-MM-dd');
       const dayEvolutions = filteredEvolutions.filter(e => e.date === dayStr);
       const present = dayEvolutions.filter(e => e.attendanceStatus === 'presente').length;
-      const reposicao = dayEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+      const reposicao = dayEvolutions.filter(e => e.attendanceStatus === 'reposicao','anteposicao').length;
       const absent = dayEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsent = dayEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       return {
@@ -202,7 +202,7 @@ export default function Reports() {
           return e.clinicId === clinic.id && isWithinInterval(evolutionDate, { start: dateRange.start, end: dateRange.end });
         });
         const present = clinicEvolutions.filter(e => e.attendanceStatus === 'presente').length;
-        const reposicao = clinicEvolutions.filter(e => e.attendanceStatus === 'reposicao').length;
+        const reposicao = clinicEvolutions.filter(e => e.attendanceStatus === 'reposicao','anteposicao').length;
         const absent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta').length;
         const paidAbsent = clinicEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
         const total = present + reposicao + absent + paidAbsent;

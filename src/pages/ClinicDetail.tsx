@@ -1403,7 +1403,7 @@ export default function ClinicDetail() {
                     className={cn(
                       "flex flex-col lg:flex-row lg:items-center justify-between p-3 lg:p-4 rounded-xl border transition-colors",
                       hasEvolution 
-                        ? evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
+                        ? evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao','anteposicao'
                           ? "bg-success/10 border-success/30"
                           : evolution?.attendanceStatus === 'falta_remunerada'
                             ? "bg-warning/10 border-warning/30"
@@ -1443,7 +1443,7 @@ export default function ClinicDetail() {
                         <>
                           <div className={cn(
                             "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium",
-                            evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
+                            evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao','anteposicao'
                               ? "bg-success/20 text-success"
                               : evolution?.attendanceStatus === 'falta_remunerada'
                                 ? "bg-warning/20 text-warning"
@@ -1451,7 +1451,7 @@ export default function ClinicDetail() {
                           )}>
                             {evolution?.attendanceStatus === 'presente' ? (
                               <><Check className="w-4 h-4" />Presente</>
-                            ) : evolution?.attendanceStatus === 'reposicao' ? (
+                            ) : evolution?.attendanceStatus === 'reposicao','anteposicao' ? (
                               <>🔄 Reposição</>
                             ) : evolution?.attendanceStatus === 'falta_remunerada' ? (
                               <><DollarSign className="w-4 h-4" />Falta Remunerada</>
@@ -2249,9 +2249,9 @@ export default function ClinicDetail() {
                           size="sm" onClick={() => setBatchGlobalStatus('falta')}>
                           <X className="w-4 h-4" /> Falta
                         </Button>
-                        <Button type="button" variant={batchGlobalStatus === 'reposicao' ? 'default' : 'outline'}
-                          className={cn("gap-2", batchGlobalStatus === 'reposicao' && "bg-primary hover:bg-primary/90")}
-                          size="sm" onClick={() => setBatchGlobalStatus('reposicao')}>
+                        <Button type="button" variant={batchGlobalStatus === 'reposicao','anteposicao' ? 'default' : 'outline'}
+                          className={cn("gap-2", batchGlobalStatus === 'reposicao','anteposicao' && "bg-primary hover:bg-primary/90")}
+                          size="sm" onClick={() => setBatchGlobalStatus('reposicao','anteposicao')}>
                           🔄 Reposição
                         </Button>
                         <Button type="button" variant={batchGlobalStatus === 'falta_remunerada' ? 'default' : 'outline'}
@@ -2284,7 +2284,7 @@ export default function ClinicDetail() {
                                 {([
                                   { val: 'presente', label: '✅', title: 'Presente' },
                                   { val: 'falta', label: '❌', title: 'Falta' },
-                                  { val: 'reposicao', label: '🔄', title: 'Reposição' },
+                                  { val: 'reposicao','anteposicao', label: '🔄', title: 'Reposição' },
                                   { val: 'falta_remunerada', label: '💰', title: 'Falta Rem.' },
                                   { val: 'feriado_remunerado', label: '🎉', title: 'Feriado Rem.' },
                                   { val: 'feriado_nao_remunerado', label: '📅', title: 'Feriado' },
@@ -2496,7 +2496,7 @@ export default function ClinicDetail() {
                     <Button
                       className="gradient-primary gap-2"
                       onClick={handleBatchEvolution}
-                      disabled={isArchived || selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim() && batchStatusMode === 'same' && ['presente', 'reposicao'].includes(batchGlobalStatus))}
+                      disabled={isArchived || selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim() && batchStatusMode === 'same' && ['presente', 'reposicao','anteposicao'].includes(batchGlobalStatus))}
                     >
                       <FileText className="w-4 h-4" />
                       Aplicar Evolução
@@ -2825,9 +2825,9 @@ export default function ClinicDetail() {
                 </Button>
                 <Button
                   type="button"
-                  variant={quickEvolutionStatus === 'reposicao' ? 'default' : 'outline'}
-                  className={cn("gap-2", quickEvolutionStatus === 'reposicao' && "bg-primary hover:bg-primary/90")}
-                  onClick={() => setQuickEvolutionStatus('reposicao')}
+                  variant={quickEvolutionStatus === 'reposicao','anteposicao' ? 'default' : 'outline'}
+                  className={cn("gap-2", quickEvolutionStatus === 'reposicao','anteposicao' && "bg-primary hover:bg-primary/90")}
+                  onClick={() => setQuickEvolutionStatus('reposicao','anteposicao')}
                 >
                   🔄 Reposição
                 </Button>

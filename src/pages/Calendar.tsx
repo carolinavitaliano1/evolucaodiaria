@@ -45,7 +45,7 @@ interface CalItem {
   rawAppointment?: any;
   isDraggable: boolean;
   /** Tag visual de tipo extra (Avulso/Reposição/Anteposição). */
-  kind?: 'avulsa' | 'reposicao' | 'anteposicao';
+  kind?: 'avulsa' | 'reposicao','anteposicao' | 'anteposicao';
 }
 
 const EVENT_COLORS: Record<string, { bg: string; pill: string }> = {
@@ -91,7 +91,7 @@ export default function CalendarPage() {
   const [formData, setFormData] = useState({
     clinicId: '', patientId: '',
     date: format(selectedDate, 'yyyy-MM-dd'), time: '', notes: '',
-    sessionType: 'avulsa' as 'avulsa' | 'reposicao' | 'anteposicao',
+    sessionType: 'avulsa' as 'avulsa' | 'reposicao','anteposicao' | 'anteposicao',
     /** ID da evolução-falta que está sendo reposta/anteposta (opcional). */
     linkedAbsenceId: '' as string,
     chargeEnabled: false,
@@ -291,7 +291,7 @@ export default function CalendarPage() {
     // Sempre é avulsa/reposição/anteposição (não há mais "regular" aqui).
     const isAvulsaOrReposicao = true;
     const typeTag = `[tipo:${formData.sessionType}]`;
-    const linkTag = (formData.sessionType === 'reposicao' && resolvedLinkedAbsenceId)
+    const linkTag = (formData.sessionType === 'reposicao','anteposicao' && resolvedLinkedAbsenceId)
       ? `[reposicao:${resolvedLinkedAbsenceId}]`
       : (formData.sessionType === 'anteposicao' && resolvedLinkedAbsenceId)
         ? `[anteposicao:${resolvedLinkedAbsenceId}]`
@@ -332,7 +332,7 @@ export default function CalendarPage() {
     //    criada agora — ela aparecerá como pendência de evolução (MissingEvolutionsAlert)
     //    e será registrada pelo terapeuta no momento certo, igual ao agendamento normal.
     if (resolvedLinkedAbsenceId &&
-        (formData.sessionType === 'reposicao' || formData.sessionType === 'anteposicao')) {
+        (formData.sessionType === 'reposicao','anteposicao' || formData.sessionType === 'anteposicao')) {
       try {
         const { data: orig } = await supabase
           .from('evolutions')
@@ -351,7 +351,7 @@ export default function CalendarPage() {
     if (isAvulsaOrReposicao && formData.chargeEnabled && user?.id) {
       const valor = Number(formData.chargeValue || defaultPackageValue || 0);
       const tituloLinha =
-        formData.sessionType === 'reposicao' ? 'Reposição cobrada' :
+        formData.sessionType === 'reposicao','anteposicao' ? 'Reposição cobrada' :
         formData.sessionType === 'anteposicao' ? 'Anteposição cobrada' : 'Sessão avulsa';
       try {
         const { error } = await supabase.from('private_appointments').insert({
@@ -376,7 +376,7 @@ export default function CalendarPage() {
     if (isAvulsaOrReposicao) {
       const verb = editingApptId ? 'atualizada' : 'agendada';
       const labelTipo =
-        formData.sessionType === 'reposicao' ? 'Reposição' :
+        formData.sessionType === 'reposicao','anteposicao' ? 'Reposição' :
         formData.sessionType === 'anteposicao' ? 'Anteposição' : 'Sessão avulsa';
       toast.success(`${labelTipo} ${verb}!`);
     }
@@ -441,7 +441,7 @@ export default function CalendarPage() {
   const handleEditAppointment = () => {
     const a = popupItem?.rawAppointment;
     if (!a) return;
-    const kind = (popupItem?.kind || 'avulsa') as 'avulsa' | 'reposicao' | 'anteposicao';
+    const kind = (popupItem?.kind || 'avulsa') as 'avulsa' | 'reposicao','anteposicao' | 'anteposicao';
     // Extrai um possível linkedAbsenceId das tags [reposicao:ID] ou [anteposicao:ID]
     const linkMatch = (a.notes || '').match(/\[(?:reposicao|anteposicao):([^\]]+)\]/);
     const cleanNotes = (a.notes || '')
@@ -649,27 +649,27 @@ export default function CalendarPage() {
                   <Label>Tipo de sessão *</Label>
                   <Select
                     value={formData.sessionType}
-                    onValueChange={(v: 'avulsa' | 'reposicao' | 'anteposicao') =>
+                    onValueChange={(v: 'avulsa' | 'reposicao','anteposicao' | 'anteposicao') =>
                       setFormData({ ...formData, sessionType: v, linkedAbsenceId: '', chargeEnabled: false, chargeValue: '' })
                     }
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="avulsa">Sessão avulsa</SelectItem>
-                      <SelectItem value="reposicao">Reposição (repõe falta passada)</SelectItem>
+                      <SelectItem value="reposicao","anteposicao">Reposição (repõe falta passada)</SelectItem>
                       <SelectItem value="anteposicao">Anteposição (adianta sessão de falta futura)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground mt-1">
                     {formData.sessionType === 'avulsa' && 'Será criada automaticamente uma evolução (status: Presente) para aparecer na frequência.'}
-                    {formData.sessionType === 'reposicao' && 'Será criada uma evolução (status: Reposição) e a falta vinculada será marcada como reposta.'}
+                    {formData.sessionType === 'reposicao','anteposicao' && 'Será criada uma evolução (status: Reposição) e a falta vinculada será marcada como reposta.'}
                     {formData.sessionType === 'anteposicao' && 'Será criada uma evolução (status: Reposição) representando o adiantamento da sessão de uma falta futura.'}
                   </p>
                 </div>
-                {(formData.sessionType === 'reposicao' || formData.sessionType === 'anteposicao') && formData.patientId && (
+                {(formData.sessionType === 'reposicao','anteposicao' || formData.sessionType === 'anteposicao') && formData.patientId && (
                   <div>
                     <Label>
-                      {formData.sessionType === 'reposicao' ? 'Falta a repor' : 'Falta futura a antepor'}
+                      {formData.sessionType === 'reposicao','anteposicao' ? 'Falta a repor' : 'Falta futura a antepor'}
                     </Label>
                     <Select
                       value={formData.linkedAbsenceId || 'none'}
@@ -684,7 +684,7 @@ export default function CalendarPage() {
                           if (!formData.date) return null;
                           const refDate = new Date(formData.date + 'T12:00:00');
                           const patient = patients.find(p => p.id === formData.patientId);
-                          const isReposicao = formData.sessionType === 'reposicao';
+                          const isReposicao = formData.sessionType === 'reposicao','anteposicao';
 
                           // 1) Faltas já registradas como evolução (status='falta')
                           const faltasRegistradas = evolutions
