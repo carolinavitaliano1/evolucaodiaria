@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,32 +78,33 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
     return h * 60 + (m || 0);
   };
 
-  useEffect(() => {
+  const fetchExtraAppointments = useCallback(async () => {
     if (!user || !clinicId) return;
     const today = new Date();
     const start = new Date(today);
     start.setDate(start.getDate() - DAYS_BACK);
     const startDate = toLocalDateString(start);
     const endDate = toLocalDateString(today);
-
-    supabase
+    const { data } = await supabase
       .from('appointments')
       .select('patient_id, date, time, notes')
       .eq('clinic_id', clinicId)
       .gte('date', startDate)
-      .lte('date', endDate)
-      .then(({ data }) => {
-        const extras = ((data as AppointmentRow[] | null) || [])
-          .filter(a => getSessionKind(a.notes as string | null) !== 'regular')
-          .map(a => ({
-            patientId: a.patient_id as string,
-            date: a.date as string,
-            time: (a.time as string) || '',
-            notes: (a.notes as string) || null,
-          }));
-        setExtraAppointments(extras);
-      });
+      .lte('date', endDate);
+    const extras = ((data as AppointmentRow[] | null) || [])
+      .filter(a => getSessionKind(a.notes as string | null) !== 'regular')
+      .map(a => ({
+        patientId: a.patient_id as string,
+        date: a.date as string,
+        time: (a.time as string) || '',
+        notes: (a.notes as string) || null,
+      }));
+    setExtraAppointments(extras);
   }, [user, clinicId]);
+
+  useEffect(() => {
+    fetchExtraAppointments();
+  }, [fetchExtraAppointments]);
 
   // Missing evolutions for this clinic (last 7 days) — with patient details
   const missingEvolutionPatients = useMemo(() => {
@@ -166,16 +167,15 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
   }, [clinicPatients, evolutions, clinicId, isDateBlocked, extraAppointments]);
 
   // Fetch clinic-specific detailed data
-  useEffect(() => {
+  const fetchClinicDetails = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
     const currentYear = today.getFullYear();
     const clinicPatientIds = clinicPatients.map(p => p.id);
 
-    Promise.all([
+    const [paymentsRes, enrollmentsRes, messagesRes, intakesRes, receiptsRes] = await Promise.all([
       // Overdue payments — get patient_ids
       clinicPatientIds.length > 0
         ? supabase
@@ -221,31 +221,49 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
             .ilike('name', 'Comprovante%')
             .in('patient_id', clinicPatientIds)
         : Promise.resolve({ data: [] }),
-    ]).then(([paymentsRes, enrollmentsRes, messagesRes, intakesRes, receiptsRes]) => {
-      const findPatient = (pid: string): PatientRef => {
+    ]);
+    const findPatient = (pid: string): PatientRef => {
         const p = clinicPatients.find(cp => cp.id === pid);
         return { id: pid, name: p?.name || 'Paciente' };
-      };
-
-      const uniqueByPatient = (items: { patient_id: string }[]): PatientRef[] => {
+    };
+    const uniqueByPatient = (items: { patient_id: string }[]): PatientRef[] => {
         const seen = new Set<string>();
         return items.filter(i => {
           if (seen.has(i.patient_id)) return false;
           seen.add(i.patient_id);
           return true;
         }).map(i => findPatient(i.patient_id));
-      };
-
-      setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as PatientIdRow[] | null) || []));
-      setPendingEnrollmentPatients(
-        ((enrollmentsRes.data as EnrollmentRow[] | null) || []).map(p => ({ id: p.id, name: p.name }))
-      );
-      setUnreadMessagePatients(uniqueByPatient((messagesRes.data as PatientIdRow[] | null) || []));
-      setIntakeReviewPatients(uniqueByPatient((intakesRes.data as PatientIdRow[] | null) || []));
-      setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as PatientIdRow[] | null) || []));
-      setLoading(false);
-    });
+    };
+    setOverduePaymentPatients(uniqueByPatient((paymentsRes.data as PatientIdRow[] | null) || []));
+    setPendingEnrollmentPatients(
+      ((enrollmentsRes.data as EnrollmentRow[] | null) || []).map(p => ({ id: p.id, name: p.name }))
+    );
+    setUnreadMessagePatients(uniqueByPatient((messagesRes.data as PatientIdRow[] | null) || []));
+    setIntakeReviewPatients(uniqueByPatient((intakesRes.data as PatientIdRow[] | null) || []));
+    setPendingReceiptPatients(uniqueByPatient((receiptsRes.data as PatientIdRow[] | null) || []));
+    setLoading(false);
   }, [user, clinicId, clinicPatients]);
+
+  useEffect(() => {
+    fetchClinicDetails();
+  }, [fetchClinicDetails]);
+
+  // Auto-refresh on tab focus / online / visibility change (mobile PWA)
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      fetchExtraAppointments();
+      fetchClinicDetails();
+    };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('online', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('online', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [fetchExtraAppointments, fetchClinicDetails]);
 
   const alerts = useMemo(() => {
     const items: AlertGroup[] = [];
