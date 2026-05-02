@@ -1290,6 +1290,100 @@ export default function ClinicDetail() {
           {/* Alerts widget for this clinic */}
           <ClinicAlertsWidget clinicId={id!} />
 
+          {/* Feriados / Bloqueios ativos hoje */}
+          {todayBlocks.length > 0 && (
+            <div className="bg-warning/10 border border-warning/30 rounded-xl lg:rounded-2xl p-4 lg:p-5">
+              <h3 className="text-base lg:text-lg font-bold text-warning flex items-center gap-2 mb-2">
+                <CalendarOff className="w-4 h-4 lg:w-5 lg:h-5" />
+                {todayBlocks.some(b => b.block_type === 'feriado') ? 'Feriado Hoje' : 'Bloqueio Hoje'}
+              </h3>
+              <ul className="space-y-1 text-sm">
+                {todayBlocks.map(b => (
+                  <li key={b.id} className="text-foreground">
+                    <span className="font-medium capitalize">{b.block_type}:</span>{' '}
+                    {b.description || (b.block_type === 'feriado' ? 'Feriado' : 'Férias')}
+                    {b.start_date !== b.end_date && (
+                      <span className="text-muted-foreground"> ({b.start_date} → {b.end_date})</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Aniversariantes do dia */}
+          {todayBirthdays.length > 0 && (
+            <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl lg:rounded-2xl p-4 lg:p-5">
+              <h3 className="text-base lg:text-lg font-bold text-pink-600 dark:text-pink-400 flex items-center gap-2 mb-3">
+                <Cake className="w-4 h-4 lg:w-5 lg:h-5" />
+                Aniversariantes de Hoje 🎉 ({todayBirthdays.length})
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {todayBirthdays.map(p => {
+                  const age = calculateAge(p.birthdate);
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-card/60 border border-border/50 hover:border-pink-400 cursor-pointer transition"
+                      onClick={() => handleOpenPatient(p.id)}
+                    >
+                      <div>
+                        <p className="font-medium text-foreground text-sm">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {age !== null ? `Faz ${age} anos hoje` : 'Aniversário hoje'}
+                        </p>
+                      </div>
+                      <QuickWhatsAppButton
+                        phone={p.whatsapp || p.phone || p.responsibleWhatsapp}
+                        tooltip="Enviar parabéns"
+                        message={`🎉 Feliz aniversário, ${p.name}! Toda nossa equipe deseja muita saúde e felicidade. 🎂`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Serviços (avulsos) do dia */}
+          {todayPrivate.length > 0 && (
+            <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
+              <h3 className="text-base lg:text-lg font-bold text-foreground flex items-center gap-2 mb-3">
+                <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                Serviços de Hoje ({todayPrivate.length})
+              </h3>
+              <div className="space-y-2">
+                {[...todayPrivate]
+                  .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                  .map(svc => {
+                    const linkedPatient = svc.patient_id ? clinicPatients.find(p => p.id === svc.patient_id) : null;
+                    const displayName = linkedPatient?.name || svc.client_name || 'Serviço';
+                    return (
+                      <div
+                        key={svc.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-secondary/40 border border-border"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                            {(svc.time || '').slice(0, 5) || '—'}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground text-sm">{displayName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Serviço {svc.notes ? `• ${svc.notes}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-sm font-medium text-success">
+                          {Number(svc.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
             <h2 className="text-lg lg:text-xl font-bold text-foreground mb-3 lg:mb-4 flex items-center gap-2">
               <Calendar className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
