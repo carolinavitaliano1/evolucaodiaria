@@ -1436,7 +1436,8 @@ export default function PatientDetail() {
   const buildFiscalReceiptOpts = () => {
     const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
     const evos = getFiscalEvolutions();
-    const rawPaymentValue = patient?.paymentValue || 0;
+    // Use resolved paymentValue (includes package price fallback for monthly/total packages)
+    const rawPaymentValue = paymentValue || 0;
     const STATUS_BILLABLE: Record<string, boolean> = {
       presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
       falta: false, feriado_nao_remunerado: false,
