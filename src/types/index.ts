@@ -22,6 +22,12 @@ export interface Clinic {
   paymentAmount?: number;
   paysOnAbsence?: boolean;
   absencePaymentType?: 'always' | 'never' | 'confirmed_only';
+  /** Como o valor da falta cobrada é calculado para o terapeuta:
+   *  - 'integral' → terapeuta recebe o valor cheio da sessão
+   *  - 'parcial'  → terapeuta recebe um valor fixo (R$) configurado abaixo */
+  absenceChargeMode?: 'integral' | 'parcial';
+  /** Valor (R$) que o terapeuta recebe por falta quando o modo é 'parcial'. */
+  absenceChargeAmount?: number;
   letterhead?: string;
   stamp?: string;
   email?: string;

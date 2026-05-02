@@ -82,6 +82,8 @@ function mapClinic(c: Record<string, unknown>): Clinic {
     paymentAmount: c.payment_amount ? Number(c.payment_amount) : undefined,
     paysOnAbsence: c.pays_on_absence as boolean,
     absencePaymentType: c.absence_payment_type as 'always' | 'never' | 'confirmed_only' | undefined,
+    absenceChargeMode: (c.absence_charge_mode as 'integral' | 'parcial' | undefined) || 'integral',
+    absenceChargeAmount: c.absence_charge_amount != null ? Number(c.absence_charge_amount) : undefined,
     letterhead: (c.letterhead as string) || undefined, stamp: (c.stamp as string) || undefined,
     email: (c.email as string) || undefined, cnpj: (c.cnpj as string) || undefined,
     phone: (c.phone as string) || undefined, servicesDescription: (c.services_description as string) || undefined,
@@ -594,6 +596,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         schedule_by_day: clinic.scheduleByDay || null, payment_type: clinic.paymentType || null,
         payment_amount: clinic.paymentAmount ?? null, pays_on_absence: clinic.paysOnAbsence ?? true,
         absence_payment_type: clinic.absencePaymentType || 'always',
+        absence_charge_mode: clinic.absenceChargeMode || 'integral',
+        absence_charge_amount: clinic.absenceChargeAmount ?? null,
         letterhead: clinic.letterhead || null, stamp: clinic.stamp || null,
         email: clinic.email || null, cnpj: clinic.cnpj || null, phone: clinic.phone || null,
         services_description: clinic.servicesDescription || null, is_archived: clinic.isArchived || false,
@@ -620,6 +624,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.paymentAmount !== undefined) updateData.payment_amount = updates.paymentAmount ?? null;
       if (updates.paysOnAbsence !== undefined) updateData.pays_on_absence = updates.paysOnAbsence;
       if (updates.absencePaymentType !== undefined) updateData.absence_payment_type = updates.absencePaymentType;
+      if (updates.absenceChargeMode !== undefined) updateData.absence_charge_mode = updates.absenceChargeMode || 'integral';
+      if (updates.absenceChargeAmount !== undefined) updateData.absence_charge_amount = updates.absenceChargeAmount ?? null;
       if (updates.letterhead !== undefined) updateData.letterhead = updates.letterhead || null;
       if (updates.stamp !== undefined) updateData.stamp = updates.stamp || null;
       if (updates.email !== undefined) updateData.email = updates.email || null;
