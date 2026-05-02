@@ -65,7 +65,7 @@ const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sext
 const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function CalendarPage() {
-  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, addEvolution, evolutions, clinicPackages } = useApp();
+  const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
@@ -302,46 +302,23 @@ export default function CalendarPage() {
       notes: baseNotes,
     });
 
-    // 2) Para avulsa/reposição: já cria a evolução com status correto
-    //    (aparece em frequência geral/individual e relatórios)
-    //    🔒 Só cria evolução se a data NÃO for futura (regra: evoluções
-    //    só podem ser registradas até o dia atual). Para agendamentos
-    //    futuros, a evolução será criada quando a sessão acontecer.
-    const todayRef = new Date();
-    const todayStr = `${todayRef.getFullYear()}-${String(todayRef.getMonth() + 1).padStart(2, '0')}-${String(todayRef.getDate()).padStart(2, '0')}`;
-    const isFutureDate = formData.date > todayStr;
-
-    if (isAvulsaOrReposicao && !isFutureDate) {
-      const labelTipo =
-        formData.sessionType === 'reposicao' ? 'Reposição' :
-        formData.sessionType === 'anteposicao' ? 'Anteposição' : 'Sessão Avulsa';
-      const evoText = [linkTag, `${labelTipo} agendada via agenda.`].filter(Boolean).join(' ').trim();
-      await addEvolution({
-        patientId: formData.patientId,
-        clinicId: formData.clinicId,
-        date: formData.date,
-        sessionTime: formData.time,
-        text: evoText,
-        // Anteposição reusa o status 'reposicao' (UI a diferencia pela tag).
-        attendanceStatus: (formData.sessionType === 'reposicao' || formData.sessionType === 'anteposicao')
-          ? 'reposicao'
-          : 'presente',
-      } as any);
-
-      // Marcar a falta original como reposta (best-effort, não bloqueia o fluxo).
-      if (resolvedLinkedAbsenceId) {
-        try {
-          const { data: orig } = await supabase
-            .from('evolutions')
-            .select('id, text')
-            .eq('id', resolvedLinkedAbsenceId)
-            .maybeSingle();
-          if (orig && !/\[reposta_por:/i.test(orig.text || '')) {
-            const newText = `${orig.text || ''} [reposta_por:pendente]`.trim();
-            await supabase.from('evolutions').update({ text: newText }).eq('id', orig.id);
-          }
-        } catch {/* silencioso */}
-      }
+    // 2) Marca a falta vinculada (reposição/anteposição) como "reposta_por:pendente"
+    //    para preservar a rastreabilidade do histórico. A evolução em si NÃO é
+    //    criada agora — ela aparecerá como pendência de evolução (MissingEvolutionsAlert)
+    //    e será registrada pelo terapeuta no momento certo, igual ao agendamento normal.
+    if (resolvedLinkedAbsenceId &&
+        (formData.sessionType === 'reposicao' || formData.sessionType === 'anteposicao')) {
+      try {
+        const { data: orig } = await supabase
+          .from('evolutions')
+          .select('id, text')
+          .eq('id', resolvedLinkedAbsenceId)
+          .maybeSingle();
+        if (orig && !/\[reposta_por:/i.test(orig.text || '')) {
+          const newText = `${orig.text || ''} [reposta_por:pendente]`.trim();
+          await supabase.from('evolutions').update({ text: newText }).eq('id', orig.id);
+        }
+      } catch {/* silencioso */}
     }
 
     // 3) Se cobrar: cria private_appointment (Serviço Avulso) — entra no Financeiro,

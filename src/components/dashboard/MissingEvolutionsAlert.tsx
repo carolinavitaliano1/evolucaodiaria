@@ -91,10 +91,9 @@ export function MissingEvolutionsAlert() {
         candidates.push({ patientId: p.id, name: p.name, startTime, date: dateStr, avatarUrl: p.avatarUrl });
       });
 
-      // 2. One-off appointments cobrados/confirmados (avulsa/reposição/anteposição).
-      //    Só geram pendência se foram efetivamente cobrados — checamos a tag
-      //    [tipo:..] no campo notes E a existência de uma entrada em
-      //    private_appointments para o mesmo paciente/data.
+      // 2. Agendamentos avulsa/reposição/anteposição (criados via agenda).
+      //    Geram pendência de evolução assim que a sessão termina, igual ao
+      //    agendamento regular — independentemente de cobrança.
       const recurringIds = new Set(candidates.filter(c => c.date === dateStr).map(c => c.patientId));
       appointments
         .filter(a => {
@@ -140,29 +139,11 @@ export function MissingEvolutionsAlert() {
 
     const evolSet = new Set((evols || []).map(e => `${e.patient_id}::${e.date}`));
 
-    // Para entradas com tag de tipo, exigir também a confirmação de cobrança
-    // (entrada correspondente em private_appointments para o mesmo paciente/data).
-    const taggedIds = [...new Set(candidates.filter(c => c.kind).map(c => c.patientId))];
-    let chargedSet = new Set<string>();
-    if (taggedIds.length > 0) {
-      const { data: priv } = await supabase
-        .from('private_appointments')
-        .select('patient_id, date, status')
-        .in('patient_id', taggedIds)
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .neq('status', 'cancelado');
-      chargedSet = new Set((priv || []).map(p => `${p.patient_id}::${p.date}`));
-    }
-
     // Deduplicate: one entry per (patientId, date)
     const seen = new Set<string>();
     const result: PendingEntry[] = [];
     for (const c of candidates) {
       const key = `${c.patientId}::${c.date}`;
-      // Para sessões avulsas/reposições/anteposições, só considera pendente se
-      // houve cobrança/confirmação correspondente.
-      if (c.kind && !chargedSet.has(key)) continue;
       if (!evolSet.has(key) && !seen.has(key)) {
         seen.add(key);
         result.push(c);
