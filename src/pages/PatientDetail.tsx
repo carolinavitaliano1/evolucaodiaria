@@ -1574,12 +1574,15 @@ export default function PatientDetail() {
     const evos = getFiscalEvolutions();
     // Use resolved paymentValue (includes package price fallback for monthly/total packages)
     const rawPaymentValue = paymentValue || 0;
-    const STATUS_BILLABLE: Record<string, boolean> = {
-      presente: true, reposicao: true, anteposicao: true,
-      falta_remunerada: true, feriado_remunerado: true, falta_cobrada: true,
-      falta: false, feriado_nao_remunerado: false,
+    const shouldBillEvolution = (e: Evolution) => {
+      if (['presente', 'reposicao', 'anteposicao', 'falta_remunerada', 'feriado_remunerado', 'falta_cobrada'].includes(e.attendanceStatus)) return true;
+      if (e.attendanceStatus !== 'falta') return false;
+      const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
+      if (absenceType === 'never') return false;
+      if (absenceType === 'confirmed_only') return !!e.confirmedAttendance;
+      return true;
     };
-    const billableEvos = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false);
+    const billableEvos = evos.filter(shouldBillEvolution);
     const billableCount = billableEvos.length;
     // Use per-session value for Personalizado packages or dynamic mensal value
     let fiscalPerSession = isPackagePersonalizado ? perSessionValue : rawPaymentValue;
@@ -1595,11 +1598,13 @@ export default function PatientDetail() {
     // o valor fixo de `absenceChargeAmount` em vez do valor cheio da sessão.
     const isParcialAbsenceMode = clinic?.absenceChargeMode === 'parcial';
     const partialAbsenceValue = isParcialAbsenceMode ? Number(clinic?.absenceChargeAmount ?? 0) : 0;
+    const getFiscalEvolutionAmount = (e: Evolution) => {
+      const isChargedAbsence = e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_cobrada' || e.attendanceStatus === 'falta_remunerada';
+      if (isParcialAbsenceMode && isChargedAbsence) return partialAbsenceValue;
+      return fiscalPerSession;
+    };
     const sessionsBilled = billableEvos.reduce((sum, e) => {
-      if (isParcialAbsenceMode && e.attendanceStatus === 'falta_cobrada') {
-        return sum + partialAbsenceValue;
-      }
-      return sum + fiscalPerSession;
+      return sum + getFiscalEvolutionAmount(e);
     }, 0);
     const servicesInRange = patientServices.filter(s => {
       if (!fiscalStartDate || !fiscalEndDate) return false;
@@ -1639,9 +1644,19 @@ export default function PatientDetail() {
         email: clinic.email || undefined,
         phone: clinic.phone || undefined,
       } : undefined,
-      evolutions: evos.map(e => ({
-        id: e.id, date: e.date, attendanceStatus: e.attendanceStatus, text: e.text,
-      })),
+      evolutions: evos.map(e => {
+        const billable = shouldBillEvolution(e);
+        const isChargedAbsence = billable && (e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_cobrada' || e.attendanceStatus === 'falta_remunerada');
+        return {
+          id: e.id,
+          date: e.date,
+          attendanceStatus: e.attendanceStatus,
+          text: e.text,
+          billable,
+          amount: billable ? getFiscalEvolutionAmount(e) : 0,
+          statusLabel: isChargedAbsence && isParcialAbsenceMode ? 'Falta Cobrada (parcial)' : undefined,
+        };
+      }),
       startDate: fiscalStartDate!,
       endDate: fiscalEndDate!,
       stamp: fiscalStamp ? {
