@@ -599,14 +599,15 @@ export default function PatientDetail() {
     if (!user || !patient) return;
     setSavingPaymentRecord(true);
     try {
-      const amount = Number(finRevenue ?? patient.paymentValue ?? 0);
+      const amount = Math.max(0, Number(finRevenue || 0));
+      const settledPaymentDate = paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null;
       if (paymentRecord?.id) {
         await supabase.from('patient_payment_records').update({
           amount,
           paid,
-          payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+          payment_date: settledPaymentDate,
         }).eq('id', paymentRecord.id);
-        setPaymentRecord(prev => prev ? { ...prev, amount, paid, payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null } : prev);
+        setPaymentRecord(prev => prev ? { ...prev, amount, paid, payment_date: settledPaymentDate } : prev);
       } else {
         const { data } = await supabase.from('patient_payment_records').insert({
           user_id: user.id,
@@ -616,10 +617,14 @@ export default function PatientDetail() {
           year: currentYear,
           amount,
           paid,
-          payment_date: paid ? (paymentDate || new Date().toISOString().split('T')[0]) : null,
+          payment_date: settledPaymentDate,
         }).select('id, paid, payment_date, amount').maybeSingle();
         if (data) setPaymentRecord({ id: data.id, paid: data.paid, payment_date: data.payment_date, amount: data.amount });
       }
+      setAllPaidRecords(prev => {
+        const withoutCurrent = prev.filter(r => !(r.month === currentMonth && r.year === currentYear));
+        return paid ? [...withoutCurrent, { amount, payment_date: settledPaymentDate, month: currentMonth, year: currentYear }] : withoutCurrent;
+      });
     } finally {
       setSavingPaymentRecord(false);
     }
