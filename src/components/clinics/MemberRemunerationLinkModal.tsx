@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, DollarSign, User, Clock } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
 interface Plan {
@@ -37,8 +35,6 @@ export function MemberRemunerationLinkModal({ open, onOpenChange, memberId, memb
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [slots, setSlots] = useState<SlotRow[]>([]);
-  const [edits, setEdits] = useState<Record<string, string>>({}); // slot_id -> plan_id
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open || !memberId) return;
@@ -75,32 +71,10 @@ export function MemberRemunerationLinkModal({ open, onOpenChange, memberId, memb
         remuneration_plan_id: r.remuneration_plan_id || null,
       }));
       setSlots(mapped);
-      const initial: Record<string, string> = {};
-      mapped.forEach(s => { initial[s.id] = s.remuneration_plan_id || '__default__'; });
-      setEdits(initial);
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [open, memberId, clinicId]);
-
-  async function save() {
-    setSaving(true);
-    try {
-      const updates = slots.filter(s => (edits[s.id] || '__default__') !== (s.remuneration_plan_id || '__default__'));
-      for (const s of updates) {
-        const v = edits[s.id];
-        await supabase.from('patient_schedule_slots' as any).update({
-          remuneration_plan_id: v === '__default__' ? null : v,
-        }).eq('id', s.id);
-      }
-      toast.success('Vínculos salvos');
-      onOpenChange(false);
-    } catch (err: any) {
-      toast.error('Erro ao salvar');
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -111,7 +85,7 @@ export function MemberRemunerationLinkModal({ open, onOpenChange, memberId, memb
             Remuneração — {memberName}
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Vincule um plano de remuneração específico para cada paciente agendado. Quando "padrão", será usado o plano marcado como padrão do profissional.
+            Visualização dos planos de remuneração vinculados a cada paciente agendado. Para editar vínculos ou planos, acesse "Gerenciar acesso → Profissional".
           </p>
         </DialogHeader>
 
@@ -123,7 +97,7 @@ export function MemberRemunerationLinkModal({ open, onOpenChange, memberId, memb
           <div className="space-y-4">
             {plans.length === 0 && (
               <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground">
-                Este profissional ainda não possui planos de remuneração cadastrados. Adicione planos em "Gerenciar acesso → Profissional" antes de vincular.
+                Este profissional ainda não possui planos de remuneração cadastrados. Adicione planos em "Gerenciar acesso → Profissional".
               </div>
             )}
             {slots.length === 0 ? (
@@ -158,25 +132,20 @@ export function MemberRemunerationLinkModal({ open, onOpenChange, memberId, memb
                           </span>
                         </td>
                         <td className="p-2.5">
-                          <Select
-                            value={edits[s.id] || '__default__'}
-                            onValueChange={(v) => setEdits(prev => ({ ...prev, [s.id]: v }))}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__default__">
-                                Usar plano padrão
-                              </SelectItem>
-                              {plans.map(p => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.name} · R$ {Number(p.remuneration_value).toFixed(2).replace('.', ',')}
-                                  {p.is_default ? ' (padrão)' : ''}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {(() => {
+                            const linked = plans.find(p => p.id === s.remuneration_plan_id);
+                            const def = plans.find(p => p.is_default);
+                            const shown = linked || def;
+                            if (!shown) {
+                              return <span className="text-xs text-muted-foreground italic">Sem plano vinculado</span>;
+                            }
+                            return (
+                              <span className="text-xs text-foreground/90">
+                                {shown.name} · R$ {Number(shown.remuneration_value).toFixed(2).replace('.', ',')}
+                                {!linked && def ? ' (padrão)' : ''}
+                              </span>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}
@@ -197,11 +166,7 @@ export function MemberRemunerationLinkModal({ open, onOpenChange, memberId, memb
             )}
 
             <div className="flex justify-end gap-2 pt-2 border-t">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button onClick={save} disabled={saving || slots.length === 0} className="gap-2">
-                {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Salvar vínculos
-              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
             </div>
           </div>
         )}
