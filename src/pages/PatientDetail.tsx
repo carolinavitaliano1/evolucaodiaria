@@ -3363,6 +3363,11 @@ export default function PatientDetail() {
                               }`))
                     : 'Valor não configurado'}
                 </p>
+                {paymentValue > 0 && finRevenue !== paymentValue && (
+                  <p className="text-xs font-semibold text-success mt-1">
+                    Faturado no mês: R$ {finRevenue.toFixed(2)}
+                  </p>
+                )}
               </div>
               <Switch
                 checked={paymentRecord?.paid || false}
