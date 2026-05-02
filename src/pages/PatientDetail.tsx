@@ -835,6 +835,77 @@ export default function PatientDetail() {
     : paymentValue;
   const totalBillableCount = totalPresent + totalReposicao + totalPaidAbsent + totalFeriadoRem;
 
+  // ============================================================
+  // 📦 Pacote PERSONALIZADO — controle de renovação
+  // ============================================================
+  // Conta quantas sessões "billable" foram usadas DESDE que o pacote
+  // atual foi atribuído (`packageAssignedAt`). Se o paciente não tem
+  // a data, considera todas as evoluções billable.
+  const personalizadoSessionsUsed = useMemo(() => {
+    if (!isPackagePersonalizado) return 0;
+    const assignedAt = (patient as any)?.packageAssignedAt
+      ? new Date((patient as any).packageAssignedAt as string)
+      : null;
+    return patientEvolutions.filter(e => {
+      if (!['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus)) return false;
+      if (!assignedAt) return true;
+      const evoDate = new Date(e.date + 'T12:00:00');
+      return evoDate >= new Date(assignedAt.toISOString().slice(0, 10) + 'T00:00:00');
+    }).length;
+  }, [isPackagePersonalizado, patient, patientEvolutions]);
+
+  const personalizadoLimit = isPackagePersonalizado ? (patientPackage!.sessionLimit || 0) : 0;
+  const personalizadoExhausted = isPackagePersonalizado && personalizadoSessionsUsed >= personalizadoLimit;
+  const renewalDecision = (patient as any)?.packageRenewalDecision as ('renewed' | 'declined' | undefined);
+  // Mostra o banner só quando: pacote personalizado terminou e ainda não decidiu.
+  const showRenewalPrompt = personalizadoExhausted && !renewalDecision;
+  // Trava o cadastro/edição de evoluções quando o paciente optou por NÃO renovar.
+  const evolutionLocked = renewalDecision === 'declined';
+
+  const handleRenewPackage = async () => {
+    if (!patient) return;
+    try {
+      await updatePatient(patient.id, {
+        packageAssignedAt: new Date().toISOString(),
+        packageRenewalDecision: undefined,
+        packageDecisionAt: new Date().toISOString(),
+      } as any);
+      toast.success('Pacote renovado! Um novo ciclo foi iniciado.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao renovar pacote');
+    }
+  };
+
+  const handleDeclineRenewal = async () => {
+    if (!patient) return;
+    try {
+      await updatePatient(patient.id, {
+        packageRenewalDecision: 'declined',
+        packageDecisionAt: new Date().toISOString(),
+      } as any);
+      toast.success('Pacote encerrado. As sessões foram travadas.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao registrar decisão');
+    }
+  };
+
+  const handleReactivatePackage = async () => {
+    if (!patient) return;
+    try {
+      await updatePatient(patient.id, {
+        packageAssignedAt: new Date().toISOString(),
+        packageRenewalDecision: undefined,
+        packageDecisionAt: new Date().toISOString(),
+      } as any);
+      toast.success('Pacote reativado!');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao reativar pacote');
+    }
+  };
+
   // Helper: compute group revenue from a set of billable evolutions
   const computeGroupRevenue = (evos: typeof patientEvolutions) => {
     if (!patient) return 0;
