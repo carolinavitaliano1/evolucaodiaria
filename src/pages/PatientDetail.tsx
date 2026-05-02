@@ -3346,8 +3346,8 @@ export default function PatientDetail() {
                   {paymentRecord?.paid ? '✅ Pago' : '⏳ Pendente'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {patient.paymentValue
-                    ? `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? ' por sessão' : '/mês'}`
+                  {paymentValue > 0
+                    ? `R$ ${paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? ' por sessão' : '/mês'}`
                     : 'Valor não configurado'}
                 </p>
               </div>
