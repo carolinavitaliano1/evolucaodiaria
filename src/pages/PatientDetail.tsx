@@ -546,6 +546,24 @@ export default function PatientDetail() {
       });
   }, [patient?.id]);
 
+  // Load ALL paid payment records for this patient (lifetime) for total revenue calc
+  useEffect(() => {
+    if (!patient?.id) return;
+    supabase
+      .from('patient_payment_records')
+      .select('amount, payment_date, month, year, paid')
+      .eq('patient_id', patient.id)
+      .eq('paid', true)
+      .then(({ data }) => {
+        setAllPaidRecords(((data || []) as any[]).map(r => ({
+          amount: Number(r.amount || 0),
+          payment_date: r.payment_date,
+          month: r.month,
+          year: r.year,
+        })));
+      });
+  }, [patient?.id]);
+
 
   useEffect(() => {
     if (!patient?.id || !user) return;
