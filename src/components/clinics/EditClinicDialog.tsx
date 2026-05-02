@@ -112,9 +112,15 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         weekdays: formData.weekdays,
         scheduleTime: firstDayTime || undefined,
         scheduleByDay: formData.scheduleByDay,
-        paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
-        paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
-        discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : 0,
+        paymentType: formData.type === 'terceirizada'
+          ? (formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined)
+          : undefined,
+        paymentAmount: formData.type === 'terceirizada' && formData.paymentAmount
+          ? parseFloat(formData.paymentAmount)
+          : undefined,
+        discountPercentage: formData.type === 'terceirizada' && formData.discountPercentage
+          ? parseFloat(formData.discountPercentage)
+          : 0,
         paysOnAbsence: formData.absencePaymentType !== 'never',
         absencePaymentType: formData.absencePaymentType,
         letterhead: formData.letterhead || undefined,
