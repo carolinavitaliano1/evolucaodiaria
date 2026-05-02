@@ -920,7 +920,7 @@ export default function PatientDetail() {
       await logRenewalDecision('renewed');
       await updatePatient(patient.id, {
         packageAssignedAt: new Date().toISOString(),
-        packageRenewalDecision: undefined,
+        packageRenewalDecision: null,
         packageDecisionAt: new Date().toISOString(),
       } as any);
       toast.success('Pacote renovado! Um novo ciclo foi iniciado.');
@@ -951,7 +951,7 @@ export default function PatientDetail() {
       await logRenewalDecision('renewed');
       await updatePatient(patient.id, {
         packageAssignedAt: new Date().toISOString(),
-        packageRenewalDecision: undefined,
+        packageRenewalDecision: null,
         packageDecisionAt: new Date().toISOString(),
       } as any);
       toast.success('Pacote renovado! Um novo ciclo foi iniciado.');
