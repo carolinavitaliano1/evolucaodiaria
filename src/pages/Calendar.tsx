@@ -416,6 +416,47 @@ export default function CalendarPage() {
     setPopupItem(null);
   };
 
+  // --- Edit/Delete handlers para AGENDAMENTOS (avulsa/reposição/anteposição) ---
+  const handleEditAppointment = () => {
+    const a = popupItem?.rawAppointment;
+    if (!a) return;
+    const kind = (popupItem?.kind || 'avulsa') as 'avulsa' | 'reposicao' | 'anteposicao';
+    // Extrai um possível linkedAbsenceId das tags [reposicao:ID] ou [anteposicao:ID]
+    const linkMatch = (a.notes || '').match(/\[(?:reposicao|anteposicao):([^\]]+)\]/);
+    const cleanNotes = (a.notes || '')
+      .replace(/\[tipo:[^\]]+\]/g, '')
+      .replace(/\[(?:reposicao|anteposicao):[^\]]+\]/g, '')
+      .trim();
+    setFormData({
+      clinicId: a.clinicId,
+      patientId: a.patientId,
+      date: a.date,
+      time: (a.time || '').slice(0, 5),
+      notes: cleanNotes,
+      sessionType: kind,
+      linkedAbsenceId: linkMatch ? linkMatch[1] : '',
+      chargeEnabled: false,
+      chargeValue: '',
+    });
+    setEditingApptId(a.id);
+    setIsApptDialogOpen(true);
+    setPopupItem(null);
+  };
+
+  const handleDeleteAppointment = async () => {
+    const a = popupItem?.rawAppointment;
+    if (!a) return;
+    if (!confirm('Excluir este agendamento?')) return;
+    try {
+      await deleteAppointment(a.id);
+      toast.success('Agendamento excluído');
+      setPopupItem(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao excluir agendamento');
+    }
+  };
+
   // Open day detail (for "+N mais")
   const openDayDetail = (day: Date, e: React.MouseEvent) => {
     e.stopPropagation();
