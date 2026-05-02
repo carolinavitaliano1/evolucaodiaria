@@ -2270,7 +2270,7 @@ export default function PatientDetail() {
 
               {/* Quick info row */}
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {patient.paymentValue && (() => {
+                {(patient.paymentValue || (patientPackage?.price ?? 0) > 0) && (() => {
                   // Dynamic proration for header display (current month)
                   const now = new Date();
                   if (isPackageMensal && isFixoMensal) {
@@ -2280,7 +2280,7 @@ export default function PatientDetail() {
                       return (
                         <span className="flex items-center gap-1 flex-wrap">
                           <DollarSign className="w-3.5 h-3.5" />
-                          <span>R$ {patient.paymentValue.toFixed(2)}/mês</span>
+                          <span>R$ {paymentValue.toFixed(2)}/mês</span>
                           <span className="text-xs text-primary/80">
                             (Mês de {headerDynamic.occurrences} semanas: R$ {headerDynamic.perSession.toFixed(2)}/sessão)
                           </span>
@@ -2293,7 +2293,7 @@ export default function PatientDetail() {
                       <DollarSign className="w-3.5 h-3.5" />
                       {isPackagePersonalizado
                         ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de Atendimento de ${patientPackage!.sessionLimit})`
-                        : `R$ ${patient.paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
+                        : `R$ ${paymentValue.toFixed(2)}${patient.paymentType === 'sessao' ? '/sessão' : '/mês'}`
                       }
                     </span>
                   );
