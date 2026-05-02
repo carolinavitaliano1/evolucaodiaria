@@ -45,6 +45,8 @@ interface Props {
   required?: boolean;
   /** Quando informado, ignora esta evolução ao calcular quais slots já foram evoluídos (uso na edição). */
   excludeEvolutionId?: string;
+  /** Tipo da clínica do paciente. Em 'propria' (Consultório) o seletor não é exibido. */
+  clinicType?: 'propria' | 'terceirizada' | 'clinica' | null;
 }
 
 /**
@@ -54,8 +56,11 @@ interface Props {
  */
 export function SessionSlotSelector({
   patientId, date, memberId, scheduleSlotId, sessionTime, onChange,
-  presetSlots, className, required, excludeEvolutionId,
+  presetSlots, className, required, excludeEvolutionId, clinicType,
 }: Props) {
+  // Em consultórios próprios o horário fixo não se aplica — não renderiza o seletor.
+  if (clinicType === 'propria') return null;
+
   const hookData = usePatientScheduleSlots(presetSlots ? undefined : patientId);
   const slots = presetSlots ?? hookData.slots;
   const loading = presetSlots ? false : hookData.loading;
