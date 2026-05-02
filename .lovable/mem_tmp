@@ -1,0 +1,11 @@
+---
+name: Absence Charge Mode
+description: Contratante absence charge: integral (full session value) or parcial (fixed R$ amount), affects both clinic revenue and therapist remuneration
+type: feature
+---
+Contratante (clinics.type='terceirizada') has fields `absence_charge_mode` ('integral'|'parcial') and `absence_charge_amount` (numeric).
+- Only relevant when `absencePaymentType !== 'never'`.
+- 'integral' (default): full session value for charged absences (falta_remunerada or falta when shouldChargeAbsence is true).
+- 'parcial': fixed R$ amount substitutes the session value; clinic retains the difference.
+- Applied in BOTH `calculatePatientMonthlyRevenue` (clinic revenue) and `calculateMemberRemunerationByPlans` (therapist remuneration, por_sessao only). Helper: `partialAbsenceAdjustment` in financialHelpers.ts.
+- Group sessions always use the group value, never the partial amount.
