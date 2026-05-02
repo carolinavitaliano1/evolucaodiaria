@@ -114,7 +114,7 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
             if (!memberPaymentMap[mem.group_id]) memberPaymentMap[mem.group_id] = {};
             memberPaymentMap[mem.group_id][mem.patient_id] = {
               isPaying: mem.is_paying ?? true,
-              memberPaymentValue: mem.member_payment_value ?? null,
+              value: mem.member_payment_value ?? null,
             };
           });
         }
