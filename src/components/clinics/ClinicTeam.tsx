@@ -265,6 +265,16 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [newPlanValue, setNewPlanValue] = useState('');
   const [linkedPackageId, setLinkedPackageId] = useState<string>('');
   const [clinicPackagesList, setClinicPackagesList] = useState<Array<{ id: string; name: string; price: number; package_type: string }>>([]);
+  // Commissions linked to this member from clinic_packages (read-only summary)
+  const [memberPkgCommissions, setMemberPkgCommissions] = useState<Array<{
+    id: string;
+    package_id: string;
+    package_name: string;
+    package_price: number;
+    package_type: string;
+    commission_type: string;
+    commission_value: number;
+  }>>([]);
 
   // Remove confirm
   const [removeMemberId, setRemoveMemberId] = useState<string | null>(null);
