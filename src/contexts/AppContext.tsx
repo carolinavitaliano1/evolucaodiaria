@@ -704,6 +704,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // === Evolution CRUD ===
   const addEvolution = useCallback(async (evolution: Omit<Evolution, 'id' | 'createdAt'>) => {
     if (!user) return;
+    // 🔒 Bloqueia evoluções com data futura (somente hoje ou dias anteriores).
+    if (evolution.date) {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      if (evolution.date > todayStr) {
+        toast.error('Não é permitido registrar evoluções com data futura.');
+        return;
+      }
+    }
     try {
       const { data, error } = await supabase.from('evolutions').insert({
         user_id: user.id, patient_id: evolution.patientId, clinic_id: evolution.clinicId,
@@ -745,6 +754,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateEvolution = useCallback(async (id: string, updates: Partial<Evolution>) => {
     if (!user) return;
+    // 🔒 Bloqueia alterar a data para um dia futuro.
+    if (updates.date) {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      if (updates.date > todayStr) {
+        toast.error('Não é permitido registrar evoluções com data futura.');
+        return;
+      }
+    }
     try {
       const updateData: Record<string, unknown> = {};
       if (updates.date !== undefined) updateData.date = updates.date;
