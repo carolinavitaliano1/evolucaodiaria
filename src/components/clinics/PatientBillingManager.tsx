@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { calculatePatientMonthlyRevenue, EvolutionLike } from '@/utils/financialHelpers';
+import type { GroupBillingMap, GroupMemberPaymentMap } from '@/utils/groupFinancial';
 
 interface PatientBillingManagerProps {
   clinicId: string;
@@ -27,7 +28,7 @@ interface PaymentRecord {
 
 export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) {
   const { user } = useAuth();
-  const { patients, clinics, evolutions, clinicPackages, therapeuticGroups } = useApp();
+  const { patients, clinics, evolutions, clinicPackages } = useApp();
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -86,12 +87,40 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
         return true;
       });
 
-      // Build group billing map (price per group)
-      const groupBillingMap: Record<string, number> = {};
-      const memberPaymentMap: Record<string, Record<string, number>> = {};
-      (therapeuticGroups || []).forEach(g => {
-        groupBillingMap[g.id] = Number((g as any).price ?? 0);
-      });
+      // Carrega configuração de grupos da clínica para refletir cobranças de grupo
+      const groupBillingMap: GroupBillingMap = {};
+      const memberPaymentMap: GroupMemberPaymentMap = {};
+      try {
+        const { data: groupsData } = await supabase
+          .from('therapeutic_groups')
+          .select('id, default_price, financial_enabled, payment_type, package_id')
+          .eq('clinic_id', clinicId);
+        (groupsData || []).forEach((g: any) => {
+          groupBillingMap[g.id] = {
+            defaultPrice: g.default_price ?? null,
+            paymentType: g.payment_type ?? null,
+            packageId: g.package_id ?? null,
+            financialEnabled: g.financial_enabled ?? false,
+          };
+        });
+        if ((groupsData || []).length > 0) {
+          const groupIds = (groupsData || []).map((g: any) => g.id);
+          const { data: membersData } = await supabase
+            .from('therapeutic_group_members')
+            .select('group_id, patient_id, is_paying, member_payment_value')
+            .in('group_id', groupIds)
+            .eq('status', 'active');
+          (membersData || []).forEach((mem: any) => {
+            if (!memberPaymentMap[mem.group_id]) memberPaymentMap[mem.group_id] = {};
+            memberPaymentMap[mem.group_id][mem.patient_id] = {
+              isPaying: mem.is_paying ?? true,
+              memberPaymentValue: mem.member_payment_value ?? null,
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('Falha ao carregar config de grupos para cobranças', e);
+      }
 
       // Map existing records and identify missing ones
       const records: PaymentRecord[] = eligible
