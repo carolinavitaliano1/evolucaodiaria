@@ -166,6 +166,28 @@ export async function generateClinicInternalStatementPdf(
   const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null; absence_payment_type?: string | null; pays_on_absence?: boolean | null; absence_charge_mode?: string | null; absence_charge_amount?: number | null } | null =
     (clinicRes.data as any) ?? null;
 
+  const shouldBillEvolution = (e: EvolutionRow) => {
+    if (COUNTS_AS_BILLABLE(e.attendance_status)) return true;
+    if (e.attendance_status !== 'falta') return false;
+    const absenceType = clinicPayInfo?.absence_payment_type || (clinicPayInfo?.pays_on_absence === false ? 'never' : 'always');
+    if (absenceType === 'never') return false;
+    if (absenceType === 'confirmed_only') return !!e.confirmed_attendance;
+    return true;
+  };
+
+  const isPartialChargedAbsence = (e: EvolutionRow) =>
+    clinicPayInfo?.absence_charge_mode === 'parcial' &&
+    shouldBillEvolution(e) &&
+    (e.attendance_status === 'falta' || e.attendance_status === 'falta_cobrada' || e.attendance_status === 'falta_remunerada');
+
+  const getStatusLabel = (e: EvolutionRow) => {
+    if (e.attendance_status === 'falta' && shouldBillEvolution(e)) {
+      return isPartialChargedAbsence(e) ? 'Falta Cobrada (parcial)' : 'Falta Cobrada';
+    }
+    if (isPartialChargedAbsence(e)) return 'Falta Cobrada (parcial)';
+    return STATUS_LABEL[e.attendance_status] || e.attendance_status;
+  };
+
   const isClinicFixedSalary =
     clinicPayInfo?.payment_type === 'fixo_mensal' ||
     clinicPayInfo?.payment_type === 'fixo' ||
@@ -356,7 +378,7 @@ export async function generateClinicInternalStatementPdf(
           date: e.date,
           type: 'Sessão',
           description: 'Atendimento (salário fixo da clínica)',
-          status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
+          status: getStatusLabel(e),
           amount: 0,
           paid: false,
         });
@@ -404,15 +426,13 @@ export async function generateClinicInternalStatementPdf(
       });
 
       const dynInfo = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
-      const totalSessionsInMonth = dynInfo.occurrences || pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status)).length || 1;
+      const totalSessionsInMonth = dynInfo.occurrences || pEvos.filter(shouldBillEvolution).length || 1;
 
       let billableCounter = 0;
       pEvos.forEach(e => {
-        const isBillable = COUNTS_AS_BILLABLE(e.attendance_status);
+        const isBillable = shouldBillEvolution(e);
         if (isBillable) billableCounter++;
-        const isParcialAbsence =
-          clinicPayInfo?.absence_charge_mode === 'parcial' &&
-          e.attendance_status === 'falta_cobrada';
+        const isParcialAbsence = isPartialChargedAbsence(e);
         const rowAmount = isBillable
           ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
           : 0;
@@ -422,7 +442,7 @@ export async function generateClinicInternalStatementPdf(
           description: isBillable
             ? (isParcialAbsence ? 'Falta cobrada (parcial)' : 'Atendimento')
             : 'Sessão sem cobrança',
-          status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
+          status: getStatusLabel(e),
           amount: rowAmount,
           paid: !!pPay?.paid,
           sessionIndex: isBillable ? billableCounter : undefined,
@@ -446,10 +466,8 @@ export async function generateClinicInternalStatementPdf(
     } else {
       // Per session / personalizado / avulso: each session has its own value
       pEvos.forEach(e => {
-        const billable = COUNTS_AS_BILLABLE(e.attendance_status);
-        const isParcialAbsence =
-          clinicPayInfo?.absence_charge_mode === 'parcial' &&
-          e.attendance_status === 'falta_cobrada';
+        const billable = shouldBillEvolution(e);
+        const isParcialAbsence = isPartialChargedAbsence(e);
         const amount = billable
           ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
           : 0;
@@ -458,7 +476,7 @@ export async function generateClinicInternalStatementPdf(
           date: e.date,
           type: 'Sessão',
           description: isParcialAbsence ? 'Falta cobrada (parcial)' : 'Atendimento clínico',
-          status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
+          status: getStatusLabel(e),
           amount,
           paid: !!pPay?.paid,
         });
@@ -536,7 +554,7 @@ export async function generateClinicInternalStatementPdf(
     if (clinicPayInfo?.payment_type === 'fixo_diario' || clinicPayInfo?.payment_type === 'fixo_dia') {
       const billableDays = new Set<string>();
       evolutions.forEach(e => {
-        if (COUNTS_AS_BILLABLE(e.attendance_status)) billableDays.add(e.date);
+        if (shouldBillEvolution(e)) billableDays.add(e.date);
       });
       clinicFixedRevenue = Number(clinicPayInfo?.payment_amount || 0) * billableDays.size;
     } else {
