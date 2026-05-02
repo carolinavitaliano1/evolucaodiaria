@@ -388,7 +388,8 @@ export async function generateClinicInternalStatementPdf(
           absencePaymentType: clinicPayInfo?.absence_payment_type,
           paysOnAbsence: clinicPayInfo?.pays_on_absence,
         },
-        month,
+        // calculatePatientMonthlyRevenue espera month 1-indexed
+        month: month + 1,
         year,
         packages: packages.map(pk => ({
           id: pk.id,
