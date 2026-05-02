@@ -588,63 +588,9 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSave, clinicP
           <div className="border-t pt-4">
             <Label className="text-sm font-medium">Financeiro</Label>
             <div className="space-y-3 mt-2">
-              {!isClinicFixedMonthly && (
-                <div>
-                  <Label className="text-xs">Pacotes de Atendimento</Label>
-                  <p className="text-[11px] text-muted-foreground mb-2">
-                    Vincule um ou mais pacotes ao paciente. Você pode atribuir um pacote diferente para cada profissional (ex.: Psicologia e Fonoaudiologia).
-                  </p>
-                  <PatientPackagesManager
-                    patientId={patient.id}
-                    clinicId={patient.clinicId}
-                    clinicPackages={clinicPackages}
-                    organizationId={clinicOrgId}
-                    disabled={isReadOnly}
-                    patientWeekdays={
-                      formData.weekdays && formData.weekdays.length > 0
-                        ? formData.weekdays
-                        : Object.keys(formData.scheduleByDay || {})
-                    }
-                  />
-                </div>
-              )}
-
-              {isClinicFixedMonthly ? (
-                <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-                  💼 Esta clínica utiliza <strong className="text-foreground">remuneração fixa mensal</strong>
-                  {typeof clinicPaymentAmount === 'number' && clinicPaymentAmount > 0 && (
-                    <> de <strong className="text-foreground">R$ {clinicPaymentAmount.toFixed(2)}</strong></>
-                  )}
-                  . O valor não depende do número de sessões deste paciente, por isso não é necessário definir tipo ou valor de pagamento individual.
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Tipo</Label>
-                    <Select
-                      value={formData.paymentType}
-                      onValueChange={(v) => setFormData({ ...formData, paymentType: v as any })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sessao">Por Sessão</SelectItem>
-                        <SelectItem value="fixo">Fixo Mensal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Valor (R$)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.paymentValue}
-                      onChange={(e) => setFormData({ ...formData, paymentValue: e.target.value })}
-                    />
-                  </div>
-                </div>
-              )}
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                💼 Os valores e pacotes deste paciente são gerenciados diretamente no <strong className="text-foreground">Financeiro da clínica</strong> (aba Pacotes de Atendimento).
+              </div>
 
               <div>
                 <Label className="text-xs flex items-center gap-1">
