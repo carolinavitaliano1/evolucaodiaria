@@ -24,6 +24,7 @@ interface HealthPlan {
   phone: string | null;
   reimbursement_value: number;
   reimbursement_type: string;
+  passthrough_value: number;
   notes: string | null;
   is_active: boolean;
 }
@@ -37,7 +38,7 @@ interface PatientLink {
   health_plan_authorization_expires_at: string | null;
 }
 
-const empty = { name: '', ans_registry: '', phone: '', reimbursement_value: 0, reimbursement_type: 'por_sessao', notes: '', is_active: true };
+const empty = { name: '', ans_registry: '', phone: '', reimbursement_value: 0, passthrough_value: 0, reimbursement_type: 'por_sessao', notes: '', is_active: true };
 
 export function ClinicHealthPlans({ clinicId }: Props) {
   const { user } = useAuth();
@@ -76,7 +77,7 @@ export function ClinicHealthPlans({ clinicId }: Props) {
   const exportCSV = (singlePlan?: HealthPlan) => {
     const list = singlePlan ? [singlePlan] : plans;
     const rows: string[] = [];
-    rows.push(['Convênio', 'ANS', 'Telefone', 'Reembolso', 'Tipo', 'Status', 'Paciente', 'Carteirinha', 'Sessões Aut.', 'Validade'].join(';'));
+    rows.push(['Convênio', 'ANS', 'Telefone', 'Reembolso', 'Repasse', 'Tipo', 'Status', 'Paciente', 'Carteirinha', 'Sessões Aut.', 'Validade'].join(';'));
     list.forEach(pl => {
       const linked = patients.filter(p => p.health_plan_id === pl.id);
       const base = [
@@ -84,6 +85,7 @@ export function ClinicHealthPlans({ clinicId }: Props) {
         pl.ans_registry || '',
         pl.phone || '',
         Number(pl.reimbursement_value || 0).toFixed(2).replace('.', ','),
+        Number(pl.passthrough_value || 0).toFixed(2).replace('.', ','),
         typeLabel(pl.reimbursement_type),
         pl.is_active ? 'Ativo' : 'Inativo',
       ];
@@ -150,6 +152,7 @@ export function ClinicHealthPlans({ clinicId }: Props) {
       if (pl.ans_registry) info.push(`ANS: ${pl.ans_registry}`);
       if (pl.phone) info.push(`Tel: ${pl.phone}`);
       if (Number(pl.reimbursement_value) > 0) info.push(`R$ ${Number(pl.reimbursement_value).toFixed(2)}/${typeLabel(pl.reimbursement_type)}`);
+      if (Number(pl.passthrough_value) > 0) info.push(`Repasse R$ ${Number(pl.passthrough_value).toFixed(2)}/${typeLabel(pl.reimbursement_type)}`);
       info.push(pl.is_active ? 'Ativo' : 'Inativo');
       doc.setTextColor(80);
       doc.text(info.join('  •  '), 12, y);
@@ -204,6 +207,7 @@ export function ClinicHealthPlans({ clinicId }: Props) {
     setForm({
       name: p.name, ans_registry: p.ans_registry || '', phone: p.phone || '',
       reimbursement_value: Number(p.reimbursement_value) || 0,
+      passthrough_value: Number(p.passthrough_value) || 0,
       reimbursement_type: p.reimbursement_type || 'por_sessao',
       notes: p.notes || '', is_active: p.is_active,
     });
@@ -293,6 +297,15 @@ export function ClinicHealthPlans({ clinicId }: Props) {
                 </div>
               </div>
               <div>
+                <Label>Valor de repasse</Label>
+                <Input type="number" step="0.01" value={form.passthrough_value}
+                  onChange={e => setForm({ ...form, passthrough_value: parseFloat(e.target.value) || 0 })}
+                  placeholder="0,00" />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Valor que o convênio efetivamente repassa para a clínica/profissional, na mesma referência do tipo selecionado acima.
+                </p>
+              </div>
+              <div>
                 <Label>Observações</Label>
                 <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Procedimentos, prazos, particularidades..." />
               </div>
@@ -334,6 +347,11 @@ export function ClinicHealthPlans({ clinicId }: Props) {
                   {Number(p.reimbursement_value) > 0 && (
                     <Badge variant="secondary" className="font-medium">
                       R$ {Number(p.reimbursement_value).toFixed(2)} / {p.reimbursement_type === 'mensal' ? 'mês' : p.reimbursement_type === 'pacote' ? 'pacote' : 'sessão'}
+                    </Badge>
+                  )}
+                  {Number(p.passthrough_value) > 0 && (
+                    <Badge variant="outline" className="font-medium border-primary/40 text-primary">
+                      Repasse R$ {Number(p.passthrough_value).toFixed(2)} / {p.reimbursement_type === 'mensal' ? 'mês' : p.reimbursement_type === 'pacote' ? 'pacote' : 'sessão'}
                     </Badge>
                   )}
                   {p.phone && (

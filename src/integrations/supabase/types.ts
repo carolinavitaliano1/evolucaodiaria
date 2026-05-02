@@ -1160,6 +1160,7 @@ export type Database = {
           is_active: boolean
           name: string
           notes: string | null
+          passthrough_value: number
           phone: string | null
           reimbursement_type: string | null
           reimbursement_value: number | null
@@ -1174,6 +1175,7 @@ export type Database = {
           is_active?: boolean
           name: string
           notes?: string | null
+          passthrough_value?: number
           phone?: string | null
           reimbursement_type?: string | null
           reimbursement_value?: number | null
@@ -1188,6 +1190,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           notes?: string | null
+          passthrough_value?: number
           phone?: string | null
           reimbursement_type?: string | null
           reimbursement_value?: number | null
