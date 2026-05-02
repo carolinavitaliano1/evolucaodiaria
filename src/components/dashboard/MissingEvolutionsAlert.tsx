@@ -33,12 +33,13 @@ function dayLabel(dateStr: string): string {
 }
 
 export function MissingEvolutionsAlert() {
-  const { patients, appointments } = useApp();
+  const { patients } = useApp();
   const { user } = useAuth();
   const { isDateBlocked, loading: blocksLoading } = useCalendarBlocks();
   const navigate = useNavigate();
   const [missing, setMissing] = useState<PendingEntry[]>([]);
   const [computed, setComputed] = useState(false);
+  const [extraAppts, setExtraAppts] = useState<Array<{ patientId: string; date: string; time: string; notes: string | null }>>([]);
 
   const toMin = (t: string) => {
     const [h, m] = t.split(':').map(Number);
@@ -52,7 +53,36 @@ export function MissingEvolutionsAlert() {
     if (blocksLoading) return;
     computeMissing();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, patients, appointments, isDateBlocked, blocksLoading]);
+  }, [user, patients, extraAppts, isDateBlocked, blocksLoading]);
+
+  // Carrega agendamentos avulsa/reposição/anteposição dos últimos DAYS_BACK dias
+  // diretamente do banco — eles não estão disponíveis globalmente no contexto
+  // (só são carregados ao abrir a página da clínica).
+  useEffect(() => {
+    if (!user || patients.length === 0) return;
+    const now = new Date();
+    const startDate = toLocalDateString(subDays(now, DAYS_BACK));
+    const endDate = toLocalDateString(now);
+    const clinicIds = [...new Set(patients.map(p => p.clinicId).filter(Boolean))];
+    if (clinicIds.length === 0) return;
+    (async () => {
+      const { data } = await supabase
+        .from('appointments')
+        .select('patient_id, date, time, notes')
+        .in('clinic_id', clinicIds)
+        .gte('date', startDate)
+        .lte('date', endDate);
+      const filtered = (data || [])
+        .filter(a => getSessionKind(a.notes as string | null) !== 'regular')
+        .map(a => ({
+          patientId: a.patient_id as string,
+          date: a.date as string,
+          time: (a.time as string) || '',
+          notes: (a.notes as string) || null,
+        }));
+      setExtraAppts(filtered);
+    })();
+  }, [user, patients]);
 
   async function computeMissing() {
     const now = new Date();
@@ -95,7 +125,7 @@ export function MissingEvolutionsAlert() {
       //    Geram pendência de evolução assim que a sessão termina, igual ao
       //    agendamento regular — independentemente de cobrança.
       const recurringIds = new Set(candidates.filter(c => c.date === dateStr).map(c => c.patientId));
-      appointments
+      extraAppts
         .filter(a => {
           if (a.date !== dateStr) return false;
           if (recurringIds.has(a.patientId)) return false;
