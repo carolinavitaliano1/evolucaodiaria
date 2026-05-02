@@ -89,6 +89,11 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
   };
 
   const handleSave = () => {
+    const today = new Date().toISOString().split('T')[0];
+    if (date > today) {
+      toast.error('Não é permitido registrar evoluções com data futura.');
+      return;
+    }
     const selectedTemplate = clinicTemplates.find(t => t.id === selectedTemplateId);
     let finalText = text;
 
@@ -136,7 +141,12 @@ export function EditEvolutionDialog({ evolution, open, onOpenChange, onSave, sho
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Data</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input
+                type="date"
+                value={date}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </div>
             <div>
               <Label>Presença</Label>
