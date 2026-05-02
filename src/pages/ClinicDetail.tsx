@@ -2902,7 +2902,7 @@ export default function ClinicDetail() {
           open={!!editingEvolution}
           onOpenChange={(open) => { if (!open) setEditingEvolution(null); }}
           onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
-          showFaltaRemunerada={clinic?.paysOnAbsence}
+          showFaltaRemunerada={true}
         />
       )}
 
