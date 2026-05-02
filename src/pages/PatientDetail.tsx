@@ -2884,6 +2884,7 @@ export default function PatientDetail() {
                       </SelectItem>
                       <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                       <SelectItem value="reposicao">🔄 Reposição</SelectItem>
+                      <SelectItem value="anteposicao">⏩ Anteposição</SelectItem>
                       <SelectItem value="feriado_remunerado">🎉 Feriado Remunerado</SelectItem>
                       <SelectItem value="feriado_nao_remunerado">📅 Feriado Não Remunerado</SelectItem>
                     </SelectContent>
