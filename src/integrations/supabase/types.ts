@@ -1789,6 +1789,45 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_package_renewals: {
+        Row: {
+          created_at: string
+          cycle_started_at: string | null
+          decided_by: string | null
+          decision: string
+          id: string
+          notes: string | null
+          package_id: string | null
+          patient_id: string
+          session_limit: number | null
+          sessions_used_in_cycle: number | null
+        }
+        Insert: {
+          created_at?: string
+          cycle_started_at?: string | null
+          decided_by?: string | null
+          decision: string
+          id?: string
+          notes?: string | null
+          package_id?: string | null
+          patient_id: string
+          session_limit?: number | null
+          sessions_used_in_cycle?: number | null
+        }
+        Update: {
+          created_at?: string
+          cycle_started_at?: string | null
+          decided_by?: string | null
+          decision?: string
+          id?: string
+          notes?: string | null
+          package_id?: string | null
+          patient_id?: string
+          session_limit?: number | null
+          sessions_used_in_cycle?: number | null
+        }
+        Relationships: []
+      }
       patient_packages: {
         Row: {
           created_at: string
