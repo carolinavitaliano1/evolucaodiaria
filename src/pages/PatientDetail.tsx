@@ -26,6 +26,7 @@ import { PatientPlanCard } from '@/components/patients/PatientPlanCard';
 import { PatientScheduleCard } from '@/components/patients/PatientScheduleCard';
 import { usePatientScheduleSlots } from '@/hooks/usePatientScheduleSlots';
 import { countWeekdayOccurrencesInMonth } from '@/utils/dateHelpers';
+import { computeFiscalTotals } from '@/utils/fiscalTotals';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -1583,7 +1584,6 @@ export default function PatientDetail() {
       return true;
     };
     const billableEvos = evos.filter(shouldBillEvolution);
-    const billableCount = billableEvos.length;
     // Use per-session value for Personalizado packages or dynamic mensal value
     let fiscalPerSession = isPackagePersonalizado ? perSessionValue : rawPaymentValue;
     if ((isPackageMensal || isFixoMensal) && rawPaymentValue > 0 && fiscalStartDate) {
@@ -1603,25 +1603,27 @@ export default function PatientDetail() {
       if (isParcialAbsenceMode && isChargedAbsence) return partialAbsenceValue;
       return fiscalPerSession;
     };
-    const sessionsBilled = billableEvos.reduce((sum, e) => {
-      return sum + getFiscalEvolutionAmount(e);
-    }, 0);
     const servicesInRange = patientServices.filter(s => {
       if (!fiscalStartDate || !fiscalEndDate) return false;
       const d = new Date(s.date + 'T12:00:00');
       return d >= fiscalStartDate && d <= fiscalEndDate;
     });
-    const servicesBilled = servicesInRange.reduce((sum, s) => sum + (s.price || 0), 0);
-    const totalFaturado = sessionsBilled + servicesBilled;
-    // Total descontado (não cobrado) = faltas não cobradas + diferença das faltas cobradas parcialmente.
-    // Feriado não entra como desconto/dedução.
-    const nonBillableAbsences = evos.filter(e => !shouldBillEvolution(e) && e.attendanceStatus !== 'feriado_nao_remunerado');
-    const partialAbsenceDiscount = billableEvos.reduce((sum, e) => {
-      const isChargedAbsence = e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_cobrada' || e.attendanceStatus === 'falta_remunerada';
-      if (!isParcialAbsenceMode || !isChargedAbsence) return sum;
-      return sum + Math.max(0, fiscalPerSession - getFiscalEvolutionAmount(e));
-    }, 0);
-    const totalDescontado = (nonBillableAbsences.length * fiscalPerSession) + partialAbsenceDiscount;
+    // Centralized fiscal totals (covered by tests in src/utils/fiscalTotals.test.ts)
+    const fiscalTotals = computeFiscalTotals({
+      evolutions: evos as any,
+      services: servicesInRange.map(s => ({ price: s.price || 0 })),
+      perSession: fiscalPerSession,
+      clinic: clinic as any,
+    });
+    const totalFaturado = fiscalTotals.totalFaturado;
+    const totalDescontado = fiscalTotals.totalDescontado;
+    if (typeof window !== 'undefined' && (window as any).__DEBUG_FISCAL__) {
+      console.assert(
+        Math.abs(fiscalTotals.sessionsBilled + totalDescontado -
+          evos.filter(e => e.attendanceStatus !== 'feriado_nao_remunerado').length * fiscalPerSession) < 0.01,
+        'Fiscal invariant violated: faturado_sessoes + descontado != total_esperado'
+      );
+    }
     // Total pago = vem do registro financeiro do paciente (apenas se realmente marcado como pago)
     const totalPago = fiscalPaymentStatus === 'paid'
       ? (fiscalTotalPaidFromApp ?? 0)
