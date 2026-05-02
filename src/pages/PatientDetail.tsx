@@ -1613,9 +1613,15 @@ export default function PatientDetail() {
     });
     const servicesBilled = servicesInRange.reduce((sum, s) => sum + (s.price || 0), 0);
     const totalFaturado = sessionsBilled + servicesBilled;
-    // Total descontado (não cobrado) = soma do que seria por sessão das faltas/feriados não remunerados
-    const nonBillableEvos = evos.filter(e => !shouldBillEvolution(e));
-    const totalDescontado = nonBillableEvos.length * fiscalPerSession;
+    // Total descontado (não cobrado) = faltas não cobradas + diferença das faltas cobradas parcialmente.
+    // Feriado não entra como desconto/dedução.
+    const nonBillableAbsences = evos.filter(e => !shouldBillEvolution(e) && e.attendanceStatus !== 'feriado_nao_remunerado');
+    const partialAbsenceDiscount = billableEvos.reduce((sum, e) => {
+      const isChargedAbsence = e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_cobrada' || e.attendanceStatus === 'falta_remunerada';
+      if (!isParcialAbsenceMode || !isChargedAbsence) return sum;
+      return sum + Math.max(0, fiscalPerSession - getFiscalEvolutionAmount(e));
+    }, 0);
+    const totalDescontado = (nonBillableAbsences.length * fiscalPerSession) + partialAbsenceDiscount;
     // Total pago = vem do registro financeiro do paciente (apenas se realmente marcado como pago)
     const totalPago = fiscalPaymentStatus === 'paid'
       ? (fiscalTotalPaidFromApp ?? 0)
