@@ -101,6 +101,33 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_confirmations: {
+        Row: {
+          clinic_id: string
+          confirmed_at: string
+          confirmed_by_user_id: string
+          date: string
+          id: string
+          patient_id: string
+        }
+        Insert: {
+          clinic_id: string
+          confirmed_at?: string
+          confirmed_by_user_id: string
+          date: string
+          id?: string
+          patient_id: string
+        }
+        Update: {
+          clinic_id?: string
+          confirmed_at?: string
+          confirmed_by_user_id?: string
+          date?: string
+          id?: string
+          patient_id?: string
+        }
+        Relationships: []
+      }
       calendar_blocks: {
         Row: {
           block_type: string

@@ -1,12 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
-import { Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, User, ChevronLeft, ChevronRight, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
-import { format, addDays, subDays, isToday } from 'date-fns';
+import { format, addDays, subDays, isToday, isPast, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE } from '@/utils/sessionTypeTags';
 import { Briefcase } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ClinicAgendaProps {
   clinicId: string;
@@ -29,8 +30,12 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const [filterUserId, setFilterUserId] = useState<string>('all');
   const [therapistName, setTherapistName] = useState<string>('');
   const [clinicType, setClinicType] = useState<string | null>(null);
+  const [absencePaymentType, setAbsencePaymentType] = useState<string | null>(null);
   const [scheduleSlots, setScheduleSlots] = useState<any[]>([]);
   const [privateForDay, setPrivateForDay] = useState<any[]>([]);
+  // Set de patient_ids confirmados para a viewDate
+  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -39,8 +44,11 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   }, [user]);
 
   useEffect(() => {
-    supabase.from('clinics').select('type').eq('id', clinicId).maybeSingle()
-      .then(({ data }) => setClinicType((data as any)?.type || null));
+    supabase.from('clinics').select('type, absence_payment_type').eq('id', clinicId).maybeSingle()
+      .then(({ data }) => {
+        setClinicType((data as any)?.type || null);
+        setAbsencePaymentType((data as any)?.absence_payment_type || null);
+      });
   }, [clinicId]);
 
   useEffect(() => {
@@ -56,6 +64,68 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const weekday = dayNames[viewDate.getDay()];
   const dateStr = format(viewDate, 'yyyy-MM-dd');
+
+  // Carrega pré-confirmações para o dia selecionado
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from('attendance_confirmations' as any)
+      .select('patient_id')
+      .eq('clinic_id', clinicId)
+      .eq('date', dateStr)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const ids = new Set<string>(((data || []) as any[]).map(r => r.patient_id));
+        setConfirmedIds(ids);
+      });
+    return () => { cancelled = true; };
+  }, [clinicId, dateStr]);
+
+  // Bloqueia marcar confirmação para dias passados (até o fim do dia da sessão)
+  const isPastDay = useMemo(() => {
+    const next = startOfDay(addDays(viewDate, 1));
+    return isPast(next) && !isToday(viewDate);
+  }, [viewDate]);
+
+  const toggleConfirmation = useCallback(async (patientId: string) => {
+    if (!user || isPastDay) return;
+    const already = confirmedIds.has(patientId);
+    setConfirmingId(patientId);
+    // Atualização otimista
+    setConfirmedIds(prev => {
+      const next = new Set(prev);
+      if (already) next.delete(patientId); else next.add(patientId);
+      return next;
+    });
+    try {
+      if (already) {
+        const { error } = await supabase.from('attendance_confirmations' as any)
+          .delete()
+          .eq('patient_id', patientId)
+          .eq('clinic_id', clinicId)
+          .eq('date', dateStr);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('attendance_confirmations' as any)
+          .insert({
+            patient_id: patientId,
+            clinic_id: clinicId,
+            date: dateStr,
+            confirmed_by_user_id: user.id,
+          });
+        if (error) throw error;
+      }
+    } catch (e: any) {
+      // Reverte otimista
+      setConfirmedIds(prev => {
+        const next = new Set(prev);
+        if (already) next.add(patientId); else next.delete(patientId);
+        return next;
+      });
+      toast.error(e?.message || 'Não foi possível atualizar a confirmação.');
+    } finally {
+      setConfirmingId(null);
+    }
+  }, [user, isPastDay, confirmedIds, clinicId, dateStr]);
 
   // Carrega serviços avulsos (private_appointments) do dia para esta clínica.
   // Os serviços aparecem na agenda interna/externa (Consultório/Contratante/Clínica)
@@ -198,6 +268,16 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
           Agenda do Dia ({scheduledPatients.length + oneOffAppointments.length} pacientes)
         </h3>
 
+        {absencePaymentType === 'confirmed_only' && (
+          <div className="mb-4 flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-foreground">
+            <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+            <span>
+              Esta clínica cobra faltas <strong>apenas quando houve confirmação prévia</strong>.
+              Use o botão <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-success/15 text-success font-medium">✓ Confirmar</span> em cada paciente que confirmou a presença antes da sessão.
+            </span>
+          </div>
+        )}
+
         {scheduledPatients.length === 0 && oneOffAppointments.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-4">📅</div>
@@ -272,6 +352,35 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                     ) : (
                       <span className="text-xs text-muted-foreground">⏳ Aguardando</span>
                     )}
+                    {(() => {
+                      const isConfirmed = confirmedIds.has(patient.id);
+                      if (isConfirmed) {
+                        return (
+                          <button
+                            type="button"
+                            disabled={isPastDay || confirmingId === patient.id}
+                            onClick={() => toggleConfirmation(patient.id)}
+                            title={isPastDay ? 'Dia já encerrado' : 'Clique para desfazer a confirmação'}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success/15 text-success text-[11px] font-semibold border border-success/30 hover:bg-success/25 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <Check className="w-3 h-3" /> Confirmado
+                          </button>
+                        );
+                      }
+                      if (isPastDay) return null;
+                      return (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={confirmingId === patient.id}
+                          onClick={() => toggleConfirmation(patient.id)}
+                          className="h-7 px-2 text-[11px] gap-1"
+                          title="Marcar que o paciente confirmou a presença"
+                        >
+                          <Check className="w-3 h-3" /> Confirmar
+                        </Button>
+                      );
+                    })()}
                     <QuickWhatsAppButton
                       phone={patient.whatsapp || patient.phone || patient.responsibleWhatsapp}
                       tooltip="Confirmar sessão via WhatsApp"
@@ -339,6 +448,35 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                     ) : (
                       <span className="text-xs text-muted-foreground">⏳ Aguardando evolução</span>
                     )}
+                    {(() => {
+                      const isConfirmed = confirmedIds.has(patient.id);
+                      if (isConfirmed) {
+                        return (
+                          <button
+                            type="button"
+                            disabled={isPastDay || confirmingId === patient.id}
+                            onClick={() => toggleConfirmation(patient.id)}
+                            title={isPastDay ? 'Dia já encerrado' : 'Clique para desfazer a confirmação'}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success/15 text-success text-[11px] font-semibold border border-success/30 hover:bg-success/25 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <Check className="w-3 h-3" /> Confirmado
+                          </button>
+                        );
+                      }
+                      if (isPastDay) return null;
+                      return (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={confirmingId === patient.id}
+                          onClick={() => toggleConfirmation(patient.id)}
+                          className="h-7 px-2 text-[11px] gap-1"
+                          title="Marcar que o paciente confirmou a presença"
+                        >
+                          <Check className="w-3 h-3" /> Confirmar
+                        </Button>
+                      );
+                    })()}
                     <QuickWhatsAppButton
                       phone={patient.whatsapp || patient.phone || patient.responsibleWhatsapp}
                       tooltip="Confirmar sessão via WhatsApp"
