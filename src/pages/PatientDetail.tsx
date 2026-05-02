@@ -2595,9 +2595,7 @@ export default function PatientDetail() {
                     <SelectContent>
                       <SelectItem value="presente">✅ Presente</SelectItem>
                       <SelectItem value="falta">❌ Falta</SelectItem>
-                      {clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false) && (
-                        <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
-                      )}
+                      <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                       <SelectItem value="reposicao">🔄 Reposição</SelectItem>
                       <SelectItem value="feriado_remunerado">🎉 Feriado Remunerado</SelectItem>
                       <SelectItem value="feriado_nao_remunerado">📅 Feriado Não Remunerado</SelectItem>
@@ -3794,7 +3792,7 @@ export default function PatientDetail() {
         <EditEvolutionDialog evolution={editingEvolution} open={!!editingEvolution}
           onOpenChange={(open) => !open && setEditingEvolution(null)}
           onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
-          showFaltaRemunerada={!!(clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false))} />
+          showFaltaRemunerada={true} />
       )}
 
       {/* Feedback IA — individual */}

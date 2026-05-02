@@ -1460,12 +1460,6 @@ export default function Financial() {
                       {isPropria ? 'Consultório' : 'Contratante'}
                     </span>
                     <h3 className="font-semibold text-foreground text-sm truncate">{clinic.name}</h3>
-                    {clinic.absencePaymentType === 'never' && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Não paga faltas</span>
-                    )}
-                    {clinic.absencePaymentType === 'confirmed_only' && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Paga só confirmados</span>
-                    )}
                     {discountPct > 0 && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{discountPct}% desc.</span>
                     )}

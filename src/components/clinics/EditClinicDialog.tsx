@@ -396,41 +396,6 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             </div>
           )}
 
-          {/* Absence payment */}
-          <div className="border-t pt-4">
-            <Label className="text-sm font-medium">Cobrança em Faltas</Label>
-            <p className="text-xs text-muted-foreground mt-1 mb-3">
-              Define se você recebe pagamento quando o paciente falta a sessão nesta clínica.
-            </p>
-            <RadioGroup
-              value={formData.absencePaymentType}
-              onValueChange={(v) => setFormData({ ...formData, absencePaymentType: v as any })}
-              className="space-y-2"
-            >
-              <div className={cn('flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors', formData.absencePaymentType === 'always' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40')}>
-                <RadioGroupItem value="always" id="edit-always" className="mt-0.5" />
-                <Label htmlFor="edit-always" className="cursor-pointer flex-1">
-                  <span className="font-medium text-sm">Sempre cobra</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">Você recebe por todas as faltas, independentemente de aviso prévio.</p>
-                </Label>
-              </div>
-              <div className={cn('flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors', formData.absencePaymentType === 'never' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40')}>
-                <RadioGroupItem value="never" id="edit-never" className="mt-0.5" />
-                <Label htmlFor="edit-never" className="cursor-pointer flex-1">
-                  <span className="font-medium text-sm">Nunca cobra</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">Faltas não são cobradas. Você só recebe pelas sessões realizadas.</p>
-                </Label>
-              </div>
-              <div className={cn('flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors', formData.absencePaymentType === 'confirmed_only' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40')}>
-                <RadioGroupItem value="confirmed_only" id="edit-confirmed" className="mt-0.5" />
-                <Label htmlFor="edit-confirmed" className="cursor-pointer flex-1">
-                  <span className="font-medium text-sm">Somente confirmados</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">Cobra apenas faltas em que o paciente confirmou presença e não compareceu.</p>
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar

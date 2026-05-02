@@ -678,42 +678,6 @@ export default function Clinics() {
                       </>
                     )}
 
-                    {(formData.type !== 'terceirizada' || formData.paymentType === 'sessao' || formData.paymentType === 'variado') && (
-                      <div className="mt-3 space-y-2 p-3 rounded-lg bg-secondary/50">
-                        <span className="text-sm font-medium">Recebe por faltas?</span>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant={formData.absencePaymentType === 'always' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setFormData({ ...formData, absencePaymentType: 'always' })}
-                          >
-                            Sempre
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={formData.absencePaymentType === 'confirmed_only' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setFormData({ ...formData, absencePaymentType: 'confirmed_only' })}
-                          >
-                            Só confirmados
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={formData.absencePaymentType === 'never' ? "destructive" : "outline"}
-                            size="sm"
-                            onClick={() => setFormData({ ...formData, absencePaymentType: 'never' })}
-                          >
-                            Nunca
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {formData.absencePaymentType === 'always' && 'A clínica sempre paga por faltas'}
-                          {formData.absencePaymentType === 'never' && 'A clínica nunca paga por faltas'}
-                          {formData.absencePaymentType === 'confirmed_only' && 'Paga apenas quando o paciente confirmou e faltou'}
-                        </p>
-                      </div>
-                    )}
                   </div>
 
 
