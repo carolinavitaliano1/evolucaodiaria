@@ -2846,6 +2846,7 @@ export default function PatientDetail() {
               <Button type="submit" className="gap-2"><Plus className="w-4 h-4" /> Salvar Evolução</Button>
             </form>
           </div>
+          )}
 
           {/* History */}
           <div className="bg-card rounded-xl shadow-sm border border-border">
