@@ -2453,48 +2453,6 @@ export default function PatientDetail() {
           )}
         </div>
       )}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Users className="w-4 h-4 text-primary" />
-            </div>
-            <p className="text-xs font-medium text-muted-foreground">Total</p>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{totalSessions}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">sessões</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-success" />
-            </div>
-            <p className="text-xs font-medium text-muted-foreground">Frequência</p>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{attendanceRate}%</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{totalPresent} presentes</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-success" />
-            </div>
-            <p className="text-xs font-medium text-muted-foreground">Faturamento</p>
-          </div>
-          <p className="text-2xl font-bold text-success">R$ {totalFinancial.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Receita total</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <Calendar className="w-4 h-4 text-destructive" />
-            </div>
-            <p className="text-xs font-medium text-muted-foreground">Faltas</p>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{totalAbsent}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{totalPaidAbsent} remuneradas</p>
-        </div>
-      </div>
 
       {/* Clinical Info Card */}
       {(patient.diagnosis || patient.observations || (patient.weekdays && patient.weekdays.length > 0) || patient.professionals || patient.responsibleName) && (
