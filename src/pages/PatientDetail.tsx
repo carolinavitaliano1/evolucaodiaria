@@ -49,6 +49,7 @@ import { generateReportPdf } from '@/utils/generateReportPdf';
 import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
 import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { calculatePatientMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
+import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE } from '@/utils/sessionTypeTags';
 import { generateFiscalReceiptPdf } from '@/utils/generateFiscalReceiptPdf';
 import { generatePaymentReceiptPdf, generatePaymentReceiptWord } from '@/utils/generatePaymentReceiptPdf';
 import { PatientServicesSection } from '@/components/patients/PatientServicesSection';
@@ -3163,6 +3164,15 @@ export default function PatientDetail() {
                                evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' :
                                '❌ Falta'}
                             </span>
+                            {(() => {
+                              const k = getSessionKind(evo.text);
+                              if (k === 'regular') return null;
+                              return (
+                                <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', SESSION_KIND_BADGE[k])}>
+                                  {SESSION_KIND_LABEL[k]}
+                                </span>
+                              );
+                            })()}
                             {moodInfo && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
                                 {moodInfo.emoji} {moodInfo.label}
@@ -3475,6 +3485,15 @@ export default function PatientDetail() {
                                    evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
                                    evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' : '❌ Falta'}
                                 </span>
+                                {(() => {
+                                  const k = getSessionKind(evo.text);
+                                  if (k === 'regular') return null;
+                                  return (
+                                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', SESSION_KIND_BADGE[k])}>
+                                      {SESSION_KIND_LABEL[k]}
+                                    </span>
+                                  );
+                                })()}
                                 {moodInfo && (
                                   <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">
                                     {moodInfo.emoji} {moodInfo.label}

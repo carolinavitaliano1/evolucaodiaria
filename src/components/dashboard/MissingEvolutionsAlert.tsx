@@ -9,6 +9,8 @@ import { format, subDays, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE, type SessionKind } from '@/utils/sessionTypeTags';
+import { cn } from '@/lib/utils';
 
 const DEFAULT_SESSION_DURATION = 50;
 const DAYS_BACK = 7; // look back up to 7 days
@@ -19,6 +21,8 @@ interface PendingEntry {
   startTime: string;
   date: string; // yyyy-MM-dd
   avatarUrl?: string | null;
+  /** Tag visual quando for avulsa/reposição/anteposição cobrada. */
+  kind?: Exclude<SessionKind, 'regular'>;
 }
 
 function dayLabel(dateStr: string): string {
@@ -87,10 +91,18 @@ export function MissingEvolutionsAlert() {
         candidates.push({ patientId: p.id, name: p.name, startTime, date: dateStr, avatarUrl: p.avatarUrl });
       });
 
-      // 2. One-off appointments (avoid duplicates per day)
+      // 2. One-off appointments cobrados/confirmados (avulsa/reposição/anteposição).
+      //    Só geram pendência se foram efetivamente cobrados — checamos a tag
+      //    [tipo:..] no campo notes E a existência de uma entrada em
+      //    private_appointments para o mesmo paciente/data.
       const recurringIds = new Set(candidates.filter(c => c.date === dateStr).map(c => c.patientId));
       appointments
-        .filter(a => a.date === dateStr && !recurringIds.has(a.patientId))
+        .filter(a => {
+          if (a.date !== dateStr) return false;
+          if (recurringIds.has(a.patientId)) return false;
+          const kind = getSessionKind(a.notes);
+          return kind !== 'regular';
+        })
         .forEach(a => {
           const patient = patients.find(p => p.id === a.patientId);
           if (!patient || !isPatientActiveOn(patient)) return;
@@ -100,7 +112,15 @@ export function MissingEvolutionsAlert() {
           if (!startTime || startTime === '00:00') return;
           const endMin = toMin(startTime) + DEFAULT_SESSION_DURATION;
           if (!isPast && nowMinutes <= endMin) return;
-          candidates.push({ patientId: patient.id, name: patient.name, startTime, date: dateStr, avatarUrl: patient.avatarUrl });
+          const kind = getSessionKind(a.notes);
+          candidates.push({
+            patientId: patient.id,
+            name: patient.name,
+            startTime,
+            date: dateStr,
+            avatarUrl: patient.avatarUrl,
+            kind: kind === 'regular' ? undefined : kind,
+          });
         });
     }
 
@@ -120,11 +140,29 @@ export function MissingEvolutionsAlert() {
 
     const evolSet = new Set((evols || []).map(e => `${e.patient_id}::${e.date}`));
 
+    // Para entradas com tag de tipo, exigir também a confirmação de cobrança
+    // (entrada correspondente em private_appointments para o mesmo paciente/data).
+    const taggedIds = [...new Set(candidates.filter(c => c.kind).map(c => c.patientId))];
+    let chargedSet = new Set<string>();
+    if (taggedIds.length > 0) {
+      const { data: priv } = await supabase
+        .from('private_appointments')
+        .select('patient_id, date, status')
+        .in('patient_id', taggedIds)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .neq('status', 'cancelado');
+      chargedSet = new Set((priv || []).map(p => `${p.patient_id}::${p.date}`));
+    }
+
     // Deduplicate: one entry per (patientId, date)
     const seen = new Set<string>();
     const result: PendingEntry[] = [];
     for (const c of candidates) {
       const key = `${c.patientId}::${c.date}`;
+      // Para sessões avulsas/reposições/anteposições, só considera pendente se
+      // houve cobrança/confirmação correspondente.
+      if (c.kind && !chargedSet.has(key)) continue;
       if (!evolSet.has(key) && !seen.has(key)) {
         seen.add(key);
         result.push(c);
@@ -173,7 +211,14 @@ export function MissingEvolutionsAlert() {
                 : s.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
+              <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+                <span className="truncate">{s.name}</span>
+                {s.kind && (
+                  <span className={cn('px-1.5 rounded-full text-[9px] font-semibold leading-4 shrink-0', SESSION_KIND_BADGE[s.kind])}>
+                    {SESSION_KIND_LABEL[s.kind]}
+                  </span>
+                )}
+              </p>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {dayLabel(s.date)} às {s.startTime.slice(0, 5)} · sem evolução
