@@ -1575,7 +1575,8 @@ export default function PatientDetail() {
     // Use resolved paymentValue (includes package price fallback for monthly/total packages)
     const rawPaymentValue = paymentValue || 0;
     const STATUS_BILLABLE: Record<string, boolean> = {
-      presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
+      presente: true, reposicao: true, anteposicao: true,
+      falta_remunerada: true, feriado_remunerado: true, falta_cobrada: true,
       falta: false, feriado_nao_remunerado: false,
     };
     const billableEvos = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false);
@@ -1590,7 +1591,16 @@ export default function PatientDetail() {
     // Total faturado = sessões cobráveis + serviços avulsos do período (com valor)
     // Regra única: sempre contabiliza apenas o que efetivamente aconteceu (sessões cobráveis × valor/sessão).
     // Mensal/Fixo usam fiscalPerSession dinâmico (valor mensal ÷ sessões agendadas no mês).
-    const sessionsBilled = billableCount * fiscalPerSession;
+    // Quando a clínica usa cobrança parcial de falta, faltas cobradas valem
+    // o valor fixo de `absenceChargeAmount` em vez do valor cheio da sessão.
+    const isParcialAbsenceMode = clinic?.absenceChargeMode === 'parcial';
+    const partialAbsenceValue = isParcialAbsenceMode ? Number(clinic?.absenceChargeAmount ?? 0) : 0;
+    const sessionsBilled = billableEvos.reduce((sum, e) => {
+      if (isParcialAbsenceMode && e.attendanceStatus === 'falta_cobrada') {
+        return sum + partialAbsenceValue;
+      }
+      return sum + fiscalPerSession;
+    }, 0);
     const servicesInRange = patientServices.filter(s => {
       if (!fiscalStartDate || !fiscalEndDate) return false;
       const d = new Date(s.date + 'T12:00:00');
