@@ -1151,6 +1151,17 @@ export default function CalendarPage() {
               </Button>
             </div>
           )}
+          {!popupItem.isDraggable && popupItem.rawAppointment && (
+            <div className="flex gap-2 pt-2 border-t border-border">
+              <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs h-7" onClick={handleEditAppointment}>
+                <Pencil className="w-3 h-3" /> Editar
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 text-destructive hover:text-destructive border-destructive/30"
+                onClick={handleDeleteAppointment}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
           {!popupItem.isDraggable && (() => {
             const rawAppt = popupItem.rawEvent;
             const patient = rawAppt ? patients.find(p => p.id === rawAppt.patientId) : null;
