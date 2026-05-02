@@ -764,7 +764,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
       toast.success('Evolução adicionada!');
     } catch (error) { console.error(error); toast.error('Erro ao adicionar evolução'); }
-  }, [user]);
+  }, [user, state.patients]);
 
   const updateEvolution = useCallback(async (id: string, updates: Partial<Evolution>) => {
     if (!user) return;
