@@ -688,6 +688,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl || null;
       if (updates.packageId !== undefined) updateData.package_id = updates.packageId || null;
       if ((updates as any).payment_info !== undefined) updateData.payment_info = (updates as any).payment_info || null;
+      if ((updates as any).packageRenewalDecision !== undefined) updateData.package_renewal_decision = (updates as any).packageRenewalDecision || null;
+      if ((updates as any).packageDecisionAt !== undefined) updateData.package_decision_at = (updates as any).packageDecisionAt || null;
+      if ((updates as any).packageAssignedAt !== undefined) updateData.package_assigned_at = (updates as any).packageAssignedAt || null;
       const { error } = await supabase.from('patients').update(updateData).eq('id', id);
       if (error) throw error;
       setState(prev => ({ ...prev, patients: prev.patients.map(p => p.id === id ? { ...p, ...updates } : p) }));
