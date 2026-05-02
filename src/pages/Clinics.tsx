@@ -129,6 +129,8 @@ export default function Clinics() {
     paymentType: '' as '' | 'fixo_mensal' | 'fixo_diario' | 'sessao' | 'variado',
     paymentAmount: '',
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
+    absenceChargeMode: 'integral' as 'integral' | 'parcial',
+    absenceChargeAmount: '',
   });
 
   // Load on mount so Faturado card includes services revenue
@@ -253,6 +255,10 @@ export default function Clinics() {
         : undefined,
       paysOnAbsence: formData.absencePaymentType !== 'never',
       absencePaymentType: formData.absencePaymentType,
+      absenceChargeMode: formData.absenceChargeMode,
+      absenceChargeAmount: formData.absenceChargeMode === 'parcial' && formData.absenceChargeAmount
+        ? parseFloat(formData.absenceChargeAmount)
+        : undefined,
       stamp: stampFile?.url,
     });
 
@@ -266,6 +272,8 @@ export default function Clinics() {
       paymentType: '',
       paymentAmount: '',
       absencePaymentType: 'always',
+      absenceChargeMode: 'integral',
+      absenceChargeAmount: '',
     });
     setStampFile(null);
     setIsDialogOpen(false);
