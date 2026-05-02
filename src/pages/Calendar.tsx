@@ -605,8 +605,7 @@ export default function CalendarPage() {
                     </p>
                   </div>
                 )}
-                {formData.sessionType !== 'regular' && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
