@@ -1,12 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
-import { Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, User, ChevronLeft, ChevronRight, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
-import { format, addDays, subDays, isToday } from 'date-fns';
+import { format, addDays, subDays, isToday, isPast, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ import { QuickWhatsAppButton } from '@/components/whatsapp/QuickWhatsAppButton';
 import { resolveTemplate } from '@/hooks/useMessageTemplates';
 import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE } from '@/utils/sessionTypeTags';
 import { Briefcase } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ClinicAgendaProps {
   clinicId: string;
@@ -29,8 +30,12 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const [filterUserId, setFilterUserId] = useState<string>('all');
   const [therapistName, setTherapistName] = useState<string>('');
   const [clinicType, setClinicType] = useState<string | null>(null);
+  const [absencePaymentType, setAbsencePaymentType] = useState<string | null>(null);
   const [scheduleSlots, setScheduleSlots] = useState<any[]>([]);
   const [privateForDay, setPrivateForDay] = useState<any[]>([]);
+  // Set de patient_ids confirmados para a viewDate
+  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -39,8 +44,11 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   }, [user]);
 
   useEffect(() => {
-    supabase.from('clinics').select('type').eq('id', clinicId).maybeSingle()
-      .then(({ data }) => setClinicType((data as any)?.type || null));
+    supabase.from('clinics').select('type, absence_payment_type').eq('id', clinicId).maybeSingle()
+      .then(({ data }) => {
+        setClinicType((data as any)?.type || null);
+        setAbsencePaymentType((data as any)?.absence_payment_type || null);
+      });
   }, [clinicId]);
 
   useEffect(() => {
@@ -56,6 +64,68 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const weekday = dayNames[viewDate.getDay()];
   const dateStr = format(viewDate, 'yyyy-MM-dd');
+
+  // Carrega pré-confirmações para o dia selecionado
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from('attendance_confirmations' as any)
+      .select('patient_id')
+      .eq('clinic_id', clinicId)
+      .eq('date', dateStr)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const ids = new Set<string>(((data || []) as any[]).map(r => r.patient_id));
+        setConfirmedIds(ids);
+      });
+    return () => { cancelled = true; };
+  }, [clinicId, dateStr]);
+
+  // Bloqueia marcar confirmação para dias passados (até o fim do dia da sessão)
+  const isPastDay = useMemo(() => {
+    const next = startOfDay(addDays(viewDate, 1));
+    return isPast(next) && !isToday(viewDate);
+  }, [viewDate]);
+
+  const toggleConfirmation = useCallback(async (patientId: string) => {
+    if (!user || isPastDay) return;
+    const already = confirmedIds.has(patientId);
+    setConfirmingId(patientId);
+    // Atualização otimista
+    setConfirmedIds(prev => {
+      const next = new Set(prev);
+      if (already) next.delete(patientId); else next.add(patientId);
+      return next;
+    });
+    try {
+      if (already) {
+        const { error } = await supabase.from('attendance_confirmations' as any)
+          .delete()
+          .eq('patient_id', patientId)
+          .eq('clinic_id', clinicId)
+          .eq('date', dateStr);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('attendance_confirmations' as any)
+          .insert({
+            patient_id: patientId,
+            clinic_id: clinicId,
+            date: dateStr,
+            confirmed_by_user_id: user.id,
+          });
+        if (error) throw error;
+      }
+    } catch (e: any) {
+      // Reverte otimista
+      setConfirmedIds(prev => {
+        const next = new Set(prev);
+        if (already) next.add(patientId); else next.delete(patientId);
+        return next;
+      });
+      toast.error(e?.message || 'Não foi possível atualizar a confirmação.');
+    } finally {
+      setConfirmingId(null);
+    }
+  }, [user, isPastDay, confirmedIds, clinicId, dateStr]);
 
   // Carrega serviços avulsos (private_appointments) do dia para esta clínica.
   // Os serviços aparecem na agenda interna/externa (Consultório/Contratante/Clínica)
