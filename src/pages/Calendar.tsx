@@ -157,6 +157,7 @@ export default function CalendarPage() {
           bgColor: EVENT_COLORS.atendimento.pill,
           isDraggable: false,
           kind: kind === 'regular' ? undefined : kind,
+          rawAppointment: a,
         };
       });
 
