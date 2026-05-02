@@ -245,8 +245,12 @@ export default function Clinics() {
       weekdays: formData.weekdays,
       scheduleTime: firstDayTime,
       scheduleByDay: formData.scheduleByDay,
-      paymentType: formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined,
-      paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : undefined,
+      paymentType: formData.type === 'terceirizada'
+        ? (formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined)
+        : undefined,
+      paymentAmount: formData.type === 'terceirizada' && formData.paymentAmount
+        ? parseFloat(formData.paymentAmount)
+        : undefined,
       paysOnAbsence: formData.absencePaymentType !== 'never',
       absencePaymentType: formData.absencePaymentType,
       stamp: stampFile?.url,
