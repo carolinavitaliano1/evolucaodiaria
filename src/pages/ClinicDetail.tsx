@@ -1195,7 +1195,7 @@ export default function ClinicDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="today" className="space-y-4 lg:space-y-6">
+      <Tabs defaultValue={(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'today'} className="space-y-4 lg:space-y-6">
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
           {[
             { value: 'today', icon: <ClipboardList className="w-5 h-5" />, label: 'Hoje', color: 'text-primary' },
