@@ -2088,6 +2088,11 @@ export default function PatientDetail() {
 
   const handleSubmitEvolution = (e: React.FormEvent) => {
     e.preventDefault();
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (evolutionDate > todayStr) {
+      toast.error('Não é permitido registrar evoluções com data futura.');
+      return;
+    }
     const isAbsence = ['falta', 'falta_remunerada', 'feriado_remunerado', 'feriado_nao_remunerado'].includes(attendanceStatus);
     if (!isAbsence && !evolutionText.trim() && attachedFiles.length === 0 && Object.keys(templateFormValues).length === 0) return;
 
@@ -2591,7 +2596,13 @@ export default function PatientDetail() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="text-xs">Data</Label>
-                  <Input type="date" value={evolutionDate} onChange={(e) => setEvolutionDate(e.target.value)} className="mt-1" />
+                  <Input
+                    type="date"
+                    value={evolutionDate}
+                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setEvolutionDate(e.target.value)}
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs">Presença</Label>
