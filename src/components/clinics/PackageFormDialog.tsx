@@ -337,22 +337,27 @@ export function PackageFormDialog({ open, onOpenChange, clinicId, pkg }: Props) 
                   render={({ field }) => (
                     <RadioGroup
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(v) => {
+                        if (watchedPackageType === 'por_sessao') return;
+                        field.onChange(v);
+                      }}
                       className="grid grid-cols-1 sm:grid-cols-2 gap-2"
                     >
-                      <label className="flex items-center gap-2 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="valor_total" id="lt-total" />
+                      <label className={`flex items-center gap-2 rounded-md border border-border p-2.5 ${watchedPackageType === 'por_sessao' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}>
+                        <RadioGroupItem value="valor_total" id="lt-total" disabled={watchedPackageType === 'por_sessao'} />
                         <span className="text-sm">Valor total do pacote</span>
                       </label>
-                      <label className="flex items-center gap-2 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="valor_procedimento" id="lt-proc" />
+                      <label className={`flex items-center gap-2 rounded-md border border-border p-2.5 ${watchedPackageType === 'por_sessao' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}>
+                        <RadioGroupItem value="valor_procedimento" id="lt-proc" disabled={watchedPackageType === 'por_sessao'} />
                         <span className="text-sm">Valor fracionado</span>
                       </label>
                     </RadioGroup>
                   )}
                 />
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {watch('lancamentoTipo') === 'valor_total'
+                  {watchedPackageType === 'por_sessao'
+                    ? 'Pacote Por Sessão: o valor é lançado automaticamente no Financeiro a cada sessão realizada. Esta opção não é editável.'
+                    : watch('lancamentoTipo') === 'valor_total'
                     ? 'O valor cheio do pacote será lançado no Financeiro uma única vez, no mês em que o pacote for associado ao paciente.'
                     : 'O valor será fracionado e lançado no Financeiro conforme cada sessão for sendo concluída.'}
                 </p>
