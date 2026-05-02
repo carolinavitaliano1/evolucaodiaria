@@ -387,7 +387,8 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
       } else if (pkg.packageType === 'mensal') {
         // dividir pelo nº real de sessões agendadas no mês
         const weekdays = getPatientWeekdays(patient);
-        const dyn = getDynamicSessionValue(pkgTotal, weekdays, month, year);
+        // month aqui é 1-indexed; getDynamicSessionValue espera 0-indexed
+        const dyn = getDynamicSessionValue(pkgTotal, weekdays, month - 1, year);
         perSessionPkg = dyn.occurrences > 0 ? dyn.perSession : 0;
       }
 
@@ -499,7 +500,8 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   let individualRevenue = 0;
   if (billableIndividual.length > 0 && baseValue) {
     if (isMensal) {
-      const dyn = getMensalDynamicWithBase(patient, baseValue, month, year);
+      // month aqui é 1-indexed; helpers internos esperam 0-indexed
+      const dyn = getMensalDynamicWithBase(patient, baseValue, month - 1, year);
       if (dyn.isDynamic) {
         const raw = billableIndividual.length * dyn.perSession;
         // Trava: nunca ultrapassa o valor mensal contratado
