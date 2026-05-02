@@ -426,15 +426,13 @@ export async function generateClinicInternalStatementPdf(
       });
 
       const dynInfo = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
-      const totalSessionsInMonth = dynInfo.occurrences || pEvos.filter(e => COUNTS_AS_BILLABLE(e.attendance_status)).length || 1;
+      const totalSessionsInMonth = dynInfo.occurrences || pEvos.filter(shouldBillEvolution).length || 1;
 
       let billableCounter = 0;
       pEvos.forEach(e => {
-        const isBillable = COUNTS_AS_BILLABLE(e.attendance_status);
+        const isBillable = shouldBillEvolution(e);
         if (isBillable) billableCounter++;
-        const isParcialAbsence =
-          clinicPayInfo?.absence_charge_mode === 'parcial' &&
-          e.attendance_status === 'falta_cobrada';
+        const isParcialAbsence = isPartialChargedAbsence(e);
         const rowAmount = isBillable
           ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
           : 0;
@@ -444,7 +442,7 @@ export async function generateClinicInternalStatementPdf(
           description: isBillable
             ? (isParcialAbsence ? 'Falta cobrada (parcial)' : 'Atendimento')
             : 'Sessão sem cobrança',
-          status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
+          status: getStatusLabel(e),
           amount: rowAmount,
           paid: !!pPay?.paid,
           sessionIndex: isBillable ? billableCounter : undefined,
@@ -468,10 +466,8 @@ export async function generateClinicInternalStatementPdf(
     } else {
       // Per session / personalizado / avulso: each session has its own value
       pEvos.forEach(e => {
-        const billable = COUNTS_AS_BILLABLE(e.attendance_status);
-        const isParcialAbsence =
-          clinicPayInfo?.absence_charge_mode === 'parcial' &&
-          e.attendance_status === 'falta_cobrada';
+        const billable = shouldBillEvolution(e);
+        const isParcialAbsence = isPartialChargedAbsence(e);
         const amount = billable
           ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
           : 0;
@@ -480,7 +476,7 @@ export async function generateClinicInternalStatementPdf(
           date: e.date,
           type: 'Sessão',
           description: isParcialAbsence ? 'Falta cobrada (parcial)' : 'Atendimento clínico',
-          status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
+          status: getStatusLabel(e),
           amount,
           paid: !!pPay?.paid,
         });
