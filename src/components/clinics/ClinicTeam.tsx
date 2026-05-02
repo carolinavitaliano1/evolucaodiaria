@@ -948,6 +948,23 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: true });
       setMemberPlans((data as any) || []);
+      // Also load package commissions (clinic_packages-based) where this member is paid a commission
+      const { data: pkgComm } = await supabase
+        .from('package_commissions' as any)
+        .select('id, package_id, commission_type, commission_value, clinic_packages:package_id(id, name, price, package_type, clinic_id)')
+        .eq('member_id', memberId);
+      const mapped = ((pkgComm as any[]) || [])
+        .filter((row: any) => row.clinic_packages && row.clinic_packages.clinic_id === clinicId)
+        .map((row: any) => ({
+          id: row.id,
+          package_id: row.package_id,
+          package_name: row.clinic_packages?.name || 'Pacote',
+          package_price: Number(row.clinic_packages?.price || 0),
+          package_type: row.clinic_packages?.package_type || 'mensal',
+          commission_type: row.commission_type,
+          commission_value: Number(row.commission_value || 0),
+        }));
+      setMemberPkgCommissions(mapped);
     } catch (err) {
       console.error(err);
     } finally {
