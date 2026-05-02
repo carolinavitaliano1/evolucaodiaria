@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, MessageSquare, Clock, AlertCircle, Loader2, Send } from 'lucide-react';
+import { CheckCircle2, MessageSquare, Clock, AlertCircle, Loader2, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, parseISO, isAfter, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -30,15 +30,18 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [refMonth, setRefMonth] = useState<Date>(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  });
+
+  const m = refMonth.getMonth() + 1;
+  const y = refMonth.getFullYear();
 
   const loadPayments = async () => {
     if (!clinicId) return;
     setLoading(true);
     try {
-      const now = new Date();
-      const m = now.getMonth() + 1;
-      const y = now.getFullYear();
-
       const { data, error } = await supabase
         .from('patient_payment_records')
         .select('*')
@@ -79,15 +82,12 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
 
   useEffect(() => {
     loadPayments();
-  }, [clinicId, patients]);
+  }, [clinicId, patients, refMonth]);
 
   const handleMarkAsPaid = async (payment: PaymentRecord) => {
     if (!user) return;
     setUpdatingId(payment.id);
-    const now = new Date();
-    const m = now.getMonth() + 1;
-    const y = now.getFullYear();
-    const today = format(now, 'yyyy-MM-dd');
+    const today = format(new Date(), 'yyyy-MM-dd');
 
     try {
       if (payment.id.startsWith('temp-')) {
@@ -157,11 +157,31 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <h3 className="font-bold text-lg text-foreground">Gestão de Cobranças</h3>
-        <Badge variant="outline" className="text-muted-foreground">
-          {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}
-        </Badge>
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-1 py-0.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => setRefMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+            title="Mês anterior"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-xs font-semibold text-foreground capitalize px-2 min-w-[120px] text-center">
+            {format(refMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => setRefMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+            title="Próximo mês"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
