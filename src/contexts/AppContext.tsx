@@ -125,6 +125,8 @@ function mapPatient(p: Record<string, unknown>): Patient {
     departureReason: (p.departure_reason as string) || undefined,
     avatarUrl: (p.avatar_url as string) || undefined, createdAt: p.created_at as string,
     packageAssignedAt: (p.package_assigned_at as string) || undefined,
+    packageRenewalDecision: (p.package_renewal_decision as 'renewed' | 'declined') || undefined,
+    packageDecisionAt: (p.package_decision_at as string) || undefined,
   } as any;
 }
 
