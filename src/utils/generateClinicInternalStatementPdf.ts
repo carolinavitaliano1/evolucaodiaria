@@ -378,7 +378,7 @@ export async function generateClinicInternalStatementPdf(
           date: e.date,
           type: 'Sessão',
           description: 'Atendimento (salário fixo da clínica)',
-          status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
+          status: getStatusLabel(e),
           amount: 0,
           paid: false,
         });
@@ -554,7 +554,7 @@ export async function generateClinicInternalStatementPdf(
     if (clinicPayInfo?.payment_type === 'fixo_diario' || clinicPayInfo?.payment_type === 'fixo_dia') {
       const billableDays = new Set<string>();
       evolutions.forEach(e => {
-        if (COUNTS_AS_BILLABLE(e.attendance_status)) billableDays.add(e.date);
+        if (shouldBillEvolution(e)) billableDays.add(e.date);
       });
       clinicFixedRevenue = Number(clinicPayInfo?.payment_amount || 0) * billableDays.size;
     } else {
