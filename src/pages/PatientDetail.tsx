@@ -820,6 +820,11 @@ export default function PatientDetail() {
   // Package personalizado: per-session value = total / sessionLimit
   const isPackagePersonalizado = patientPackage?.packageType === 'personalizado' && (patientPackage?.sessionLimit ?? 0) > 0;
   const isPackageMensal = patientPackage?.packageType === 'mensal';
+  // Pacote mensal com lançamento "valor fracionado" deve se comportar como
+  // mensalista do Psicoativamente: mostrar valor mensal + valor por sessão
+  // (mensal ÷ semanas agendadas no mês), independentemente de o paciente
+  // estar marcado como "fixo mensal" ou não.
+  const isPackageMensalFracionado = isPackageMensal && patientPackage?.lancamentoTipo === 'valor_procedimento';
   const perSessionValue = isPackagePersonalizado
     ? paymentValue / (patientPackage!.sessionLimit!)
     : paymentValue;
