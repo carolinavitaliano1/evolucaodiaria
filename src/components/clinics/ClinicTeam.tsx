@@ -1668,7 +1668,6 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                           <button
                             type="button"
                             onClick={() => {
-                              onOpenChange?.(false);
                               setManageMember(null);
                               navigate(`/clinics/${clinicId}?tab=financial`);
                             }}
