@@ -233,7 +233,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // === PHASE 1: Fast initial load — clinics, patients, tasks, packages ===
   // Hydrates instantly from sessionStorage (stale-while-revalidate), then refreshes in background.
-  const loadInitialData = useCallback(async () => {
+  const loadInitialData = useCallback(async (forceNetwork = false) => {
     if (!user) {
       setState(prev => ({
         ...prev, clinics: [], patients: [], evolutions: [], appointments: [],
@@ -246,7 +246,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     // 1) Hydrate instantly from cache if available — eliminates "not found" flash on refresh
-    const cached = readCache(user.id);
+    const cached = forceNetwork ? null : readCache(user.id);
     if (cached) {
       setState(prev => ({
         ...prev,
@@ -543,8 +543,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadedAppointmentsForClinics: new Set(),
       loadedAttachmentsForPatients: new Set(),
     }));
-    await loadInitialData();
+    await loadInitialData(true);
   }, [loadInitialData]);
+
+  useEffect(() => {
+    if (!sessionReady || !user) return;
+
+    let lastForegroundRefresh = 0;
+    const refreshWhenAppReturns = () => {
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastForegroundRefresh < 30_000) return;
+      lastForegroundRefresh = now;
+      refreshData();
+    };
+
+    window.addEventListener('focus', refreshWhenAppReturns);
+    window.addEventListener('online', refreshWhenAppReturns);
+    document.addEventListener('visibilitychange', refreshWhenAppReturns);
+
+    return () => {
+      window.removeEventListener('focus', refreshWhenAppReturns);
+      window.removeEventListener('online', refreshWhenAppReturns);
+      document.removeEventListener('visibilitychange', refreshWhenAppReturns);
+    };
+  }, [sessionReady, user, refreshData]);
 
   // === Setters ===
   const setCurrentClinic = useCallback((clinic: Clinic | null) => {
