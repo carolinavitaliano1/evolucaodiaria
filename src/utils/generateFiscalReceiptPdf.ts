@@ -33,6 +33,9 @@ export interface FiscalReceiptOptions {
     date: string;
     attendanceStatus: string;
     text?: string;
+    billable?: boolean;
+    amount?: number;
+    statusLabel?: string;
   }>;
   startDate: Date;
   endDate: Date;
@@ -231,7 +234,9 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
   for (const evo of evolutions) {
     ensureSpace(LH + 1);
     const st = STATUS_LABELS[evo.attendanceStatus] ?? { label: evo.attendanceStatus, billable: false };
-    const sessionValue = st.billable ? paymentValue : 0;
+    const isBillable = evo.billable ?? st.billable;
+    const sessionValue = isBillable ? (typeof evo.amount === 'number' ? evo.amount : paymentValue) : 0;
+    const statusLabel = evo.statusLabel ?? (evo.attendanceStatus === 'falta' && isBillable ? 'Falta Cobrada' : st.label);
     const dateStr = format(new Date(evo.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
 
     doc.setFontSize(8.5);
@@ -244,7 +249,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     if (evo.attendanceStatus === 'presente' || (evo.attendanceStatus === 'reposicao' || evo.attendanceStatus === 'anteposicao')) {
       stColor = successColor;
       realizedCount++;
-    } else if (evo.attendanceStatus === 'falta_remunerada' || evo.attendanceStatus === 'feriado_remunerado') {
+    } else if (isBillable && (evo.attendanceStatus === 'falta' || evo.attendanceStatus === 'falta_remunerada' || evo.attendanceStatus === 'falta_cobrada' || evo.attendanceStatus === 'feriado_remunerado')) {
       stColor = warningColor;
       paidAbsenceCount++;
     } else {
@@ -253,13 +258,13 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     }
 
     doc.setTextColor(...stColor);
-    doc.text(st.label, c3, y);
+    doc.text(statusLabel, c3, y);
     
     doc.setTextColor(sessionValue > 0 ? darkText[0] : mutedText[0], sessionValue > 0 ? darkText[1] : mutedText[1], sessionValue > 0 ? darkText[2] : mutedText[2]);
     doc.text(sessionValue > 0 ? `R$ ${sessionValue.toFixed(2)}` : '—', c4, y, { align: 'right' });
     y += LH + 0.5;
 
-    if (st.billable) { sessionTotal += sessionValue; }
+    if (isBillable) { sessionTotal += sessionValue; }
   }
 
   if (patient.paymentType === 'fixo' && (patient.paymentValue ?? 0) > 0) {
