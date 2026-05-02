@@ -3792,7 +3792,7 @@ export default function PatientDetail() {
         <EditEvolutionDialog evolution={editingEvolution} open={!!editingEvolution}
           onOpenChange={(open) => !open && setEditingEvolution(null)}
           onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
-          showFaltaRemunerada={!!(clinic && (clinic.absencePaymentType !== 'never' || clinic.paysOnAbsence !== false))} />
+          showFaltaRemunerada={true} />
       )}
 
       {/* Feedback IA — individual */}
