@@ -2125,7 +2125,9 @@ export type Database = {
           name: string
           observations: string | null
           package_assigned_at: string | null
+          package_decision_at: string | null
           package_id: string | null
+          package_renewal_decision: string | null
           payment_due_day: number | null
           payment_info: string | null
           payment_type: string | null
@@ -2178,7 +2180,9 @@ export type Database = {
           name: string
           observations?: string | null
           package_assigned_at?: string | null
+          package_decision_at?: string | null
           package_id?: string | null
+          package_renewal_decision?: string | null
           payment_due_day?: number | null
           payment_info?: string | null
           payment_type?: string | null
@@ -2231,7 +2235,9 @@ export type Database = {
           name?: string
           observations?: string | null
           package_assigned_at?: string | null
+          package_decision_at?: string | null
           package_id?: string | null
+          package_renewal_decision?: string | null
           payment_due_day?: number | null
           payment_info?: string | null
           payment_type?: string | null
