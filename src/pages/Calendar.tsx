@@ -551,23 +551,60 @@ export default function CalendarPage() {
                   <Label>Tipo de sessão *</Label>
                   <Select
                     value={formData.sessionType}
-                    onValueChange={(v: 'regular' | 'avulsa' | 'reposicao') =>
-                      setFormData({ ...formData, sessionType: v, chargeEnabled: false, chargeValue: '' })
+                    onValueChange={(v: 'avulsa' | 'reposicao' | 'anteposicao') =>
+                      setFormData({ ...formData, sessionType: v, linkedAbsenceId: '', chargeEnabled: false, chargeValue: '' })
                     }
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="regular">Sessão regular</SelectItem>
                       <SelectItem value="avulsa">Sessão avulsa</SelectItem>
-                      <SelectItem value="reposicao">Reposição</SelectItem>
+                      <SelectItem value="reposicao">Reposição (repõe falta passada)</SelectItem>
+                      <SelectItem value="anteposicao">Anteposição (adianta sessão de falta futura)</SelectItem>
                     </SelectContent>
                   </Select>
-                  {formData.sessionType !== 'regular' && (
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Será criada automaticamente uma evolução {formData.sessionType === 'reposicao' ? '(status: Reposição)' : '(status: Presente)'} para aparecer na frequência.
-                    </p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {formData.sessionType === 'avulsa' && 'Será criada automaticamente uma evolução (status: Presente) para aparecer na frequência.'}
+                    {formData.sessionType === 'reposicao' && 'Será criada uma evolução (status: Reposição) e a falta vinculada será marcada como reposta.'}
+                    {formData.sessionType === 'anteposicao' && 'Será criada uma evolução (status: Reposição) representando o adiantamento da sessão de uma falta futura.'}
+                  </p>
                 </div>
+                {(formData.sessionType === 'reposicao' || formData.sessionType === 'anteposicao') && formData.patientId && (
+                  <div>
+                    <Label>
+                      {formData.sessionType === 'reposicao' ? 'Falta a repor' : 'Falta futura a antepor'}
+                    </Label>
+                    <Select
+                      value={formData.linkedAbsenceId || 'none'}
+                      onValueChange={v => setFormData({ ...formData, linkedAbsenceId: v === 'none' ? '' : v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem vínculo</SelectItem>
+                        {evolutions
+                          .filter(ev =>
+                            ev.patientId === formData.patientId
+                            && ev.attendanceStatus === 'falta'
+                            && (formData.sessionType === 'reposicao'
+                              ? (formData.date && ev.date < formData.date)
+                              : (formData.date && ev.date > formData.date))
+                          )
+                          .sort((a, b) => a.date.localeCompare(b.date))
+                          .slice(0, 30)
+                          .map(ev => (
+                            <SelectItem key={ev.id} value={ev.id}>
+                              {format(new Date(ev.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })}
+                              {ev.sessionTime ? ` · ${ev.sessionTime.slice(0,5)}` : ''}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      O vínculo é opcional, mas recomendado para manter o histórico de reposições.
+                    </p>
+                  </div>
+                )}
                 {formData.sessionType !== 'regular' && (
                   <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
