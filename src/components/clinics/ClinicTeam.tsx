@@ -1577,165 +1577,114 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                     </TabsList>
 
                     <TabsContent value="profissional" className="mt-4 space-y-4">
-                      {/* Planos de Remuneração */}
+                      {/* Remuneração — somente leitura. Toda gestão fica em Financeiro da Clínica → Pacotes de Atendimento */}
                       <div className="space-y-3 p-3 rounded-lg border bg-muted/20">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <Banknote className="w-4 h-4 text-primary" />
                             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                              Planos de remuneração
+                              Remuneração e comissões
                             </p>
                           </div>
-                          <span className="text-[10px] text-muted-foreground">
-                            {memberPlans.length} {memberPlans.length === 1 ? 'plano' : 'planos'}
-                          </span>
+                          <Badge variant="outline" className="text-[10px]">Somente leitura</Badge>
                         </div>
 
                         {loadingPlans ? (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando planos…
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando…
                           </div>
-                        ) : memberPlans.length === 0 ? (
-                          <p className="text-xs text-muted-foreground italic">
-                            Nenhum plano cadastrado. Adicione abaixo as modalidades de pagamento (ex.: "Por Sessão R$ 80", "Pacote de Atendimento Mensal R$ 1.200").
-                          </p>
                         ) : (
-                          <div className="space-y-1.5">
-                            {memberPlans.map(plan => {
-                              const typeLabel = plan.remuneration_type === 'por_sessao'
-                                ? 'Por sessão'
-                                : plan.remuneration_type === 'fixo_mensal'
-                                  ? 'Fixo mensal'
-                                  : plan.remuneration_type === 'pacote'
-                                    ? 'Pacote de Atendimento'
-                                    : 'Fixo por dia';
-                              return (
-                                <div
-                                  key={plan.id}
-                                  className="flex items-center gap-2 p-2 rounded-md border bg-card"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => !plan.is_default && setPlanAsDefault(plan.id)}
-                                    title={plan.is_default ? 'Plano padrão' : 'Marcar como padrão'}
-                                    className={cn(
-                                      'shrink-0 p-1 rounded hover:bg-muted',
-                                      plan.is_default ? 'text-primary' : 'text-muted-foreground/50'
-                                    )}
-                                  >
-                                    <Star className={cn('w-3.5 h-3.5', plan.is_default && 'fill-current')} />
-                                  </button>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">{plan.name}</p>
-                                    <p className="text-[11px] text-muted-foreground">
-                                      {typeLabel} · R$ {Number(plan.remuneration_value).toFixed(2).replace('.', ',')}
-                                    </p>
-                                  </div>
-                                  {plan.is_default && (
-                                    <Badge variant="secondary" className="text-[10px] h-5">Padrão</Badge>
-                                  )}
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                    onClick={() => deletePlan(plan.id)}
-                                    disabled={plan.is_default && memberPlans.length > 1}
-                                    title={plan.is_default && memberPlans.length > 1 ? 'Defina outro plano como padrão antes de excluir' : 'Excluir plano'}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                </div>
-                              );
-                            })}
+                          <div className="space-y-3">
+                            {/* Planos próprios do profissional (legado / fixo) */}
+                            {memberPlans.length > 0 && (
+                              <div className="space-y-1.5">
+                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                  Planos vinculados ao profissional
+                                </p>
+                                {memberPlans.map(plan => {
+                                  const typeLabel = plan.remuneration_type === 'por_sessao'
+                                    ? 'Por sessão'
+                                    : plan.remuneration_type === 'fixo_mensal'
+                                      ? 'Fixo mensal'
+                                      : plan.remuneration_type === 'pacote'
+                                        ? 'Pacote de Atendimento'
+                                        : 'Fixo por dia';
+                                  return (
+                                    <div key={plan.id} className="flex items-center gap-2 p-2 rounded-md border bg-card">
+                                      <Star className={cn('w-3.5 h-3.5 shrink-0', plan.is_default ? 'text-primary fill-current' : 'text-muted-foreground/40')} />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{plan.name}</p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                          {typeLabel} · R$ {Number(plan.remuneration_value).toFixed(2).replace('.', ',')}
+                                        </p>
+                                      </div>
+                                      {plan.is_default && (
+                                        <Badge variant="secondary" className="text-[10px] h-5">Padrão</Badge>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Comissões vindas de Pacotes de Atendimento da clínica */}
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                Comissões em pacotes de atendimento
+                              </p>
+                              {memberPkgCommissions.length === 0 ? (
+                                <p className="text-xs text-muted-foreground italic">
+                                  Este profissional ainda não recebe comissão por nenhum pacote da clínica.
+                                </p>
+                              ) : (
+                                memberPkgCommissions.map(pc => {
+                                  const valueLabel = pc.commission_type === 'percentual'
+                                    ? `${Number(pc.commission_value).toFixed(2).replace('.', ',')}%`
+                                    : `R$ ${Number(pc.commission_value).toFixed(2).replace('.', ',')}`;
+                                  return (
+                                    <div key={pc.id} className="flex items-center gap-2 p-2 rounded-md border bg-card">
+                                      <Package className="w-3.5 h-3.5 shrink-0 text-primary" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{pc.package_name}</p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                          Pacote R$ {pc.package_price.toFixed(2).replace('.', ',')} · Comissão {valueLabel}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                            {memberPlans.length === 0 && memberPkgCommissions.length === 0 && (
+                              <p className="text-xs text-muted-foreground italic">
+                                Nenhuma remuneração ou comissão vinculada a este profissional.
+                              </p>
+                            )}
                           </div>
                         )}
 
-                        {/* Form: novo plano */}
-                        <div className="pt-2 border-t border-border/50 space-y-2">
-                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                            Adicionar plano
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2">
-                            <Input
-                              placeholder="Nome (ex.: Plano Sessão Padrão)"
-                              value={newPlanName}
-                              onChange={e => setNewPlanName(e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                            <Select value={newPlanType} onValueChange={(v: any) => setNewPlanType(v)}>
-                              <SelectTrigger className="h-8 text-sm w-full sm:w-36">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="por_sessao">Por sessão</SelectItem>
-                                <SelectItem value="fixo_mensal">Fixo mensal</SelectItem>
-                                <SelectItem value="fixo_dia">Fixo por dia</SelectItem>
-                                <SelectItem value="pacote">Pacote de Atendimento</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="Valor R$"
-                              value={newPlanValue}
-                              onChange={e => setNewPlanValue(e.target.value)}
-                              className="h-8 text-sm w-full sm:w-28"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={addPlan}
-                              className="h-8 gap-1"
-                            >
-                              <Plus className="w-3.5 h-3.5" /> Adicionar
-                            </Button>
-                          </div>
-                          {newPlanType === 'pacote' && clinicPackagesList.length > 0 && (
-                            <div className="space-y-1">
-                              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                Vincular a um pacote existente da clínica (opcional)
-                              </p>
-                              <Select
-                                value={linkedPackageId || '__none__'}
-                                onValueChange={(v) => {
-                                  if (v === '__none__') {
-                                    setLinkedPackageId('');
-                                    return;
-                                  }
-                                  const pkg = clinicPackagesList.find(p => p.id === v);
-                                  if (pkg) {
-                                    setLinkedPackageId(v);
-                                    setNewPlanName(pkg.name);
-                                    setNewPlanValue(String(pkg.price));
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-sm">
-                                  <SelectValue placeholder="Selecione um pacote para preencher automaticamente" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__none__">Não vincular (preencher manualmente)</SelectItem>
-                                  {clinicPackagesList.map(pkg => (
-                                    <SelectItem key={pkg.id} value={pkg.id}>
-                                      {pkg.name} · R$ {Number(pkg.price).toFixed(2).replace('.', ',')}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                        <div className="pt-2 border-t border-border/50">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onOpenChange?.(false);
+                              setManageMember(null);
+                              navigate(`/clinics/${clinicId}?tab=financial`);
+                            }}
+                            className="w-full flex items-center justify-between gap-2 p-2.5 rounded-md border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Package className="w-4 h-4 text-primary shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-primary">Gerenciar em Financeiro da Clínica</p>
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  Crie/edite pacotes de atendimento e configure as comissões deste profissional.
+                                </p>
+                              </div>
                             </div>
-                          )}
-                          {newPlanType === 'fixo_mensal' && (
-                            <p className="text-[10px] text-muted-foreground italic">
-                              Planos "Fixo mensal" são contados uma única vez no mês, mesmo se vinculados a vários pacientes.
-                            </p>
-                          )}
-                          {newPlanType === 'pacote' && (
-                            <p className="text-[10px] text-muted-foreground italic">
-                              Planos "Pacote de Atendimento" cobram o valor uma vez por paciente que teve ao menos uma sessão no mês (ex.: pacote mensal independente do nº de sessões).
-                            </p>
-                          )}
+                            <ArrowRight className="w-4 h-4 text-primary shrink-0" />
+                          </button>
                         </div>
                       </div>
 
