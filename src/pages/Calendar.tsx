@@ -250,13 +250,42 @@ export default function CalendarPage() {
     e.preventDefault();
     if (!formData.clinicId || !formData.patientId || !formData.date || !formData.time) return;
 
+    // Se o vínculo é uma opção recorrente (recur:DATE:TIME), materializa
+    // primeiro uma evolução-falta naquele dia para ter um ID real e
+    // manter a integridade do histórico (anteposição/reposição).
+    let resolvedLinkedAbsenceId = formData.linkedAbsenceId;
+    if (formData.linkedAbsenceId.startsWith('recur:')) {
+      const [, recurDate, recurTime] = formData.linkedAbsenceId.split(':');
+      try {
+        const { data: created, error } = await supabase
+          .from('evolutions')
+          .insert({
+            user_id: user!.id,
+            patient_id: formData.patientId,
+            clinic_id: formData.clinicId,
+            date: recurDate,
+            session_time: recurTime || null,
+            text: '[origem:frequencia] Falta marcada automaticamente ao agendar reposição/anteposição.',
+            attendance_status: 'falta',
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+        resolvedLinkedAbsenceId = created.id;
+      } catch (err) {
+        console.error(err);
+        toast.error('Erro ao registrar a falta da frequência');
+        return;
+      }
+    }
+
     // Sempre é avulsa/reposição/anteposição (não há mais "regular" aqui).
     const isAvulsaOrReposicao = true;
     const typeTag = `[tipo:${formData.sessionType}]`;
-    const linkTag = (formData.sessionType === 'reposicao' && formData.linkedAbsenceId)
-      ? `[reposicao:${formData.linkedAbsenceId}]`
-      : (formData.sessionType === 'anteposicao' && formData.linkedAbsenceId)
-        ? `[anteposicao:${formData.linkedAbsenceId}]`
+    const linkTag = (formData.sessionType === 'reposicao' && resolvedLinkedAbsenceId)
+      ? `[reposicao:${resolvedLinkedAbsenceId}]`
+      : (formData.sessionType === 'anteposicao' && resolvedLinkedAbsenceId)
+        ? `[anteposicao:${resolvedLinkedAbsenceId}]`
         : '';
     const baseNotes = [typeTag, linkTag, formData.notes].filter(Boolean).join(' ').trim();
 
@@ -296,12 +325,12 @@ export default function CalendarPage() {
       } as any);
 
       // Marcar a falta original como reposta (best-effort, não bloqueia o fluxo).
-      if (formData.linkedAbsenceId) {
+      if (resolvedLinkedAbsenceId) {
         try {
           const { data: orig } = await supabase
             .from('evolutions')
             .select('id, text')
-            .eq('id', formData.linkedAbsenceId)
+            .eq('id', resolvedLinkedAbsenceId)
             .maybeSingle();
           if (orig && !/\[reposta_por:/i.test(orig.text || '')) {
             const newText = `${orig.text || ''} [reposta_por:pendente]`.trim();
