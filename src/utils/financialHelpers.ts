@@ -338,13 +338,28 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
 
     // A) valor_total → lança 1× no mês de associação
     if (pkg.lancamentoTipo === 'valor_total') {
-      let isAssignedMonth = false;
-      if (patient.packageAssignedAt) {
-        const assigned = new Date(patient.packageAssignedAt);
-        isAssignedMonth =
-          assigned.getFullYear() === year && assigned.getMonth() + 1 === month;
+      // Para pacote MENSAL com lançamento por valor total: lança o valor cheio
+      // em CADA mês onde houver ao menos uma evolução billable (mensalidade).
+      // Para pacotes 'por_sessao' / 'personalizado' (ciclo único fechado):
+      // lança 1× no mês da contratação (packageAssignedAt).
+      let total = 0;
+      const billable = evolutions.filter(e => isBillableStatus(e.attendanceStatus));
+      const chargedAbsences = evolutions
+        .filter(e => e.attendanceStatus === 'falta')
+        .filter(e => shouldChargeAbsence(e, clinic));
+      const hasActivity = billable.length > 0 || chargedAbsences.length > 0;
+
+      if (pkg.packageType === 'mensal') {
+        total = hasActivity ? pkgTotal : 0;
+      } else {
+        let isAssignedMonth = false;
+        if (patient.packageAssignedAt) {
+          const assigned = new Date(patient.packageAssignedAt);
+          isAssignedMonth =
+            assigned.getFullYear() === year && assigned.getMonth() + 1 === month;
+        }
+        total = isAssignedMonth ? pkgTotal : 0;
       }
-      const total = isAssignedMonth ? pkgTotal : 0;
       return {
         individualRevenue: total,
         groupRevenue: 0,
@@ -352,9 +367,9 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
         total,
         loss: 0,
         details: {
-          billableIndividual: 0,
-          billableGroup: 0,
-          chargedAbsences: 0,
+          billableIndividual: billable.filter(e => !e.groupId).length,
+          billableGroup: billable.filter(e => e.groupId).length,
+          chargedAbsences: chargedAbsences.length,
           uncoveredAbsences: 0,
           perSessionValue: 0,
         },
