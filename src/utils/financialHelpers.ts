@@ -228,6 +228,9 @@ export function getIndividualPerSessionValue(
   year: number,
   pkg?: PackageLike | null,
 ): number {
+  // ⚠️ Convenção: este helper aceita month 1-indexed (Janeiro = 1)
+  // para alinhar com calculatePatientMonthlyRevenue. Internamente
+  // converte para 0-indexed antes de chamar dateHelpers.
   // 🔁 Fallback: paciente sem valor próprio mas com pacote vinculado → usa preço do pacote.
   const baseValue = patient.paymentValue && patient.paymentValue > 0
     ? patient.paymentValue
@@ -241,7 +244,7 @@ export function getIndividualPerSessionValue(
   // Mensalistas (paciente com paymentType 'fixo' OU pacote 'mensal' vinculado)
   const isMensal = patient.paymentType === 'fixo' || pkg?.packageType === 'mensal';
   if (isMensal) {
-    const dyn = getMensalDynamicWithBase(patient, baseValue, month, year);
+    const dyn = getMensalDynamicWithBase(patient, baseValue, month - 1, year);
     return dyn.isDynamic ? dyn.perSession : 0;
   }
 
