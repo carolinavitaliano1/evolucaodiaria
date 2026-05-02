@@ -35,6 +35,7 @@ export type AttendanceStatus =
   | 'presente'
   | 'falta'
   | 'falta_remunerada'
+  | 'falta_cobrada'
   | 'reposicao'
   | 'anteposicao'
   | 'feriado_remunerado'
