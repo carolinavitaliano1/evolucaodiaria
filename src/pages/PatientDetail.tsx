@@ -1436,7 +1436,8 @@ export default function PatientDetail() {
   const buildFiscalReceiptOpts = () => {
     const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
     const evos = getFiscalEvolutions();
-    const rawPaymentValue = patient?.paymentValue || 0;
+    // Use resolved paymentValue (includes package price fallback for monthly/total packages)
+    const rawPaymentValue = paymentValue || 0;
     const STATUS_BILLABLE: Record<string, boolean> = {
       presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
       falta: false, feriado_nao_remunerado: false,
@@ -1547,7 +1548,8 @@ export default function PatientDetail() {
       };
       const periodLabel = `${format(fiscalStartDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(fiscalEndDate, 'dd/MM/yyyy', { locale: ptBR })}`;
       const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
-      const rawPayVal = patient.paymentValue || 0;
+      // Use resolved paymentValue (includes package price fallback for monthly/total packages)
+      const rawPayVal = paymentValue || 0;
       // For Personalizado packages use per-session value; for mensal use dynamic value
       let payVal = isPackagePersonalizado ? perSessionValue : rawPayVal;
       if ((isPackageMensal || isFixoMensal) && rawPayVal > 0 && fiscalStartDate) {
@@ -4354,9 +4356,9 @@ export default function PatientDetail() {
                   {fiscalTotalPaidFromApp !== null && <span> — R$ {fiscalTotalPaidFromApp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
                 </p>
               ) : (
-                <p className="text-muted-foreground">Sem pagamento registrado neste período (Total Pago = R$ 0,00 no extrato).</p>
+                <p className="text-muted-foreground">Sem pagamento registrado neste período. O extrato será gerado normalmente com as sessões realizadas e <span className="font-semibold">Total Pago = R$ 0,00</span> (valores aparecerão como pendentes).</p>
               )}
-              <p className="text-muted-foreground/80 text-[11px]">O Total Pago é extraído automaticamente do financeiro do paciente quando marcado como pago.</p>
+              <p className="text-muted-foreground/80 text-[11px]">O Total Pago é extraído automaticamente do financeiro do paciente quando marcado como pago. O Total Faturado sempre considera as sessões realizadas no período.</p>
             </div>
 
             {/* CPF warning */}
