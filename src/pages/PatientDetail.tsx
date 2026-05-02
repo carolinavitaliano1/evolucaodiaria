@@ -830,6 +830,10 @@ export default function PatientDetail() {
   // (mensal ÷ semanas agendadas no mês), independentemente de o paciente
   // estar marcado como "fixo mensal" ou não.
   const isPackageMensalFracionado = isPackageMensal && patientPackage?.lancamentoTipo === 'valor_procedimento';
+  // Pacote (qualquer tipo) com lançamento por VALOR TOTAL: o pacote inteiro
+  // é cobrado de uma vez, então faltas comuns não são permitidas (somente
+  // falta remunerada, presença, reposição e feriados).
+  const isPackageValorTotal = !!patientPackage && patientPackage?.lancamentoTipo === 'valor_total';
   const perSessionValue = isPackagePersonalizado
     ? paymentValue / (patientPackage!.sessionLimit!)
     : paymentValue;
