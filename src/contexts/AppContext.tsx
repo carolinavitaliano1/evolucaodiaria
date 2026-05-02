@@ -718,6 +718,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
     }
+    // 🔒 Bloqueia novas evoluções quando o paciente decidiu NÃO renovar
+    // o Pacote de Atendimento personalizado encerrado.
+    {
+      const pat = state.patients.find(p => p.id === evolution.patientId) as any;
+      if (pat?.packageRenewalDecision === 'declined') {
+        toast.error('Pacote encerrado. Renove o pacote para registrar novas sessões.');
+        return;
+      }
+    }
     try {
       const { data, error } = await supabase.from('evolutions').insert({
         user_id: user.id, patient_id: evolution.patientId, clinic_id: evolution.clinicId,
