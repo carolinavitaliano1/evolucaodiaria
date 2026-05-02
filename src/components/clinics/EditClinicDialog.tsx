@@ -44,6 +44,8 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
     paymentAmount: '',
     discountPercentage: '',
     absencePaymentType: 'always' as 'always' | 'never' | 'confirmed_only',
+    absenceChargeMode: 'integral' as 'integral' | 'parcial',
+    absenceChargeAmount: '',
     letterhead: '' as string,
   });
 
@@ -64,6 +66,8 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         paymentAmount: clinic.paymentAmount?.toString() || '',
         discountPercentage: clinic.discountPercentage?.toString() || '0',
         absencePaymentType: clinic.absencePaymentType || 'always',
+        absenceChargeMode: (clinic.absenceChargeMode as 'integral' | 'parcial') || 'integral',
+        absenceChargeAmount: clinic.absenceChargeAmount != null ? String(clinic.absenceChargeAmount) : '',
         letterhead: (clinic as any).letterhead || '',
       });
     }
@@ -123,6 +127,10 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
           : 0,
         paysOnAbsence: formData.absencePaymentType !== 'never',
         absencePaymentType: formData.absencePaymentType,
+        absenceChargeMode: formData.absenceChargeMode,
+        absenceChargeAmount: formData.absenceChargeMode === 'parcial' && formData.absenceChargeAmount
+          ? parseFloat(formData.absenceChargeAmount)
+          : undefined,
         letterhead: formData.letterhead || undefined,
       });
       toast.success('Clínica atualizada!');
@@ -414,6 +422,42 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
                   <p><strong>Nunca cobrar faltas:</strong> faltas comuns não entram como receita — aparecem apenas como perda no relatório. Use "Falta Remunerada" pontualmente quando quiser cobrar uma falta específica.</p>
                 </div>
               </div>
+              {formData.absencePaymentType !== 'never' && (
+                <div className="space-y-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                  <div>
+                    <Label className="text-xs">Quanto o terapeuta recebe pela falta cobrada</Label>
+                    <Select
+                      value={formData.absenceChargeMode}
+                      onValueChange={(v) => setFormData({ ...formData, absenceChargeMode: v as 'integral' | 'parcial' })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="integral">Integral (valor cheio da sessão)</SelectItem>
+                        <SelectItem value="parcial">Parcial (valor fixo em R$)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.absenceChargeMode === 'parcial' && (
+                    <div>
+                      <Label className="text-xs">Valor por falta (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.absenceChargeAmount}
+                        onChange={(e) => setFormData({ ...formData, absenceChargeAmount: e.target.value })}
+                        placeholder="0,00"
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    <strong>Integral:</strong> quando a contratante paga a falta, o terapeuta recebe o mesmo valor de uma sessão normal (conforme o modelo de remuneração configurado).<br />
+                    <strong>Parcial:</strong> a contratante paga, mas o terapeuta recebe apenas o valor fixo informado por falta. A diferença fica retida pela clínica.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
