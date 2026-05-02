@@ -1482,7 +1482,7 @@ export default function PatientDetail() {
         ['presente', 'falta', 'reposicao','anteposicao'].includes(e.attendanceStatus)
       );
       const statusLabelMap: Record<string, string> = {
-        presente: 'Presente', falta: 'Falta', reposicao: 'Reposição',
+        presente: 'Presente', falta: 'Falta', reposicao: 'Reposição', anteposicao: 'Anteposição',
       };
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
       doc.text(`${section3}. REGISTRO DAS SESSÕES (${visibleEvolutions.length})`, margin, y); y += 6;
@@ -1670,7 +1670,7 @@ export default function PatientDetail() {
     try {
       const STATUS_LABELS: Record<string, { label: string; billable: boolean }> = {
         presente: { label: 'Presente', billable: true },
-        reposicao: { label: 'Reposição', billable: true },
+        reposicao: { label: 'Reposição', billable: true }, anteposicao: { label: 'Anteposição', billable: true },
         falta_remunerada: { label: 'Falta Remunerada', billable: true },
         feriado_remunerado: { label: 'Feriado Remunerado', billable: true },
         falta: { label: 'Falta', billable: false },
@@ -2066,7 +2066,7 @@ export default function PatientDetail() {
       // ── 3. REGISTRO COMPLETO DAS SESSÕES ─────────────────────────
       const allStatusLabel: Record<string, string> = {
         presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
-        reposicao: 'Reposição', feriado_remunerado: 'Feriado Remunerado',
+        reposicao: 'Reposição', anteposicao: 'Anteposição', feriado_remunerado: 'Feriado Remunerado',
         feriado_nao_remunerado: 'Feriado Não Remunerado',
       };
       const paidStatuses = ['presente', 'reposicao','anteposicao', 'falta_remunerada', 'feriado_remunerado'];
@@ -4310,7 +4310,7 @@ export default function PatientDetail() {
                     .sort((a, b) => b.date.localeCompare(a.date));
                   const statusLabel: Record<string, string> = {
                     presente: 'Presente', falta_remunerada: 'Falta Rem.',
-                    reposicao: 'Reposição', feriado_remunerado: 'Feriado Rem.',
+                    reposicao: 'Reposição', anteposicao: 'Anteposição', feriado_remunerado: 'Feriado Rem.',
                   };
                   if (billable.length === 0) return (
                     <p className="text-xs text-muted-foreground text-center py-2">Nenhuma sessão realizada registrada.</p>

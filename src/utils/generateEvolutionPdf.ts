@@ -172,6 +172,7 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps, prof
     const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
       : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'
       : evo.attendanceStatus === 'reposicao' ? 'REPOSIÇÃO'
+      : evo.attendanceStatus === 'anteposicao' ? 'ANTEPOSIÇÃO'
       : evo.attendanceStatus === 'feriado_remunerado' ? 'FERIADO REMUNERADO'
       : evo.attendanceStatus === 'feriado_nao_remunerado' ? 'FERIADO'
       : 'FALTA';
@@ -339,6 +340,7 @@ export async function generateMultipleEvolutionsPdf({
     const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
       : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'
       : evo.attendanceStatus === 'reposicao' ? 'REPOSIÇÃO'
+      : evo.attendanceStatus === 'anteposicao' ? 'ANTEPOSIÇÃO'
       : evo.attendanceStatus === 'feriado_remunerado' ? 'FERIADO REMUNERADO'
       : evo.attendanceStatus === 'feriado_nao_remunerado' ? 'FERIADO'
       : 'FALTA';

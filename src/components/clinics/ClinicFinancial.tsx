@@ -982,7 +982,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             const p = clinicPatients.find(pt => pt.id === e.patientId);
             if (!p) return;
             if (y > 268) { doc.addPage(); y = margin; }
-            const statusMap: Record<string, string> = { presente: 'Presente', falta: 'Falta', reposicao: 'Reposição', falta_remunerada: 'Falta Rem.', feriado_remunerado: 'Feriado Rem.' };
+            const statusMap: Record<string, string> = { presente: 'Presente', falta: 'Falta', reposicao: 'Reposição', anteposicao: 'Anteposição', falta_remunerada: 'Falta Rem.', feriado_remunerado: 'Feriado Rem.' };
             doc.setTextColor(50, 50, 50);
             doc.text(`• ${p.name}`, margin + 4, y + 3);
             doc.setTextColor(120, 120, 120);
@@ -1176,7 +1176,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                         const statusMap: Record<string, { label: string; color: string }> = {
                           presente: { label: 'Presente', color: 'text-success' },
                           falta: { label: 'Falta', color: 'text-destructive' },
-                          reposicao: { label: 'Reposição', color: 'text-primary' },
+                          reposicao: { label: 'Reposição', color: 'text-primary' }, anteposicao: { label: 'Anteposição', color: 'text-primary' },
                           falta_remunerada: { label: 'Falta Rem.', color: 'text-warning' },
                           feriado_remunerado: { label: 'Feriado Rem.', color: 'text-primary' },
                         };
