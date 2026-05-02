@@ -3054,7 +3054,14 @@ export default function PatientDetail() {
                                   <Sparkles className="w-3 h-3" />
                                   <span className="hidden sm:inline">Feedback IA</span>
                                 </Button>
-                                <Button variant="ghost" size="sm" className="gap-1 h-7 px-2 text-xs" onClick={() => setEditingEvolution(evo)}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1 h-7 px-2 text-xs"
+                                  disabled={evolutionLocked}
+                                  title={evolutionLocked ? 'Pacote encerrado — reative para editar' : undefined}
+                                  onClick={() => setEditingEvolution(evo)}
+                                >
                                   <Edit className="w-3 h-3" /> <span className="hidden sm:inline">Editar</span>
                                 </Button>
                               </>
@@ -3064,7 +3071,14 @@ export default function PatientDetail() {
                               <Download className="w-3 h-3" /> PDF
                             </Button>
                             {!isAutoHoliday && (
-                              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => deleteEvolution(evo.id)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive h-7 w-7 p-0"
+                                disabled={evolutionLocked}
+                                title={evolutionLocked ? 'Pacote encerrado — reative para excluir' : undefined}
+                                onClick={() => deleteEvolution(evo.id)}
+                              >
                                 <X className="w-3 h-3" />
                               </Button>
                             )}
