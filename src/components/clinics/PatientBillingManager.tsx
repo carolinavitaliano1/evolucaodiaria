@@ -52,10 +52,40 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
       if (error) throw error;
 
       const clinicPatients = patients.filter(p => p.clinicId === clinicId);
-      
-      // Map existing records and identify missing ones for patients with paymentValue
-      const records: PaymentRecord[] = clinicPatients
-        .filter(p => p.paymentValue && p.paymentValue > 0)
+
+      // Reference month boundaries
+      const refStart = new Date(y, m - 1, 1);
+      const refEnd = new Date(y, m, 0); // last day of month
+
+      // Eligible patients: belong to this clinic, have any billing setup,
+      // and were active during the reference month (started on/before month end,
+      // and not departed/archived before month start)
+      const eligible = clinicPatients.filter(p => {
+        const hasBilling =
+          (p.paymentValue && p.paymentValue > 0) || !!p.paymentType;
+        if (!hasBilling) return false;
+
+        if (p.contractStartDate) {
+          const start = new Date(`${p.contractStartDate}T12:00:00`);
+          if (start > refEnd) return false; // started after this month
+        }
+
+        if (p.departureDate) {
+          const end = new Date(`${p.departureDate}T12:00:00`);
+          if (end < refStart) return false; // left before this month
+        }
+
+        if (p.isArchived) {
+          // archived without an explicit departure date: only show if a record already exists
+          const hasRecord = (data || []).some(r => r.patient_id === p.id);
+          if (!hasRecord) return false;
+        }
+
+        return true;
+      });
+
+      // Map existing records and identify missing ones
+      const records: PaymentRecord[] = eligible
         .map(p => {
           const existing = (data || []).find(r => r.patient_id === p.id);
           const amount = p.paymentType === 'fixo'
