@@ -62,6 +62,8 @@ const STATUS_LABELS: Record<string, { label: string; billable: boolean }> = {
   presente:               { label: 'Presente',           billable: true },
   reposicao:              { label: 'Reposição',          billable: true },
   falta_remunerada:       { label: 'Falta Remunerada',   billable: true },
+  falta_cobrada:          { label: 'Falta Cobrada',      billable: true },
+  anteposicao:            { label: 'Anteposição',        billable: true },
   feriado_remunerado:     { label: 'Feriado Remunerado', billable: true },
   falta:                  { label: 'Falta',              billable: false },
   feriado_nao_remunerado: { label: 'Feriado',            billable: false },

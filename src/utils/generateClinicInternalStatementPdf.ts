@@ -151,7 +151,7 @@ export async function generateClinicInternalStatementPdf(
       .eq('clinic_id', clinicId),
     supabase
       .from('clinics')
-      .select('payment_type, payment_amount, discount_percentage, absence_payment_type, pays_on_absence')
+      .select('payment_type, payment_amount, discount_percentage, absence_payment_type, pays_on_absence, absence_charge_mode, absence_charge_amount')
       .eq('id', clinicId)
       .maybeSingle(),
     supabase
@@ -163,7 +163,7 @@ export async function generateClinicInternalStatementPdf(
       .maybeSingle(),
   ]);
 
-  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null; absence_payment_type?: string | null; pays_on_absence?: boolean | null } | null =
+  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null; absence_payment_type?: string | null; pays_on_absence?: boolean | null; absence_charge_mode?: string | null; absence_charge_amount?: number | null } | null =
     (clinicRes.data as any) ?? null;
 
   const isClinicFixedSalary =
@@ -387,6 +387,8 @@ export async function generateClinicInternalStatementPdf(
           paymentAmount: clinicPayInfo?.payment_amount,
           absencePaymentType: clinicPayInfo?.absence_payment_type,
           paysOnAbsence: clinicPayInfo?.pays_on_absence,
+          absenceChargeMode: (clinicPayInfo?.absence_charge_mode as any) || undefined,
+          absenceChargeAmount: clinicPayInfo?.absence_charge_amount ?? undefined,
         },
         // calculatePatientMonthlyRevenue espera month 1-indexed
         month: month + 1,
@@ -408,12 +410,20 @@ export async function generateClinicInternalStatementPdf(
       pEvos.forEach(e => {
         const isBillable = COUNTS_AS_BILLABLE(e.attendance_status);
         if (isBillable) billableCounter++;
+        const isParcialAbsence =
+          clinicPayInfo?.absence_charge_mode === 'parcial' &&
+          e.attendance_status === 'falta_cobrada';
+        const rowAmount = isBillable
+          ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
+          : 0;
         rows.push({
           date: e.date,
           type: 'Sessão',
-          description: isBillable ? 'Atendimento' : 'Sessão sem cobrança',
+          description: isBillable
+            ? (isParcialAbsence ? 'Falta cobrada (parcial)' : 'Atendimento')
+            : 'Sessão sem cobrança',
           status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
-          amount: isBillable ? perSession : 0,
+          amount: rowAmount,
           paid: !!pPay?.paid,
           sessionIndex: isBillable ? billableCounter : undefined,
           sessionTotal: isBillable ? totalSessionsInMonth : undefined,
@@ -437,12 +447,17 @@ export async function generateClinicInternalStatementPdf(
       // Per session / personalizado / avulso: each session has its own value
       pEvos.forEach(e => {
         const billable = COUNTS_AS_BILLABLE(e.attendance_status);
-        const amount = billable ? perSession : 0;
+        const isParcialAbsence =
+          clinicPayInfo?.absence_charge_mode === 'parcial' &&
+          e.attendance_status === 'falta_cobrada';
+        const amount = billable
+          ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
+          : 0;
         sessionsTotal += amount;
         rows.push({
           date: e.date,
           type: 'Sessão',
-          description: 'Atendimento clínico',
+          description: isParcialAbsence ? 'Falta cobrada (parcial)' : 'Atendimento clínico',
           status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
           amount,
           paid: !!pPay?.paid,
