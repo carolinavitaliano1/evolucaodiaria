@@ -69,6 +69,14 @@ export interface Patient {
   createdAt: string;
   /** Data em que o pacote foi associado/trocado (preenchida automaticamente por trigger). */
   packageAssignedAt?: string;
+  /**
+   * Decisão do paciente quando o Pacote de Atendimento personalizado termina.
+   * - `renewed`  → optou por renovar (reseta o ciclo).
+   * - `declined` → optou por NÃO renovar (trava criação/edição de evoluções).
+   * - undefined  → ainda não decidiu (mostra o banner de renovação).
+   */
+  packageRenewalDecision?: 'renewed' | 'declined';
+  packageDecisionAt?: string;
 }
 
 export interface ClinicPackage {
