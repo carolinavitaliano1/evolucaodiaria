@@ -393,6 +393,25 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
                   className="mt-1"
                 />
               </div>
+              <div>
+                <Label className="text-xs">Pagamento em caso de falta</Label>
+                <Select
+                  value={formData.absencePaymentType}
+                  onValueChange={(v) => setFormData({ ...formData, absencePaymentType: v as 'always' | 'never' | 'confirmed_only' })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="always">Sempre cobrar faltas</SelectItem>
+                    <SelectItem value="confirmed_only">Cobrar apenas se houve confirmação prévia</SelectItem>
+                    <SelectItem value="never">Nunca cobrar faltas</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Define se as faltas comuns desta contratante entram como receita no financeiro.
+                </p>
+              </div>
             </div>
           )}
 
