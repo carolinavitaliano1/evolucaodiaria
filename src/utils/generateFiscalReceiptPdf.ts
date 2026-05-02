@@ -239,7 +239,7 @@ export async function generateFiscalReceiptPdf(opts: FiscalReceiptOptions, retur
     
     // Status color: green for present/reposicao, orange for paid absence, gray for others
     let stColor = darkText;
-    if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao','anteposicao') {
+    if (evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao') {
       stColor = successColor;
       realizedCount++;
     } else if (evo.attendanceStatus === 'falta_remunerada' || evo.attendanceStatus === 'feriado_remunerado') {

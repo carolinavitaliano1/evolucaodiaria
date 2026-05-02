@@ -337,7 +337,7 @@ export function ClinicAttendanceSheet({ clinicName, patients, evolutions, clinic
                         const s = sessionMap[d];
                         if (!s) return <td key={d} className="border border-border px-1 py-1.5" />;
                         const label = s.isFilled ? getStatusLabel(s.attendanceStatus) : 'Agendado';
-                        const isPresent = s.attendanceStatus === 'presente' || s.attendanceStatus === 'reposicao','anteposicao';
+                        const isPresent = s.attendanceStatus === 'presente' || s.attendanceStatus === 'reposicao';
                         const isAbsent = s.attendanceStatus === 'falta';
                         return (
                           <td key={d} className="border border-border px-1 py-1.5 text-center align-top">

@@ -107,7 +107,7 @@ const COUNTS_AS_BILLABLE = (s: string) =>
   s === 'presente' ||
   s === 'falta_remunerada' ||
   s === 'falta_cobrada' ||
-  s === 'reposicao','anteposicao' ||
+  s === 'reposicao' ||
   s === 'feriado_remunerado';
 
 const isMensalType = (pt: string | null | undefined, pkgType: string | null | undefined) =>

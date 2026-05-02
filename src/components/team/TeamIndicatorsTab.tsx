@@ -71,7 +71,7 @@ export function TeamIndicatorsTab({ organizationId, clinicId }: Props) {
         .lte('date', endStr);
       const evos = evolutions ?? [];
 
-      const presentStatuses = new Set(['presente', 'reposicao','anteposicao', 'falta_remunerada', 'feriado_remunerado']);
+      const presentStatuses = new Set(['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado']);
       const presentSessions = evos.filter((e) => presentStatuses.has(e.attendance_status)).length;
       const totalSessions = evos.length;
       const attendanceRate = totalSessions > 0 ? Math.round((presentSessions / totalSessions) * 100) : 0;

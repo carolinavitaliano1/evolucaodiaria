@@ -80,7 +80,7 @@ export function PatientPlanCard({ patient, canEdit }: PatientPlanCardProps) {
       const d = new Date(e.date + 'T00:00:00');
       return d.getMonth() === now.getMonth() &&
              d.getFullYear() === now.getFullYear() &&
-             (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao');
+             (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
     }).length;
   }, [evolutions, patient.id]);
 

@@ -781,7 +781,7 @@ export default function GroupDetail() {
     { value: 'presente', label: 'Presente' },
     { value: 'falta', label: 'Falta' },
     { value: 'falta_remunerada', label: 'Falta remunerada' },
-    { value: 'reposicao','anteposicao', label: 'Reposição' },
+    { value: 'reposicao', label: 'Reposição' },
     { value: 'feriado_remunerado', label: 'Feriado remunerado' },
     { value: 'feriado_nao_remunerado', label: 'Feriado não remunerado' },
   ];

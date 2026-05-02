@@ -287,10 +287,10 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     ? allClinicPatients.filter(p => monthlyEvolutions.some(e => e.patientId === p.id))
     : allClinicPatients;
 
-  const presentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao');
+  const presentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
   const absentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
-  const reposicaoEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'reposicao','anteposicao');
+  const reposicaoEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'reposicao');
   const feriadoRemEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado');
 
   const absenceType = resolveAbsencePaymentType(clinic);
@@ -854,7 +854,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     return selectedDaysStr.includes(e.date);
   });
 
-  const dayPresentEvos = dayEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao');
+  const dayPresentEvos = dayEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
   const dayAbsentEvos = dayEvolutions.filter(e => e.attendanceStatus === 'falta');
   const dayPaidAbsenceEvos = dayEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
   const dayFeriadoRemEvos = dayEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado');
@@ -1150,7 +1150,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                 return sum + getDayEvolutionValue(e, p);
               }, 0);
               const dayTotal = dayPatRevenue + daySvcRevenue;
-              const presentOnDay = dayEvosForDay.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').length;
+              const presentOnDay = dayEvosForDay.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
               const absentOnDay = dayEvosForDay.filter(e => e.attendanceStatus === 'falta').length;
               const dayLabel = format(day, "EEE, dd 'de' MMM", { locale: ptBR });
 

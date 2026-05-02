@@ -135,7 +135,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
   const statusLabel = (status: string) => {
     switch (status) {
       case 'presente': return { label: '✅ Presente', cls: 'text-success' };
-      case 'reposicao','anteposicao': return { label: '🔄 Reposição', cls: 'text-primary' };
+      case 'reposicao': return { label: '🔄 Reposição', cls: 'text-primary' };
       case 'falta': return { label: '❌ Falta', cls: 'text-destructive' };
       case 'falta_remunerada': return { label: '⚠️ Falta Rem.', cls: 'text-warning' };
       default: return { label: status, cls: 'text-muted-foreground' };
@@ -222,7 +222,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                   className={cn(
                     "flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-colors gap-2",
                     evo
-                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao','anteposicao'
+                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao'
                         ? "bg-success/10 border-success/30"
                         : evo.attendanceStatus === 'falta_remunerada'
                           ? "bg-warning/10 border-warning/30"
@@ -300,7 +300,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                   className={cn(
                     'flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-colors gap-2',
                     evo
-                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao','anteposicao'
+                      ? evo.attendanceStatus === 'presente' || evo.attendanceStatus === 'reposicao'
                         ? 'bg-success/10 border-success/30'
                         : evo.attendanceStatus === 'falta_remunerada'
                           ? 'bg-warning/10 border-warning/30'

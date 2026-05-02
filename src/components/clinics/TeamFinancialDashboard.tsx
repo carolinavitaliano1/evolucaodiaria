@@ -103,7 +103,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
     return monthlyEvolutions.filter(e => e.userId === filterMemberId);
   }, [monthlyEvolutions, filterMemberId]);
 
-  const totalSessions = filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').length;
+  const totalSessions = filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
   const totalAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const totalPaidAbsences = filteredEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
 
@@ -127,7 +127,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
   const memberStats = useMemo(() => {
     return members.map(member => {
       const memberEvos = monthlyEvolutions.filter(e => e.userId === member.userId);
-      const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').length;
+      const sessions = memberEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
       const absences = memberEvos.filter(e => e.attendanceStatus === 'falta').length;
       const paidAbsences = memberEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       const calc = calculateMemberBreakdown(member, memberEvos);
@@ -144,7 +144,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         const patient = clinicPatients.find(p => p.id === patientId);
         if (!patient) return null;
         const patientEvos = filteredEvolutions.filter(e => e.patientId === patientId);
-        const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').length;
+        const sessions = patientEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
         const absences = patientEvos.filter(e => e.attendanceStatus === 'falta').length;
         const paidAbsences = patientEvos.filter(e => e.attendanceStatus === 'falta_remunerada').length;
         const authorId = (patientEvos[0] as any)?.user_id;
@@ -181,7 +181,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
             if (!member) return 0;
             return calculateMemberRemuneration(member, filteredMonthEvos);
           })();
-      const sessions = filteredMonthEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').length;
+      const sessions = filteredMonthEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
 
       return {
         month: format(date, 'MMM', { locale: ptBR }).replace('.', ''),
@@ -417,7 +417,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         if (selMember?.remunerationType === 'fixo_mensal') {
           sub = 'Valor Fixo Mensal (salário)';
         } else if (selMember?.remunerationType === 'fixo_dia') {
-          const days = new Set(filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao').map(e => e.date)).size;
+          const days = new Set(filteredEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
           sub = `Baseado em ${days} dia${days !== 1 ? 's' : ''} trabalhado${days !== 1 ? 's' : ''}`;
         } else if (selMember?.remunerationType === 'por_sessao') {
           sub = `Baseado em ${totalSessions} sessão${totalSessions !== 1 ? 'ões' : ''}`;
@@ -541,7 +541,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
                    <p className="text-xs text-muted-foreground">
                     {member.remunerationType === 'fixo_mensal' && '💼 Salário fixo mensal'}
                     {member.remunerationType === 'fixo_dia' && (() => {
-                      const days = new Set(monthlyEvolutions.filter(e => e.userId === member.userId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao','anteposicao')).map(e => e.date)).size;
+                      const days = new Set(monthlyEvolutions.filter(e => e.userId === member.userId && (e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao')).map(e => e.date)).size;
                       return `📅 ${days} dia${days !== 1 ? 's' : ''} trabalhado${days !== 1 ? 's' : ''}`;
                     })()}
                     {member.remunerationType === 'por_sessao' && `🔄 ${sessions} sessão${sessions !== 1 ? 'ões' : ''}`}

@@ -171,12 +171,12 @@ export async function generateAllPatientsPdf({ items, clinic, date, stamps, prof
     // Attendance status
     const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
       : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'
-      : evo.attendanceStatus === 'reposicao','anteposicao' ? 'REPOSIÇÃO'
+      : evo.attendanceStatus === 'reposicao' ? 'REPOSIÇÃO'
       : evo.attendanceStatus === 'feriado_remunerado' ? 'FERIADO REMUNERADO'
       : evo.attendanceStatus === 'feriado_nao_remunerado' ? 'FERIADO'
       : 'FALTA';
     const statusColor: [number, number, number] =
-      ['presente', 'reposicao','anteposicao', 'feriado_remunerado'].includes(evo.attendanceStatus)
+      ['presente', 'reposicao', 'feriado_remunerado'].includes(evo.attendanceStatus)
         ? [34, 197, 94]
         : evo.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68];
     pdf.setFontSize(9); pdf.setFont('helvetica', 'bold');
@@ -338,7 +338,7 @@ export async function generateMultipleEvolutionsPdf({
 
     const statusText = evo.attendanceStatus === 'presente' ? 'PRESENTE'
       : evo.attendanceStatus === 'falta_remunerada' ? 'FALTA REMUNERADA'
-      : evo.attendanceStatus === 'reposicao','anteposicao' ? 'REPOSIÇÃO'
+      : evo.attendanceStatus === 'reposicao' ? 'REPOSIÇÃO'
       : evo.attendanceStatus === 'feriado_remunerado' ? 'FERIADO REMUNERADO'
       : evo.attendanceStatus === 'feriado_nao_remunerado' ? 'FERIADO'
       : 'FALTA';
