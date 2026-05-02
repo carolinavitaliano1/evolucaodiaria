@@ -1614,7 +1614,7 @@ export default function PatientDetail() {
     const servicesBilled = servicesInRange.reduce((sum, s) => sum + (s.price || 0), 0);
     const totalFaturado = sessionsBilled + servicesBilled;
     // Total descontado (não cobrado) = soma do que seria por sessão das faltas/feriados não remunerados
-    const nonBillableEvos = evos.filter(e => !(STATUS_BILLABLE[e.attendanceStatus] ?? false));
+    const nonBillableEvos = evos.filter(e => !shouldBillEvolution(e));
     const totalDescontado = nonBillableEvos.length * fiscalPerSession;
     // Total pago = vem do registro financeiro do paciente (apenas se realmente marcado como pago)
     const totalPago = fiscalPaymentStatus === 'paid'
