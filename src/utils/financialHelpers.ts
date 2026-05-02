@@ -228,6 +228,9 @@ export function getIndividualPerSessionValue(
   year: number,
   pkg?: PackageLike | null,
 ): number {
+  // ⚠️ Convenção: este helper aceita month 1-indexed (Janeiro = 1)
+  // para alinhar com calculatePatientMonthlyRevenue. Internamente
+  // converte para 0-indexed antes de chamar dateHelpers.
   // 🔁 Fallback: paciente sem valor próprio mas com pacote vinculado → usa preço do pacote.
   const baseValue = patient.paymentValue && patient.paymentValue > 0
     ? patient.paymentValue
@@ -241,7 +244,7 @@ export function getIndividualPerSessionValue(
   // Mensalistas (paciente com paymentType 'fixo' OU pacote 'mensal' vinculado)
   const isMensal = patient.paymentType === 'fixo' || pkg?.packageType === 'mensal';
   if (isMensal) {
-    const dyn = getMensalDynamicWithBase(patient, baseValue, month, year);
+    const dyn = getMensalDynamicWithBase(patient, baseValue, month - 1, year);
     return dyn.isDynamic ? dyn.perSession : 0;
   }
 
@@ -271,7 +274,7 @@ export interface PatientRevenueContext {
   patient: PatientLike;
   clinic?: ClinicLike | null;
   evolutions: EvolutionLike[]; // Já filtradas pelo paciente E pelo mês/ano
-  month: number;               // 0-indexed
+  month: number;               // 1-indexed (Janeiro = 1)
   year: number;
   packages?: PackageLike[];
   groupBillingMap?: GroupBillingMap;
@@ -387,7 +390,8 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
       } else if (pkg.packageType === 'mensal') {
         // dividir pelo nº real de sessões agendadas no mês
         const weekdays = getPatientWeekdays(patient);
-        const dyn = getDynamicSessionValue(pkgTotal, weekdays, month, year);
+        // month aqui é 1-indexed; getDynamicSessionValue espera 0-indexed
+        const dyn = getDynamicSessionValue(pkgTotal, weekdays, month - 1, year);
         perSessionPkg = dyn.occurrences > 0 ? dyn.perSession : 0;
       }
 
@@ -499,7 +503,8 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   let individualRevenue = 0;
   if (billableIndividual.length > 0 && baseValue) {
     if (isMensal) {
-      const dyn = getMensalDynamicWithBase(patient, baseValue, month, year);
+      // month aqui é 1-indexed; helpers internos esperam 0-indexed
+      const dyn = getMensalDynamicWithBase(patient, baseValue, month - 1, year);
       if (dyn.isDynamic) {
         const raw = billableIndividual.length * dyn.perSession;
         // Trava: nunca ultrapassa o valor mensal contratado
@@ -833,7 +838,7 @@ export interface ClinicRevenueContext {
   clinic: ClinicLike;
   patients: PatientLike[];                  // pacientes desta clínica
   evolutions: EvolutionLike[];              // evoluções do mês (já filtradas pelo mês/ano)
-  month: number;                            // 0-indexed
+  month: number;                            // 1-indexed (Janeiro = 1)
   year: number;
   packages?: PackageLike[];
   groupBillingMap?: GroupBillingMap;

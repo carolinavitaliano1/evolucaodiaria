@@ -322,7 +322,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       patient,
       clinic,
       evolutions: patientEvos,
-      month: selectedMonth,
+      month: selectedMonth + 1,
       year: selectedYear,
       packages: clinicPackages,
       groupBillingMap,
@@ -333,7 +333,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   // Helper for day-by-day display (mantém compatibilidade com a tabela "Dias específicos")
   const getDayEvolutionValue = (evolution: typeof dayEvolutions[number], patient: typeof clinicPatients[0]) => {
     const pkg = patient.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
-    const perSession = getIndividualPerSessionValue(patient, selectedMonth, selectedYear, pkg);
+    const perSession = getIndividualPerSessionValue(patient, selectedMonth + 1, selectedYear, pkg);
 
     if (evolution.groupId) {
       // Para grupo, usa helper centralizado via cálculo do paciente da única evolução
@@ -342,7 +342,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         attendanceStatus: evolution.attendanceStatus, confirmedAttendance: evolution.confirmedAttendance,
       };
       const breakdown = calculatePatientMonthlyRevenue({
-        patient, clinic, evolutions: [single], month: selectedMonth, year: selectedYear,
+        patient, clinic, evolutions: [single], month: selectedMonth + 1, year: selectedYear,
         packages: clinicPackages, groupBillingMap, memberPaymentMap,
       });
       return breakdown.total + breakdown.chargedAbsenceRevenue - breakdown.chargedAbsenceRevenue;
@@ -358,7 +358,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     clinic,
     patients: clinicPatients,
     evolutions: evosToLikeArr(monthlyEvolutions),
-    month: selectedMonth,
+    month: selectedMonth + 1,
     year: selectedYear,
     packages: clinicPackages,
     groupBillingMap,

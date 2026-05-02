@@ -345,7 +345,7 @@ export default function Clinics() {
 
       clinicRevenue += calculateClinicMonthlyRevenue({
         clinic, patients: cPatients, evolutions: cEvos,
-        month: currentMonth, year: currentYear, packages: clinicPackages,
+        month: currentMonth + 1, year: currentYear, packages: clinicPackages,
       }).total;
     }
 
