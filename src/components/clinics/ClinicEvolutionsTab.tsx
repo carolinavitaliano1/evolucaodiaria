@@ -29,7 +29,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   presente: { label: 'Presente', color: 'bg-success/10 text-success border-success/20', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   falta: { label: 'Falta', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: <XCircle className="w-3.5 h-3.5" /> },
   falta_remunerada: { label: 'Falta Rem.', color: 'bg-warning/10 text-warning border-warning/20', icon: <AlertCircle className="w-3.5 h-3.5" /> },
-  reposicao: { label: 'Reposição', color: 'bg-primary/10 text-primary border-primary/20', icon: <CheckCircle2 className="w-3.5 h-3.5" /> }, anteposicao: { label: 'Anteposição', color: 'bg-primary/10 text-primary border-primary/20', icon: <CheckCircle2 className=\"w-3.5 h-3.5\" /> },
+  reposicao: { label: 'Reposição', color: 'bg-primary/10 text-primary border-primary/20', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+  anteposicao: { label: 'Anteposição', color: 'bg-primary/10 text-primary border-primary/20', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   feriado_remunerado: { label: 'Feriado Rem.', color: 'bg-primary/10 text-primary border-primary/20', icon: '🎉' },
   feriado_nao_remunerado: { label: 'Feriado', color: 'bg-muted text-muted-foreground border-border', icon: '📅' },
 };
