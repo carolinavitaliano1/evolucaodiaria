@@ -410,12 +410,20 @@ export async function generateClinicInternalStatementPdf(
       pEvos.forEach(e => {
         const isBillable = COUNTS_AS_BILLABLE(e.attendance_status);
         if (isBillable) billableCounter++;
+        const isParcialAbsence =
+          clinicPayInfo?.absence_charge_mode === 'parcial' &&
+          e.attendance_status === 'falta_cobrada';
+        const rowAmount = isBillable
+          ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
+          : 0;
         rows.push({
           date: e.date,
           type: 'Sessão',
-          description: isBillable ? 'Atendimento' : 'Sessão sem cobrança',
+          description: isBillable
+            ? (isParcialAbsence ? 'Falta cobrada (parcial)' : 'Atendimento')
+            : 'Sessão sem cobrança',
           status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
-          amount: isBillable ? perSession : 0,
+          amount: rowAmount,
           paid: !!pPay?.paid,
           sessionIndex: isBillable ? billableCounter : undefined,
           sessionTotal: isBillable ? totalSessionsInMonth : undefined,
@@ -439,12 +447,17 @@ export async function generateClinicInternalStatementPdf(
       // Per session / personalizado / avulso: each session has its own value
       pEvos.forEach(e => {
         const billable = COUNTS_AS_BILLABLE(e.attendance_status);
-        const amount = billable ? perSession : 0;
+        const isParcialAbsence =
+          clinicPayInfo?.absence_charge_mode === 'parcial' &&
+          e.attendance_status === 'falta_cobrada';
+        const amount = billable
+          ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
+          : 0;
         sessionsTotal += amount;
         rows.push({
           date: e.date,
           type: 'Sessão',
-          description: 'Atendimento clínico',
+          description: isParcialAbsence ? 'Falta cobrada (parcial)' : 'Atendimento clínico',
           status: STATUS_LABEL[e.attendance_status] || e.attendance_status,
           amount,
           paid: !!pPay?.paid,
