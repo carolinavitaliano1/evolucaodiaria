@@ -1403,7 +1403,7 @@ export default function ClinicDetail() {
                     className={cn(
                       "flex flex-col lg:flex-row lg:items-center justify-between p-3 lg:p-4 rounded-xl border transition-colors",
                       hasEvolution 
-                        ? evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
+                        ? evolution?.attendanceStatus === 'presente' || (evolution?.attendanceStatus === 'reposicao' || evolution?.attendanceStatus === 'anteposicao')
                           ? "bg-success/10 border-success/30"
                           : evolution?.attendanceStatus === 'falta_remunerada'
                             ? "bg-warning/10 border-warning/30"
@@ -1443,7 +1443,7 @@ export default function ClinicDetail() {
                         <>
                           <div className={cn(
                             "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium",
-                            evolution?.attendanceStatus === 'presente' || evolution?.attendanceStatus === 'reposicao'
+                            evolution?.attendanceStatus === 'presente' || (evolution?.attendanceStatus === 'reposicao' || evolution?.attendanceStatus === 'anteposicao')
                               ? "bg-success/20 text-success"
                               : evolution?.attendanceStatus === 'falta_remunerada'
                                 ? "bg-warning/20 text-warning"
@@ -2496,7 +2496,7 @@ export default function ClinicDetail() {
                     <Button
                       className="gradient-primary gap-2"
                       onClick={handleBatchEvolution}
-                      disabled={isArchived || selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim() && batchStatusMode === 'same' && ['presente', 'reposicao'].includes(batchGlobalStatus))}
+                      disabled={isArchived || selectedPatients.length === 0 || (batchSelectedTemplateId === 'none' && !batchEvolutionText.trim() && batchStatusMode === 'same' && ['presente', 'reposicao','anteposicao'].includes(batchGlobalStatus))}
                     >
                       <FileText className="w-4 h-4" />
                       Aplicar Evolução

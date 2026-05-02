@@ -287,7 +287,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     ? allClinicPatients.filter(p => monthlyEvolutions.some(e => e.patientId === p.id))
     : allClinicPatients;
 
-  const presentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
+  const presentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao'));
   const absentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
   const reposicaoEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'reposicao');
@@ -854,7 +854,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     return selectedDaysStr.includes(e.date);
   });
 
-  const dayPresentEvos = dayEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
+  const dayPresentEvos = dayEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao'));
   const dayAbsentEvos = dayEvolutions.filter(e => e.attendanceStatus === 'falta');
   const dayPaidAbsenceEvos = dayEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
   const dayFeriadoRemEvos = dayEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado');
@@ -982,7 +982,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             const p = clinicPatients.find(pt => pt.id === e.patientId);
             if (!p) return;
             if (y > 268) { doc.addPage(); y = margin; }
-            const statusMap: Record<string, string> = { presente: 'Presente', falta: 'Falta', reposicao: 'Reposição', falta_remunerada: 'Falta Rem.', feriado_remunerado: 'Feriado Rem.' };
+            const statusMap: Record<string, string> = { presente: 'Presente', falta: 'Falta', reposicao: 'Reposição', anteposicao: 'Anteposição', falta_remunerada: 'Falta Rem.', feriado_remunerado: 'Feriado Rem.' };
             doc.setTextColor(50, 50, 50);
             doc.text(`• ${p.name}`, margin + 4, y + 3);
             doc.setTextColor(120, 120, 120);
@@ -1150,7 +1150,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                 return sum + getDayEvolutionValue(e, p);
               }, 0);
               const dayTotal = dayPatRevenue + daySvcRevenue;
-              const presentOnDay = dayEvosForDay.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
+              const presentOnDay = dayEvosForDay.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).length;
               const absentOnDay = dayEvosForDay.filter(e => e.attendanceStatus === 'falta').length;
               const dayLabel = format(day, "EEE, dd 'de' MMM", { locale: ptBR });
 
@@ -1176,7 +1176,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                         const statusMap: Record<string, { label: string; color: string }> = {
                           presente: { label: 'Presente', color: 'text-success' },
                           falta: { label: 'Falta', color: 'text-destructive' },
-                          reposicao: { label: 'Reposição', color: 'text-primary' },
+                          reposicao: { label: 'Reposição', color: 'text-primary' }, anteposicao: { label: 'Anteposição', color: 'text-primary' },
                           falta_remunerada: { label: 'Falta Rem.', color: 'text-warning' },
                           feriado_remunerado: { label: 'Feriado Rem.', color: 'text-primary' },
                         };

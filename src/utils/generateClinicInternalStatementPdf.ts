@@ -95,7 +95,7 @@ const STATUS_LABEL: Record<string, string> = {
   falta: 'Falta',
   falta_remunerada: 'Falta Remun.',
   falta_cobrada: 'Falta Cobrada',
-  reposicao: 'Reposição',
+  reposicao: 'Reposição', anteposicao: 'Anteposição',
   feriado_remunerado: 'Feriado Rem.',
   feriado_nao_remunerado: 'Feriado',
   cancelado: 'Cancelado',

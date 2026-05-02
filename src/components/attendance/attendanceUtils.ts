@@ -41,7 +41,7 @@ const STATUS_LABELS: Record<string, string> = {
   presente: 'Presente',
   falta: 'Falta',
   falta_remunerada: 'Falta Rem.',
-  reposicao: 'Reposição',
+  reposicao: 'Reposição', anteposicao: 'Anteposição',
   feriado_remunerado: 'Feriado Rem.',
   feriado_nao_remunerado: 'Feriado',
   saida: 'Saída',

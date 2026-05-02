@@ -810,8 +810,8 @@ export default function PatientDetail() {
   const totalSessions = totalPresent + totalReposicao;
   const totalRegistros = patientEvolutions.length;
   const attendanceRate = totalRegistros > 0 ? Math.round(((totalPresent + totalReposicao) / totalRegistros) * 100) : 0;
-  const totalBillableEvos = patientEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
-  const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const totalBillableEvos = patientEvolutions.filter(e => ['presente','reposicao','anteposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const totalUniqueDays = new Set(totalBillableEvos.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   const ptType = patient?.paymentType as string | undefined;
   // Effective billing mode: patient override → then check clinic payment type
   const clPaymentType = clinic?.paymentType as string | undefined;
@@ -874,7 +874,7 @@ export default function PatientDetail() {
       null;
     const cycleStart = cycleStartIso ? new Date(cycleStartIso) : null;
     return patientEvolutions.filter(e => {
-      if (!['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus)) return false;
+      if (!['presente','reposicao','anteposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus)) return false;
       if (!cycleStart) return true;
       const evoDate = new Date(e.date + 'T12:00:00');
       return evoDate >= new Date(cycleStart.toISOString().slice(0, 10) + 'T00:00:00');
@@ -1001,7 +1001,7 @@ export default function PatientDetail() {
   const totalIndividualBillableEvos = totalBillableEvos.filter(e => !e.groupId);
   const totalGroupRevenue = computeGroupRevenue(totalBillableEvos);
   const totalIndividualBillableCount = totalIndividualBillableEvos.length;
-  const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const totalIndividualUniqueDays = new Set(totalIndividualBillableEvos.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   // 🔁 Fallback baseado em slots da agenda: quando o paciente NÃO tem
   // paymentValue próprio nem pacote vinculado, mas possui planos de
   // remuneração definidos por profissional nos slots da agenda, calculamos
@@ -1144,7 +1144,7 @@ export default function PatientDetail() {
   const monthlyFeriadoNaoRem = monthlyEvolutions.filter(e => e.attendanceStatus === 'feriado_nao_remunerado').length;
   const monthlyTotal = monthlyPresent + monthlyReposicao;
   const monthlyBillableCount = monthlyPresent + monthlyReposicao + monthlyPaidAbsent + monthlyFeriadoRem;
-  const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   // Dynamic proration for Mensal packages
   const monthlyDynamic = useMemo(() => {
     if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado) && paymentValue > 0) {
@@ -1162,11 +1162,11 @@ export default function PatientDetail() {
     return null;
   }, [monthlyDynamic, paymentValue, monthlyDeductibleAbsences]);
 
-  const monthlyBillableEvos = monthlyEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const monthlyBillableEvos = monthlyEvolutions.filter(e => ['presente','reposicao','anteposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
   const monthlyGroupRevenue = computeGroupRevenue(monthlyBillableEvos);
   const monthlyIndividualBillable = monthlyBillableEvos.filter(e => !e.groupId);
   const monthlyIndividualBillableCount = monthlyIndividualBillable.length;
-  const monthlyIndividualUniqueDays = new Set(monthlyIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const monthlyIndividualUniqueDays = new Set(monthlyIndividualBillable.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   // Services revenue for the report month
   const monthlyServicesRevenue = patientServices
     .filter(s => {
@@ -1207,7 +1207,7 @@ export default function PatientDetail() {
   const finFeriadoRem = financialEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
   const finTotal = finPresent + finReposicao;
   const finBillableCount = finPresent + finReposicao + finPaidAbsent + finFeriadoRem;
-  const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   // Dynamic proration for financial tab
   const finDynamic = useMemo(() => {
     if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado) && paymentValue > 0) {
@@ -1225,11 +1225,11 @@ export default function PatientDetail() {
     return null;
   }, [finDynamic, paymentValue, finDeductibleAbsences]);
 
-  const finBillableEvos = financialEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+  const finBillableEvos = financialEvolutions.filter(e => ['presente','reposicao','anteposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
   const finGroupRevenue = computeGroupRevenue(finBillableEvos);
   const finIndividualBillable = finBillableEvos.filter(e => !e.groupId);
   const finIndividualBillableCount = finIndividualBillable.length;
-  const finIndividualUniqueDays = new Set(finIndividualBillable.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
+  const finIndividualUniqueDays = new Set(finIndividualBillable.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).map(e => e.date)).size;
   const finRevenue = calculatePatientRevenueForMonth(financialEvolutions, financialMonth);
   const finRegistros = financialEvolutions.length;
   const finAttendanceRate = finRegistros > 0 ? Math.round(((finPresent + finReposicao) / finRegistros) * 100) : 0;
@@ -1479,10 +1479,10 @@ export default function PatientDetail() {
       // ── 3. REGISTRO DAS SESSÕES ──────────────────────────────────
       const section3 = moodsWithData.length > 0 ? '3' : '2';
       const visibleEvolutions = monthlyEvolutions.filter(e =>
-        ['presente', 'falta', 'reposicao'].includes(e.attendanceStatus)
+        ['presente', 'falta', 'reposicao','anteposicao'].includes(e.attendanceStatus)
       );
       const statusLabelMap: Record<string, string> = {
-        presente: 'Presente', falta: 'Falta', reposicao: 'Reposição',
+        presente: 'Presente', falta: 'Falta', reposicao: 'Reposição', anteposicao: 'Anteposição',
       };
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accentDark);
       doc.text(`${section3}. REGISTRO DAS SESSÕES (${visibleEvolutions.length})`, margin, y); y += 6;
@@ -1670,7 +1670,7 @@ export default function PatientDetail() {
     try {
       const STATUS_LABELS: Record<string, { label: string; billable: boolean }> = {
         presente: { label: 'Presente', billable: true },
-        reposicao: { label: 'Reposição', billable: true },
+        reposicao: { label: 'Reposição', billable: true }, anteposicao: { label: 'Anteposição', billable: true },
         falta_remunerada: { label: 'Falta Remunerada', billable: true },
         feriado_remunerado: { label: 'Feriado Remunerado', billable: true },
         falta: { label: 'Falta', billable: false },
@@ -1937,7 +1937,7 @@ export default function PatientDetail() {
       const tFeriadoRem = targetEvolutions.filter(e => e.attendanceStatus === 'feriado_remunerado').length;
       const tTotal = tPresent + tReposicao;
       const tBillableCount = tPresent + tReposicao + tPaidAbsent + tFeriadoRem;
-      const tBillableEvos = targetEvolutions.filter(e => ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
+      const tBillableEvos = targetEvolutions.filter(e => ['presente','reposicao','anteposicao','falta_remunerada','feriado_remunerado'].includes(e.attendanceStatus));
       const tGroupRevenue = computeGroupRevenue(tBillableEvos);
       const tIndividualBillable = tBillableEvos.filter(e => !e.groupId);
       const tIndividualBillableCount = tIndividualBillable.length;
@@ -2066,10 +2066,10 @@ export default function PatientDetail() {
       // ── 3. REGISTRO COMPLETO DAS SESSÕES ─────────────────────────
       const allStatusLabel: Record<string, string> = {
         presente: 'Presente', falta: 'Falta', falta_remunerada: 'Falta Remunerada',
-        reposicao: 'Reposição', feriado_remunerado: 'Feriado Remunerado',
+        reposicao: 'Reposição', anteposicao: 'Anteposição', feriado_remunerado: 'Feriado Remunerado',
         feriado_nao_remunerado: 'Feriado Não Remunerado',
       };
-      const paidStatuses = ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'];
+      const paidStatuses = ['presente', 'reposicao','anteposicao', 'falta_remunerada', 'feriado_remunerado'];
 
       // Fetch private services (avulsos) within the same month
       const monthStart = format(startOfMonth(targetMonth), 'yyyy-MM-dd');
@@ -2884,6 +2884,7 @@ export default function PatientDetail() {
                       </SelectItem>
                       <SelectItem value="falta_remunerada">💰 Falta Remunerada</SelectItem>
                       <SelectItem value="reposicao">🔄 Reposição</SelectItem>
+                      <SelectItem value="anteposicao">⏩ Anteposição</SelectItem>
                       <SelectItem value="feriado_remunerado">🎉 Feriado Remunerado</SelectItem>
                       <SelectItem value="feriado_nao_remunerado">📅 Feriado Não Remunerado</SelectItem>
                     </SelectContent>
@@ -3153,13 +3154,13 @@ export default function PatientDetail() {
                             <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
                               evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
                               evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
-                              evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' :
+                              evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' : evo.attendanceStatus === 'anteposicao' ? 'bg-primary/10 text-primary' :
                               evo.attendanceStatus === 'feriado_remunerado' ? 'bg-primary/10 text-primary' :
                               evo.attendanceStatus === 'feriado_nao_remunerado' ? 'bg-muted text-muted-foreground' :
                               'bg-destructive/10 text-destructive')}>
                               {evo.attendanceStatus === 'presente' ? '✅ Presente' :
                                evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Remunerada' :
-                               evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' :
+                               evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' : evo.attendanceStatus === 'anteposicao' ? '⏩ Anteposição' :
                                evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
                                evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' :
                                '❌ Falta'}
@@ -3475,13 +3476,13 @@ export default function PatientDetail() {
                                 <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
                                   evo.attendanceStatus === 'presente' ? 'bg-success/10 text-success' :
                                   evo.attendanceStatus === 'falta_remunerada' ? 'bg-warning/10 text-warning' :
-                                  evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' :
+                                  evo.attendanceStatus === 'reposicao' ? 'bg-primary/10 text-primary' : evo.attendanceStatus === 'anteposicao' ? 'bg-primary/10 text-primary' :
                                   evo.attendanceStatus === 'feriado_remunerado' ? 'bg-primary/10 text-primary' :
                                   evo.attendanceStatus === 'feriado_nao_remunerado' ? 'bg-muted text-muted-foreground' :
                                   'bg-destructive/10 text-destructive')}>
                                   {evo.attendanceStatus === 'presente' ? '✅ Presente' :
                                    evo.attendanceStatus === 'falta_remunerada' ? '💰 Falta Rem.' :
-                                   evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' :
+                                   evo.attendanceStatus === 'reposicao' ? '🔄 Reposição' : evo.attendanceStatus === 'anteposicao' ? '⏩ Anteposição' :
                                    evo.attendanceStatus === 'feriado_remunerado' ? '🎉 Feriado Rem.' :
                                    evo.attendanceStatus === 'feriado_nao_remunerado' ? '📅 Feriado' : '❌ Falta'}
                                 </span>
@@ -3499,7 +3500,7 @@ export default function PatientDetail() {
                                     {moodInfo.emoji} {moodInfo.label}
                                   </span>
                                 )}
-                                {paymentValue > 0 && ['presente','reposicao','falta_remunerada','feriado_remunerado'].includes(evo.attendanceStatus) && (
+                                {paymentValue > 0 && ['presente','reposicao','anteposicao','falta_remunerada','feriado_remunerado'].includes(evo.attendanceStatus) && (
                                   <span className="text-xs text-success font-medium ml-auto">
                                     + R$ {(monthlyDynamic && isPackageMensal ? monthlyDynamic.perSession : perSessionValue).toFixed(2)}
                                   </span>
@@ -4305,11 +4306,11 @@ export default function PatientDetail() {
                 {prSessionMode === 'select' ? (() => {
                   // Only billable sessions of THIS patient (deduped via patientEvolutions)
                   const billable = [...patientEvolutions]
-                    .filter(e => ['presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus))
+                    .filter(e => ['presente', 'reposicao','anteposicao', 'falta_remunerada', 'feriado_remunerado'].includes(e.attendanceStatus))
                     .sort((a, b) => b.date.localeCompare(a.date));
                   const statusLabel: Record<string, string> = {
                     presente: 'Presente', falta_remunerada: 'Falta Rem.',
-                    reposicao: 'Reposição', feriado_remunerado: 'Feriado Rem.',
+                    reposicao: 'Reposição', anteposicao: 'Anteposição', feriado_remunerado: 'Feriado Rem.',
                   };
                   if (billable.length === 0) return (
                     <p className="text-xs text-muted-foreground text-center py-2">Nenhuma sessão realizada registrada.</p>

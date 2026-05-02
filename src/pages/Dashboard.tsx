@@ -49,7 +49,7 @@ export default function Dashboard() {
 
   const todayStr = toLocalDateString(new Date());
   const todayEvolutions = evolutions.filter(e => e.date === todayStr);
-  const todayPresentes = todayEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao');
+  const todayPresentes = todayEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao'));
   const todayFaltas = todayEvolutions.filter(e => e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_remunerada');
   const pendingTasks = tasks.filter(t => !t.completed);
 

@@ -212,7 +212,7 @@ export default function Patients() {
             : e.attendanceStatus === 'reposicao' ? 'Reposição'
             : e.attendanceStatus === 'falta_remunerada' ? 'Falta Remunerada' 
             : 'Falta',
-          statusColor: e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao' 
+          statusColor: e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao') 
             ? [34, 197, 94] : e.attendanceStatus === 'falta_remunerada' ? [234, 179, 8] : [239, 68, 68],
         };
       });
@@ -422,7 +422,7 @@ export default function Patients() {
         toast.error('Nenhuma evolução encontrada no período selecionado.');
         return;
       }
-      const presences = patientEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').length;
+      const presences = patientEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).length;
       const faltasRem = patientEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada').length;
       const absences = patientEvolutions.filter(e => e.attendanceStatus === 'falta').length;
       // Effective value calculation: respects package type
