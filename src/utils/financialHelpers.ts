@@ -577,8 +577,17 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
     return sum + (perSession || baseValue || 0);
   }, 0);
 
-  // Perda: faltas que NÃO foram cobradas
-  const loss = uncoveredAbsences * (perSession || baseValue || 0);
+  // Perda: faltas que NÃO foram cobradas + diferença das faltas cobradas parcialmente.
+  // Quando a clínica usa modo parcial, cada falta cobrada também perde
+  // (perSession − partialAbsenceValue) em relação ao valor cheio.
+  const fullSessionValue = perSession || baseValue || 0;
+  const uncoveredLoss = uncoveredAbsences * fullSessionValue;
+  const partialAbsenceLoss = isParcialAbsence
+    ? chargedAbsences
+        .filter(e => !e.groupId)
+        .reduce((sum) => sum + Math.max(0, fullSessionValue - partialAbsenceValue), 0)
+    : 0;
+  const loss = uncoveredLoss + partialAbsenceLoss;
 
   const total = individualRevenue + groupRevenue + chargedAbsenceRevenue;
 
