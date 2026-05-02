@@ -607,14 +607,25 @@ export default function CalendarPage() {
           <Button size="sm" className="gradient-primary gap-1 text-xs h-7 px-2.5" onClick={() => setEventDialogOpen(true)}>
             <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evento</span>
           </Button>
-          <Dialog open={isApptDialogOpen} onOpenChange={setIsApptDialogOpen}>
+          <Dialog
+            open={isApptDialogOpen}
+            onOpenChange={(open) => {
+              setIsApptDialogOpen(open);
+              if (!open) {
+                setEditingApptId(null);
+                resetForm();
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5">
                 <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Atendimento</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Agendar Atendimento</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>{editingApptId ? 'Editar Atendimento' : 'Agendar Atendimento'}</DialogTitle>
+              </DialogHeader>
               <form onSubmit={handleApptSubmit} className="space-y-4 max-h-[80dvh] overflow-y-auto pr-1">
                 <div>
                   <Label>Clínica *</Label>
