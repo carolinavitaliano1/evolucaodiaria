@@ -24,6 +24,7 @@ interface HealthPlan {
   phone: string | null;
   reimbursement_value: number;
   reimbursement_type: string;
+  passthrough_value: number;
   notes: string | null;
   is_active: boolean;
 }
@@ -37,7 +38,7 @@ interface PatientLink {
   health_plan_authorization_expires_at: string | null;
 }
 
-const empty = { name: '', ans_registry: '', phone: '', reimbursement_value: 0, reimbursement_type: 'por_sessao', notes: '', is_active: true };
+const empty = { name: '', ans_registry: '', phone: '', reimbursement_value: 0, passthrough_value: 0, reimbursement_type: 'por_sessao', notes: '', is_active: true };
 
 export function ClinicHealthPlans({ clinicId }: Props) {
   const { user } = useAuth();
@@ -204,6 +205,7 @@ export function ClinicHealthPlans({ clinicId }: Props) {
     setForm({
       name: p.name, ans_registry: p.ans_registry || '', phone: p.phone || '',
       reimbursement_value: Number(p.reimbursement_value) || 0,
+      passthrough_value: Number(p.passthrough_value) || 0,
       reimbursement_type: p.reimbursement_type || 'por_sessao',
       notes: p.notes || '', is_active: p.is_active,
     });
@@ -291,6 +293,15 @@ export function ClinicHealthPlans({ clinicId }: Props) {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div>
+                <Label>Valor de repasse</Label>
+                <Input type="number" step="0.01" value={form.passthrough_value}
+                  onChange={e => setForm({ ...form, passthrough_value: parseFloat(e.target.value) || 0 })}
+                  placeholder="0,00" />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Valor que o convênio efetivamente repassa para a clínica/profissional, na mesma referência do tipo selecionado acima.
+                </p>
               </div>
               <div>
                 <Label>Observações</Label>
