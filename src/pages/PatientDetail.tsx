@@ -1548,7 +1548,8 @@ export default function PatientDetail() {
       };
       const periodLabel = `${format(fiscalStartDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(fiscalEndDate, 'dd/MM/yyyy', { locale: ptBR })}`;
       const fiscalStamp = fiscalStampId && fiscalStampId !== 'none' ? stamps.find(s => s.id === fiscalStampId) || null : null;
-      const rawPayVal = patient.paymentValue || 0;
+      // Use resolved paymentValue (includes package price fallback for monthly/total packages)
+      const rawPayVal = paymentValue || 0;
       // For Personalizado packages use per-session value; for mensal use dynamic value
       let payVal = isPackagePersonalizado ? perSessionValue : rawPayVal;
       if ((isPackageMensal || isFixoMensal) && rawPayVal > 0 && fiscalStartDate) {
