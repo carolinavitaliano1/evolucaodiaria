@@ -151,7 +151,7 @@ export async function generateClinicInternalStatementPdf(
       .eq('clinic_id', clinicId),
     supabase
       .from('clinics')
-      .select('payment_type, payment_amount, discount_percentage, absence_payment_type, pays_on_absence')
+      .select('payment_type, payment_amount, discount_percentage, absence_payment_type, pays_on_absence, absence_charge_mode, absence_charge_amount')
       .eq('id', clinicId)
       .maybeSingle(),
     supabase
@@ -163,7 +163,7 @@ export async function generateClinicInternalStatementPdf(
       .maybeSingle(),
   ]);
 
-  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null; absence_payment_type?: string | null; pays_on_absence?: boolean | null } | null =
+  const clinicPayInfo: { payment_type: string | null; payment_amount: number | null; discount_percentage: number | null; absence_payment_type?: string | null; pays_on_absence?: boolean | null; absence_charge_mode?: string | null; absence_charge_amount?: number | null } | null =
     (clinicRes.data as any) ?? null;
 
   const isClinicFixedSalary =
