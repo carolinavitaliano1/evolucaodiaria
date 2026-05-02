@@ -352,6 +352,35 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                     ) : (
                       <span className="text-xs text-muted-foreground">⏳ Aguardando</span>
                     )}
+                    {(() => {
+                      const isConfirmed = confirmedIds.has(patient.id);
+                      if (isConfirmed) {
+                        return (
+                          <button
+                            type="button"
+                            disabled={isPastDay || confirmingId === patient.id}
+                            onClick={() => toggleConfirmation(patient.id)}
+                            title={isPastDay ? 'Dia já encerrado' : 'Clique para desfazer a confirmação'}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success/15 text-success text-[11px] font-semibold border border-success/30 hover:bg-success/25 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <Check className="w-3 h-3" /> Confirmado
+                          </button>
+                        );
+                      }
+                      if (isPastDay) return null;
+                      return (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={confirmingId === patient.id}
+                          onClick={() => toggleConfirmation(patient.id)}
+                          className="h-7 px-2 text-[11px] gap-1"
+                          title="Marcar que o paciente confirmou a presença"
+                        >
+                          <Check className="w-3 h-3" /> Confirmar
+                        </Button>
+                      );
+                    })()}
                     <QuickWhatsAppButton
                       phone={patient.whatsapp || patient.phone || patient.responsibleWhatsapp}
                       tooltip="Confirmar sessão via WhatsApp"
@@ -419,6 +448,35 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                     ) : (
                       <span className="text-xs text-muted-foreground">⏳ Aguardando evolução</span>
                     )}
+                    {(() => {
+                      const isConfirmed = confirmedIds.has(patient.id);
+                      if (isConfirmed) {
+                        return (
+                          <button
+                            type="button"
+                            disabled={isPastDay || confirmingId === patient.id}
+                            onClick={() => toggleConfirmation(patient.id)}
+                            title={isPastDay ? 'Dia já encerrado' : 'Clique para desfazer a confirmação'}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success/15 text-success text-[11px] font-semibold border border-success/30 hover:bg-success/25 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <Check className="w-3 h-3" /> Confirmado
+                          </button>
+                        );
+                      }
+                      if (isPastDay) return null;
+                      return (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={confirmingId === patient.id}
+                          onClick={() => toggleConfirmation(patient.id)}
+                          className="h-7 px-2 text-[11px] gap-1"
+                          title="Marcar que o paciente confirmou a presença"
+                        >
+                          <Check className="w-3 h-3" /> Confirmar
+                        </Button>
+                      );
+                    })()}
                     <QuickWhatsAppButton
                       phone={patient.whatsapp || patient.phone || patient.responsibleWhatsapp}
                       tooltip="Confirmar sessão via WhatsApp"
