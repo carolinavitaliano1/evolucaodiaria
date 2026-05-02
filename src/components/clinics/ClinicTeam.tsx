@@ -24,8 +24,8 @@ import {
   RefreshCw, CheckCircle2, AlertTriangle, Clock, CalendarDays,
   Settings, Lock, MoreVertical, UserCheck, UserX,
   Briefcase, Banknote, Search, SlidersHorizontal, UserCircle, Activity,
-  Plus, Star, Pencil, X, DollarSign
-, Package, ArrowRight } from 'lucide-react';
+  Plus, Star, Pencil, X, DollarSign, Package, ArrowRight
+} from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
