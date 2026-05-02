@@ -838,7 +838,7 @@ export interface ClinicRevenueContext {
   clinic: ClinicLike;
   patients: PatientLike[];                  // pacientes desta clínica
   evolutions: EvolutionLike[];              // evoluções do mês (já filtradas pelo mês/ano)
-  month: number;                            // 0-indexed
+  month: number;                            // 1-indexed (Janeiro = 1)
   year: number;
   packages?: PackageLike[];
   groupBillingMap?: GroupBillingMap;
