@@ -2897,13 +2897,21 @@ export default function ClinicDetail() {
 
       {/* Edit Evolution Dialog (from Today's schedule) */}
       {editingEvolution && (
+        (() => {
+          const evoPatient = patients.find(p => p.id === (editingEvolution as any).patientId);
+          const evoPkg = evoPatient?.packageId ? clinicPackages.find(p => p.id === evoPatient.packageId) : null;
+          const evoDisableFalta = !!evoPkg && evoPkg.lancamentoTipo === 'valor_total';
+          return (
         <EditEvolutionDialog
           evolution={editingEvolution}
           open={!!editingEvolution}
           onOpenChange={(open) => { if (!open) setEditingEvolution(null); }}
           onSave={(updates) => updateEvolution(editingEvolution.id, updates)}
           showFaltaRemunerada={true}
+          disableFalta={evoDisableFalta}
         />
+          );
+        })()
       )}
 
       {/* Serviços tab — ServiceDialog and dialogs */}
