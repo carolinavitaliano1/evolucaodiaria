@@ -3352,11 +3352,15 @@ export default function PatientDetail() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {paymentValue > 0
-                    ? `R$ ${paymentValue.toFixed(2)}${
-                        isPackageMensal || patientPackage?.lancamentoTipo === 'valor_total' || patient.paymentType === 'fixo'
-                          ? '/mês'
-                          : ' por sessão'
-                      }`
+                    ? (isPackagePersonalizado
+                        ? `R$ ${perSessionValue.toFixed(2)}/sessão (Pacote de ${patientPackage!.sessionLimit} sessões — total R$ ${paymentValue.toFixed(2)})`
+                        : (isPackageMensalFracionado && finDynamic && finDynamic.occurrences > 0
+                            ? `R$ ${paymentValue.toFixed(2)}/mês (Mês de ${finDynamic.occurrences} semanas: R$ ${finDynamic.perSession.toFixed(2)}/sessão)`
+                            : `R$ ${paymentValue.toFixed(2)}${
+                                isPackageMensal || patientPackage?.lancamentoTipo === 'valor_total' || patient.paymentType === 'fixo'
+                                  ? '/mês'
+                                  : ' por sessão'
+                              }`))
                     : 'Valor não configurado'}
                 </p>
               </div>
