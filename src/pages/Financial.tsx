@@ -184,7 +184,7 @@ export default function Financial() {
       patient,
       clinic,
       evolutions: patientEvos,
-      month: selectedMonth,
+      month: selectedMonth + 1,
       year: selectedYear,
       packages: clinicPackages,
       groupBillingMap,
@@ -239,7 +239,7 @@ export default function Financial() {
       }));
     return calculateClinicMonthlyRevenue({
       clinic, patients: cPatients, evolutions: cEvos,
-      month: selectedMonth, year: selectedYear,
+      month: selectedMonth + 1, year: selectedYear,
       packages: clinicPackages, groupBillingMap, memberPaymentMap,
     }).total;
   };
@@ -326,7 +326,7 @@ export default function Financial() {
         }));
       proportionalShare = calculatePatientProportionalShare({
         patient, clinic, allClinicPatients: clinicPatients, allClinicEvolutions: clinicEvos,
-        month: selectedMonth, year: selectedYear,
+        month: selectedMonth + 1, year: selectedYear,
       });
     }
 
