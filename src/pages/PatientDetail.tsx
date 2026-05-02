@@ -1016,12 +1016,12 @@ export default function PatientDetail() {
   const monthlyUniqueDays = new Set(monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   // Dynamic proration for Mensal packages
   const monthlyDynamic = useMemo(() => {
-    if (isPackageMensal && isFixoMensal && paymentValue > 0) {
+    if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado) && paymentValue > 0) {
       const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
       return getDynamicSessionValue(paymentValue, patientWeekdays, reportMonth.getMonth(), reportMonth.getFullYear());
     }
     return null;
-  }, [isPackageMensal, isFixoMensal, paymentValue, patient?.weekdays, patient?.scheduleByDay, reportMonth]);
+  }, [isPackageMensal, isFixoMensal, isPackageMensalFracionado, paymentValue, patient?.weekdays, patient?.scheduleByDay, reportMonth]);
 
   const monthlyDeductibleAbsences = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta').length;
   const monthlyMensalDeduction = useMemo(() => {
@@ -1079,12 +1079,12 @@ export default function PatientDetail() {
   const finUniqueDays = new Set(financialEvolutions.filter(e => e.attendanceStatus === 'presente' || e.attendanceStatus === 'reposicao').map(e => e.date)).size;
   // Dynamic proration for financial tab
   const finDynamic = useMemo(() => {
-    if (isPackageMensal && isFixoMensal && paymentValue > 0) {
+    if (isPackageMensal && (isFixoMensal || isPackageMensalFracionado) && paymentValue > 0) {
       const patientWeekdays = patient?.weekdays || (patient?.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
       return getDynamicSessionValue(paymentValue, patientWeekdays, financialMonth.getMonth(), financialMonth.getFullYear());
     }
     return null;
-  }, [isPackageMensal, isFixoMensal, paymentValue, patient?.weekdays, patient?.scheduleByDay, financialMonth]);
+  }, [isPackageMensal, isFixoMensal, isPackageMensalFracionado, paymentValue, patient?.weekdays, patient?.scheduleByDay, financialMonth]);
 
   const finDeductibleAbsences = finAbsent;
   const finMensalDeduction = useMemo(() => {
