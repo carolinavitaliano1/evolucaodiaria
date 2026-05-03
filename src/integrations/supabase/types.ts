@@ -2358,6 +2358,30 @@ export type Database = {
           },
         ]
       }
+      pending_trials: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          note: string | null
+          trial_until: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          note?: string | null
+          trial_until: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          note?: string | null
+          trial_until?: string
+        }
+        Relationships: []
+      }
       portal_activities: {
         Row: {
           attachments: Json
