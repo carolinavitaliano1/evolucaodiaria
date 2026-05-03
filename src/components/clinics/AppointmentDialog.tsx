@@ -167,7 +167,9 @@ export function AppointmentDialog({
     (async () => {
       const [hp, sv, ap, prof, pts] = await Promise.all([
         supabase.from('health_plans').select('id, name').eq('clinic_id', clinicId).eq('is_active', true).order('name'),
-        supabase.from('services').select('id, name, price').eq('clinic_id', clinicId).order('name'),
+        user?.id
+          ? supabase.from('services').select('id, name, price').eq('user_id', user.id).eq('is_active', true).order('name')
+          : Promise.resolve({ data: [], error: null } as any),
         supabase.from('appointments' as any).select('room').eq('clinic_id', clinicId).not('room', 'is', null),
         members.length
           ? supabase.from('profiles').select('user_id, specialty').in('user_id', members.map(m => m.userId))
