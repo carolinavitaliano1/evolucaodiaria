@@ -1145,7 +1145,7 @@ export default function ClinicDetail() {
       <div className="mb-8">
         <Button variant="ghost" onClick={() => navigate('/clinics')} className="mb-4 gap-2">
           <ArrowLeft className="w-4 h-4" />
-          Voltar para Clínicas
+          {clinic.type === 'clinica' ? 'Voltar para Clínica' : 'Voltar para Clínicas'}
         </Button>
 
         {isArchived && (
