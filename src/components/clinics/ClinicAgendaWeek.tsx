@@ -397,9 +397,17 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
         )}
 
         <div className="ml-auto">
-          <Button size="sm" className="gap-1.5" onClick={openNew}>
-            <Plus className="w-4 h-4" /> Novo Agendamento
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setBlockDialogOpen(true)}>
+              <CalendarOff className="w-4 h-4" /> Bloqueio
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setEventDialogDate(new Date()); setEventDialogOpen(true); }}>
+              <Bell className="w-4 h-4" /> Evento
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={openNew}>
+              <Plus className="w-4 h-4" /> Novo Agendamento
+            </Button>
+          </div>
         </div>
       </div>
 
