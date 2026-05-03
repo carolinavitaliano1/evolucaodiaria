@@ -79,6 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: email,
         name: name || email.split('@')[0],
       }, { onConflict: 'user_id' });
+
+      // Send welcome email (fire-and-forget; do not block signup on failure)
+      supabase.functions
+        .invoke('send-welcome-email', {
+          body: { email, name: name || email.split('@')[0] },
+        })
+        .catch((err) => console.warn('[signUp] welcome email failed', err));
     }
 
     return { error: error as Error | null };
