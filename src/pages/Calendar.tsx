@@ -606,13 +606,17 @@ export default function CalendarPage() {
               </button>
             ))}
           </div>
-          <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5" onClick={() => setBlockDialogOpen(true)} title="Feriados e férias">
-            <CalendarOff className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Bloqueio</span>
-          </Button>
-          <Button size="sm" className="gradient-primary gap-1 text-xs h-7 px-2.5" onClick={() => setEventDialogOpen(true)}>
-            <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evento</span>
-          </Button>
-          <Dialog
+          {!isClinicaProOnly && (
+            <>
+              <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5" onClick={() => setBlockDialogOpen(true)} title="Feriados e férias">
+                <CalendarOff className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Bloqueio</span>
+              </Button>
+              <Button size="sm" className="gradient-primary gap-1 text-xs h-7 px-2.5" onClick={() => setEventDialogOpen(true)}>
+                <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evento</span>
+              </Button>
+            </>
+          )}
+          {!isClinicaProOnly && <Dialog
             open={isApptDialogOpen}
             onOpenChange={(open) => {
               setIsApptDialogOpen(open);
@@ -621,7 +625,7 @@ export default function CalendarPage() {
                 resetForm();
               }
             }}
-          >
+          ><></>}
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5">
                 <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Atendimento</span>
