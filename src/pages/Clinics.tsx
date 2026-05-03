@@ -544,11 +544,6 @@ export default function Clinics() {
                               Você já tem uma Clínica ativa. Arquive-a para cadastrar Consultório ou Contratante.
                             </p>
                           )}
-                          {hasTeam && clinicaDisabled && activeAutonomo && !isClinicaProOnly && (
-                            <p className="text-xs text-warning mt-2">
-                              Você já tem Consultório/Contratante ativo. Arquive-os para cadastrar uma Clínica com equipe.
-                            </p>
-                          )}
                           {!hasTeam && (
                             <p className="text-xs text-muted-foreground mt-2">
                               Quer cadastrar uma <strong>Clínica com equipe</strong>? O plano <strong>Clínica Pro</strong> estará disponível em breve.
