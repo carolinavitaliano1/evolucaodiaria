@@ -245,6 +245,10 @@ export default function ClinicDetail() {
   const navigate = useNavigate();
   const { clinics, patients, appointments, evolutions, addPatient, updatePatient, addEvolution, updateEvolution, setCurrentPatient, updateClinic, getClinicPackages, loadEvolutionsForClinic, loadAppointmentsForClinic, addPatientToState, isLoading: appLoading } = useApp();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'today';
+    return new URLSearchParams(window.location.search).get('tab') || 'today';
+  });
   const [submittingPatient, setSubmittingPatient] = useState(false);
   const [pendingPatients, setPendingPatients] = useState<any[]>([]);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
