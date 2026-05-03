@@ -572,6 +572,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [sessionReady, user, refreshData]);
 
+  // Realtime: keep appointments in sync across modules (Clinic agenda ↔ /calendar sidebar agenda)
+  useEffect(() => {
+    if (!sessionReady || !user) return;
+    const channel = supabase
+      .channel(`appctx-appointments-${user.id}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'appointments', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const newRow = mapAppointment(payload.new as Record<string, unknown>);
+          setState(prev => {
+            if (prev.appointments.some(a => a.id === newRow.id)) return prev;
+            // Only inject if its clinic was already loaded (otherwise lazy load will pick it up)
+            if (!prev.loadedAppointmentsForClinics.has(newRow.clinicId)) return prev;
+            return { ...prev, appointments: [newRow, ...prev.appointments] };
+          });
+        })
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'appointments', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const updated = mapAppointment(payload.new as Record<string, unknown>);
+          setState(prev => ({
+            ...prev,
+            appointments: prev.appointments.map(a => a.id === updated.id ? updated : a),
+          }));
+        })
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'appointments', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const oldId = (payload.old as { id?: string })?.id;
+          if (!oldId) return;
+          setState(prev => ({ ...prev, appointments: prev.appointments.filter(a => a.id !== oldId) }));
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [sessionReady, user]);
+
   // === Setters ===
   const setCurrentClinic = useCallback((clinic: Clinic | null) => {
     setState(prev => ({ ...prev, currentClinic: clinic, currentPatient: null }));
