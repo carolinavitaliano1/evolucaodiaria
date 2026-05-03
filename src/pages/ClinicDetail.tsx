@@ -816,7 +816,7 @@ export default function ClinicDetail() {
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Clínica não encontrada</p>
         <Button onClick={() => navigate('/clinics')} className="mt-4">
-          Voltar para Clínicas
+          Voltar para Clínica
         </Button>
       </div>
     );
