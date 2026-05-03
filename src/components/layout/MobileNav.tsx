@@ -6,6 +6,7 @@ import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -57,7 +58,11 @@ export function MobileNav() {
   const { count: pendingCount } = usePendingEnrollments();
   const { isOrgMember, isOwner, role, permissions, loading: permsLoading } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
-  const { hasAI, hasTeam, isClinicaPro } = useFeatureAccess();
+  const { hasAI, hasTeam } = useFeatureAccess();
+  const { user } = useAuth();
+  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
+  const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
+  const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
 
   const trialDaysLeft = (() => {
     if (productId !== 'trial' || !subscriptionEnd) return null;
@@ -81,7 +86,7 @@ export function MobileNav() {
   const allowedMain = baseMain.filter(i => {
     if (!isOrgMember) return true;
     return permissions.includes(i.perm as any);
-  }).map(i => i.to === '/clinics' && isClinicaPro ? { ...i, label: 'Clínica' } : i);
+  }).map(i => i.to === '/clinics' && isClinicaProOnly ? { ...i, label: 'Clínica' } : i);
 
   const therapistMore = [
     { to: '/tasks',   icon: ClipboardList,  label: 'Tarefas', perm: 'tasks.view' as const, badge: null },
