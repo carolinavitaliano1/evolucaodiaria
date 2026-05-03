@@ -553,9 +553,9 @@ export default function ClinicDetail() {
     setLoadingClinicServices(false);
   };
 
-  // Auto-load services list when entering a propria clinic so the history is ready
+  // Auto-load services list when entering a propria/clinica clinic so the history is ready
   useEffect(() => {
-    if (id && clinic?.type === 'propria') {
+    if (id && (clinic?.type === 'propria' || clinic?.type === 'clinica')) {
       loadClinicServices();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
