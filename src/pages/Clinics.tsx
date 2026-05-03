@@ -393,8 +393,12 @@ export default function Clinics() {
               <Building2 className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-bold text-foreground text-lg leading-none">Locais de Atendimento</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Clínicas e meus serviços</p>
+              <h1 className="font-bold text-foreground text-lg leading-none">
+                {isClinicaProOnly ? 'Minhas Clínicas' : 'Locais de Atendimento'}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isClinicaProOnly ? 'Gerencie suas clínicas com equipe' : 'Clínicas e meus serviços'}
+              </p>
             </div>
           </div>
         </div>
@@ -458,7 +462,9 @@ export default function Clinics() {
           <TabsList className="bg-secondary/50 w-full sm:w-auto">
             <TabsTrigger value="clinics" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-initial">
               <Building2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Clínicas | Consultórios</span>
+              <span className="hidden sm:inline">
+                {isClinicaProOnly ? 'Clínicas' : 'Clínicas | Consultórios'}
+              </span>
               <span className="sm:hidden">Clínicas</span>
             </TabsTrigger>
             <TabsTrigger value="meus-servicos" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-initial">
@@ -476,7 +482,9 @@ export default function Clinics() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <Button size="sm" className="gap-1.5 shrink-0" onClick={handleNewClinicClick}>
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Cadastrar Clínica | Consultório</span>
+                <span className="hidden sm:inline">
+                  {isClinicaProOnly ? 'Cadastrar Clínica' : 'Cadastrar Clínica | Consultório'}
+                </span>
                 <span className="sm:hidden">Cadastrar</span>
               </Button>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
