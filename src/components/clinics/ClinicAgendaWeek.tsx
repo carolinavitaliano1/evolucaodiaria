@@ -437,10 +437,13 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
             <div />
             {weekDays.map(d => {
               const today = isSameDay(d, new Date());
+              const dStr = format(d, 'yyyy-MM-dd');
+              const block = getBlockForDate(dStr, clinicId);
               return (
                 <div key={d.toISOString()} className={cn(
                   "p-2 text-center border-l border-border",
-                  today && "bg-primary/5"
+                  today && "bg-primary/5",
+                  block && "bg-muted/40"
                 )}>
                   <div className="text-[10px] uppercase text-muted-foreground">
                     {format(d, 'EEE', { locale: ptBR })}
@@ -448,6 +451,12 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
                   <div className={cn("text-sm font-bold", today && "text-primary")}>
                     {format(d, 'dd/MM')}
                   </div>
+                  {block && (
+                    <div className="mt-0.5 flex items-center justify-center gap-1 text-[9px] text-muted-foreground" title={block.description}>
+                      <CalendarOff className="w-2.5 h-2.5" />
+                      <span className="truncate max-w-[80px]">{block.block_type === 'feriado' ? 'Feriado' : 'Férias'}</span>
+                    </div>
+                  )}
                 </div>
               );
             })}
