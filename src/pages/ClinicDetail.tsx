@@ -2124,7 +2124,7 @@ export default function ClinicDetail() {
         {/* Agenda Tab */}
         <TabsContent value="agenda">
           {clinic.type === 'clinica'
-            ? <ClinicAgendaWeek clinicId={clinic.id} />
+            ? <ClinicAgendaWeek clinicId={clinic.id} onOpenSettings={() => setActiveTab('agenda-settings')} />
             : <ClinicAgenda clinicId={clinic.id} />}
         </TabsContent>
 
