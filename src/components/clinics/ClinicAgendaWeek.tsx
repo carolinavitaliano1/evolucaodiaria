@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Filter, Trash2, CalendarOff, Bell } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Plus, Filter, Trash2, CalendarOff, Bell, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 
 interface ClinicAgendaWeekProps {
   clinicId: string;
+  onOpenSettings?: () => void;
 }
 
 const ALL_STATUSES = [
@@ -62,7 +63,7 @@ interface AppointmentRow {
 
 const DAYS_PT = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
-export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
+export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekProps) {
   const { patients } = useApp();
   const { user } = useAuth();
   const { members } = useClinicOrg(clinicId);
