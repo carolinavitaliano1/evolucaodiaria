@@ -1,57 +1,101 @@
-## O que vai mudar
+## Objetivo
 
-Hoje a opção **"Cobrar apenas se houve confirmação prévia"** já existe no cadastro da clínica e a lógica financeira (`shouldBillEvolution`) já respeita o campo `confirmedAttendance`. Porém, não há nenhum lugar para o terapeuta **registrar a confirmação ANTES da sessão acontecer** — hoje o campo só é salvo junto com a evolução, o que torna a regra impossível de aplicar na prática.
+Substituir a `ClinicAgenda` atual (lista diária de pacientes) por uma **agenda semanal em grid de horários**, no estilo ZenFisio, exclusiva para clínicas tipo `clinica` (Clínica Pro). Os tipos `propria` (Consultório) e `terceirizada` (Contratante) continuam usando a agenda diária atual, sem mudanças.
 
-Este plano adiciona o registro de confirmação prévia diretamente na **Agenda da Clínica**.
+A nova agenda atende equipes com vários terapeutas, oferecendo filtros amplos e criação rápida de agendamentos.
 
-## Funcionamento
+## Layout da nova agenda (Clínica Pro)
 
-1. **Cada paciente agendado do dia** ganha um botão **"Confirmar presença"** ao lado do botão de WhatsApp existente.
-2. Ao clicar, é criado um registro de "pré-confirmação" para aquele paciente naquela data. O botão troca para um **badge verde "✓ Confirmado"** (clicável para desfazer).
-3. Quando a evolução for criada depois (presente ou falta), ela herda automaticamente o `confirmedAttendance = true` se houver pré-confirmação para a data.
-4. O botão fica disponível **até o fim do dia da sessão** (00h do dia seguinte). Após isso, vira somente leitura.
-5. **Resultado financeiro:** em clínicas com modo "Cobrar apenas se houve confirmação prévia":
-   - Falta **com** pré-confirmação → cobra (vira receita / desconto parcial conforme `absence_charge_mode`).
-   - Falta **sem** pré-confirmação → não cobra (entra em "Total Descontado").
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ [Status ▼] [Paciente ▼] [Profissionais (multi) ▼]   [+ Novo]    │
+├─────────────────────────────────────────────────────────────────┤
+│   [<]   4 – 8 de mai. de 2026    [Hoje]   [>]   [Sem|Dia|Lista] │
+├──────┬────────┬────────┬────────┬────────┬────────┬─────────────┤
+│      │ seg 04 │ ter 05 │ qua 06 │ qui 07 │ sex 08 │ sáb 09      │
+├──────┼────────┼────────┼────────┼────────┼────────┼─────────────┤
+│ 07h  │        │        │        │        │        │             │
+│ 08h  │ ▮ João │        │ ▮ Ana  │        │        │             │
+│ 09h  │        │ ▮ Lia  │        │ ▮ Caio │        │             │
+│ 10h  │        │        │        │        │        │             │
+│ ...                                                              │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-## Onde aparece
+- **Eixo Y**: linhas de hora (07h–18h por padrão, configurável pela clínica)
+- **Eixo X**: 7 dias da semana selecionada
+- **Cards**: posicionados pelo horário; cor por status; mostram nome do paciente, terapeuta (chip) e horário
+- Visões alternáveis: **Semana** (padrão), **Dia**, **Lista**
 
-- **Componente:** `src/components/clinics/ClinicAgenda.tsx` — bloco de cada paciente agendado e bloco de `oneOffAppointments` (serviços avulsos).
-- Visual: badge verde `✓ Confirmado` junto do status, ao lado do botão WhatsApp.
-- Tooltip explicativo no botão deixando claro o impacto financeiro quando a clínica está em modo `confirmed_only`.
+## Filtros no topo
+
+1. **Status** — multiselect: Agendado, Confirmado, Atendido, Faltou, Cancelado, Remarcar
+2. **Paciente** — busca por nome (combobox)
+3. **Profissionais** — multiselect com "Selecionar todos / Limpar"; padrão: todos da equipe ativa
+
+Filtros combinam (AND) e persistem em sessionStorage por clínica.
+
+## Criação de agendamento
+
+Ambos os caminhos abrem o **mesmo modal "Novo Agendamento"**:
+
+- **Clique em slot vazio**: pré-preenche data, hora de início, hora de fim (+1h), profissional (se houver 1 selecionado no filtro)
+- **Botão "+ Novo Agendamento"** no topo: abre modal vazio
+
+Campos do modal:
+- Data, Horário (início / fim), opção "Repetir semanalmente"
+- Profissional (select dos membros da equipe)
+- Paciente (combobox dos pacientes da clínica)
+- Status (default: Agendado)
+- Sala / Convênio (texto livre opcional)
+- Observações
+- Lembrete WhatsApp (toggle)
+
+## Click em agendamento existente
+
+Abre popover/modal de detalhes com:
+- Resumo (paciente, profissional, horário, status)
+- Botões: **Editar**, **Cancelar**, **Confirmar presença**, **Registrar evolução** (vai para o paciente), **WhatsApp**
+
+## Escopo das mudanças
+
+- **Apenas** clínicas `type === 'clinica'` (Clínica Pro) recebem a nova agenda
+- Consultório e Contratante mantêm a `ClinicAgenda` atual sem alteração
+- A página externa de cada clínica (rota atual) escolhe qual componente renderizar com base no `clinic.type`
 
 ## Detalhes técnicos
 
-### Nova tabela `attendance_confirmations`
-Campos relevantes:
-- `patient_id`, `clinic_id`, `date`, `confirmed_by_user_id`, `confirmed_at`
-- Único por (`patient_id`, `clinic_id`, `date`)
-- RLS: dono da clínica + membros da organização da clínica podem inserir/ler/excluir.
+**Novos arquivos**
+- `src/components/clinics/ClinicAgendaWeek.tsx` — componente principal (grid semanal + filtros + navegação)
+- `src/components/clinics/AppointmentDialog.tsx` — modal único de criar/editar
+- `src/components/clinics/AppointmentDetailsPopover.tsx` — popover ao clicar em card existente
 
-Motivo de tabela separada (em vez de reusar `evolutions.confirmed_attendance`): a evolução só existe depois da sessão; precisamos do registro **antes**.
+**Arquivo modificado**
+- O wrapper que hoje renderiza `<ClinicAgenda />` passa a fazer:
+  ```tsx
+  clinic.type === 'clinica'
+    ? <ClinicAgendaWeek clinicId={...} />
+    : <ClinicAgenda clinicId={...} />
+  ```
 
-### Integração com a criação de evolução (`AppContext.tsx` `addEvolution`)
-- Antes de inserir a evolução, consultar `attendance_confirmations` para `(patient_id, clinic_id, date)`.
-- Se existir, forçar `confirmed_attendance = true` no insert (sobrescreve o default).
-- Não alterar evoluções já existentes — apenas o caminho de criação.
+**Dados (sem migrações novas)**
+- Reusa tabela `appointments` (já tem `clinic_id`, `patient_id`, `date`, `time`, `status`, `notes`, `price`)
+- Profissional do agendamento: usar coluna `user_id` se existir em `appointments`; caso contrário, criar migração mínima `ALTER TABLE appointments ADD COLUMN therapist_user_id uuid` (a confirmar ao inspecionar o schema na implementação — se o campo já existir sob outro nome, reusa)
+- Recorrência semanal: continua usando `patient_schedule_slots` quando o paciente já tem dia/hora fixos; agendamentos pontuais ficam em `appointments`
+- Horário de funcionamento: lê `clinics.schedule_by_day` para determinar a faixa do grid (mín → máx), com fallback 07h–18h
 
-### UI em `ClinicAgenda.tsx`
-- Carregar via `useEffect` as confirmações da `viewDate` para a `clinicId`.
-- Função `toggleConfirmation(patientId)`: insere ou remove o registro otimisticamente.
-- Botão fica desabilitado se `viewDate < hoje` (passado) — só permite marcar para hoje ou futuro.
-- Badge verde `✓ Confirmado` substitui o estado padrão "⏳ Aguardando" quando a confirmação existe e não há evolução ainda.
-- Quando já existe evolução, badge de confirmação aparece pequeno ao lado do status atual (informativo).
+**Performance**
+- Carrega agendamentos da semana visível em uma única query (`gte(date, semanaInicio).lte(date, semanaFim)`)
+- Recalcula grid via `useMemo` indexado por `dia × hora`
+- Realtime: subscribe na tabela `appointments` filtrado por `clinic_id` para atualizar cards ao vivo
 
-### Aviso visual contextual
-- Se a clínica está com `absence_payment_type = 'confirmed_only'`, mostrar uma faixa pequena no topo da agenda explicando: *"Esta clínica cobra faltas apenas quando houve confirmação prévia. Use o botão ✓ para registrar."*
+**Mobile**
+- Em telas <768px, força visão "Dia" (1 coluna) com seletor de data acima do grid
+- Cards têm `min-h-[44px]` para toque
 
-### Sem mudanças na lógica financeira
-- `financialHelpers.ts`, `fiscalTotals.ts`, `PatientBillingManager.tsx`, `PatientDetail.tsx`, `generateClinicInternalStatementPdf.ts` continuam inalterados — eles já respeitam `confirmedAttendance` corretamente. A mudança apenas garante que esse campo seja preenchido a partir das pré-confirmações.
+## Fora de escopo (não mudará)
 
-### Memory
-- Adicionar memory `mem://features/attendance-pre-confirmation` documentando o fluxo: tabela `attendance_confirmations`, regra de cobrança em modo `confirmed_only`, herança automática do flag na criação da evolução.
-
-## Não inclui
-- Notificações automáticas / lembretes (regra de "não usar push reminders" do projeto).
-- Confirmação pelo paciente via portal (escopo futuro, se desejado).
-- Mudanças em relatórios PDF — os totais já refletirão corretamente porque a lógica financeira não muda.
+- `ClinicAgenda` atual (mantida intacta para Consultório/Contratante)
+- Lógica financeira e de evoluções
+- Tabela `evolutions`, `attendance_confirmations`, regras de cobrança de falta
+- Outras abas da clínica (Equipe, Financeiro, Pacotes, Notas, etc.)
