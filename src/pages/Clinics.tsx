@@ -90,6 +90,9 @@ export default function Clinics() {
   const [deleteServiceOpen, setDeleteServiceOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<ServiceRecord | null>(null);
 
+  // Clínica Pro puro (sem admin override): cadastra apenas Clínicas com equipe
+  const isClinicaProOnly = canCreateClinica && !isAdminOverride;
+
   const loadRegisteredServices = async () => {
     if (!user) return;
     const { data } = await supabase
@@ -205,8 +208,10 @@ export default function Clinics() {
       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
       const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
       let defaultType: 'propria' | 'terceirizada' | 'clinica' = 'propria';
-      if (canCreateClinica && activeClinica) defaultType = 'clinica';
-      else if (canCreateClinica && !activeAutonomo && !isAdminOverride) defaultType = 'clinica';
+      // Clínica Pro (sem admin override) só pode cadastrar Clínica
+      if (canCreateClinica && !isAdminOverride) defaultType = 'clinica';
+      else if (canCreateClinica && activeClinica) defaultType = 'clinica';
+      else if (canCreateClinica && !activeAutonomo) defaultType = 'clinica';
       setFormData(prev => ({ ...prev, type: defaultType }));
       setIsDialogOpen(true);
     }
@@ -388,8 +393,12 @@ export default function Clinics() {
               <Building2 className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-bold text-foreground text-lg leading-none">Locais de Atendimento</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Clínicas e meus serviços</p>
+              <h1 className="font-bold text-foreground text-lg leading-none">
+                {isClinicaProOnly ? 'Minhas Clínicas' : 'Locais de Atendimento'}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isClinicaProOnly ? 'Gerencie suas clínicas com equipe' : 'Clínicas e meus serviços'}
+              </p>
             </div>
           </div>
         </div>
@@ -453,7 +462,9 @@ export default function Clinics() {
           <TabsList className="bg-secondary/50 w-full sm:w-auto">
             <TabsTrigger value="clinics" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-initial">
               <Building2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Clínicas | Consultórios</span>
+              <span className="hidden sm:inline">
+                {isClinicaProOnly ? 'Clínicas' : 'Clínicas | Consultórios'}
+              </span>
               <span className="sm:hidden">Clínicas</span>
             </TabsTrigger>
             <TabsTrigger value="meus-servicos" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-initial">
@@ -471,7 +482,9 @@ export default function Clinics() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <Button size="sm" className="gap-1.5 shrink-0" onClick={handleNewClinicClick}>
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Cadastrar Clínica | Consultório</span>
+                <span className="hidden sm:inline">
+                  {isClinicaProOnly ? 'Cadastrar Clínica' : 'Cadastrar Clínica | Consultório'}
+                </span>
                 <span className="sm:hidden">Cadastrar</span>
               </Button>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -505,14 +518,18 @@ export default function Clinics() {
                             onValueChange={(v) => setFormData({ ...formData, type: v as any })}
                             className="flex gap-4 mt-2 flex-wrap"
                           >
-                            <div className="flex items-center gap-2">
-                              <RadioGroupItem value="propria" id="propria" disabled={autonomoDisabled} />
-                              <Label htmlFor="propria" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Consultório</Label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <RadioGroupItem value="terceirizada" id="terceirizada" disabled={autonomoDisabled} />
-                              <Label htmlFor="terceirizada" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Contratante</Label>
-                            </div>
+                            {!isClinicaProOnly && (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <RadioGroupItem value="propria" id="propria" disabled={autonomoDisabled} />
+                                  <Label htmlFor="propria" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Consultório</Label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <RadioGroupItem value="terceirizada" id="terceirizada" disabled={autonomoDisabled} />
+                                  <Label htmlFor="terceirizada" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Contratante</Label>
+                                </div>
+                              </>
+                            )}
                             {canCreateClinica && (
                               <div className="flex items-center gap-2">
                                 <RadioGroupItem value="clinica" id="clinica" disabled={clinicaDisabled} />
@@ -520,12 +537,12 @@ export default function Clinics() {
                               </div>
                             )}
                           </RadioGroup>
-                          {autonomoDisabled && (
+                          {autonomoDisabled && !isClinicaProOnly && (
                             <p className="text-xs text-warning mt-2">
                               Você já tem uma Clínica ativa. Arquive-a para cadastrar Consultório ou Contratante.
                             </p>
                           )}
-                          {hasTeam && clinicaDisabled && activeAutonomo && (
+                          {hasTeam && clinicaDisabled && activeAutonomo && !isClinicaProOnly && (
                             <p className="text-xs text-warning mt-2">
                               Você já tem Consultório/Contratante ativo. Arquive-os para cadastrar uma Clínica com equipe.
                             </p>
@@ -758,6 +775,7 @@ export default function Clinics() {
         {/* Clinics Tab */}
         <TabsContent value="clinics" className="space-y-4">
           {/* Filter Cards */}
+          {!isClinicaProOnly && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {([
               { key: 'all',          label: 'Ativas',       count: activeClinics.length,                                           icon: Building2,   color: 'text-primary',          bg: 'bg-primary/10' },
@@ -786,6 +804,7 @@ export default function Clinics() {
               </button>
             ))}
           </div>
+          )}
 
           {/* Clinics List */}
           {filteredClinics.length === 0 ? (
@@ -793,11 +812,11 @@ export default function Clinics() {
               <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">Nenhuma clínica</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Adicione sua primeira clínica ou local de atendimento
+                {isClinicaProOnly ? 'Adicione sua clínica' : 'Adicione sua primeira clínica ou local de atendimento'}
               </p>
               <Button onClick={() => setIsDialogOpen(true)} size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
-                Nova Clínica
+                {isClinicaProOnly ? 'Adicionar' : 'Nova Clínica'}
               </Button>
             </div>
           ) : (
