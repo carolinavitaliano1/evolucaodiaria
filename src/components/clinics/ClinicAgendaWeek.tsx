@@ -548,6 +548,14 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
         patients={patientOptions}
         onSaved={loadAppointments}
       />
+
+      <CalendarBlockDialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen} />
+      <EventDialog
+        open={eventDialogOpen}
+        onOpenChange={setEventDialogOpen}
+        selectedDate={eventDialogDate}
+        onEventSaved={loadUserEvents}
+      />
     </div>
   );
 }
