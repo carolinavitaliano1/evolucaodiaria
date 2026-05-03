@@ -205,8 +205,10 @@ export default function Clinics() {
       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
       const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
       let defaultType: 'propria' | 'terceirizada' | 'clinica' = 'propria';
-      if (canCreateClinica && activeClinica) defaultType = 'clinica';
-      else if (canCreateClinica && !activeAutonomo && !isAdminOverride) defaultType = 'clinica';
+      // Clínica Pro (sem admin override) só pode cadastrar Clínica
+      if (canCreateClinica && !isAdminOverride) defaultType = 'clinica';
+      else if (canCreateClinica && activeClinica) defaultType = 'clinica';
+      else if (canCreateClinica && !activeAutonomo) defaultType = 'clinica';
       setFormData(prev => ({ ...prev, type: defaultType }));
       setIsDialogOpen(true);
     }
