@@ -163,6 +163,35 @@ export default function Team() {
     reloadOrgMap();
   }, [teamClinics.length]);
 
+  // Clínica Pro: auto-ativa a equipe na clínica única quando ainda não foi ativada.
+  // Evita o passo manual "Ativar Equipe" — o modo equipe deve vir ligado por padrão.
+  useEffect(() => {
+    if (loadingMap) return;
+    if (!user || !hasTeam) return;
+    if (activeTeamClinicId) return;            // já ativa
+    if (teamClinics.length !== 1) return;      // só auto-ativa quando há exatamente 1 clínica
+    if (activating) return;
+    const clinic = teamClinics[0];
+    (async () => {
+      setActivating(true);
+      try {
+        const { data: org, error: orgErr } = await supabase
+          .from('organizations')
+          .insert({ name: clinic.name ?? 'Minha Clínica', owner_id: user.id })
+          .select('id')
+          .single();
+        if (orgErr) throw orgErr;
+        await supabase.from('clinics').update({ organization_id: org.id }).eq('id', clinic.id);
+        await reloadOrgMap();
+      } catch (err) {
+        console.error('auto-activate team error', err);
+      } finally {
+        setActivating(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingMap, user?.id, hasTeam, activeTeamClinicId, teamClinics.length]);
+
   // State A: Activate team on selected clinic (create new org)
   const handleActivate = async () => {
     if (!activatingClinicId || !user) return;
