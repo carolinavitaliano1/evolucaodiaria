@@ -2818,6 +2818,11 @@ export default function ClinicDetail() {
             <ClinicTeam clinicId={clinic.id} clinicName={clinic.name} />
           </TabsContent>
         )}
+        {clinic.type === 'clinica' && (
+          <TabsContent value="agenda-settings" className="space-y-4">
+            <ClinicAgendaSettings clinic={clinic} />
+          </TabsContent>
+        )}
       </Tabs>
 
 
