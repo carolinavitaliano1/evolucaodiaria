@@ -66,7 +66,7 @@ export default function Clinics() {
   const { user } = useAuth();
   const { hasTeam } = useFeatureAccess();
   // Admin override: contas específicas podem cadastrar Clínica mesmo com Consultório/Contratante (para testes)
-  const isAdminOverride = user?.email === 'carolinavitaliano1@gmail.com' || user?.email === 'gabriellajf83@gmail.com';
+  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
   const canCreateClinica = hasTeam || isAdminOverride;
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
