@@ -492,6 +492,10 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
                     onClick={(e) => {
                       // Não abrir slot se clicou em card
                       if ((e.target as HTMLElement).closest('[data-appt-card]')) return;
+                      if (blockHere) {
+                        toast.info(`Dia bloqueado: ${blockHere.description}`);
+                        return;
+                      }
                       openSlot(d, hour);
                     }}
                   >
@@ -549,7 +553,12 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
         onSaved={loadAppointments}
       />
 
-      <CalendarBlockDialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen} />
+      <CalendarBlockDialog
+        open={blockDialogOpen}
+        onOpenChange={setBlockDialogOpen}
+        hideClinicScope
+        defaultClinicId={clinicId}
+      />
       <EventDialog
         open={eventDialogOpen}
         onOpenChange={setEventDialogOpen}
