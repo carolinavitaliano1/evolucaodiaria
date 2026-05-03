@@ -393,6 +393,9 @@ export default function Clinics() {
   };
 
   return (
+    clinicaProActiveClinic ? (
+      <Navigate to={`/clinics/${clinicaProActiveClinic.id}`} replace />
+    ) :
     <div className="min-h-screen bg-background">
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border">
