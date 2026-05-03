@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Filter, Trash2 } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Plus, Filter, Trash2, CalendarOff, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -8,6 +8,9 @@ import { Label } from '@/components/ui/label';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { CalendarBlockDialog } from '@/components/calendar/CalendarBlockDialog';
+import { EventDialog } from '@/components/calendar/EventDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
@@ -63,6 +66,7 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
   const { patients } = useApp();
   const { user } = useAuth();
   const { members } = useClinicOrg(clinicId);
+  const { getBlockForDate, load: reloadBlocks } = useCalendarBlocks();
 
   const [weekStart, setWeekStart] = useState<Date>(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -78,6 +82,10 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
   // Dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<AppointmentDraft | null>(null);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [eventDialogDate, setEventDialogDate] = useState<Date>(new Date());
+  const [userEvents, setUserEvents] = useState<Array<{ id: string; date: string; time: string | null; title: string; type: string; color: string }>>([]);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -130,6 +138,36 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [clinicId, weekStartStr, loadAppointments]);
+
+  // Eventos pessoais (events) — espelha com /calendar
+  const loadUserEvents = useCallback(async () => {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from('events')
+      .select('id, date, time, title, type, color')
+      .eq('user_id', user.id)
+      .gte('date', weekStartStr)
+      .lte('date', weekEndStr);
+    setUserEvents((data || []) as any);
+  }, [user?.id, weekStartStr, weekEndStr]);
+  useEffect(() => { loadUserEvents(); }, [loadUserEvents]);
+
+  // Realtime — eventos pessoais e bloqueios (espelhar com /calendar)
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`agenda-week-events-${clinicId}-${user.id}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'events', filter: `user_id=eq.${user.id}` },
+        () => { loadUserEvents(); }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'calendar_blocks', filter: `user_id=eq.${user.id}` },
+        () => { reloadBlocks(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [clinicId, user?.id, loadUserEvents, reloadBlocks]);
 
   // Inclui agendamentos recorrentes de outras semanas (replicar para semana atual)
   const recurringFromOtherWeeks = useMemo(() => {
@@ -359,9 +397,17 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
         )}
 
         <div className="ml-auto">
-          <Button size="sm" className="gap-1.5" onClick={openNew}>
-            <Plus className="w-4 h-4" /> Novo Agendamento
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setBlockDialogOpen(true)}>
+              <CalendarOff className="w-4 h-4" /> Bloqueio
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setEventDialogDate(new Date()); setEventDialogOpen(true); }}>
+              <Bell className="w-4 h-4" /> Evento
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={openNew}>
+              <Plus className="w-4 h-4" /> Novo Agendamento
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -391,10 +437,13 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
             <div />
             {weekDays.map(d => {
               const today = isSameDay(d, new Date());
+              const dStr = format(d, 'yyyy-MM-dd');
+              const block = getBlockForDate(dStr, clinicId);
               return (
                 <div key={d.toISOString()} className={cn(
                   "p-2 text-center border-l border-border",
-                  today && "bg-primary/5"
+                  today && "bg-primary/5",
+                  block && "bg-muted/40"
                 )}>
                   <div className="text-[10px] uppercase text-muted-foreground">
                     {format(d, 'EEE', { locale: ptBR })}
@@ -402,6 +451,12 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
                   <div className={cn("text-sm font-bold", today && "text-primary")}>
                     {format(d, 'dd/MM')}
                   </div>
+                  {block && (
+                    <div className="mt-0.5 flex items-center justify-center gap-1 text-[9px] text-muted-foreground" title={block.description}>
+                      <CalendarOff className="w-2.5 h-2.5" />
+                      <span className="truncate max-w-[80px]">{block.block_type === 'feriado' ? 'Feriado' : 'Férias'}</span>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -420,10 +475,20 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
                   const m = timeToMinutes(a.time);
                   return m >= hourMin && m < hourMin + 60;
                 });
+                const eventsThisSlot = userEvents.filter(ev => {
+                  if (ev.date !== dStr) return false;
+                  if (!ev.time) return hour === '07:00';
+                  const m = timeToMinutes(ev.time.slice(0, 5));
+                  return m >= hourMin && m < hourMin + 60;
+                });
+                const blockHere = getBlockForDate(dStr, clinicId);
                 return (
                   <div
                     key={d.toISOString()}
-                    className="border-l border-border min-h-[56px] p-0.5 hover:bg-secondary/30 cursor-pointer transition-colors relative"
+                    className={cn(
+                      "border-l border-border min-h-[56px] p-0.5 hover:bg-secondary/30 cursor-pointer transition-colors relative",
+                      blockHere && "bg-muted/30"
+                    )}
                     onClick={(e) => {
                       // Não abrir slot se clicou em card
                       if ((e.target as HTMLElement).closest('[data-appt-card]')) return;
@@ -449,6 +514,19 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
                         )}
                       </button>
                     ))}
+                    {eventsThisSlot.map(ev => (
+                      <button
+                        key={ev.id}
+                        data-appt-card
+                        onClick={(e) => { e.stopPropagation(); setEventDialogDate(parseISO(ev.date + 'T12:00:00')); setEventDialogOpen(true); }}
+                        className="w-full text-left text-[10px] px-1.5 py-0.5 rounded border mb-0.5 truncate flex items-center gap-1"
+                        style={{ borderColor: ev.color, backgroundColor: ev.color + '22', color: ev.color }}
+                        title={ev.title}
+                      >
+                        <Bell className="w-2.5 h-2.5 shrink-0" />
+                        <span className="truncate">{ev.time ? ev.time.slice(0,5) + ' ' : ''}{ev.title}</span>
+                      </button>
+                    ))}
                   </div>
                 );
               })}
@@ -469,6 +547,14 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
         members={memberOptions}
         patients={patientOptions}
         onSaved={loadAppointments}
+      />
+
+      <CalendarBlockDialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen} />
+      <EventDialog
+        open={eventDialogOpen}
+        onOpenChange={setEventDialogOpen}
+        selectedDate={eventDialogDate}
+        onEventSaved={loadUserEvents}
       />
     </div>
   );

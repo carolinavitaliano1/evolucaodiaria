@@ -816,7 +816,7 @@ export default function ClinicDetail() {
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Clínica não encontrada</p>
         <Button onClick={() => navigate('/clinics')} className="mt-4">
-          Voltar para Clínica
+          Voltar para Clínicas
         </Button>
       </div>
     );
@@ -1145,7 +1145,7 @@ export default function ClinicDetail() {
       <div className="mb-8">
         <Button variant="ghost" onClick={() => navigate('/clinics')} className="mb-4 gap-2">
           <ArrowLeft className="w-4 h-4" />
-          {clinic.type === 'clinica' ? 'Voltar para Clínica' : 'Voltar para Clínicas'}
+          Voltar para Clínicas
         </Button>
 
         {isArchived && (
@@ -3107,7 +3107,7 @@ export default function ClinicDetail() {
       )}
 
       {/* Serviços tab — ServiceDialog and dialogs */}
-      {isPropria && (
+      {(isPropria || clinic.type === 'clinica') && (
         <>
           <ServiceDialog
             open={serviceDialogOpen}
