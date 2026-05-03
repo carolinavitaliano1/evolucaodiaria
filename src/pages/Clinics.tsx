@@ -498,6 +498,8 @@ export default function Clinics() {
                       // Admin override bypasses ambas as restrições para testes
                       const autonomoDisabled = activeClinica && !isAdminOverride;
                       const clinicaDisabled = (activeAutonomo && !isAdminOverride) || !canCreateClinica;
+                      // Clínica Pro: oculta Consultório/Contratante completamente — só Clínica é permitida
+                      const isClinicaProOnly = canCreateClinica && !isAdminOverride;
                       return (
                         <>
                           <RadioGroup
@@ -505,14 +507,18 @@ export default function Clinics() {
                             onValueChange={(v) => setFormData({ ...formData, type: v as any })}
                             className="flex gap-4 mt-2 flex-wrap"
                           >
-                            <div className="flex items-center gap-2">
-                              <RadioGroupItem value="propria" id="propria" disabled={autonomoDisabled} />
-                              <Label htmlFor="propria" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Consultório</Label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <RadioGroupItem value="terceirizada" id="terceirizada" disabled={autonomoDisabled} />
-                              <Label htmlFor="terceirizada" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Contratante</Label>
-                            </div>
+                            {!isClinicaProOnly && (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <RadioGroupItem value="propria" id="propria" disabled={autonomoDisabled} />
+                                  <Label htmlFor="propria" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Consultório</Label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <RadioGroupItem value="terceirizada" id="terceirizada" disabled={autonomoDisabled} />
+                                  <Label htmlFor="terceirizada" className={cn("cursor-pointer text-sm", autonomoDisabled && "opacity-50 cursor-not-allowed")}>Contratante</Label>
+                                </div>
+                              </>
+                            )}
                             {canCreateClinica && (
                               <div className="flex items-center gap-2">
                                 <RadioGroupItem value="clinica" id="clinica" disabled={clinicaDisabled} />
@@ -520,12 +526,12 @@ export default function Clinics() {
                               </div>
                             )}
                           </RadioGroup>
-                          {autonomoDisabled && (
+                          {autonomoDisabled && !isClinicaProOnly && (
                             <p className="text-xs text-warning mt-2">
                               Você já tem uma Clínica ativa. Arquive-a para cadastrar Consultório ou Contratante.
                             </p>
                           )}
-                          {hasTeam && clinicaDisabled && activeAutonomo && (
+                          {hasTeam && clinicaDisabled && activeAutonomo && !isClinicaProOnly && (
                             <p className="text-xs text-warning mt-2">
                               Você já tem Consultório/Contratante ativo. Arquive-os para cadastrar uma Clínica com equipe.
                             </p>
