@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Filter, Trash2 } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Plus, Filter, Trash2, CalendarOff, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -8,6 +8,9 @@ import { Label } from '@/components/ui/label';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
+import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { CalendarBlockDialog } from '@/components/calendar/CalendarBlockDialog';
+import { EventDialog } from '@/components/calendar/EventDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
