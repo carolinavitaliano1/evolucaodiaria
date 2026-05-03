@@ -408,6 +408,18 @@ export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekP
             <Button size="sm" className="gap-1.5" onClick={openNew}>
               <Plus className="w-4 h-4" /> Novo Agendamento
             </Button>
+            {onOpenSettings && (
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-9 w-9"
+                onClick={onOpenSettings}
+                title="Configurações da agenda"
+                aria-label="Configurações da agenda"
+              >
+                <Settings2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
