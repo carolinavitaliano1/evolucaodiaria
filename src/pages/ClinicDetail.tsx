@@ -42,6 +42,7 @@ import { generateReportPdf } from '@/utils/generateReportPdf';
 import { Clinic } from '@/types';
 import { ClinicFinancial } from '@/components/clinics/ClinicFinancial';
 import { ClinicAgenda } from '@/components/clinics/ClinicAgenda';
+import { ClinicAgendaWeek } from '@/components/clinics/ClinicAgendaWeek';
 import { ClinicNotes } from '@/components/clinics/ClinicNotes';
 import EvolutionTemplates from '@/components/clinics/EvolutionTemplates';
 import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
@@ -2074,7 +2075,9 @@ export default function ClinicDetail() {
 
         {/* Agenda Tab */}
         <TabsContent value="agenda">
-          <ClinicAgenda clinicId={clinic.id} />
+          {clinic.type === 'clinica'
+            ? <ClinicAgendaWeek clinicId={clinic.id} />
+            : <ClinicAgenda clinicId={clinic.id} />}
         </TabsContent>
 
         {/* Notes Tab */}
