@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { Clinic } from '@/types';
 import { toast } from 'sonner';
 import { Upload, X } from 'lucide-react';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { useAuth } from '@/contexts/AuthContext';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -29,6 +31,12 @@ interface EditClinicDialogProps {
 }
 
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
+  const { hasTeam } = useFeatureAccess();
+  const { user } = useAuth();
+  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
+  const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
+  const canCreateClinica = (hasTeam || isAdminOverride) && !forceIndividualPro;
+  const isClinicaProOnly = canCreateClinica && !isAdminOverride;
   const [formData, setFormData] = useState({
     name: '',
     type: 'propria' as 'propria' | 'terceirizada' | 'clinica',
@@ -159,32 +167,34 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
             />
           </div>
 
-          <div>
-            <Label>Tipo de Vínculo *</Label>
-            <RadioGroup
-              value={formData.type}
-              onValueChange={(v) => setFormData({ ...formData, type: v as any })}
-              className="flex gap-4 mt-1 flex-wrap"
-            >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="propria" id="edit-propria" />
-                <Label htmlFor="edit-propria" className="cursor-pointer text-sm">Consultório</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="clinica" id="edit-clinica" />
-                <Label htmlFor="edit-clinica" className="cursor-pointer text-sm">Clínica</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="terceirizada" id="edit-terceirizada" />
-                <Label htmlFor="edit-terceirizada" className="cursor-pointer text-sm">Contratante</Label>
-              </div>
-            </RadioGroup>
-            {formData.type === 'clinica' && (
-              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                🏥 Modalidade que permite usar a Gestão de Equipe para convidar terapeutas e colaboradores.
-              </p>
-            )}
-          </div>
+          {!isClinicaProOnly && (
+            <div>
+              <Label>Tipo de Vínculo *</Label>
+              <RadioGroup
+                value={formData.type}
+                onValueChange={(v) => setFormData({ ...formData, type: v as any })}
+                className="flex gap-4 mt-1 flex-wrap"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="propria" id="edit-propria" />
+                  <Label htmlFor="edit-propria" className="cursor-pointer text-sm">Consultório</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="clinica" id="edit-clinica" />
+                  <Label htmlFor="edit-clinica" className="cursor-pointer text-sm">Clínica</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="terceirizada" id="edit-terceirizada" />
+                  <Label htmlFor="edit-terceirizada" className="cursor-pointer text-sm">Contratante</Label>
+                </div>
+              </RadioGroup>
+              {formData.type === 'clinica' && (
+                <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                  🏥 Modalidade que permite usar a Gestão de Equipe para convidar terapeutas e colaboradores.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
