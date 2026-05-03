@@ -60,6 +60,7 @@ import { TherapeuticGroupsTab } from '@/components/clinics/TherapeuticGroupsTab'
 import { UsersRound } from 'lucide-react';
 import { ClinicHealthPlans } from '@/components/clinics/ClinicHealthPlans';
 import { CalendarOff } from 'lucide-react';
+import ClinicAgendaSettings from '@/components/clinics/ClinicAgendaSettings';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
