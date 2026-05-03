@@ -396,10 +396,10 @@ export default function Clinics() {
             </div>
             <div>
               <h1 className="font-bold text-foreground text-lg leading-none">
-                {isClinicaProOnly ? 'Minhas Clínicas' : 'Locais de Atendimento'}
+                {isClinicaProOnly ? 'Minha Clínica' : 'Locais de Atendimento'}
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {isClinicaProOnly ? 'Gerencie suas clínicas com equipe' : 'Clínicas e meus serviços'}
+                {isClinicaProOnly ? 'Gerencie sua clínica e equipe' : 'Clínicas e meus serviços'}
               </p>
             </div>
           </div>
@@ -408,18 +408,20 @@ export default function Clinics() {
 
       <div className="max-w-5xl mx-auto px-4 lg:px-6 py-5 pb-24 space-y-5">
         {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground leading-none">{clinics.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">Clínicas</p>
+        <div className={cn("grid gap-3", isClinicaProOnly ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 lg:grid-cols-4")}>
+          {!isClinicaProOnly && (
+            <div className="bg-card rounded-xl p-4 border border-border">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground leading-none">{clinics.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Clínicas</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div className="bg-card rounded-xl p-4 border border-border">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0">
