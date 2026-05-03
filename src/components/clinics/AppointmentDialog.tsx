@@ -189,7 +189,7 @@ export function AppointmentDialog({
       ((pts.data || []) as any[]).forEach(p => { if (p.phone) phMap[p.id] = p.phone; });
       setPatientPhones(phMap);
     })();
-  }, [open, clinicId, members, patients]);
+  }, [open, clinicId, members, patients, user?.id]);
 
   // Inicializa formulário ao abrir / trocar draft
   useEffect(() => {
