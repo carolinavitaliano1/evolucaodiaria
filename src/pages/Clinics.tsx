@@ -469,6 +469,7 @@ export default function Clinics() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
