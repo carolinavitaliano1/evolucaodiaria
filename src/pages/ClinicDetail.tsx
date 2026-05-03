@@ -816,7 +816,7 @@ export default function ClinicDetail() {
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Clínica não encontrada</p>
         <Button onClick={() => navigate('/clinics')} className="mt-4">
-          Voltar para Clínicas
+          Voltar para Clínica
         </Button>
       </div>
     );
@@ -1145,7 +1145,7 @@ export default function ClinicDetail() {
       <div className="mb-8">
         <Button variant="ghost" onClick={() => navigate('/clinics')} className="mb-4 gap-2">
           <ArrowLeft className="w-4 h-4" />
-          Voltar para Clínicas
+          {clinic.type === 'clinica' ? 'Voltar para Clínica' : 'Voltar para Clínicas'}
         </Button>
 
         {isArchived && (
@@ -2577,8 +2577,8 @@ export default function ClinicDetail() {
           />
         </TabsContent>
 
-        {/* Serviços Tab — only for propria clinics */}
-        {isPropria && (
+        {/* Serviços Tab — propria e clinica (Clínica Pro) */}
+        {(isPropria || clinic.type === 'clinica') && (
           <TabsContent value="services" className="space-y-4">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
