@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE } from '@/utils/sessionTypeTags';
