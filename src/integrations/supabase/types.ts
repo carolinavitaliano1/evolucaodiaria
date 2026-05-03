@@ -17,33 +17,51 @@ export type Database = {
       appointments: {
         Row: {
           clinic_id: string
+          convenio: string | null
           created_at: string
           date: string
+          end_time: string | null
           id: string
+          is_recurring: boolean
           notes: string | null
           patient_id: string
+          room: string | null
+          status: string
+          therapist_user_id: string | null
           time: string
           updated_at: string
           user_id: string
         }
         Insert: {
           clinic_id: string
+          convenio?: string | null
           created_at?: string
           date: string
+          end_time?: string | null
           id?: string
+          is_recurring?: boolean
           notes?: string | null
           patient_id: string
+          room?: string | null
+          status?: string
+          therapist_user_id?: string | null
           time: string
           updated_at?: string
           user_id: string
         }
         Update: {
           clinic_id?: string
+          convenio?: string | null
           created_at?: string
           date?: string
+          end_time?: string | null
           id?: string
+          is_recurring?: boolean
           notes?: string | null
           patient_id?: string
+          room?: string | null
+          status?: string
+          therapist_user_id?: string | null
           time?: string
           updated_at?: string
           user_id?: string
