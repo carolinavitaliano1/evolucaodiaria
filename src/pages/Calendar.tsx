@@ -616,7 +616,7 @@ export default function CalendarPage() {
               </Button>
             </>
           )}
-          {!isClinicaProOnly && <Dialog
+          <Dialog
             open={isApptDialogOpen}
             onOpenChange={(open) => {
               setIsApptDialogOpen(open);
@@ -625,12 +625,14 @@ export default function CalendarPage() {
                 resetForm();
               }
             }}
-          ><></>}
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5">
-                <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Atendimento</span>
-              </Button>
-            </DialogTrigger>
+          >
+            {!isClinicaProOnly && (
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5">
+                  <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Atendimento</span>
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingApptId ? 'Editar Atendimento' : 'Agendar Atendimento'}</DialogTitle>
