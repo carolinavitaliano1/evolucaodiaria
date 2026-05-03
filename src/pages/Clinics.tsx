@@ -417,8 +417,9 @@ export default function Clinics() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 lg:px-6 py-5 pb-24 space-y-5">
-        {/* Stats Row */}
-        <div className={cn("grid gap-3", isClinicaProOnly ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 lg:grid-cols-4")}>
+        {/* Stats Row — escondido para Clínica Pro (movido para dentro da clínica) */}
+        {!isClinicaProOnly && (
+        <div className={cn("grid gap-3", "grid-cols-2 lg:grid-cols-4")}>
           {!isClinicaProOnly && (
             <div className="bg-card rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
