@@ -66,6 +66,7 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
   const { patients } = useApp();
   const { user } = useAuth();
   const { members } = useClinicOrg(clinicId);
+  const { getBlockForDate, load: reloadBlocks } = useCalendarBlocks();
 
   const [weekStart, setWeekStart] = useState<Date>(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -81,6 +82,10 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
   // Dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<AppointmentDraft | null>(null);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [eventDialogDate, setEventDialogDate] = useState<Date>(new Date());
+  const [userEvents, setUserEvents] = useState<Array<{ id: string; date: string; time: string | null; title: string; type: string; color: string }>>([]);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
