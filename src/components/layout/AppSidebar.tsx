@@ -31,6 +31,7 @@ import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { useAuth } from '@/contexts/AuthContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -72,7 +73,11 @@ export function AppSidebar() {
   const { isOrgMember, isOwner, role, permissions, loading: permsLoading } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
-  const { isClinicaPro } = useFeatureAccess();
+  const { user } = useAuth();
+  // Mesma regra usada em Clinics.tsx: pode criar clínica com equipe e não é admin override
+  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
+  const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
+  const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
 
   // Calculate trial days remaining
   const trialDaysLeft = (() => {
@@ -123,7 +128,7 @@ export function AppSidebar() {
     return { ...item, locked: !hasAccess, hidden: false };
   }).filter(i => !i.hidden)
     // Clínica Pro só pode ter UMA clínica → singular no menu
-    .map(i => i.to === '/clinics' && isClinicaPro ? { ...i, label: 'Clínica' } : i);
+    .map(i => i.to === '/clinics' && isClinicaProOnly ? { ...i, label: 'Clínica' } : i);
 
   // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
   // Mantém-se a rota /team acessível via botão dentro da clínica.
