@@ -70,6 +70,10 @@ const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 export default function CalendarPage() {
   const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, deleteAppointment, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
+  const { hasTeam } = useFeatureAccess();
+  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
+  const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
+  const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
