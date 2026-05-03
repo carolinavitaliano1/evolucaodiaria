@@ -2577,8 +2577,8 @@ export default function ClinicDetail() {
           />
         </TabsContent>
 
-        {/* Serviços Tab — only for propria clinics */}
-        {isPropria && (
+        {/* Serviços Tab — propria e clinica (Clínica Pro) */}
+        {(isPropria || clinic.type === 'clinica') && (
           <TabsContent value="services" className="space-y-4">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
