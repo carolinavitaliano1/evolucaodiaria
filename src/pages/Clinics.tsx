@@ -775,6 +775,7 @@ export default function Clinics() {
         {/* Clinics Tab */}
         <TabsContent value="clinics" className="space-y-4">
           {/* Filter Cards */}
+          {!isClinicaProOnly && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {([
               { key: 'all',          label: 'Ativas',       count: activeClinics.length,                                           icon: Building2,   color: 'text-primary',          bg: 'bg-primary/10' },
@@ -803,6 +804,7 @@ export default function Clinics() {
               </button>
             ))}
           </div>
+          )}
 
           {/* Clinics List */}
           {filteredClinics.length === 0 ? (
@@ -810,11 +812,11 @@ export default function Clinics() {
               <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">Nenhuma clínica</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Adicione sua primeira clínica ou local de atendimento
+                {isClinicaProOnly ? 'Adicione sua clínica' : 'Adicione sua primeira clínica ou local de atendimento'}
               </p>
               <Button onClick={() => setIsDialogOpen(true)} size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
-                Nova Clínica
+                {isClinicaProOnly ? 'Adicionar' : 'Nova Clínica'}
               </Button>
             </div>
           ) : (
