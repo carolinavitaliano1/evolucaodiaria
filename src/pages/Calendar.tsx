@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { usePrivateAppointments } from '@/hooks/usePrivateAppointments';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getSessionKind, SESSION_KIND_LABEL, SESSION_KIND_BADGE } from '@/utils/sessionTypeTags';
@@ -69,6 +70,10 @@ const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 export default function CalendarPage() {
   const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, deleteAppointment, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
+  const { hasTeam } = useFeatureAccess();
+  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
+  const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
+  const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const [viewDate, setViewDate] = useState(selectedDate);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -601,12 +606,16 @@ export default function CalendarPage() {
               </button>
             ))}
           </div>
-          <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5" onClick={() => setBlockDialogOpen(true)} title="Feriados e férias">
-            <CalendarOff className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Bloqueio</span>
-          </Button>
-          <Button size="sm" className="gradient-primary gap-1 text-xs h-7 px-2.5" onClick={() => setEventDialogOpen(true)}>
-            <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evento</span>
-          </Button>
+          {!isClinicaProOnly && (
+            <>
+              <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5" onClick={() => setBlockDialogOpen(true)} title="Feriados e férias">
+                <CalendarOff className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Bloqueio</span>
+              </Button>
+              <Button size="sm" className="gradient-primary gap-1 text-xs h-7 px-2.5" onClick={() => setEventDialogOpen(true)}>
+                <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Evento</span>
+              </Button>
+            </>
+          )}
           <Dialog
             open={isApptDialogOpen}
             onOpenChange={(open) => {
@@ -617,11 +626,13 @@ export default function CalendarPage() {
               }
             }}
           >
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5">
-                <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Atendimento</span>
-              </Button>
-            </DialogTrigger>
+            {!isClinicaProOnly && (
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 px-2.5">
+                  <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Atendimento</span>
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingApptId ? 'Editar Atendimento' : 'Agendar Atendimento'}</DialogTitle>
