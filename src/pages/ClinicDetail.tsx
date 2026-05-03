@@ -60,6 +60,8 @@ import { TherapeuticGroupsTab } from '@/components/clinics/TherapeuticGroupsTab'
 import { UsersRound } from 'lucide-react';
 import { ClinicHealthPlans } from '@/components/clinics/ClinicHealthPlans';
 import { CalendarOff } from 'lucide-react';
+import { Settings2 } from 'lucide-react';
+import ClinicAgendaSettings from '@/components/clinics/ClinicAgendaSettings';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -1307,6 +1309,7 @@ export default function ClinicDetail() {
             ...((isPropria || clinic.type === 'clinica') ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
             { value: 'groups', icon: <UsersRound className="w-5 h-5" />, label: 'Grupos', color: 'text-indigo-500' },
             ...(clinic.type === 'clinica' ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
+            ...(clinic.type === 'clinica' ? [{ value: 'agenda-settings', icon: <Settings2 className="w-5 h-5" />, label: 'Config. Agenda', color: 'text-rose-500' }] : []),
           ].map(tab => (
             <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
               <TabsTrigger
@@ -2813,6 +2816,11 @@ export default function ClinicDetail() {
               </Button>
             </div>
             <ClinicTeam clinicId={clinic.id} clinicName={clinic.name} />
+          </TabsContent>
+        )}
+        {clinic.type === 'clinica' && (
+          <TabsContent value="agenda-settings" className="space-y-4">
+            <ClinicAgendaSettings clinic={clinic} />
           </TabsContent>
         )}
       </Tabs>
