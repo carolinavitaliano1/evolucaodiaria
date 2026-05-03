@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -94,6 +94,13 @@ export default function Clinics() {
 
   // Clínica Pro puro (sem admin override): cadastra apenas Clínicas com equipe
   const isClinicaProOnly = canCreateClinica && !isAdminOverride;
+
+  // Clínica Pro só pode ter UMA clínica → ao acessar /clinics, vai direto para o
+  // dashboard interno da clínica cadastrada. Se ainda não tiver clínica, mostra
+  // apenas a tela de cadastro.
+  const clinicaProActiveClinic = isClinicaProOnly
+    ? clinics.find(c => !c.isArchived && c.type === 'clinica')
+    : undefined;
 
   const loadRegisteredServices = async () => {
     if (!user) return;
