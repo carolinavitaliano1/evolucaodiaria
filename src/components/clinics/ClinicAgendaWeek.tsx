@@ -139,6 +139,36 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
     return () => { supabase.removeChannel(channel); };
   }, [clinicId, weekStartStr, loadAppointments]);
 
+  // Eventos pessoais (events) — espelha com /calendar
+  const loadUserEvents = useCallback(async () => {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from('events')
+      .select('id, date, time, title, type, color')
+      .eq('user_id', user.id)
+      .gte('date', weekStartStr)
+      .lte('date', weekEndStr);
+    setUserEvents((data || []) as any);
+  }, [user?.id, weekStartStr, weekEndStr]);
+  useEffect(() => { loadUserEvents(); }, [loadUserEvents]);
+
+  // Realtime — eventos pessoais e bloqueios (espelhar com /calendar)
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`agenda-week-events-${clinicId}-${user.id}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'events', filter: `user_id=eq.${user.id}` },
+        () => { loadUserEvents(); }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'calendar_blocks', filter: `user_id=eq.${user.id}` },
+        () => { reloadBlocks(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [clinicId, user?.id, loadUserEvents, reloadBlocks]);
+
   // Inclui agendamentos recorrentes de outras semanas (replicar para semana atual)
   const recurringFromOtherWeeks = useMemo(() => {
     // Carregaremos separadamente para não duplicar — feito em outro effect abaixo
