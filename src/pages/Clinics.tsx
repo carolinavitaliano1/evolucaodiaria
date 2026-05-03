@@ -503,8 +503,6 @@ export default function Clinics() {
                       // Admin override bypasses ambas as restrições para testes
                       const autonomoDisabled = activeClinica && !isAdminOverride;
                       const clinicaDisabled = (activeAutonomo && !isAdminOverride) || !canCreateClinica;
-                      // Clínica Pro: oculta Consultório/Contratante completamente — só Clínica é permitida
-                      const isClinicaProOnly = canCreateClinica && !isAdminOverride;
                       return (
                         <>
                           <RadioGroup
