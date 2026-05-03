@@ -506,7 +506,7 @@ export default function Clinics() {
                     />
                   </div>
 
-                  <div>
+                  <div className={cn(isClinicaProOnly && "hidden")}>
                     <Label>Tipo de Vínculo *</Label>
                     {(() => {
                       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
