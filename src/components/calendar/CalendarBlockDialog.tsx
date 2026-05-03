@@ -15,9 +15,12 @@ import { ptBR } from 'date-fns/locale';
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Quando true, oculta o seletor "Estabelecimento" e força o bloqueio para a clínica passada em defaultClinicId. */
+  hideClinicScope?: boolean;
+  defaultClinicId?: string | null;
 }
 
-export function CalendarBlockDialog({ open, onOpenChange }: Props) {
+export function CalendarBlockDialog({ open, onOpenChange, hideClinicScope, defaultClinicId }: Props) {
   const { clinics } = useApp();
   const { blocks, create, remove, loading } = useCalendarBlocks();
   const activeClinics = clinics.filter(c => !c.isArchived);
@@ -26,7 +29,9 @@ export function CalendarBlockDialog({ open, onOpenChange }: Props) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [description, setDescription] = useState('');
-  const [clinicScope, setClinicScope] = useState<string>('all'); // 'all' or clinic id
+  const [clinicScope, setClinicScope] = useState<string>(
+    hideClinicScope && defaultClinicId ? defaultClinicId : 'all'
+  ); // 'all' or clinic id
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
@@ -34,7 +39,7 @@ export function CalendarBlockDialog({ open, onOpenChange }: Props) {
     setStartDate('');
     setEndDate('');
     setDescription('');
-    setClinicScope('all');
+    setClinicScope(hideClinicScope && defaultClinicId ? defaultClinicId : 'all');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,7 +86,7 @@ export function CalendarBlockDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3 border-b border-border pb-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid gap-3", hideClinicScope ? "grid-cols-1" : "grid-cols-2")}>
             <div>
               <Label className="text-xs">Tipo</Label>
               <Select value={blockType} onValueChange={v => setBlockType(v as 'feriado' | 'ferias')}>
@@ -92,7 +97,7 @@ export function CalendarBlockDialog({ open, onOpenChange }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            {!hideClinicScope && <div>
               <Label className="text-xs">Estabelecimento</Label>
               <Select value={clinicScope} onValueChange={setClinicScope}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -103,7 +108,7 @@ export function CalendarBlockDialog({ open, onOpenChange }: Props) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
