@@ -90,6 +90,9 @@ export default function Clinics() {
   const [deleteServiceOpen, setDeleteServiceOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<ServiceRecord | null>(null);
 
+  // Clínica Pro puro (sem admin override): cadastra apenas Clínicas com equipe
+  const isClinicaProOnly = canCreateClinica && !isAdminOverride;
+
   const loadRegisteredServices = async () => {
     if (!user) return;
     const { data } = await supabase
