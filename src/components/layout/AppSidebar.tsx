@@ -72,6 +72,7 @@ export function AppSidebar() {
   const { isOrgMember, isOwner, role, permissions, loading: permsLoading } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
+  const { isClinicaPro } = useFeatureAccess();
 
   // Calculate trial days remaining
   const trialDaysLeft = (() => {
@@ -120,7 +121,9 @@ export function AppSidebar() {
     // Na visão de terapeuta, escondemos itens sem acesso (em vez de mostrá-los trancados)
     if (isTherapistView && !hasAccess) return { ...item, locked: true, hidden: true };
     return { ...item, locked: !hasAccess, hidden: false };
-  }).filter(i => !i.hidden);
+  }).filter(i => !i.hidden)
+    // Clínica Pro só pode ter UMA clínica → singular no menu
+    .map(i => i.to === '/clinics' && isClinicaPro ? { ...i, label: 'Clínica' } : i);
 
   // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
   // Mantém-se a rota /team acessível via botão dentro da clínica.

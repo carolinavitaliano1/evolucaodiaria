@@ -553,9 +553,9 @@ export default function ClinicDetail() {
     setLoadingClinicServices(false);
   };
 
-  // Auto-load services list when entering a propria clinic so the history is ready
+  // Auto-load services list when entering a propria/clinica clinic so the history is ready
   useEffect(() => {
-    if (id && clinic?.type === 'propria') {
+    if (id && (clinic?.type === 'propria' || clinic?.type === 'clinica')) {
       loadClinicServices();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1208,7 +1208,10 @@ export default function ClinicDetail() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6 lg:mb-8">
+      <div className={cn(
+        "grid gap-3 lg:gap-4 mb-6 lg:mb-8",
+        clinic.type === 'clinica' ? "grid-cols-2 lg:grid-cols-5" : "grid-cols-2 lg:grid-cols-4"
+      )}>
         <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
           <Users className="w-6 h-6 lg:w-8 lg:h-8 text-primary lg:mb-2 shrink-0" />
           <div className="min-w-0">
@@ -1234,6 +1237,41 @@ export default function ClinicDetail() {
               </p>
             </div>
           </div>
+
+        {clinic.type === 'clinica' && (
+          <>
+            <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
+              <Briefcase className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-500 lg:mb-2 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-muted-foreground text-xs">Serviços</p>
+                <p className="text-xl lg:text-2xl font-bold text-foreground">
+                  {clinicServices.filter(s => s.status === 'agendado').length}
+                </p>
+              </div>
+            </div>
+            <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
+              <DollarSign className="w-6 h-6 lg:w-8 lg:h-8 text-success lg:mb-2 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-muted-foreground text-xs">Faturado (mês)</p>
+                <p className="text-base lg:text-lg font-bold text-foreground truncate">
+                  R$ {(() => {
+                    const now = new Date();
+                    const m = now.getMonth();
+                    const y = now.getFullYear();
+                    const total = clinicServices
+                      .filter(s => s.status !== 'cancelado')
+                      .filter(s => {
+                        const d = new Date(s.date + 'T12:00:00');
+                        return d.getMonth() === m && d.getFullYear() === y;
+                      })
+                      .reduce((sum, s) => sum + Number(s.price || 0), 0);
+                    return total.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                  })()}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
 
         {(clinic.paymentAmount || clinic.paymentType === 'variado') && (
           <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
@@ -1266,7 +1304,7 @@ export default function ClinicDetail() {
             { value: 'attendance', icon: <ClipboardList className="w-5 h-5" />, label: 'Frequência', color: 'text-orange-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
-            ...(isPropria ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
+            ...((isPropria || clinic.type === 'clinica') ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
             { value: 'groups', icon: <UsersRound className="w-5 h-5" />, label: 'Grupos', color: 'text-indigo-500' },
             ...(clinic.type === 'clinica' ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
           ].map(tab => (

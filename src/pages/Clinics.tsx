@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -94,6 +94,13 @@ export default function Clinics() {
 
   // Clínica Pro puro (sem admin override): cadastra apenas Clínicas com equipe
   const isClinicaProOnly = canCreateClinica && !isAdminOverride;
+
+  // Clínica Pro só pode ter UMA clínica → ao acessar /clinics, vai direto para o
+  // dashboard interno da clínica cadastrada. Se ainda não tiver clínica, mostra
+  // apenas a tela de cadastro.
+  const clinicaProActiveClinic = isClinicaProOnly
+    ? clinics.find(c => !c.isArchived && c.type === 'clinica')
+    : undefined;
 
   const loadRegisteredServices = async () => {
     if (!user) return;
@@ -386,6 +393,9 @@ export default function Clinics() {
   };
 
   return (
+    clinicaProActiveClinic ? (
+      <Navigate to={`/clinics/${clinicaProActiveClinic.id}`} replace />
+    ) :
     <div className="min-h-screen bg-background">
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border">
@@ -407,8 +417,9 @@ export default function Clinics() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 lg:px-6 py-5 pb-24 space-y-5">
-        {/* Stats Row */}
-        <div className={cn("grid gap-3", isClinicaProOnly ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 lg:grid-cols-4")}>
+        {/* Stats Row — escondido para Clínica Pro (movido para dentro da clínica) */}
+        {!isClinicaProOnly && (
+        <div className={cn("grid gap-3", "grid-cols-2 lg:grid-cols-4")}>
           {!isClinicaProOnly && (
             <div className="bg-card rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
@@ -458,6 +469,7 @@ export default function Clinics() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

@@ -57,7 +57,7 @@ export function MobileNav() {
   const { count: pendingCount } = usePendingEnrollments();
   const { isOrgMember, isOwner, role, permissions, loading: permsLoading } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
-  const { hasAI, hasTeam } = useFeatureAccess();
+  const { hasAI, hasTeam, isClinicaPro } = useFeatureAccess();
 
   const trialDaysLeft = (() => {
     if (productId !== 'trial' || !subscriptionEnd) return null;
@@ -81,7 +81,7 @@ export function MobileNav() {
   const allowedMain = baseMain.filter(i => {
     if (!isOrgMember) return true;
     return permissions.includes(i.perm as any);
-  });
+  }).map(i => i.to === '/clinics' && isClinicaPro ? { ...i, label: 'Clínica' } : i);
 
   const therapistMore = [
     { to: '/tasks',   icon: ClipboardList,  label: 'Tarefas', perm: 'tasks.view' as const, badge: null },
