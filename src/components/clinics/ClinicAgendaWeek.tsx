@@ -475,10 +475,20 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
                   const m = timeToMinutes(a.time);
                   return m >= hourMin && m < hourMin + 60;
                 });
+                const eventsThisSlot = userEvents.filter(ev => {
+                  if (ev.date !== dStr) return false;
+                  if (!ev.time) return hour === '07:00';
+                  const m = timeToMinutes(ev.time.slice(0, 5));
+                  return m >= hourMin && m < hourMin + 60;
+                });
+                const blockHere = getBlockForDate(dStr, clinicId);
                 return (
                   <div
                     key={d.toISOString()}
-                    className="border-l border-border min-h-[56px] p-0.5 hover:bg-secondary/30 cursor-pointer transition-colors relative"
+                    className={cn(
+                      "border-l border-border min-h-[56px] p-0.5 hover:bg-secondary/30 cursor-pointer transition-colors relative",
+                      blockHere && "bg-muted/30"
+                    )}
                     onClick={(e) => {
                       // Não abrir slot se clicou em card
                       if ((e.target as HTMLElement).closest('[data-appt-card]')) return;
@@ -502,6 +512,19 @@ export function ClinicAgendaWeek({ clinicId }: ClinicAgendaWeekProps) {
                         {a.therapist_user_id && (
                           <div className="text-[10px] opacity-75 truncate">{therapistShort(a.therapist_user_id)}</div>
                         )}
+                      </button>
+                    ))}
+                    {eventsThisSlot.map(ev => (
+                      <button
+                        key={ev.id}
+                        data-appt-card
+                        onClick={(e) => { e.stopPropagation(); setEventDialogDate(parseISO(ev.date + 'T12:00:00')); setEventDialogOpen(true); }}
+                        className="w-full text-left text-[10px] px-1.5 py-0.5 rounded border mb-0.5 truncate flex items-center gap-1"
+                        style={{ borderColor: ev.color, backgroundColor: ev.color + '22', color: ev.color }}
+                        title={ev.title}
+                      >
+                        <Bell className="w-2.5 h-2.5 shrink-0" />
+                        <span className="truncate">{ev.time ? ev.time.slice(0,5) + ' ' : ''}{ev.title}</span>
                       </button>
                     ))}
                   </div>
