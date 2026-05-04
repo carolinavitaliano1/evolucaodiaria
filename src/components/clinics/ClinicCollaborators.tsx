@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Upload, Plus, Save, Trash2, Pencil, Check, ChevronsUpDown, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { TeamPublicLinkCard } from './TeamPublicLinkCard';
+import { TeamApplicationsPanel } from './TeamApplicationsPanel';
 
 type Collaborator = {
   id: string;
@@ -141,6 +144,14 @@ export default function ClinicCollaborators({ clinicId }: Props) {
   const [newRoleTarget, setNewRoleTarget] = useState<number | null>(null);
   const [newRoleLabel, setNewRoleLabel] = useState('');
   const [newRoleCode, setNewRoleCode] = useState('');
+  const [orgId, setOrgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase.from('clinics').select('organization_id').eq('id', clinicId).maybeSingle()
+      .then(({ data }) => { if (active) setOrgId((data as any)?.organization_id ?? null); });
+    return () => { active = false; };
+  }, [clinicId]);
 
   // Sync text when form.birthdate changes (load/edit/calendar pick)
   useMemo(() => {
@@ -259,7 +270,14 @@ export default function ClinicCollaborators({ clinicId }: Props) {
 
   if (view === 'list') {
     return (
-      <Card>
+      <div className="space-y-4">
+        {orgId && (
+          <>
+            <TeamPublicLinkCard organizationId={orgId} isOwnerOrAdmin={true} />
+            <TeamApplicationsPanel organizationId={orgId} canManage={true} />
+          </>
+        )}
+        <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
           <div>
             <CardTitle className="flex items-center gap-2 text-xl">
@@ -317,7 +335,8 @@ export default function ClinicCollaborators({ clinicId }: Props) {
             </div>
           )}
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     );
   }
 
