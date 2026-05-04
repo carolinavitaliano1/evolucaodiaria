@@ -364,6 +364,11 @@ export default function ClinicDetail() {
   }, [user, id]);
 
   const clinic = clinics.find(c => c.id === id);
+  // In Clínica Pro, "Serviço" is renamed to "Procedimento" across the UI
+  const isClinicaPro = clinic?.type === 'clinica';
+  const serviceTerm = isClinicaPro ? 'Procedimento' : 'Serviço';
+  const serviceTermPlural = isClinicaPro ? 'Procedimentos' : 'Serviços';
+  const serviceTermLower = isClinicaPro ? 'procedimento' : 'serviço';
   const { isOrgMember, isOwner, permissions: orgPerms } = useOrgPermissions();
   const { assignedPatientIds } = useMyAssignedPatientIds();
   const restrictToOwnPatients =
@@ -1250,7 +1255,7 @@ export default function ClinicDetail() {
             <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
               <Briefcase className="w-6 h-6 lg:w-8 lg:h-8 text-cyan-500 lg:mb-2 shrink-0" />
               <div className="min-w-0">
-                <p className="text-muted-foreground text-xs">Serviços</p>
+                <p className="text-muted-foreground text-xs">{serviceTermPlural}</p>
                 <p className="text-xl lg:text-2xl font-bold text-foreground">
                   {clinicServices.filter(s => s.status === 'agendado').length}
                 </p>
@@ -1315,7 +1320,7 @@ export default function ClinicDetail() {
             { value: 'attendance', icon: <ClipboardList className="w-5 h-5" />, label: 'Frequência', color: 'text-orange-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
-            ...((isPropria || clinic.type === 'clinica') ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: 'Serviços', color: 'text-cyan-500' }] : []),
+            ...((isPropria || clinic.type === 'clinica') ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: serviceTermPlural, color: 'text-cyan-500' }] : []),
             { value: 'groups', icon: <UsersRound className="w-5 h-5" />, label: 'Grupos', color: 'text-indigo-500' },
             ...(clinic.type === 'clinica' ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
             ...(clinic.type === 'clinica' ? [{ value: 'attendances', icon: <ClipboardList className="w-5 h-5" />, label: 'Atendimentos', color: 'text-rose-500' }] : []),
@@ -1396,19 +1401,19 @@ export default function ClinicDetail() {
             </div>
           )}
 
-          {/* Serviços (avulsos) do dia */}
+          {/* Serviços/Procedimentos (avulsos) do dia */}
           {todayPrivate.length > 0 && (
             <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
               <h3 className="text-base lg:text-lg font-bold text-foreground flex items-center gap-2 mb-3">
                 <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-                Serviços de Hoje ({todayPrivate.length})
+                {serviceTermPlural} de Hoje ({todayPrivate.length})
               </h3>
               <div className="space-y-2">
                 {[...todayPrivate]
                   .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
                   .map(svc => {
                     const linkedPatient = svc.patient_id ? clinicPatients.find(p => p.id === svc.patient_id) : null;
-                    const displayName = linkedPatient?.name || svc.client_name || 'Serviço';
+                    const displayName = linkedPatient?.name || svc.client_name || serviceTerm;
                     return (
                       <div
                         key={svc.id}
@@ -1421,7 +1426,7 @@ export default function ClinicDetail() {
                           <div>
                             <p className="font-semibold text-foreground text-sm">{displayName}</p>
                             <p className="text-xs text-muted-foreground">
-                              Serviço {svc.notes ? `• ${svc.notes}` : ''}
+                              {serviceTerm} {svc.notes ? `• ${svc.notes}` : ''}
                             </p>
                           </div>
                         </div>
@@ -2589,14 +2594,14 @@ export default function ClinicDetail() {
           />
         </TabsContent>
 
-        {/* Serviços Tab — propria e clinica (Clínica Pro) */}
+        {/* Serviços/Procedimentos Tab — propria e clinica (Clínica Pro) */}
         {(isPropria || clinic.type === 'clinica') && (
           <TabsContent value="services" className="space-y-4">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-primary" />
-                Serviços
+                {serviceTermPlural}
               </h2>
               <div className="flex items-center gap-2">
                 {clinicServices.length > 0 && (
@@ -2609,7 +2614,7 @@ export default function ClinicDetail() {
                 <Button size="sm" className="gap-2"
                   onClick={() => { loadClinicServices(); setServiceDialogOpen(true); }}
                   disabled={isArchived}>
-                  <Plus className="w-4 h-4" /> Novo Serviço
+                  <Plus className="w-4 h-4" /> Novo {serviceTerm}
                 </Button>
               </div>
             </div>
@@ -2683,15 +2688,15 @@ export default function ClinicDetail() {
             ) : clinicServices.length === 0 ? (
               <div className="text-center py-12 bg-card rounded-xl border border-border">
                 <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">Nenhum serviço agendado</h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">Nenhum {serviceTermLower} agendado</h3>
                 <p className="text-sm text-muted-foreground mb-4">Agende o primeiro atendimento particular nesta clínica</p>
                 <Button size="sm" className="gap-2" onClick={() => setServiceDialogOpen(true)} disabled={isArchived}>
-                  <Plus className="w-4 h-4" /> Novo Serviço
+                  <Plus className="w-4 h-4" /> Novo {serviceTerm}
                 </Button>
               </div>
             ) : filteredClinicServices.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                Nenhum serviço para os filtros selecionados.
+                Nenhum {serviceTermLower} para os filtros selecionados.
               </div>
             ) : (
               <div className="space-y-3">

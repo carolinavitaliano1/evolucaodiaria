@@ -236,12 +236,12 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
           </div>
 
           <div>
-            <Label>Descrição dos Serviços</Label>
+            <Label>{clinic?.type === 'clinica' ? 'Descrição dos Procedimentos' : 'Descrição dos Serviços'}</Label>
             <Textarea
               value={formData.servicesDescription}
               onChange={(e) => setFormData({ ...formData, servicesDescription: e.target.value })}
               rows={2}
-              placeholder="Descreva os serviços oferecidos..."
+              placeholder={clinic?.type === 'clinica' ? 'Descreva os procedimentos oferecidos...' : 'Descreva os serviços oferecidos...'}
             />
           </div>
 

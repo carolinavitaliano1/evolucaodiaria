@@ -91,6 +91,11 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [paymentDateOpen, setPaymentDateOpen] = useState(false);
 
   const clinic = clinics.find(c => c.id === clinicId);
+  const isClinicaPro = clinic?.type === 'clinica';
+  const sTerm = isClinicaPro ? 'Procedimento' : 'Serviço';
+  const sTermPlural = isClinicaPro ? 'Procedimentos' : 'Serviços';
+  const sTermLowerPlural = isClinicaPro ? 'procedimento(s)' : 'serviço(s)';
+  const sTermLowerPluralBare = isClinicaPro ? 'procedimentos' : 'serviços';
   const [discountPercent, setDiscountPercent] = useState(clinic?.discountPercentage || 0);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -514,19 +519,19 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         <div className="bg-card rounded-2xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-4">
             <Briefcase className="w-4 h-4 text-primary" />
-            <h3 className="font-bold text-foreground text-sm">Serviços do Mês</h3>
+            <h3 className="font-bold text-foreground text-sm">{sTermPlural} do Mês</h3>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="bg-secondary/50 rounded-xl p-3 text-center">
               <p className="text-xs text-muted-foreground mb-1">Agendado</p>
               <p className="font-bold text-foreground text-sm">R$ {servicesScheduledRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-              <p className="text-[10px] text-muted-foreground">{servicesScheduled.length} serviço(s)</p>
+              <p className="text-[10px] text-muted-foreground">{servicesScheduled.length} {sTermLowerPlural}</p>
             </div>
             <div className="bg-secondary/50 rounded-xl p-3 text-center">
               <p className="text-xs text-muted-foreground mb-1">Concluído</p>
               <p className="font-bold text-success text-sm">R$ {servicesRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-              <p className="text-[10px] text-muted-foreground">{servicesConcluded.length} serviço(s)</p>
+              <p className="text-[10px] text-muted-foreground">{servicesConcluded.length} {sTermLowerPlural}</p>
             </div>
             <div className="bg-secondary/50 rounded-xl p-3 text-center">
               <p className="text-xs text-muted-foreground mb-1">Recebido</p>
@@ -555,7 +560,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                         )}
                       </div>
                   <p className="text-[10px] text-muted-foreground">
-                    {service.service_name ?? 'Serviço'} · {format(new Date(service.date + 'T12:00:00'), 'dd/MM')}
+                    {service.service_name ?? sTerm} · {format(new Date(service.date + 'T12:00:00'), 'dd/MM')}
                     {service.status === 'concluído' && service.paid && (
                       <span className="text-success ml-1">
                         · Pago{service.payment_date ? ` em ${format(new Date(service.payment_date + 'T00:00:00'), 'dd/MM')}` : ''}
@@ -758,7 +763,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                 <p className="font-bold text-foreground text-sm">Total Pacientes</p>
                 {servicesRevenue > 0 && (
                   <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Briefcase className="w-3 h-3" />+ R$ {servicesRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} serviços
+                    <Briefcase className="w-3 h-3" />+ R$ {servicesRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} {sTermLowerPluralBare}
                   </p>
                 )}
               </div>
@@ -1166,7 +1171,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                       <p className="text-sm font-semibold text-foreground capitalize">{dayLabel}</p>
                       <p className="text-[10px] text-muted-foreground">
                         {presentOnDay} sessões{absentOnDay > 0 ? ` · ${absentOnDay} faltas` : ''}
-                        {dayServicesForDay.length > 0 ? ` · ${dayServicesForDay.length} serviços` : ''}
+                        {dayServicesForDay.length > 0 ? ` · ${dayServicesForDay.length} ${sTermLowerPluralBare}` : ''}
                       </p>
                     </div>
                     <p className="font-bold text-primary text-sm">
@@ -1195,7 +1200,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                       })}
                       {dayServicesForDay.map(s => (
                         <div key={s.id} className="flex items-center justify-between text-xs">
-                          <span className="text-foreground truncate max-w-[140px]">{s.client_name} <span className="text-muted-foreground">({s.service_name || 'Serviço'})</span></span>
+                          <span className="text-foreground truncate max-w-[140px]">{s.client_name} <span className="text-muted-foreground">({s.service_name || sTerm})</span></span>
                           <span className="text-[10px] font-medium text-success">{`R$ ${s.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>
                         </div>
                       ))}

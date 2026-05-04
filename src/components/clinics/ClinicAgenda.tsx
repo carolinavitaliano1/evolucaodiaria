@@ -498,12 +498,12 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
         )}
       </div>
 
-      {/* Serviços do dia (private_appointments) */}
+      {/* Serviços/Procedimentos do dia (private_appointments) */}
       {privateForDay.length > 0 && (
         <div className="bg-card rounded-2xl p-6 border border-border">
           <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
             <Briefcase className="w-5 h-5 text-primary" />
-            Serviços do Dia ({privateForDay.length})
+            {clinicType === 'clinica' ? 'Procedimentos' : 'Serviços'} do Dia ({privateForDay.length})
           </h3>
           <div className="space-y-3">
             {privateForDay
@@ -532,7 +532,7 @@ export function ClinicAgenda({ clinicId }: ClinicAgendaProps) {
                           {displayName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Serviço{svc.notes ? ` • ${svc.notes}` : ''}
+                          {clinicType === 'clinica' ? 'Procedimento' : 'Serviço'}{svc.notes ? ` • ${svc.notes}` : ''}
                         </p>
                       </div>
                     </div>
