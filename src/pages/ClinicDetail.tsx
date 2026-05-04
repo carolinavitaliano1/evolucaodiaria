@@ -63,6 +63,7 @@ import { CalendarOff } from 'lucide-react';
 import { Settings2 } from 'lucide-react';
 import ClinicAgendaSettings from '@/components/clinics/ClinicAgendaSettings';
 import ClinicAttendancesList from '@/components/clinics/ClinicAttendancesList';
+import ClinicProcedures from '@/components/clinics/ClinicProcedures';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -1320,10 +1321,11 @@ export default function ClinicDetail() {
             { value: 'attendance', icon: <ClipboardList className="w-5 h-5" />, label: 'Frequência', color: 'text-orange-500' },
             { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
-            ...((isPropria || clinic.type === 'clinica') ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: serviceTermPlural, color: 'text-cyan-500' }] : []),
+            ...((isPropria || clinic.type === 'clinica') ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: isClinicaPro ? 'Avulsos' : serviceTermPlural, color: 'text-cyan-500' }] : []),
             { value: 'groups', icon: <UsersRound className="w-5 h-5" />, label: 'Grupos', color: 'text-indigo-500' },
             ...(clinic.type === 'clinica' ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
             ...(clinic.type === 'clinica' ? [{ value: 'attendances', icon: <ClipboardList className="w-5 h-5" />, label: 'Atendimentos', color: 'text-rose-500' }] : []),
+            ...(clinic.type === 'clinica' ? [{ value: 'procedures', icon: <StampIcon className="w-5 h-5" />, label: 'Procedimentos', color: 'text-cyan-600' }] : []),
           ].map(tab => (
             <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
               <TabsTrigger
@@ -2840,6 +2842,11 @@ export default function ClinicDetail() {
         {clinic.type === 'clinica' && (
           <TabsContent value="attendances" className="space-y-4">
             <ClinicAttendancesList clinicId={clinic.id} clinicName={clinic.name} />
+          </TabsContent>
+        )}
+        {clinic.type === 'clinica' && (
+          <TabsContent value="procedures" className="space-y-4">
+            <ClinicProcedures clinicId={clinic.id} clinicName={clinic.name} />
           </TabsContent>
         )}
       </Tabs>
