@@ -32,10 +32,7 @@ type Collaborator = {
   email?: string;
   phoneLandline?: string;
   cellphone?: string;
-  professionalArea?: string;
-  registry?: string;
-  participationDegree?: string;
-  attendanceType?: string;
+  professionalAreas?: { area: string; registry: string }[];
   // Address
   country?: string;
   cep?: string;
