@@ -723,6 +723,43 @@ export default function ClinicCollaborators({ clinicId }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={newRoleOpen} onOpenChange={setNewRoleOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar nova função</DialogTitle>
+            <DialogDescription>
+              Adicione uma função personalizada à lista de códigos CBOS desta clínica.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Nome da função *</Label>
+              <Input
+                value={newRoleLabel}
+                onChange={e => setNewRoleLabel(e.target.value)}
+                placeholder="Ex: Terapeuta ABA"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Código CBOS (opcional)</Label>
+              <Input
+                value={newRoleCode}
+                onChange={e => setNewRoleCode(e.target.value)}
+                placeholder="Ex: 2515-99"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se não souber o código, deixe em branco — geramos um identificador automaticamente.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewRoleOpen(false)}>Cancelar</Button>
+            <Button onClick={saveNewRole}><Save className="w-4 h-4 mr-1" /> Salvar função</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
