@@ -2832,6 +2832,11 @@ export default function ClinicDetail() {
             <ClinicAgendaSettings clinic={clinic} />
           </TabsContent>
         )}
+        {clinic.type === 'clinica' && (
+          <TabsContent value="attendances" className="space-y-4">
+            <ClinicAttendancesList clinicId={clinic.id} clinicName={clinic.name} />
+          </TabsContent>
+        )}
       </Tabs>
 
 
