@@ -1326,7 +1326,6 @@ export default function ClinicDetail() {
             { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
             ...((isPropria || clinic.type === 'clinica') ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: isClinicaPro ? 'Avulsos' : serviceTermPlural, color: 'text-cyan-500' }] : []),
             { value: 'groups', icon: <UsersRound className="w-5 h-5" />, label: 'Grupos', color: 'text-indigo-500' },
-            ...(clinic.type === 'clinica' ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
             ...(clinic.type === 'clinica' ? [{ value: 'attendances', icon: <ClipboardList className="w-5 h-5" />, label: 'Atendimentos', color: 'text-rose-500' }] : []),
             ...(clinic.type === 'clinica' ? [{ value: 'procedures', icon: <StampIcon className="w-5 h-5" />, label: 'Procedimentos', color: 'text-cyan-600' }] : []),
             ...(clinic.type === 'clinica' ? [{ value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' }] : []),
@@ -2825,21 +2824,6 @@ export default function ClinicDetail() {
             patients={clinicPatients.map(p => ({ id: p.id, name: p.name }))}
           />
         </TabsContent>
-        {/* Equipe Tab — apenas para clínicas */}
-        {clinic.type === 'clinica' && (
-          <TabsContent value="team" className="space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Equipe da Clínica</h2>
-                <p className="text-sm text-muted-foreground">Gerencie os profissionais vinculados a esta clínica.</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/team')}>
-                <UsersRound className="w-4 h-4 mr-2" /> Gestão completa
-              </Button>
-            </div>
-            <ClinicTeam clinicId={clinic.id} clinicName={clinic.name} />
-          </TabsContent>
-        )}
         {clinic.type === 'clinica' && (
           <TabsContent value="agenda-settings" className="space-y-4">
             <ClinicAgendaSettings clinic={clinic} />
