@@ -62,6 +62,7 @@ import { ClinicHealthPlans } from '@/components/clinics/ClinicHealthPlans';
 import { CalendarOff } from 'lucide-react';
 import { Settings2 } from 'lucide-react';
 import ClinicAgendaSettings from '@/components/clinics/ClinicAgendaSettings';
+import ClinicAttendancesList from '@/components/clinics/ClinicAttendancesList';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
