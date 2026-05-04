@@ -1264,7 +1264,6 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
 
   // Sub-abas em cards (mesmo estilo da barra de abas principal de ClinicDetail)
   const showTeam = clinic.type === 'clinica' && (isOwner || !restrictToOwnRevenue);
-  const isClinicaPro = clinic.type === 'clinica';
 
   const subTabs: { value: string; icon: React.ReactNode; label: string; color: string }[] = [
     { value: 'overview', icon: <DollarSign className="w-5 h-5" />, label: 'Visão Geral', color: 'text-success' },
