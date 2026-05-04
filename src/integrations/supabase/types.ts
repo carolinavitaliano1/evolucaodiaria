@@ -2688,6 +2688,54 @@ export type Database = {
           },
         ]
       }
+      procedures: {
+        Row: {
+          allow_value_change: boolean
+          apply_to_all_professionals: boolean
+          clinic_id: string
+          commission_type: string
+          commission_value: number
+          created_at: string
+          health_plans: Json
+          id: string
+          name: string
+          tuss_code: string | null
+          updated_at: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          allow_value_change?: boolean
+          apply_to_all_professionals?: boolean
+          clinic_id: string
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          health_plans?: Json
+          id?: string
+          name: string
+          tuss_code?: string | null
+          updated_at?: string
+          user_id: string
+          value?: number
+        }
+        Update: {
+          allow_value_change?: boolean
+          apply_to_all_professionals?: boolean
+          clinic_id?: string
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          health_plans?: Json
+          id?: string
+          name?: string
+          tuss_code?: string | null
+          updated_at?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
