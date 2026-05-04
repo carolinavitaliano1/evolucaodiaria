@@ -1269,14 +1269,14 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     { value: 'overview', icon: <DollarSign className="w-5 h-5" />, label: 'Visão Geral', color: 'text-success' },
     { value: 'patients', icon: <Users className="w-5 h-5" />, label: 'Cobranças', color: 'text-violet-500' },
     ...(showTeam ? [{ value: 'team', icon: <UserCheck className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
-    { value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes de Atendimento', color: 'text-pink-500' },
+    ...(!isClinicaPro ? [{ value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes de Atendimento', color: 'text-pink-500' }] : []),
   ];
 
   return (
     <Tabs defaultValue="overview" className="space-y-4 lg:space-y-6">
       <div className={cn(
         'grid gap-2',
-        showTeam ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'
+        subTabs.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : subTabs.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
       )}>
         {subTabs.map(tab => (
           <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
@@ -1300,9 +1300,11 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <TeamFinancialDashboard clinicId={clinicId} />
         </TabsContent>
       )}
-      <TabsContent value="packages">
-        <ClinicPackagesPanel clinicId={clinicId} />
-      </TabsContent>
+      {!isClinicaPro && (
+        <TabsContent value="packages">
+          <ClinicPackagesPanel clinicId={clinicId} />
+        </TabsContent>
+      )}
     </Tabs>
   );
 }
