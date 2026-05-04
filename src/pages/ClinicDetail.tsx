@@ -2594,14 +2594,14 @@ export default function ClinicDetail() {
           />
         </TabsContent>
 
-        {/* Serviços Tab — propria e clinica (Clínica Pro) */}
+        {/* Serviços/Procedimentos Tab — propria e clinica (Clínica Pro) */}
         {(isPropria || clinic.type === 'clinica') && (
           <TabsContent value="services" className="space-y-4">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-primary" />
-                Serviços
+                {serviceTermPlural}
               </h2>
               <div className="flex items-center gap-2">
                 {clinicServices.length > 0 && (
@@ -2614,7 +2614,7 @@ export default function ClinicDetail() {
                 <Button size="sm" className="gap-2"
                   onClick={() => { loadClinicServices(); setServiceDialogOpen(true); }}
                   disabled={isArchived}>
-                  <Plus className="w-4 h-4" /> Novo Serviço
+                  <Plus className="w-4 h-4" /> Novo {serviceTerm}
                 </Button>
               </div>
             </div>
@@ -2688,15 +2688,15 @@ export default function ClinicDetail() {
             ) : clinicServices.length === 0 ? (
               <div className="text-center py-12 bg-card rounded-xl border border-border">
                 <Briefcase className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">Nenhum serviço agendado</h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">Nenhum {serviceTermLower} agendado</h3>
                 <p className="text-sm text-muted-foreground mb-4">Agende o primeiro atendimento particular nesta clínica</p>
                 <Button size="sm" className="gap-2" onClick={() => setServiceDialogOpen(true)} disabled={isArchived}>
-                  <Plus className="w-4 h-4" /> Novo Serviço
+                  <Plus className="w-4 h-4" /> Novo {serviceTerm}
                 </Button>
               </div>
             ) : filteredClinicServices.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                Nenhum serviço para os filtros selecionados.
+                Nenhum {serviceTermLower} para os filtros selecionados.
               </div>
             ) : (
               <div className="space-y-3">
