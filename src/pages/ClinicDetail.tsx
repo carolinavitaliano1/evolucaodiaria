@@ -364,6 +364,11 @@ export default function ClinicDetail() {
   }, [user, id]);
 
   const clinic = clinics.find(c => c.id === id);
+  // In Clínica Pro, "Serviço" is renamed to "Procedimento" across the UI
+  const isClinicaPro = clinic?.type === 'clinica';
+  const serviceTerm = isClinicaPro ? 'Procedimento' : 'Serviço';
+  const serviceTermPlural = isClinicaPro ? 'Procedimentos' : 'Serviços';
+  const serviceTermLower = isClinicaPro ? 'procedimento' : 'serviço';
   const { isOrgMember, isOwner, permissions: orgPerms } = useOrgPermissions();
   const { assignedPatientIds } = useMyAssignedPatientIds();
   const restrictToOwnPatients =
