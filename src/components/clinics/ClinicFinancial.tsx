@@ -1171,7 +1171,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                       <p className="text-sm font-semibold text-foreground capitalize">{dayLabel}</p>
                       <p className="text-[10px] text-muted-foreground">
                         {presentOnDay} sessões{absentOnDay > 0 ? ` · ${absentOnDay} faltas` : ''}
-                        {dayServicesForDay.length > 0 ? ` · ${dayServicesForDay.length} serviços` : ''}
+                        {dayServicesForDay.length > 0 ? ` · ${dayServicesForDay.length} ${sTermLowerPluralBare}` : ''}
                       </p>
                     </div>
                     <p className="font-bold text-primary text-sm">
@@ -1200,7 +1200,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                       })}
                       {dayServicesForDay.map(s => (
                         <div key={s.id} className="flex items-center justify-between text-xs">
-                          <span className="text-foreground truncate max-w-[140px]">{s.client_name} <span className="text-muted-foreground">({s.service_name || 'Serviço'})</span></span>
+                          <span className="text-foreground truncate max-w-[140px]">{s.client_name} <span className="text-muted-foreground">({s.service_name || sTerm})</span></span>
                           <span className="text-[10px] font-medium text-success">{`R$ ${s.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>
                         </div>
                       ))}
