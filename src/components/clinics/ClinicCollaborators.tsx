@@ -12,6 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -66,7 +67,7 @@ const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','
 const COUNTRIES = ['Brasil','Argentina','Chile','Estados Unidos','Portugal','Espanha','Uruguai','Paraguai'];
 const COUNCILS = ['CRM','CRP','CREFITO','COREN','CRO','CRN','CRF','CRFa','Outro'];
 const PIX_TYPES = ['CPF','CNPJ','Telefone','Email','Chave aleatória'];
-const CBOS_OPTIONS = [
+const DEFAULT_CBOS_OPTIONS = [
   { value: '2515-50', label: 'Psicopedagogo' },
   { value: '2263-15', label: 'Musicoterapeuta' },
   { value: '2236-05', label: 'Psicomotricista' },
@@ -133,7 +134,13 @@ export default function ClinicCollaborators({ clinicId }: Props) {
   const [cbosOpen, setCbosOpen] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storageKey = `clinic-collaborators:${clinicId}`;
+  const cbosStorageKey = `clinic-cbos-options:${clinicId}`;
   const [birthdateText, setBirthdateText] = useState('');
+  const [cbosOptions, setCbosOptions] = useState<{ value: string; label: string }[]>(DEFAULT_CBOS_OPTIONS);
+  const [newRoleOpen, setNewRoleOpen] = useState(false);
+  const [newRoleTarget, setNewRoleTarget] = useState<number | null>(null);
+  const [newRoleLabel, setNewRoleLabel] = useState('');
+  const [newRoleCode, setNewRoleCode] = useState('');
 
   // Sync text when form.birthdate changes (load/edit/calendar pick)
   useMemo(() => {
@@ -153,6 +160,58 @@ export default function ClinicCollaborators({ clinicId }: Props) {
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinicId]);
+
+  // Load custom CBOS options
+  useMemo(() => {
+    try {
+      const raw = localStorage.getItem(cbosStorageKey);
+      if (raw) {
+        const custom = JSON.parse(raw) as { value: string; label: string }[];
+        const merged = [...DEFAULT_CBOS_OPTIONS];
+        custom.forEach(c => {
+          if (!merged.some(m => m.value === c.value)) merged.push(c);
+        });
+        setCbosOptions(merged);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clinicId]);
+
+  const openNewRoleDialog = (idx: number | null) => {
+    setNewRoleTarget(idx);
+    setNewRoleLabel('');
+    setNewRoleCode('');
+    setNewRoleOpen(true);
+  };
+
+  const saveNewRole = () => {
+    const label = newRoleLabel.trim();
+    const code = newRoleCode.trim();
+    if (!label) {
+      toast.error('Informe o nome da função');
+      return;
+    }
+    const value = code || `custom-${Date.now()}`;
+    if (cbosOptions.some(o => o.value === value)) {
+      toast.error('Já existe uma função com este código');
+      return;
+    }
+    const next = [...cbosOptions, { value, label }];
+    setCbosOptions(next);
+    try {
+      const customs = next.filter(o => !DEFAULT_CBOS_OPTIONS.some(d => d.value === o.value));
+      localStorage.setItem(cbosStorageKey, JSON.stringify(customs));
+    } catch {}
+    if (newRoleTarget !== null) {
+      const base = form.professionalAreas && form.professionalAreas.length > 0
+        ? [...form.professionalAreas]
+        : [{ area: '', council: '', councilNumber: '', councilUF: '', cbosCode: '' }];
+      base[newRoleTarget] = { ...base[newRoleTarget], cbosCode: value };
+      update('professionalAreas', base);
+    }
+    setNewRoleOpen(false);
+    toast.success('Função cadastrada');
+  };
 
   const persist = (next: Collaborator[]) => {
     setList(next);
@@ -526,7 +585,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
               <CardDescription>Cadastre uma ou mais áreas com seu respectivo conselho e código CBOS.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" className="text-xs text-primary hover:underline" onClick={() => toast.info('Cadastro de nova função em breve')}>
+              <button type="button" className="text-xs text-primary hover:underline" onClick={() => openNewRoleDialog(null)}>
                 + cadastrar nova função
               </button>
               <Button
@@ -605,7 +664,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
                         <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                           <span className="truncate">
                             {item.cbosCode
-                              ? CBOS_OPTIONS.find(o => o.value === item.cbosCode)?.label || item.cbosCode
+                              ? cbosOptions.find(o => o.value === item.cbosCode)?.label || item.cbosCode
                               : 'Selecionar...'}
                           </span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -617,7 +676,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
                           <CommandList>
                             <CommandEmpty>Nenhum encontrado.</CommandEmpty>
                             <CommandGroup>
-                              {CBOS_OPTIONS.map(opt => (
+                              {cbosOptions.map(opt => (
                                 <CommandItem
                                   key={opt.value}
                                   value={opt.label}
@@ -627,6 +686,15 @@ export default function ClinicCollaborators({ clinicId }: Props) {
                                   <span className="font-mono text-xs mr-2">{opt.value}</span> {opt.label}
                                 </CommandItem>
                               ))}
+                            </CommandGroup>
+                            <CommandGroup>
+                              <CommandItem
+                                value="__novo__"
+                                onSelect={() => { setCbosOpen(null); openNewRoleDialog(idx); }}
+                                className="text-primary"
+                              >
+                                <Plus className="mr-2 h-4 w-4" /> Cadastrar nova função
+                              </CommandItem>
                             </CommandGroup>
                           </CommandList>
                         </Command>
@@ -655,6 +723,43 @@ export default function ClinicCollaborators({ clinicId }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={newRoleOpen} onOpenChange={setNewRoleOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar nova função</DialogTitle>
+            <DialogDescription>
+              Adicione uma função personalizada à lista de códigos CBOS desta clínica.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Nome da função *</Label>
+              <Input
+                value={newRoleLabel}
+                onChange={e => setNewRoleLabel(e.target.value)}
+                placeholder="Ex: Terapeuta ABA"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Código CBOS (opcional)</Label>
+              <Input
+                value={newRoleCode}
+                onChange={e => setNewRoleCode(e.target.value)}
+                placeholder="Ex: 2515-99"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se não souber o código, deixe em branco — geramos um identificador automaticamente.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewRoleOpen(false)}>Cancelar</Button>
+            <Button onClick={saveNewRole}><Save className="w-4 h-4 mr-1" /> Salvar função</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
