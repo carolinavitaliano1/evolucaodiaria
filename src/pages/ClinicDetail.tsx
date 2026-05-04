@@ -2850,6 +2850,11 @@ export default function ClinicDetail() {
             <ClinicProcedures clinicId={clinic.id} clinicName={clinic.name} />
           </TabsContent>
         )}
+        {clinic.type === 'clinica' && (
+          <TabsContent value="packages" className="space-y-4">
+            <ClinicPackagesPanel clinicId={clinic.id} />
+          </TabsContent>
+        )}
       </Tabs>
 
 
