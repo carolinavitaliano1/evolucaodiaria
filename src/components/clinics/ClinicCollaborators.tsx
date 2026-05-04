@@ -130,7 +130,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
   const [view, setView] = useState<'list' | 'form'>('list');
   const [list, setList] = useState<Collaborator[]>([]);
   const [form, setForm] = useState<Collaborator>(emptyForm());
-  const [cbosOpen, setCbosOpen] = useState(false);
+  const [cbosOpen, setCbosOpen] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storageKey = `clinic-collaborators:${clinicId}`;
   const [birthdateText, setBirthdateText] = useState('');
