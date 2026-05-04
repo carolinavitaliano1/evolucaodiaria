@@ -91,6 +91,11 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [paymentDateOpen, setPaymentDateOpen] = useState(false);
 
   const clinic = clinics.find(c => c.id === clinicId);
+  const isClinicaPro = clinic?.type === 'clinica';
+  const sTerm = isClinicaPro ? 'Procedimento' : 'Serviço';
+  const sTermPlural = isClinicaPro ? 'Procedimentos' : 'Serviços';
+  const sTermLowerPlural = isClinicaPro ? 'procedimento(s)' : 'serviço(s)';
+  const sTermLowerPluralBare = isClinicaPro ? 'procedimentos' : 'serviços';
   const [discountPercent, setDiscountPercent] = useState(clinic?.discountPercentage || 0);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
