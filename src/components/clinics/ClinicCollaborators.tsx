@@ -12,6 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -66,7 +67,7 @@ const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','
 const COUNTRIES = ['Brasil','Argentina','Chile','Estados Unidos','Portugal','Espanha','Uruguai','Paraguai'];
 const COUNCILS = ['CRM','CRP','CREFITO','COREN','CRO','CRN','CRF','CRFa','Outro'];
 const PIX_TYPES = ['CPF','CNPJ','Telefone','Email','Chave aleatória'];
-const CBOS_OPTIONS = [
+const DEFAULT_CBOS_OPTIONS = [
   { value: '2515-50', label: 'Psicopedagogo' },
   { value: '2263-15', label: 'Musicoterapeuta' },
   { value: '2236-05', label: 'Psicomotricista' },
@@ -133,7 +134,13 @@ export default function ClinicCollaborators({ clinicId }: Props) {
   const [cbosOpen, setCbosOpen] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storageKey = `clinic-collaborators:${clinicId}`;
+  const cbosStorageKey = `clinic-cbos-options:${clinicId}`;
   const [birthdateText, setBirthdateText] = useState('');
+  const [cbosOptions, setCbosOptions] = useState<{ value: string; label: string }[]>(DEFAULT_CBOS_OPTIONS);
+  const [newRoleOpen, setNewRoleOpen] = useState(false);
+  const [newRoleTarget, setNewRoleTarget] = useState<number | null>(null);
+  const [newRoleLabel, setNewRoleLabel] = useState('');
+  const [newRoleCode, setNewRoleCode] = useState('');
 
   // Sync text when form.birthdate changes (load/edit/calendar pick)
   useMemo(() => {
@@ -153,6 +160,58 @@ export default function ClinicCollaborators({ clinicId }: Props) {
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinicId]);
+
+  // Load custom CBOS options
+  useMemo(() => {
+    try {
+      const raw = localStorage.getItem(cbosStorageKey);
+      if (raw) {
+        const custom = JSON.parse(raw) as { value: string; label: string }[];
+        const merged = [...DEFAULT_CBOS_OPTIONS];
+        custom.forEach(c => {
+          if (!merged.some(m => m.value === c.value)) merged.push(c);
+        });
+        setCbosOptions(merged);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clinicId]);
+
+  const openNewRoleDialog = (idx: number | null) => {
+    setNewRoleTarget(idx);
+    setNewRoleLabel('');
+    setNewRoleCode('');
+    setNewRoleOpen(true);
+  };
+
+  const saveNewRole = () => {
+    const label = newRoleLabel.trim();
+    const code = newRoleCode.trim();
+    if (!label) {
+      toast.error('Informe o nome da função');
+      return;
+    }
+    const value = code || `custom-${Date.now()}`;
+    if (cbosOptions.some(o => o.value === value)) {
+      toast.error('Já existe uma função com este código');
+      return;
+    }
+    const next = [...cbosOptions, { value, label }];
+    setCbosOptions(next);
+    try {
+      const customs = next.filter(o => !DEFAULT_CBOS_OPTIONS.some(d => d.value === o.value));
+      localStorage.setItem(cbosStorageKey, JSON.stringify(customs));
+    } catch {}
+    if (newRoleTarget !== null) {
+      const base = form.professionalAreas && form.professionalAreas.length > 0
+        ? [...form.professionalAreas]
+        : [{ area: '', council: '', councilNumber: '', councilUF: '', cbosCode: '' }];
+      base[newRoleTarget] = { ...base[newRoleTarget], cbosCode: value };
+      update('professionalAreas', base);
+    }
+    setNewRoleOpen(false);
+    toast.success('Função cadastrada');
+  };
 
   const persist = (next: Collaborator[]) => {
     setList(next);
