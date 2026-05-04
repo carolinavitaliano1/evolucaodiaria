@@ -763,7 +763,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                 <p className="font-bold text-foreground text-sm">Total Pacientes</p>
                 {servicesRevenue > 0 && (
                   <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Briefcase className="w-3 h-3" />+ R$ {servicesRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} serviços
+                    <Briefcase className="w-3 h-3" />+ R$ {servicesRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} {sTermLowerPluralBare}
                   </p>
                 )}
               </div>
