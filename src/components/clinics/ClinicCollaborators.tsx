@@ -314,22 +314,53 @@ export default function ClinicCollaborators({ clinicId }: Props) {
 
           <div className="space-y-1.5">
             <Label>Data de nascimento:</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !form.birthdate && 'text-muted-foreground')}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {form.birthdate ? format(new Date(form.birthdate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : 'Selecionar'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={form.birthdate ? new Date(form.birthdate + 'T12:00:00') : undefined}
-                  onSelect={d => update('birthdate', d ? format(d, 'yyyy-MM-dd') : undefined)}
-                  className={cn('p-3 pointer-events-auto')}
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-1">
+              <Input
+                inputMode="numeric"
+                placeholder="dd/mm/aaaa"
+                maxLength={10}
+                value={form.birthdate ? format(new Date(form.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : ''}
+                onChange={e => {
+                  const d = e.target.value.replace(/\D/g,'').slice(0,8);
+                  let masked = d;
+                  if (d.length > 4) masked = `${d.slice(0,2)}/${d.slice(2,4)}/${d.slice(4)}`;
+                  else if (d.length > 2) masked = `${d.slice(0,2)}/${d.slice(2)}`;
+                  // Update raw display via parsing when complete
+                  if (d.length === 8) {
+                    const dd = d.slice(0,2), mm = d.slice(2,4), yyyy = d.slice(4,8);
+                    const dt = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
+                    if (!isNaN(dt.getTime())) {
+                      update('birthdate', `${yyyy}-${mm}-${dd}`);
+                      return;
+                    }
+                  }
+                  // partial: store as null until full
+                  if (d.length === 0) update('birthdate', undefined);
+                  // keep typed text by storing partial in a workaround? simpler: just allow user to keep typing
+                  e.target.value = masked;
+                }}
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" type="button" aria-label="Abrir calendário">
+                    <CalendarIcon className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    captionLayout="dropdown-buttons"
+                    fromYear={1920}
+                    toYear={new Date().getFullYear()}
+                    defaultMonth={form.birthdate ? new Date(form.birthdate + 'T12:00:00') : new Date(1990, 0, 1)}
+                    selected={form.birthdate ? new Date(form.birthdate + 'T12:00:00') : undefined}
+                    onSelect={d => update('birthdate', d ? format(d, 'yyyy-MM-dd') : undefined)}
+                    locale={ptBR}
+                    className={cn('p-3 pointer-events-auto')}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           <div className="space-y-1.5">
