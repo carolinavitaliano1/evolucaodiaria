@@ -65,8 +65,6 @@ type Collaborator = {
 const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 const COUNTRIES = ['Brasil','Argentina','Chile','Estados Unidos','Portugal','Espanha','Uruguai','Paraguai'];
 const COUNCILS = ['CRM','CRP','CREFITO','COREN','CRO','CRN','CRF','CRFa','Outro'];
-const PARTICIPATION_DEGREES = ['Cirurgião','Primeiro Auxiliar','Segundo Auxiliar','Anestesista','Instrumentador','Auxiliar'];
-const ATTENDANCE_TYPES = ['Remoção','Pequena Cirurgia','Consulta','Avaliação','Procedimento Ambulatorial'];
 const PIX_TYPES = ['CPF','CNPJ','Telefone','Email','Chave aleatória'];
 const CBOS_OPTIONS = [
   { value: '2515-50', label: 'Psicopedagogo' },
