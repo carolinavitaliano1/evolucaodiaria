@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const { organization_id, email, role, patient_assignments, permissions, role_label, remuneration_type, remuneration_value, weekdays } = await req.json();
+    const { organization_id, email, role, patient_assignments, permissions, role_label, remuneration_type, remuneration_value, weekdays, custom_password } = await req.json();
     if (!organization_id || !email || !role) {
       return new Response(JSON.stringify({ error: 'organization_id, email e role são obrigatórios' }), { status: 400, headers: corsHeaders });
     }
@@ -283,7 +283,9 @@ Deno.serve(async (req) => {
     let emailSent = false;
     let tempPassword: string | null = null;
 
-    tempPassword = generateTempPassword(email);
+    tempPassword = (typeof custom_password === 'string' && custom_password.length >= 6)
+      ? custom_password
+      : generateTempPassword(email);
 
     if (userAlreadyExists && existingUserId) {
       // Usuário já existe: reseta a senha para a senha provisória e envia credenciais
