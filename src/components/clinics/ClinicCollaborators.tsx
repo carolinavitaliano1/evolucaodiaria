@@ -712,9 +712,6 @@ export default function ClinicCollaborators({ clinicId }: Props) {
       <Card>
         <CardContent className="pt-6 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex flex-col gap-1">
-            <button type="button" className="text-sm text-primary hover:underline text-left" onClick={() => toast.info('Lista de códigos identificadores por convênio em breve')}>
-              Lista de códigos identificadores por convênio
-            </button>
             <p className="text-xs italic text-muted-foreground">Os itens com * são obrigatórios</p>
           </div>
           <div className="flex items-center gap-2">
