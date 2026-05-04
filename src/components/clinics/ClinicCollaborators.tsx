@@ -519,64 +519,124 @@ export default function ClinicCollaborators({ clinicId }: Props) {
 
       {/* 5. Registro do Profissional */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Registro do Profissional</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="space-y-1.5">
-            <Label>Conselho profissional:</Label>
-            <Select value={form.council} onValueChange={v => update('council', v)}>
-              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-              <SelectContent>{COUNCILS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Número no conselho:</Label>
-            <Input value={form.councilNumber || ''} onChange={e => update('councilNumber', e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>UF:</Label>
-            <Select value={form.councilUF} onValueChange={v => update('councilUF', v)}>
-              <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
-              <SelectContent>{BR_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Código CBOS:</Label>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <CardTitle className="text-base">Registro do Profissional</CardTitle>
+              <CardDescription>Cadastre uma ou mais áreas com seu respectivo conselho e código CBOS.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
               <button type="button" className="text-xs text-primary hover:underline" onClick={() => toast.info('Cadastro de nova função em breve')}>
                 + cadastrar nova função
               </button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const next = [...(form.professionalAreas || []), { area: '', council: '', councilNumber: '', councilUF: '', cbosCode: '' }];
+                  update('professionalAreas', next);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1" /> Adicionar área
+              </Button>
             </div>
-            <Popover open={cbosOpen} onOpenChange={setCbosOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                  {form.cbosCode
-                    ? CBOS_OPTIONS.find(o => o.value === form.cbosCode)?.label || form.cbosCode
-                    : 'Selecionar código...'}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Buscar código..." />
-                  <CommandList>
-                    <CommandEmpty>Nenhum encontrado.</CommandEmpty>
-                    <CommandGroup>
-                      {CBOS_OPTIONS.map(opt => (
-                        <CommandItem
-                          key={opt.value}
-                          value={opt.label}
-                          onSelect={() => { update('cbosCode', opt.value); setCbosOpen(false); }}
-                        >
-                          <Check className={cn('mr-2 h-4 w-4', form.cbosCode === opt.value ? 'opacity-100' : 'opacity-0')} />
-                          <span className="font-mono text-xs mr-2">{opt.value}</span> {opt.label}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
           </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(form.professionalAreas && form.professionalAreas.length > 0
+            ? form.professionalAreas
+            : [{ area: '', council: '', councilNumber: '', councilUF: '', cbosCode: '' }]
+          ).map((item, idx) => {
+            const updateItem = (patch: Partial<NonNullable<Collaborator['professionalAreas']>[number]>) => {
+              const base = form.professionalAreas && form.professionalAreas.length > 0
+                ? [...form.professionalAreas]
+                : [{ area: '', council: '', councilNumber: '', councilUF: '', cbosCode: '' }];
+              base[idx] = { ...base[idx], ...patch };
+              update('professionalAreas', base);
+            };
+            const removeItem = () => {
+              const base = [...(form.professionalAreas || [])];
+              base.splice(idx, 1);
+              update('professionalAreas', base);
+            };
+            return (
+              <div key={idx} className="rounded-md border p-3 space-y-3 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Área {idx + 1}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={removeItem}
+                    disabled={!form.professionalAreas || form.professionalAreas.length <= 1}
+                    aria-label="Remover área"
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className="space-y-1.5 lg:col-span-1">
+                    <Label className="text-xs">Área do profissional</Label>
+                    <Input value={item.area || ''} onChange={e => updateItem({ area: e.target.value })} placeholder="Ex: Fisioterapia" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Conselho</Label>
+                    <Select value={item.council || ''} onValueChange={v => updateItem({ council: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>{COUNCILS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Número no conselho</Label>
+                    <Input value={item.councilNumber || ''} onChange={e => updateItem({ councilNumber: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">UF</Label>
+                    <Select value={item.councilUF || ''} onValueChange={v => updateItem({ councilUF: v })}>
+                      <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                      <SelectContent>{BR_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Código CBOS</Label>
+                    <Popover open={cbosOpen === idx} onOpenChange={(o) => setCbosOpen(o ? idx : null)}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                          <span className="truncate">
+                            {item.cbosCode
+                              ? CBOS_OPTIONS.find(o => o.value === item.cbosCode)?.label || item.cbosCode
+                              : 'Selecionar...'}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar código..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum encontrado.</CommandEmpty>
+                            <CommandGroup>
+                              {CBOS_OPTIONS.map(opt => (
+                                <CommandItem
+                                  key={opt.value}
+                                  value={opt.label}
+                                  onSelect={() => { updateItem({ cbosCode: opt.value }); setCbosOpen(null); }}
+                                >
+                                  <Check className={cn('mr-2 h-4 w-4', item.cbosCode === opt.value ? 'opacity-100' : 'opacity-0')} />
+                                  <span className="font-mono text-xs mr-2">{opt.value}</span> {opt.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
