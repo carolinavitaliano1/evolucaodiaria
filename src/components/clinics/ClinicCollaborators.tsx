@@ -32,10 +32,7 @@ type Collaborator = {
   email?: string;
   phoneLandline?: string;
   cellphone?: string;
-  professionalArea?: string;
-  registry?: string;
-  participationDegree?: string;
-  attendanceType?: string;
+  professionalAreas?: { area: string; registry: string }[];
   // Address
   country?: string;
   cep?: string;
@@ -68,8 +65,6 @@ type Collaborator = {
 const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 const COUNTRIES = ['Brasil','Argentina','Chile','Estados Unidos','Portugal','Espanha','Uruguai','Paraguai'];
 const COUNCILS = ['CRM','CRP','CREFITO','COREN','CRO','CRN','CRF','CRFa','Outro'];
-const PARTICIPATION_DEGREES = ['Cirurgião','Primeiro Auxiliar','Segundo Auxiliar','Anestesista','Instrumentador','Auxiliar'];
-const ATTENDANCE_TYPES = ['Remoção','Pequena Cirurgia','Consulta','Avaliação','Procedimento Ambulatorial'];
 const PIX_TYPES = ['CPF','CNPJ','Telefone','Email','Chave aleatória'];
 const CBOS_OPTIONS = [
   { value: '2515-50', label: 'Psicopedagogo' },
@@ -421,31 +416,63 @@ export default function ClinicCollaborators({ clinicId }: Props) {
             <Input value={form.cellphone || ''} onChange={e => update('cellphone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Área do profissional:</Label>
-            <Input value={form.professionalArea || ''} onChange={e => update('professionalArea', e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Registro:</Label>
-            <Input value={form.registry || ''} onChange={e => update('registry', e.target.value)} placeholder="Ex: Crefito: 999999-F" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Grau Part.:</Label>
-            <Select value={form.participationDegree} onValueChange={v => update('participationDegree', v)}>
-              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-              <SelectContent>
-                {PARTICIPATION_DEGREES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Tipo de Atendimento:</Label>
-            <Select value={form.attendanceType} onValueChange={v => update('attendanceType', v)}>
-              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-              <SelectContent>
-                {ATTENDANCE_TYPES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="space-y-2 md:col-span-2 lg:col-span-4">
+            <div className="flex items-center justify-between">
+              <Label>Áreas do profissional:</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const next = [...(form.professionalAreas || []), { area: '', registry: '' }];
+                  update('professionalAreas', next);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1" /> Adicionar área
+              </Button>
+            </div>
+            {(form.professionalAreas && form.professionalAreas.length > 0 ? form.professionalAreas : [{ area: '', registry: '' }]).map((item, idx) => (
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Área do profissional</Label>
+                  <Input
+                    value={item.area}
+                    onChange={e => {
+                      const list = [...(form.professionalAreas || [{ area: '', registry: '' }])];
+                      list[idx] = { ...list[idx], area: e.target.value };
+                      update('professionalAreas', list);
+                    }}
+                    placeholder="Ex: Fisioterapia"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Registro profissional</Label>
+                  <Input
+                    value={item.registry}
+                    onChange={e => {
+                      const list = [...(form.professionalAreas || [{ area: '', registry: '' }])];
+                      list[idx] = { ...list[idx], registry: e.target.value };
+                      update('professionalAreas', list);
+                    }}
+                    placeholder="Ex: Crefito: 999999-F"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const list = [...(form.professionalAreas || [])];
+                    list.splice(idx, 1);
+                    update('professionalAreas', list);
+                  }}
+                  disabled={!form.professionalAreas || form.professionalAreas.length <= 1}
+                  aria-label="Remover área"
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
