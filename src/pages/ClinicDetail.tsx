@@ -64,6 +64,7 @@ import { Settings2 } from 'lucide-react';
 import ClinicAgendaSettings from '@/components/clinics/ClinicAgendaSettings';
 import ClinicAttendancesList from '@/components/clinics/ClinicAttendancesList';
 import ClinicProcedures from '@/components/clinics/ClinicProcedures';
+import { ClinicPackagesPanel } from '@/components/clinics/ClinicPackagesPanel';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
