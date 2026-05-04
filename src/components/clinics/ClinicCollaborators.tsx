@@ -138,6 +138,17 @@ export default function ClinicCollaborators({ clinicId }: Props) {
   const [cbosOpen, setCbosOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storageKey = `clinic-collaborators:${clinicId}`;
+  const [birthdateText, setBirthdateText] = useState('');
+
+  // Sync text when form.birthdate changes (load/edit/calendar pick)
+  useMemo(() => {
+    if (form.birthdate) {
+      setBirthdateText(format(new Date(form.birthdate + 'T12:00:00'), 'dd/MM/yyyy'));
+    } else {
+      setBirthdateText('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.birthdate]);
 
   // Load from localStorage on mount
   useMemo(() => {
@@ -319,25 +330,22 @@ export default function ClinicCollaborators({ clinicId }: Props) {
                 inputMode="numeric"
                 placeholder="dd/mm/aaaa"
                 maxLength={10}
-                value={form.birthdate ? format(new Date(form.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : ''}
+                value={birthdateText}
                 onChange={e => {
                   const d = e.target.value.replace(/\D/g,'').slice(0,8);
                   let masked = d;
                   if (d.length > 4) masked = `${d.slice(0,2)}/${d.slice(2,4)}/${d.slice(4)}`;
                   else if (d.length > 2) masked = `${d.slice(0,2)}/${d.slice(2)}`;
-                  // Update raw display via parsing when complete
-                  if (d.length === 8) {
+                  setBirthdateText(masked);
+                  if (d.length === 0) {
+                    update('birthdate', undefined);
+                  } else if (d.length === 8) {
                     const dd = d.slice(0,2), mm = d.slice(2,4), yyyy = d.slice(4,8);
                     const dt = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
-                    if (!isNaN(dt.getTime())) {
+                    if (!isNaN(dt.getTime()) && dt.getFullYear() >= 1900) {
                       update('birthdate', `${yyyy}-${mm}-${dd}`);
-                      return;
                     }
                   }
-                  // partial: store as null until full
-                  if (d.length === 0) update('birthdate', undefined);
-                  // keep typed text by storing partial in a workaround? simpler: just allow user to keep typing
-                  e.target.value = masked;
                 }}
               />
               <Popover>
