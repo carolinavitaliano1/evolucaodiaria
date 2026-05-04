@@ -67,7 +67,7 @@ const BR_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','
 const COUNTRIES = ['Brasil','Argentina','Chile','Estados Unidos','Portugal','Espanha','Uruguai','Paraguai'];
 const COUNCILS = ['CRM','CRP','CREFITO','COREN','CRO','CRN','CRF','CRFa','Outro'];
 const PIX_TYPES = ['CPF','CNPJ','Telefone','Email','Chave aleatória'];
-const DEFAULT_CBOS_OPTIONS = [
+const DEFAULT_cbosOptions = [
   { value: '2515-50', label: 'Psicopedagogo' },
   { value: '2263-15', label: 'Musicoterapeuta' },
   { value: '2236-05', label: 'Psicomotricista' },
@@ -136,7 +136,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
   const storageKey = `clinic-collaborators:${clinicId}`;
   const cbosStorageKey = `clinic-cbos-options:${clinicId}`;
   const [birthdateText, setBirthdateText] = useState('');
-  const [cbosOptions, setCbosOptions] = useState<{ value: string; label: string }[]>(DEFAULT_CBOS_OPTIONS);
+  const [cbosOptions, setCbosOptions] = useState<{ value: string; label: string }[]>(DEFAULT_cbosOptions);
   const [newRoleOpen, setNewRoleOpen] = useState(false);
   const [newRoleTarget, setNewRoleTarget] = useState<number | null>(null);
   const [newRoleLabel, setNewRoleLabel] = useState('');
@@ -167,7 +167,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
       const raw = localStorage.getItem(cbosStorageKey);
       if (raw) {
         const custom = JSON.parse(raw) as { value: string; label: string }[];
-        const merged = [...DEFAULT_CBOS_OPTIONS];
+        const merged = [...DEFAULT_cbosOptions];
         custom.forEach(c => {
           if (!merged.some(m => m.value === c.value)) merged.push(c);
         });
@@ -199,7 +199,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
     const next = [...cbosOptions, { value, label }];
     setCbosOptions(next);
     try {
-      const customs = next.filter(o => !DEFAULT_CBOS_OPTIONS.some(d => d.value === o.value));
+      const customs = next.filter(o => !DEFAULT_cbosOptions.some(d => d.value === o.value));
       localStorage.setItem(cbosStorageKey, JSON.stringify(customs));
     } catch {}
     if (newRoleTarget !== null) {
@@ -664,7 +664,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
                         <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                           <span className="truncate">
                             {item.cbosCode
-                              ? CBOS_OPTIONS.find(o => o.value === item.cbosCode)?.label || item.cbosCode
+                              ? cbosOptions.find(o => o.value === item.cbosCode)?.label || item.cbosCode
                               : 'Selecionar...'}
                           </span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -676,7 +676,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
                           <CommandList>
                             <CommandEmpty>Nenhum encontrado.</CommandEmpty>
                             <CommandGroup>
-                              {CBOS_OPTIONS.map(opt => (
+                              {cbosOptions.map(opt => (
                                 <CommandItem
                                   key={opt.value}
                                   value={opt.label}
