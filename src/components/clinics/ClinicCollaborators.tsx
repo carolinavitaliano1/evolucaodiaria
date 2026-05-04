@@ -585,7 +585,7 @@ export default function ClinicCollaborators({ clinicId }: Props) {
               <CardDescription>Cadastre uma ou mais áreas com seu respectivo conselho e código CBOS.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" className="text-xs text-primary hover:underline" onClick={() => toast.info('Cadastro de nova função em breve')}>
+              <button type="button" className="text-xs text-primary hover:underline" onClick={() => openNewRoleDialog(null)}>
                 + cadastrar nova função
               </button>
               <Button
@@ -686,6 +686,15 @@ export default function ClinicCollaborators({ clinicId }: Props) {
                                   <span className="font-mono text-xs mr-2">{opt.value}</span> {opt.label}
                                 </CommandItem>
                               ))}
+                            </CommandGroup>
+                            <CommandGroup>
+                              <CommandItem
+                                value="__novo__"
+                                onSelect={() => { setCbosOpen(null); openNewRoleDialog(idx); }}
+                                className="text-primary"
+                              >
+                                <Plus className="mr-2 h-4 w-4" /> Cadastrar nova função
+                              </CommandItem>
                             </CommandGroup>
                           </CommandList>
                         </Command>
