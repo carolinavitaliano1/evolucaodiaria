@@ -288,20 +288,6 @@ export default function UserAccessPermissions({
           locked={!!locks.canEditEvolutions}
           onChange={(v) => setToggle('canEditEvolutions', v)}
         />
-        <ToggleRow
-          title="Pode transcrever atendimentos gravados em áudio?"
-          description="Permite que este usuário transcreva atendimentos gravados em áudio."
-          value={toggles.canTranscribeAudio}
-          locked={!!locks.canTranscribeAudio}
-          onChange={(v) => setToggle('canTranscribeAudio', v)}
-        />
-        <ToggleRow
-          title="Pode aprovar atendimentos de usuários limitados?"
-          description="Permite que este usuário possa aprovar o atendimento de um profissional limitado."
-          value={toggles.canApproveLimited}
-          locked={!!locks.canApproveLimited || isLimited}
-          onChange={(v) => setToggle('canApproveLimited', v)}
-        />
       </div>
 
       {isLimited && (
@@ -333,7 +319,11 @@ export default function UserAccessPermissions({
         </button>
         {showAdvanced && (
           <div className="px-3 pb-4 pt-1">
-            <PermissionEditor permissions={modulePermissions} onChange={onModulePermissionsChange} />
+            <PermissionEditor
+              permissions={modulePermissions}
+              onChange={onModulePermissionsChange}
+              excludeGroups={['Perfil profissional']}
+            />
             <div className="mt-3 flex justify-end">
               <Button
                 type="button"
