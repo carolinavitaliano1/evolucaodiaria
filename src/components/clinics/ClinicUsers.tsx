@@ -66,28 +66,21 @@ export default function ClinicUsers({ clinicId }: Props) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [roleId, setRoleId] = useState<RoleId>('professional_full');
-  const [canEditPatients, setCanEditPatients] = useState(true);
   const [notes, setNotes] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
-  const [permissions, setPermissions] = useState<PermissionKey[]>(() => getDefaultPermissionsForRole('professional_full'));
-  const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
+  const [toggles, setToggles] = useState<GranularToggles>(() => getInitialStateForRole('professional_full').toggles);
+  const [modulePerms, setModulePerms] = useState<PermissionKey[]>(() => getInitialStateForRole('professional_full').modulePermissions);
 
   // Dialog: edit permissions of an existing user
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
-  const [editingPerms, setEditingPerms] = useState<PermissionKey[]>([]);
+  const [editingRoleId, setEditingRoleId] = useState<RoleId>('professional_full');
+  const [editingToggles, setEditingToggles] = useState<GranularToggles>(() => getInitialStateForRole('professional_full').toggles);
+  const [editingModulePerms, setEditingModulePerms] = useState<PermissionKey[]>([]);
   const [savingPerms, setSavingPerms] = useState(false);
-
-  // When the user changes the role, reset permissions to the preset for that role
-  // (unless they've already opened the advanced panel and are customizing).
-  useEffect(() => {
-    if (!showAdvancedPerms) {
-      setPermissions(getDefaultPermissionsForRole(roleId));
-    }
-  }, [roleId, showAdvancedPerms]);
 
   useEffect(() => {
     (async () => {
@@ -147,10 +140,11 @@ export default function ClinicUsers({ clinicId }: Props) {
 
   function resetForm() {
     setName(''); setRegistry(''); setEmail(''); setPassword(''); setConfirmPassword('');
-    setRoleId('professional_full'); setCanEditPatients(true); setNotes('');
+    setRoleId('professional_full'); setNotes('');
     setPhotoFile(null); setPhotoPreview(''); setSignatureFile(null); setSignaturePreview('');
-    setPermissions(getDefaultPermissionsForRole('professional_full'));
-    setShowAdvancedPerms(false);
+    const init = getInitialStateForRole('professional_full');
+    setToggles(init.toggles);
+    setModulePerms(init.modulePermissions);
   }
 
   function importFromCollaborator(collab: CollaboratorOption) {
