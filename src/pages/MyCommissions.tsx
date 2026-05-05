@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, DollarSign, Users, CheckCircle2, XCircle, TrendingUp, Layers } from 'lucide-react';
+import { ChevronLeft, ChevronRight, DollarSign, Users, CheckCircle2, XCircle, TrendingUp, Layers, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +50,11 @@ export default function MyCommissions() {
   const [history, setHistory] = useState<{ month: string; total: number }[]>([]);
   const [plans, setPlans] = useState<RemunerationPlan[]>([]);
   const [assignmentPlanMap, setAssignmentPlanMap] = useState<Record<string, string | null>>({});
+  const [paymentInfo, setPaymentInfo] = useState<{
+    status: 'open' | 'partial' | 'paid';
+    paid_amount: number;
+    paid_at: string | null;
+  } | null>(null);
 
   const monthStart = startOfMonth(refDate);
   const monthEnd = endOfMonth(refDate);
@@ -164,6 +169,36 @@ export default function MyCommissions() {
       hist.push({ month: format(d, 'MMM/yy', { locale: ptBR }), total });
     }
     setHistory(hist);
+
+    // ── Status de pagamento da clínica para este mês (team_commission_payments) ──
+    if (m?.id) {
+      const { data: payRows } = await supabase
+        .from('team_commission_payments' as any)
+        .select('status, paid_amount, paid_at')
+        .eq('member_id', m.id)
+        .eq('year', monthEnd.getFullYear())
+        .eq('month', monthEnd.getMonth() + 1);
+      // Pode haver múltiplas clínicas; agrega
+      if (payRows && payRows.length > 0) {
+        let totalPaid = 0;
+        let lastPaidAt: string | null = null;
+        let allPaid = true;
+        let anyPaid = false;
+        (payRows as any[]).forEach(r => {
+          totalPaid += Number(r.paid_amount) || 0;
+          if (r.paid_at && (!lastPaidAt || r.paid_at > lastPaidAt)) lastPaidAt = r.paid_at;
+          if (r.status === 'paid') anyPaid = true;
+          if (r.status !== 'paid') allPaid = false;
+        });
+        setPaymentInfo({
+          status: allPaid ? 'paid' : (anyPaid || totalPaid > 0 ? 'partial' : 'open'),
+          paid_amount: totalPaid,
+          paid_at: lastPaidAt,
+        });
+      } else {
+        setPaymentInfo(null);
+      }
+    }
 
     setLoading(false);
   }
@@ -367,6 +402,27 @@ export default function MyCommissions() {
           <p className="text-2xl font-bold text-foreground mt-1">
             R$ {totalCommission.toFixed(2)}
           </p>
+          {paymentInfo && totalCommission > 0 && (
+            <div className="mt-1.5">
+              {paymentInfo.status === 'paid' ? (
+                <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Pago pela clínica
+                  {paymentInfo.paid_at && ` em ${format(new Date(paymentInfo.paid_at), 'dd/MM')}`}
+                </Badge>
+              ) : paymentInfo.status === 'partial' ? (
+                <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30 gap-1">
+                  <Clock className="w-3 h-3" /> Parcial: R$ {paymentInfo.paid_amount.toFixed(2)}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] gap-1">
+                  <Clock className="w-3 h-3" /> Em aberto
+                </Badge>
+              )}
+            </div>
+          )}
+          {paymentInfo === null && totalCommission > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1.5">Aguardando registro da clínica</p>
+          )}
         </Card>
         <Card className="p-4">
           <div className="flex items-center justify-between">
