@@ -1285,7 +1285,45 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                 <div className="space-y-5 pt-2 pb-2">
                   {/* E-mail */}
                   <div className="space-y-1.5">
-                    <Label>E-mail do colaborador</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>E-mail do colaborador</Label>
+                      <Popover open={collabPickerOpen} onOpenChange={setCollabPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button type="button" size="sm" variant="outline" className="h-7 gap-1.5 text-xs">
+                            <Users className="w-3.5 h-3.5" />
+                            Importar de Colaborador
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[320px] p-0" align="end">
+                          <Command>
+                            <CommandInput placeholder="Buscar colaborador..." />
+                            <CommandList>
+                              <CommandEmpty>
+                                {collaborators.length === 0
+                                  ? 'Nenhum colaborador cadastrado nesta clínica.'
+                                  : 'Nenhum resultado.'}
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {collaborators.map(c => (
+                                  <CommandItem
+                                    key={c.id}
+                                    value={`${c.name} ${c.email ?? ''}`}
+                                    onSelect={() => importFromCollaborator(c)}
+                                    className="flex flex-col items-start gap-0.5"
+                                  >
+                                    <span className="text-sm font-medium">{c.name || 'Sem nome'}</span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {c.email || 'Sem e-mail'}
+                                      {c.professionalAreas?.[0]?.area ? ` · ${c.professionalAreas[0].area}` : ''}
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <Input type="email" placeholder="colaborador@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
                   </div>
 
