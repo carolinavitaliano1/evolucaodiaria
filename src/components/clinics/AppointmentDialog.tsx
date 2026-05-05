@@ -480,6 +480,65 @@ export function AppointmentDialog({
               </label>
             </div>
 
+            {/* Recorrência */}
+            {form.is_recurring && (
+              <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-3">
+                  <div>
+                    <Label className="text-xs">Frequência:*</Label>
+                    <Select
+                      value={form.recurrence_freq}
+                      onValueChange={(v) => setForm(f => ({ ...f, recurrence_freq: v as any }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Diariamente</SelectItem>
+                        <SelectItem value="weekly">Semanalmente</SelectItem>
+                        <SelectItem value="biweekly">A cada 2 semanas</SelectItem>
+                        <SelectItem value="triweekly">A cada 3 semanas</SelectItem>
+                        <SelectItem value="monthly4w">A cada 4 semanas</SelectItem>
+                        <SelectItem value="monthly">Mensalmente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Repetir:*</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={52}
+                        value={form.recurrence_count}
+                        onChange={(e) => setForm(f => ({ ...f, recurrence_count: Math.max(1, Math.min(52, Number(e.target.value) || 1)) }))}
+                      />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">sessões</span>
+                    </div>
+                  </div>
+                </div>
+                {(form.recurrence_freq === 'weekly' || form.recurrence_freq === 'biweekly' || form.recurrence_freq === 'triweekly' || form.recurrence_freq === 'monthly4w') && (
+                  <div>
+                    <Label className="text-xs">Dias para repetir:*</Label>
+                    <div className="flex flex-wrap gap-3 mt-1">
+                      {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((lbl, idx) => (
+                        <label key={idx} className="flex items-center gap-1.5 cursor-pointer">
+                          <Checkbox
+                            checked={form.recurrence_weekdays.includes(idx)}
+                            onCheckedChange={(v) => setForm(f => ({
+                              ...f,
+                              recurrence_weekdays: v
+                                ? Array.from(new Set([...f.recurrence_weekdays, idx])).sort()
+                                : f.recurrence_weekdays.filter(d => d !== idx),
+                            }))}
+                          />
+                          <span className="text-sm">{lbl}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Linha 2: Encaixe */}
             <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox
