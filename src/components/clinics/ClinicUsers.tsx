@@ -423,6 +423,9 @@ export default function ClinicUsers({ clinicId }: Props) {
                     >
                       {u.status === 'active' ? 'Ativo' : u.status === 'pending' ? 'Pendente' : u.status}
                     </Badge>
+                    <Button size="icon" variant="ghost" onClick={() => openEditPermissions(u)} title="Editar permissões">
+                      <ShieldCheck className="w-4 h-4 text-primary" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => handleRemove(u.id, u.email)} title="Remover">
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
@@ -513,6 +516,41 @@ export default function ClinicUsers({ clinicId }: Props) {
                   <span className={cn('text-xs', canEditPatients && 'text-muted-foreground')}>Sim</span>
                 </div>
               </div>
+
+              <Separator />
+
+              {/* Advanced granular permissions — Perfil profissional + módulos */}
+              <div className="rounded-lg border bg-muted/20">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedPerms(v => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-muted/40 rounded-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">Permissões avançadas</p>
+                      <p className="text-xs text-muted-foreground">Módulos (Clínico, Financeiro, Agenda, IA) e Perfil profissional (limitado, arquivar, transcrever áudio, etc.)</p>
+                    </div>
+                  </div>
+                  {showAdvancedPerms ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </button>
+                {showAdvancedPerms && (
+                  <div className="px-3 pb-4 pt-1">
+                    <PermissionEditor permissions={permissions} onChange={setPermissions} />
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setPermissions(getDefaultPermissionsForRole(roleId)); }}
+                      >
+                        Restaurar padrão da função
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -561,6 +599,33 @@ export default function ClinicUsers({ clinicId }: Props) {
           </div>
         </>
       )}
+
+      {/* Dialog: edit permissions of an existing user */}
+      <Dialog open={!!editingUser} onOpenChange={(v) => { if (!v) { setEditingUser(null); setEditingPerms([]); } }}>
+        <DialogContent className="max-w-2xl max-h-[85dvh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              Editar permissões
+            </DialogTitle>
+            <DialogDescription>
+              {editingUser?.name || editingUser?.email} — ajuste módulos, perfil profissional e permissões granulares.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 pr-3 -mr-3">
+            <PermissionEditor permissions={editingPerms} onChange={setEditingPerms} />
+          </ScrollArea>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setEditingUser(null); setEditingPerms([]); }} disabled={savingPerms}>
+              Cancelar
+            </Button>
+            <Button onClick={savePermissions} disabled={savingPerms} className="gap-2">
+              {savingPerms && <Loader2 className="w-4 h-4 animate-spin" />}
+              Salvar permissões
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
