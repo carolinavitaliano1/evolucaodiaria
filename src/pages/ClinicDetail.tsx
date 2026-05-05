@@ -255,6 +255,11 @@ export default function ClinicDetail() {
     if (typeof window === 'undefined') return 'today';
     return new URLSearchParams(window.location.search).get('tab') || 'today';
   });
+  const location = useLocation();
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab && tab !== activeTab) setActiveTab(tab);
+  }, [location.search]);
   const [submittingPatient, setSubmittingPatient] = useState(false);
   const [pendingPatients, setPendingPatients] = useState<any[]>([]);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
