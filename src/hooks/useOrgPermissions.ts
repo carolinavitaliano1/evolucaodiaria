@@ -333,6 +333,17 @@ export const PERMISSION_GROUPS: { label: string; keys: PermissionKey[] }[] = [
   { label: 'Tarefas', keys: ['tasks.view'] },
   { label: 'Mural', keys: ['mural.view'] },
   { label: 'Equipe', keys: ['team.view', 'team.manage'] },
+  {
+    label: 'Perfil profissional',
+    keys: [
+      'professional.limited',
+      'patients.archive',
+      'appointments.delete_own',
+      'evaluations.edit',
+      'audio.transcribe',
+      'limited.approve',
+    ],
+  },
 ];
 
 /** Derive which level is currently active for a module given a permission set */
