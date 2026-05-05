@@ -9,7 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Upload, X, UserPlus, Mail, Pencil, Trash2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Loader2, Upload, X, UserPlus, Mail, Pencil, Trash2, UsersRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -65,11 +67,27 @@ interface UserRow {
   created_at: string;
 }
 
+interface CollaboratorOption {
+  id: string;
+  name: string;
+  email?: string;
+  profession?: string;
+  cellphone?: string;
+  phoneLandline?: string;
+  council?: string;
+  councilNumber?: string;
+  councilUF?: string;
+  professionalAreas?: { area?: string; council?: string; councilNumber?: string; councilUF?: string; cbosCode?: string }[];
+  avatarUrl?: string;
+}
+
 export default function ClinicUsers({ clinicId }: Props) {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [collaborators, setCollaborators] = useState<CollaboratorOption[]>([]);
+  const [collabPickerOpen, setCollabPickerOpen] = useState(false);
 
   // form state
   const [name, setName] = useState('');
@@ -94,6 +112,15 @@ export default function ClinicUsers({ clinicId }: Props) {
   }, [clinicId]);
 
   useEffect(() => { if (orgId) loadUsers(); }, [orgId]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`clinic-collaborators:${clinicId}`);
+      setCollaborators(raw ? JSON.parse(raw) : []);
+    } catch {
+      setCollaborators([]);
+    }
+  }, [clinicId]);
 
   async function loadUsers() {
     if (!orgId) return;
@@ -120,6 +147,29 @@ export default function ClinicUsers({ clinicId }: Props) {
     setName(''); setRegistry(''); setEmail(''); setPassword(''); setConfirmPassword('');
     setRoleId('professional_full'); setCanEditPatients(true); setNotes('');
     setPhotoFile(null); setPhotoPreview(''); setSignatureFile(null); setSignaturePreview('');
+  }
+
+  function importFromCollaborator(collab: CollaboratorOption) {
+    const mainArea = collab.professionalAreas?.[0];
+    const council = mainArea?.council || collab.council;
+    const councilNumber = mainArea?.councilNumber || collab.councilNumber;
+    const councilUF = mainArea?.councilUF || collab.councilUF;
+    const registryText = [council, councilNumber, councilUF].filter(Boolean).join(' ');
+
+    setName(collab.name || '');
+    setEmail(collab.email || '');
+    setRegistry(registryText);
+    setRoleId('professional_full');
+    setCanEditPatients(true);
+    setNotes([
+      collab.profession ? `Profissão: ${collab.profession}` : '',
+      mainArea?.area ? `Área: ${mainArea.area}` : '',
+      collab.cellphone || collab.phoneLandline ? `Telefone: ${collab.cellphone || collab.phoneLandline}` : '',
+    ].filter(Boolean).join('\n'));
+    if (collab.avatarUrl) setPhotoPreview(collab.avatarUrl);
+    setShowForm(true);
+    setCollabPickerOpen(false);
+    toast.success('Dados do colaborador importados para o usuário');
   }
 
   function handlePhotoChange(file: File | null) {
