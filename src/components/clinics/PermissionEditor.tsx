@@ -68,9 +68,11 @@ interface PermissionEditorProps {
   permissions: PermissionKey[];
   onChange: (perms: PermissionKey[]) => void;
   compact?: boolean;
+  /** Group labels to hide (e.g. when toggles already cover them) */
+  excludeGroups?: string[];
 }
 
-export function PermissionEditor({ permissions, onChange, compact = false }: PermissionEditorProps) {
+export function PermissionEditor({ permissions, onChange, compact = false, excludeGroups = [] }: PermissionEditorProps) {
   function handleLevelChange(module: PermissionModule, levelId: string) {
     onChange(applyModuleLevel(module, levelId, permissions));
   }
@@ -140,7 +142,7 @@ export function PermissionEditor({ permissions, onChange, compact = false }: Per
       {/* ── Checkbox groups ── */}
       <div className="space-y-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Outros módulos</p>
-        {PERMISSION_GROUPS.map(group => {
+        {PERMISSION_GROUPS.filter(g => !excludeGroups.includes(g.label)).map(group => {
           const GroupIcon = getGroupIcon(group.label);
           return (
             <div key={group.label} className="space-y-1.5">
