@@ -67,6 +67,7 @@ import ClinicProcedures from '@/components/clinics/ClinicProcedures';
 import { ClinicPackagesPanel } from '@/components/clinics/ClinicPackagesPanel';
 import ClinicCollaborators from '@/components/clinics/ClinicCollaborators';
 import ClinicUsers from '@/components/clinics/ClinicUsers';
+import ClinicTeamTab from '@/components/clinics/ClinicTeamTab';
 
 import TemplateForm from '@/components/evolutions/TemplateForm';
 import { EditEvolutionDialog } from '@/components/evolutions/EditEvolutionDialog';
@@ -1330,6 +1331,7 @@ export default function ClinicDetail() {
             ...(clinic.type === 'clinica' ? [{ value: 'procedures', icon: <StampIcon className="w-5 h-5" />, label: 'Procedimentos', color: 'text-cyan-600' }] : []),
             ...(clinic.type === 'clinica' ? [{ value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' }] : []),
             ...(clinic.type === 'clinica' ? [{ value: 'collaborators', icon: <UserCog className="w-5 h-5" />, label: 'Colaboradores', color: 'text-violet-500' }] : []),
+            ...(clinic.type === 'clinica' ? [{ value: 'team', icon: <UsersRound className="w-5 h-5" />, label: 'Equipe', color: 'text-purple-500' }] : []),
             ...(clinic.type === 'clinica' ? [{ value: 'users', icon: <UserCheck className="w-5 h-5" />, label: 'Usuários', color: 'text-sky-500' }] : []),
           ].map(tab => (
             <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
