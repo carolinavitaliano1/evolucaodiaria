@@ -723,7 +723,9 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
                             <button
                               type="button"
                               disabled={savingPatientPayment === patient.id}
-                              title={pr?.paid ? 'Marcar como pendente' : 'Marcar como pago'}
+                              title={pr?.paid
+                                ? 'Desmarcar pagamento (apenas registro contábil — não estorna)'
+                                : 'Marcar como pago (apenas registro contábil — não realiza transferência)'}
                               onClick={async () => {
                                 if (!user) return;
                                 setSavingPatientPayment(patient.id);
