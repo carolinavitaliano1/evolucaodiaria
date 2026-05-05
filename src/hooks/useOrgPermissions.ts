@@ -49,6 +49,13 @@ export const ALL_PERMISSIONS = [
   // Equipe
   'team.view',
   'team.manage',
+  // Granulares — perfil profissional
+  'professional.limited',           // Tipo: Limitado (precisa aprovação para evoluções/atendimentos)
+  'patients.archive',               // Pode arquivar pacientes
+  'appointments.delete_own',        // Pode excluir atendimentos registrados por ele
+  'evaluations.edit',               // Pode editar avaliações e evoluções
+  'audio.transcribe',               // Pode transcrever atendimentos gravados em áudio
+  'limited.approve',                // Pode aprovar atendimentos de usuários limitados
 ] as const;
 
 export type PermissionKey = (typeof ALL_PERMISSIONS)[number];
@@ -84,6 +91,12 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'mural.view': 'Ver Mural',
   'team.view': 'Ver Equipe',
   'team.manage': 'Gerenciar Equipe',
+  'professional.limited': 'Profissional Limitado (requer aprovação)',
+  'patients.archive': 'Pode arquivar pacientes',
+  'appointments.delete_own': 'Pode excluir atendimentos próprios',
+  'evaluations.edit': 'Pode editar avaliações e evoluções',
+  'audio.transcribe': 'Pode transcrever áudios de atendimento',
+  'limited.approve': 'Pode aprovar atendimentos de usuários limitados',
 };
 
 // ---------------------------------------------------------------------------
