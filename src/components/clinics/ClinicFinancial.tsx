@@ -662,6 +662,15 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             </div>
           )}
         </div>
+        {clinic.type === 'propria' && (
+          <div className="mb-3 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] leading-snug text-foreground/80">
+            <span className="mt-0.5 shrink-0">ℹ️</span>
+            <span>
+              <strong>Marcar como pago</strong> registra contabilmente o recebimento — não realiza nenhuma transferência bancária ou PIX.
+              Use para o seu controle financeiro e para o paciente ver o status no portal.
+            </span>
+          </div>
+        )}
         {patientBreakdown.length === 0 ? (
           <p className="text-center text-muted-foreground py-8 text-sm">
             {paymentFilter !== 'all' || filterStartDate || filterEndDate ? 'Nenhum resultado para os filtros' : 'Nenhum registro neste mês'}
