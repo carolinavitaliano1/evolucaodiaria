@@ -114,7 +114,7 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
         legacyValue: member.remunerationValue,
         clinic,
         packages: clinicPackages.filter(p => p.clinicId === clinicId).map(p => ({
-          id: p.id, price: p.price, name: p.name, packageType: p.packageType,
+          id: p.id, price: p.price, packageType: p.packageType,
           sessionLimit: p.sessionLimit,
         })),
         month: month - 1,
