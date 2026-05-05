@@ -79,6 +79,35 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
             .select('user_id, name')
             .in('user_id', userIds as string[]);
           (profs || []).forEach((p: any) => nameMap.set(p.user_id, p.name));
+
+          // Fallback: organization_members (membros sem profile próprio)
+          const missing = userIds.filter(id => !nameMap.get(id as string));
+          if (missing.length) {
+            const { data: members } = await supabase
+              .from('organization_members')
+              .select('user_id, email')
+              .in('user_id', missing as string[]);
+            const memberEmails = new Map<string, string>();
+            (members || []).forEach((m: any) => {
+              if (m.user_id && m.email) memberEmails.set(m.user_id, m.email);
+            });
+            // Tenta achar profile pelo email (caso profile exista mas não esteja vinculado por user_id)
+            const emails = Array.from(new Set(Array.from(memberEmails.values())));
+            const emailToName = new Map<string, string>();
+            if (emails.length) {
+              const { data: profsByEmail } = await supabase
+                .from('profiles')
+                .select('email, name')
+                .in('email', emails);
+              (profsByEmail || []).forEach((p: any) => {
+                if (p.email && p.name) emailToName.set(p.email, p.name);
+              });
+            }
+            memberEmails.forEach((email, uid) => {
+              const name = emailToName.get(email) || email;
+              nameMap.set(uid, name);
+            });
+          }
         }
 
         // Lookup procedimentos
