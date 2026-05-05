@@ -27,6 +27,8 @@ import {
   Plus, Star, Pencil, X, DollarSign, Package, ArrowRight
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -244,6 +246,44 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [inviteRemunerationType, setInviteRemunerationType] = useState<'definir_depois' | 'por_sessao' | 'fixo_mensal' | 'fixo_dia'>('definir_depois');
   const [inviteRemunerationValue, setInviteRemunerationValue] = useState<string>('');
   const [inviteWeekdays, setInviteWeekdays] = useState<string[]>([]);
+
+  // Importar dados de Colaborador cadastrado (localStorage de ClinicCollaborators)
+  type CollabMini = {
+    id: string;
+    name: string;
+    email?: string;
+    cellphone?: string;
+    professionalAreas?: { area?: string; cbosCode?: string }[];
+  };
+  const [collaborators, setCollaborators] = useState<CollabMini[]>([]);
+  const [collabPickerOpen, setCollabPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!inviteOpen || !clinicId) return;
+    try {
+      const raw = localStorage.getItem(`clinic-collaborators:${clinicId}`);
+      if (raw) {
+        const list = JSON.parse(raw) as CollabMini[];
+        setCollaborators(Array.isArray(list) ? list : []);
+      } else {
+        setCollaborators([]);
+      }
+    } catch {
+      setCollaborators([]);
+    }
+  }, [inviteOpen, clinicId]);
+
+  const importFromCollaborator = (c: CollabMini) => {
+    if (c.email) setInviteEmail(c.email);
+    const firstArea = c.professionalAreas?.[0]?.area;
+    if (firstArea) setInviteRoleLabel(firstArea);
+    setCollabPickerOpen(false);
+    if (!c.email) {
+      toast.warning('Este colaborador não tem e-mail cadastrado. Preencha manualmente.');
+    } else {
+      toast.success(`Dados de ${c.name} importados`);
+    }
+  };
 
   // Member management modal
   const [manageMember, setManageMember] = useState<OrganizationMember | null>(null);
@@ -1245,7 +1285,45 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
                 <div className="space-y-5 pt-2 pb-2">
                   {/* E-mail */}
                   <div className="space-y-1.5">
-                    <Label>E-mail do colaborador</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>E-mail do colaborador</Label>
+                      <Popover open={collabPickerOpen} onOpenChange={setCollabPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button type="button" size="sm" variant="outline" className="h-7 gap-1.5 text-xs">
+                            <Users className="w-3.5 h-3.5" />
+                            Importar de Colaborador
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[320px] p-0" align="end">
+                          <Command>
+                            <CommandInput placeholder="Buscar colaborador..." />
+                            <CommandList>
+                              <CommandEmpty>
+                                {collaborators.length === 0
+                                  ? 'Nenhum colaborador cadastrado nesta clínica.'
+                                  : 'Nenhum resultado.'}
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {collaborators.map(c => (
+                                  <CommandItem
+                                    key={c.id}
+                                    value={`${c.name} ${c.email ?? ''}`}
+                                    onSelect={() => importFromCollaborator(c)}
+                                    className="flex flex-col items-start gap-0.5"
+                                  >
+                                    <span className="text-sm font-medium">{c.name || 'Sem nome'}</span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {c.email || 'Sem e-mail'}
+                                      {c.professionalAreas?.[0]?.area ? ` · ${c.professionalAreas[0].area}` : ''}
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <Input type="email" placeholder="colaborador@email.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
                   </div>
 
