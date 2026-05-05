@@ -602,8 +602,8 @@ export default function ClinicUsers({ clinicId }: Props) {
 
       {/* Dialog: edit permissions of an existing user */}
       <Dialog open={!!editingUser} onOpenChange={(v) => { if (!v) { setEditingUser(null); setEditingPerms([]); } }}>
-        <DialogContent className="max-w-2xl max-h-[85dvh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl h-[85dvh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-6 pb-3 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
               Editar permissões
@@ -612,10 +612,10 @@ export default function ClinicUsers({ clinicId }: Props) {
               {editingUser?.name || editingUser?.email} — ajuste módulos, perfil profissional e permissões granulares.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-3 -mr-3">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
             <PermissionEditor permissions={editingPerms} onChange={setEditingPerms} />
-          </ScrollArea>
-          <DialogFooter className="gap-2">
+          </div>
+          <DialogFooter className="gap-2 p-4 border-t shrink-0 bg-background">
             <Button variant="outline" onClick={() => { setEditingUser(null); setEditingPerms([]); }} disabled={savingPerms}>
               Cancelar
             </Button>
