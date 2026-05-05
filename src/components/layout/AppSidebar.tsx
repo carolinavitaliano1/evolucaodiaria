@@ -17,6 +17,7 @@ import {
   UsersRound,
   HeadphonesIcon,
   FileSignature,
+  NotebookPen,
   Clock,
   Lock,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ const allNavItems = [
   { to: '/clinics',   icon: Building2,       label: 'Clínicas',     perm: 'clinics.view'   as const },
   { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const, badge: 'pending' as const },
   { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const },
+  { to: '/evolucoes', icon: NotebookPen,     label: 'Evoluções',    perm: 'evolutions.view' as const },
   { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const },
   { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const },
   { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const },
@@ -56,6 +58,7 @@ const therapistNavItems = [
   { to: '/dashboard',         icon: LayoutDashboard, label: 'Dashboard',        perm: 'dashboard.view'  as const },
   { to: '/calendar',          icon: Calendar,        label: 'Agenda',           perm: 'calendar.view'   as const },
   { to: '/patients',          icon: Users,           label: 'Pacientes',        perm: 'patients.view'   as const, badge: 'pending' as const },
+  { to: '/evolucoes',         icon: NotebookPen,     label: 'Evoluções',        perm: 'evolutions.view' as const },
   { to: '/tasks',             icon: ClipboardList,   label: 'Tarefas',          perm: 'tasks.view'      as const },
   { to: '/minhas-comissoes',  icon: DollarSign,      label: 'Minhas Comissões', perm: 'commissions.view' as const },
   { to: '/mural',             icon: Megaphone,       label: 'Mural',            perm: 'mural.view'      as const, badge: 'notices' as const },
