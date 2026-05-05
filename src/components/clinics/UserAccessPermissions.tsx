@@ -37,9 +37,7 @@ export const ROLE_OPTIONS: RoleOption[] = [
   { id: 'professional_limited', title: 'Profissional · Limitado', description: 'Apenas visualiza sua agenda e registra atendimentos sujeitos a aprovação.', group: 'professional' },
   { id: 'secretary', title: 'Secretária(o)', description: 'Gerencia agenda e cadastro de pacientes. Não acessa conteúdo clínico.' },
   { id: 'financial_full', title: 'Financeiro completo', description: 'Acesso total aos recursos financeiros da clínica.' },
-  { id: 'financial_individual', title: 'Financeiro individual', description: 'Acesso financeiro restrito aos próprios pacientes vinculados.' },
   { id: 'financial_query', title: 'Financeiro consulta', description: 'Apenas consulta de comissões e movimentos. Não altera nem exclui.' },
-  { id: 'marketing', title: 'Marketing', description: 'Acesso a marketing, página da clínica, pesquisa de satisfação e dados não sensíveis.' },
   { id: 'auditor', title: 'Auditor/Fiscal', description: 'Somente leitura de atendimentos e relatórios para auditoria. Não combina com outras funções.' },
 ];
 
@@ -322,7 +320,7 @@ export default function UserAccessPermissions({
             <PermissionEditor
               permissions={modulePermissions}
               onChange={onModulePermissionsChange}
-              excludeGroups={['Perfil profissional']}
+              excludeGroups={['Perfil profissional', 'Tarefas', 'Clínicas', 'Equipe']}
             />
             <div className="mt-3 flex justify-end">
               <Button
