@@ -9,7 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Upload, X, UserPlus, Mail, Pencil, Trash2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Loader2, Upload, X, UserPlus, Mail, Pencil, Trash2, UsersRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -65,11 +67,27 @@ interface UserRow {
   created_at: string;
 }
 
+interface CollaboratorOption {
+  id: string;
+  name: string;
+  email?: string;
+  profession?: string;
+  cellphone?: string;
+  phoneLandline?: string;
+  council?: string;
+  councilNumber?: string;
+  councilUF?: string;
+  professionalAreas?: { area?: string; council?: string; councilNumber?: string; councilUF?: string; cbosCode?: string }[];
+  avatarUrl?: string;
+}
+
 export default function ClinicUsers({ clinicId }: Props) {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [collaborators, setCollaborators] = useState<CollaboratorOption[]>([]);
+  const [collabPickerOpen, setCollabPickerOpen] = useState(false);
 
   // form state
   const [name, setName] = useState('');
@@ -94,6 +112,15 @@ export default function ClinicUsers({ clinicId }: Props) {
   }, [clinicId]);
 
   useEffect(() => { if (orgId) loadUsers(); }, [orgId]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`clinic-collaborators:${clinicId}`);
+      setCollaborators(raw ? JSON.parse(raw) : []);
+    } catch {
+      setCollaborators([]);
+    }
+  }, [clinicId]);
 
   async function loadUsers() {
     if (!orgId) return;
@@ -120,6 +147,29 @@ export default function ClinicUsers({ clinicId }: Props) {
     setName(''); setRegistry(''); setEmail(''); setPassword(''); setConfirmPassword('');
     setRoleId('professional_full'); setCanEditPatients(true); setNotes('');
     setPhotoFile(null); setPhotoPreview(''); setSignatureFile(null); setSignaturePreview('');
+  }
+
+  function importFromCollaborator(collab: CollaboratorOption) {
+    const mainArea = collab.professionalAreas?.[0];
+    const council = mainArea?.council || collab.council;
+    const councilNumber = mainArea?.councilNumber || collab.councilNumber;
+    const councilUF = mainArea?.councilUF || collab.councilUF;
+    const registryText = [council, councilNumber, councilUF].filter(Boolean).join(' ');
+
+    setName(collab.name || '');
+    setEmail(collab.email || '');
+    setRegistry(registryText);
+    setRoleId('professional_full');
+    setCanEditPatients(true);
+    setNotes([
+      collab.profession ? `Profissão: ${collab.profession}` : '',
+      mainArea?.area ? `Área: ${mainArea.area}` : '',
+      collab.cellphone || collab.phoneLandline ? `Telefone: ${collab.cellphone || collab.phoneLandline}` : '',
+    ].filter(Boolean).join('\n'));
+    if (collab.avatarUrl) setPhotoPreview(collab.avatarUrl);
+    setShowForm(true);
+    setCollabPickerOpen(false);
+    toast.success('Dados do colaborador importados para o usuário');
   }
 
   function handlePhotoChange(file: File | null) {
@@ -192,10 +242,48 @@ export default function ClinicUsers({ clinicId }: Props) {
           <h2 className="text-2xl font-bold text-foreground">Usuários</h2>
           <p className="text-sm text-muted-foreground">Cadastre quem terá acesso ao sistema desta clínica.</p>
         </div>
-        <Button onClick={() => setShowForm(v => !v)} className="gap-2">
-          <UserPlus className="w-4 h-4" />
-          {showForm ? 'Fechar formulário' : 'Cadastrar novo usuário'}
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Popover open={collabPickerOpen} onOpenChange={setCollabPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <UsersRound className="w-4 h-4" />
+                Importar de Colaborador
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[min(92vw,420px)] p-0" align="end">
+              <Command>
+                <CommandInput placeholder="Buscar colaborador..." />
+                <CommandList>
+                  <CommandEmpty>Nenhum colaborador cadastrado nesta clínica.</CommandEmpty>
+                  <CommandGroup>
+                    {collaborators.map(collab => (
+                      <CommandItem
+                        key={collab.id}
+                        value={`${collab.name} ${collab.email || ''} ${collab.profession || ''}`}
+                        onSelect={() => importFromCollaborator(collab)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={collab.avatarUrl} />
+                            <AvatarFallback>{(collab.name || 'CO').slice(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{collab.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{collab.email || collab.profession || 'Sem e-mail cadastrado'}</p>
+                          </div>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          <Button onClick={() => setShowForm(v => !v)} className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            {showForm ? 'Fechar formulário' : 'Cadastrar novo usuário'}
+          </Button>
+        </div>
       </div>
 
       {/* List of existing users */}
