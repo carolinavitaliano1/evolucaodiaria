@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, UserCheck, UserX, Briefcase, Mail, Phone, MessageSquare, ChevronDown, ChevronUp, Inbox, Cake, IdCard, RefreshCw } from 'lucide-react';
+import { Loader2, UserCheck, UserX, Briefcase, Mail, Phone, MessageSquare, ChevronDown, ChevronUp, Inbox, Cake, IdCard, RefreshCw, MapPin, Banknote, FileText, Bell } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DEFAULT_THERAPIST_PERMISSIONS } from '@/hooks/useOrgPermissions';
@@ -21,6 +21,34 @@ interface TeamApplication {
   birthdate: string | null;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  // Novos campos do cadastro completo
+  is_social_name?: boolean | null;
+  cpf?: string | null;
+  rg?: string | null;
+  sex?: string | null;
+  marital_status?: string | null;
+  profession?: string | null;
+  phone_landline?: string | null;
+  cellphone?: string | null;
+  country?: string | null;
+  cep?: string | null;
+  state?: string | null;
+  city?: string | null;
+  street?: string | null;
+  number?: string | null;
+  district?: string | null;
+  complement?: string | null;
+  bank_name?: string | null;
+  bank_agency?: string | null;
+  bank_account?: string | null;
+  pix_type?: string | null;
+  pix_key?: string | null;
+  allow_email_campaigns?: boolean | null;
+  allow_system_emails?: boolean | null;
+  pref_email?: boolean | null;
+  pref_sms?: boolean | null;
+  pref_whatsapp?: boolean | null;
+  professional_areas?: Array<{ area: string; council?: string; councilNumber?: string; councilUF?: string; cbosCode?: string }> | null;
 }
 
 interface TeamApplicationsPanelProps {
@@ -213,37 +241,98 @@ export function TeamApplicationsPanel({ organizationId, canManage }: TeamApplica
                     )}
                   </div>
 
-                  {(app.whatsapp || app.professional_id || app.message || app.role || app.birthdate) && (
-                    <button
-                      onClick={() => toggleItem(app.id)}
-                      className="text-[11px] text-primary hover:underline mt-2"
-                    >
-                      {isExpanded ? 'Ocultar detalhes' : 'Ver mais detalhes'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => toggleItem(app.id)}
+                    className="text-[11px] text-primary hover:underline mt-2"
+                  >
+                    {isExpanded ? 'Ocultar detalhes' : 'Ver mais detalhes'}
+                  </button>
 
                   {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-border space-y-1.5 text-xs">
-                      {app.role && (
-                        <p className="text-muted-foreground flex items-center gap-1.5">
-                          <IdCard className="w-3 h-3" /> Função: <strong className="text-foreground font-medium">{app.role}</strong>
-                        </p>
+                    <div className="mt-3 pt-3 border-t border-border space-y-3 text-xs">
+                      {/* Pessoais */}
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground flex items-center gap-1.5"><IdCard className="w-3 h-3" /> Dados pessoais</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 pl-4">
+                          {app.role && <p className="text-muted-foreground">Função: <strong className="text-foreground font-medium">{app.role}</strong></p>}
+                          {app.birthdate && <p className="text-muted-foreground flex items-center gap-1"><Cake className="w-3 h-3" /> {format(new Date(app.birthdate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}</p>}
+                          {app.cpf && <p className="text-muted-foreground">CPF: <span className="text-foreground">{app.cpf}</span></p>}
+                          {app.rg && <p className="text-muted-foreground">RG: <span className="text-foreground">{app.rg}</span></p>}
+                          {app.sex && <p className="text-muted-foreground">Sexo: <span className="text-foreground">{app.sex}</span></p>}
+                          {app.marital_status && <p className="text-muted-foreground">Estado civil: <span className="text-foreground">{app.marital_status}</span></p>}
+                          {app.profession && <p className="text-muted-foreground">Profissão: <span className="text-foreground">{app.profession}</span></p>}
+                          {(app.cellphone || app.whatsapp) && <p className="text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> {app.cellphone || app.whatsapp}</p>}
+                          {app.phone_landline && <p className="text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Fixo: {app.phone_landline}</p>}
+                          {app.is_social_name && <p className="text-muted-foreground italic">Nome social</p>}
+                        </div>
+                      </div>
+
+                      {/* Endereço */}
+                      {(app.cep || app.street || app.city) && (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-foreground flex items-center gap-1.5"><MapPin className="w-3 h-3" /> Endereço</p>
+                          <p className="text-muted-foreground pl-4">
+                            {[
+                              app.street,
+                              app.number,
+                              app.complement,
+                              app.district,
+                              app.city && app.state ? `${app.city}/${app.state}` : (app.city || app.state),
+                              app.cep ? `CEP ${app.cep}` : null,
+                              app.country && app.country !== 'Brasil' ? app.country : null,
+                            ].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
                       )}
-                      {app.birthdate && (
-                        <p className="text-muted-foreground flex items-center gap-1.5">
-                          <Cake className="w-3 h-3" /> Nascimento: {format(new Date(app.birthdate + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                        </p>
+
+                      {/* Bancário */}
+                      {(app.bank_name || app.pix_key) && (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-foreground flex items-center gap-1.5"><Banknote className="w-3 h-3" /> Dados bancários</p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 pl-4">
+                            {app.bank_name && <p className="text-muted-foreground">Banco: <span className="text-foreground">{app.bank_name}</span></p>}
+                            {app.bank_agency && <p className="text-muted-foreground">Agência: <span className="text-foreground">{app.bank_agency}</span></p>}
+                            {app.bank_account && <p className="text-muted-foreground">Conta: <span className="text-foreground">{app.bank_account}</span></p>}
+                            {app.pix_type && <p className="text-muted-foreground">Tipo Pix: <span className="text-foreground">{app.pix_type}</span></p>}
+                            {app.pix_key && <p className="text-muted-foreground md:col-span-2">Pix: <span className="text-foreground">{app.pix_key}</span></p>}
+                          </div>
+                        </div>
                       )}
-                      {app.whatsapp && (
-                        <p className="text-muted-foreground flex items-center gap-1.5">
-                          <Phone className="w-3 h-3" /> {app.whatsapp}
-                        </p>
+
+                      {/* Áreas profissionais */}
+                      {app.professional_areas && app.professional_areas.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-foreground flex items-center gap-1.5"><Briefcase className="w-3 h-3" /> Áreas profissionais</p>
+                          <div className="flex flex-wrap gap-1 pl-4">
+                            {app.professional_areas.map((a, i) => (
+                              <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px]">
+                                {a.area}
+                                {a.council && a.councilNumber ? ` · ${a.council} ${a.councilUF ? a.councilUF + '/' : ''}${a.councilNumber}` : ''}
+                                {a.cbosCode ? ` · CBOS ${a.cbosCode}` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                      {app.professional_id && (
-                        <p className="text-muted-foreground flex items-center gap-1.5">
-                          <Briefcase className="w-3 h-3" /> Registro: {app.professional_id}
-                        </p>
+                      {!app.professional_areas?.length && app.professional_id && (
+                        <p className="text-muted-foreground flex items-center gap-1.5"><Briefcase className="w-3 h-3" /> Registro: {app.professional_id}</p>
                       )}
+
+                      {/* Preferências */}
+                      {(app.pref_email !== null || app.pref_sms !== null || app.pref_whatsapp !== null) && (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-foreground flex items-center gap-1.5"><Bell className="w-3 h-3" /> Preferência de contato</p>
+                          <p className="text-muted-foreground pl-4">
+                            {[
+                              app.pref_email ? 'E-mail' : null,
+                              app.pref_sms ? 'SMS' : null,
+                              app.pref_whatsapp ? 'WhatsApp' : null,
+                            ].filter(Boolean).join(' · ') || '—'}
+                            {app.allow_email_campaigns ? ' · aceita campanhas' : ''}
+                          </p>
+                        </div>
+                      )}
+
                       {app.message && (
                         <div className="text-muted-foreground flex gap-1.5">
                           <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" />
