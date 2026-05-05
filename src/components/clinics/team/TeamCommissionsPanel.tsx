@@ -117,7 +117,8 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
           id: p.id, price: p.price, name: p.name, packageType: p.packageType,
           sessionLimit: p.sessionLimit,
         })),
-        patients: clinicPatients,
+        month: month - 1,
+        year,
       });
 
       return {
