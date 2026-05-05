@@ -63,6 +63,57 @@ function addOneHour(time: string): string {
   return `${String(next).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+function generateRecurrenceDates(
+  startDate: string,
+  freq: 'daily' | 'weekly' | 'biweekly' | 'triweekly' | 'monthly4w' | 'monthly',
+  count: number,
+  weekdays: number[]
+): string[] {
+  const out: string[] = [];
+  if (!startDate || count < 1) return out;
+  const start = new Date(startDate + 'T12:00:00');
+  const fmt = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  if (freq === 'daily') {
+    const d = new Date(start);
+    for (let i = 0; i < count; i++) {
+      out.push(fmt(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+  if (freq === 'monthly') {
+    const d = new Date(start);
+    for (let i = 0; i < count; i++) {
+      out.push(fmt(d));
+      d.setMonth(d.getMonth() + 1);
+    }
+    return out;
+  }
+  // weekly variants — use weekdays selection
+  const stepWeeks = freq === 'weekly' ? 1 : freq === 'biweekly' ? 2 : freq === 'triweekly' ? 3 : 4;
+  const days = (weekdays && weekdays.length) ? [...weekdays].sort((a, b) => a - b) : [start.getDay()];
+  // anchor to start of week of startDate
+  const weekStart = new Date(start);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // domingo
+  let weekIdx = 0;
+  while (out.length < count && weekIdx < count * stepWeeks + 52) {
+    for (const wd of days) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + weekIdx * 7 + wd);
+      if (d < start) continue;
+      out.push(fmt(d));
+      if (out.length >= count) break;
+    }
+    weekIdx += stepWeeks;
+  }
+  return out;
+}
+
 function maskPhone(v: string): string {
   const d = (v || '').replace(/\D/g, '').slice(0, 11);
   if (d.length <= 2) return d ? `(${d}` : '';
