@@ -63,6 +63,57 @@ function addOneHour(time: string): string {
   return `${String(next).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+function generateRecurrenceDates(
+  startDate: string,
+  freq: 'daily' | 'weekly' | 'biweekly' | 'triweekly' | 'monthly4w' | 'monthly',
+  count: number,
+  weekdays: number[]
+): string[] {
+  const out: string[] = [];
+  if (!startDate || count < 1) return out;
+  const start = new Date(startDate + 'T12:00:00');
+  const fmt = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  if (freq === 'daily') {
+    const d = new Date(start);
+    for (let i = 0; i < count; i++) {
+      out.push(fmt(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+  if (freq === 'monthly') {
+    const d = new Date(start);
+    for (let i = 0; i < count; i++) {
+      out.push(fmt(d));
+      d.setMonth(d.getMonth() + 1);
+    }
+    return out;
+  }
+  // weekly variants — use weekdays selection
+  const stepWeeks = freq === 'weekly' ? 1 : freq === 'biweekly' ? 2 : freq === 'triweekly' ? 3 : 4;
+  const days = (weekdays && weekdays.length) ? [...weekdays].sort((a, b) => a - b) : [start.getDay()];
+  // anchor to start of week of startDate
+  const weekStart = new Date(start);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // domingo
+  let weekIdx = 0;
+  while (out.length < count && weekIdx < count * stepWeeks + 52) {
+    for (const wd of days) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + weekIdx * 7 + wd);
+      if (d < start) continue;
+      out.push(fmt(d));
+      if (out.length >= count) break;
+    }
+    weekIdx += stepWeeks;
+  }
+  return out;
+}
+
 function maskPhone(v: string): string {
   const d = (v || '').replace(/\D/g, '').slice(0, 11);
   if (d.length <= 2) return d ? `(${d}` : '';
@@ -166,6 +217,9 @@ export function AppointmentDialog({
     convenio: PARTICULAR,
     is_recurring: false,
     encaixe: false,
+    recurrence_freq: 'weekly' as 'daily' | 'weekly' | 'biweekly' | 'triweekly' | 'monthly4w' | 'monthly',
+    recurrence_count: 10,
+    recurrence_weekdays: [] as number[], // 0=Dom..6=Sáb
     autorizacao: '',
     procedimentoId: '',
     pacoteId: '',
@@ -220,6 +274,9 @@ export function AppointmentDialog({
       room: draft?.room || '',
       convenio: draft?.convenio || PARTICULAR,
       is_recurring: draft?.is_recurring ?? false,
+      recurrence_freq: 'weekly',
+      recurrence_count: 10,
+      recurrence_weekdays: draft?.date ? [new Date(draft.date + 'T12:00:00').getDay()] : [],
       encaixe: parsed.encaixe,
       autorizacao: parsed.autorizacao,
       procedimentoId: parsed.procedimentoId,
@@ -380,6 +437,22 @@ export function AppointmentDialog({
       return;
     }
 
+    // Recorrência: cria agendamentos adicionais (somente em criação)
+    if (form.is_recurring && !form.id && form.recurrence_count > 1) {
+      const dates = generateRecurrenceDates(
+        form.date,
+        form.recurrence_freq,
+        form.recurrence_count,
+        form.recurrence_weekdays
+      );
+      // pula o primeiro (já salvo)
+      const extra = dates.slice(1).map(d => ({ ...payload, date: d, is_recurring: true }));
+      if (extra.length) {
+        const { error: rErr } = await supabase.from('appointments').insert(extra);
+        if (rErr) toast.warning('Agendamento criado, mas falhou ao replicar: ' + rErr.message);
+      }
+    }
+
     // Lançamento financeiro automático (procedimento OU pacote)
     if (form.lancarFinanceiro && !form.id) {
       let item: { name: string; price: number | null } | null = null;
@@ -473,6 +546,65 @@ export function AppointmentDialog({
                 <span className="text-sm">Repetir</span>
               </label>
             </div>
+
+            {/* Recorrência */}
+            {form.is_recurring && (
+              <div className="rounded-md border border-border/60 bg-muted/30 p-3 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-3">
+                  <div>
+                    <Label className="text-xs">Frequência:*</Label>
+                    <Select
+                      value={form.recurrence_freq}
+                      onValueChange={(v) => setForm(f => ({ ...f, recurrence_freq: v as any }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Diariamente</SelectItem>
+                        <SelectItem value="weekly">Semanalmente</SelectItem>
+                        <SelectItem value="biweekly">A cada 2 semanas</SelectItem>
+                        <SelectItem value="triweekly">A cada 3 semanas</SelectItem>
+                        <SelectItem value="monthly4w">A cada 4 semanas</SelectItem>
+                        <SelectItem value="monthly">Mensalmente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Repetir:*</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={52}
+                        value={form.recurrence_count}
+                        onChange={(e) => setForm(f => ({ ...f, recurrence_count: Math.max(1, Math.min(52, Number(e.target.value) || 1)) }))}
+                      />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">sessões</span>
+                    </div>
+                  </div>
+                </div>
+                {(form.recurrence_freq === 'weekly' || form.recurrence_freq === 'biweekly' || form.recurrence_freq === 'triweekly' || form.recurrence_freq === 'monthly4w') && (
+                  <div>
+                    <Label className="text-xs">Dias para repetir:*</Label>
+                    <div className="flex flex-wrap gap-3 mt-1">
+                      {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((lbl, idx) => (
+                        <label key={idx} className="flex items-center gap-1.5 cursor-pointer">
+                          <Checkbox
+                            checked={form.recurrence_weekdays.includes(idx)}
+                            onCheckedChange={(v) => setForm(f => ({
+                              ...f,
+                              recurrence_weekdays: v
+                                ? Array.from(new Set([...f.recurrence_weekdays, idx])).sort()
+                                : f.recurrence_weekdays.filter(d => d !== idx),
+                            }))}
+                          />
+                          <span className="text-sm">{lbl}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Linha 2: Encaixe */}
             <label className="flex items-center gap-2 cursor-pointer">
