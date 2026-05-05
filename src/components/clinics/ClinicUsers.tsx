@@ -158,7 +158,6 @@ export default function ClinicUsers({ clinicId }: Props) {
     setEmail(collab.email || '');
     setRegistry(registryText);
     setRoleId('professional_full');
-    setCanEditPatients(true);
     setNotes([
       collab.profession ? `Profissão: ${collab.profession}` : '',
       mainArea?.area ? `Área: ${mainArea.area}` : '',
@@ -198,7 +197,8 @@ export default function ClinicUsers({ clinicId }: Props) {
     setSubmitting(true);
     try {
       const { role, role_label } = mapRoleToBackend(roleId);
-      const fullLabel = `${role_label}${canEditPatients ? '' : ' (sem editar/arquivar pacientes)'}${registry ? ` · ${registry}` : ''}`;
+      const fullLabel = `${role_label}${toggles.canEditPatients ? '' : ' (sem editar/arquivar pacientes)'}${registry ? ` · ${registry}` : ''}`;
+      const finalPermissions = buildPermissionsArray(roleId, toggles, modulePerms);
 
       const { data, error } = await supabase.functions.invoke('invite-member', {
         body: {
@@ -206,7 +206,7 @@ export default function ClinicUsers({ clinicId }: Props) {
           email: email.trim().toLowerCase(),
           role,
           role_label: fullLabel,
-          permissions,
+          permissions: finalPermissions,
           custom_password: password,
         },
       });
@@ -235,7 +235,7 @@ export default function ClinicUsers({ clinicId }: Props) {
   async function openEditPermissions(u: UserRow) {
     const { data, error } = await supabase
       .from('organization_members')
-      .select('permissions')
+      .select('permissions, role_label')
       .eq('id', u.id)
       .maybeSingle();
     if (error) {
@@ -248,22 +248,30 @@ export default function ClinicUsers({ clinicId }: Props) {
       : (raw && typeof raw === 'object'
           ? (Object.keys(raw).filter(k => (raw as any)[k]) as PermissionKey[])
           : []);
+    // Detecta o roleId a partir do role_label salvo
+    const label = (data as any)?.role_label || '';
+    const detectedRole: RoleId =
+      ROLE_OPTIONS.find(o => label.includes(o.title))?.id || 'professional_full';
+    setEditingRoleId(detectedRole);
+    setEditingToggles(readTogglesFromPermissions(current));
+    setEditingModulePerms(current);
     setEditingUser(u);
-    setEditingPerms(current);
   }
 
   async function savePermissions() {
     if (!editingUser) return;
     setSavingPerms(true);
+    const finalPerms = buildPermissionsArray(editingRoleId, editingToggles, editingModulePerms);
+    const { role, role_label } = mapRoleToBackend(editingRoleId);
     const { error } = await supabase
       .from('organization_members')
-      .update({ permissions: editingPerms as any })
+      .update({ permissions: finalPerms as any, role, role_label })
       .eq('id', editingUser.id);
     setSavingPerms(false);
     if (error) { toast.error('Erro ao salvar permissões'); return; }
     toast.success('Permissões atualizadas');
     setEditingUser(null);
-    setEditingPerms([]);
+    loadUsers();
   }
 
   return (
