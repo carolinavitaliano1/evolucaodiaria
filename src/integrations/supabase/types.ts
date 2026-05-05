@@ -3149,56 +3149,140 @@ export type Database = {
       }
       team_applications: {
         Row: {
+          allow_email_campaigns: boolean
+          allow_system_emails: boolean
+          bank_account: string | null
+          bank_agency: string | null
+          bank_name: string | null
           birthdate: string | null
+          cellphone: string | null
+          cep: string | null
+          city: string | null
+          complement: string | null
+          country: string | null
+          cpf: string | null
           created_at: string
+          district: string | null
           email: string
           id: string
+          is_social_name: boolean
+          marital_status: string | null
           message: string | null
           name: string
+          number: string | null
           organization_id: string
+          person_type: string
+          phone_landline: string | null
+          pix_key: string | null
+          pix_type: string | null
+          pref_email: boolean
+          pref_sms: boolean
+          pref_whatsapp: boolean
+          profession: string | null
+          professional_areas: Json
           professional_id: string | null
           reviewed_at: string | null
           reviewed_by_user_id: string | null
+          rg: string | null
           role: string | null
+          sex: string | null
           specialties: string[] | null
           specialty: string | null
+          state: string | null
           status: string
+          street: string | null
           updated_at: string
           whatsapp: string | null
         }
         Insert: {
+          allow_email_campaigns?: boolean
+          allow_system_emails?: boolean
+          bank_account?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
           birthdate?: string | null
+          cellphone?: string | null
+          cep?: string | null
+          city?: string | null
+          complement?: string | null
+          country?: string | null
+          cpf?: string | null
           created_at?: string
+          district?: string | null
           email: string
           id?: string
+          is_social_name?: boolean
+          marital_status?: string | null
           message?: string | null
           name: string
+          number?: string | null
           organization_id: string
+          person_type?: string
+          phone_landline?: string | null
+          pix_key?: string | null
+          pix_type?: string | null
+          pref_email?: boolean
+          pref_sms?: boolean
+          pref_whatsapp?: boolean
+          profession?: string | null
+          professional_areas?: Json
           professional_id?: string | null
           reviewed_at?: string | null
           reviewed_by_user_id?: string | null
+          rg?: string | null
           role?: string | null
+          sex?: string | null
           specialties?: string[] | null
           specialty?: string | null
+          state?: string | null
           status?: string
+          street?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
         Update: {
+          allow_email_campaigns?: boolean
+          allow_system_emails?: boolean
+          bank_account?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
           birthdate?: string | null
+          cellphone?: string | null
+          cep?: string | null
+          city?: string | null
+          complement?: string | null
+          country?: string | null
+          cpf?: string | null
           created_at?: string
+          district?: string | null
           email?: string
           id?: string
+          is_social_name?: boolean
+          marital_status?: string | null
           message?: string | null
           name?: string
+          number?: string | null
           organization_id?: string
+          person_type?: string
+          phone_landline?: string | null
+          pix_key?: string | null
+          pix_type?: string | null
+          pref_email?: boolean
+          pref_sms?: boolean
+          pref_whatsapp?: boolean
+          profession?: string | null
+          professional_areas?: Json
           professional_id?: string | null
           reviewed_at?: string | null
           reviewed_by_user_id?: string | null
+          rg?: string | null
           role?: string | null
+          sex?: string | null
           specialties?: string[] | null
           specialty?: string | null
+          state?: string | null
           status?: string
+          street?: string | null
           updated_at?: string
           whatsapp?: string | null
         }

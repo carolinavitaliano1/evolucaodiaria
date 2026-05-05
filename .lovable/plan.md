@@ -1,102 +1,61 @@
 ## Objetivo
 
-Recriar a aba **Equipe** dentro do Clini Pro (clínicas tipo `clinica`), ao lado de Colaboradores e Usuários, com 4 seções focadas em gestão operacional dos terapeutas — sem duplicar funções de cadastro (que continuam em Colaboradores/Usuários).
+Tornar o formulário público de cadastro de funcionário (link compartilhável) idêntico ao cadastro manual feito dentro do app em **Colaboradores**, com todos os mesmos campos obrigatórios, e exibir esses dados na revisão do cadastro pendente.
 
-## Layout da nova aba
+## 1. Banco de dados
 
-A aba terá um seletor interno (subtabs) com 4 áreas:
+Migration adicionando colunas em `team_applications` (tudo nullable no schema, validação de obrigatório vai no frontend):
 
-```text
-┌─ Equipe ─────────────────────────────────────────────┐
-│ [Financeiro] [Agenda] [Frequência] [Evol. Pendentes] │
-└──────────────────────────────────────────────────────┘
-```
+**Dados pessoais**
+- `is_social_name` (bool, default false)
+- `person_type` (text, default 'fisica')
+- `sex`, `cpf`, `rg`, `marital_status`, `profession`
+- `phone_landline`, `cellphone`
 
-### 1. Financeiro — Comissões com status pago/não pago
+**Endereço**
+- `country` (default 'Brasil'), `cep`, `state`, `city`, `street`, `number`, `district`, `complement`
 
-- Header com seletor de mês (◀ Outubro 2026 ▶) e busca por colaborador.
-- Lista de colaboradores ativos com:
-  - Foto, nome, cargo.
-  - Total de comissão calculada no mês (reaproveita `calculateMemberRemunerationByPlans` já existente).
-  - Badge de status: **Pago** (verde) / **Parcial** (amarelo) / **Em aberto** (cinza).
-  - Botão **Marcar mês como pago** → registra pagamento total do mês (data + quem marcou).
-  - Botão **Detalhar** → expande tabela com cada atendimento da comissão (data, paciente, valor) e checkbox individual "pago" para ajustes finos.
-  - Quando todos os atendimentos individuais ficarem marcados, o status do mês vira **Pago** automaticamente.
-- Rodapé: total a pagar / total pago / saldo aberto.
+**Bancário**
+- `bank_name`, `bank_agency`, `bank_account`, `pix_type`, `pix_key`
 
-### 2. Agenda dos terapeutas (visão individual)
+**Preferências de contato**
+- `allow_email_campaigns`, `allow_system_emails`, `pref_email`, `pref_sms`, `pref_whatsapp` (bool)
 
-- Card por terapeuta com a agenda semanal em **colunas por dia** (Seg → Sáb).
-- Cada coluna mostra os pacientes atendidos naquele dia com horário (`HH:MM`) — vindo de `patient_schedule_slots` via `usePatientScheduleSlots`/agenda do membro.
-- Selector de terapeuta no topo (ou "Todos") + navegação por semana.
-- Botão "Editar agenda" abre o `TherapistAgendaModal` já existente.
+**Registro profissional**
+- `professional_areas` (jsonb) — array `[{ area, council, councilNumber, councilUF, cbosCode }]`
 
-### 3. Frequência (do colaborador na clínica)
+A coluna existente `professional_id` continua para compatibilidade. RLS atual de `team_applications` não muda (insert público já funciona via RPC/insert anon, leitura restrita ao owner/admin da org).
 
-- Reaproveita o `TeamAttendanceGrid` já existente (semana × colaborador) com os 3 status: **Presente**, **Falta**, **Justificada**.
-- Ao marcar **Justificada**, abre dialog para texto + upload do **atestado** (PDF/imagem) — funcionalidade já presente no componente.
-- Abaixo, totalizador mensal (presenças / faltas / justificadas) usando `StaffAttendanceReport`.
+## 2. Formulário público — `src/pages/TeamApplicationPublic.tsx`
 
-### 4. Alertas de evoluções pendentes
+Reescrever o conteúdo do `<form>` espelhando 1:1 o formulário do `ClinicCollaborators.tsx`, usando os mesmos componentes (`Input`, `Select`, `Checkbox`, máscaras, lista CBOS), organizados em 5 seções colapsáveis ou com títulos:
 
-- Lista de evoluções pendentes dos últimos 7 dias dos terapeutas da clínica (segue regra existente de pending alerts: ignora pré-`createdAt`, faltas não exigem texto).
-- Agrupado por terapeuta, mostrando: paciente, data agendada, horário, dias em atraso.
-- Ação rápida "Cobrar evolução" → cria `internal_notification` para o terapeuta (reuso do fluxo de compliance).
-- Filtro por terapeuta e por intervalo de dias.
+1. **Dados Pessoais** — Nome*, "É nome social" (checkbox), Tipo (PF), Data nascimento, Sexo (select), CPF* (máscara), RG, Estado civil, Profissão, E-mail*, Telefone fixo, Celular* (máscara)
+2. **Endereço** — País, CEP* (máscara), Estado (UF), Cidade, Logradouro, Número, Bairro, Complemento
+3. **Dados Bancários** — Banco*, Agência*, Conta*, Tipo de chave Pix*, Pix* (máscara conforme tipo)
+4. **Preferência de Contato** — 5 checkboxes
+5. **Registro do Profissional** — múltiplas áreas com Conselho, Nº, UF, CBOS (combobox com mesma lista padrão + opção "cadastrar nova função")
 
-## Mudanças de código
+Reaproveitar as máscaras `maskCPF`, `maskCEP`, `maskPhone`, `maskPix`, lista `BR_STATES`, `COUNCILS`, `PIX_TYPES`, `DEFAULT_CBOS_OPTIONS` extraindo-as para `src/components/clinics/collaboratorFormUtils.ts` (compartilhadas entre os dois lugares).
 
-### Banco de dados (1 nova tabela)
+Validação no submit: todos os campos marcados com `*` são obrigatórios + ao menos uma área profissional preenchida (Área + Conselho + Nº + CBOS). Mensagens de erro com `toast.error`.
 
-Tabela `team_commission_payments` para o status pago/não pago:
+Manter o gating atual (`linkEnabled`, `submitted`, etc.) e o layout em card centralizado, mas aumentar `max-w-lg` → `max-w-2xl` para acomodar campos em grid.
 
-| Coluna | Tipo | Notas |
-|---|---|---|
-| id | uuid PK | |
-| organization_id | uuid | FK lógico |
-| clinic_id | uuid | |
-| member_id | uuid | FK organization_members |
-| year | int | |
-| month | int (1-12) | |
-| status | text | `open` / `partial` / `paid` |
-| paid_amount | numeric | total pago no mês |
-| paid_at | timestamptz | nullable |
-| paid_by_user_id | uuid | nullable |
-| notes | text | nullable |
-| individual_payments | jsonb | `{ "evolution_id": { paid: true, paid_at } }` para ajustes finos |
-| created_at / updated_at | timestamptz | |
+## 3. Painel de revisão — `src/components/clinics/TeamApplicationsPanel.tsx`
 
-UNIQUE (`member_id`, `year`, `month`).
+Expandir o card de cada cadastro pendente para mostrar:
+- Linha de identidade (já existe): nome, e-mail
+- **Pessoais**: CPF, RG, sexo, estado civil, profissão, nascimento, telefones
+- **Endereço**: linha única formatada
+- **Bancário**: banco/agência/conta + Pix
+- **Áreas profissionais**: chips com `Área (Conselho Nº/UF · CBOS)`
+- Preferências de contato como ícones
 
-RLS: leitura/escrita restrita ao dono da organização e admins (`is_org_owner` / `get_user_org_role = 'admin'`).
+Ao aprovar (botão existente), `professional_areas[0].area` continua virando `role_label`/`specialties`, e `professional_id` é montado a partir do conselho da primeira área (`CRP 06/12345`). Os demais dados ficam armazenados em `team_applications` para futura migração para o perfil do membro.
 
-### Frontend
+## 4. Fora de escopo
 
-Novo componente principal `src/components/clinics/ClinicTeamTab.tsx` orquestrando 4 sub-componentes:
-
-- `src/components/clinics/team/TeamCommissionsPanel.tsx` (novo) — financeiro + status pago.
-- `src/components/clinics/team/TeamSchedulesPanel.tsx` (novo) — agenda individual em colunas por dia (consulta `patient_schedule_slots` + `organization_members`).
-- `src/components/clinics/team/TeamAttendancePanel.tsx` (novo, fino) — wraps o `TeamAttendanceGrid` existente + `StaffAttendanceReport`.
-- `src/components/clinics/team/TeamPendingEvolutionsPanel.tsx` (novo) — reusa lógica de `notify-compliance` / `MissingEvolutionsAlert` filtrando por clínica.
-
-Em `src/pages/ClinicDetail.tsx`:
-- Adicionar item `{ value: 'team', icon: <UsersRound/>, label: 'Equipe', color: 'text-purple-500' }` no array de tabs (somente `clinic.type === 'clinica'`), entre Colaboradores e Usuários.
-- Adicionar `<TabsContent value="team">` renderizando `<ClinicTeamTab clinicId clinicName />`.
-
-Restrição de acesso: aba só aparece para `owner` ou `admin` da organização (mesma regra da aba Colaboradores).
-
-## Detalhes técnicos
-
-- Cálculo de comissões: usar exatamente o mesmo helper `calculateMemberRemunerationByPlans` (já consumido por `TeamFinancialDashboard`/`TeamFinancialReport`) para garantir consistência com os relatórios existentes.
-- Status do mês deriva de `team_commission_payments`:
-  - `paid_amount >= total calculado` → **Pago**.
-  - `paid_amount > 0` ou ajustes individuais marcados → **Parcial**.
-  - Caso contrário → **Em aberto**.
-- Datas: usar `T12:00:00` ao parsear (regra Core de timezone).
-- Mantém o estilo lilás/roxo, semantic tokens, sem cores hard-coded.
-
-## Fora do escopo
-
-- Não altera Colaboradores nem Usuários.
-- Não cria fluxo de pagamento real (apenas marcação de status).
-- Não re-implementa convites — Equipe é só visualização/operação.
+- Sincronizar automaticamente todos os campos novos para `organization_members`/`profiles` na aprovação (fica para uma próxima iteração; só `role_label`/`specialties`/`professional_id` continuam migrando).
+- Mudanças no cadastro manual em `ClinicCollaborators.tsx` (já tem todos os campos).
+- Mudanças nas RLS ou no fluxo de convite por e-mail.
