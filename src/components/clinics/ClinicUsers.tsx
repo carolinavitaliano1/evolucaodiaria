@@ -4,85 +4,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Loader2, Upload, X, UserPlus, Mail, Pencil, Trash2, UsersRound, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Upload, X, UserPlus, Mail, Trash2, UsersRound, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { PermissionEditor } from '@/components/clinics/PermissionEditor';
-import { PRESET_ROLES, PermissionKey } from '@/hooks/useOrgPermissions';
-
-type RoleId =
-  | 'admin'
-  | 'professional_full'
-  | 'professional_limited'
-  | 'secretary'
-  | 'financial_full'
-  | 'financial_individual'
-  | 'financial_query'
-  | 'marketing'
-  | 'auditor';
-
-interface RoleOption {
-  id: RoleId;
-  title: string;
-  description: string;
-  group?: 'professional';
-}
-
-const ROLE_OPTIONS: RoleOption[] = [
-  { id: 'admin', title: 'Administrador', description: 'Tem acesso a equipe, movimentos financeiros, relatórios e pode ver os atendimentos de todos os profissionais.' },
-  { id: 'professional_full', title: 'Profissional · Completo', description: 'Tem acesso a agenda, pacientes e a seus atendimentos.', group: 'professional' },
-  { id: 'professional_limited', title: 'Profissional · Limitado', description: 'Tem acesso somente a visualização da sua agenda e registro de atendimentos permitidos.', group: 'professional' },
-  { id: 'secretary', title: 'Secretária(o)', description: 'Tem acesso a lista de pacientes e agenda de todos os profissionais.' },
-  { id: 'financial_full', title: 'Financeiro completo', description: 'Tem acesso total aos recursos financeiros.' },
-  { id: 'financial_individual', title: 'Financeiro individual', description: 'Tem acesso somente aos seus movimentos financeiros.' },
-  { id: 'financial_query', title: 'Financeiro consulta', description: 'Tem acesso somente aos movimentos referente as comissões cadastrados para este usuário e não pode alterar e nem excluir.' },
-  { id: 'marketing', title: 'Marketing', description: 'Tem acesso ao recurso de Marketing, página da clínica, pesquisa de satisfação, banco de imagens e mensagens de aniversário.' },
-  { id: 'auditor', title: 'Auditor/Fiscal', description: 'Tem acesso somente a visualização dos atendimentos referentes aos convênios selecionados. (O usuário auditor não pode ter outras funções).' },
-];
-
-function mapRoleToBackend(roleId: RoleId): { role: 'admin' | 'professional'; role_label: string } {
-  const opt = ROLE_OPTIONS.find(r => r.id === roleId)!;
-  if (roleId === 'admin' || roleId === 'financial_full' || roleId === 'secretary') {
-    return { role: 'admin', role_label: opt.title };
-  }
-  return { role: 'professional', role_label: opt.title };
-}
-
-/**
- * Mapeia o roleId da UI para o preset correspondente em PRESET_ROLES,
- * que carrega o conjunto base de permissões granulares para esse papel.
- */
-const ROLE_TO_PRESET: Record<RoleId, string> = {
-  admin: 'administrador',
-  professional_full: 'terapeuta',
-  professional_limited: 'terapeuta',
-  secretary: 'secretaria',
-  financial_full: 'financeiro_completo',
-  financial_individual: 'financeiro_individual',
-  financial_query: 'financeiro_consulta',
-  marketing: 'marketing',
-  auditor: 'auditor_fiscal',
-};
-
-function getDefaultPermissionsForRole(roleId: RoleId): PermissionKey[] {
-  const presetId = ROLE_TO_PRESET[roleId];
-  const preset = PRESET_ROLES.find(p => p.id === presetId);
-  let perms = preset ? [...preset.permissions] : [];
-  if (roleId === 'professional_limited' && !perms.includes('professional.limited')) {
-    perms.push('professional.limited');
-  }
-  return perms;
-}
+import { PermissionKey } from '@/hooks/useOrgPermissions';
+import UserAccessPermissions, {
+  RoleId,
+  ROLE_OPTIONS,
+  mapRoleToBackend,
+  GranularToggles,
+  buildPermissionsArray,
+  readTogglesFromPermissions,
+  getInitialStateForRole,
+} from '@/components/clinics/UserAccessPermissions';
 
 interface Props {
   clinicId: string;
@@ -126,28 +66,21 @@ export default function ClinicUsers({ clinicId }: Props) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [roleId, setRoleId] = useState<RoleId>('professional_full');
-  const [canEditPatients, setCanEditPatients] = useState(true);
   const [notes, setNotes] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
-  const [permissions, setPermissions] = useState<PermissionKey[]>(() => getDefaultPermissionsForRole('professional_full'));
-  const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
+  const [toggles, setToggles] = useState<GranularToggles>(() => getInitialStateForRole('professional_full').toggles);
+  const [modulePerms, setModulePerms] = useState<PermissionKey[]>(() => getInitialStateForRole('professional_full').modulePermissions);
 
   // Dialog: edit permissions of an existing user
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
-  const [editingPerms, setEditingPerms] = useState<PermissionKey[]>([]);
+  const [editingRoleId, setEditingRoleId] = useState<RoleId>('professional_full');
+  const [editingToggles, setEditingToggles] = useState<GranularToggles>(() => getInitialStateForRole('professional_full').toggles);
+  const [editingModulePerms, setEditingModulePerms] = useState<PermissionKey[]>([]);
   const [savingPerms, setSavingPerms] = useState(false);
-
-  // When the user changes the role, reset permissions to the preset for that role
-  // (unless they've already opened the advanced panel and are customizing).
-  useEffect(() => {
-    if (!showAdvancedPerms) {
-      setPermissions(getDefaultPermissionsForRole(roleId));
-    }
-  }, [roleId, showAdvancedPerms]);
 
   useEffect(() => {
     (async () => {
@@ -207,10 +140,11 @@ export default function ClinicUsers({ clinicId }: Props) {
 
   function resetForm() {
     setName(''); setRegistry(''); setEmail(''); setPassword(''); setConfirmPassword('');
-    setRoleId('professional_full'); setCanEditPatients(true); setNotes('');
+    setRoleId('professional_full'); setNotes('');
     setPhotoFile(null); setPhotoPreview(''); setSignatureFile(null); setSignaturePreview('');
-    setPermissions(getDefaultPermissionsForRole('professional_full'));
-    setShowAdvancedPerms(false);
+    const init = getInitialStateForRole('professional_full');
+    setToggles(init.toggles);
+    setModulePerms(init.modulePermissions);
   }
 
   function importFromCollaborator(collab: CollaboratorOption) {
@@ -224,7 +158,6 @@ export default function ClinicUsers({ clinicId }: Props) {
     setEmail(collab.email || '');
     setRegistry(registryText);
     setRoleId('professional_full');
-    setCanEditPatients(true);
     setNotes([
       collab.profession ? `Profissão: ${collab.profession}` : '',
       mainArea?.area ? `Área: ${mainArea.area}` : '',
@@ -264,7 +197,8 @@ export default function ClinicUsers({ clinicId }: Props) {
     setSubmitting(true);
     try {
       const { role, role_label } = mapRoleToBackend(roleId);
-      const fullLabel = `${role_label}${canEditPatients ? '' : ' (sem editar/arquivar pacientes)'}${registry ? ` · ${registry}` : ''}`;
+      const fullLabel = `${role_label}${toggles.canEditPatients ? '' : ' (sem editar/arquivar pacientes)'}${registry ? ` · ${registry}` : ''}`;
+      const finalPermissions = buildPermissionsArray(roleId, toggles, modulePerms);
 
       const { data, error } = await supabase.functions.invoke('invite-member', {
         body: {
@@ -272,7 +206,7 @@ export default function ClinicUsers({ clinicId }: Props) {
           email: email.trim().toLowerCase(),
           role,
           role_label: fullLabel,
-          permissions,
+          permissions: finalPermissions,
           custom_password: password,
         },
       });
@@ -301,7 +235,7 @@ export default function ClinicUsers({ clinicId }: Props) {
   async function openEditPermissions(u: UserRow) {
     const { data, error } = await supabase
       .from('organization_members')
-      .select('permissions')
+      .select('permissions, role_label')
       .eq('id', u.id)
       .maybeSingle();
     if (error) {
@@ -314,22 +248,30 @@ export default function ClinicUsers({ clinicId }: Props) {
       : (raw && typeof raw === 'object'
           ? (Object.keys(raw).filter(k => (raw as any)[k]) as PermissionKey[])
           : []);
+    // Detecta o roleId a partir do role_label salvo
+    const label = (data as any)?.role_label || '';
+    const detectedRole: RoleId =
+      ROLE_OPTIONS.find(o => label.includes(o.title))?.id || 'professional_full';
+    setEditingRoleId(detectedRole);
+    setEditingToggles(readTogglesFromPermissions(current));
+    setEditingModulePerms(current);
     setEditingUser(u);
-    setEditingPerms(current);
   }
 
   async function savePermissions() {
     if (!editingUser) return;
     setSavingPerms(true);
+    const finalPerms = buildPermissionsArray(editingRoleId, editingToggles, editingModulePerms);
+    const { role, role_label } = mapRoleToBackend(editingRoleId);
     const { error } = await supabase
       .from('organization_members')
-      .update({ permissions: editingPerms as any })
+      .update({ permissions: finalPerms as any, role, role_label })
       .eq('id', editingUser.id);
     setSavingPerms(false);
     if (error) { toast.error('Erro ao salvar permissões'); return; }
     toast.success('Permissões atualizadas');
     setEditingUser(null);
-    setEditingPerms([]);
+    loadUsers();
   }
 
   return (
@@ -473,86 +415,15 @@ export default function ClinicUsers({ clinicId }: Props) {
             </CardContent>
           </Card>
 
-          {/* Card 2 - Permissões */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Personalize as permissões de acesso aos recursos</CardTitle>
-              <CardDescription>Função <span className="text-destructive">*</span></CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <RadioGroup value={roleId} onValueChange={(v) => setRoleId(v as RoleId)} className="space-y-2">
-                {ROLE_OPTIONS.filter(o => !o.group).map(opt => (
-                  <RoleRow key={opt.id} opt={opt} selected={roleId === opt.id} onSelect={() => setRoleId(opt.id)} />
-                ))}
-
-                {/* Profissional grouping */}
-                <div className={cn(
-                  'rounded-lg border-2 transition-all',
-                  (roleId === 'professional_full' || roleId === 'professional_limited') ? 'border-primary/40 bg-primary/5' : 'border-border'
-                )}>
-                  <div className="px-3 py-2.5">
-                    <p className="text-sm font-semibold">Profissional</p>
-                    <p className="text-xs text-muted-foreground">Selecione o nível de acesso do profissional.</p>
-                  </div>
-                  <Separator />
-                  <div className="p-2 space-y-1">
-                    {ROLE_OPTIONS.filter(o => o.group === 'professional').map(opt => (
-                      <SubRoleRow key={opt.id} opt={opt} selected={roleId === opt.id} onSelect={() => setRoleId(opt.id)} />
-                    ))}
-                  </div>
-                </div>
-              </RadioGroup>
-
-              <Separator />
-
-              <div className="flex items-center justify-between gap-4 p-3 rounded-lg border bg-muted/30">
-                <div>
-                  <p className="text-sm font-medium">Pode editar ou arquivar pacientes?</p>
-                  <p className="text-xs text-muted-foreground">Controla a edição e arquivamento de pacientes pelo usuário.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={cn('text-xs', !canEditPatients && 'text-muted-foreground')}>Não</span>
-                  <Switch checked={canEditPatients} onCheckedChange={setCanEditPatients} />
-                  <span className={cn('text-xs', canEditPatients && 'text-muted-foreground')}>Sim</span>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Advanced granular permissions — Perfil profissional + módulos */}
-              <div className="rounded-lg border bg-muted/20">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedPerms(v => !v)}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-muted/40 rounded-lg"
-                >
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">Permissões avançadas</p>
-                      <p className="text-xs text-muted-foreground">Módulos (Clínico, Financeiro, Agenda, IA) e Perfil profissional (limitado, arquivar, transcrever áudio, etc.)</p>
-                    </div>
-                  </div>
-                  {showAdvancedPerms ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                {showAdvancedPerms && (
-                  <div className="px-3 pb-4 pt-1">
-                    <PermissionEditor permissions={permissions} onChange={setPermissions} />
-                    <div className="mt-3 flex justify-end">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => { setPermissions(getDefaultPermissionsForRole(roleId)); }}
-                      >
-                        Restaurar padrão da função
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Card 2 - Permissões (componente compartilhado) */}
+          <UserAccessPermissions
+            roleId={roleId}
+            onRoleChange={setRoleId}
+            toggles={toggles}
+            onTogglesChange={setToggles}
+            modulePermissions={modulePerms}
+            onModulePermissionsChange={setModulePerms}
+          />
 
           {/* Card 3 - Mais informações */}
           <Card>
@@ -601,7 +472,7 @@ export default function ClinicUsers({ clinicId }: Props) {
       )}
 
       {/* Dialog: edit permissions of an existing user */}
-      <Dialog open={!!editingUser} onOpenChange={(v) => { if (!v) { setEditingUser(null); setEditingPerms([]); } }}>
+      <Dialog open={!!editingUser} onOpenChange={(v) => { if (!v) setEditingUser(null); }}>
         <DialogContent className="max-w-2xl h-[85dvh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-6 pb-3 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
@@ -609,14 +480,22 @@ export default function ClinicUsers({ clinicId }: Props) {
               Editar permissões
             </DialogTitle>
             <DialogDescription>
-              {editingUser?.name || editingUser?.email} — ajuste módulos, perfil profissional e permissões granulares.
+              {editingUser?.name || editingUser?.email} — ajuste função e permissões granulares.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-            <PermissionEditor permissions={editingPerms} onChange={setEditingPerms} />
+            <UserAccessPermissions
+              embedded
+              roleId={editingRoleId}
+              onRoleChange={setEditingRoleId}
+              toggles={editingToggles}
+              onTogglesChange={setEditingToggles}
+              modulePermissions={editingModulePerms}
+              onModulePermissionsChange={setEditingModulePerms}
+            />
           </div>
           <DialogFooter className="gap-2 p-4 border-t shrink-0 bg-background">
-            <Button variant="outline" onClick={() => { setEditingUser(null); setEditingPerms([]); }} disabled={savingPerms}>
+            <Button variant="outline" onClick={() => setEditingUser(null)} disabled={savingPerms}>
               Cancelar
             </Button>
             <Button onClick={savePermissions} disabled={savingPerms} className="gap-2">
@@ -627,42 +506,6 @@ export default function ClinicUsers({ clinicId }: Props) {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function RoleRow({ opt, selected, onSelect }: { opt: RoleOption; selected: boolean; onSelect: () => void }) {
-  return (
-    <label
-      onClick={onSelect}
-      className={cn(
-        'flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all',
-        selected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30 hover:bg-muted/30'
-      )}
-    >
-      <RadioGroupItem value={opt.id} className="mt-0.5" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">{opt.title}</p>
-        <p className="text-xs text-muted-foreground leading-snug">{opt.description}</p>
-      </div>
-    </label>
-  );
-}
-
-function SubRoleRow({ opt, selected, onSelect }: { opt: RoleOption; selected: boolean; onSelect: () => void }) {
-  return (
-    <label
-      onClick={onSelect}
-      className={cn(
-        'flex items-start gap-3 p-2.5 rounded-md border cursor-pointer transition-all',
-        selected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'
-      )}
-    >
-      <RadioGroupItem value={opt.id} className="mt-0.5" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{opt.title.replace('Profissional · ', '')}</p>
-        <p className="text-xs text-muted-foreground leading-snug">{opt.description}</p>
-      </div>
-    </label>
   );
 }
 
