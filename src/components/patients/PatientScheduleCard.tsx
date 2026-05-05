@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Calendar, Clock, User, Wallet, CalendarDays } from 'lucide-react';
+import { Calendar, Clock, User, Wallet, CalendarDays, Package, Stethoscope } from 'lucide-react';
 import { usePatientScheduleSlots } from '@/hooks/usePatientScheduleSlots';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -14,6 +14,20 @@ interface Props {
 }
 
 const WEEKDAY_ORDER = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+const TAG_RE = /\[(encaixe|autorizacao:[^\]]*|procedimento:[^\]]*|pacote:[^\]]*|lembrete_wa:[^\]]*|celular:[^\]]*|lancar_financeiro)\]/gi;
+
+function parseAppointmentTags(notes: string | null | undefined): { procedimentoId: string; pacoteId: string } {
+  const out = { procedimentoId: '', pacoteId: '' };
+  if (!notes) return out;
+  const matches = notes.match(TAG_RE) || [];
+  matches.forEach(tag => {
+    const inner = tag.slice(1, -1);
+    if (inner.startsWith('procedimento:')) out.procedimentoId = inner.slice(13);
+    else if (inner.startsWith('pacote:')) out.pacoteId = inner.slice(7);
+  });
+  return out;
+}
 
 const normalizeWeekday = (w: string): number => {
   if (!w) return 99;
@@ -43,7 +57,7 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
         const todayStr = new Date().toISOString().slice(0, 10);
         const { data, error } = await supabase
           .from('appointments')
-          .select('id, date, time, end_time, status, room, therapist_user_id, notes')
+          .select('id, date, time, end_time, status, room, therapist_user_id, notes, convenio')
           .eq('patient_id', patientId)
           .gte('date', todayStr)
           .neq('status', 'cancelado')
@@ -52,6 +66,9 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
           .limit(20);
         if (error) throw error;
         const rows = (data || []) as any[];
+
+        // Parse tags (procedimento/pacote vivem dentro de notes)
+        const parsed = rows.map(r => ({ row: r, tags: parseAppointmentTags(r.notes) }));
 
         // join therapist names
         const userIds = Array.from(new Set(rows.map(r => r.therapist_user_id).filter(Boolean)));
@@ -63,9 +80,34 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
             .in('user_id', userIds as string[]);
           (profs || []).forEach((p: any) => nameMap.set(p.user_id, p.name));
         }
-        const enriched = rows.map(r => ({
+
+        // Lookup procedimentos
+        const procIds = Array.from(new Set(parsed.map(p => p.tags.procedimentoId).filter(Boolean)));
+        const procMap = new Map<string, string>();
+        if (procIds.length) {
+          const { data: procs } = await supabase
+            .from('procedures' as any)
+            .select('id, name')
+            .in('id', procIds);
+          (procs || []).forEach((p: any) => procMap.set(p.id, p.name));
+        }
+
+        // Lookup pacotes
+        const pkgIds = Array.from(new Set(parsed.map(p => p.tags.pacoteId).filter(Boolean)));
+        const pkgMap = new Map<string, string>();
+        if (pkgIds.length) {
+          const { data: pkgs } = await supabase
+            .from('clinic_packages')
+            .select('id, name')
+            .in('id', pkgIds);
+          (pkgs || []).forEach((p: any) => pkgMap.set(p.id, p.name));
+        }
+
+        const enriched = parsed.map(({ row: r, tags }) => ({
           ...r,
           therapistName: r.therapist_user_id ? nameMap.get(r.therapist_user_id) || null : null,
+          procedimentoName: tags.procedimentoId ? procMap.get(tags.procedimentoId) || null : null,
+          pacoteName: tags.pacoteId ? pkgMap.get(tags.pacoteId) || null : null,
         }));
         if (!cancelled) setAppointments(enriched);
       } catch (e) {
@@ -152,6 +194,7 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                   <TableHead className="w-[110px]">Data</TableHead>
                   <TableHead className="w-[140px]">Horário</TableHead>
                   <TableHead>Profissional</TableHead>
+                  <TableHead>Procedimento / Pacote</TableHead>
                   <TableHead className="w-[100px]">Sala</TableHead>
                   <TableHead className="w-[100px]">Status</TableHead>
                 </TableRow>
@@ -175,6 +218,23 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
                           <User className="w-3.5 h-3.5 text-muted-foreground" />
                           {a.therapistName || '—'}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {a.pacoteName ? (
+                          <span className="inline-flex items-center gap-1.5 text-foreground">
+                            <Package className="w-3.5 h-3.5 text-primary" />
+                            {a.pacoteName}
+                          </span>
+                        ) : a.procedimentoName ? (
+                          <span className="inline-flex items-center gap-1.5 text-foreground">
+                            <Stethoscope className="w-3.5 h-3.5 text-primary" />
+                            {a.procedimentoName}
+                          </span>
+                        ) : a.convenio ? (
+                          <span className="text-muted-foreground">{a.convenio}</span>
+                        ) : (
+                          <span className="text-muted-foreground/60">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {a.room || '—'}
