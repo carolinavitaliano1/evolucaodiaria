@@ -11,10 +11,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Loader2, Upload, X, UserPlus, Mail, Pencil, Trash2, UsersRound } from 'lucide-react';
+import { Loader2, Upload, X, UserPlus, Mail, Pencil, Trash2, UsersRound, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { PermissionEditor } from '@/components/clinics/PermissionEditor';
+import { PRESET_ROLES, PermissionKey } from '@/hooks/useOrgPermissions';
 
 type RoleId =
   | 'admin'
@@ -52,6 +56,32 @@ function mapRoleToBackend(roleId: RoleId): { role: 'admin' | 'professional'; rol
     return { role: 'admin', role_label: opt.title };
   }
   return { role: 'professional', role_label: opt.title };
+}
+
+/**
+ * Mapeia o roleId da UI para o preset correspondente em PRESET_ROLES,
+ * que carrega o conjunto base de permissões granulares para esse papel.
+ */
+const ROLE_TO_PRESET: Record<RoleId, string> = {
+  admin: 'administrador',
+  professional_full: 'terapeuta',
+  professional_limited: 'terapeuta',
+  secretary: 'secretaria',
+  financial_full: 'financeiro_completo',
+  financial_individual: 'financeiro_individual',
+  financial_query: 'financeiro_consulta',
+  marketing: 'marketing',
+  auditor: 'auditor_fiscal',
+};
+
+function getDefaultPermissionsForRole(roleId: RoleId): PermissionKey[] {
+  const presetId = ROLE_TO_PRESET[roleId];
+  const preset = PRESET_ROLES.find(p => p.id === presetId);
+  let perms = preset ? [...preset.permissions] : [];
+  if (roleId === 'professional_limited' && !perms.includes('professional.limited')) {
+    perms.push('professional.limited');
+  }
+  return perms;
 }
 
 interface Props {
@@ -103,6 +133,21 @@ export default function ClinicUsers({ clinicId }: Props) {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const [permissions, setPermissions] = useState<PermissionKey[]>(() => getDefaultPermissionsForRole('professional_full'));
+  const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
+
+  // Dialog: edit permissions of an existing user
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editingPerms, setEditingPerms] = useState<PermissionKey[]>([]);
+  const [savingPerms, setSavingPerms] = useState(false);
+
+  // When the user changes the role, reset permissions to the preset for that role
+  // (unless they've already opened the advanced panel and are customizing).
+  useEffect(() => {
+    if (!showAdvancedPerms) {
+      setPermissions(getDefaultPermissionsForRole(roleId));
+    }
+  }, [roleId, showAdvancedPerms]);
 
   useEffect(() => {
     (async () => {
@@ -164,6 +209,8 @@ export default function ClinicUsers({ clinicId }: Props) {
     setName(''); setRegistry(''); setEmail(''); setPassword(''); setConfirmPassword('');
     setRoleId('professional_full'); setCanEditPatients(true); setNotes('');
     setPhotoFile(null); setPhotoPreview(''); setSignatureFile(null); setSignaturePreview('');
+    setPermissions(getDefaultPermissionsForRole('professional_full'));
+    setShowAdvancedPerms(false);
   }
 
   function importFromCollaborator(collab: CollaboratorOption) {
@@ -225,7 +272,7 @@ export default function ClinicUsers({ clinicId }: Props) {
           email: email.trim().toLowerCase(),
           role,
           role_label: fullLabel,
-          permissions: [],
+          permissions,
           custom_password: password,
         },
       });
@@ -249,6 +296,40 @@ export default function ClinicUsers({ clinicId }: Props) {
     if (error) { toast.error('Erro ao remover'); return; }
     toast.success('Usuário removido');
     loadUsers();
+  }
+
+  async function openEditPermissions(u: UserRow) {
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('permissions')
+      .eq('id', u.id)
+      .maybeSingle();
+    if (error) {
+      toast.error('Erro ao carregar permissões');
+      return;
+    }
+    const raw = data?.permissions;
+    const current: PermissionKey[] = Array.isArray(raw)
+      ? (raw as PermissionKey[])
+      : (raw && typeof raw === 'object'
+          ? (Object.keys(raw).filter(k => (raw as any)[k]) as PermissionKey[])
+          : []);
+    setEditingUser(u);
+    setEditingPerms(current);
+  }
+
+  async function savePermissions() {
+    if (!editingUser) return;
+    setSavingPerms(true);
+    const { error } = await supabase
+      .from('organization_members')
+      .update({ permissions: editingPerms as any })
+      .eq('id', editingUser.id);
+    setSavingPerms(false);
+    if (error) { toast.error('Erro ao salvar permissões'); return; }
+    toast.success('Permissões atualizadas');
+    setEditingUser(null);
+    setEditingPerms([]);
   }
 
   return (
@@ -342,6 +423,9 @@ export default function ClinicUsers({ clinicId }: Props) {
                     >
                       {u.status === 'active' ? 'Ativo' : u.status === 'pending' ? 'Pendente' : u.status}
                     </Badge>
+                    <Button size="icon" variant="ghost" onClick={() => openEditPermissions(u)} title="Editar permissões">
+                      <ShieldCheck className="w-4 h-4 text-primary" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => handleRemove(u.id, u.email)} title="Remover">
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
@@ -432,6 +516,41 @@ export default function ClinicUsers({ clinicId }: Props) {
                   <span className={cn('text-xs', canEditPatients && 'text-muted-foreground')}>Sim</span>
                 </div>
               </div>
+
+              <Separator />
+
+              {/* Advanced granular permissions — Perfil profissional + módulos */}
+              <div className="rounded-lg border bg-muted/20">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedPerms(v => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-muted/40 rounded-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">Permissões avançadas</p>
+                      <p className="text-xs text-muted-foreground">Módulos (Clínico, Financeiro, Agenda, IA) e Perfil profissional (limitado, arquivar, transcrever áudio, etc.)</p>
+                    </div>
+                  </div>
+                  {showAdvancedPerms ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </button>
+                {showAdvancedPerms && (
+                  <div className="px-3 pb-4 pt-1">
+                    <PermissionEditor permissions={permissions} onChange={setPermissions} />
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setPermissions(getDefaultPermissionsForRole(roleId)); }}
+                      >
+                        Restaurar padrão da função
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -480,6 +599,33 @@ export default function ClinicUsers({ clinicId }: Props) {
           </div>
         </>
       )}
+
+      {/* Dialog: edit permissions of an existing user */}
+      <Dialog open={!!editingUser} onOpenChange={(v) => { if (!v) { setEditingUser(null); setEditingPerms([]); } }}>
+        <DialogContent className="max-w-2xl max-h-[85dvh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              Editar permissões
+            </DialogTitle>
+            <DialogDescription>
+              {editingUser?.name || editingUser?.email} — ajuste módulos, perfil profissional e permissões granulares.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 pr-3 -mr-3">
+            <PermissionEditor permissions={editingPerms} onChange={setEditingPerms} />
+          </ScrollArea>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setEditingUser(null); setEditingPerms([]); }} disabled={savingPerms}>
+              Cancelar
+            </Button>
+            <Button onClick={savePermissions} disabled={savingPerms} className="gap-2">
+              {savingPerms && <Loader2 className="w-4 h-4 animate-spin" />}
+              Salvar permissões
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
