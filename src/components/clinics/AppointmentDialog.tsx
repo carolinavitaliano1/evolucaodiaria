@@ -545,32 +545,88 @@ export function AppointmentDialog({
               </div>
             </div>
 
-            {/* Linha 6: Procedimento + Lançar no financeiro */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-              <div>
-                <Label className="text-xs">Procedimento:</Label>
-                <Select
-                  value={form.procedimentoId || NONE}
-                  onValueChange={(v) => setForm(f => ({ ...f, procedimentoId: v === NONE ? '' : v }))}
+            {/* Linha 6: Tipo de cobrança (Procedimento OU Pacote) + Lançar no financeiro */}
+            <div className="space-y-2">
+              <Label className="text-xs">Cobrar como:</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={form.tipoCobranca === 'procedimento' ? 'default' : 'outline'}
+                  onClick={() => setForm(f => ({ ...f, tipoCobranca: 'procedimento', pacoteId: '' }))}
+                  className="flex-1"
                 >
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Nenhum</SelectItem>
-                    {services.map(s => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}{s.price ? ` — R$ ${Number(s.price).toFixed(2)}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  Procedimento
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={form.tipoCobranca === 'pacote' ? 'default' : 'outline'}
+                  onClick={() => setForm(f => ({ ...f, tipoCobranca: 'pacote', procedimentoId: '' }))}
+                  className="flex-1"
+                  disabled={!form.patient_id}
+                  title={!form.patient_id ? 'Selecione um paciente para ver pacotes' : ''}
+                >
+                  Pacote ativo
+                </Button>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+              {form.tipoCobranca === 'procedimento' ? (
+                <div>
+                  <Label className="text-xs">Procedimento:</Label>
+                  <Select
+                    value={form.procedimentoId || NONE}
+                    onValueChange={(v) => setForm(f => ({ ...f, procedimentoId: v === NONE ? '' : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Nenhum</SelectItem>
+                      {services.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}{s.price ? ` — R$ ${Number(s.price).toFixed(2)}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div>
+                  <Label className="text-xs">Pacote ativo do paciente:</Label>
+                  <Select
+                    value={form.pacoteId || NONE}
+                    onValueChange={(v) => setForm(f => ({ ...f, pacoteId: v === NONE ? '' : v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={patientPackages.length ? 'Selecione um pacote' : 'Sem pacotes ativos'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Nenhum</SelectItem>
+                      {patientPackages.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}{p.price ? ` — R$ ${Number(p.price).toFixed(2)}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.patient_id && patientPackages.length === 0 && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Este paciente não possui pacotes ativos vinculados.
+                    </p>
+                  )}
+                </div>
+              )}
               <label className="flex items-center gap-2 pb-2 cursor-pointer">
                 <Checkbox
                   checked={form.lancarFinanceiro}
                   onCheckedChange={(v) => setForm(f => ({ ...f, lancarFinanceiro: !!v }))}
-                  disabled={!form.procedimentoId}
+                  disabled={form.tipoCobranca === 'procedimento' ? !form.procedimentoId : !form.pacoteId}
                 />
-                <span className={cn('text-sm', !form.procedimentoId && 'text-muted-foreground')}>
+                <span className={cn(
+                  'text-sm',
+                  (form.tipoCobranca === 'procedimento' ? !form.procedimentoId : !form.pacoteId) && 'text-muted-foreground'
+                )}>
                   Lançar atendimento no financeiro
                 </span>
               </label>
