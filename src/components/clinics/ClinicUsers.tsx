@@ -415,86 +415,15 @@ export default function ClinicUsers({ clinicId }: Props) {
             </CardContent>
           </Card>
 
-          {/* Card 2 - Permissões */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Personalize as permissões de acesso aos recursos</CardTitle>
-              <CardDescription>Função <span className="text-destructive">*</span></CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <RadioGroup value={roleId} onValueChange={(v) => setRoleId(v as RoleId)} className="space-y-2">
-                {ROLE_OPTIONS.filter(o => !o.group).map(opt => (
-                  <RoleRow key={opt.id} opt={opt} selected={roleId === opt.id} onSelect={() => setRoleId(opt.id)} />
-                ))}
-
-                {/* Profissional grouping */}
-                <div className={cn(
-                  'rounded-lg border-2 transition-all',
-                  (roleId === 'professional_full' || roleId === 'professional_limited') ? 'border-primary/40 bg-primary/5' : 'border-border'
-                )}>
-                  <div className="px-3 py-2.5">
-                    <p className="text-sm font-semibold">Profissional</p>
-                    <p className="text-xs text-muted-foreground">Selecione o nível de acesso do profissional.</p>
-                  </div>
-                  <Separator />
-                  <div className="p-2 space-y-1">
-                    {ROLE_OPTIONS.filter(o => o.group === 'professional').map(opt => (
-                      <SubRoleRow key={opt.id} opt={opt} selected={roleId === opt.id} onSelect={() => setRoleId(opt.id)} />
-                    ))}
-                  </div>
-                </div>
-              </RadioGroup>
-
-              <Separator />
-
-              <div className="flex items-center justify-between gap-4 p-3 rounded-lg border bg-muted/30">
-                <div>
-                  <p className="text-sm font-medium">Pode editar ou arquivar pacientes?</p>
-                  <p className="text-xs text-muted-foreground">Controla a edição e arquivamento de pacientes pelo usuário.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={cn('text-xs', !canEditPatients && 'text-muted-foreground')}>Não</span>
-                  <Switch checked={canEditPatients} onCheckedChange={setCanEditPatients} />
-                  <span className={cn('text-xs', canEditPatients && 'text-muted-foreground')}>Sim</span>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Advanced granular permissions — Perfil profissional + módulos */}
-              <div className="rounded-lg border bg-muted/20">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedPerms(v => !v)}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-muted/40 rounded-lg"
-                >
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">Permissões avançadas</p>
-                      <p className="text-xs text-muted-foreground">Módulos (Clínico, Financeiro, Agenda, IA) e Perfil profissional (limitado, arquivar, transcrever áudio, etc.)</p>
-                    </div>
-                  </div>
-                  {showAdvancedPerms ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                {showAdvancedPerms && (
-                  <div className="px-3 pb-4 pt-1">
-                    <PermissionEditor permissions={permissions} onChange={setPermissions} />
-                    <div className="mt-3 flex justify-end">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => { setPermissions(getDefaultPermissionsForRole(roleId)); }}
-                      >
-                        Restaurar padrão da função
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Card 2 - Permissões (componente compartilhado) */}
+          <UserAccessPermissions
+            roleId={roleId}
+            onRoleChange={setRoleId}
+            toggles={toggles}
+            onTogglesChange={setToggles}
+            modulePermissions={modulePerms}
+            onModulePermissionsChange={setModulePerms}
+          />
 
           {/* Card 3 - Mais informações */}
           <Card>
@@ -543,7 +472,7 @@ export default function ClinicUsers({ clinicId }: Props) {
       )}
 
       {/* Dialog: edit permissions of an existing user */}
-      <Dialog open={!!editingUser} onOpenChange={(v) => { if (!v) { setEditingUser(null); setEditingPerms([]); } }}>
+      <Dialog open={!!editingUser} onOpenChange={(v) => { if (!v) setEditingUser(null); }}>
         <DialogContent className="max-w-2xl h-[85dvh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-6 pb-3 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
@@ -551,14 +480,22 @@ export default function ClinicUsers({ clinicId }: Props) {
               Editar permissões
             </DialogTitle>
             <DialogDescription>
-              {editingUser?.name || editingUser?.email} — ajuste módulos, perfil profissional e permissões granulares.
+              {editingUser?.name || editingUser?.email} — ajuste função e permissões granulares.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-            <PermissionEditor permissions={editingPerms} onChange={setEditingPerms} />
+            <UserAccessPermissions
+              embedded
+              roleId={editingRoleId}
+              onRoleChange={setEditingRoleId}
+              toggles={editingToggles}
+              onTogglesChange={setEditingToggles}
+              modulePermissions={editingModulePerms}
+              onModulePermissionsChange={setEditingModulePerms}
+            />
           </div>
           <DialogFooter className="gap-2 p-4 border-t shrink-0 bg-background">
-            <Button variant="outline" onClick={() => { setEditingUser(null); setEditingPerms([]); }} disabled={savingPerms}>
+            <Button variant="outline" onClick={() => setEditingUser(null)} disabled={savingPerms}>
               Cancelar
             </Button>
             <Button onClick={savePermissions} disabled={savingPerms} className="gap-2">
@@ -569,42 +506,6 @@ export default function ClinicUsers({ clinicId }: Props) {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function RoleRow({ opt, selected, onSelect }: { opt: RoleOption; selected: boolean; onSelect: () => void }) {
-  return (
-    <label
-      onClick={onSelect}
-      className={cn(
-        'flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all',
-        selected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30 hover:bg-muted/30'
-      )}
-    >
-      <RadioGroupItem value={opt.id} className="mt-0.5" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground">{opt.title}</p>
-        <p className="text-xs text-muted-foreground leading-snug">{opt.description}</p>
-      </div>
-    </label>
-  );
-}
-
-function SubRoleRow({ opt, selected, onSelect }: { opt: RoleOption; selected: boolean; onSelect: () => void }) {
-  return (
-    <label
-      onClick={onSelect}
-      className={cn(
-        'flex items-start gap-3 p-2.5 rounded-md border cursor-pointer transition-all',
-        selected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/40'
-      )}
-    >
-      <RadioGroupItem value={opt.id} className="mt-0.5" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{opt.title.replace('Profissional · ', '')}</p>
-        <p className="text-xs text-muted-foreground leading-snug">{opt.description}</p>
-      </div>
-    </label>
   );
 }
 
