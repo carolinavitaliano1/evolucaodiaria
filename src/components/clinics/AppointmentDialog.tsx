@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -509,7 +509,7 @@ export function AppointmentDialog({
               </Select>
               <button
                 type="button"
-                onClick={() => navigate('/team')}
+                onClick={handleOpenSchedule}
                 className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
               >
                 <TableIcon className="w-3 h-3" />
@@ -772,7 +772,10 @@ export function AppointmentDialog({
             <div className="flex items-center justify-between pt-2 border-t">
               <button
                 type="button"
-                onClick={() => navigate('/profile#agenda')}
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate(`/clinics/${clinicId}?tab=agenda-settings`);
+                }}
                 className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
               >
                 <Settings className="w-3.5 h-3.5" />
@@ -792,6 +795,96 @@ export function AppointmentDialog({
       </Dialog>
 
       <CalendarBlockDialog open={blockOpen} onOpenChange={setBlockOpen} />
+
+      {/* Mini-dialog: cadastrar nova sala */}
+      <Dialog open={roomDialogOpen} onOpenChange={setRoomDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cadastrar nova sala</DialogTitle>
+            <DialogDescription className="text-xs">
+              A sala ficará disponível neste agendamento e nos próximos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs">Nome da sala</Label>
+            <Input
+              autoFocus
+              value={newRoomName}
+              onChange={(e) => setNewRoomName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') confirmAddRoom(); }}
+              placeholder="Ex.: Sala 1, Consultório A"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRoomDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmAddRoom}>Cadastrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: horário de trabalho do profissional selecionado */}
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent className="max-w-md max-h-[85dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock4 className="w-4 h-4 text-primary" />
+              Horário de {therapistSchedule?.name || 'profissional'}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Horário de trabalho e intervalo configurados para o profissional.
+            </DialogDescription>
+          </DialogHeader>
+          {scheduleLoading ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Carregando…</div>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-12 gap-2 text-[11px] font-medium text-muted-foreground border-b pb-1">
+                <div className="col-span-4">Dia</div>
+                <div className="col-span-4">Trabalho</div>
+                <div className="col-span-4">Intervalo</div>
+              </div>
+              {(() => {
+                const WEEK = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+                const sbd = therapistSchedule?.schedule_by_day || {};
+                const wkActive = (therapistSchedule?.weekdays || []).map(w => w);
+                const rows = WEEK.map((d) => {
+                  const cfg: any = sbd[d] || {};
+                  const active = !!sbd[d] || wkActive.includes(d);
+                  return { day: d, active, start: cfg.start || '', end: cfg.end || '', bs: cfg.breakStart || '', be: cfg.breakEnd || '' };
+                });
+                const anyActive = rows.some(r => r.active);
+                if (!anyActive) {
+                  return (
+                    <p className="py-6 text-center text-sm text-muted-foreground">
+                      Nenhum horário configurado para este profissional.
+                    </p>
+                  );
+                }
+                return rows.map((r) => (
+                  <div
+                    key={r.day}
+                    className={cn(
+                      'grid grid-cols-12 gap-2 text-sm py-1.5 border-b last:border-b-0',
+                      !r.active && 'opacity-40'
+                    )}
+                  >
+                    <div className="col-span-4 font-medium">{r.day}</div>
+                    <div className="col-span-4">
+                      {r.active && r.start && r.end ? `${r.start} – ${r.end}` : <span className="text-muted-foreground">—</span>}
+                    </div>
+                    <div className="col-span-4">
+                      {r.active && r.bs && r.be ? `${r.bs} – ${r.be}` : <span className="text-muted-foreground">—</span>}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }
