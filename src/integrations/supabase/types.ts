@@ -3269,6 +3269,60 @@ export type Database = {
           },
         ]
       }
+      team_commission_payments: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          id: string
+          individual_payments: Json
+          member_id: string
+          month: number
+          notes: string | null
+          organization_id: string
+          paid_amount: number
+          paid_at: string | null
+          paid_by_user_id: string | null
+          status: string
+          total_due: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          id?: string
+          individual_payments?: Json
+          member_id: string
+          month: number
+          notes?: string | null
+          organization_id: string
+          paid_amount?: number
+          paid_at?: string | null
+          paid_by_user_id?: string | null
+          status?: string
+          total_due?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          individual_payments?: Json
+          member_id?: string
+          month?: number
+          notes?: string | null
+          organization_id?: string
+          paid_amount?: number
+          paid_at?: string | null
+          paid_by_user_id?: string | null
+          status?: string
+          total_due?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       therapeutic_group_members: {
         Row: {
           group_id: string
