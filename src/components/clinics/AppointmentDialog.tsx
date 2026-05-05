@@ -13,7 +13,7 @@ import { CalendarBlockDialog } from '@/components/calendar/CalendarBlockDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { ChevronsUpDown, Check, Link2, HelpCircle, Settings, Table as TableIcon } from 'lucide-react';
+import { ChevronsUpDown, Check, Link2, HelpCircle, Settings, Table as TableIcon, Clock4 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
