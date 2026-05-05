@@ -27,6 +27,7 @@ const Financial = lazy(() => import("./pages/Financial"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const CalendarPage = lazy(() => import("./pages/Calendar"));
+const Evolutions = lazy(() => import("./pages/Evolutions"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
@@ -145,6 +146,7 @@ const App = () => (
                     <Route path="/doc-ia" element={<DocIA />} />
                     <Route path="/tasks" element={<Tasks />} />
                     <Route path="/calendar" element={<CalendarPage />} />
+                    <Route path="/evolucoes" element={<Evolutions />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/install" element={<InstallApp />} />
                     <Route path="/mural" element={<Mural />} />
