@@ -4,85 +4,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Loader2, Upload, X, UserPlus, Mail, Pencil, Trash2, UsersRound, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Upload, X, UserPlus, Mail, Trash2, UsersRound, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { PermissionEditor } from '@/components/clinics/PermissionEditor';
-import { PRESET_ROLES, PermissionKey } from '@/hooks/useOrgPermissions';
-
-type RoleId =
-  | 'admin'
-  | 'professional_full'
-  | 'professional_limited'
-  | 'secretary'
-  | 'financial_full'
-  | 'financial_individual'
-  | 'financial_query'
-  | 'marketing'
-  | 'auditor';
-
-interface RoleOption {
-  id: RoleId;
-  title: string;
-  description: string;
-  group?: 'professional';
-}
-
-const ROLE_OPTIONS: RoleOption[] = [
-  { id: 'admin', title: 'Administrador', description: 'Tem acesso a equipe, movimentos financeiros, relatórios e pode ver os atendimentos de todos os profissionais.' },
-  { id: 'professional_full', title: 'Profissional · Completo', description: 'Tem acesso a agenda, pacientes e a seus atendimentos.', group: 'professional' },
-  { id: 'professional_limited', title: 'Profissional · Limitado', description: 'Tem acesso somente a visualização da sua agenda e registro de atendimentos permitidos.', group: 'professional' },
-  { id: 'secretary', title: 'Secretária(o)', description: 'Tem acesso a lista de pacientes e agenda de todos os profissionais.' },
-  { id: 'financial_full', title: 'Financeiro completo', description: 'Tem acesso total aos recursos financeiros.' },
-  { id: 'financial_individual', title: 'Financeiro individual', description: 'Tem acesso somente aos seus movimentos financeiros.' },
-  { id: 'financial_query', title: 'Financeiro consulta', description: 'Tem acesso somente aos movimentos referente as comissões cadastrados para este usuário e não pode alterar e nem excluir.' },
-  { id: 'marketing', title: 'Marketing', description: 'Tem acesso ao recurso de Marketing, página da clínica, pesquisa de satisfação, banco de imagens e mensagens de aniversário.' },
-  { id: 'auditor', title: 'Auditor/Fiscal', description: 'Tem acesso somente a visualização dos atendimentos referentes aos convênios selecionados. (O usuário auditor não pode ter outras funções).' },
-];
-
-function mapRoleToBackend(roleId: RoleId): { role: 'admin' | 'professional'; role_label: string } {
-  const opt = ROLE_OPTIONS.find(r => r.id === roleId)!;
-  if (roleId === 'admin' || roleId === 'financial_full' || roleId === 'secretary') {
-    return { role: 'admin', role_label: opt.title };
-  }
-  return { role: 'professional', role_label: opt.title };
-}
-
-/**
- * Mapeia o roleId da UI para o preset correspondente em PRESET_ROLES,
- * que carrega o conjunto base de permissões granulares para esse papel.
- */
-const ROLE_TO_PRESET: Record<RoleId, string> = {
-  admin: 'administrador',
-  professional_full: 'terapeuta',
-  professional_limited: 'terapeuta',
-  secretary: 'secretaria',
-  financial_full: 'financeiro_completo',
-  financial_individual: 'financeiro_individual',
-  financial_query: 'financeiro_consulta',
-  marketing: 'marketing',
-  auditor: 'auditor_fiscal',
-};
-
-function getDefaultPermissionsForRole(roleId: RoleId): PermissionKey[] {
-  const presetId = ROLE_TO_PRESET[roleId];
-  const preset = PRESET_ROLES.find(p => p.id === presetId);
-  let perms = preset ? [...preset.permissions] : [];
-  if (roleId === 'professional_limited' && !perms.includes('professional.limited')) {
-    perms.push('professional.limited');
-  }
-  return perms;
-}
+import { PermissionKey } from '@/hooks/useOrgPermissions';
+import UserAccessPermissions, {
+  RoleId,
+  ROLE_OPTIONS,
+  mapRoleToBackend,
+  GranularToggles,
+  buildPermissionsArray,
+  readTogglesFromPermissions,
+  getInitialStateForRole,
+} from '@/components/clinics/UserAccessPermissions';
 
 interface Props {
   clinicId: string;
