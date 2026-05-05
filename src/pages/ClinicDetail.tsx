@@ -2852,6 +2852,11 @@ export default function ClinicDetail() {
           </TabsContent>
         )}
         {clinic.type === 'clinica' && (
+          <TabsContent value="team" className="space-y-4">
+            <ClinicTeamTab clinicId={clinic.id} clinicName={clinic.name} />
+          </TabsContent>
+        )}
+        {clinic.type === 'clinica' && (
           <TabsContent value="users" className="space-y-4">
             <ClinicUsers clinicId={clinic.id} />
           </TabsContent>
