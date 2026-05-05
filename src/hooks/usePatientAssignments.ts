@@ -188,18 +188,25 @@ export function useMyAssignedPatientIds() {
       if (!membership?.length) { setAssignedPatientIds(new Set()); setLoading(false); return; }
 
       const memberIds = membership.map(m => m.id);
-      const [assignmentsRes, slotsRes] = await Promise.all([
+      const [assignmentsRes, slotsRes, apptsRes] = await Promise.all([
         supabase.from('therapist_patient_assignments')
           .select('patient_id')
           .in('member_id', memberIds),
         supabase.from('patient_schedule_slots' as any)
           .select('patient_id')
           .in('member_id', memberIds),
+        // Também considera pacientes que aparecem na agenda da clínica
+        // vinculados ao usuário atual via therapist_user_id
+        supabase.from('appointments')
+          .select('patient_id')
+          .eq('therapist_user_id', user!.id)
+          .neq('status', 'cancelado'),
       ]);
 
       const ids = new Set<string>();
-      ((assignmentsRes.data || []) as any[]).forEach(a => ids.add(a.patient_id));
-      ((slotsRes.data || []) as any[]).forEach(s => ids.add(s.patient_id));
+      ((assignmentsRes.data || []) as any[]).forEach(a => a.patient_id && ids.add(a.patient_id));
+      ((slotsRes.data || []) as any[]).forEach(s => s.patient_id && ids.add(s.patient_id));
+      ((apptsRes.data || []) as any[]).forEach(a => a.patient_id && ids.add(a.patient_id));
       setAssignedPatientIds(ids);
     } catch (e) {
       console.error('useMyAssignedPatientIds error', e);
