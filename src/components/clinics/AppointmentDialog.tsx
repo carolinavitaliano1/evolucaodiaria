@@ -71,13 +71,14 @@ function maskPhone(v: string): string {
 }
 
 // Tag helpers — guardam dados extras dentro de `notes`
-const TAG_RE = /\[(encaixe|autorizacao:[^\]]*|procedimento:[^\]]*|lembrete_wa:[^\]]*|celular:[^\]]*|lancar_financeiro)\]/gi;
+const TAG_RE = /\[(encaixe|autorizacao:[^\]]*|procedimento:[^\]]*|pacote:[^\]]*|lembrete_wa:[^\]]*|celular:[^\]]*|lancar_financeiro)\]/gi;
 
 interface ParsedNotes {
   text: string;
   encaixe: boolean;
   autorizacao: string;
   procedimentoId: string;
+  pacoteId: string;
   lembreteWa: string;
   celular: string;
   lancarFinanceiro: boolean;
@@ -86,7 +87,7 @@ interface ParsedNotes {
 function parseNotes(raw: string | null | undefined): ParsedNotes {
   const out: ParsedNotes = {
     text: '', encaixe: false, autorizacao: '', procedimentoId: '',
-    lembreteWa: '', celular: '', lancarFinanceiro: false,
+    pacoteId: '', lembreteWa: '', celular: '', lancarFinanceiro: false,
   };
   if (!raw) return out;
   const tags: string[] = [];
@@ -97,6 +98,7 @@ function parseNotes(raw: string | null | undefined): ParsedNotes {
     else if (inner === 'lancar_financeiro') out.lancarFinanceiro = true;
     else if (inner.startsWith('autorizacao:')) out.autorizacao = inner.slice(12);
     else if (inner.startsWith('procedimento:')) out.procedimentoId = inner.slice(13);
+    else if (inner.startsWith('pacote:')) out.pacoteId = inner.slice(7);
     else if (inner.startsWith('lembrete_wa:')) out.lembreteWa = inner.slice(12);
     else if (inner.startsWith('celular:')) out.celular = inner.slice(8);
   }
@@ -116,6 +118,7 @@ function buildNotes(p: ParsedNotes): string {
   if (p.lancarFinanceiro) tags.push('[lancar_financeiro]');
   if (p.autorizacao.trim()) tags.push(`[autorizacao:${p.autorizacao.trim()}]`);
   if (p.procedimentoId) tags.push(`[procedimento:${p.procedimentoId}]`);
+  if (p.pacoteId) tags.push(`[pacote:${p.pacoteId}]`);
   if (p.lembreteWa) tags.push(`[lembrete_wa:${p.lembreteWa}]`);
   if (p.celular.trim()) tags.push(`[celular:${p.celular.replace(/\D/g, '')}]`);
   if (!tags.length) return p.text.trim();
@@ -124,6 +127,7 @@ function buildNotes(p: ParsedNotes): string {
 
 interface HealthPlan { id: string; name: string; }
 interface ServiceItem { id: string; name: string; price: number | null; }
+interface PackageItem { id: string; name: string; price: number | null; packageType?: string | null; }
 
 export function AppointmentDialog({
   open, onOpenChange, clinicId, draft, members, patients, onSaved,
@@ -136,6 +140,7 @@ export function AppointmentDialog({
 
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const [patientPackages, setPatientPackages] = useState<PackageItem[]>([]);
   const [memberSpecialties, setMemberSpecialties] = useState<Record<string, string>>({});
   const [knownRooms, setKnownRooms] = useState<string[]>([]);
   const [patientPhones, setPatientPhones] = useState<Record<string, string>>({});
@@ -154,6 +159,8 @@ export function AppointmentDialog({
     encaixe: false,
     autorizacao: '',
     procedimentoId: '',
+    pacoteId: '',
+    tipoCobranca: 'procedimento' as 'procedimento' | 'pacote',
     lancarFinanceiro: false,
     celular: '',
     lembreteSms: 'none',
@@ -209,6 +216,8 @@ export function AppointmentDialog({
       encaixe: parsed.encaixe,
       autorizacao: parsed.autorizacao,
       procedimentoId: parsed.procedimentoId,
+      pacoteId: parsed.pacoteId,
+      tipoCobranca: parsed.pacoteId ? 'pacote' : 'procedimento',
       lancarFinanceiro: parsed.lancarFinanceiro,
       celular: parsed.celular ? maskPhone(parsed.celular) : '',
       lembreteSms: 'none',
@@ -225,6 +234,27 @@ export function AppointmentDialog({
       setForm(f => ({ ...f, celular: maskPhone(ph) }));
     }
   }, [form.patient_id, patientPhones]); // eslint-disable-line
+
+  // Carrega pacotes ativos vinculados ao paciente selecionado
+  useEffect(() => {
+    if (!open || !form.patient_id) { setPatientPackages([]); return; }
+    (async () => {
+      const { data: links } = await supabase
+        .from('patient_packages' as any)
+        .select('package_id')
+        .eq('patient_id', form.patient_id);
+      const ids = Array.from(new Set(((links || []) as any[]).map(l => l.package_id).filter(Boolean)));
+      if (!ids.length) { setPatientPackages([]); return; }
+      const { data: pkgs } = await supabase
+        .from('clinic_packages')
+        .select('id, name, price, package_type, is_active')
+        .in('id', ids);
+      const items = ((pkgs || []) as any[])
+        .filter(p => p.is_active !== false)
+        .map(p => ({ id: p.id, name: p.name, price: p.price, packageType: p.package_type }));
+      setPatientPackages(items);
+    })();
+  }, [open, form.patient_id]);
 
   const selectedPatient = useMemo(
     () => patients.find(p => p.id === form.patient_id),
@@ -265,7 +295,8 @@ export function AppointmentDialog({
       text: form.obs,
       encaixe: form.encaixe,
       autorizacao: form.autorizacao,
-      procedimentoId: form.procedimentoId,
+      procedimentoId: form.tipoCobranca === 'procedimento' ? form.procedimentoId : '',
+      pacoteId: form.tipoCobranca === 'pacote' ? form.pacoteId : '',
       lembreteWa: form.lembreteWa === 'none' ? '' : form.lembreteWa,
       celular: form.celular,
       lancarFinanceiro: form.lancarFinanceiro,
@@ -306,20 +337,27 @@ export function AppointmentDialog({
       return;
     }
 
-    // Lançamento financeiro automático
-    if (form.lancarFinanceiro && form.procedimentoId && !form.id) {
-      const svc = services.find(s => s.id === form.procedimentoId);
-      if (svc) {
+    // Lançamento financeiro automático (procedimento OU pacote)
+    if (form.lancarFinanceiro && !form.id) {
+      let item: { name: string; price: number | null } | null = null;
+      if (form.tipoCobranca === 'procedimento' && form.procedimentoId) {
+        const svc = services.find(s => s.id === form.procedimentoId);
+        if (svc) item = { name: svc.name, price: svc.price };
+      } else if (form.tipoCobranca === 'pacote' && form.pacoteId) {
+        const pkg = patientPackages.find(p => p.id === form.pacoteId);
+        if (pkg) item = { name: `Pacote: ${pkg.name}`, price: pkg.price };
+      }
+      if (item) {
         const { error: pErr } = await supabase.from('private_appointments').insert({
           user_id: user.id,
           clinic_id: clinicId,
           patient_id: form.patient_id,
-          client_name: selectedPatient?.name || svc.name,
+          client_name: selectedPatient?.name || item.name,
           date: form.date,
           time: form.time,
-          price: svc.price || 0,
+          price: item.price || 0,
           status: 'agendado',
-          notes: `${svc.name} (lançado pela agenda)`,
+          notes: `${item.name} (lançado pela agenda)`,
         });
         if (pErr) toast.warning('Agendamento salvo, mas falhou ao lançar no financeiro: ' + pErr.message);
       }
@@ -507,32 +545,88 @@ export function AppointmentDialog({
               </div>
             </div>
 
-            {/* Linha 6: Procedimento + Lançar no financeiro */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-              <div>
-                <Label className="text-xs">Procedimento:</Label>
-                <Select
-                  value={form.procedimentoId || NONE}
-                  onValueChange={(v) => setForm(f => ({ ...f, procedimentoId: v === NONE ? '' : v }))}
+            {/* Linha 6: Tipo de cobrança (Procedimento OU Pacote) + Lançar no financeiro */}
+            <div className="space-y-2">
+              <Label className="text-xs">Cobrar como:</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={form.tipoCobranca === 'procedimento' ? 'default' : 'outline'}
+                  onClick={() => setForm(f => ({ ...f, tipoCobranca: 'procedimento', pacoteId: '' }))}
+                  className="flex-1"
                 >
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Nenhum</SelectItem>
-                    {services.map(s => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}{s.price ? ` — R$ ${Number(s.price).toFixed(2)}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  Procedimento
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={form.tipoCobranca === 'pacote' ? 'default' : 'outline'}
+                  onClick={() => setForm(f => ({ ...f, tipoCobranca: 'pacote', procedimentoId: '' }))}
+                  className="flex-1"
+                  disabled={!form.patient_id}
+                  title={!form.patient_id ? 'Selecione um paciente para ver pacotes' : ''}
+                >
+                  Pacote ativo
+                </Button>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+              {form.tipoCobranca === 'procedimento' ? (
+                <div>
+                  <Label className="text-xs">Procedimento:</Label>
+                  <Select
+                    value={form.procedimentoId || NONE}
+                    onValueChange={(v) => setForm(f => ({ ...f, procedimentoId: v === NONE ? '' : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Nenhum</SelectItem>
+                      {services.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}{s.price ? ` — R$ ${Number(s.price).toFixed(2)}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div>
+                  <Label className="text-xs">Pacote ativo do paciente:</Label>
+                  <Select
+                    value={form.pacoteId || NONE}
+                    onValueChange={(v) => setForm(f => ({ ...f, pacoteId: v === NONE ? '' : v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={patientPackages.length ? 'Selecione um pacote' : 'Sem pacotes ativos'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Nenhum</SelectItem>
+                      {patientPackages.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}{p.price ? ` — R$ ${Number(p.price).toFixed(2)}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.patient_id && patientPackages.length === 0 && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Este paciente não possui pacotes ativos vinculados.
+                    </p>
+                  )}
+                </div>
+              )}
               <label className="flex items-center gap-2 pb-2 cursor-pointer">
                 <Checkbox
                   checked={form.lancarFinanceiro}
                   onCheckedChange={(v) => setForm(f => ({ ...f, lancarFinanceiro: !!v }))}
-                  disabled={!form.procedimentoId}
+                  disabled={form.tipoCobranca === 'procedimento' ? !form.procedimentoId : !form.pacoteId}
                 />
-                <span className={cn('text-sm', !form.procedimentoId && 'text-muted-foreground')}>
+                <span className={cn(
+                  'text-sm',
+                  (form.tipoCobranca === 'procedimento' ? !form.procedimentoId : !form.pacoteId) && 'text-muted-foreground'
+                )}>
                   Lançar atendimento no financeiro
                 </span>
               </label>
