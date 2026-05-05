@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { ChevronsUpDown, Check, Link2, HelpCircle, Settings, Table as TableIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export interface AppointmentDraft {
   id?: string;
