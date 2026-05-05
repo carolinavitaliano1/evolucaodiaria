@@ -242,10 +242,48 @@ export default function ClinicUsers({ clinicId }: Props) {
           <h2 className="text-2xl font-bold text-foreground">Usuários</h2>
           <p className="text-sm text-muted-foreground">Cadastre quem terá acesso ao sistema desta clínica.</p>
         </div>
-        <Button onClick={() => setShowForm(v => !v)} className="gap-2">
-          <UserPlus className="w-4 h-4" />
-          {showForm ? 'Fechar formulário' : 'Cadastrar novo usuário'}
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Popover open={collabPickerOpen} onOpenChange={setCollabPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <UsersRound className="w-4 h-4" />
+                Importar de Colaborador
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[min(92vw,420px)] p-0" align="end">
+              <Command>
+                <CommandInput placeholder="Buscar colaborador..." />
+                <CommandList>
+                  <CommandEmpty>Nenhum colaborador cadastrado nesta clínica.</CommandEmpty>
+                  <CommandGroup>
+                    {collaborators.map(collab => (
+                      <CommandItem
+                        key={collab.id}
+                        value={`${collab.name} ${collab.email || ''} ${collab.profession || ''}`}
+                        onSelect={() => importFromCollaborator(collab)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={collab.avatarUrl} />
+                            <AvatarFallback>{(collab.name || 'CO').slice(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{collab.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{collab.email || collab.profession || 'Sem e-mail cadastrado'}</p>
+                          </div>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          <Button onClick={() => setShowForm(v => !v)} className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            {showForm ? 'Fechar formulário' : 'Cadastrar novo usuário'}
+          </Button>
+        </div>
       </div>
 
       {/* List of existing users */}
