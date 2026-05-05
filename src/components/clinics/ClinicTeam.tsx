@@ -27,6 +27,8 @@ import {
   Plus, Star, Pencil, X, DollarSign, Package, ArrowRight
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
