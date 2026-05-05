@@ -125,21 +125,38 @@ export default function ClinicUsers({ clinicId }: Props) {
   async function loadUsers() {
     if (!orgId) return;
     setLoadingList(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('organization_members')
-      .select('id, email, role_label, status, created_at, user_id, profiles:user_id(name)')
+      .select('id, email, role_label, status, created_at, user_id')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false });
-    setUsers(
-      (data ?? []).map((m: any) => ({
-        id: m.id,
-        email: m.email,
-        name: m.profiles?.name ?? null,
-        role_label: m.role_label,
-        status: m.status,
-        created_at: m.created_at,
-      }))
-    );
+    if (error) {
+      console.error('[ClinicUsers] load error', error);
+      toast.error('Erro ao carregar usuários');
+      setUsers([]);
+      setLoadingList(false);
+      return;
+    }
+
+    const rows = data ?? [];
+    const userIds = rows.map((m: any) => m.user_id).filter(Boolean);
+    let nameMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('user_id, name')
+        .in('user_id', userIds);
+      (profs ?? []).forEach((p: any) => { if (p.user_id) nameMap[p.user_id] = p.name; });
+    }
+
+    setUsers(rows.map((m: any) => ({
+      id: m.id,
+      email: m.email,
+      name: m.user_id ? (nameMap[m.user_id] ?? null) : null,
+      role_label: m.role_label,
+      status: m.status,
+      created_at: m.created_at,
+    })));
     setLoadingList(false);
   }
 
