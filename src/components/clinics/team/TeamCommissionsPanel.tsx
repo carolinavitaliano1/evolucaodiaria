@@ -258,6 +258,16 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
         </div>
       </div>
 
+      {/* Disclaimer: marcar pago é registro contábil */}
+      <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] leading-snug text-foreground/80">
+        <span className="mt-0.5 shrink-0">ℹ️</span>
+        <span>
+          <strong>Marcar mês como pago</strong> registra contabilmente o repasse ao profissional — o sistema não realiza
+          transferência bancária ou PIX automática. Faça o pagamento pelo seu canal habitual e use este botão apenas para
+          atualizar o status que o profissional verá em <em>Minhas Comissões</em>.
+        </span>
+      </div>
+
       {/* Member cards */}
       {filteredRows.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
