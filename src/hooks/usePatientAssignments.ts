@@ -41,16 +41,25 @@ export function usePatientAssignments(patientId: string, clinicId: string) {
       if (!clinic?.organization_id) { setLoading(false); return; }
       setOrgId(clinic.organization_id);
 
-      // Load all active members + scheduled slots for this patient in parallel.
-      // The source of truth for "Terapeutas Responsáveis" is the patient's agenda
-      // (patient_schedule_slots) — any therapist with at least one slot is responsible.
-      const [membersRes, slotsRes] = await Promise.all([
+      // Load all active members + scheduled slots + agenda da clínica + assignments manuais.
+      // Um terapeuta é "responsável" se tiver QUALQUER um:
+      //  (a) slot recorrente em patient_schedule_slots, OU
+      //  (b) agendamento em appointments (agenda da clínica), OU
+      //  (c) vínculo manual em therapist_patient_assignments
+      const [membersRes, slotsRes, apptsRes, assignRes] = await Promise.all([
         supabase.from('organization_members')
           .select('id, user_id, email, role')
           .eq('organization_id', clinic.organization_id)
           .eq('status', 'active'),
         supabase.from('patient_schedule_slots' as any)
           .select('member_id, weekday, start_time, end_time')
+          .eq('patient_id', patientId),
+        supabase.from('appointments')
+          .select('therapist_user_id')
+          .eq('patient_id', patientId)
+          .neq('status', 'cancelado'),
+        supabase.from('therapist_patient_assignments')
+          .select('member_id')
           .eq('patient_id', patientId),
       ]);
 
@@ -75,6 +84,22 @@ export function usePatientAssignments(patientId: string, clinicId: string) {
         });
       });
       const assignedMemberIds = new Set(Object.keys(slotsByMember));
+      // Adiciona assignments manuais
+      ((assignRes.data || []) as any[]).forEach(a => {
+        if (a.member_id) assignedMemberIds.add(a.member_id);
+      });
+      // Adiciona terapeutas que aparecem na agenda da clínica (appointments)
+      // mapeando user_id → member_id via membersRes
+      const userIdToMemberId = new Map<string, string>();
+      membersRes.data.forEach(m => {
+        if (m.user_id) userIdToMemberId.set(m.user_id, m.id);
+      });
+      ((apptsRes.data || []) as any[]).forEach(a => {
+        if (a.therapist_user_id) {
+          const mid = userIdToMemberId.get(a.therapist_user_id);
+          if (mid) assignedMemberIds.add(mid);
+        }
+      });
       const WEEKDAY_ORDER = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
       const scheduleMap: Record<string, string | null> = {};
       Object.entries(slotsByMember).forEach(([mid, arr]) => {
