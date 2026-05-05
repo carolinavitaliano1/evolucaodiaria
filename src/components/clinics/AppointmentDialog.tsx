@@ -166,6 +166,9 @@ export function AppointmentDialog({
     convenio: PARTICULAR,
     is_recurring: false,
     encaixe: false,
+    recurrence_freq: 'weekly' as 'daily' | 'weekly' | 'biweekly' | 'triweekly' | 'monthly4w' | 'monthly',
+    recurrence_count: 10,
+    recurrence_weekdays: [] as number[], // 0=Dom..6=Sáb
     autorizacao: '',
     procedimentoId: '',
     pacoteId: '',
