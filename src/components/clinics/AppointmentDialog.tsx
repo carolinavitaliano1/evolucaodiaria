@@ -386,6 +386,22 @@ export function AppointmentDialog({
       return;
     }
 
+    // Recorrência: cria agendamentos adicionais (somente em criação)
+    if (form.is_recurring && !form.id && form.recurrence_count > 1) {
+      const dates = generateRecurrenceDates(
+        form.date,
+        form.recurrence_freq,
+        form.recurrence_count,
+        form.recurrence_weekdays
+      );
+      // pula o primeiro (já salvo)
+      const extra = dates.slice(1).map(d => ({ ...payload, date: d, is_recurring: true }));
+      if (extra.length) {
+        const { error: rErr } = await supabase.from('appointments').insert(extra);
+        if (rErr) toast.warning('Agendamento criado, mas falhou ao replicar: ' + rErr.message);
+      }
+    }
+
     // Lançamento financeiro automático (procedimento OU pacote)
     if (form.lancarFinanceiro && !form.id) {
       let item: { name: string; price: number | null } | null = null;
