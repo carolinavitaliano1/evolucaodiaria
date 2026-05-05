@@ -49,6 +49,13 @@ export const ALL_PERMISSIONS = [
   // Equipe
   'team.view',
   'team.manage',
+  // Granulares — perfil profissional
+  'professional.limited',           // Tipo: Limitado (precisa aprovação para evoluções/atendimentos)
+  'patients.archive',               // Pode arquivar pacientes
+  'appointments.delete_own',        // Pode excluir atendimentos registrados por ele
+  'evaluations.edit',               // Pode editar avaliações e evoluções
+  'audio.transcribe',               // Pode transcrever atendimentos gravados em áudio
+  'limited.approve',                // Pode aprovar atendimentos de usuários limitados
 ] as const;
 
 export type PermissionKey = (typeof ALL_PERMISSIONS)[number];
@@ -84,6 +91,12 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'mural.view': 'Ver Mural',
   'team.view': 'Ver Equipe',
   'team.manage': 'Gerenciar Equipe',
+  'professional.limited': 'Profissional Limitado (requer aprovação)',
+  'patients.archive': 'Pode arquivar pacientes',
+  'appointments.delete_own': 'Pode excluir atendimentos próprios',
+  'evaluations.edit': 'Pode editar avaliações e evoluções',
+  'audio.transcribe': 'Pode transcrever áudios de atendimento',
+  'limited.approve': 'Pode aprovar atendimentos de usuários limitados',
 };
 
 // ---------------------------------------------------------------------------
@@ -320,6 +333,17 @@ export const PERMISSION_GROUPS: { label: string; keys: PermissionKey[] }[] = [
   { label: 'Tarefas', keys: ['tasks.view'] },
   { label: 'Mural', keys: ['mural.view'] },
   { label: 'Equipe', keys: ['team.view', 'team.manage'] },
+  {
+    label: 'Perfil profissional',
+    keys: [
+      'professional.limited',
+      'patients.archive',
+      'appointments.delete_own',
+      'evaluations.edit',
+      'audio.transcribe',
+      'limited.approve',
+    ],
+  },
 ];
 
 /** Derive which level is currently active for a module given a permission set */
@@ -462,6 +486,81 @@ export const PRESET_ROLES: PresetRole[] = [
       'financial.edit',
       'financial.export',
       'reports.view',
+    ],
+  },
+  {
+    id: 'financeiro_completo',
+    label: 'Financeiro completo',
+    description: 'Visão completa do financeiro de toda a clínica: lançamentos, extratos e exportação.',
+    baseRole: 'professional',
+    icon: 'banknote',
+    permissions: [
+      'dashboard.view',
+      'financial.view',
+      'financial.edit',
+      'financial.export',
+      'reports.view',
+      'patients.view',
+    ],
+  },
+  {
+    id: 'financeiro_individual',
+    label: 'Financeiro individual',
+    description: 'Acesso financeiro restrito aos próprios pacientes vinculados.',
+    baseRole: 'professional',
+    icon: 'banknote',
+    permissions: [
+      'dashboard.view',
+      'financial.view',
+      'financial.edit',
+      'patients.view',
+      'patients.own_only',
+      'commissions.view',
+    ],
+  },
+  {
+    id: 'financeiro_consulta',
+    label: 'Financeiro consulta',
+    description: 'Apenas consulta de valores, extratos e status — sem editar nem exportar.',
+    baseRole: 'professional',
+    icon: 'banknote',
+    permissions: [
+      'dashboard.view',
+      'financial.view',
+      'reports.view',
+    ],
+  },
+  {
+    id: 'marketing',
+    label: 'Marketing',
+    description: 'Acesso a relatórios, mural, tarefas e dados não sensíveis para campanhas.',
+    baseRole: 'professional',
+    icon: 'report',
+    permissions: [
+      'dashboard.view',
+      'clinics.view',
+      'patients.view',
+      'reports.view',
+      'mural.view',
+      'tasks.view',
+    ],
+  },
+  {
+    id: 'auditor_fiscal',
+    label: 'Auditor/Fiscal',
+    description: 'Acesso somente leitura a financeiro, relatórios e prontuários para auditoria.',
+    baseRole: 'professional',
+    icon: 'shield',
+    permissions: [
+      'dashboard.view',
+      'clinics.view',
+      'patients.view',
+      'evolutions.view',
+      'evolutions.status_only',
+      'financial.view',
+      'financial.export',
+      'reports.view',
+      'ai_reports.view',
     ],
   },
 ];
