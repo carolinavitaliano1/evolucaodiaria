@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { ChevronsUpDown, Check, Link2, HelpCircle, Settings, Table as TableIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export interface AppointmentDraft {
   id?: string;
@@ -137,6 +137,15 @@ export function AppointmentDialog({
   const [saving, setSaving] = useState(false);
   const [patientPopOpen, setPatientPopOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
+  const [roomDialogOpen, setRoomDialogOpen] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [therapistSchedule, setTherapistSchedule] = useState<{
+    weekdays: string[] | null;
+    schedule_by_day: Record<string, { start: string; end: string; breakStart?: string; breakEnd?: string }> | null;
+    name?: string;
+  } | null>(null);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
 
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -276,11 +285,47 @@ export function AppointmentDialog({
   }, [knownRooms, form.room]);
 
   const handleAddRoom = () => {
-    const name = window.prompt('Nome da sala:');
-    if (!name?.trim()) return;
-    const v = name.trim();
+    setNewRoomName('');
+    setRoomDialogOpen(true);
+  };
+
+  const confirmAddRoom = () => {
+    const v = newRoomName.trim();
+    if (!v) { toast.error('Informe o nome da sala'); return; }
     setKnownRooms(prev => Array.from(new Set([...prev, v])).sort());
     setForm(f => ({ ...f, room: v }));
+    setRoomDialogOpen(false);
+    setNewRoomName('');
+    toast.success('Sala cadastrada');
+  };
+
+  const handleOpenSchedule = async () => {
+    if (!form.therapist_user_id) {
+      toast.info('Selecione um profissional primeiro');
+      return;
+    }
+    setScheduleDialogOpen(true);
+    setScheduleLoading(true);
+    try {
+      const { data: memberData } = await supabase
+        .from('organization_members')
+        .select('weekdays, schedule_by_day, email')
+        .eq('user_id', form.therapist_user_id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      const memberName = members.find(m => m.userId === form.therapist_user_id)?.name;
+      setTherapistSchedule({
+        weekdays: (memberData?.weekdays as string[]) || null,
+        schedule_by_day: (memberData?.schedule_by_day as any) || null,
+        name: memberName,
+      });
+    } catch (e) {
+      console.error('Error loading therapist schedule', e);
+      setTherapistSchedule(null);
+    } finally {
+      setScheduleLoading(false);
+    }
   };
 
   const handleSave = async () => {
