@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { toLocalDateString } from '@/lib/utils';
 import { ArrowLeft, Plus, Users, MapPin, Clock, DollarSign, Calendar, Phone, Cake, Check, X, ClipboardList, FileText, Package, Trash2, Edit, Pencil, Stamp as StampIcon, CalendarIcon, Wand2, Loader2, Sparkles, Download, Search, StickyNote, TrendingUp, Archive, ArchiveRestore, LayoutTemplate, Briefcase, MoreVertical, Mail, CheckCircle2, MessageSquare, Link2, Copy, Upload, Receipt, UserCheck, ShieldCheck, UserCog } from 'lucide-react';
@@ -255,6 +255,11 @@ export default function ClinicDetail() {
     if (typeof window === 'undefined') return 'today';
     return new URLSearchParams(window.location.search).get('tab') || 'today';
   });
+  const location = useLocation();
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab && tab !== activeTab) setActiveTab(tab);
+  }, [location.search]);
   const [submittingPatient, setSubmittingPatient] = useState(false);
   const [pendingPatients, setPendingPatients] = useState<any[]>([]);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
