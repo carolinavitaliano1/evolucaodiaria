@@ -247,6 +247,44 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
   const [inviteRemunerationValue, setInviteRemunerationValue] = useState<string>('');
   const [inviteWeekdays, setInviteWeekdays] = useState<string[]>([]);
 
+  // Importar dados de Colaborador cadastrado (localStorage de ClinicCollaborators)
+  type CollabMini = {
+    id: string;
+    name: string;
+    email?: string;
+    cellphone?: string;
+    professionalAreas?: { area?: string; cbosCode?: string }[];
+  };
+  const [collaborators, setCollaborators] = useState<CollabMini[]>([]);
+  const [collabPickerOpen, setCollabPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!inviteOpen || !clinicId) return;
+    try {
+      const raw = localStorage.getItem(`clinic-collaborators:${clinicId}`);
+      if (raw) {
+        const list = JSON.parse(raw) as CollabMini[];
+        setCollaborators(Array.isArray(list) ? list : []);
+      } else {
+        setCollaborators([]);
+      }
+    } catch {
+      setCollaborators([]);
+    }
+  }, [inviteOpen, clinicId]);
+
+  const importFromCollaborator = (c: CollabMini) => {
+    if (c.email) setInviteEmail(c.email);
+    const firstArea = c.professionalAreas?.[0]?.area;
+    if (firstArea) setInviteRoleLabel(firstArea);
+    setCollabPickerOpen(false);
+    if (!c.email) {
+      toast.warning('Este colaborador não tem e-mail cadastrado. Preencha manualmente.');
+    } else {
+      toast.success(`Dados de ${c.name} importados`);
+    }
+  };
+
   // Member management modal
   const [manageMember, setManageMember] = useState<OrganizationMember | null>(null);
   const [editPatients, setEditPatients] = useState<Record<string, string>>({});
