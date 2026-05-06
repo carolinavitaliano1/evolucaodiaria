@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronLeft, ChevronRight, Search, DollarSign, CheckCircle2, Circle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, DollarSign, CheckCircle2, Circle, ChevronDown, ChevronUp, AlertTriangle, Stamp, Package, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { calculateMemberRemunerationByPlans } from '@/utils/financialHelpers';
@@ -36,6 +37,7 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
   const { user } = useAuth();
   const { clinics, patients, evolutions, clinicPackages } = useApp();
   const { members, loading: orgLoading } = useClinicOrg(clinicId);
+  const navigate = useNavigate();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [search, setSearch] = useState('');
@@ -340,11 +342,49 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
               </div>
 
               {needsConfig && (
-                <div className="mt-3 rounded-md border border-amber-300/60 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-[11px] leading-snug text-amber-800 dark:text-amber-200">
-                  ⚠️ Este profissional tem <strong>{sessions.length}</strong> atendimento(s) no mês,
-                  mas <strong>nenhum plano de remuneração</strong> configurado — por isso a comissão está em R$ 0,00.
-                  Vá em <em>Equipe da clínica → membro → Remuneração</em> para definir um valor por sessão, mensal,
-                  diário ou por pacote, ou configure um modelo padrão no cadastro da clínica.
+                <div className="mt-3 rounded-xl border border-amber-300/60 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-200/70 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                        Comissão sem configuração
+                      </p>
+                      <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-200/90 leading-relaxed">
+                        Este profissional tem <strong>{sessions.length}</strong> atendimento(s) no mês,
+                        mas os procedimentos ou pacotes vinculados não possuem comissão definida —
+                        por isso o total está em <strong>R$ 0,00</strong>.
+                      </p>
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/clinic/${clinicId}?tab=procedures`)}
+                          className="group flex items-center gap-2 rounded-lg bg-white/80 dark:bg-amber-950/40 border border-amber-300/50 px-3 py-2 text-left hover:bg-white dark:hover:bg-amber-950/60 transition-colors"
+                        >
+                          <Stamp className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                          <span className="flex-1 text-[11px] font-medium text-amber-900 dark:text-amber-100 leading-tight">
+                            Configurar comissão por <br/>Procedimento
+                          </span>
+                          <ArrowRight className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/clinic/${clinicId}?tab=packages`)}
+                          className="group flex items-center gap-2 rounded-lg bg-white/80 dark:bg-amber-950/40 border border-amber-300/50 px-3 py-2 text-left hover:bg-white dark:hover:bg-amber-950/60 transition-colors"
+                        >
+                          <Package className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                          <span className="flex-1 text-[11px] font-medium text-amber-900 dark:text-amber-100 leading-tight">
+                            Configurar comissão por <br/>Pacote
+                          </span>
+                          <ArrowRight className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      </div>
+                      <p className="mt-2 text-[10px] text-amber-700/80 dark:text-amber-300/80">
+                        Dica: dentro do Procedimento ou Pacote, defina a comissão padrão e (opcional) overrides por profissional.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
