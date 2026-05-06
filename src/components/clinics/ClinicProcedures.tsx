@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useClinicOrg } from '@/hooks/useClinicOrg';
+import { Users } from 'lucide-react';
 
 interface Props {
   clinicId: string;
@@ -49,6 +51,7 @@ const emptyForm = {
 
 export default function ClinicProcedures({ clinicId, clinicName }: Props) {
   const { user } = useAuth();
+  const { members } = useClinicOrg(clinicId);
   const [view, setView] = useState<'list' | 'form'>('list');
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
@@ -64,6 +67,12 @@ export default function ClinicProcedures({ clinicId, clinicName }: Props) {
 
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  /** Override de comissão por profissional para o procedimento em edição.
+   *  Chave = member_id, Valor = { type, value } */
+  const [memberCommissions, setMemberCommissions] = useState<
+    Record<string, { type: 'valor_fixo' | 'porcentagem'; value: number }>
+  >({});
 
   // Load profile name + procedures + health plans
   useEffect(() => {
@@ -137,6 +146,7 @@ export default function ClinicProcedures({ clinicId, clinicName }: Props) {
   const openNew = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setMemberCommissions({});
     setView('form');
   };
 
@@ -153,6 +163,18 @@ export default function ClinicProcedures({ clinicId, clinicName }: Props) {
     });
     setEditingId(p.id);
     setView('form');
+    // carrega overrides por profissional
+    supabase
+      .from('procedure_commissions' as any)
+      .select('member_id, commission_value, commission_type')
+      .eq('procedure_id', p.id)
+      .then(({ data }) => {
+        const map: Record<string, { type: 'valor_fixo' | 'porcentagem'; value: number }> = {};
+        ((data || []) as any[]).forEach(r => {
+          map[r.member_id] = { type: r.commission_type, value: Number(r.commission_value) || 0 };
+        });
+        setMemberCommissions(map);
+      });
   };
 
   const handleSave = async () => {
@@ -177,15 +199,47 @@ export default function ClinicProcedures({ clinicId, clinicName }: Props) {
     const { error } = editingId
       ? await supabase.from('procedures').update(payload).eq('id', editingId)
       : await supabase.from('procedures').insert(payload);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error('Erro ao salvar procedimento');
       return;
     }
+
+    // salva overrides de comissão por profissional
+    const procId = editingId ?? (await supabase
+      .from('procedures')
+      .select('id')
+      .eq('clinic_id', clinicId)
+      .eq('name', payload.name)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()).data?.id;
+
+    if (procId) {
+      // apaga existentes e recria (idempotente e simples)
+      await supabase.from('procedure_commissions' as any).delete().eq('procedure_id', procId);
+      const inserts = Object.entries(memberCommissions)
+        .filter(([, v]) => v.value > 0)
+        .map(([member_id, v]) => ({
+          procedure_id: procId,
+          member_id,
+          commission_type: v.type,
+          commission_value: v.value,
+        }));
+      if (inserts.length) {
+        const { error: cErr } = await supabase
+          .from('procedure_commissions' as any)
+          .insert(inserts);
+        if (cErr) toast.warning('Procedimento salvo, mas falhou ao salvar comissões: ' + cErr.message);
+      }
+    }
+
+    setSaving(false);
     toast.success(editingId ? 'Procedimento atualizado' : 'Procedimento cadastrado');
     setView('list');
     setForm(emptyForm);
     setEditingId(null);
+    setMemberCommissions({});
     loadAll();
   };
 
