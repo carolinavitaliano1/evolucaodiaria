@@ -811,8 +811,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (confirmRow) confirmedAttendance = true;
         } catch (_e) { /* ignora — fallback ao valor original */ }
       }
+      // 🔎 Resolve o terapeuta dono da sessão para que a comissão seja
+      // calculada corretamente. Se o atendimento foi marcado pelo dono/admin
+      // mas o paciente está agendado para outro profissional (via slot fixo
+      // ou agendamento avulso), gravamos a evolução em nome do terapeuta.
+      let evolutionUserId = user.id;
+      try {
+        // 1) Slot fixo recorrente do paciente
+        if (evolution.scheduleSlotId) {
+          const { data: slot } = await supabase
+            .from('patient_schedule_slots')
+            .select('member_id')
+            .eq('id', evolution.scheduleSlotId)
+            .maybeSingle();
+          if (slot?.member_id) {
+            const { data: mem } = await supabase
+              .from('organization_members')
+              .select('user_id')
+              .eq('id', slot.member_id)
+              .maybeSingle();
+            if (mem?.user_id) evolutionUserId = mem.user_id;
+          }
+        }
+        // 2) Fallback — agendamento na agenda da data
+        if (evolutionUserId === user.id && evolution.patientId && evolution.clinicId && evolution.date) {
+          const { data: appt } = await supabase
+            .from('appointments')
+            .select('therapist_user_id')
+            .eq('patient_id', evolution.patientId)
+            .eq('clinic_id', evolution.clinicId)
+            .eq('date', evolution.date)
+            .neq('status', 'cancelado')
+            .not('therapist_user_id', 'is', null)
+            .limit(1)
+            .maybeSingle();
+          if (appt?.therapist_user_id) evolutionUserId = appt.therapist_user_id;
+        }
+      } catch (_e) { /* fallback: mantém user.id */ }
       const { data, error } = await supabase.from('evolutions').insert({
-        user_id: user.id, patient_id: evolution.patientId, clinic_id: evolution.clinicId,
+        user_id: evolutionUserId, patient_id: evolution.patientId, clinic_id: evolution.clinicId,
         date: evolution.date, text: evolution.text, attendance_status: evolution.attendanceStatus,
         signature: evolution.signature || null, stamp_id: evolution.stampId || null,
         confirmed_attendance: confirmedAttendance, mood: evolution.mood || null,
