@@ -193,6 +193,40 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       });
   }, [clinicId, selectedDate, user]);
 
+  // Para Clínica Pro: carrega totais de faturamento/comissão direto dos agendamentos
+  // (procedure_id + package_id) — fonte oficial pela nova lógica.
+  useEffect(() => {
+    const isPro = clinic?.type === 'clinica';
+    if (!isPro || !clinicId) {
+      setApptTotals(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      // Pega todos os terapeutas da clínica via organização
+      const { data: clinicRow } = await supabase
+        .from('clinics').select('organization_id').eq('id', clinicId).maybeSingle();
+      const orgId = (clinicRow as any)?.organization_id;
+      if (!orgId) { if (!cancelled) setApptTotals({ base: 0, commission: 0, count: 0 }); return; }
+      const { data: m } = await supabase
+        .from('organization_members').select('user_id').eq('organization_id', orgId).eq('status', 'active');
+      const userIds = ((m || []) as any[]).map(r => r.user_id).filter(Boolean);
+      if (userIds.length === 0) { if (!cancelled) setApptTotals({ base: 0, commission: 0, count: 0 }); return; }
+      const start = toLocalDateString(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+      const end = toLocalDateString(endOfMonth(selectedDate));
+      const targetIds = restrictToOwnRevenue && user ? [user.id] : userIds;
+      const all = await Promise.all(targetIds.map(uid => calculateCommissionFromAppointments({
+        therapistUserId: uid, clinicId, startDate: start, endDate: end,
+      })));
+      if (cancelled) return;
+      const base = all.reduce((s, r) => s + r.totalBase, 0);
+      const commission = all.reduce((s, r) => s + r.totalCommission, 0);
+      const count = all.reduce((s, r) => s + r.rows.length, 0);
+      setApptTotals({ base, commission, count });
+    })();
+    return () => { cancelled = true; };
+  }, [clinicId, selectedDate, clinic?.type, restrictToOwnRevenue, user?.id]);
+
   // Load payment record for contratante clinic selected month
   useEffect(() => {
     if (!clinic || clinic.type !== 'terceirizada' || !user) return;
