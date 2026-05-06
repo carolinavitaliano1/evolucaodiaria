@@ -419,6 +419,8 @@ export function AppointmentDialog({
       notes: notes || null,
       is_recurring: !!form.is_recurring,
       user_id: user.id,
+      procedure_id: form.tipoCobranca === 'procedimento' && form.procedimentoId ? form.procedimentoId : null,
+      package_id:   form.tipoCobranca === 'pacote'       && form.pacoteId       ? form.pacoteId       : null,
     };
 
     let error;
