@@ -333,6 +333,7 @@ export const PERMISSION_GROUPS: { label: string; keys: PermissionKey[] }[] = [
   { label: 'Tarefas', keys: ['tasks.view'] },
   { label: 'Mural', keys: ['mural.view'] },
   { label: 'Equipe', keys: ['team.view', 'team.manage'] },
+  { label: 'Comissões', keys: ['commissions.view'] },
   {
     label: 'Perfil profissional',
     keys: [
