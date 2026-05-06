@@ -505,6 +505,54 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         </Button>
       </div>
 
+      {/* Cards específicos de Clínica Pro: valores oriundos do agendamento
+          (procedimento/pacote vinculado + comissão configurada). */}
+      {isClinicaPro && apptTotals && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="w-8 h-8 rounded-xl bg-success/10 flex items-center justify-center mb-2">
+              <Briefcase className="w-4 h-4 text-success" />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">Faturamento (Procedimentos)</p>
+            <p className="text-lg font-bold text-foreground">
+              R$ {apptTotals.base.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Soma do valor cadastrado</p>
+          </div>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+              <Receipt className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">Comissões da Equipe</p>
+            <p className="text-lg font-bold text-foreground">
+              R$ {apptTotals.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">A pagar aos profissionais</p>
+          </div>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-2">
+              <DollarSign className="w-4 h-4 text-emerald-500" />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">Saldo da Clínica</p>
+            <p className={cn(
+              'text-lg font-bold',
+              (apptTotals.base - apptTotals.commission) >= 0 ? 'text-foreground' : 'text-destructive',
+            )}>
+              R$ {(apptTotals.base - apptTotals.commission).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Faturamento − Comissões</p>
+          </div>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center mb-2">
+              <TrendingUp className="w-4 h-4 text-violet-500" />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">Atendimentos</p>
+            <p className="text-lg font-bold text-foreground">{apptTotals.count}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Realizados/confirmados</p>
+          </div>
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card rounded-2xl p-4 border border-border">
