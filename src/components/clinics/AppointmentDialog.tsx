@@ -29,6 +29,8 @@ export interface AppointmentDraft {
   convenio?: string | null;
   notes?: string | null;
   is_recurring?: boolean;
+  procedure_id?: string | null;
+  package_id?: string | null;
 }
 
 interface MemberOption { userId: string; name: string; }
@@ -279,9 +281,9 @@ export function AppointmentDialog({
       recurrence_weekdays: draft?.date ? [new Date(draft.date + 'T12:00:00').getDay()] : [],
       encaixe: parsed.encaixe,
       autorizacao: parsed.autorizacao,
-      procedimentoId: parsed.procedimentoId,
-      pacoteId: parsed.pacoteId,
-      tipoCobranca: parsed.pacoteId ? 'pacote' : 'procedimento',
+      procedimentoId: draft?.procedure_id || parsed.procedimentoId,
+      pacoteId:       draft?.package_id   || parsed.pacoteId,
+      tipoCobranca:   (draft?.package_id || parsed.pacoteId) ? 'pacote' : 'procedimento',
       lancarFinanceiro: parsed.lancarFinanceiro,
       celular: parsed.celular ? maskPhone(parsed.celular) : '',
       lembreteSms: 'none',
@@ -419,6 +421,8 @@ export function AppointmentDialog({
       notes: notes || null,
       is_recurring: !!form.is_recurring,
       user_id: user.id,
+      procedure_id: form.tipoCobranca === 'procedimento' && form.procedimentoId ? form.procedimentoId : null,
+      package_id:   form.tipoCobranca === 'pacote'       && form.pacoteId       ? form.pacoteId       : null,
     };
 
     let error;

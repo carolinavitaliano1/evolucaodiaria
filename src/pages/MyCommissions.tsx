@@ -16,6 +16,10 @@ import {
   type PlanBreakdownEntry,
 } from '@/utils/financialHelpers';
 import { toLocalDateString } from '@/lib/utils';
+import {
+  calculateCommissionFromAppointments,
+  type AppointmentCommissionRow,
+} from '@/utils/appointmentCommission';
 
 interface MemberRow {
   id: string;
@@ -55,6 +59,11 @@ export default function MyCommissions() {
     paid_amount: number;
     paid_at: string | null;
   } | null>(null);
+  const [apptCommission, setApptCommission] = useState<{
+    rows: AppointmentCommissionRow[];
+    totalCommission: number;
+    totalBase: number;
+  }>({ rows: [], totalCommission: 0, totalBase: 0 });
 
   const monthStart = startOfMonth(refDate);
   const monthEnd = endOfMonth(refDate);
@@ -203,6 +212,22 @@ export default function MyCommissions() {
     setLoading(false);
   }
 
+  // Carrega comissão por agendamentos vinculados a procedimento/pacote
+  useEffect(() => {
+    if (!user) return;
+    calculateCommissionFromAppointments({
+      therapistUserId: user.id,
+      startDate: toLocalDateString(monthStart),
+      endDate: toLocalDateString(monthEnd),
+    })
+      .then(setApptCommission)
+      .catch(err => {
+        console.error('appointment commission error', err);
+        setApptCommission({ rows: [], totalCommission: 0, totalBase: 0 });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, refDate]);
+
   useEffect(() => {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,7 +264,8 @@ export default function MyCommissions() {
     });
   }, [plans, assignmentPlanMap, evolutions, member]);
 
-  const totalCommission = remunerationCalc.total;
+  const hasApptData = apptCommission.rows.length > 0;
+  const totalCommission = hasApptData ? apptCommission.totalCommission : remunerationCalc.total;
   const breakdown = remunerationCalc.breakdown;
   const usedLegacy = remunerationCalc.usedLegacy;
 
@@ -493,8 +519,61 @@ export default function MyCommissions() {
 
       {/* Detalhamento por paciente */}
       <Card className="p-5">
-        <h2 className="text-sm font-semibold mb-3">Detalhamento por paciente</h2>
-        {loading ? (
+        <h2 className="text-sm font-semibold mb-3">
+          {hasApptData ? 'Detalhamento por agendamento (procedimentos/pacotes)' : 'Detalhamento por paciente'}
+        </h2>
+        {hasApptData ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Paciente</TableHead>
+                <TableHead>Procedimento / Pacote</TableHead>
+                <TableHead className="text-right">Valor base</TableHead>
+                <TableHead className="text-right">Comissão</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {apptCommission.rows
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .map(r => (
+                  <TableRow key={r.appointmentId}>
+                    <TableCell className="whitespace-nowrap">
+                      {format(new Date(r.date + 'T12:00:00'), 'dd/MM')} {r.time?.slice(0, 5)}
+                    </TableCell>
+                    <TableCell className="font-medium">{r.patientName || '—'}</TableCell>
+                    <TableCell>
+                      {r.source === 'none'
+                        ? <span className="text-xs text-muted-foreground">Sem vínculo</span>
+                        : r.sourceName}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      R$ {r.base.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      R$ {r.commission.toFixed(2)}
+                      {r.commissionType && r.commissionValue != null && (
+                        <span className="block text-[10px] text-muted-foreground">
+                          {r.commissionType === 'porcentagem'
+                            ? `${r.commissionValue}%`
+                            : `R$ ${Number(r.commissionValue).toFixed(2)} fixo`}
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              <TableRow className="bg-muted/30">
+                <TableCell colSpan={3} className="font-semibold text-right">Total</TableCell>
+                <TableCell className="text-right text-xs text-muted-foreground">
+                  R$ {apptCommission.totalBase.toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right font-bold">
+                  R$ {apptCommission.totalCommission.toFixed(2)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        ) : loading ? (
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : perPatient.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">

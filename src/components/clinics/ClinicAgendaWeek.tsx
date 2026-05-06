@@ -59,6 +59,8 @@ interface AppointmentRow {
   convenio: string | null;
   notes: string | null;
   is_recurring: boolean;
+  procedure_id?: string | null;
+  package_id?: string | null;
 }
 
 const DAYS_PT = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
@@ -113,7 +115,7 @@ export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekP
     setLoading(true);
     const { data, error } = await supabase
       .from('appointments' as any)
-      .select('id, date, time, end_time, patient_id, therapist_user_id, status, room, convenio, notes, is_recurring')
+      .select('id, date, time, end_time, patient_id, therapist_user_id, status, room, convenio, notes, is_recurring, procedure_id, package_id')
       .eq('clinic_id', clinicId)
       .gte('date', weekStartStr)
       .lte('date', weekEndStr);
@@ -182,7 +184,7 @@ export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekP
     // Carrega TODOS os agendamentos recorrentes da clínica e replica para a semana visível
     supabase
       .from('appointments' as any)
-      .select('id, date, time, end_time, patient_id, therapist_user_id, status, room, convenio, notes, is_recurring')
+      .select('id, date, time, end_time, patient_id, therapist_user_id, status, room, convenio, notes, is_recurring, procedure_id, package_id')
       .eq('clinic_id', clinicId)
       .eq('is_recurring', true)
       .then(({ data }) => setRecurringSeed((data || []) as AppointmentRow[]));
@@ -280,6 +282,8 @@ export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekP
         convenio: a.convenio || '',
         notes: a.notes || '',
         is_recurring: false,
+        procedure_id: a.procedure_id || null,
+        package_id: a.package_id || null,
       });
     } else {
       setDraft({
@@ -294,6 +298,8 @@ export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekP
         convenio: a.convenio || '',
         notes: a.notes || '',
         is_recurring: a.is_recurring,
+        procedure_id: a.procedure_id || null,
+        package_id: a.package_id || null,
       });
     }
     setDialogOpen(true);
