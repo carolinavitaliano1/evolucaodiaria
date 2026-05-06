@@ -345,50 +345,32 @@ export default function MyCommissions() {
       </div>
 
       {/* Modelo de remuneração */}
-      {member && (
+      {member && plans.length > 0 && (
         <Card className="p-4 bg-muted/30">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Modelo de remuneração</p>
-              {plans.length > 0 ? (
-                <>
-                  <p className="text-base font-semibold text-foreground flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-primary" />
-                    {plans.length} {plans.length === 1 ? 'plano cadastrado' : 'planos cadastrados'}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {plans.map(p => (
-                      <Badge
-                        key={p.id}
-                        variant={p.is_default ? 'default' : 'secondary'}
-                        className="text-[11px]"
-                      >
-                        {p.name} · R$ {Number(p.remuneration_value).toFixed(2)}/{planTypeShortLabel(p.remuneration_type)}
-                        {p.is_default && plans.length > 1 ? ' ★' : ''}
-                      </Badge>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p className="text-base font-semibold text-foreground">
-                  {REM_TYPE_LABEL[member.remuneration_type ?? 'definir_depois'] ?? 'A definir'}
-                  {member.remuneration_type === 'por_sessao' && member.remuneration_value && (
-                    <Badge variant="secondary" className="ml-2">
-                      R$ {Number(member.remuneration_value).toFixed(2)} / sessão
-                    </Badge>
-                  )}
-                </p>
-              )}
+              <p className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" />
+                {plans.length} {plans.length === 1 ? 'plano cadastrado' : 'planos cadastrados'}
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {plans.map(p => (
+                  <Badge
+                    key={p.id}
+                    variant={p.is_default ? 'default' : 'secondary'}
+                    className="text-[11px]"
+                  >
+                    {p.name} · R$ {Number(p.remuneration_value).toFixed(2)}/{planTypeShortLabel(p.remuneration_type)}
+                    {p.is_default && plans.length > 1 ? ' ★' : ''}
+                  </Badge>
+                ))}
+              </div>
             </div>
             {member.role_label && (
               <Badge variant="outline">{member.role_label}</Badge>
             )}
           </div>
-          {plans.length === 0 && (!member.remuneration_type || member.remuneration_type === 'definir_depois') && (
-            <p className="mt-2 text-xs text-amber-600">
-              ⚠️ Sua remuneração ainda não foi definida pelo administrador da clínica. Solicite a configuração para visualizar seus ganhos.
-            </p>
-          )}
         </Card>
       )}
 
