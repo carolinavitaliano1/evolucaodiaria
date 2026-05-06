@@ -3,6 +3,7 @@ import { DollarSign, Loader2, ChevronLeft, ChevronRight, TrendingUp, TrendingDow
 import { PatientBillingManager } from './PatientBillingManager';
 import { ClinicPackagesPanel } from './ClinicPackagesPanel';
 import { TeamFinancialDashboard } from './TeamFinancialDashboard';
+import { ClinicProTeamFinancial } from './ClinicProTeamFinancial';
 import { calculatePatientMonthlyRevenue, calculateClinicMonthlyRevenue, getIndividualPerSessionValue, resolveAbsencePaymentType, shouldChargeAbsence, isBillableStatus, isClinicFixedMonthly, isClinicFixedDaily, type EvolutionLike } from '@/utils/financialHelpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1308,7 +1309,11 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       </TabsContent>
       {showTeam && (
         <TabsContent value="team">
-          <TeamFinancialDashboard clinicId={clinicId} />
+          {isClinicaPro ? (
+            <ClinicProTeamFinancial clinicId={clinicId} />
+          ) : (
+            <TeamFinancialDashboard clinicId={clinicId} />
+          )}
         </TabsContent>
       )}
       {!isClinicaPro && (
