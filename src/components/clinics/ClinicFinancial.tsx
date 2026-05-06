@@ -25,6 +25,9 @@ import jsPDF from 'jspdf';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
+import { endOfMonth } from 'date-fns';
+import { toLocalDateString } from '@/lib/utils';
+import { calculateCommissionFromAppointments } from '@/utils/appointmentCommission';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -69,6 +72,9 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
+
+  // Totais por agendamento (procedure/package) para Clínica Pro.
+  const [apptTotals, setApptTotals] = useState<{ base: number; commission: number; count: number } | null>(null);
 
   // Dias específicos state
   const [specificDays, setSpecificDays] = useState<Date[]>([]);
