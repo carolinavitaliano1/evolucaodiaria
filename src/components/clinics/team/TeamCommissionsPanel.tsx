@@ -282,6 +282,11 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
           const isExpanded = expanded === member.memberId;
           const indPayments = rec?.individual_payments || {};
           const initials = (member.name || member.email).slice(0, 2).toUpperCase();
+          const hasPlans = (member.plans || []).length > 0;
+          const hasLegacyValue = !!(member.remunerationType && member.remunerationType !== 'definir_depois' && member.remunerationValue);
+          const hasClinicModel = !!(clinic?.paymentType && clinic?.paymentAmount);
+          const remunerationConfigured = hasPlans || hasLegacyValue || hasClinicModel;
+          const needsConfig = sessions.length > 0 && total <= 0 && !remunerationConfigured;
           const statusConfig = {
             open:    { label: 'Em aberto', cls: 'bg-muted text-muted-foreground border-border' },
             partial: { label: 'Parcial',   cls: 'bg-warning/10 text-warning border-warning/30' },
@@ -333,6 +338,15 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
                   {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </Button>
               </div>
+
+              {needsConfig && (
+                <div className="mt-3 rounded-md border border-amber-300/60 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-[11px] leading-snug text-amber-800 dark:text-amber-200">
+                  ⚠️ Este profissional tem <strong>{sessions.length}</strong> atendimento(s) no mês,
+                  mas <strong>nenhum plano de remuneração</strong> configurado — por isso a comissão está em R$ 0,00.
+                  Vá em <em>Equipe da clínica → membro → Remuneração</em> para definir um valor por sessão, mensal,
+                  diário ou por pacote, ou configure um modelo padrão no cadastro da clínica.
+                </div>
+              )}
 
               {isExpanded && (
                 <div className="mt-4 border-t pt-3">
