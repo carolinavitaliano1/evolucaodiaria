@@ -16,6 +16,10 @@ import {
   type PlanBreakdownEntry,
 } from '@/utils/financialHelpers';
 import { toLocalDateString } from '@/lib/utils';
+import {
+  calculateCommissionFromAppointments,
+  type AppointmentCommissionRow,
+} from '@/utils/appointmentCommission';
 
 interface MemberRow {
   id: string;
@@ -55,6 +59,11 @@ export default function MyCommissions() {
     paid_amount: number;
     paid_at: string | null;
   } | null>(null);
+  const [apptCommission, setApptCommission] = useState<{
+    rows: AppointmentCommissionRow[];
+    totalCommission: number;
+    totalBase: number;
+  }>({ rows: [], totalCommission: 0, totalBase: 0 });
 
   const monthStart = startOfMonth(refDate);
   const monthEnd = endOfMonth(refDate);
@@ -202,6 +211,22 @@ export default function MyCommissions() {
 
     setLoading(false);
   }
+
+  // Carrega comissão por agendamentos vinculados a procedimento/pacote
+  useEffect(() => {
+    if (!user) return;
+    calculateCommissionFromAppointments({
+      therapistUserId: user.id,
+      startDate: toLocalDateString(monthStart),
+      endDate: toLocalDateString(monthEnd),
+    })
+      .then(setApptCommission)
+      .catch(err => {
+        console.error('appointment commission error', err);
+        setApptCommission({ rows: [], totalCommission: 0, totalBase: 0 });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, refDate]);
 
   useEffect(() => {
     loadAll();
