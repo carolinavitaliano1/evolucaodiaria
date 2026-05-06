@@ -24,7 +24,9 @@ export type Database = {
           id: string
           is_recurring: boolean
           notes: string | null
+          package_id: string | null
           patient_id: string
+          procedure_id: string | null
           room: string | null
           status: string
           therapist_user_id: string | null
@@ -41,7 +43,9 @@ export type Database = {
           id?: string
           is_recurring?: boolean
           notes?: string | null
+          package_id?: string | null
           patient_id: string
+          procedure_id?: string | null
           room?: string | null
           status?: string
           therapist_user_id?: string | null
@@ -58,7 +62,9 @@ export type Database = {
           id?: string
           is_recurring?: boolean
           notes?: string | null
+          package_id?: string | null
           patient_id?: string
+          procedure_id?: string | null
           room?: string | null
           status?: string
           therapist_user_id?: string | null
@@ -75,10 +81,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "appointments_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_packages"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointments_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
             referencedColumns: ["id"]
           },
         ]
@@ -2684,6 +2704,51 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      procedure_commissions: {
+        Row: {
+          commission_type: string
+          commission_value: number
+          created_at: string
+          id: string
+          member_id: string
+          procedure_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          id?: string
+          member_id: string
+          procedure_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          id?: string
+          member_id?: string
+          procedure_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedure_commissions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedure_commissions_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
             referencedColumns: ["id"]
           },
         ]

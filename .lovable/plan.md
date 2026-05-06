@@ -1,91 +1,65 @@
-## Objetivo
+## O que muda
 
-Deixar o card "Personalize as permissões de acesso aos recursos" (cadastro novo + editar permissões) **igual ao layout que você descreveu**, com toggles Sim/Não visíveis diretamente — sem precisar abrir "Permissões avançadas". E aplicar **regras inteligentes de clínica** entre as opções para que nenhuma combinação fique sem sentido.
+### 1. Aba "Equipe" da clínica — REMOVIDA ✅
+A aba "Equipe" (com gestão completa: Financeiro/Agenda/Frequência/Pendentes) foi removida de `/clinics/:id`. A aba "Colaboradores" continua existindo. (Já aplicado nesta resposta.)
 
----
+### 2. Nova lógica de financeiro/comissão (substituição total)
 
-## 1. Layout final do card (cadastro + edição)
+A partir de agora, **toda comissão e receita da clínica vêm do procedimento ou pacote vinculado ao agendamento**, junto com o terapeuta selecionado. Os planos de remuneração antigos (`member_remuneration_plans`) e o modelo de pagamento da clínica (`payment_type`/`payment_amount`) deixam de ser usados em clínicas tipo `clinica`.
 
-Ordem exata, como você descreveu:
+## Etapas
 
-```text
-Personalize as permissões de acesso aos recursos
+### Etapa A — Banco de dados
+Adicionar ao `appointments`:
+- `procedure_id uuid` → referencia `procedures.id`
+- `package_id uuid` → referencia `clinic_packages.id`
+- (já existe) `therapist_user_id`
 
-Função *
-( ) Administrador
-( ) Profissional        ← agrupado, mostra "Tipo de profissional" abaixo quando selecionado
-( ) Secretária(o)
-( ) Financeiro completo
-( ) Financeiro individual
-( ) Financeiro consulta
-( ) Marketing
-( ) Auditor / Fiscal
+Garantir que existam comissões por procedimento por profissional. Hoje `procedures` tem `commission_type` e `commission_value` globais; criar tabela `procedure_commissions` (espelhando `package_commissions`):
+- `procedure_id`, `member_id`, `commission_value`, `commission_type` (`valor_fixo` | `porcentagem`)
 
-— quando Função = Profissional —
-Tipo de profissional:
-( ) Completo   ( ) Limitado
+### Etapa B — Agendamento (UI)
+No `AppointmentDialog`:
+- Adicionar dois selects: **Procedimento** OU **Pacote** (mutuamente exclusivos)
+- Manter o select de **Terapeuta** (já existe)
+- Salvar `procedure_id`/`package_id`/`therapist_user_id` no agendamento
 
-——— Permissões granulares (toggles Sim/Não) ———
+### Etapa C — Cálculo financeiro (clínicas tipo `clinica`)
+Substituir a lógica atual por:
 
-Pode editar ou arquivar pacientes?           [ Não  ◯  Sim ]
-Pode excluir atendimentos?                   [ Não  ◯  Sim ]
-   Permite excluir atendimentos registrados por ele.
-Pode editar avaliações e evoluções?          [ Não  ◯  Sim ]
-   Permite editar avaliações e evoluções.
-Pode transcrever atendimentos em áudio?      [ Não  ◯  Sim ]
-   Permite transcrever atendimentos gravados em áudio.
-Pode aprovar atendimentos de limitados?      [ Não  ◯  Sim ]
-   Permite aprovar atendimentos de profissionais limitados.
+```
+Para cada agendamento com status billable (presente/reposicao/...):
+  base = procedure.value  OU  package.price (com fração se sessões)
+  
+  receita_clinica += base
+  
+  comissão_terapeuta = lookup em procedure_commissions/package_commissions
+                       por (procedure_id|package_id, member do therapist_user_id)
+                       fallback: commission_value global do procedimento
+  
+  Se commission_type='porcentagem': comissão = base * (valor/100)
+  Se commission_type='valor_fixo': comissão = valor
 ```
 
-Os toggles ficam **sempre visíveis**, não escondidos.
-O painel "Permissões avançadas" continua disponível, mas reduzido a um link discreto: **"Personalizar módulos (Clínico, Financeiro, Agenda, IA, Relatórios)"** — para quem quiser mexer fino.
+Arquivos afetados:
+- `src/utils/financialHelpers.ts` (cálculo de receita por paciente/clínica)
+- `src/components/clinics/ClinicFinancial.tsx` (dashboard financeiro)
+- `src/pages/MyCommissions.tsx` (ganhos do terapeuta)
+- Função SQL `get_patient_monthly_revenue` (refazer para clínicas tipo `clinica`)
 
----
+### Etapa D — Limpeza
+Esconder/remover dos formulários (apenas para `type='clinica'`):
+- Modelo de pagamento da clínica (`payment_type`)
+- Plano de remuneração do membro (`member_remuneration_plans`)
 
-## 2. Regras inteligentes entre opções (a parte que faz sentido clínico)
+Manter para Consultório/Contratante (que continuam usando lógica atual).
 
-| Quando o usuário seleciona... | O que acontece automaticamente |
-|---|---|
-| **Administrador** | Todos os 5 toggles vão para **Sim** e ficam **bloqueados** (admin sempre tem tudo). Aviso: "Administrador tem acesso total." |
-| **Profissional · Completo** | Padrões: editar pacientes = **Sim**, excluir atendimentos = **Sim**, editar evoluções = **Sim**, transcrever = **Sim**, aprovar limitados = **Não**. Tudo editável. |
-| **Profissional · Limitado** | Padrões: editar pacientes = **Não**, excluir = **Não**, editar evoluções = **Não**, transcrever = **Sim**, aprovar limitados = **Não** (e fica **bloqueado em Não** — limitado nunca aprova). Mostra aviso amarelo: "Atendimentos deste usuário precisam ser aprovados por um profissional completo ou administrador." |
-| **Secretária(o)** | editar pacientes = **Sim** (cadastrar/editar dados cadastrais), excluir atendimentos = **Não**, editar evoluções = **Não** e **bloqueado** (secretária nunca edita prontuário), transcrever = **Não**, aprovar limitados = **Não** e **bloqueado**. |
-| **Financeiro completo / individual / consulta** | Todos os 5 toggles ficam **Não** e **bloqueados** (perfil financeiro não atua no clínico). Único toggle ativo: nenhum — só vê a aba financeira definida pelo perfil. |
-| **Marketing** | Todos os 5 toggles **Não** e **bloqueados**. Marketing só vê dados não-sensíveis. |
-| **Auditor / Fiscal** | Todos os 5 toggles **Não** e **bloqueados** (auditor é somente leitura por definição). |
+## Detalhes técnicos
 
-### Regras de coerência (não dependem do perfil)
+- **Migração SQL**: 1 migração adicionando 2 colunas em `appointments` + criando tabela `procedure_commissions` com RLS.
+- **Sem quebras**: agendamentos antigos sem `procedure_id`/`package_id` continuam visíveis mas geram R$ 0 (com aviso "Sem procedimento vinculado").
+- **MyCommissions** passa a listar agendamentos do terapeuta no mês com seu valor de comissão calculado por procedimento/pacote.
 
-- **"Aprovar atendimentos de limitados" = Sim** só pode ser ligado se o usuário **NÃO** for "Profissional · Limitado". Se o usuário muda de Completo → Limitado, este toggle vira automaticamente Não.
-- **"Editar avaliações e evoluções" = Sim** exige que o usuário tenha pelo menos `evolutions.view` (garantido por todos os perfis exceto Financeiro/Marketing — que já estão bloqueados acima).
-- **"Excluir atendimentos" = Sim** só faz sentido se o usuário pode criar/editar atendimentos (perfis clínicos). Bloqueado nos perfis administrativos onde o toggle já está em Não.
-- Quando o usuário troca de função, os toggles são **recalculados** para o padrão dessa função (com aviso "Padrões da função aplicados — você pode personalizar").
+## Confirmação antes de seguir
 
----
-
-## 3. Mudanças técnicas (resumo)
-
-### `src/hooks/useOrgPermissions.ts`
-- Acrescentar função utilitária `getRolePermissionDefaults(roleId)` que devolve `{ canEditPatients, canDeleteAppointments, canEditEvolutions, canTranscribeAudio, canApproveLimited, locked: { … } }` aplicando as regras da tabela acima.
-- Manter `PRESET_ROLES` e `PERMISSION_GROUPS` como hoje (continuam usados pelo PermissionEditor avançado).
-
-### `src/components/clinics/ClinicUsers.tsx`
-- Substituir o atual bloco "Pode editar ou arquivar pacientes?" + painel "Permissões avançadas" por **5 toggles Sim/Não em coluna**, todos sempre visíveis, dirigidos por `getRolePermissionDefaults`.
-- Cada toggle aceita `disabled` quando a regra trava o valor; mostra um pequeno cadeado e tooltip "Definido pela função selecionada".
-- Quando o usuário troca a função, recalcula os 5 estados; quando o usuário desmarca um lock manualmente em uma função permissiva, mantém a escolha dele.
-- Aviso visual amarelo abaixo dos toggles quando `professional.limited` está ativo, explicando o fluxo de aprovação.
-- O painel `PermissionEditor` (módulos Clínico, Financeiro, Agenda, IA, Relatórios) continua existindo, mas só abre via link discreto **"Personalizar módulos avançados"** abaixo dos toggles.
-- O mesmo bloco é renderizado dentro do **modal de Editar permissões** do usuário existente (componente compartilhado para cadastro e edição).
-- Ao salvar, os 5 toggles são traduzidos para as `PermissionKey` correspondentes (`patients.archive`, `appointments.delete_own`, `evaluations.edit`, `audio.transcribe`, `limited.approve`, `professional.limited`) e mesclados ao array de `permissions`.
-
-### Componente reutilizável
-- Criar `src/components/clinics/UserAccessPermissions.tsx` com o card completo (Função + Tipo + 5 toggles + link avançado) que recebe `value`/`onChange` de `{ roleId, permissions }`. Usado tanto no cadastro quanto no modal de edição — uma única fonte de verdade.
-
----
-
-## 4. Fora de escopo
-
-- Não cria novas tabelas nem altera o backend (`organization_members.permissions` continua armazenando `PermissionKey[]`).
-- Não muda o fluxo de convite por e-mail (edge function `invite-member` segue recebendo o array final de permissões).
-- Não toca em outras telas que consomem `useOrgPermissions` — o gating no resto do app continua reagindo às mesmas chaves.
+Esse é um trabalho grande (schema + UI + 4 telas financeiras). Confirma para eu começar pela **Etapa A (migração)**? Ou prefere que eu faça tudo em sequência sem parar?
