@@ -411,6 +411,56 @@ export default function ClinicProcedures({ clinicId, clinicName }: Props) {
             Aplicar este procedimento para todos os profissionais?
           </label>
 
+          {/* Comissões por profissional (override) */}
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold">Comissão por profissional (opcional)</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Configure um valor ou percentual de comissão diferente para cada profissional neste procedimento.
+              Quem ficar em branco usa a comissão padrão acima.
+            </p>
+            {members.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nenhum profissional cadastrado nesta clínica.</p>
+            ) : (
+              <div className="space-y-2">
+                {members.map(m => {
+                  const cur = memberCommissions[m.memberId] || { type: 'porcentagem' as const, value: 0 };
+                  return (
+                    <div key={m.memberId} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_120px] gap-2 items-center">
+                      <div className="text-sm truncate">{m.name || m.email}</div>
+                      <Select
+                        value={cur.type}
+                        onValueChange={(v) => setMemberCommissions(prev => ({
+                          ...prev,
+                          [m.memberId]: { type: v as any, value: cur.value },
+                        }))}
+                      >
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="porcentagem">Porcentagem (%)</SelectItem>
+                          <SelectItem value="valor_fixo">Valor fixo (R$)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={cur.value || ''}
+                        onChange={(e) => setMemberCommissions(prev => ({
+                          ...prev,
+                          [m.memberId]: { type: cur.type, value: parseFloat(e.target.value) || 0 },
+                        }))}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Footer */}
           <div className="flex flex-col gap-2 pt-3 border-t border-border">
             <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
