@@ -3,6 +3,7 @@ import { DollarSign, Loader2, ChevronLeft, ChevronRight, TrendingUp, TrendingDow
 import { PatientBillingManager } from './PatientBillingManager';
 import { ClinicPackagesPanel } from './ClinicPackagesPanel';
 import { TeamFinancialDashboard } from './TeamFinancialDashboard';
+import { ClinicProTeamFinancial } from './ClinicProTeamFinancial';
 import { calculatePatientMonthlyRevenue, calculateClinicMonthlyRevenue, getIndividualPerSessionValue, resolveAbsencePaymentType, shouldChargeAbsence, isBillableStatus, isClinicFixedMonthly, isClinicFixedDaily, type EvolutionLike } from '@/utils/financialHelpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,9 @@ import jsPDF from 'jspdf';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
+import { endOfMonth } from 'date-fns';
+import { toLocalDateString } from '@/lib/utils';
+import { calculateCommissionFromAppointments } from '@/utils/appointmentCommission';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -68,6 +72,9 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
+
+  // Totais por agendamento (procedure/package) para Clínica Pro.
+  const [apptTotals, setApptTotals] = useState<{ base: number; commission: number; count: number } | null>(null);
 
   // Dias específicos state
   const [specificDays, setSpecificDays] = useState<Date[]>([]);
@@ -185,6 +192,40 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
         }
       });
   }, [clinicId, selectedDate, user]);
+
+  // Para Clínica Pro: carrega totais de faturamento/comissão direto dos agendamentos
+  // (procedure_id + package_id) — fonte oficial pela nova lógica.
+  useEffect(() => {
+    const isPro = clinic?.type === 'clinica';
+    if (!isPro || !clinicId) {
+      setApptTotals(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      // Pega todos os terapeutas da clínica via organização
+      const { data: clinicRow } = await supabase
+        .from('clinics').select('organization_id').eq('id', clinicId).maybeSingle();
+      const orgId = (clinicRow as any)?.organization_id;
+      if (!orgId) { if (!cancelled) setApptTotals({ base: 0, commission: 0, count: 0 }); return; }
+      const { data: m } = await supabase
+        .from('organization_members').select('user_id').eq('organization_id', orgId).eq('status', 'active');
+      const userIds = ((m || []) as any[]).map(r => r.user_id).filter(Boolean);
+      if (userIds.length === 0) { if (!cancelled) setApptTotals({ base: 0, commission: 0, count: 0 }); return; }
+      const start = toLocalDateString(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+      const end = toLocalDateString(endOfMonth(selectedDate));
+      const targetIds = restrictToOwnRevenue && user ? [user.id] : userIds;
+      const all = await Promise.all(targetIds.map(uid => calculateCommissionFromAppointments({
+        therapistUserId: uid, clinicId, startDate: start, endDate: end,
+      })));
+      if (cancelled) return;
+      const base = all.reduce((s, r) => s + r.totalBase, 0);
+      const commission = all.reduce((s, r) => s + r.totalCommission, 0);
+      const count = all.reduce((s, r) => s + r.rows.length, 0);
+      setApptTotals({ base, commission, count });
+    })();
+    return () => { cancelled = true; };
+  }, [clinicId, selectedDate, clinic?.type, restrictToOwnRevenue, user?.id]);
 
   // Load payment record for contratante clinic selected month
   useEffect(() => {
@@ -463,6 +504,54 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
           <FileDown className="w-4 h-4" /> Extrato Completo Interno
         </Button>
       </div>
+
+      {/* Cards específicos de Clínica Pro: valores oriundos do agendamento
+          (procedimento/pacote vinculado + comissão configurada). */}
+      {isClinicaPro && apptTotals && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="w-8 h-8 rounded-xl bg-success/10 flex items-center justify-center mb-2">
+              <Briefcase className="w-4 h-4 text-success" />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">Faturamento (Procedimentos)</p>
+            <p className="text-lg font-bold text-foreground">
+              R$ {apptTotals.base.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Soma do valor cadastrado</p>
+          </div>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+              <Receipt className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">Comissões da Equipe</p>
+            <p className="text-lg font-bold text-foreground">
+              R$ {apptTotals.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">A pagar aos profissionais</p>
+          </div>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-2">
+              <DollarSign className="w-4 h-4 text-emerald-500" />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">Saldo da Clínica</p>
+            <p className={cn(
+              'text-lg font-bold',
+              (apptTotals.base - apptTotals.commission) >= 0 ? 'text-foreground' : 'text-destructive',
+            )}>
+              R$ {(apptTotals.base - apptTotals.commission).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Faturamento − Comissões</p>
+          </div>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center mb-2">
+              <TrendingUp className="w-4 h-4 text-violet-500" />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">Atendimentos</p>
+            <p className="text-lg font-bold text-foreground">{apptTotals.count}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Realizados/confirmados</p>
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1308,7 +1397,11 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       </TabsContent>
       {showTeam && (
         <TabsContent value="team">
-          <TeamFinancialDashboard clinicId={clinicId} />
+          {isClinicaPro ? (
+            <ClinicProTeamFinancial clinicId={clinicId} />
+          ) : (
+            <TeamFinancialDashboard clinicId={clinicId} />
+          )}
         </TabsContent>
       )}
       {!isClinicaPro && (
