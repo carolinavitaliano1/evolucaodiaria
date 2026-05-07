@@ -260,6 +260,13 @@ export default function ClinicDetail() {
     const tab = new URLSearchParams(location.search).get('tab');
     if (tab && tab !== activeTab) setActiveTab(tab);
   }, [location.search]);
+  // Aba "agenda" foi unificada à Agenda da sidebar para Clínica Pro.
+  useEffect(() => {
+    const cl = clinics.find(c => c.id === id);
+    if (cl?.type === 'clinica' && activeTab === 'agenda') {
+      navigate(`/calendar?clinic=${id}`, { replace: true });
+    }
+  }, [activeTab, clinics, id, navigate]);
   const [submittingPatient, setSubmittingPatient] = useState(false);
   const [pendingPatients, setPendingPatients] = useState<any[]>([]);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
