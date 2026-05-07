@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday,
