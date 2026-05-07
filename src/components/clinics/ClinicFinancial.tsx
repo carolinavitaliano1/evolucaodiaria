@@ -28,6 +28,7 @@ import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { endOfMonth } from 'date-fns';
 import { toLocalDateString } from '@/lib/utils';
 import { calculateCommissionFromAppointments } from '@/utils/appointmentCommission';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -69,6 +70,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
   const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
   const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
@@ -373,6 +375,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       packages: clinicPackages,
       groupBillingMap,
       memberPaymentMap,
+      appointmentValueByDate: apptValueMap[patient.id] || {},
     }).total;
   };
 
@@ -414,6 +417,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     packages: clinicPackages,
     groupBillingMap,
     memberPaymentMap,
+    appointmentValueByPatient: apptValueMap,
   });
   const totalPatientRevenue = clinicRevenueBreakdown.total;
 
