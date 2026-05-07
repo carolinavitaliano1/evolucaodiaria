@@ -335,6 +335,17 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     ? allClinicPatients.filter(p => monthlyEvolutions.some(e => e.patientId === p.id))
     : allClinicPatients;
 
+  // Carrega valores derivados de procedimento/pacote nos agendamentos do mês.
+  useEffect(() => {
+    const ids = allClinicPatients.map(p => p.id);
+    if (!ids.length) { setApptValueMap({}); return; }
+    const start = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
+    const end = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+    loadAppointmentValueMap({ patientIds: ids, startDate: start, endDate: end })
+      .then(setApptValueMap)
+      .catch(() => setApptValueMap({}));
+  }, [clinicId, selectedDate, allClinicPatients.length]);
+
   const presentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao'));
   const absentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
