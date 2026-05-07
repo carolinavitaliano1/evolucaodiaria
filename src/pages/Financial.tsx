@@ -69,18 +69,6 @@ export default function Financial() {
     }
   }, [user]);
 
-  // Carrega valores derivados de procedimento/pacote por agendamento no mês.
-  useEffect(() => {
-    if (!user || !patients.length) return;
-    const start = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
-    const end = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
-    loadAppointmentValueMap({
-      patientIds: patients.map(p => p.id),
-      startDate: start,
-      endDate: end,
-    }).then(setApptValueMap).catch(() => setApptValueMap({}));
-  }, [user, patients, selectedDate]);
-
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingInvoice, setIsExportingInvoice] = useState(false);
   const [invoiceClinicId, setInvoiceClinicId] = useState<string>('');
