@@ -529,7 +529,6 @@ export default function MyCommissions() {
                 <TableHead>Data</TableHead>
                 <TableHead>Paciente</TableHead>
                 <TableHead>Procedimento / Pacote</TableHead>
-                <TableHead className="text-right">Valor base</TableHead>
                 <TableHead className="text-right">Comissão</TableHead>
               </TableRow>
             </TableHeader>
@@ -547,9 +546,6 @@ export default function MyCommissions() {
                         ? <span className="text-xs text-muted-foreground">Sem vínculo</span>
                         : r.sourceName}
                     </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      R$ {r.base.toFixed(2)}
-                    </TableCell>
                     <TableCell className="text-right font-medium">
                       R$ {r.commission.toFixed(2)}
                       {r.commissionType && r.commissionValue != null && (
@@ -564,9 +560,6 @@ export default function MyCommissions() {
                 ))}
               <TableRow className="bg-muted/30">
                 <TableCell colSpan={3} className="font-semibold text-right">Total</TableCell>
-                <TableCell className="text-right text-xs text-muted-foreground">
-                  R$ {apptCommission.totalBase.toFixed(2)}
-                </TableCell>
                 <TableCell className="text-right font-bold">
                   R$ {apptCommission.totalCommission.toFixed(2)}
                 </TableCell>
