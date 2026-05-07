@@ -16,6 +16,9 @@ import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { CalendarBlockDialog } from '@/components/calendar/CalendarBlockDialog';
 import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { ClinicAgendaWeek } from '@/components/clinics/ClinicAgendaWeek';
+import ClinicAgendaSettings from '@/components/clinics/ClinicAgendaSettings';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -75,6 +78,32 @@ export default function CalendarPage() {
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
   const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // ── Clínica Pro: agenda unificada (mesmo componente da clínica) ──
+  const clinicaProClinics = useMemo(
+    () => clinics.filter(c => c.type === 'clinica'),
+    [clinics]
+  );
+  const urlClinicId = searchParams.get('clinic') || '';
+  const [selectedClinicId, setSelectedClinicId] = useState<string>(
+    urlClinicId || clinicaProClinics[0]?.id || ''
+  );
+  const [showAgendaSettings, setShowAgendaSettings] = useState(false);
+  useEffect(() => {
+    if (!isClinicaProOnly) return;
+    if (!selectedClinicId && clinicaProClinics[0]?.id) {
+      setSelectedClinicId(clinicaProClinics[0].id);
+    }
+  }, [isClinicaProOnly, clinicaProClinics, selectedClinicId]);
+  useEffect(() => {
+    if (urlClinicId && urlClinicId !== selectedClinicId) {
+      setSelectedClinicId(urlClinicId);
+    }
+  }, [urlClinicId]);
+  const selectedClinic = clinicaProClinics.find(c => c.id === selectedClinicId);
+
   const [viewDate, setViewDate] = useState(selectedDate);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [isApptDialogOpen, setIsApptDialogOpen] = useState(false);
