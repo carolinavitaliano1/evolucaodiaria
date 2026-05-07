@@ -2742,7 +2742,7 @@ export default function PatientDetail() {
           {[
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
             { value: 'session', icon: Brain, label: 'Sessão' },
-            { value: 'reports', icon: BarChart3, label: 'Rel. Mensal' },
+            ...((!isOrgMember || isOrgOwner) ? [{ value: 'reports', icon: BarChart3, label: 'Rel. Mensal' }] : []),
             ...(canSeeFinancialTab ? [{ value: 'financial', icon: DollarSign, label: 'Financeiro' }] : []),
             { value: 'documents', icon: Paperclip, label: 'Documentos' },
             { value: 'tasks', icon: ListTodo, label: 'Tarefas' },
