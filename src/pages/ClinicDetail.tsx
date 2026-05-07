@@ -260,6 +260,13 @@ export default function ClinicDetail() {
     const tab = new URLSearchParams(location.search).get('tab');
     if (tab && tab !== activeTab) setActiveTab(tab);
   }, [location.search]);
+  // Aba "agenda" foi unificada à Agenda da sidebar para Clínica Pro.
+  useEffect(() => {
+    const cl = clinics.find(c => c.id === id);
+    if (cl?.type === 'clinica' && activeTab === 'agenda') {
+      navigate(`/calendar?clinic=${id}`, { replace: true });
+    }
+  }, [activeTab, clinics, id, navigate]);
   const [submittingPatient, setSubmittingPatient] = useState(false);
   const [pendingPatients, setPendingPatients] = useState<any[]>([]);
   const [whatsAppPatient, setWhatsAppPatient] = useState<{ name: string; phone: string } | null>(null);
@@ -1321,7 +1328,8 @@ export default function ClinicDetail() {
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
           {[
             { value: 'today', icon: <ClipboardList className="w-5 h-5" />, label: 'Hoje', color: 'text-primary' },
-            { value: 'agenda', icon: <Calendar className="w-5 h-5" />, label: 'Agenda', color: 'text-blue-500' },
+            // Aba "Agenda" foi unificada à Agenda da sidebar (Clínica Pro).
+            ...(clinic.type !== 'clinica' ? [{ value: 'agenda', icon: <Calendar className="w-5 h-5" />, label: 'Agenda', color: 'text-blue-500' }] : []),
             { value: 'patients', icon: <Users className="w-5 h-5" />, label: 'Pacientes', color: 'text-violet-500' },
             { value: 'financial', icon: <DollarSign className="w-5 h-5" />, label: 'Financeiro', color: 'text-success' },
             { value: 'notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notas', color: 'text-yellow-500' },

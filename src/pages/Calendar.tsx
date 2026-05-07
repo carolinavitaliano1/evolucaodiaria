@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday,
@@ -16,6 +16,9 @@ import { WhatsAppMessageModal } from '@/components/whatsapp/WhatsAppMessageModal
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { CalendarBlockDialog } from '@/components/calendar/CalendarBlockDialog';
 import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { ClinicAgendaWeek } from '@/components/clinics/ClinicAgendaWeek';
+import ClinicAgendaSettings from '@/components/clinics/ClinicAgendaSettings';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -75,6 +78,32 @@ export default function CalendarPage() {
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
   const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // ── Clínica Pro: agenda unificada (mesmo componente da clínica) ──
+  const clinicaProClinics = useMemo(
+    () => clinics.filter(c => c.type === 'clinica'),
+    [clinics]
+  );
+  const urlClinicId = searchParams.get('clinic') || '';
+  const [selectedClinicId, setSelectedClinicId] = useState<string>(
+    urlClinicId || clinicaProClinics[0]?.id || ''
+  );
+  const [showAgendaSettings, setShowAgendaSettings] = useState(false);
+  useEffect(() => {
+    if (!isClinicaProOnly) return;
+    if (!selectedClinicId && clinicaProClinics[0]?.id) {
+      setSelectedClinicId(clinicaProClinics[0].id);
+    }
+  }, [isClinicaProOnly, clinicaProClinics, selectedClinicId]);
+  useEffect(() => {
+    if (urlClinicId && urlClinicId !== selectedClinicId) {
+      setSelectedClinicId(urlClinicId);
+    }
+  }, [urlClinicId]);
+  const selectedClinic = clinicaProClinics.find(c => c.id === selectedClinicId);
+
   const [viewDate, setViewDate] = useState(selectedDate);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [isApptDialogOpen, setIsApptDialogOpen] = useState(false);
@@ -575,6 +604,65 @@ export default function CalendarPage() {
       </div>
     </div>
   );
+
+  // ── Clínica Pro: agenda unificada (mesma da clínica) ──
+  if (isClinicaProOnly) {
+    return (
+      <div className="p-4 lg:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Agenda</h1>
+            <p className="text-sm text-muted-foreground">
+              Agenda da clínica — gerencie agendamentos, eventos e bloqueios.
+            </p>
+          </div>
+          {clinicaProClinics.length > 1 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Clínica:</Label>
+              <Select
+                value={selectedClinicId}
+                onValueChange={(v) => {
+                  setSelectedClinicId(v);
+                  setShowAgendaSettings(false);
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.set('clinic', v);
+                    return next;
+                  });
+                }}
+              >
+                <SelectTrigger className="w-56 h-9">
+                  <SelectValue placeholder="Selecione a clínica" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clinicaProClinics.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        {!selectedClinic ? (
+          <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
+            Nenhuma clínica encontrada. Crie uma clínica para começar a usar a agenda.
+          </div>
+        ) : showAgendaSettings ? (
+          <div className="space-y-3">
+            <Button variant="outline" size="sm" onClick={() => setShowAgendaSettings(false)}>
+              ← Voltar para a agenda
+            </Button>
+            <ClinicAgendaSettings clinic={selectedClinic as any} />
+          </div>
+        ) : (
+          <ClinicAgendaWeek
+            clinicId={selectedClinic.id}
+            onOpenSettings={() => setShowAgendaSettings(true)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-background relative">
