@@ -922,6 +922,8 @@ export interface ClinicRevenueContext {
   packages?: PackageLike[];
   groupBillingMap?: GroupBillingMap;
   memberPaymentMap?: GroupMemberPaymentMap;
+  /** patientId → date → valor da sessão (procedimento/pacote do agendamento). */
+  appointmentValueByPatient?: Record<string, Record<string, number>>;
 }
 
 export interface ClinicRevenueBreakdown {
@@ -946,7 +948,7 @@ export interface ClinicRevenueBreakdown {
  * Demais modelos somam `calculatePatientMonthlyRevenue` por paciente.
  */
 export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): ClinicRevenueBreakdown {
-  const { clinic, patients, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {} } = ctx;
+  const { clinic, patients, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {}, appointmentValueByPatient = {} } = ctx;
 
   const baseValue = clinic.paymentAmount ?? 0;
 
@@ -984,6 +986,7 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
     const breakdown = calculatePatientMonthlyRevenue({
       patient, clinic, evolutions: patientEvos, month, year,
       packages, groupBillingMap, memberPaymentMap,
+      appointmentValueByDate: appointmentValueByPatient[patient.id] || {},
     });
     total += breakdown.total;
     perPatient.push({ patientId: patient.id, revenue: breakdown.total });
