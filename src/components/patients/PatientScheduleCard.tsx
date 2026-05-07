@@ -65,7 +65,7 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
         const todayStr = new Date().toISOString().slice(0, 10);
         const { data, error } = await supabase
           .from('appointments')
-          .select('id, date, time, end_time, status, room, therapist_user_id, notes, convenio')
+          .select('id, date, time, end_time, status, room, therapist_user_id, notes, convenio, is_recurring')
           .eq('patient_id', patientId)
           .gte('date', todayStr)
           .neq('status', 'cancelado')
