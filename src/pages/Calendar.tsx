@@ -605,6 +605,65 @@ export default function CalendarPage() {
     </div>
   );
 
+  // ── Clínica Pro: agenda unificada (mesma da clínica) ──
+  if (isClinicaProOnly) {
+    return (
+      <div className="p-4 lg:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Agenda</h1>
+            <p className="text-sm text-muted-foreground">
+              Agenda da clínica — gerencie agendamentos, eventos e bloqueios.
+            </p>
+          </div>
+          {clinicaProClinics.length > 1 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Clínica:</Label>
+              <Select
+                value={selectedClinicId}
+                onValueChange={(v) => {
+                  setSelectedClinicId(v);
+                  setShowAgendaSettings(false);
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.set('clinic', v);
+                    return next;
+                  });
+                }}
+              >
+                <SelectTrigger className="w-56 h-9">
+                  <SelectValue placeholder="Selecione a clínica" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clinicaProClinics.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        {!selectedClinic ? (
+          <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
+            Nenhuma clínica encontrada. Crie uma clínica para começar a usar a agenda.
+          </div>
+        ) : showAgendaSettings ? (
+          <div className="space-y-3">
+            <Button variant="outline" size="sm" onClick={() => setShowAgendaSettings(false)}>
+              ← Voltar para a agenda
+            </Button>
+            <ClinicAgendaSettings clinic={selectedClinic as any} />
+          </div>
+        ) : (
+          <ClinicAgendaWeek
+            clinicId={selectedClinic.id}
+            onOpenSettings={() => setShowAgendaSettings(true)}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-background relative">
       {/* ── TOP BAR ── */}
