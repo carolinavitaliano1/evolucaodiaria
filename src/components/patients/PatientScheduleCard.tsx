@@ -15,6 +15,14 @@ interface Props {
 
 const WEEKDAY_ORDER = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
+const WEEKDAY_FROM_DATE = (dateStr: string): string => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, (m || 1) - 1, d || 1);
+  const idx = dt.getDay(); // 0=Domingo
+  const map = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  return map[idx] || '';
+};
+
 const TAG_RE = /\[(encaixe|autorizacao:[^\]]*|procedimento:[^\]]*|pacote:[^\]]*|lembrete_wa:[^\]]*|celular:[^\]]*|lancar_financeiro)\]/gi;
 
 function parseAppointmentTags(notes: string | null | undefined): { procedimentoId: string; pacoteId: string } {
@@ -57,7 +65,7 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
         const todayStr = new Date().toISOString().slice(0, 10);
         const { data, error } = await supabase
           .from('appointments')
-          .select('id, date, time, end_time, status, room, therapist_user_id, notes, convenio')
+          .select('id, date, time, end_time, status, room, therapist_user_id, notes, convenio, is_recurring')
           .eq('patient_id', patientId)
           .gte('date', todayStr)
           .neq('status', 'cancelado')
@@ -156,6 +164,36 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
     if (da !== db) return da - db;
     return a.startTime.localeCompare(b.startTime);
   });
+
+  // Slots derivados de agendamentos recorrentes (quando não houver
+  // patient_schedule_slots cadastrado pela aba Equipe).
+  const derivedRecurring = (() => {
+    if (slots.length > 0) return [] as Array<{ key: string; weekday: string; startTime: string; endTime: string; therapistName: string | null; procedimentoName: string | null; pacoteName: string | null; }>;
+    const seen = new Map<string, any>();
+    appointments.forEach(a => {
+      if (!a.is_recurring) return;
+      const wd = WEEKDAY_FROM_DATE(a.date);
+      const start = (a.time || '').slice(0, 5);
+      const end = (a.end_time || '').slice(0, 5);
+      const key = `${wd}|${start}|${end}|${a.therapist_user_id || ''}`;
+      if (seen.has(key)) return;
+      seen.set(key, {
+        key,
+        weekday: wd,
+        startTime: start,
+        endTime: end,
+        therapistName: a.therapistName || null,
+        procedimentoName: a.procedimentoName || null,
+        pacoteName: a.pacoteName || null,
+      });
+    });
+    return Array.from(seen.values()).sort((a, b) => {
+      const da = normalizeWeekday(a.weekday);
+      const db = normalizeWeekday(b.weekday);
+      if (da !== db) return da - db;
+      return a.startTime.localeCompare(b.startTime);
+    });
+  })();
 
   // Para pacotes "Mensal", calcula ocorrências totais (no mês atual) de TODOS
   // os slots vinculados ao mesmo plano de remuneração, para dividir o valor
@@ -288,9 +326,63 @@ export function PatientScheduleCard({ patientId, clinicId, organizationId }: Pro
       {loading ? (
         <p className="text-sm text-muted-foreground">Carregando agenda...</p>
       ) : slots.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nenhum horário cadastrado ainda. A agenda é gerenciada pela aba <strong>Equipe</strong> da clínica.
-        </p>
+        derivedRecurring.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nenhum horário cadastrado ainda. A agenda é gerenciada pela aba <strong>Equipe</strong> da clínica.
+          </p>
+        ) : (
+          <>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              Horários inferidos a partir de agendamentos recorrentes da agenda.
+            </p>
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[110px]">Dia</TableHead>
+                    <TableHead className="w-[140px]">Horário</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Procedimento / Pacote</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {derivedRecurring.map(s => (
+                    <TableRow key={s.key}>
+                      <TableCell className="font-medium text-sm">{s.weekday}</TableCell>
+                      <TableCell className="text-sm">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                          {s.startTime}{s.endTime ? ` – ${s.endTime}` : ''}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <span className="inline-flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-muted-foreground" />
+                          {s.therapistName || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {s.pacoteName ? (
+                          <span className="inline-flex items-center gap-1.5 text-foreground">
+                            <Package className="w-3.5 h-3.5 text-primary" />
+                            {s.pacoteName}
+                          </span>
+                        ) : s.procedimentoName ? (
+                          <span className="inline-flex items-center gap-1.5 text-foreground">
+                            <Stethoscope className="w-3.5 h-3.5 text-primary" />
+                            {s.procedimentoName}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/60">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )
       ) : (
         <div className="rounded-md border overflow-hidden">
           <Table>
