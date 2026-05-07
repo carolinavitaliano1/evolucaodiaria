@@ -256,6 +256,7 @@ export default function Financial() {
       clinic, patients: cPatients, evolutions: cEvos,
       month: selectedMonth + 1, year: selectedYear,
       packages: clinicPackages, groupBillingMap, memberPaymentMap,
+      appointmentValueByPatient: apptValueMap,
     }).total;
   };
 
