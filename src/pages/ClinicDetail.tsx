@@ -1321,7 +1321,8 @@ export default function ClinicDetail() {
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
           {[
             { value: 'today', icon: <ClipboardList className="w-5 h-5" />, label: 'Hoje', color: 'text-primary' },
-            { value: 'agenda', icon: <Calendar className="w-5 h-5" />, label: 'Agenda', color: 'text-blue-500' },
+            // Aba "Agenda" foi unificada à Agenda da sidebar (Clínica Pro).
+            ...(clinic.type !== 'clinica' ? [{ value: 'agenda', icon: <Calendar className="w-5 h-5" />, label: 'Agenda', color: 'text-blue-500' }] : []),
             { value: 'patients', icon: <Users className="w-5 h-5" />, label: 'Pacientes', color: 'text-violet-500' },
             { value: 'financial', icon: <DollarSign className="w-5 h-5" />, label: 'Financeiro', color: 'text-success' },
             { value: 'notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notas', color: 'text-yellow-500' },
