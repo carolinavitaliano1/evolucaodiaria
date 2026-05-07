@@ -371,6 +371,20 @@ export default function PatientDetail() {
   // Patient services (private_appointments) for revenue calculations
   const [patientServices, setPatientServices] = useState<{ id: string; date: string; price: number; status: string; paid: boolean | null }[]>([]);
 
+  useEffect(() => {
+    if (!patient?.id) return;
+    const reportStart = startOfMonth(reportMonth);
+    const reportEnd = endOfMonth(reportMonth);
+    const financialStart = startOfMonth(financialMonth);
+    const financialEnd = endOfMonth(financialMonth);
+    const start = format(reportStart < financialStart ? reportStart : financialStart, 'yyyy-MM-dd');
+    const end = format(reportEnd > financialEnd ? reportEnd : financialEnd, 'yyyy-MM-dd');
+
+    loadAppointmentValueMap({ patientIds: [patient.id], startDate: start, endDate: end })
+      .then(map => setAppointmentValueByDate(map[patient.id] || {}))
+      .catch(() => setAppointmentValueByDate({}));
+  }, [patient?.id, reportMonth, financialMonth]);
+
   // All paid payment records for this patient (used for "Receita total" = total efetivamente pago)
   const [allPaidRecords, setAllPaidRecords] = useState<{ amount: number; payment_date: string | null; month: number; year: number }[]>([]);
 
