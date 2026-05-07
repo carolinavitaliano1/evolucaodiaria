@@ -322,6 +322,14 @@ export interface PatientRevenueContext {
   packages?: PackageLike[];
   groupBillingMap?: GroupBillingMap;
   memberPaymentMap?: GroupMemberPaymentMap;
+  /**
+   * Mapa opcional date(YYYY-MM-DD) → valor da sessão derivado do procedimento
+   * (ou pacote) vinculado ao agendamento daquele dia. Quando presente, esse
+   * valor sobrescreve o `paymentValue` do paciente para sessões individuais
+   * no caminho geral (sem pacote vinculado e sem mensalista). Garante que o
+   * frontend reflita a mesma regra do `get_patient_monthly_revenue` do banco.
+   */
+  appointmentValueByDate?: Record<string, number>;
 }
 
 export interface PatientRevenueBreakdown {
