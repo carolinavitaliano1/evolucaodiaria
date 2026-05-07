@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 type PaymentStatusFilter = 'all' | 'paid' | 'pending';
 
@@ -30,6 +31,7 @@ export default function Financial() {
 
   const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
   const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
 
   useEffect(() => {
     if (user) {
@@ -112,6 +114,18 @@ export default function Financial() {
     setInvoiceEndDate(format(endOfMonth(d), 'yyyy-MM-dd'));
   };
 
+  // Carrega valores derivados de procedimento/pacote por agendamento no mês.
+  useEffect(() => {
+    if (!user || !patients.length) return;
+    const start = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
+    const end = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+    loadAppointmentValueMap({
+      patientIds: patients.map(p => p.id),
+      startDate: start,
+      endDate: end,
+    }).then(setApptValueMap).catch(() => setApptValueMap({}));
+  }, [user, patients, selectedDate]);
+
   const isCurrentMonth = selectedMonth === new Date().getMonth() && selectedYear === new Date().getFullYear();
 
   useEffect(() => {
@@ -189,6 +203,7 @@ export default function Financial() {
       packages: clinicPackages,
       groupBillingMap,
       memberPaymentMap,
+      appointmentValueByDate: apptValueMap[patientId] || {},
     };
   };
 
@@ -241,6 +256,7 @@ export default function Financial() {
       clinic, patients: cPatients, evolutions: cEvos,
       month: selectedMonth + 1, year: selectedYear,
       packages: clinicPackages, groupBillingMap, memberPaymentMap,
+      appointmentValueByPatient: apptValueMap,
     }).total;
   };
 

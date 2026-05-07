@@ -322,6 +322,14 @@ export interface PatientRevenueContext {
   packages?: PackageLike[];
   groupBillingMap?: GroupBillingMap;
   memberPaymentMap?: GroupMemberPaymentMap;
+  /**
+   * Mapa opcional date(YYYY-MM-DD) → valor da sessão derivado do procedimento
+   * (ou pacote) vinculado ao agendamento daquele dia. Quando presente, esse
+   * valor sobrescreve o `paymentValue` do paciente para sessões individuais
+   * no caminho geral (sem pacote vinculado e sem mensalista). Garante que o
+   * frontend reflita a mesma regra do `get_patient_monthly_revenue` do banco.
+   */
+  appointmentValueByDate?: Record<string, number>;
 }
 
 export interface PatientRevenueBreakdown {
@@ -352,7 +360,7 @@ export interface PatientRevenueBreakdown {
  * Reports, Clinics, PatientDetail, PaymentReminders, PDFs).
  */
 export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): PatientRevenueBreakdown {
-  const { patient, clinic, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {} } = ctx;
+  const { patient, clinic, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {}, appointmentValueByDate = {} } = ctx;
 
   // 🔒 REGRA: se a clínica paga salário fixo (mensal ou diário) ao terapeuta,
   // a receita NÃO vem do paciente — o terapeuta recebe da clínica.
@@ -544,20 +552,26 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   // sessions ≤ occurrences. Caso registre mais sessões que ocorrências,
   // limitamos ao monthlyValue para evitar inflar.
   let individualRevenue = 0;
-  if (billableIndividual.length > 0 && baseValue) {
-    if (isMensal) {
+  if (billableIndividual.length > 0) {
+    if (isMensal && baseValue) {
       // month aqui é 1-indexed; helpers internos esperam 0-indexed
       const dyn = getMensalDynamicWithBase(patient, baseValue, month - 1, year);
       if (dyn.isDynamic) {
         const raw = billableIndividual.length * dyn.perSession;
-        // Trava: nunca ultrapassa o valor mensal contratado
         individualRevenue = Math.min(raw, baseValue);
       } else {
-        // Mensalista sem dias: usa o valor mensal "cheio" UMA vez (não por sessão)
         individualRevenue = baseValue;
       }
     } else {
-      individualRevenue = billableIndividual.length * (perSession || baseValue);
+      // Para cada sessão, prioriza o valor do procedimento/pacote do agendamento
+      // (appointmentValueByDate); se não houver, cai no perSession/baseValue do paciente.
+      individualRevenue = billableIndividual.reduce((sum, e) => {
+        const apptValue = appointmentValueByDate[e.date];
+        const v = (apptValue != null && apptValue > 0)
+          ? apptValue
+          : (perSession || baseValue || 0);
+        return sum + v;
+      }, 0);
     }
   }
 
@@ -574,6 +588,8 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   const chargedAbsenceRevenue = chargedAbsences.reduce((sum, e) => {
     if (e.groupId) return sum + groupValue(e.groupId);
     if (isParcialAbsence) return sum + partialAbsenceValue;
+    const apptValue = appointmentValueByDate[e.date];
+    if (apptValue != null && apptValue > 0) return sum + apptValue;
     return sum + (perSession || baseValue || 0);
   }, 0);
 
@@ -906,6 +922,8 @@ export interface ClinicRevenueContext {
   packages?: PackageLike[];
   groupBillingMap?: GroupBillingMap;
   memberPaymentMap?: GroupMemberPaymentMap;
+  /** patientId → date → valor da sessão (procedimento/pacote do agendamento). */
+  appointmentValueByPatient?: Record<string, Record<string, number>>;
 }
 
 export interface ClinicRevenueBreakdown {
@@ -930,7 +948,7 @@ export interface ClinicRevenueBreakdown {
  * Demais modelos somam `calculatePatientMonthlyRevenue` por paciente.
  */
 export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): ClinicRevenueBreakdown {
-  const { clinic, patients, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {} } = ctx;
+  const { clinic, patients, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {}, appointmentValueByPatient = {} } = ctx;
 
   const baseValue = clinic.paymentAmount ?? 0;
 
@@ -968,6 +986,7 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
     const breakdown = calculatePatientMonthlyRevenue({
       patient, clinic, evolutions: patientEvos, month, year,
       packages, groupBillingMap, memberPaymentMap,
+      appointmentValueByDate: appointmentValueByPatient[patient.id] || {},
     });
     total += breakdown.total;
     perPatient.push({ patientId: patient.id, revenue: breakdown.total });

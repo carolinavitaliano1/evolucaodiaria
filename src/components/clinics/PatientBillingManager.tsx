@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { calculatePatientMonthlyRevenue, EvolutionLike } from '@/utils/financialHelpers';
 import type { GroupBillingMap, GroupMemberPaymentMap } from '@/utils/groupFinancial';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 interface PatientBillingManagerProps {
   clinicId: string;
@@ -122,6 +123,15 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
         console.warn('Falha ao carregar config de grupos para cobranças', e);
       }
 
+      // Mapa de valores derivados de procedimento/pacote no agendamento
+      const startDate = format(refStart, 'yyyy-MM-dd');
+      const endDate = format(refEnd, 'yyyy-MM-dd');
+      const apptValueMap = await loadAppointmentValueMap({
+        patientIds: eligible.map(p => p.id),
+        startDate,
+        endDate,
+      }).catch(() => ({} as Record<string, Record<string, number>>));
+
       // Map existing records and identify missing ones
       const records: PaymentRecord[] = eligible
         .map(p => {
@@ -155,6 +165,7 @@ export function PatientBillingManager({ clinicId }: PatientBillingManagerProps) 
               packages: clinicPackages || [],
               groupBillingMap,
               memberPaymentMap,
+              appointmentValueByDate: apptValueMap[p.id] || {},
             });
             computedAmount = breakdown.total;
           }

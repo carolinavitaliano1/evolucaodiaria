@@ -28,6 +28,7 @@ import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { endOfMonth } from 'date-fns';
 import { toLocalDateString } from '@/lib/utils';
 import { calculateCommissionFromAppointments } from '@/utils/appointmentCommission';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 interface ClinicFinancialProps {
   clinicId: string;
@@ -69,6 +70,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   const [clinicServices, setClinicServices] = useState<ServiceRecord[]>([]);
   const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
   const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, { paid: boolean; payment_date: string | null }>>({});
   const [savingPatientPayment, setSavingPatientPayment] = useState<string | null>(null);
   const [therapistName, setTherapistName] = useState('');
@@ -333,6 +335,17 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     ? allClinicPatients.filter(p => monthlyEvolutions.some(e => e.patientId === p.id))
     : allClinicPatients;
 
+  // Carrega valores derivados de procedimento/pacote nos agendamentos do mês.
+  useEffect(() => {
+    const ids = allClinicPatients.map(p => p.id);
+    if (!ids.length) { setApptValueMap({}); return; }
+    const start = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
+    const end = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+    loadAppointmentValueMap({ patientIds: ids, startDate: start, endDate: end })
+      .then(setApptValueMap)
+      .catch(() => setApptValueMap({}));
+  }, [clinicId, selectedDate, allClinicPatients.length]);
+
   const presentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao'));
   const absentEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta');
   const paidAbsenceEvos = monthlyEvolutions.filter(e => e.attendanceStatus === 'falta_remunerada');
@@ -373,6 +386,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       packages: clinicPackages,
       groupBillingMap,
       memberPaymentMap,
+      appointmentValueByDate: apptValueMap[patient.id] || {},
     }).total;
   };
 
@@ -414,6 +428,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
     packages: clinicPackages,
     groupBillingMap,
     memberPaymentMap,
+    appointmentValueByPatient: apptValueMap,
   });
   const totalPatientRevenue = clinicRevenueBreakdown.total;
 
