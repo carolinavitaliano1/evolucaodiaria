@@ -1,65 +1,49 @@
-## O que muda
+## Objetivo
 
-### 1. Aba "Equipe" da clínica — REMOVIDA ✅
-A aba "Equipe" (com gestão completa: Financeiro/Agenda/Frequência/Pendentes) foi removida de `/clinics/:id`. A aba "Colaboradores" continua existindo. (Já aplicado nesta resposta.)
+Fazer com que o **valor da sessão** em todo o módulo financeiro reflita o **procedimento/pacote vinculado ao agendamento**, e não o `payment_value` do paciente. O `payment_value` do paciente passa a ser apenas fallback para sessões sem procedimento/pacote vinculado.
 
-### 2. Nova lógica de financeiro/comissão (substituição total)
+## Regra única de resolução de valor por sessão
 
-A partir de agora, **toda comissão e receita da clínica vêm do procedimento ou pacote vinculado ao agendamento**, junto com o terapeuta selecionado. Os planos de remuneração antigos (`member_remuneration_plans`) e o modelo de pagamento da clínica (`payment_type`/`payment_amount`) deixam de ser usados em clínicas tipo `clinica`.
+Para cada agendamento/evolução de uma sessão atendida:
 
-## Etapas
+1. Se `appointments.procedure_id` existe → usar `procedures.value`
+2. Senão, se `appointments.package_id` existe → usar valor proporcional do pacote (mesma regra atual: `valor_total`, `por_sessao`, `personalizado`, `mensal`)
+3. Senão → cair no `patients.payment_value` (comportamento atual)
 
-### Etapa A — Banco de dados
-Adicionar ao `appointments`:
-- `procedure_id uuid` → referencia `procedures.id`
-- `package_id uuid` → referencia `clinic_packages.id`
-- (já existe) `therapist_user_id`
+A mesma regra vale para **comissão do terapeuta**: se houver `procedure_commissions`/`package_commissions` (override por membro), usa override; senão usa `commission_type/commission_value` global do procedimento.
 
-Garantir que existam comissões por procedimento por profissional. Hoje `procedures` tem `commission_type` e `commission_value` globais; criar tabela `procedure_commissions` (espelhando `package_commissions`):
-- `procedure_id`, `member_id`, `commission_value`, `commission_type` (`valor_fixo` | `porcentagem`)
+## Mudanças
 
-### Etapa B — Agendamento (UI)
-No `AppointmentDialog`:
-- Adicionar dois selects: **Procedimento** OU **Pacote** (mutuamente exclusivos)
-- Manter o select de **Terapeuta** (já existe)
-- Salvar `procedure_id`/`package_id`/`therapist_user_id` no agendamento
+### 1. Backend (DB function)
+Substituir `get_patient_monthly_revenue` para, ao iterar evoluções, fazer `JOIN` com `appointments` (mesma `patient_id` + `date` + `time`/`therapist_user_id`) e:
+- Se a evolução tem `appointment` com `procedure_id` → soma `procedures.value`
+- Se tem `package_id` → mantém regra de pacote atual
+- Senão → fallback para `payment_value`
 
-### Etapa C — Cálculo financeiro (clínicas tipo `clinica`)
-Substituir a lógica atual por:
+Aplicar a mesma política de falta (`absence_charge_mode`, `pays_on_absence`).
 
-```
-Para cada agendamento com status billable (presente/reposicao/...):
-  base = procedure.value  OU  package.price (com fração se sessões)
-  
-  receita_clinica += base
-  
-  comissão_terapeuta = lookup em procedure_commissions/package_commissions
-                       por (procedure_id|package_id, member do therapist_user_id)
-                       fallback: commission_value global do procedimento
-  
-  Se commission_type='porcentagem': comissão = base * (valor/100)
-  Se commission_type='valor_fixo': comissão = valor
-```
+### 2. Aba Financeiro do paciente (`PatientFinancialTab` / `PatientBillingManager`)
+- Coluna "Valor" de cada sessão passa a ler do procedimento vinculado ao agendamento.
+- Total mensal usa o novo `get_patient_monthly_revenue`.
 
-Arquivos afetados:
-- `src/utils/financialHelpers.ts` (cálculo de receita por paciente/clínica)
-- `src/components/clinics/ClinicFinancial.tsx` (dashboard financeiro)
-- `src/pages/MyCommissions.tsx` (ganhos do terapeuta)
-- Função SQL `get_patient_monthly_revenue` (refazer para clínicas tipo `clinica`)
+### 3. Painel financeiro da clínica (`ClinicFinancial.tsx`)
+- Já existe seção Clínica Pro usando `calculateCommissionFromAppointments` (correta).
+- Para Consultório/Contratante, refatorar agregação por paciente para usar a mesma lógica (procedimento → pacote → fallback).
 
-### Etapa D — Limpeza
-Esconder/remover dos formulários (apenas para `type='clinica'`):
-- Modelo de pagamento da clínica (`payment_type`)
-- Plano de remuneração do membro (`member_remuneration_plans`)
+### 4. Minhas Comissões (`MyCommissions.tsx`)
+- Já usa `calculateCommissionFromAppointments` desde o último loop. Apenas confirmar consistência (sem mudança).
 
-Manter para Consultório/Contratante (que continuam usando lógica atual).
+### 5. Relatórios / PDF (`generateClinicInternalStatementPdf.ts`, `Reports`)
+- Trocar leitura de `payment_value * sessões` pela soma vinda da nova função/helper, por paciente.
 
 ## Detalhes técnicos
 
-- **Migração SQL**: 1 migração adicionando 2 colunas em `appointments` + criando tabela `procedure_commissions` com RLS.
-- **Sem quebras**: agendamentos antigos sem `procedure_id`/`package_id` continuam visíveis mas geram R$ 0 (com aviso "Sem procedimento vinculado").
-- **MyCommissions** passa a listar agendamentos do terapeuta no mês com seu valor de comissão calculado por procedimento/pacote.
+- Helper TS reutilizável: criar `src/utils/sessionValueResolver.ts` que, dado um conjunto de evoluções + appointments + procedures + packages + patient, devolve `{ value, source: 'procedure'|'package'|'patient_default' }` por sessão.
+- Frontend evita N+1: carrega procedures/packages/appointments em batch (mesma estratégia do `appointmentCommission.ts`).
+- DB function: query única com `LEFT JOIN appointments a ON a.patient_id = e.patient_id AND a.date = e.date AND a.time = e.time` (assumindo agendamento gera evolução com mesma data/hora).
 
-## Confirmação antes de seguir
+## Fora de escopo
 
-Esse é um trabalho grande (schema + UI + 4 telas financeiras). Confirma para eu começar pela **Etapa A (migração)**? Ou prefere que eu faça tudo em sequência sem parar?
+- Não altera lógica de pacotes (mantém `lancamento_tipo`, `valor_total`, etc.).
+- Não mexe em modelos `fixo_mensal`/`fixo_diario` da clínica (esses continuam zerando receita do paciente).
+- Não muda UI estrutural — só o **valor numérico** exibido por sessão.
