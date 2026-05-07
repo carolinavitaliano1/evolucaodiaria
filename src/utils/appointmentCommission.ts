@@ -34,6 +34,9 @@ export interface AppointmentCommissionResult {
 }
 
 const BILLABLE_STATUSES = new Set(['atendido', 'confirmado']);
+const BILLABLE_EVO_STATUSES = new Set([
+  'presente', 'reposicao', 'falta_remunerada', 'feriado_remunerado',
+]);
 
 interface CalcInput {
   /** uuid do user (auth.users.id) do terapeuta */
@@ -87,7 +90,30 @@ export async function calculateCommissionFromAppointments(
     .lte('date', input.endDate);
   if (input.clinicId) q = q.eq('clinic_id', input.clinicId);
   const { data: appts } = await q;
-  const appointments = ((appts || []) as any[]).filter(a => BILLABLE_STATUSES.has(a.status));
+  const allAppts = (appts || []) as any[];
+
+  // Carrega evoluções faturáveis no período para considerar agendamentos
+  // que ainda estão como 'agendado' mas que já tiveram presença registrada.
+  const apptPatientIds = Array.from(new Set(allAppts.map(a => a.patient_id).filter(Boolean)));
+  let evoKeySet = new Set<string>();
+  if (apptPatientIds.length) {
+    const { data: evos } = await supabase
+      .from('evolutions')
+      .select('patient_id, date, attendance_status, user_id')
+      .in('patient_id', apptPatientIds)
+      .gte('date', input.startDate)
+      .lte('date', input.endDate)
+      .eq('user_id', input.therapistUserId);
+    ((evos || []) as any[]).forEach(e => {
+      if (BILLABLE_EVO_STATUSES.has(e.attendance_status)) {
+        evoKeySet.add(`${e.patient_id}|${e.date}`);
+      }
+    });
+  }
+
+  const appointments = allAppts.filter(a =>
+    BILLABLE_STATUSES.has(a.status) || evoKeySet.has(`${a.patient_id}|${a.date}`)
+  );
 
   if (appointments.length === 0) {
     return { rows: [], totalBase: 0, totalCommission: 0 };
