@@ -62,6 +62,7 @@ import { Brain } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { UpgradeBlock } from '@/components/UpgradeBlock';
 import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 const MOOD_OPTIONS = DEFAULT_MOOD_OPTIONS.map((m, i) => ({
   ...m,
@@ -365,6 +366,7 @@ export default function PatientDetail() {
   // Group billing data for accurate group session pricing
   const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
   const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
+  const [appointmentValueByDate, setAppointmentValueByDate] = useState<Record<string, number>>({});
 
   // Patient services (private_appointments) for revenue calculations
   const [patientServices, setPatientServices] = useState<{ id: string; date: string; price: number; status: string; paid: boolean | null }[]>([]);
@@ -995,6 +997,7 @@ export default function PatientDetail() {
       packages: clinicPackages,
       groupBillingMap,
       memberPaymentMap,
+      appointmentValueByDate,
     }).total;
   };
 
