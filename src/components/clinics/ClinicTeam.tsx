@@ -347,35 +347,56 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
     });
   }, [members, searchQuery, statusFilter]);
 
-  // ─── Schedule Summary by weekday (must be declared before any early return) ───
+  // ─── Schedule Summary by weekday (derived from RECURRING appointments) ───
+  // O cadastro de horários do colaborador foi removido. A fonte de verdade
+  // agora são os agendamentos recorrentes criados na Agenda.
   const scheduleByDay = useMemo(() => {
     const WD = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
-    const norm = (d: string) => d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const map: Record<string, Array<{ member: OrganizationMember; patients: PatientAssignment[] }>> = {};
+    const dayFromDate = (d: string): string => {
+      const dt = new Date(`${d}T12:00:00`);
+      return WD[(dt.getDay() + 6) % 7];
+    };
+    const map: Record<string, Array<{ member: OrganizationMember; patients: Array<{ id: string; patient_id: string; patient_name: string; schedule_time: string }> }>> = {};
     WD.forEach(d => { map[d] = []; });
-    members.filter(m => m.status === 'active').forEach(member => {
-      const memberDays = new Set((member.weekdays || []).map(norm));
-      const dayPatients: Record<string, PatientAssignment[]> = {};
-      (member.assignments || []).forEach(a => {
-        const patient = clinicPatients.find(p => p.id === a.patient_id);
-        if (!patient) return;
-        const days = new Set<string>();
-        (patient.weekdays || []).forEach(d => days.add(norm(d)));
-        if (patient.scheduleByDay) Object.keys(patient.scheduleByDay).forEach(d => days.add(norm(d)));
-        days.forEach(d => {
-          if (!dayPatients[d]) dayPatients[d] = [];
-          dayPatients[d].push(a);
-        });
+
+    const activeMembers = members.filter(m => m.status === 'active');
+
+    // Group recurring appts by member + day
+    const byMemberDay = new Map<string, Map<string, Map<string, { patient_id: string; patient_name: string; schedule_time: string }>>>();
+    recurringAppts.forEach(appt => {
+      const ownerId = appt.therapist_user_id || appt.user_id;
+      const member = activeMembers.find(m => m.user_id === ownerId);
+      if (!member) return;
+      const day = dayFromDate(appt.date);
+      const patient = clinicPatients.find(p => p.id === appt.patient_id);
+      if (!patient) return;
+      const time = (appt.time || '').slice(0, 5);
+      const key = `${appt.patient_id}|${time}`;
+      if (!byMemberDay.has(member.id)) byMemberDay.set(member.id, new Map());
+      const dayMap = byMemberDay.get(member.id)!;
+      if (!dayMap.has(day)) dayMap.set(day, new Map());
+      dayMap.get(day)!.set(key, {
+        patient_id: appt.patient_id,
+        patient_name: patient.name,
+        schedule_time: time,
       });
-      WD.forEach(day => {
-        const n = norm(day);
-        if (memberDays.has(n) || (dayPatients[n] || []).length > 0) {
-          map[day].push({ member, patients: dayPatients[n] || [] });
-        }
+    });
+
+    WD.forEach(day => {
+      activeMembers.forEach(member => {
+        const dayMap = byMemberDay.get(member.id);
+        const patients = dayMap?.get(day);
+        if (!patients || patients.size === 0) return;
+        map[day].push({
+          member,
+          patients: Array.from(patients.values())
+            .sort((a, b) => a.schedule_time.localeCompare(b.schedule_time))
+            .map((p, i) => ({ id: `${member.id}-${day}-${i}`, ...p })),
+        });
       });
     });
     return map;
-  }, [members, clinicPatients]);
+  }, [members, clinicPatients, recurringAppts]);
 
   useEffect(() => { loadTeam(); }, [clinicId]);
 
