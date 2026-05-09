@@ -90,7 +90,6 @@ export function MobileNav() {
 
   const therapistMore = [
     { to: '/tasks',   icon: ClipboardList,  label: 'Tarefas', perm: 'tasks.view' as const, badge: null },
-    { to: '/mural',   icon: Megaphone,      label: 'Mural',   perm: 'mural.view' as const, badge: 'notices' as const },
     { to: '/suporte', icon: HeadphonesIcon, label: 'Suporte', perm: null as any,           badge: 'support' as const },
     { to: '/profile', icon: User,           label: 'Perfil',  perm: null as any,           badge: null },
   ];
