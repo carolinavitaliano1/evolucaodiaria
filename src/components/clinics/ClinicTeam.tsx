@@ -1168,9 +1168,10 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
       <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
         <CalendarDays className="w-5 h-5 text-primary mt-0.5 shrink-0" />
         <div className="text-sm text-muted-foreground">
-          Resumo dos dias de atendimento de cada terapeuta nesta clínica. Considera os
-          <strong className="text-foreground"> dias declarados</strong> no cadastro do colaborador
-          e os <strong className="text-foreground">pacientes vinculados</strong>.
+          Resumo dos dias de atendimento de cada terapeuta nesta clínica.
+          Os horários são <strong className="text-foreground">puxados automaticamente</strong> dos
+          agendamentos marcados como <strong className="text-foreground">recorrentes</strong> na Agenda
+          (ao criar um agendamento, ative a opção “Repetir”).
         </div>
       </div>
 
