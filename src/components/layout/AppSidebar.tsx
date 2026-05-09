@@ -61,7 +61,6 @@ const therapistNavItems = [
   { to: '/evolucoes',         icon: NotebookPen,     label: 'Evoluções',        perm: 'evolutions.view' as const },
   { to: '/tasks',             icon: ClipboardList,   label: 'Tarefas',          perm: 'tasks.view'      as const },
   { to: '/minhas-comissoes',  icon: DollarSign,      label: 'Minhas Comissões', perm: 'commissions.view' as const },
-  { to: '/mural',             icon: Megaphone,       label: 'Mural',            perm: 'mural.view'      as const, badge: 'notices' as const },
   { to: '/suporte',           icon: HeadphonesIcon,  label: 'Suporte',          perm: null,             badge: 'support' as const },
 ];
 
