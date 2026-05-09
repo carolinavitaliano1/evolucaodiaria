@@ -379,6 +379,26 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
   useEffect(() => { loadTeam(); }, [clinicId]);
 
+  // ─── Recurring appointments (source of truth for weekly schedule) ───
+  type RecurringAppt = {
+    patient_id: string;
+    therapist_user_id: string | null;
+    user_id: string;
+    date: string;
+    time: string;
+  };
+  const [recurringAppts, setRecurringAppts] = useState<RecurringAppt[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('appointments')
+        .select('patient_id, therapist_user_id, user_id, date, time')
+        .eq('clinic_id', clinicId)
+        .eq('is_recurring', true);
+      setRecurringAppts((data as any) || []);
+    })();
+  }, [clinicId]);
+
   useEffect(() => {
     (async () => {
       const { data } = await supabase
