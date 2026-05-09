@@ -347,6 +347,16 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
     });
   }, [members, searchQuery, statusFilter]);
 
+  // ─── Recurring appointments (source of truth for weekly schedule) ───
+  type RecurringAppt = {
+    patient_id: string;
+    therapist_user_id: string | null;
+    user_id: string;
+    date: string;
+    time: string;
+  };
+  const [recurringAppts, setRecurringAppts] = useState<RecurringAppt[]>([]);
+
   // ─── Schedule Summary by weekday (derived from RECURRING appointments) ───
   // O cadastro de horários do colaborador foi removido. A fonte de verdade
   // agora são os agendamentos recorrentes criados na Agenda.
@@ -400,15 +410,6 @@ export function ClinicTeam({ clinicId, clinicName, onTeamCreated }: ClinicTeamPr
 
   useEffect(() => { loadTeam(); }, [clinicId]);
 
-  // ─── Recurring appointments (source of truth for weekly schedule) ───
-  type RecurringAppt = {
-    patient_id: string;
-    therapist_user_id: string | null;
-    user_id: string;
-    date: string;
-    time: string;
-  };
-  const [recurringAppts, setRecurringAppts] = useState<RecurringAppt[]>([]);
   useEffect(() => {
     (async () => {
       const { data } = await supabase
