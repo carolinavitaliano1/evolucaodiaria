@@ -1,12 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { ClipboardList, FileText, Loader2, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ClinicEvolutionsTab } from '@/components/clinics/ClinicEvolutionsTab';
+import { BatchEvolutionPanel } from '@/components/evolutions/BatchEvolutionPanel';
 
 const EvolutionTemplates = lazy(() => import('@/components/clinics/EvolutionTemplates'));
 
@@ -20,7 +19,6 @@ const EvolutionTemplates = lazy(() => import('@/components/clinics/EvolutionTemp
  */
 export default function Evolutions() {
   const { clinics } = useApp();
-  const navigate = useNavigate();
   const visibleClinics = useMemo(
     () => clinics.filter(c => !c.isArchived),
     [clinics],
@@ -91,29 +89,7 @@ export default function Evolutions() {
           </TabsContent>
 
           <TabsContent value="batch" className="mt-4">
-            <Card className="p-6 space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Users className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-foreground">Evolução Rápida em Lote</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Aplique a mesma evolução, modelo ou status para vários pacientes do dia de uma só vez.
-                    O fluxo completo (busca, status individual, modelos e carimbos) abre na clínica selecionada.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  className="gap-2 gradient-primary"
-                  onClick={() => navigate(`/clinics/${clinicId}?tab=evolutions&sub=batch`)}
-                >
-                  <Users className="w-4 h-4" />
-                  Abrir evolução em lote
-                </Button>
-              </div>
-            </Card>
+            {currentClinic && <BatchEvolutionPanel clinic={currentClinic} />}
           </TabsContent>
 
           <TabsContent value="templates" className="mt-4">
