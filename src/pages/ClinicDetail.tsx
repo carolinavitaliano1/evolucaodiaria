@@ -264,6 +264,13 @@ export default function ClinicDetail() {
     const tab = new URLSearchParams(location.search).get('tab');
     if (tab && tab !== activeTab) setActiveTab(tab);
   }, [location.search]);
+  // Allow deep-linking to a specific Evoluções sub-tab via ?sub=batch|templates|evolutions
+  useEffect(() => {
+    const sub = new URLSearchParams(location.search).get('sub');
+    if (sub === 'batch' || sub === 'templates' || sub === 'evolutions') {
+      setEvolutionsSubTab(sub);
+    }
+  }, [location.search]);
   // Aba "agenda" foi unificada à Agenda da sidebar para Clínica Pro.
   useEffect(() => {
     const cl = clinics.find(c => c.id === id);
