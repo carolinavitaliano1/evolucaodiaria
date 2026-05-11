@@ -39,6 +39,7 @@ import { EditPatientDialog } from '@/components/patients/EditPatientDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateReportPdf } from '@/utils/generateReportPdf';
+import { exportSavedReportAsWord } from '@/utils/exportSavedReportWord';
 import { Clinic } from '@/types';
 import { ClinicFinancial } from '@/components/clinics/ClinicFinancial';
 import { ClinicAgenda } from '@/components/clinics/ClinicAgenda';
