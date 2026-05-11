@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  Sparkles, FileText, Send, Loader2, Download, Copy, UserSearch, MessageSquare,
+  Sparkles, FileText, FileType, Send, Loader2, Download, Copy, UserSearch, MessageSquare,
   Save, FolderOpen, Trash2, Bold, Italic, Underline as UnderlineIcon, AlignLeft,
   AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Type, List, Share2, Mail, Link2,
   MoveLeft, MoveHorizontal, MoveRight, LockKeyhole
@@ -578,6 +578,52 @@ export default function AIReports() {
     window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
   };
 
+  const downloadSavedAsPdf = async (r: SavedReport) => {
+    const { generateReportPdf } = await import('@/utils/generateReportPdf');
+    const clinic = clinics.find(c => c.id === selectedClinic);
+    await generateReportPdf({
+      title: r.title,
+      content: r.content,
+      fileName: `${r.title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}`,
+      clinicName: clinic?.name,
+      clinicAddress: clinic?.address,
+      clinicLetterhead: clinic?.letterhead,
+      clinicStamp: clinic?.stamp,
+      clinicEmail: clinic?.email,
+      clinicCnpj: clinic?.cnpj,
+      clinicPhone: clinic?.phone,
+      clinicServicesDescription: clinic?.servicesDescription,
+      therapistName: therapistProfile?.name || undefined,
+      therapistProfessionalId: therapistProfile?.professional_id || undefined,
+      therapistCbo: defaultStamp?.cbo || undefined,
+      therapistClinicalArea: defaultStamp?.clinical_area || undefined,
+      therapistStampImage: defaultStamp?.stamp_image || undefined,
+      therapistSignatureImage: defaultStamp?.signature_image || undefined,
+    });
+  };
+
+  const downloadSavedAsWord = async (r: SavedReport) => {
+    const clinic = clinics.find(c => c.id === selectedClinic);
+    const dateStr = new Date().toLocaleDateString('pt-BR');
+    const headerHtml = clinic?.name
+      ? `<h2 style="text-align:center;">${clinic.name}</h2>${clinic.address ? `<p style="text-align:center;">${clinic.address}</p>` : ''}${clinic.phone ? `<p style="text-align:center;">Tel: ${clinic.phone}</p>` : ''}<hr/>`
+      : '';
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family: Arial, sans-serif; margin: 40px;">${headerHtml}<h1 style="text-align:center;">${r.title}</h1><p style="text-align:right; color:#666;">${dateStr}</p><hr/>${r.content}</body></html>`;
+    try {
+      const { asBlob } = await import('html-docx-js-typescript');
+      const blob = await asBlob(fullHtml, { orientation: 'portrait', margins: { top: 720, bottom: 720, left: 1080, right: 1080 } });
+      const url = URL.createObjectURL(blob as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${r.title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Documento Word exportado!');
+    } catch {
+      toast.error('Erro ao exportar Word');
+    }
+  };
+
   const handleShareLink = async () => {
     const text = editor?.getText() || '';
     if (!text.trim()) { toast.error('Nada para compartilhar'); return; }
@@ -794,12 +840,28 @@ export default function AIReports() {
                       {new Date(r.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </button>
-                  <Button
-                    variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteReport(r.id); }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-8"
+                      title="Baixar PDF"
+                      onClick={(e) => { e.stopPropagation(); downloadSavedAsPdf(r); }}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-8"
+                      title="Baixar Word (.docx)"
+                      onClick={(e) => { e.stopPropagation(); downloadSavedAsWord(r); }}
+                    >
+                      <FileType className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteReport(r.id); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
