@@ -219,6 +219,9 @@ function ClinicReports({ clinicId, clinicName, clinicAddress, clinicLetterhead, 
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDownloadPdf(r)}>
                   <Download className="w-3 h-3" /> PDF
                 </Button>
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => exportSavedReportAsWord({ title: r.title, content: r.content, clinicName, clinicAddress, clinicPhone: clinic?.phone }).then(() => toast.success('Word exportado!')).catch(() => toast.error('Erro ao exportar Word'))}>
+                  <Download className="w-3 h-3" /> Word
+                </Button>
                 <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(r.id)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
