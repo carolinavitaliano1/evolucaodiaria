@@ -19,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Loader2, Sparkles, Save, Download, Upload, FileText, Image as ImageIcon, Trash2,
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, Type, Stamp, Plus, X, FileType, Pencil, FolderPlus, BookOpen,
+  List, Type, Stamp, Plus, X, FileType, Pencil, FolderPlus, BookOpen, Paperclip,
 } from 'lucide-react';
 import { generateAIDocumentPdf, ExtraSignature } from '@/utils/generateAIDocumentPdf';
 import { generateAIDocumentDocx } from '@/utils/aiDocumentDocxExport';
@@ -209,6 +209,8 @@ export default function DocIA() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [extractingExample, setExtractingExample] = useState(false);
+  const exampleFileRef = useRef<HTMLInputElement>(null);
 
   // Stamp + extra signatures
   const [stamps, setStamps] = useState<StampRow[]>([]);
@@ -345,6 +347,49 @@ export default function DocIA() {
     if (selectedTemplateId === id) setSelectedTemplateId('');
     toast.success('Modelo excluído');
     loadTemplates();
+  };
+
+  // Extract plain text from .pdf, .docx or .txt and append to exampleText
+  const handleExampleFileUpload = async (file: File) => {
+    if (file.size > 20 * 1024 * 1024) { toast.error('Máximo 20MB'); return; }
+    setExtractingExample(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      let text = '';
+      if (ext === 'pdf') {
+        const buf = await file.arrayBuffer();
+        const pdfjsLib: any = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        const parts: string[] = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          parts.push((content.items as any[]).map(it => it.str).join(' '));
+        }
+        text = parts.join('\n\n').trim();
+      } else if (ext === 'docx') {
+        const buf = await file.arrayBuffer();
+        const mammoth: any = await import('mammoth/mammoth.browser');
+        const result = await mammoth.extractRawText({ arrayBuffer: buf });
+        text = (result?.value || '').trim();
+      } else if (ext === 'txt' || file.type.startsWith('text/')) {
+        text = (await file.text()).trim();
+      } else {
+        toast.error('Formato não suportado. Use .pdf, .docx ou .txt');
+        return;
+      }
+      if (!text) { toast.error('Não foi possível extrair texto deste arquivo (talvez esteja escaneado)'); return; }
+      setExampleText(prev => prev ? `${prev}\n\n--- Exemplo: ${file.name} ---\n${text}` : text);
+      toast.success(`Exemplo "${file.name}" anexado (${text.length} caracteres)`);
+    } catch (e: any) {
+      console.error('[DocIA] example extract error', e);
+      toast.error('Erro ao ler arquivo: ' + (e?.message || 'desconhecido'));
+    } finally {
+      setExtractingExample(false);
+      if (exampleFileRef.current) exampleFileRef.current.value = '';
+    }
   };
 
   // ---------- Handlers ----------
@@ -796,6 +841,25 @@ export default function DocIA() {
                       value={exampleText}
                       onChange={e => setExampleText(e.target.value)}
                     />
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <input
+                        ref={exampleFileRef}
+                        type="file"
+                        accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                        hidden
+                        onChange={e => e.target.files?.[0] && handleExampleFileUpload(e.target.files[0])}
+                      />
+                      <Button variant="outline" size="sm" onClick={() => exampleFileRef.current?.click()} disabled={extractingExample} className="h-8">
+                        {extractingExample ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Paperclip className="w-3.5 h-3.5 mr-1" />}
+                        Anexar exemplo (.pdf, .docx, .txt)
+                      </Button>
+                      {exampleText && (
+                        <Button variant="ghost" size="sm" onClick={() => setExampleText('')} className="h-8">
+                          <X className="w-3.5 h-3.5 mr-1" /> Limpar exemplo
+                        </Button>
+                      )}
+                      <span className="text-xs text-muted-foreground">O texto extraído é enviado para a IA como modelo a ser seguido.</span>
+                    </div>
                   </div>
 
                   <div className="grid md:grid-cols-[1fr_auto] gap-2 items-end pt-1">
