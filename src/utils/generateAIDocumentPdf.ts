@@ -270,7 +270,7 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
       ),
     );
 
-    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     const target = (container.firstElementChild as HTMLElement) || container;
     target.style.width = `${AI_DOC_LAYOUT.pageWidthPx}px`;
