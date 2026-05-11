@@ -47,6 +47,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { generateReportPdf } from '@/utils/generateReportPdf';
+import { exportSavedReportAsWord } from '@/utils/exportSavedReportWord';
 import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
 import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { calculatePatientMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
