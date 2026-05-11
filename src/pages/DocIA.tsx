@@ -434,6 +434,41 @@ export default function DocIA() {
     try {
       const todayBR = new Date().toLocaleDateString('pt-BR');
       const tpl = templates.find(t => t.id === selectedTemplateId);
+
+      // Fetch full prontuário context: evolutions, intake forms and existing documents
+      const [evoRes, intakeRes, docsRes] = await Promise.all([
+        supabase.from('evolutions')
+          .select('date, attendance_status, mood, text, session_time')
+          .eq('patient_id', createPatientId)
+          .order('date', { ascending: false })
+          .limit(60),
+        supabase.from('patient_intake_forms')
+          .select('answers, created_at')
+          .eq('patient_id', createPatientId)
+          .order('created_at', { ascending: false })
+          .limit(3),
+        supabase.from('patient_documents')
+          .select('title, doc_type, content, created_at')
+          .eq('patient_id', createPatientId)
+          .order('created_at', { ascending: false })
+          .limit(15),
+      ]);
+
+      const evolutions = (evoRes.data || []).map((e: any) => ({
+        date: e.date,
+        status: e.attendance_status,
+        mood: e.mood,
+        time: e.session_time,
+        text: (e.text || '').slice(0, 1500),
+      }));
+      const intakeForms = (intakeRes.data || []).map((f: any) => f.answers).filter(Boolean);
+      const documents = (docsRes.data || []).map((d: any) => ({
+        title: d.title,
+        type: d.doc_type,
+        date: d.created_at,
+        excerpt: typeof d.content === 'string' ? d.content.slice(0, 800) : '',
+      }));
+
       const { data, error } = await supabase.functions.invoke('generate-document-text', {
         body: {
           docType: createDocType,
@@ -443,12 +478,21 @@ export default function DocIA() {
             cpf: (patient as any).cpf,
             responsibleName: patient.responsibleName,
             responsibleCpf: (patient as any).responsible_cpf,
+            diagnosis: (patient as any).diagnosis,
+            clinicalArea: (patient as any).clinical_area || (patient as any).clinicalArea,
+            observations: (patient as any).observations,
+            contractStartDate: (patient as any).contract_start_date || (patient as any).contractStartDate,
+            weekdays: (patient as any).weekdays,
+            scheduleByDay: (patient as any).schedule_by_day || (patient as any).scheduleByDay,
+            paymentValue: (patient as any).payment_value ?? (patient as any).paymentValue,
+            healthPlan: (patient as any).health_plan_id || (patient as any).healthPlanId,
           },
           clinic: clinic ? { name: clinic.name, cnpj: clinic.cnpj, address: clinic.address } : null,
           professional: { name: profile?.name, cpf: profile?.cpf, professionalId: profile?.professional_id },
           instructions, todayBR,
           exampleText: exampleText || undefined,
           templateName: tpl?.name || undefined,
+          context: { evolutions, intakeForms, documents },
         },
       });
       if (error) throw error;
