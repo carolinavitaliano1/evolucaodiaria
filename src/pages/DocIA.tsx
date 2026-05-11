@@ -754,11 +754,67 @@ export default function DocIA() {
                 <Label>Instruções para a IA</Label>
                 <Textarea
                   rows={4}
-                  placeholder='Ex: "Justificar comparecimento no dia 10/04/2026 das 14h às 15h"'
+                  placeholder={'Ex: "Redija um termo de consentimento para uso de imagem em pesquisa, mencionando LGPD e direito de revogação"\n\nDica: descreva tudo que o documento precisa conter — finalidade, datas, valores, tom, parágrafos obrigatórios.'}
                   value={instructions}
                   onChange={e => setInstructions(e.target.value)}
                 />
               </div>
+
+              {createDocType === 'livre' && (
+                <div className="space-y-3 p-3 rounded-lg border border-dashed border-primary/40 bg-primary/5">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    Modelos personalizados
+                  </div>
+
+                  {templates.length > 0 && (
+                    <div className="grid md:grid-cols-[1fr_auto] gap-2 items-end">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Carregar modelo salvo</Label>
+                        <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Escolha um modelo" /></SelectTrigger>
+                          <SelectContent>
+                            {templates.map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {selectedTemplateId && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteTemplate(selectedTemplateId)} className="h-9">
+                          <Trash2 className="w-3.5 h-3.5 mr-1 text-destructive" /> Excluir modelo
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">Exemplo / modelo de referência (opcional)</Label>
+                    <Textarea
+                      rows={6}
+                      placeholder="Cole aqui um documento existente que sirva de modelo. A IA seguirá rigorosamente sua estrutura, tom e formatação, substituindo apenas os dados pelo do paciente atual."
+                      value={exampleText}
+                      onChange={e => setExampleText(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-[1fr_auto] gap-2 items-end pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Salvar configuração atual como modelo</Label>
+                      <Input
+                        placeholder="Nome do modelo (ex: Termo de Consentimento — Imagem)"
+                        value={newTemplateName}
+                        onChange={e => setNewTemplateName(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleSaveAsTemplate} disabled={savingTemplate} className="h-9">
+                      {savingTemplate ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                      Salvar modelo
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <Button onClick={handleGenerateText} disabled={generatingText || !createPatientId}>
                 {generatingText ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
