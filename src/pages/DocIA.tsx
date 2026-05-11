@@ -570,7 +570,6 @@ export default function DocIA() {
       const persistedHtml = `${metaScript}${bodyHtml}`;
 
       const safeName = (draftTitle || 'documento').replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 60);
-      let downloadBlob: Blob;
       let downloadUrl: string;
       let downloadExt: 'pdf' | 'docx' = exportFormat;
       let pdfForStorage: Blob | null = null;
@@ -594,11 +593,10 @@ export default function DocIA() {
           console.error('[DocIA] PDF generation failed', pdfErr);
           throw new Error('Falha ao gerar PDF: ' + (pdfErr?.message || pdfErr));
         }
-        downloadBlob = pdfResult.blob;
         pdfForStorage = pdfResult.blob;
         downloadUrl = pdfResult.dataUrl;
       } else {
-        downloadBlob = await generateAIDocumentDocx({
+        const docxBlob = await generateAIDocumentDocx({
           title: draftTitle || docTypeLabel(createDocType),
           bodyHtml,
           logoUrl: (clinicData as any)?.document_logo_url || null,
@@ -610,7 +608,7 @@ export default function DocIA() {
           stampUrl,
           extraSignatures,
         });
-        downloadUrl = URL.createObjectURL(downloadBlob);
+        downloadUrl = URL.createObjectURL(docxBlob);
       }
 
       const path = `${user.id}/${createPatientId}/${Date.now()}-${safeName}.pdf`;
@@ -636,10 +634,10 @@ export default function DocIA() {
       let publicUrl: string | null = null;
       let filePath: string | null = null;
       if (pdfForStorage) {
-      const { error: upErr } = await supabase.storage.from('patient_documents')
+        const { error: upErr } = await supabase.storage.from('patient_documents')
           .upload(path, pdfForStorage, { contentType: 'application/pdf', upsert: false });
-      if (upErr) { console.error('[DocIA] storage upload failed', upErr); throw new Error('Falha ao enviar PDF: ' + upErr.message); }
-      const { data: urlData } = supabase.storage.from('patient_documents').getPublicUrl(path);
+        if (upErr) { console.error('[DocIA] storage upload failed', upErr); throw new Error('Falha ao enviar PDF: ' + upErr.message); }
+        const { data: urlData } = supabase.storage.from('patient_documents').getPublicUrl(path);
         publicUrl = urlData.publicUrl;
         filePath = path;
       }
