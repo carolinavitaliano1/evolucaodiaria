@@ -40,10 +40,10 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
 
   const container = document.createElement('div');
   container.style.position = 'fixed';
-  container.style.left = '0';
+  container.style.left = '-10000px';
   container.style.top = '0';
-  container.style.zIndex = '-1';
-  container.style.opacity = '0';
+  container.style.zIndex = '0';
+  container.style.opacity = '1';
   container.style.pointerEvents = 'none';
   container.style.width = `${AI_DOC_LAYOUT.pageWidthPx}px`;
   container.style.background = '#ffffff';
@@ -270,9 +270,18 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
       ),
     );
 
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
     const target = (container.firstElementChild as HTMLElement) || container;
+    target.style.width = `${AI_DOC_LAYOUT.pageWidthPx}px`;
+    target.style.minHeight = `${AI_DOC_LAYOUT.pageHeightPx}px`;
+
+    const renderScale = Number.isFinite(window.devicePixelRatio)
+      ? Math.max(1, Math.min(2, window.devicePixelRatio || 1.5))
+      : 1.5;
+
     const canvas = await html2canvas(target, {
-      scale: 2,
+      scale: renderScale,
       useCORS: true,
       allowTaint: false,
       backgroundColor: '#ffffff',
@@ -281,33 +290,46 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
       imageTimeout: 15000,
     });
 
+    if (!canvas.width || !canvas.height || !Number.isFinite(canvas.width) || !Number.isFinite(canvas.height)) {
+      throw new Error('Não foi possível medir o documento para gerar o PDF. Tente reduzir imagens muito grandes e gerar novamente.');
+    }
+
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
-    let imgData: string;
-    let imgFormat: 'PNG' | 'JPEG' = 'JPEG';
-    try {
-      imgData = canvas.toDataURL('image/jpeg', 0.92);
-    } catch (err) {
-      console.warn('toDataURL JPEG falhou, tentando PNG:', err);
-      imgData = canvas.toDataURL('image/png');
-      imgFormat = 'PNG';
-    }
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const sliceHeightPx = Math.max(1, Math.floor((pageHeight * canvas.width) / pageWidth));
+    const pageCanvas = document.createElement('canvas');
+    const pageCtx = pageCanvas.getContext('2d');
+    if (!pageCtx) throw new Error('Não foi possível preparar as páginas do PDF');
 
-    let heightLeft = imgHeight;
-    let position = 0;
+    pageCanvas.width = canvas.width;
 
-    pdf.addImage(imgData, imgFormat, 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    for (let sourceY = 0, pageIndex = 0; sourceY < canvas.height; sourceY += sliceHeightPx, pageIndex += 1) {
+      const currentSliceHeight = Math.min(sliceHeightPx, canvas.height - sourceY);
+      pageCanvas.height = currentSliceHeight;
+      pageCtx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
+      pageCtx.fillStyle = '#ffffff';
+      pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      pageCtx.drawImage(canvas, 0, sourceY, canvas.width, currentSliceHeight, 0, 0, canvas.width, currentSliceHeight);
 
-    while (heightLeft > 1) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, imgFormat, 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      const imgHeight = (currentSliceHeight * pageWidth) / canvas.width;
+      if (!Number.isFinite(imgHeight) || imgHeight <= 0) {
+        throw new Error('Dimensão inválida ao gerar página do PDF');
+      }
+
+      let imgData: string;
+      let imgFormat: 'PNG' | 'JPEG' = 'JPEG';
+      try {
+        imgData = pageCanvas.toDataURL('image/jpeg', 0.92);
+      } catch (err) {
+        console.warn('toDataURL JPEG falhou, tentando PNG:', err);
+        imgData = pageCanvas.toDataURL('image/png');
+        imgFormat = 'PNG';
+      }
+
+      if (pageIndex > 0) pdf.addPage();
+      pdf.addImage(imgData, imgFormat, 0, 0, pageWidth, imgHeight);
     }
 
     const blob = pdf.output('blob');
