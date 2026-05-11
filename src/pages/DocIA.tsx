@@ -841,6 +841,25 @@ export default function DocIA() {
                       value={exampleText}
                       onChange={e => setExampleText(e.target.value)}
                     />
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <input
+                        ref={exampleFileRef}
+                        type="file"
+                        accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                        hidden
+                        onChange={e => e.target.files?.[0] && handleExampleFileUpload(e.target.files[0])}
+                      />
+                      <Button variant="outline" size="sm" onClick={() => exampleFileRef.current?.click()} disabled={extractingExample} className="h-8">
+                        {extractingExample ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Paperclip className="w-3.5 h-3.5 mr-1" />}
+                        Anexar exemplo (.pdf, .docx, .txt)
+                      </Button>
+                      {exampleText && (
+                        <Button variant="ghost" size="sm" onClick={() => setExampleText('')} className="h-8">
+                          <X className="w-3.5 h-3.5 mr-1" /> Limpar exemplo
+                        </Button>
+                      )}
+                      <span className="text-xs text-muted-foreground">O texto extraído é enviado para a IA como modelo a ser seguido.</span>
+                    </div>
                   </div>
 
                   <div className="grid md:grid-cols-[1fr_auto] gap-2 items-end pt-1">
