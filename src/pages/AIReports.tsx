@@ -840,12 +840,28 @@ export default function AIReports() {
                       {new Date(r.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </button>
-                  <Button
-                    variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteReport(r.id); }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-8"
+                      title="Baixar PDF"
+                      onClick={(e) => { e.stopPropagation(); downloadSavedAsPdf(r); }}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-8"
+                      title="Baixar Word (.docx)"
+                      onClick={(e) => { e.stopPropagation(); downloadSavedAsWord(r); }}
+                    >
+                      <FileType className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteReport(r.id); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
