@@ -573,6 +573,7 @@ export default function DocIA() {
       let downloadBlob: Blob;
       let downloadUrl: string;
       let downloadExt: 'pdf' | 'docx' = exportFormat;
+      let pdfForStorage: Blob | null = null;
 
       if (exportFormat === 'pdf') {
         let pdfResult: { blob: Blob; dataUrl: string };
@@ -594,6 +595,7 @@ export default function DocIA() {
           throw new Error('Falha ao gerar PDF: ' + (pdfErr?.message || pdfErr));
         }
         downloadBlob = pdfResult.blob;
+        pdfForStorage = pdfResult.blob;
         downloadUrl = pdfResult.dataUrl;
       } else {
         downloadBlob = await generateAIDocumentDocx({
@@ -612,29 +614,41 @@ export default function DocIA() {
       }
 
       const path = `${user.id}/${createPatientId}/${Date.now()}-${safeName}.pdf`;
-      const pdfSave = await generateAIDocumentPdf({
-        title: draftTitle || docTypeLabel(createDocType),
-        bodyText: bodyHtml,
-        logoUrl: (clinicData as any)?.document_logo_url || null,
-        headerText: (clinicData as any)?.document_header_text || null,
-        footerText: (clinicData as any)?.document_footer_text || null,
-        professionalName,
-        professionalRegistration: profRegistration,
-        todayBR,
-        cityLine,
-        stampUrl,
-        extraSignatures,
-      });
+      if (!pdfForStorage) {
+        try {
+          pdfForStorage = (await generateAIDocumentPdf({
+            title: draftTitle || docTypeLabel(createDocType),
+            bodyText: bodyHtml,
+            logoUrl: (clinicData as any)?.document_logo_url || null,
+            headerText: (clinicData as any)?.document_header_text || null,
+            footerText: (clinicData as any)?.document_footer_text || null,
+            professionalName,
+            professionalRegistration: profRegistration,
+            todayBR,
+            cityLine,
+            stampUrl,
+            extraSignatures,
+          })).blob;
+        } catch (pdfErr) {
+          console.warn('[DocIA] PDF storage copy failed; saving content only', pdfErr);
+        }
+      }
+      let publicUrl: string | null = null;
+      let filePath: string | null = null;
+      if (pdfForStorage) {
       const { error: upErr } = await supabase.storage.from('patient_documents')
-        .upload(path, pdfSave.blob, { contentType: 'application/pdf', upsert: false });
+          .upload(path, pdfForStorage, { contentType: 'application/pdf', upsert: false });
       if (upErr) { console.error('[DocIA] storage upload failed', upErr); throw new Error('Falha ao enviar PDF: ' + upErr.message); }
       const { data: urlData } = supabase.storage.from('patient_documents').getPublicUrl(path);
+        publicUrl = urlData.publicUrl;
+        filePath = path;
+      }
 
       const { error: insErr } = await supabase.from('patient_documents').insert({
         user_id: user.id, clinic_id: clinic.id, patient_id: createPatientId,
         title: draftTitle || docTypeLabel(createDocType),
         doc_type: createDocType, content: persistedHtml,
-        file_url: urlData.publicUrl, file_path: path,
+        file_url: publicUrl, file_path: filePath,
       } as any);
       if (insErr) { console.error('[DocIA] DB insert failed', insErr); throw new Error('Falha ao salvar registro: ' + insErr.message); }
 
