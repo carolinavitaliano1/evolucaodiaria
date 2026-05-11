@@ -274,7 +274,7 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
     const canvas = await html2canvas(target, {
       scale: 2,
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
       foreignObjectRendering: false,
@@ -285,20 +285,28 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
-    const imgData = canvas.toDataURL('image/png');
+    let imgData: string;
+    let imgFormat: 'PNG' | 'JPEG' = 'JPEG';
+    try {
+      imgData = canvas.toDataURL('image/jpeg', 0.92);
+    } catch (err) {
+      console.warn('toDataURL JPEG falhou, tentando PNG:', err);
+      imgData = canvas.toDataURL('image/png');
+      imgFormat = 'PNG';
+    }
     const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
     let heightLeft = imgHeight;
     let position = 0;
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    pdf.addImage(imgData, imgFormat, 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
 
     while (heightLeft > 1) {
       position = heightLeft - imgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, imgFormat, 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
     }
 
