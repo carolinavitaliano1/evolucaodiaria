@@ -557,7 +557,7 @@ export default function DocIA() {
     }
     setSavingPdf(true);
     try {
-      const { patient, clinic, clinicData, todayBR, cityLine, professionalName, profRegistration, stampUrl } = await buildExportPayload();
+      const { clinic, clinicData, todayBR, cityLine, professionalName, profRegistration, stampUrl } = await buildExportPayload();
 
       // Embed export metadata inside the saved HTML so future Word/PDF exports keep stamp + signatures.
       const meta = {
@@ -571,7 +571,7 @@ export default function DocIA() {
 
       const safeName = (draftTitle || 'documento').replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 60);
       let downloadUrl: string;
-      let downloadExt: 'pdf' | 'docx' = exportFormat;
+      const downloadExt: 'pdf' | 'docx' = exportFormat;
       let pdfForStorage: Blob | null = null;
 
       if (exportFormat === 'pdf') {
