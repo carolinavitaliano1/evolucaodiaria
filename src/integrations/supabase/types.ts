@@ -573,6 +573,39 @@ export type Database = {
         }
         Relationships: []
       }
+      doc_ia_templates: {
+        Row: {
+          created_at: string
+          default_title: string | null
+          example_text: string
+          id: string
+          instructions: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_title?: string | null
+          example_text?: string
+          id?: string
+          instructions?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_title?: string | null
+          example_text?: string
+          id?: string
+          instructions?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           all_day: boolean | null

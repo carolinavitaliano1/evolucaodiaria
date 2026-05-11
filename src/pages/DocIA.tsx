@@ -19,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Loader2, Sparkles, Save, Download, Upload, FileText, Image as ImageIcon, Trash2,
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, Type, Stamp, Plus, X, FileType, Pencil, FolderPlus,
+  List, Type, Stamp, Plus, X, FileType, Pencil, FolderPlus, BookOpen,
 } from 'lucide-react';
 import { generateAIDocumentPdf, ExtraSignature } from '@/utils/generateAIDocumentPdf';
 import { generateAIDocumentDocx } from '@/utils/aiDocumentDocxExport';
@@ -66,6 +66,14 @@ interface StampRow {
   stamp_image: string | null;
   signature_image: string | null;
   is_default: boolean | null;
+}
+
+interface DocTemplateRow {
+  id: string;
+  name: string;
+  default_title: string | null;
+  instructions: string;
+  example_text: string;
 }
 
 const DOC_TYPES = [
@@ -190,10 +198,17 @@ export default function DocIA() {
   const [createPatientId, setCreatePatientId] = useState('');
   const [createDocType, setCreateDocType] = useState('declaracao');
   const [instructions, setInstructions] = useState('');
+  const [exampleText, setExampleText] = useState('');
   const [draftTitle, setDraftTitle] = useState('');
   const [generatingText, setGeneratingText] = useState(false);
   const [savingPdf, setSavingPdf] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
+
+  // Custom templates (saved models for "Documento Livre")
+  const [templates, setTemplates] = useState<DocTemplateRow[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
 
   // Stamp + extra signatures
   const [stamps, setStamps] = useState<StampRow[]>([]);
@@ -276,6 +291,62 @@ export default function DocIA() {
 
   useEffect(() => { loadHistory(); }, [user]);
 
+  const loadTemplates = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('doc_ia_templates')
+      .select('id, name, default_title, instructions, example_text')
+      .eq('user_id', user.id)
+      .order('name', { ascending: true });
+    if (error) { console.error('[DocIA] loadTemplates', error); return; }
+    setTemplates((data as DocTemplateRow[]) || []);
+  };
+  useEffect(() => { loadTemplates(); }, [user]);
+
+  const applyTemplate = (id: string) => {
+    setSelectedTemplateId(id);
+    if (!id) return;
+    const t = templates.find(x => x.id === id);
+    if (!t) return;
+    setCreateDocType('livre');
+    setInstructions(t.instructions || '');
+    setExampleText(t.example_text || '');
+    if (t.default_title) setDraftTitle(t.default_title);
+    toast.success(`Modelo "${t.name}" aplicado`);
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!user) return;
+    const name = newTemplateName.trim();
+    if (!name) { toast.error('Dê um nome ao modelo'); return; }
+    if (!instructions.trim() && !exampleText.trim()) {
+      toast.error('Preencha instruções ou exemplo antes de salvar o modelo');
+      return;
+    }
+    setSavingTemplate(true);
+    const { error } = await supabase.from('doc_ia_templates').insert({
+      user_id: user.id,
+      name,
+      default_title: draftTitle || name,
+      instructions,
+      example_text: exampleText,
+    });
+    setSavingTemplate(false);
+    if (error) { toast.error('Erro ao salvar modelo: ' + error.message); return; }
+    toast.success('Modelo salvo!');
+    setNewTemplateName('');
+    loadTemplates();
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('Excluir este modelo?')) return;
+    const { error } = await supabase.from('doc_ia_templates').delete().eq('id', id);
+    if (error) { toast.error('Erro ao excluir modelo'); return; }
+    if (selectedTemplateId === id) setSelectedTemplateId('');
+    toast.success('Modelo excluído');
+    loadTemplates();
+  };
+
   // ---------- Handlers ----------
   const handleLogoUpload = async (file: File) => {
     if (!user || !selectedClinicId) return;
@@ -317,6 +388,7 @@ export default function DocIA() {
     editor?.commands.setContent('<p style="text-align:justify">Gerando rascunho com IA...</p>');
     try {
       const todayBR = new Date().toLocaleDateString('pt-BR');
+      const tpl = templates.find(t => t.id === selectedTemplateId);
       const { data, error } = await supabase.functions.invoke('generate-document-text', {
         body: {
           docType: createDocType,
@@ -330,6 +402,8 @@ export default function DocIA() {
           clinic: clinic ? { name: clinic.name, cnpj: clinic.cnpj, address: clinic.address } : null,
           professional: { name: profile?.name, cpf: profile?.cpf, professionalId: profile?.professional_id },
           instructions, todayBR,
+          exampleText: exampleText || undefined,
+          templateName: tpl?.name || undefined,
         },
       });
       if (error) throw error;
@@ -405,7 +479,9 @@ export default function DocIA() {
       const metaScript = `<script type="application/json" id="docia-meta">${JSON.stringify(meta).replace(/</g, '\\u003c')}</script>`;
       const persistedHtml = `${metaScript}${bodyHtml}`;
 
-      const { blob, dataUrl } = await generateAIDocumentPdf({
+      let pdfResult: { blob: Blob; dataUrl: string };
+      try {
+        pdfResult = await generateAIDocumentPdf({
         title: draftTitle || docTypeLabel(createDocType),
         bodyText: bodyHtml,
         logoUrl: (clinicData as any)?.document_logo_url || null,
@@ -417,12 +493,17 @@ export default function DocIA() {
         stampUrl,
         extraSignatures,
       });
+      } catch (pdfErr: any) {
+        console.error('[DocIA] PDF generation failed', pdfErr);
+        throw new Error('Falha ao gerar PDF: ' + (pdfErr?.message || pdfErr));
+      }
+      const { blob, dataUrl } = pdfResult;
 
       const safeName = (draftTitle || 'documento').replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 60);
       const path = `${user.id}/${createPatientId}/${Date.now()}-${safeName}.pdf`;
       const { error: upErr } = await supabase.storage.from('patient_documents')
         .upload(path, blob, { contentType: 'application/pdf', upsert: false });
-      if (upErr) throw upErr;
+      if (upErr) { console.error('[DocIA] storage upload failed', upErr); throw new Error('Falha ao enviar PDF: ' + upErr.message); }
       const { data: urlData } = supabase.storage.from('patient_documents').getPublicUrl(path);
 
       const { error: insErr } = await supabase.from('patient_documents').insert({
@@ -431,7 +512,7 @@ export default function DocIA() {
         doc_type: createDocType, content: persistedHtml,
         file_url: urlData.publicUrl, file_path: path,
       } as any);
-      if (insErr) throw insErr;
+      if (insErr) { console.error('[DocIA] DB insert failed', insErr); throw new Error('Falha ao salvar registro: ' + insErr.message); }
 
       const a = document.createElement('a');
       a.href = dataUrl;
@@ -440,9 +521,10 @@ export default function DocIA() {
 
       toast.success('Documento salvo e baixado!');
       editor?.commands.setContent('');
-      setDraftTitle(''); setInstructions(''); setHasDraft(false);
+      setDraftTitle(''); setInstructions(''); setExampleText(''); setHasDraft(false);
       loadHistory();
     } catch (e: any) {
+      console.error('[DocIA] handleSaveAndGeneratePdf error', e);
       toast.error(e?.message || 'Erro ao gerar PDF');
     } finally { setSavingPdf(false); }
   };
@@ -672,11 +754,67 @@ export default function DocIA() {
                 <Label>Instruções para a IA</Label>
                 <Textarea
                   rows={4}
-                  placeholder='Ex: "Justificar comparecimento no dia 10/04/2026 das 14h às 15h"'
+                  placeholder={'Ex: "Redija um termo de consentimento para uso de imagem em pesquisa, mencionando LGPD e direito de revogação"\n\nDica: descreva tudo que o documento precisa conter — finalidade, datas, valores, tom, parágrafos obrigatórios.'}
                   value={instructions}
                   onChange={e => setInstructions(e.target.value)}
                 />
               </div>
+
+              {createDocType === 'livre' && (
+                <div className="space-y-3 p-3 rounded-lg border border-dashed border-primary/40 bg-primary/5">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    Modelos personalizados
+                  </div>
+
+                  {templates.length > 0 && (
+                    <div className="grid md:grid-cols-[1fr_auto] gap-2 items-end">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Carregar modelo salvo</Label>
+                        <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Escolha um modelo" /></SelectTrigger>
+                          <SelectContent>
+                            {templates.map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {selectedTemplateId && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteTemplate(selectedTemplateId)} className="h-9">
+                          <Trash2 className="w-3.5 h-3.5 mr-1 text-destructive" /> Excluir modelo
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">Exemplo / modelo de referência (opcional)</Label>
+                    <Textarea
+                      rows={6}
+                      placeholder="Cole aqui um documento existente que sirva de modelo. A IA seguirá rigorosamente sua estrutura, tom e formatação, substituindo apenas os dados pelo do paciente atual."
+                      value={exampleText}
+                      onChange={e => setExampleText(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-[1fr_auto] gap-2 items-end pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Salvar configuração atual como modelo</Label>
+                      <Input
+                        placeholder="Nome do modelo (ex: Termo de Consentimento — Imagem)"
+                        value={newTemplateName}
+                        onChange={e => setNewTemplateName(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleSaveAsTemplate} disabled={savingTemplate} className="h-9">
+                      {savingTemplate ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                      Salvar modelo
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <Button onClick={handleGenerateText} disabled={generatingText || !createPatientId}>
                 {generatingText ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
