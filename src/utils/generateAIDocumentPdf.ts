@@ -40,8 +40,11 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
 
   const container = document.createElement('div');
   container.style.position = 'fixed';
-  container.style.left = '-99999px';
+  container.style.left = '0';
   container.style.top = '0';
+  container.style.zIndex = '-1';
+  container.style.opacity = '0';
+  container.style.pointerEvents = 'none';
   container.style.width = `${AI_DOC_LAYOUT.pageWidthPx}px`;
   container.style.background = '#ffffff';
   container.style.color = '#111111';
@@ -267,12 +270,14 @@ export async function generateAIDocumentPdf(input: AIDocPdfInput): Promise<{ blo
       ),
     );
 
-    const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
+    const target = (container.firstElementChild as HTMLElement) || container;
+    const canvas = await html2canvas(target, {
       scale: 2,
       useCORS: true,
+      allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      foreignObjectRendering: true,
+      foreignObjectRendering: false,
       imageTimeout: 15000,
     });
 
