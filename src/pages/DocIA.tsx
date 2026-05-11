@@ -1059,10 +1059,24 @@ export default function DocIA() {
                   </div>
                 </div>
 
-                <Button onClick={handleSaveAndGeneratePdf} disabled={savingPdf} className="w-full md:w-auto">
-                  {savingPdf ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                  {savingPdf ? 'Gerando PDF...' : 'Salvar e Gerar PDF'}
-                </Button>
+                <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                  <div className="space-y-1.5 md:w-56">
+                    <Label>Formato para baixar</Label>
+                    <Select value={exportFormat} onValueChange={(value) => setExportFormat(value as 'pdf' | 'docx')}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pdf">PDF</SelectItem>
+                        <SelectItem value="docx">Word (.docx)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleSaveAndGeneratePdf} disabled={savingPdf} className="w-full md:w-auto">
+                    {savingPdf ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    {savingPdf ? 'Salvando...' : `Salvar e Baixar ${exportFormat === 'pdf' ? 'PDF' : 'Word'}`}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
