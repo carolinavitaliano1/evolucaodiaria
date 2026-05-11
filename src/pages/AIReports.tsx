@@ -572,7 +572,10 @@ export default function AIReports() {
   };
 
   const handleShareEmail = () => {
-    // ---
+    const text = editor?.getText() || '';
+    const subject = encodeURIComponent(reportTitle || 'Relatório Clínico');
+    const body = encodeURIComponent(text);
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
   };
 
   const downloadSavedAsPdf = async (r: SavedReport) => {
@@ -619,13 +622,6 @@ export default function AIReports() {
     } catch {
       toast.error('Erro ao exportar Word');
     }
-  };
-
-  const _handleShareEmailNoop = () => {
-    const text = editor?.getText() || '';
-    const subject = encodeURIComponent(reportTitle || 'Relatório Clínico');
-    const body = encodeURIComponent(text);
-    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
   };
 
   const handleShareLink = async () => {
