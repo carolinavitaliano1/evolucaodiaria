@@ -47,6 +47,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Evolution } from '@/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { generateReportPdf } from '@/utils/generateReportPdf';
+import { exportSavedReportAsWord } from '@/utils/exportSavedReportWord';
 import { getDynamicSessionValue, calculateMensalRevenueWithDeductions } from '@/utils/dateHelpers';
 import { getGroupSessionValue, type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { calculatePatientMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
@@ -165,6 +166,9 @@ function PatientSavedReports({ patientId, clinicName, clinicAddress, clinicLette
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDownloadPdf(r)}>
                 <Download className="w-3 h-3" /> PDF
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => exportSavedReportAsWord({ title: r.title, content: r.content, clinicName, clinicAddress, clinicPhone }).then(() => toast.success('Word exportado!')).catch(() => toast.error('Erro ao exportar Word'))}>
+                <Download className="w-3 h-3" /> Word
               </Button>
               <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(r.id)}>
                 <Trash2 className="w-3 h-3" />
