@@ -446,7 +446,7 @@ function PlanPatientsDialog({ plan, onOpenChange, patients, clinicId, onChanged 
 
   return (
     <Dialog open={!!plan} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85dvh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-primary" />
@@ -495,7 +495,7 @@ function PlanPatientsDialog({ plan, onOpenChange, patients, clinicId, onChanged 
                 Nenhum paciente neste convênio.
               </div>
             ) : (
-              <ScrollArea className="max-h-80">
+              <ScrollArea className="h-[60dvh] pr-3">
                 <div className="space-y-1.5">
                   {linked.map(p => (
                     <div key={p.id} className="rounded-lg border border-border bg-card p-3">
