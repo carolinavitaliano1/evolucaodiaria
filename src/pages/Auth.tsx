@@ -349,6 +349,11 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <SEO
+        title="Entrar ou Criar Conta — Evolução Diária"
+        description="Acesse sua conta no Evolução Diária ou crie uma nova com 30 dias grátis. Sistema de gestão para profissionais de saúde mental."
+        path="/auth"
+      />
       <div className="w-full max-w-md">
         <Logo />
 
