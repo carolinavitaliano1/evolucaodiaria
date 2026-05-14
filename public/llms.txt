@@ -1,0 +1,16 @@
+# Evolução Diária
+
+> Sistema SaaS de gestão para psicólogos, fonoaudiólogos, terapeutas ocupacionais e demais profissionais de saúde mental. Centraliza pacientes, agenda, evoluções clínicas, financeiro, documentos com IA e portal do paciente.
+
+O Evolução Diária é uma plataforma brasileira que ajuda clínicas e profissionais autônomos a organizar atendimentos, registrar evoluções, emitir recibos e contratos, controlar pagamentos e se comunicar com pacientes e responsáveis através de um portal dedicado.
+
+## Pages
+
+- [Início](/): Visão geral do produto, planos, recursos, depoimentos e FAQ.
+- [Entrar](/auth): Login e cadastro de novos profissionais (teste grátis de 30 dias).
+- [Política de Privacidade](/privacidade): Tratamento de dados conforme a LGPD.
+- [Termos de Uso](/termos): Condições do serviço e responsabilidades.
+
+## Optional
+
+- [Instalar app](/install): Instruções para instalar como PWA no celular ou desktop.
