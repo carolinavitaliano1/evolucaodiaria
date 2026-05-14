@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Loader2, BookOpen } from 'lucide-react';
+import { SEO } from '@/components/seo/SEO';
 
 export default function Auth() {
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
