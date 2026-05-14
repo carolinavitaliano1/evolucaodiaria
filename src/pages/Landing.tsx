@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { SEO } from '@/components/seo/SEO';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, type Variants } from 'framer-motion';
@@ -153,8 +154,34 @@ const PLAN_COMPARISON: { label: string; basic: boolean; pro: boolean }[] = [
 export default function Landing() {
   const navigate = useNavigate();
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ_ITEMS.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+  const softwareJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Evolução Diária",
+    applicationCategory: "HealthApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "29.90", priceCurrency: "BRL" },
+    description: "Sistema de gestão para psicólogos, fonoaudiólogos e terapeutas: pacientes, agenda, evoluções, financeiro, IA e portal do paciente.",
+    url: "https://clinipro.lovable.app",
+  };
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      <SEO
+        title="Evolução Diária — Gestão de Clínicas e Pacientes"
+        description="Plataforma para psicólogos, fonoaudiólogos e terapeutas: pacientes, agenda, evoluções, financeiro, IA e portal do paciente. Teste 30 dias grátis."
+        path="/"
+        jsonLd={[softwareJsonLd, faqJsonLd]}
+      />
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
