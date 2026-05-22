@@ -29,6 +29,22 @@ serve(async (req) => {
     const { targetUserId, title, body } = await req.json();
     if (!targetUserId) throw new Error("targetUserId is required");
 
+    // Ownership: caller can only push to self, unless support admin
+    const callerUid = userData.user.id;
+    if (targetUserId !== callerUid) {
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("is_support_admin")
+        .eq("user_id", callerUid)
+        .single();
+      if (!callerProfile?.is_support_admin) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     logStep("Sending push to user", { targetUserId, title });
 
     // Get all push tokens for target user

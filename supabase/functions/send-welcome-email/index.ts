@@ -85,6 +85,20 @@ serve(async (req) => {
   }
 
   try {
+    // Restrict to internal callers (auth hook / service role / shared secret)
+    const welcomeSecret = Deno.env.get("WELCOME_EMAIL_SECRET");
+    const providedSecret = req.headers.get("x-welcome-secret") ?? "";
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const isServiceRole =
+      authHeader === `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`;
+    const hasSharedSecret = welcomeSecret && providedSecret === welcomeSecret;
+    if (!isServiceRole && !hasSharedSecret) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not set");
 
