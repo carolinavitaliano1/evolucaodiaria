@@ -6,6 +6,7 @@ import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as S
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
+import { TelehealthButton } from '@/components/telehealth/TelehealthButton';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { usePatientAssignments } from '@/hooks/usePatientAssignments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
