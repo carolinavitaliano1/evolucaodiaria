@@ -41,14 +41,11 @@ export default function PatientIntakePublic() {
 
   useEffect(() => {
     if (!token) { setNotFound(true); setLoading(false); return; }
-    supabase
-      .from('patients')
-      .select('id, name, status')
-      .eq('intake_token', token)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error || !data) { setNotFound(true); }
-        else { setPatient(data as PatientRow); }
+    (supabase.rpc as any)('get_patient_by_intake_token', { _token: token })
+      .then(({ data, error }: any) => {
+        const row = Array.isArray(data) ? data[0] : data;
+        if (error || !row) { setNotFound(true); }
+        else { setPatient(row as PatientRow); }
         setLoading(false);
       });
   }, [token]);
@@ -62,58 +59,29 @@ export default function PatientIntakePublic() {
     }
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('patients')
-        .update({
-          birthdate,
-          cpf: cpf || null,
-          phone: phone || null,
-          whatsapp: whatsapp || null,
-          email: email || null,
-          observations: address ? `Endereço: ${address}${observations ? '\n' + observations : ''}` : (observations || null),
-          responsible_name: responsibleName || null,
-          responsible_whatsapp: responsibleWhatsapp || null,
-          responsible_cpf: responsibleCpf || null,
-          financial_responsible_name: financialResponsibleName || null,
-          financial_responsible_whatsapp: financialResponsibleWhatsapp || null,
-          financial_responsible_cpf: financialResponsibleCpf || null,
-          status: 'pendente_revisao',
-        } as any)
-        .eq('intake_token', token);
-
+      const payload = {
+        birthdate,
+        cpf: cpf || null,
+        phone: phone || null,
+        whatsapp: whatsapp || null,
+        email: email || null,
+        gender: gender || null,
+        address: address || null,
+        observations: address ? `Endereço: ${address}${observations ? '\n' + observations : ''}` : (observations || null),
+        responsible_name: responsibleName || null,
+        responsible_whatsapp: responsibleWhatsapp || null,
+        responsible_cpf: responsibleCpf || null,
+        financial_responsible_name: financialResponsibleName || null,
+        financial_responsible_whatsapp: financialResponsibleWhatsapp || null,
+        financial_responsible_cpf: financialResponsibleCpf || null,
+        how_found: howFound || null,
+      };
+      const { data: ok, error } = await (supabase.rpc as any)('submit_patient_intake', {
+        _token: token,
+        _data: payload,
+      });
       if (error) throw error;
-
-      // Also save to intake_forms table using the patient's therapist user_id
-      // We fetch the user_id from the patient record itself (set when therapist created the patient)
-      const { data: patientFull } = await supabase
-        .from('patients')
-        .select('user_id')
-        .eq('id', patient.id)
-        .single();
-
-      if (patientFull?.user_id) {
-        await supabase.from('patient_intake_forms').upsert({
-          patient_id: patient.id,
-          therapist_user_id: patientFull.user_id,
-          full_name: patient.name, // keep the therapist's registered name
-          birthdate,
-          cpf: cpf || null,
-          phone: phone || null,
-          whatsapp: whatsapp || null,
-          email: email || null,
-          gender: gender || null,
-          address: address || null,
-          responsible_name: responsibleName || null,
-          responsible_phone: responsibleWhatsapp || null,
-          responsible_cpf: responsibleCpf || null,
-          financial_responsible_name: financialResponsibleName || null,
-          financial_responsible_phone: financialResponsibleWhatsapp || null,
-          financial_responsible_cpf: financialResponsibleCpf || null,
-          how_found: howFound || null,
-          health_info: observations || null,
-          submitted_at: new Date().toISOString(),
-        }, { onConflict: 'patient_id' }).maybeSingle();
-      }
+      if (!ok) throw new Error('Link inválido ou expirado.');
 
       setDone(true);
     } catch (err: any) {
