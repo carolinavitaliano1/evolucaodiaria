@@ -29,3 +29,5 @@ project_id = "uhhpnjyceobdcxqviouy"
     verify_jwt = false
   [functions.send-welcome-email]
     verify_jwt = false
+  [functions.daily-webhook]
+    verify_jwt = false

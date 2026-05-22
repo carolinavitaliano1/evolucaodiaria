@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Video, Loader2, Copy, ExternalLink, ShieldAlert } from 'lucide-react';
+import { TelehealthSessionsList } from './TelehealthSessionsList';
+import { Separator } from '@/components/ui/separator';
 
 interface Props {
   open: boolean;
@@ -130,6 +132,9 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
                 )}
               </Button>
             </DialogFooter>
+
+            <Separator />
+            <TelehealthSessionsList patientId={patientId} />
           </div>
         ) : (
           <div className="space-y-4">
