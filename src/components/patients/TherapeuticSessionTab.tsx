@@ -21,6 +21,7 @@ import { SessionHistory } from './SessionHistory';
 import { SessionPlanForm } from './SessionPlanForm';
 import { SessionPlansList } from './SessionPlansList';
 import { SendActionPlanModal, type ActivityAttachment } from './SendActionPlanModal';
+import { TelehealthButton } from '@/components/telehealth/TelehealthButton';
 
 interface TherapeuticSessionTabProps {
   patientId: string;
@@ -1321,6 +1322,13 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                 </div>
                 <div className="flex items-center gap-2">
                   {sessionId && <Button variant="outline" size="sm" onClick={exitSession}>Sair da sessão</Button>}
+                  <TelehealthButton
+                    patientId={patientId}
+                    patientName={patientName}
+                    clinicId={clinicId}
+                    variant="outline"
+                    size="sm"
+                  />
                   {!sessionId ? (
                     <Button size="sm" onClick={startSession} className="gap-1.5"><Play className="w-3.5 h-3.5" /> Iniciar sessão</Button>
                   ) : (

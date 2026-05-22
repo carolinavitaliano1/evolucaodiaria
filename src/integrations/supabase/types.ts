@@ -3917,6 +3917,8 @@ export type Database = {
           ended_at: string | null
           estimated_cost_cents: number | null
           id: string
+          link_sent_at: string | null
+          link_sent_channel: string | null
           max_participants: number | null
           notes: string | null
           patient_access_token: string
@@ -3924,6 +3926,7 @@ export type Database = {
           patient_id: string
           recording_enabled: boolean
           room_expires_at: string | null
+          scheduled_for: string | null
           started_at: string | null
           status: string
           therapist_user_id: string
@@ -3939,6 +3942,8 @@ export type Database = {
           ended_at?: string | null
           estimated_cost_cents?: number | null
           id?: string
+          link_sent_at?: string | null
+          link_sent_channel?: string | null
           max_participants?: number | null
           notes?: string | null
           patient_access_token: string
@@ -3946,6 +3951,7 @@ export type Database = {
           patient_id: string
           recording_enabled?: boolean
           room_expires_at?: string | null
+          scheduled_for?: string | null
           started_at?: string | null
           status?: string
           therapist_user_id: string
@@ -3961,6 +3967,8 @@ export type Database = {
           ended_at?: string | null
           estimated_cost_cents?: number | null
           id?: string
+          link_sent_at?: string | null
+          link_sent_channel?: string | null
           max_participants?: number | null
           notes?: string | null
           patient_access_token?: string
@@ -3968,6 +3976,7 @@ export type Database = {
           patient_id?: string
           recording_enabled?: boolean
           room_expires_at?: string | null
+          scheduled_for?: string | null
           started_at?: string | null
           status?: string
           therapist_user_id?: string
