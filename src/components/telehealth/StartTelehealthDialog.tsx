@@ -134,7 +134,7 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
             </DialogFooter>
 
             <Separator />
-            <TelehealthSessionsList patientId={patientId} patientName={patientName} />
+            <TelehealthSessionsList patientId={patientId} patientName={patientName} clinicId={clinicId} />
           </div>
         ) : (
           <div className="space-y-4">
