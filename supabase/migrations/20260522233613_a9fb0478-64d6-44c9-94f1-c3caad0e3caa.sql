@@ -1,0 +1,1 @@
+ALTER VIEW public.video_usage_monthly SET (security_invoker = true);
