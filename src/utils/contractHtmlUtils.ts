@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 /**
  * Robust utility to clean contract HTML for display and PDF generation.
  * Strips all variable-related span wrappers, leaving only the inner text content.
@@ -45,7 +47,22 @@ export function cleanContractHtml(html: string): string {
   // 8. Remove any orphaned empty spans left behind
   clean = clean.replace(/<span[^>]*>\s*<\/span>/gi, '');
 
-  return clean.trim();
+  // 9. Sanitize against XSS — strip <script>, event handlers, javascript: URLs, etc.
+  const sanitized = DOMPurify.sanitize(clean.trim(), {
+    ALLOWED_TAGS: [
+      'p','br','hr','div','span','strong','b','em','i','u','s','sub','sup',
+      'h1','h2','h3','h4','h5','h6',
+      'ul','ol','li',
+      'blockquote','pre','code',
+      'table','thead','tbody','tfoot','tr','th','td',
+      'a','img',
+    ],
+    ALLOWED_ATTR: ['class','style','href','target','rel','src','alt','width','height','colspan','rowspan','align'],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data:image\/(?:png|jpeg|gif|webp|svg\+xml));|#|\/)/i,
+    FORBID_TAGS: ['script','iframe','object','embed','form','input','button','meta','link','style'],
+    FORBID_ATTR: ['onerror','onload','onclick','onmouseover','onfocus','onblur','onchange','onsubmit','formaction','xlink:href'],
+  });
+  return sanitized;
 }
 
 /**
