@@ -43,6 +43,9 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
       setResult(data as any);
+      if (record && (data as any)?.recording_fallback === 'plan_unsupported') {
+        toast.warning('Gravação indisponível no plano atual do provedor de vídeo. Sala criada sem gravação.');
+      }
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao criar sala');
     } finally {
