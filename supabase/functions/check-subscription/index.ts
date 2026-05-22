@@ -138,8 +138,9 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("check-subscription error:", error);
-    // On error, grant pro-level access to avoid blocking users
-    return new Response(JSON.stringify({ subscribed: true, tier: "legacy", error: error.message }), {
+    // On transient errors, grant legacy access to avoid blocking users mid-session,
+    // but do NOT leak internal error details to the client.
+    return new Response(JSON.stringify({ subscribed: true, tier: "legacy" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
