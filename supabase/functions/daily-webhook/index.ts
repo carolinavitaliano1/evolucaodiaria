@@ -116,10 +116,44 @@ Deno.serve(async (req) => {
         if (insErr) throw insErr;
       }
     } else if (eventType === 'meeting.ended') {
-      await admin
-        .from('video_sessions')
-        .update({ status: 'ended', ended_at: new Date().toISOString() })
-        .eq('id', session.id);
+      // Capture usage: Daily sends `duration` (seconds) and sometimes `participants` count.
+      // Cost model (cents BRL):
+      //   - Vídeo Daily.co: ~R$ 0,02 / participante / minuto  => 2 centavos
+      //   - Transcrição (Whisper/Gemini): ~R$ 0,04 / minuto    => 4 centavos
+      //   (somente quando recording_enabled — assumimos transcrição segue gravação)
+      const durationSeconds: number | null =
+        typeof data.duration === 'number' ? Math.round(data.duration) :
+        typeof data.meeting_duration === 'number' ? Math.round(data.meeting_duration) :
+        null;
+      const participants: number | null =
+        typeof data.participants === 'number' ? data.participants :
+        typeof data.max_participants === 'number' ? data.max_participants :
+        Array.isArray(data.participants) ? data.participants.length :
+        null;
+
+      const update: Record<string, any> = {
+        status: 'ended',
+        ended_at: new Date().toISOString(),
+      };
+
+      if (durationSeconds !== null) {
+        update.duration_seconds = durationSeconds;
+        const minutes = durationSeconds / 60;
+        const p = Math.max(1, participants ?? 2);
+        // Fetch recording_enabled to factor transcription cost
+        const { data: sessRow } = await admin
+          .from('video_sessions')
+          .select('recording_enabled')
+          .eq('id', session.id)
+          .maybeSingle();
+        const videoCents = Math.round(minutes * p * 2);
+        const transcriptionCents = sessRow?.recording_enabled ? Math.round(minutes * 4) : 0;
+        update.estimated_cost_cents = videoCents + transcriptionCents;
+      }
+      if (participants !== null) update.max_participants = participants;
+
+      await admin.from('video_sessions').update(update).eq('id', session.id);
+      console.log('daily-webhook meeting.ended usage:', { session: session.id, ...update });
     }
 
     return new Response(JSON.stringify({ ok: true }), {

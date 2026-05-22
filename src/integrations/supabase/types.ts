@@ -3913,8 +3913,11 @@ export type Database = {
           created_at: string
           daily_room_name: string
           daily_room_url: string
+          duration_seconds: number | null
           ended_at: string | null
+          estimated_cost_cents: number | null
           id: string
+          max_participants: number | null
           notes: string | null
           patient_access_token: string
           patient_consented_at: string | null
@@ -3932,8 +3935,11 @@ export type Database = {
           created_at?: string
           daily_room_name: string
           daily_room_url: string
+          duration_seconds?: number | null
           ended_at?: string | null
+          estimated_cost_cents?: number | null
           id?: string
+          max_participants?: number | null
           notes?: string | null
           patient_access_token: string
           patient_consented_at?: string | null
@@ -3951,8 +3957,11 @@ export type Database = {
           created_at?: string
           daily_room_name?: string
           daily_room_url?: string
+          duration_seconds?: number | null
           ended_at?: string | null
+          estimated_cost_cents?: number | null
           id?: string
+          max_participants?: number | null
           notes?: string | null
           patient_access_token?: string
           patient_consented_at?: string | null
@@ -4105,7 +4114,26 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      video_usage_monthly: {
+        Row: {
+          clinic_id: string | null
+          month: string | null
+          sessions_count: number | null
+          therapist_user_id: string | null
+          total_cost_cents: number | null
+          total_minutes: number | null
+          total_seconds: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_sessions_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_clinic_for_enrollment: {
