@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { usePortal } from '@/contexts/PortalContext';
 import { PortalAlertsWidget } from '@/components/portal/PortalAlertsWidget';
+import { PortalUpcomingTelehealth } from '@/components/portal/PortalUpcomingTelehealth';
 import { MessageSquare, FileText, Bell, DollarSign, BookOpen, FilePenLine, ChevronRight, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -44,6 +45,9 @@ export default function PortalHome() {
 
         {/* Alerts widget */}
         <PortalAlertsWidget />
+
+        {/* Upcoming telehealth sessions */}
+        <PortalUpcomingTelehealth />
 
         {/* Unread messages alert */}
         {unreadCount > 0 && (
