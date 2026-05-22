@@ -2555,6 +2555,14 @@ export default function PatientDetail() {
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
               </Button>
+              <TelehealthButton
+                patientId={patient.id}
+                patientName={patient.name}
+                clinicId={patient.clinicId}
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-xs"
+              />
               <Button
                 variant="ghost"
                 size="icon"
