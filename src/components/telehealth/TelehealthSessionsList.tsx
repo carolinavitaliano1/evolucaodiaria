@@ -27,7 +27,7 @@ interface Recording {
   created_at: string;
 }
 
-interface Props { patientId: string; }
+interface Props { patientId: string; patientName?: string; }
 
 function fmtSize(b?: number | null) {
   if (!b) return '';
@@ -41,7 +41,7 @@ function fmtDur(s?: number | null) {
   return `${m}:${String(r).padStart(2, '0')}`;
 }
 
-export function TelehealthSessionsList({ patientId }: Props) {
+export function TelehealthSessionsList({ patientId, patientName }: Props) {
   const [sessions, setSessions] = useState<VideoSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -223,6 +223,7 @@ export function TelehealthSessionsList({ patientId }: Props) {
         onOpenChange={(v) => { if (!v) setTranscribeRec(null); }}
         recordingId={transcribeRec?.id ?? null}
         recordingLabel={transcribeRec?.label}
+        patientName={patientName}
       />
     </div>
   );
