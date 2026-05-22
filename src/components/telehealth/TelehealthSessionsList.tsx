@@ -3,9 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Download, Trash2, Video, Loader2, RefreshCcw } from 'lucide-react';
+import { Download, Trash2, Video, Loader2, RefreshCcw, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { TranscriptionDialog } from './TranscriptionDialog';
 
 interface VideoSession {
   id: string;
@@ -44,6 +45,7 @@ export function TelehealthSessionsList({ patientId }: Props) {
   const [sessions, setSessions] = useState<VideoSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [transcribeRec, setTranscribeRec] = useState<{ id: string; label: string } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -182,6 +184,21 @@ export function TelehealthSessionsList({ patientId }: Props) {
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="h-7 px-2 text-primary hover:text-primary"
+                        disabled={r.status !== 'ready'}
+                        onClick={() =>
+                          setTranscribeRec({
+                            id: r.id,
+                            label: format(new Date(s.created_at), "d MMM yyyy, HH:mm", { locale: ptBR }),
+                          })
+                        }
+                        title="Transcrever áudio"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         className="h-7 px-2 text-destructive hover:text-destructive"
                         disabled={busyId === r.id}
                         onClick={() => handleDelete(r)}
@@ -201,6 +218,12 @@ export function TelehealthSessionsList({ patientId }: Props) {
           </div>
         ))}
       </div>
+      <TranscriptionDialog
+        open={!!transcribeRec}
+        onOpenChange={(v) => { if (!v) setTranscribeRec(null); }}
+        recordingId={transcribeRec?.id ?? null}
+        recordingLabel={transcribeRec?.label}
+      />
     </div>
   );
 }
