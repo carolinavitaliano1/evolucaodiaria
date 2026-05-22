@@ -96,26 +96,48 @@ Deno.serve(async (req) => {
     const roomName = `ed-${randomSlug(12)}`;
     const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60 * 4; // 4h
 
-    const dailyRes = await fetch('https://api.daily.co/v1/rooms', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${DAILY_API_KEY}`,
-        'Content-Type': 'application/json',
+    const buildRoomBody = (rec: 'cloud' | 'local' | null) => ({
+      name: roomName,
+      privacy: 'public',
+      properties: {
+        exp: expiresAt,
+        enable_screenshare: true,
+        enable_chat: true,
+        start_video_off: false,
+        start_audio_off: false,
+        enable_recording: rec ?? undefined,
+        eject_at_room_exp: true,
       },
-      body: JSON.stringify({
-        name: roomName,
-        privacy: 'public',
-        properties: {
-          exp: expiresAt,
-          enable_screenshare: true,
-          enable_chat: true,
-          start_video_off: false,
-          start_audio_off: false,
-          enable_recording: recording_enabled ? 'cloud' : undefined,
-          eject_at_room_exp: true,
-        },
-      }),
     });
+
+    const callDaily = (rec: 'cloud' | 'local' | null) =>
+      fetch('https://api.daily.co/v1/rooms', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${DAILY_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(buildRoomBody(rec)),
+      });
+
+    let recordingMode: 'cloud' | 'local' | null = recording_enabled ? 'cloud' : null;
+    let recordingFallback: 'plan_unsupported' | null = null;
+    let dailyRes = await callDaily(recordingMode);
+
+    // Fallback if the Daily plan does not allow the requested recording mode
+    if (!dailyRes.ok && recordingMode) {
+      const errText = await dailyRes.text();
+      const planError = errText.includes('current plan') || errText.includes('enable_recording');
+      if (planError) {
+        console.warn('Daily plan does not support cloud recording, retrying without recording.');
+        recordingFallback = 'plan_unsupported';
+        recordingMode = null;
+        dailyRes = await callDaily(null);
+      } else {
+        console.error('Daily room creation failed:', errText);
+        throw new Error(`Daily API error [${dailyRes.status}]: ${errText}`);
+      }
+    }
 
     if (!dailyRes.ok) {
       const errText = await dailyRes.text();
@@ -125,6 +147,7 @@ Deno.serve(async (req) => {
 
     const dailyData = await dailyRes.json();
     const roomUrl = dailyData.url as string;
+    const effectiveRecording = recordingMode === 'cloud';
 
     // Persist
     const patientToken = randomToken(48);
@@ -139,7 +162,7 @@ Deno.serve(async (req) => {
         daily_room_url: roomUrl,
         patient_access_token: patientToken,
         status: 'scheduled',
-        recording_enabled: !!recording_enabled,
+        recording_enabled: effectiveRecording,
         room_expires_at: new Date(expiresAt * 1000).toISOString(),
       })
       .select('*')
@@ -152,7 +175,8 @@ Deno.serve(async (req) => {
         session_id: session.id,
         room_url: roomUrl,
         patient_token: patientToken,
-        recording_enabled: !!recording_enabled,
+        recording_enabled: effectiveRecording,
+        recording_fallback: recordingFallback,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
