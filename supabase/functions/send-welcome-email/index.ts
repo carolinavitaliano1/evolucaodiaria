@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-welcome-secret",
 };
 
 const APP_URL = "https://evolucaodiaria.app.br";
@@ -85,19 +86,16 @@ serve(async (req) => {
   }
 
   try {
-    // Restrict to internal callers (auth hook / service role / shared secret)
+    // Accept callers in this order:
+    //  1) service-role token (server-to-server)
+    //  2) shared secret header (server-to-server / cron / hooks)
+    //  3) authenticated end-user invoking for their OWN email (client signup flow)
     const welcomeSecret = Deno.env.get("WELCOME_EMAIL_SECRET");
     const providedSecret = req.headers.get("x-welcome-secret") ?? "";
     const authHeader = req.headers.get("Authorization") ?? "";
-    const isServiceRole =
-      authHeader === `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const isServiceRole = serviceKey && authHeader === `Bearer ${serviceKey}`;
     const hasSharedSecret = welcomeSecret && providedSecret === welcomeSecret;
-    if (!isServiceRole && !hasSharedSecret) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not set");
@@ -108,6 +106,32 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // If not a privileged caller, require a valid JWT whose email matches the target.
+    if (!isServiceRole && !hasSharedSecret) {
+      const token = authHeader.startsWith("Bearer ")
+        ? authHeader.slice("Bearer ".length)
+        : "";
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const supa = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: `Bearer ${token}` } } }
+      );
+      const { data: userRes, error: userErr } = await supa.auth.getUser(token);
+      const callerEmail = userRes?.user?.email?.toLowerCase() ?? "";
+      if (userErr || !callerEmail || callerEmail !== email.toLowerCase()) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const friendlyName = (name && typeof name === "string" && name.trim()) || "terapeuta";
