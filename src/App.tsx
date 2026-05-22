@@ -56,6 +56,8 @@ const PortalFinancial = lazy(() => import("./pages/portal/PortalFinancial"));
 const PortalDocuments = lazy(() => import("./pages/portal/PortalDocuments"));
 const PortalMural = lazy(() => import("./pages/portal/PortalMural"));
 const PortalActivities = lazy(() => import("./pages/portal/PortalActivities"));
+const TelehealthPatient = lazy(() => import("./pages/TelehealthPatient"));
+const TelehealthRoomPage = lazy(() => import("./pages/TelehealthRoomPage"));
 
 // Tuned defaults: avoid refetch storms when user switches tabs/windows.
 // Most app data is loaded via AppContext + Supabase realtime, so we keep
@@ -129,6 +131,10 @@ const App = () => (
                   <Route path="/matricula/:clinicId" element={<Enrollment />} />
                   <Route path="/lista-espera/:clinicId" element={<WaitlistPublic />} />
                   <Route path="/candidatura-equipe/:organizationId" element={<TeamApplicationPublic />} />
+                  {/* Telehealth — public patient page (token-based, no login) */}
+                  <Route path="/teleatendimento/:token" element={<TelehealthPatient />} />
+                  {/* Telehealth — therapist room (requires login) */}
+                  <Route path="/teleatendimento/sala/:sessionId" element={<ProtectedRoute requireSubscription><TelehealthRoomPage /></ProtectedRoute>} />
                   <Route path="/checkout-success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                   <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                     <Route path="/pricing" element={<Pricing />} />

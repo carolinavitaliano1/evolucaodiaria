@@ -3862,6 +3862,179 @@ export type Database = {
           },
         ]
       }
+      video_recordings: {
+        Row: {
+          created_at: string
+          daily_recording_id: string | null
+          duration_seconds: number | null
+          error_message: string | null
+          file_size_bytes: number | null
+          id: string
+          status: string
+          updated_at: string
+          video_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_recording_id?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          status?: string
+          updated_at?: string
+          video_session_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_recording_id?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          status?: string
+          updated_at?: string
+          video_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_recordings_video_session_id_fkey"
+            columns: ["video_session_id"]
+            isOneToOne: false
+            referencedRelation: "video_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_sessions: {
+        Row: {
+          appointment_id: string | null
+          clinic_id: string | null
+          created_at: string
+          daily_room_name: string
+          daily_room_url: string
+          ended_at: string | null
+          id: string
+          notes: string | null
+          patient_access_token: string
+          patient_consented_at: string | null
+          patient_id: string
+          recording_enabled: boolean
+          room_expires_at: string | null
+          started_at: string | null
+          status: string
+          therapist_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          clinic_id?: string | null
+          created_at?: string
+          daily_room_name: string
+          daily_room_url: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          patient_access_token: string
+          patient_consented_at?: string | null
+          patient_id: string
+          recording_enabled?: boolean
+          room_expires_at?: string | null
+          started_at?: string | null
+          status?: string
+          therapist_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          clinic_id?: string | null
+          created_at?: string
+          daily_room_name?: string
+          daily_room_url?: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          patient_access_token?: string
+          patient_consented_at?: string | null
+          patient_id?: string
+          recording_enabled?: boolean
+          room_expires_at?: string | null
+          started_at?: string | null
+          status?: string
+          therapist_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_sessions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_sessions_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_sessions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_transcriptions: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          language: string | null
+          provider: string | null
+          recording_id: string
+          speakers_json: Json | null
+          status: string
+          text: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          language?: string | null
+          provider?: string | null
+          recording_id: string
+          speakers_json?: Json | null
+          status?: string
+          text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          language?: string | null
+          provider?: string | null
+          recording_id?: string
+          speakers_json?: Json | null
+          status?: string
+          text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_transcriptions_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "video_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       waitlist_entries: {
         Row: {
           address: string | null
@@ -3959,6 +4132,19 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: string
       }
+      get_video_session_for_patient: {
+        Args: { _token: string }
+        Returns: {
+          daily_room_name: string
+          daily_room_url: string
+          id: string
+          patient_consented_at: string
+          patient_name: string
+          recording_enabled: boolean
+          status: string
+          therapist_name: string
+        }[]
+      }
       is_clinic_org_member: {
         Args: { _clinic_id: string; _user_id: string }
         Returns: boolean
@@ -3988,6 +4174,7 @@ export type Database = {
         Args: { _patient_id: string; _user_id: string }
         Returns: boolean
       }
+      record_video_consent: { Args: { _token: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
