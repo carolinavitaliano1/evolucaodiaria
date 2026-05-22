@@ -4124,6 +4124,14 @@ export type Database = {
           name: string
         }[]
       }
+      get_patient_by_intake_token: {
+        Args: { _token: string }
+        Returns: {
+          id: string
+          name: string
+          status: string
+        }[]
+      }
       get_patient_monthly_revenue: {
         Args: { _month: number; _patient_id: string; _year: number }
         Returns: number
@@ -4175,6 +4183,10 @@ export type Database = {
         Returns: boolean
       }
       record_video_consent: { Args: { _token: string }; Returns: boolean }
+      submit_patient_intake: {
+        Args: { _data: Json; _token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
