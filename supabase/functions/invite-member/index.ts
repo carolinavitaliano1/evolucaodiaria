@@ -7,8 +7,13 @@ const corsHeaders = {
 
 const APP_URL = 'https://evolucaodiaria.app.br';
 
-function generateTempPassword(email: string): string {
-  return email;
+function generateTempPassword(): string {
+  // 24 random bytes → 32-char URL-safe base64 password
+  const arr = new Uint8Array(24);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+    .slice(0, 20);
 }
 
 async function sendInviteEmailWithCredentials(
@@ -285,7 +290,7 @@ Deno.serve(async (req) => {
 
     tempPassword = (typeof custom_password === 'string' && custom_password.length >= 6)
       ? custom_password
-      : generateTempPassword(email);
+      : generateTempPassword();
 
     if (userAlreadyExists && existingUserId) {
       // Usuário já existe: reseta a senha para a senha provisória e envia credenciais
