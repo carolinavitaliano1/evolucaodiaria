@@ -151,6 +151,22 @@ Deno.serve(async (req) => {
 
     // Persist
     const patientToken = randomToken(48);
+
+    // Resolve scheduled_for from the appointment when available (Brasilia = UTC-3)
+    let scheduledFor: string | null = null;
+    if (appointment_id) {
+      const { data: appt } = await admin
+        .from('appointments')
+        .select('date, time')
+        .eq('id', appointment_id)
+        .maybeSingle();
+      if (appt?.date && appt?.time) {
+        // appt.date is 'YYYY-MM-DD', appt.time is 'HH:MM[:SS]' in local (BRT)
+        const t = String(appt.time).slice(0, 5);
+        scheduledFor = new Date(`${appt.date}T${t}:00-03:00`).toISOString();
+      }
+    }
+
     const { data: session, error: insertErr } = await admin
       .from('video_sessions')
       .insert({
@@ -164,6 +180,7 @@ Deno.serve(async (req) => {
         status: 'scheduled',
         recording_enabled: effectiveRecording,
         room_expires_at: new Date(expiresAt * 1000).toISOString(),
+        scheduled_for: scheduledFor,
       })
       .select('*')
       .single();
