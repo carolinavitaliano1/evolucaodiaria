@@ -16,7 +16,44 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const body = await req.json().catch(() => ({} as any));
+    const rawBody = await req.text();
+
+    // Verify Daily.co HMAC signature when DAILY_WEBHOOK_SECRET is configured
+    const webhookSecret = Deno.env.get('DAILY_WEBHOOK_SECRET');
+    if (webhookSecret) {
+      const sigHeader = req.headers.get('x-daily-signature')
+        || req.headers.get('x-webhook-signature')
+        || req.headers.get('x-daily-hmac')
+        || '';
+      const timestamp = req.headers.get('x-webhook-timestamp') || '';
+      const signedPayload = timestamp ? `${timestamp}.${rawBody}` : rawBody;
+
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw', enc.encode(webhookSecret),
+        { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const sigBuf = await crypto.subtle.sign('HMAC', key, enc.encode(signedPayload));
+      const expectedHex = Array.from(new Uint8Array(sigBuf))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      const expectedB64 = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+
+      // Constant-time compare against possible encodings
+      const provided = sigHeader.replace(/^sha256=/, '').trim();
+      const ok = provided.length > 0 && (
+        timingSafeEqual(provided, expectedHex) ||
+        timingSafeEqual(provided, expectedB64)
+      );
+      if (!ok) {
+        console.warn('daily-webhook: invalid signature');
+        return new Response('Forbidden', { status: 403, headers: corsHeaders });
+      }
+    } else {
+      console.warn('daily-webhook: DAILY_WEBHOOK_SECRET not set — accepting unverified payload');
+    }
+
+    let body: any = {};
+    try { body = JSON.parse(rawBody); } catch { body = {}; }
     const eventType: string = body?.type || body?.event || '';
     const data = body?.payload || body?.data || body || {};
     const roomName: string | undefined = data.room_name || data.room || data.roomName;
@@ -98,3 +135,10 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
