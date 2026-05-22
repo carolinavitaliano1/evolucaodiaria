@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CalendarBlockDialog } from '@/components/calendar/CalendarBlockDialog';
+import { TelehealthButton } from '@/components/telehealth/TelehealthButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -497,7 +498,18 @@ export function AppointmentDialog({
             <DialogTitle className="text-lg">
               {form.id ? 'Editar agendamento' : 'Novo agendamento'}
             </DialogTitle>
-            <Button
+            <div className="flex items-center gap-2">
+              {form.id && form.patient_id && (
+                <TelehealthButton
+                  patientId={form.patient_id}
+                  appointmentId={form.id}
+                  clinicId={clinicId}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                />
+              )}
+              <Button
               type="button"
               variant="outline"
               size="sm"
@@ -506,7 +518,8 @@ export function AppointmentDialog({
             >
               <Link2 className="w-3.5 h-3.5" />
               Bloquear horário
-            </Button>
+              </Button>
+            </div>
           </DialogHeader>
 
           <div className="space-y-4">

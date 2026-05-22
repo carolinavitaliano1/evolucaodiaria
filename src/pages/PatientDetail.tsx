@@ -6,6 +6,7 @@ import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as S
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
+import { TelehealthButton } from '@/components/telehealth/TelehealthButton';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { usePatientAssignments } from '@/hooks/usePatientAssignments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
@@ -2554,6 +2555,14 @@ export default function PatientDetail() {
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setEditPatientOpen(true)} title="Editar">
                 <Pencil className="w-4 h-4" />
               </Button>
+              <TelehealthButton
+                patientId={patient.id}
+                patientName={patient.name}
+                clinicId={patient.clinicId}
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-xs"
+              />
               <Button
                 variant="ghost"
                 size="icon"
