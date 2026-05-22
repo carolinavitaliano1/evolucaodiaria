@@ -28,6 +28,22 @@ serve(async (req) => {
     const { userId, closedBy } = await req.json();
     if (!userId) throw new Error("userId is required");
 
+    // Ownership: caller must be the same user, OR a support admin
+    const callerUid = userData.user.id;
+    if (userId !== callerUid) {
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("is_support_admin")
+        .eq("user_id", callerUid)
+        .single();
+      if (!callerProfile?.is_support_admin) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Count messages in current session
     const { data: lastSessions } = await supabase
       .from("support_chat_sessions")

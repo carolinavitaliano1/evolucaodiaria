@@ -34,8 +34,32 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) throw new Error("Unauthorized");
 
+    // Only support admins may broadcast to all users
+    const { data: callerProfile } = await supabase
+      .from("profiles")
+      .select("is_support_admin")
+      .eq("user_id", userData.user.id)
+      .single();
+    if (!callerProfile?.is_support_admin) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { noticeTitle, noticeContent, noticeType } = await req.json();
     if (!noticeTitle) throw new Error("noticeTitle is required");
+
+    // Escape HTML to prevent injection in broadcast emails
+    const escapeHtml = (s: string) =>
+      String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    const safeTitle = escapeHtml(noticeTitle);
+    const safeContent = noticeContent ? escapeHtml(noticeContent).replace(/\n/g, "<br/>") : "";
 
     logStep("Notice to broadcast", { noticeTitle, noticeType });
 
@@ -81,8 +105,8 @@ serve(async (req) => {
               <div style="display: inline-block; background: #f3e8ff; border: 1px solid #d8b4fe; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #7c3aed; font-weight: 600; margin-bottom: 16px;">
                 ${typeLabel}
               </div>
-              <h2 style="color: #1a1a1a; font-size: 20px; margin: 0 0 12px; line-height: 1.3;">${noticeTitle}</h2>
-              ${noticeContent ? `<p style="color: #555; line-height: 1.7; font-size: 15px; margin: 0 0 24px;">${noticeContent.replace(/\n/g, '<br/>')}</p>` : ''}
+              <h2 style="color: #1a1a1a; font-size: 20px; margin: 0 0 12px; line-height: 1.3;">${safeTitle}</h2>
+              ${safeContent ? `<p style="color: #555; line-height: 1.7; font-size: 15px; margin: 0 0 24px;">${safeContent}</p>` : ''}
               <div style="text-align: center; margin: 24px 0 8px;">
                 <a href="https://evolucaodiaria.app.br/mural" style="display: inline-block; background: #7c3aed; color: #ffffff; text-decoration: none; padding: 13px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
                   Ver no Mural →
@@ -106,7 +130,7 @@ serve(async (req) => {
         body: JSON.stringify({
           from: "Evolução Diária <notify@evolucaodiaria.app.br>",
           to: [profile.email],
-          subject: `${typeLabel}: ${noticeTitle}`,
+          subject: `${typeLabel}: ${noticeTitle}`.slice(0, 200),
           html,
         }),
       });

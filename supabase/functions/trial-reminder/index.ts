@@ -18,6 +18,19 @@ serve(async (req) => {
   try {
     logStep("Starting trial reminder job");
 
+    // Protect cron endpoint: require CRON_SECRET header or service-role auth
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const providedSecret = req.headers.get("x-cron-secret") ?? "";
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const isServiceRole =
+      authHeader === `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`;
+    if (!isServiceRole && (!cronSecret || providedSecret !== cronSecret)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
