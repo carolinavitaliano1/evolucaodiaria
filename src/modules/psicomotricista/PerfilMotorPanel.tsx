@@ -195,16 +195,6 @@ export function PerfilMotorPanel({ patientId, avaliacoes }: Props) {
           </div>
         ) : (
           <div className="space-y-2">
-            {milestonesAvaliados.length === 0 && MILESTONES_MOTORES.map((m) => ({
-              ...m,
-              meses: m.unidade === 'anos' ? m.idade * 12 : m.idade,
-              status: tracking[m.key]?.status ?? 'nao_avaliado',
-              notes: tracking[m.key]?.notes ?? '',
-              atrasado: false,
-              aplicavel: false,
-              idadeUltrapassada: false,
-            })).concat([]) /* fallback when no birthdate */}
-
             {(milestonesAvaliados.length > 0 ? milestonesAvaliados : MILESTONES_MOTORES.map((m) => ({
               ...m,
               meses: m.unidade === 'anos' ? m.idade * 12 : m.idade,
