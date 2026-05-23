@@ -1527,6 +1527,45 @@ export type Database = {
         }
         Relationships: []
       }
+      module_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          module_id: string
+          started_at: string
+          status: string
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          module_id: string
+          started_at?: string
+          status?: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          module_id?: string
+          started_at?: string
+          status?: string
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notice_reads: {
         Row: {
           id: string
@@ -2947,6 +2986,235 @@ export type Database = {
         }
         Relationships: []
       }
+      psico_avaliacoes: {
+        Row: {
+          arquivo_url: string | null
+          atencao: number | null
+          created_at: string
+          data_avaliacao: string
+          escrita: number | null
+          id: string
+          leitura: number | null
+          linguagem: number | null
+          matematica: number | null
+          memoria: number | null
+          observacoes: string | null
+          patient_id: string
+          testes_aplicados: string[] | null
+          therapist_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          arquivo_url?: string | null
+          atencao?: number | null
+          created_at?: string
+          data_avaliacao?: string
+          escrita?: number | null
+          id?: string
+          leitura?: number | null
+          linguagem?: number | null
+          matematica?: number | null
+          memoria?: number | null
+          observacoes?: string | null
+          patient_id: string
+          testes_aplicados?: string[] | null
+          therapist_id: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          arquivo_url?: string | null
+          atencao?: number | null
+          created_at?: string
+          data_avaliacao?: string
+          escrita?: number | null
+          id?: string
+          leitura?: number | null
+          linguagem?: number | null
+          matematica?: number | null
+          memoria?: number | null
+          observacoes?: string | null
+          patient_id?: string
+          testes_aplicados?: string[] | null
+          therapist_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psico_avaliacoes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psico_evolucoes: {
+        Row: {
+          atividades: string[] | null
+          created_at: string
+          data_sessao: string
+          descricao: string
+          desempenho: string | null
+          duracao_min: number | null
+          humor: string | null
+          id: string
+          patient_id: string
+          pdi_id: string | null
+          tarefas_casa: string | null
+          therapist_id: string
+        }
+        Insert: {
+          atividades?: string[] | null
+          created_at?: string
+          data_sessao?: string
+          descricao: string
+          desempenho?: string | null
+          duracao_min?: number | null
+          humor?: string | null
+          id?: string
+          patient_id: string
+          pdi_id?: string | null
+          tarefas_casa?: string | null
+          therapist_id: string
+        }
+        Update: {
+          atividades?: string[] | null
+          created_at?: string
+          data_sessao?: string
+          descricao?: string
+          desempenho?: string | null
+          duracao_min?: number | null
+          humor?: string | null
+          id?: string
+          patient_id?: string
+          pdi_id?: string | null
+          tarefas_casa?: string | null
+          therapist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psico_evolucoes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "psico_evolucoes_pdi_id_fkey"
+            columns: ["pdi_id"]
+            isOneToOne: false
+            referencedRelation: "psico_pdi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psico_pdi: {
+        Row: {
+          avaliacao_id: string | null
+          created_at: string
+          id: string
+          objetivos: Json
+          observacoes: string | null
+          patient_id: string
+          periodo_fim: string | null
+          periodo_inicio: string
+          status: string
+          therapist_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          created_at?: string
+          id?: string
+          objetivos?: Json
+          observacoes?: string | null
+          patient_id: string
+          periodo_fim?: string | null
+          periodo_inicio?: string
+          status?: string
+          therapist_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          avaliacao_id?: string | null
+          created_at?: string
+          id?: string
+          objetivos?: Json
+          observacoes?: string | null
+          patient_id?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string
+          status?: string
+          therapist_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psico_pdi_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "psico_avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "psico_pdi_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psico_relatorios: {
+        Row: {
+          conteudo: string
+          created_at: string
+          enviado_em: string | null
+          id: string
+          patient_id: string
+          pdf_url: string | null
+          therapist_id: string
+          tipo: string
+          titulo: string | null
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          enviado_em?: string | null
+          id?: string
+          patient_id: string
+          pdf_url?: string | null
+          therapist_id: string
+          tipo: string
+          titulo?: string | null
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          enviado_em?: string | null
+          id?: string
+          patient_id?: string
+          pdf_url?: string | null
+          therapist_id?: string
+          tipo?: string
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psico_relatorios_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_tokens: {
         Row: {
           created_at: string
@@ -4268,6 +4536,8 @@ export type Database = {
           therapist_name: string
         }[]
       }
+      has_module_access: { Args: { _module_id: string }; Returns: boolean }
+      is_app_owner: { Args: { _user_id: string }; Returns: boolean }
       is_clinic_org_member: {
         Args: { _clinic_id: string; _user_id: string }
         Returns: boolean
