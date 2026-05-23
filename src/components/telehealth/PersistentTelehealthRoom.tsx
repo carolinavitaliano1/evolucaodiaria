@@ -49,9 +49,11 @@ export function PersistentTelehealthRoom() {
     });
     frame.on('left-meeting', async () => {
       await call.onLeft?.();
+      const returnPath = call.returnPath;
+      const wasOnRoom = location.pathname.startsWith('/teleatendimento/sala/');
       endCall();
-      if (call.returnPath && location.pathname.startsWith('/teleatendimento/sala/')) {
-        navigate(call.returnPath, { replace: true });
+      if (returnPath && wasOnRoom) {
+        navigate(returnPath, { replace: true });
       }
     });
     frame.join({ url: call.roomUrl, userName: call.userName || 'Participante' }).catch((e) => {
