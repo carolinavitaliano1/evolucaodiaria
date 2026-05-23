@@ -126,7 +126,7 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
                   <RadioGroupItem value="video" id="rec-video" className="mt-0.5" />
                   <Label htmlFor="rec-video" className="cursor-pointer font-normal leading-snug">
                     Gravar vídeo + áudio
-                    <span className="block text-[11px] text-muted-foreground">Consome bem mais armazenamento. Use só quando o vídeo for indispensável.</span>
+                    <span className="block text-[11px] text-muted-foreground">Para casos importantes.</span>
                   </Label>
                 </div>
               </RadioGroup>
