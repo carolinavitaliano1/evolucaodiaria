@@ -44,6 +44,7 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
           clinic_id: clinicId,
           recording_enabled: recordMode !== 'none',
           recording_layout: recordMode === 'video' ? 'video' : 'audio',
+          therapy_session_id: therapySessionId,
         },
       });
       if (error) throw error;
