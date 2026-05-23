@@ -1,16 +1,41 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
+const DEEPGRAM_API_KEY = Deno.env.get('DEEPGRAM_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+function buildDiarizedTranscript(dgJson: any): string {
+  try {
+    const paragraphs =
+      dgJson?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.paragraphs;
+    if (Array.isArray(paragraphs) && paragraphs.length > 0) {
+      return paragraphs
+        .map((p: any) => {
+          const speaker = p.speaker !== undefined ? `Falante ${p.speaker + 1}` : 'Falante';
+          const sentences = (p.sentences || []).map((s: any) => s.text).join(' ');
+          return `**${speaker}:** ${sentences}`;
+        })
+        .join('\n\n');
+    }
+    const utterances = dgJson?.results?.utterances;
+    if (Array.isArray(utterances) && utterances.length > 0) {
+      return utterances
+        .map((u: any) => `**Falante ${(u.speaker ?? 0) + 1}:** ${u.transcript}`)
+        .join('\n\n');
+    }
+    return dgJson?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+  } catch {
+    return dgJson?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    if (!ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY not configured');
+    if (!DEEPGRAM_API_KEY) throw new Error('DEEPGRAM_API_KEY not configured');
 
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace(/^Bearer\s+/i, '');
@@ -69,29 +94,38 @@ Deno.serve(async (req) => {
         .download(rec.storage_path);
       if (dlErr || !blob) throw new Error(`Storage download failed: ${dlErr?.message || 'no blob'}`);
 
-      const langMap: Record<string, string> = { pt: 'por', en: 'eng', es: 'spa' };
-      const langCode = langMap[(language || 'pt') as string] || 'por';
+      const langMap: Record<string, string> = { pt: 'pt-BR', en: 'en-US', es: 'es' };
+      const langCode = langMap[(language || 'pt') as string] || 'pt-BR';
 
-      const fd = new FormData();
-      fd.append('file', blob, 'recording');
-      fd.append('model_id', 'scribe_v2');
-      fd.append('tag_audio_events', 'true');
-      fd.append('diarize', 'true');
-      fd.append('language_code', langCode);
+      const params = new URLSearchParams({
+        model: 'nova-2',
+        language: langCode,
+        smart_format: 'true',
+        punctuate: 'true',
+        paragraphs: 'true',
+        diarize: 'true',
+        utterances: 'true',
+      });
 
-      const sttRes = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+      const audioBuffer = await blob.arrayBuffer();
+      const contentType = blob.type || 'audio/mpeg';
+
+      const sttRes = await fetch(`https://api.deepgram.com/v1/listen?${params.toString()}`, {
         method: 'POST',
-        headers: { 'xi-api-key': ELEVENLABS_API_KEY },
-        body: fd,
+        headers: {
+          Authorization: `Token ${DEEPGRAM_API_KEY}`,
+          'Content-Type': contentType,
+        },
+        body: audioBuffer,
       });
       if (!sttRes.ok) {
         const err = await sttRes.text();
-        throw new Error(`ElevenLabs STT error [${sttRes.status}]: ${err}`);
+        throw new Error(`Deepgram STT error [${sttRes.status}]: ${err}`);
       }
       const sttJson = await sttRes.json();
-      const text: string = sttJson.text || '';
-      const speakers = sttJson.words
-        ? { words: sttJson.words, audio_events: sttJson.audio_events ?? null }
+      const text: string = buildDiarizedTranscript(sttJson);
+      const speakers = sttJson?.results?.utterances
+        ? { utterances: sttJson.results.utterances }
         : null;
 
       await admin
