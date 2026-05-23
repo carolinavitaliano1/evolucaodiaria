@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Radar, RadarChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, CheckCircle2, BookOpen, Home, GraduationCap, Activity } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, BookOpen, Activity } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DOMINIOS, type Avaliacao } from './types';
-import { MILESTONES_MOTORES, ORIENTACOES_FAMILIA, ORIENTACOES_ESCOLA } from './presets';
+import { MILESTONES_MOTORES } from './presets';
 
 interface Props {
   patientId: string;
