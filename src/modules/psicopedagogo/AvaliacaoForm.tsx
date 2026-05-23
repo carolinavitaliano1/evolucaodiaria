@@ -400,6 +400,13 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
           )}
         </div>
 
+        {TEST_PROFILES[instrumento] && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-xs">
+            <div className="font-semibold text-primary">{TEST_PROFILES[instrumento].instrumento}</div>
+            <div className="text-muted-foreground">{TEST_PROFILES[instrumento].descricao}</div>
+          </div>
+        )}
+
         <div className="space-y-2 rounded-lg border border-border p-3">
           {Object.keys(metricas).length === 0 && (
             <p className="text-xs text-muted-foreground py-2 text-center">Nenhuma métrica. Adicione abaixo.</p>
