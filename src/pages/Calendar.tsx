@@ -235,7 +235,9 @@ export default function CalendarPage() {
       .filter(s => {
         const patient = patients.find(p => p.id === s.patient_id);
         // Hide ghost slots: patient deleted/archived/inactive on this date
-        return patient && isPatientActiveOn(patient, dateStr);
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const ref = new Date(y, (m || 1) - 1, d || 1);
+        return patient && isPatientActiveOn(patient, ref);
       })
       .map(s => {
         const patient = patients.find(p => p.id === s.patient_id);
