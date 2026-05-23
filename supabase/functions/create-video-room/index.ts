@@ -45,11 +45,12 @@ Deno.serve(async (req) => {
     const userEmail = (claimsRes.claims.email as string | undefined)?.toLowerCase() ?? '';
 
     const body = await req.json().catch(() => ({}));
-    const { patient_id, appointment_id, clinic_id, recording_enabled } = body as {
+    const { patient_id, appointment_id, clinic_id, recording_enabled, recording_layout } = body as {
       patient_id?: string;
       appointment_id?: string;
       clinic_id?: string;
       recording_enabled?: boolean;
+      recording_layout?: 'audio' | 'video';
     };
     if (!patient_id) throw new Error('patient_id is required');
 
