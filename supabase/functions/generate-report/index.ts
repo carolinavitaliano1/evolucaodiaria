@@ -152,7 +152,24 @@ II - MOTIVO DO ENCAMINHAMENTO
    Parágrafo técnico descrevendo a demanda inicial que motivou o acompanhamento, baseado no diagnóstico, observações e queixas registradas.
 
 III - OBSERVAÇÕES COMPORTAMENTAIS E COGNITIVAS
-   Parágrafos técnicos consolidados sobre engajamento, autorregulação emocional, funções executivas, atenção sustentada, controle inibitório, flexibilidade cognitiva, processamento sensorial e interação social, com base no conjunto das evoluções (sem citar datas específicas).
+   Esta é a seção MAIS IMPORTANTE e DETALHADA do relatório. Deve ser obrigatoriamente organizada em DOIS blocos com subtítulos em negrito (sem numeração romana, apenas o nome do bloco), e cada bloco com subcategorias em parágrafos técnicos consolidados (sem citar datas específicas). Aborde TODAS as subcategorias abaixo, mesmo que brevemente, baseando-se SEMPRE nas evoluções, avaliações e observações disponíveis. Quando não houver dado suficiente para uma subcategoria, registre "Sem dados suficientes para análise neste momento" — NUNCA invente.
+
+   1. Aspectos Cognitivos
+   Trate, em parágrafos técnicos, das seguintes subcategorias (use os nomes como marcadores em itálico ou negrito ao iniciar cada análise):
+   - Atenção: capacidade de focar e manter o foco, diferenciando atenção sustentada (foco contínuo), seletiva (focar ignorando distratores) e alternada (mudar o foco entre tarefas).
+   - Memória: retenção e evocação de informações, contemplando memória de curto prazo, longo prazo e operacional (de trabalho), essencial para aprendizagem e resolução de problemas.
+   - Funções Executivas: planejamento, organização, controle inibitório (freio de impulsos) e flexibilidade cognitiva (adaptação do pensamento a novas situações).
+   - Linguagem e Comunicação: aspectos receptivos (compreensão) e expressivos (fala, vocabulário, formulação de frases) da linguagem estruturada.
+   - Percepção e Habilidades Visuoespaciais: interpretação de estímulos sensoriais (visuais, auditivos, táteis) e compreensão de relações de espaço, distância e lateralidade.
+   - Raciocínio e Resolução de Problemas: abstração, categorização, pensamento lógico e dedutivo na busca por soluções.
+
+   2. Aspectos Comportamentais (e Socioemocionais)
+   Trate, em parágrafos técnicos, das seguintes subcategorias (use os nomes como marcadores em itálico ou negrito ao iniciar cada análise):
+   - Regulação Emocional: manejo de frustrações, modulação das respostas emocionais e gerenciamento de ansiedade ou irritabilidade sem desorganização severa.
+   - Habilidades Sociais: interação com pares e figuras de autoridade, reciprocidade social, empatia, compreensão de regras sociais e leitura de expressões faciais.
+   - Engajamento e Motivação: interesse pelas atividades, iniciativa, persistência diante de desafios e tempo de permanência na tarefa.
+   - Autonomia e Independência: iniciativa para realizar atividades de vida diária (AVDs) e tomar decisões adequadas à idade e ao contexto.
+   - Comportamentos Desafiadores ou Atípicos: presença (ou ausência) de agitação motora excessiva, agressividade física/verbal, rigidez de rotina, autoagressão ou estereotipias — esta subcategoria é OBRIGATÓRIA e deve sempre constar no relatório.
 
 IV - ANÁLISE DO DESENVOLVIMENTO CLÍNICO
    Parágrafos descrevendo as habilidades trabalhadas, técnicas/abordagens utilizadas, progressos observados e áreas em desenvolvimento. Pode contemplar motricidade fina e global, comunicação verbal e não-verbal, aspectos socioemocionais e cognitivos.
