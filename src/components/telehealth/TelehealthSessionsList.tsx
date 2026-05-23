@@ -174,9 +174,23 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId }: Pro
                   {format(new Date(s.created_at), "d MMM yyyy, HH:mm", { locale: ptBR })}
                 </span>
               </div>
-              <Badge variant={s.status === 'ended' ? 'secondary' : 'default'} className="text-[10px]">
-                {s.status === 'ended' ? 'Encerrada' : s.status === 'active' ? 'Em andamento' : 'Agendada'}
-              </Badge>
+              <div className="flex items-center gap-2 shrink-0">
+                {s.status !== 'ended' && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-7 gap-1.5 text-xs"
+                    disabled={busyId === s.id}
+                    onClick={() => handleEndSession(s)}
+                  >
+                    {busyId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <PhoneOff className="w-3 h-3" />}
+                    Encerrar sessão
+                  </Button>
+                )}
+                <Badge variant={s.status === 'ended' ? 'secondary' : 'default'} className="text-[10px]">
+                  {s.status === 'ended' ? 'Encerrada' : s.status === 'active' ? 'Em andamento' : 'Agendada'}
+                </Badge>
+              </div>
             </div>
             {s.recording_enabled && (
               <p className="text-[11px] text-muted-foreground">
