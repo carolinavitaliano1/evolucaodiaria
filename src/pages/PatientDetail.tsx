@@ -2,7 +2,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, LogOut, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink, Lock as LockIcon, Mic } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, LogOut, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink, Lock as LockIcon, Mic, Layers } from 'lucide-react';
+import { EspecialidadesTab } from '@/modules/specialties/EspecialidadesTab';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
@@ -2760,6 +2761,7 @@ export default function PatientDetail() {
             ...(canManagePortal ? [{ value: 'portal', icon: Users, label: 'Portal' }] : []),
             { value: 'mural', icon: Newspaper, label: 'Mural' },
             { value: 'attendance', icon: ClipboardList, label: 'Frequência' },
+            { value: 'especialidades', icon: Layers, label: 'Especialidades' },
             ...(isOrg && clinic?.type !== 'propria' ? [{ value: 'therapists', icon: UserCheck, label: 'Terapeutas' }] : []),
           ].map(({ value, icon: Icon, label }) => (
             <TabsTrigger
@@ -4225,6 +4227,10 @@ export default function PatientDetail() {
 
           </TabsContent>
         )}
+
+        <TabsContent value="especialidades" className="space-y-4">
+          <EspecialidadesTab patientId={patient.id} />
+        </TabsContent>
 
       </Tabs>
 
