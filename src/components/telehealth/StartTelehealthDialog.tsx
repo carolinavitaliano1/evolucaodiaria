@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,9 @@ interface Props {
 
 export function StartTelehealthDialog({ open, onOpenChange, patientId, appointmentId, clinicId, patientName }: Props) {
   const navigate = useNavigate();
-  const [record, setRecord] = useState(false);
+  // 'none' = não grava | 'audio' = somente áudio (padrão, mais leve, foco em transcrição)
+  // 'video' = áudio + vídeo (consome muito mais armazenamento)
+  const [recordMode, setRecordMode] = useState<'none' | 'audio' | 'video'>('audio');
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ session_id: string; room_url: string; patient_token: string } | null>(null);
 
@@ -39,13 +41,14 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
           patient_id: patientId,
           appointment_id: appointmentId,
           clinic_id: clinicId,
-          recording_enabled: record,
+          recording_enabled: recordMode !== 'none',
+          recording_layout: recordMode === 'video' ? 'video' : 'audio',
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
       setResult(data as any);
-      if (record && (data as any)?.recording_fallback === 'plan_unsupported') {
+      if (recordMode !== 'none' && (data as any)?.recording_fallback === 'plan_unsupported') {
         toast.warning('Gravação indisponível no plano atual do provedor de vídeo. Sala criada sem gravação.');
       }
     } catch (e: any) {
@@ -56,7 +59,7 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
   }
 
   function reset() {
-    setRecord(false);
+    setRecordMode('audio');
     setResult(null);
     setCreating(false);
   }
@@ -96,24 +99,39 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
 
         {!result ? (
           <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-lg border p-3 bg-muted/30">
-              <Checkbox
-                id="record"
-                checked={record}
-                onCheckedChange={(c) => setRecord(c === true)}
-                className="mt-0.5"
-              />
-              <div className="space-y-1">
-                <Label htmlFor="record" className="cursor-pointer font-medium">
-                  Gravar esta sessão
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  A gravação ficará disponível em ~2 min após encerrar a chamada.
-                </p>
-              </div>
+            <div className="rounded-lg border p-3 bg-muted/30 space-y-2">
+              <Label className="font-medium text-sm">Modo de gravação</Label>
+              <RadioGroup
+                value={recordMode}
+                onValueChange={(v) => setRecordMode(v as 'none' | 'audio' | 'video')}
+                className="space-y-1.5"
+              >
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="none" id="rec-none" className="mt-0.5" />
+                  <Label htmlFor="rec-none" className="cursor-pointer font-normal leading-snug">
+                    Não gravar
+                    <span className="block text-[11px] text-muted-foreground">Sessão sem registro — não gera transcrição.</span>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="audio" id="rec-audio" className="mt-0.5" />
+                  <Label htmlFor="rec-audio" className="cursor-pointer font-normal leading-snug">
+                    Gravar apenas áudio <span className="text-[10px] text-primary font-medium">(recomendado)</span>
+                    <span className="block text-[11px] text-muted-foreground">Mais leve, mais privado e suficiente para transcrição e resumo IA.</span>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="video" id="rec-video" className="mt-0.5" />
+                  <Label htmlFor="rec-video" className="cursor-pointer font-normal leading-snug">
+                    Gravar vídeo + áudio
+                    <span className="block text-[11px] text-muted-foreground">Consome bem mais armazenamento. Use só quando o vídeo for indispensável.</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+              <p className="text-[11px] text-muted-foreground pt-1">A gravação fica pronta ~2 min após encerrar a chamada.</p>
             </div>
 
-            {record && (
+            {recordMode !== 'none' && (
               <Alert>
                 <ShieldAlert className="h-4 w-4" />
                 <AlertDescription className="text-xs">
