@@ -252,11 +252,28 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
                       >
                         {r.status === 'ready' ? 'Pronta' : r.status === 'recording' ? 'Gravando' : r.status === 'error' ? 'Erro' : 'Processando'}
                       </Badge>
+                      <Badge variant="outline" className="text-[10px] shrink-0 gap-1">
+                        {s.recording_layout === 'audio' ? (
+                          <><Mic className="w-2.5 h-2.5" /> Áudio</>
+                        ) : (
+                          <><Video className="w-2.5 h-2.5" /> Vídeo</>
+                        )}
+                      </Badge>
                       <span className="text-muted-foreground truncate">
                         {fmtDur(r.duration_seconds)} {fmtSize(r.file_size_bytes) && `• ${fmtSize(r.file_size_bytes)}`}
                       </span>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-primary hover:text-primary"
+                        disabled={r.status !== 'ready' || busyId === r.id}
+                        onClick={() => handlePlay(r, s)}
+                        title={s.recording_layout === 'audio' ? 'Reproduzir áudio' : 'Reproduzir vídeo'}
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -313,6 +330,23 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
         patientId={patientId}
         clinicId={clinicId}
       />
+      <Dialog open={!!playerRec} onOpenChange={(v) => { if (!v) setPlayerRec(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              {playerRec?.isVideo ? <Video className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {playerRec?.isVideo ? 'Vídeo' : 'Áudio'} — {playerRec?.label}
+            </DialogTitle>
+          </DialogHeader>
+          {playerRec && (
+            playerRec.isVideo ? (
+              <video src={playerRec.url} controls autoPlay className="w-full rounded-md bg-black" />
+            ) : (
+              <audio src={playerRec.url} controls autoPlay className="w-full" />
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
