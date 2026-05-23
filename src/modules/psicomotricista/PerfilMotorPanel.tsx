@@ -135,19 +135,6 @@ export function PerfilMotorPanel({ patientId, avaliacoes }: Props) {
         )}
       </div>
 
-      {/* Orientações */}
-      <div className="grid lg:grid-cols-2 gap-3">
-        <OrientacoesCard
-          icon={<Home className="w-4 h-4" />}
-          titulo="Orientações para a família"
-          grupos={ORIENTACOES_FAMILIA}
-        />
-        <OrientacoesCard
-          icon={<GraduationCap className="w-4 h-4" />}
-          titulo="Orientações para educadores"
-          grupos={ORIENTACOES_ESCOLA}
-        />
-      </div>
 
       <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
         <BookOpen className="w-3 h-3" /> Marcos baseados em referências da literatura em desenvolvimento psicomotor (apenas indicativos).
