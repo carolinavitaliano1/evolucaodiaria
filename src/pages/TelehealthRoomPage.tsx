@@ -81,4 +81,3 @@ export default function TelehealthRoomPage() {
   // página, a chamada continua viva como uma mini janela flutuante.
   return <div className="fixed inset-0 bg-black" />;
 }
-}
