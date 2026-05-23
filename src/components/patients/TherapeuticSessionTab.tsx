@@ -1357,6 +1357,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           {/* Plan Summary (read-only) */}
           {activePlan && (
 
+          {/* nothing */}
             <Card className="border-primary/20 bg-primary/5">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
