@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, X, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Save, X, Plus, Trash2, Video, Sparkles, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { PDI, PdiObjetivo, PdiStatus } from './types';
 import { DOMINIOS } from './types';
+import { PDI_TEMPLATES_SERIE } from './presets';
 
 interface Props {
   patientId: string;
@@ -27,6 +28,7 @@ export function PDIForm({ patientId, existing, onSaved, onCancel }: Props) {
     { area: 'leitura', meta: '', prazo: '', atingida: false },
   ]);
   const [saving, setSaving] = useState(false);
+  const [template, setTemplate] = useState<string>('');
 
   function addObjetivo() {
     setObjetivos((arr) => [...arr, { area: 'leitura', meta: '', prazo: '', atingida: false }]);
@@ -36,6 +38,25 @@ export function PDIForm({ patientId, existing, onSaved, onCancel }: Props) {
   }
   function updateObjetivo(i: number, patch: Partial<PdiObjetivo>) {
     setObjetivos((arr) => arr.map((o, idx) => (idx === i ? { ...o, ...patch } : o)));
+  }
+
+  function aplicarTemplate(faixa: string) {
+    setTemplate(faixa);
+    const t = PDI_TEMPLATES_SERIE.find((x) => x.faixa === faixa);
+    if (!t) return;
+    setObjetivos((arr) => {
+      const novos: PdiObjetivo[] = t.objetivos.map((o) => ({
+        area: o.area,
+        meta: o.meta,
+        prazo: '',
+        atingida: false,
+        material_adaptado: o.material_adaptado,
+        idade_alvo: t.faixa,
+      }));
+      const preenchidos = arr.filter((o) => o.meta.trim().length > 0);
+      return [...preenchidos, ...novos];
+    });
+    toast.success(`Template "${t.faixa}" aplicado`);
   }
 
   async function save() {
@@ -100,36 +121,74 @@ export function PDIForm({ patientId, existing, onSaved, onCancel }: Props) {
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <Label className="text-sm font-semibold">Objetivos</Label>
-          <Button size="sm" variant="outline" onClick={addObjetivo} className="gap-1.5 h-7">
-            <Plus className="w-3.5 h-3.5" /> Adicionar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Select value={template} onValueChange={aplicarTemplate}>
+              <SelectTrigger className="h-7 text-xs w-[230px]">
+                <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" />
+                <SelectValue placeholder="Template por série escolar" />
+              </SelectTrigger>
+              <SelectContent>
+                {PDI_TEMPLATES_SERIE.map((t) => (
+                  <SelectItem key={t.faixa} value={t.faixa}>{t.faixa}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" onClick={addObjetivo} className="gap-1.5 h-7">
+              <Plus className="w-3.5 h-3.5" /> Adicionar
+            </Button>
+          </div>
         </div>
         {objetivos.length === 0 && (
           <p className="text-xs text-muted-foreground italic">Nenhum objetivo. Clique em "Adicionar".</p>
         )}
         {objetivos.map((o, i) => (
-          <div key={i} className="grid grid-cols-12 gap-2 items-start rounded-lg border border-border p-2.5 bg-muted/20">
-            <div className="col-span-3">
-              <Select value={o.area} onValueChange={(v) => updateObjetivo(i, { area: v })}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DOMINIOS.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}
-                  <SelectItem value="outro">Outro</SelectItem>
-                </SelectContent>
-              </Select>
+          <div key={i} className="space-y-1.5 rounded-lg border border-border p-2.5 bg-muted/20">
+            <div className="grid grid-cols-12 gap-2 items-start">
+              <div className="col-span-3">
+                <Select value={o.area} onValueChange={(v) => updateObjetivo(i, { area: v })}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DOMINIOS.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-6">
+                <Input className="h-8 text-xs" placeholder="Meta..."
+                  value={o.meta} onChange={(e) => updateObjetivo(i, { meta: e.target.value })} />
+              </div>
+              <div className="col-span-2">
+                <Input className="h-8 text-xs" type="date"
+                  value={o.prazo || ''} onChange={(e) => updateObjetivo(i, { prazo: e.target.value })} />
+              </div>
+              <div className="col-span-1 flex justify-end">
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => removeObjetivo(i)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             </div>
-            <div className="col-span-6">
-              <Input className="h-8 text-xs" placeholder="Meta..."
-                value={o.meta} onChange={(e) => updateObjetivo(i, { meta: e.target.value })} />
+            <div className="flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <Input
+                className="h-7 text-xs"
+                placeholder="Materiais adaptados / atividades lúdicas sugeridas"
+                value={o.material_adaptado || ''}
+                onChange={(e) => updateObjetivo(i, { material_adaptado: e.target.value })}
+              />
             </div>
-            <div className="col-span-2">
-              <Input className="h-8 text-xs" type="date"
-                value={o.prazo || ''} onChange={(e) => updateObjetivo(i, { prazo: e.target.value })} />
-            </div>
-            <div className="col-span-1 flex justify-end">
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => removeObjetivo(i)}>
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+            <div className="flex items-center gap-1.5">
+              <Video className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <Input
+                className="h-7 text-xs"
+                placeholder="URL de vídeo/atividade de referência (opcional)"
+                value={o.video_url || ''}
+                onChange={(e) => updateObjetivo(i, { video_url: e.target.value })}
+              />
+              {o.video_url && (
+                <a href={o.video_url} target="_blank" rel="noreferrer" className="text-[11px] text-primary underline shrink-0">
+                  abrir
+                </a>
+              )}
             </div>
           </div>
         ))}

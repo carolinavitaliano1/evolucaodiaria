@@ -16,6 +16,7 @@ import {
   type Avaliacao,
   type AvaliacaoTipoCustom,
 } from './types';
+import { TEST_PROFILES } from './presets';
 
 interface Props {
   patientId: string;
@@ -189,6 +190,13 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
     if (tipo?.metricas_padrao?.length) {
       const m: Record<string, number> = { ...metricas };
       for (const k of tipo.metricas_padrao) if (m[k] === undefined) m[k] = 0;
+      setMetricas(m);
+    }
+    // Testes padronizados com métricas estruturadas (WISC, Bender, Frostig, TDE-II)
+    const profile = TEST_PROFILES[valor];
+    if (profile) {
+      const m: Record<string, number> = { ...metricas };
+      for (const k of profile.metricas) if (m[k] === undefined) m[k] = 0;
       setMetricas(m);
     }
   }
@@ -391,6 +399,13 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
             </Button>
           )}
         </div>
+
+        {TEST_PROFILES[instrumento] && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-xs">
+            <div className="font-semibold text-primary">{TEST_PROFILES[instrumento].instrumento}</div>
+            <div className="text-muted-foreground">{TEST_PROFILES[instrumento].descricao}</div>
+          </div>
+        )}
 
         <div className="space-y-2 rounded-lg border border-border p-3">
           {Object.keys(metricas).length === 0 && (
