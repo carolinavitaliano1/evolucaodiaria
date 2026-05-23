@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function StartTelehealthDialog({ open, onOpenChange, patientId, appointmentId, clinicId, patientName }: Props) {
+  const navigate = useNavigate();
   const [record, setRecord] = useState(false);
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ session_id: string; room_url: string; patient_token: string } | null>(null);
@@ -71,7 +73,11 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
 
   function openRoom() {
     if (result) {
-      window.open(`/teleatendimento/sala/${result.session_id}`, '_blank', 'noopener');
+      onOpenChange(false);
+      // Usa navegação SPA para que a chamada use o PersistentTelehealthRoom
+      // (PiP global). Assim, ao sair da rota a chamada continua viva como
+      // mini-janela, e o encerramento registra status='ended' corretamente.
+      navigate(`/teleatendimento/sala/${result.session_id}`);
     }
   }
 
