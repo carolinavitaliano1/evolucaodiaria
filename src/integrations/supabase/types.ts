@@ -3765,6 +3765,42 @@ export type Database = {
         }
         Relationships: []
       }
+      psicomotor_milestone_tracking: {
+        Row: {
+          assessed_at: string | null
+          created_at: string
+          id: string
+          milestone_key: string
+          notes: string | null
+          patient_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assessed_at?: string | null
+          created_at?: string
+          id?: string
+          milestone_key: string
+          notes?: string | null
+          patient_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assessed_at?: string | null
+          created_at?: string
+          id?: string
+          milestone_key?: string
+          notes?: string | null
+          patient_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       push_tokens: {
         Row: {
           created_at: string

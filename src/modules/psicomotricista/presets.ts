@@ -79,6 +79,7 @@ export const PDI_TEMPLATES_FAIXA_ETARIA: PdiTemplate[] = [
 ];
 
 export interface MotorMilestone {
+  key: string;
   idade: number; // idade-marco em meses (até 36) ou anos*12 acima de 3
   unidade: 'meses' | 'anos';
   habilidade: string;
@@ -86,14 +87,14 @@ export interface MotorMilestone {
 }
 
 export const MILESTONES_MOTORES: MotorMilestone[] = [
-  { idade: 6, unidade: 'meses', habilidade: 'Sustento cervical e rolar', area: 'coord_global' },
-  { idade: 9, unidade: 'meses', habilidade: 'Sentar sem apoio', area: 'equilibrio' },
-  { idade: 12, unidade: 'meses', habilidade: 'Engatinhar e primeiros passos', area: 'coord_global' },
-  { idade: 18, unidade: 'meses', habilidade: 'Andar com firmeza, subir degraus com apoio', area: 'equilibrio' },
-  { idade: 24, unidade: 'meses', habilidade: 'Correr, chutar bola, empilhar 4 cubos', area: 'coord_global' },
-  { idade: 3, unidade: 'anos', habilidade: 'Pedalar triciclo, copiar círculo, vestir-se com ajuda', area: 'coord_fina' },
-  { idade: 4, unidade: 'anos', habilidade: 'Equilíbrio unipodal 3s, recortar com tesoura', area: 'equilibrio' },
-  { idade: 5, unidade: 'anos', habilidade: 'Pular corda, copiar quadrado, amarrar cadarço', area: 'coord_fina' },
-  { idade: 6, unidade: 'anos', habilidade: 'Saltar em um pé, reconhecer direita/esquerda', area: 'lateralidade' },
-  { idade: 7, unidade: 'anos', habilidade: 'Reproduzir ritmos, escrita cursiva inicial', area: 'org_espacial' },
+  { key: 'm6_sustento',   idade: 6,  unidade: 'meses', habilidade: 'Sustento cervical e rolar', area: 'coord_global' },
+  { key: 'm9_sentar',     idade: 9,  unidade: 'meses', habilidade: 'Sentar sem apoio', area: 'equilibrio' },
+  { key: 'm12_andar',     idade: 12, unidade: 'meses', habilidade: 'Engatinhar e primeiros passos', area: 'coord_global' },
+  { key: 'm18_degraus',   idade: 18, unidade: 'meses', habilidade: 'Andar com firmeza, subir degraus com apoio', area: 'equilibrio' },
+  { key: 'm24_correr',    idade: 24, unidade: 'meses', habilidade: 'Correr, chutar bola, empilhar 4 cubos', area: 'coord_global' },
+  { key: 'a3_triciclo',   idade: 3,  unidade: 'anos',  habilidade: 'Pedalar triciclo, copiar círculo, vestir-se com ajuda', area: 'coord_fina' },
+  { key: 'a4_unipodal',   idade: 4,  unidade: 'anos',  habilidade: 'Equilíbrio unipodal 3s, recortar com tesoura', area: 'equilibrio' },
+  { key: 'a5_cadarco',    idade: 5,  unidade: 'anos',  habilidade: 'Pular corda, copiar quadrado, amarrar cadarço', area: 'coord_fina' },
+  { key: 'a6_lateral',    idade: 6,  unidade: 'anos',  habilidade: 'Saltar em um pé, reconhecer direita/esquerda', area: 'lateralidade' },
+  { key: 'a7_ritmo',      idade: 7,  unidade: 'anos',  habilidade: 'Reproduzir ritmos, escrita cursiva inicial', area: 'org_espacial' },
 ];
