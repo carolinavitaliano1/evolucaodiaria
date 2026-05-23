@@ -10,6 +10,7 @@ export interface Avaliacao {
   therapist_id: string;
   data_avaliacao: string;
   tipo: AvaliacaoTipo;
+  status: 'pendente' | 'concluida';
   leitura: number | null;
   escrita: number | null;
   matematica: number | null;
