@@ -158,7 +158,13 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
   }
 
   if (sessions.length === 0) {
-    return <p className="text-xs text-muted-foreground text-center py-4">Nenhuma sessão anterior.</p>;
+    return (
+      <p className="text-xs text-muted-foreground text-center py-4">
+        {therapySessionId
+          ? 'Nenhuma chamada de teleatendimento vinculada a esta sessão.'
+          : 'Nenhuma sessão anterior.'}
+      </p>
+    );
   }
 
   return (
