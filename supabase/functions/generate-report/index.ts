@@ -76,24 +76,92 @@ serve(async (req) => {
       const present = limitedEvolutions.filter((e: any) => e.attendance_status === "presente").length;
       const absent = totalSessions - present;
 
+      // Prontuário completo: agrega TODAS as fontes de dados do paciente
+      const [
+        intakeRes,
+        psicoAnamRes, psicomAnamRes,
+        psicoAvalRes, psicomAvalRes,
+        psicoPdiRes, psicomPdiRes,
+        psicoEvoRes, psicoRegRes, psicoRelRes, psicoReunRes,
+        feedbacksRes, savedRepRes, docsRes,
+      ] = await Promise.all([
+        serviceClient.from("patient_intake_forms").select("*").eq("patient_id", patientId).maybeSingle(),
+        serviceClient.from("psico_anamnese").select("*").eq("patient_id", patientId),
+        serviceClient.from("psicom_anamnese").select("*").eq("patient_id", patientId),
+        serviceClient.from("psico_avaliacoes").select("*").eq("patient_id", patientId).order("data_avaliacao", { ascending: false }),
+        serviceClient.from("psicom_avaliacoes").select("*").eq("patient_id", patientId).order("data_avaliacao", { ascending: false }),
+        serviceClient.from("psico_pdi").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }),
+        serviceClient.from("psicom_pdi").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }),
+        serviceClient.from("psico_evolucoes").select("*").eq("patient_id", patientId).order("data_sessao", { ascending: false }).limit(30),
+        serviceClient.from("psico_registros").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(15),
+        serviceClient.from("psico_relatorios").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(10),
+        serviceClient.from("psico_reunioes").select("*").eq("patient_id", patientId).order("data_reuniao", { ascending: false }).limit(10),
+        serviceClient.from("evolution_feedbacks").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(15),
+        serviceClient.from("saved_reports").select("title,content,mode,created_at").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(10),
+        serviceClient.from("patient_documents").select("name,description,created_at").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(20),
+      ]);
+
+      // Idade calculada
+      let idade = "N/A";
+      if (patient?.birthdate) {
+        const b = new Date(patient.birthdate + "T12:00:00");
+        const diff = Date.now() - b.getTime();
+        idade = `${Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25))} anos`;
+      }
+
+      const prontuario = {
+        cadastro: {
+          nome: patient?.name,
+          idade,
+          data_nascimento: patient?.birthdate,
+          cpf: patient?.cpf,
+          email: patient?.email,
+          clinica: clinic?.name,
+          area_clinica: patient?.clinical_area,
+          diagnostico: patient?.diagnosis,
+          profissionais: patient?.professionals,
+          responsavel_legal: patient?.responsible_name,
+          responsavel_financeiro: patient?.financial_responsible_name,
+          plano_saude: patient?.health_plan,
+          escolaridade: patient?.education_level,
+          escola: patient?.school_name,
+          inicio_acompanhamento: patient?.contract_start_date,
+          observacoes: patient?.observations,
+        },
+        ficha_intake: intakeRes?.data ?? null,
+        anamneses_especialidade: {
+          psicopedagogia: psicoAnamRes?.data ?? [],
+          psicomotricidade: psicomAnamRes?.data ?? [],
+        },
+        avaliacoes_especialidade: {
+          psicopedagogia: psicoAvalRes?.data ?? [],
+          psicomotricidade: psicomAvalRes?.data ?? [],
+        },
+        pdis: {
+          psicopedagogia: psicoPdiRes?.data ?? [],
+          psicomotricidade: psicomPdiRes?.data ?? [],
+        },
+        evolucoes_clinicas_gerais: limitedEvolutions,
+        evolucoes_psicopedagogicas: psicoEvoRes?.data ?? [],
+        registros: psicoRegRes?.data ?? [],
+        relatorios_salvos_especialidade: psicoRelRes?.data ?? [],
+        reunioes_interdisciplinares: psicoReunRes?.data ?? [],
+        feedbacks_familia: feedbacksRes?.data ?? [],
+        outros_relatorios_salvos: savedRepRes?.data ?? [],
+        documentos_anexados: docsRes?.data ?? [],
+        frequencia: {
+          periodo: period,
+          total: totalSessions,
+          presencas: present,
+          faltas: absent,
+          taxa_presenca_pct: totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0,
+        },
+      };
+
       contextData = `
-DADOS DO PACIENTE:
-- Nome: ${patient?.name}
-- Data de nascimento: ${patient?.birthdate}
-- Clínica: ${clinic?.name || "N/A"}
-- Área clínica: ${patient?.clinical_area || "N/A"}
-- Diagnóstico: ${patient?.diagnosis || "N/A"}
-- Profissionais: ${patient?.professionals || "N/A"}
-- Observações: ${patient?.observations?.slice(0, 300) || "N/A"}
+PRONTUÁRIO COMPLETO DO PACIENTE (JSON consolidado — use TODOS os dados disponíveis abaixo como base; NUNCA invente nada que não esteja aqui):
 
-RESUMO DE FREQUÊNCIA (${period === "month" ? "Último mês" : period === "quarter" ? "Último trimestre" : period === "semester" ? "Último semestre" : "Todo o período"}):
-- Total de sessões: ${totalSessions}
-- Presenças: ${present}
-- Faltas: ${absent}
-- Taxa de presença: ${totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0}%
-
-EVOLUÇÕES REGISTRADAS:
-${limitedEvolutions.map((e: any) => `- ${e.date}: [${e.attendance_status}] ${e.text?.slice(0, 400) || ""}`).join("\n") || "Nenhuma evolução registrada."}
+${JSON.stringify(prontuario, null, 2)}
 `;
     } else {
       const [{ data: clinics }, { data: patients }, { data: evolutions }] = await Promise.all([
