@@ -4,7 +4,8 @@ interface ActiveCall {
   sessionId: string;
   roomUrl: string;
   userName?: string;
-  onLeft?: () => void;
+  returnPath?: string;
+  onLeft?: () => void | Promise<void>;
 }
 
 interface Ctx {
