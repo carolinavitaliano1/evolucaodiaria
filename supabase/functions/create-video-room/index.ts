@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
         patient_access_token: patientToken,
         status: 'scheduled',
         recording_enabled: effectiveRecording,
+        recording_layout: recording_layout === 'video' ? 'video' : 'audio',
         room_expires_at: new Date(expiresAt * 1000).toISOString(),
         scheduled_for: scheduledFor,
       })
