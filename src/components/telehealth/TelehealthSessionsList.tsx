@@ -119,6 +119,31 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId }: Pro
     }
   }
 
+  async function handleEndSession(s: VideoSession) {
+    if (!confirm('Encerrar esta sessão de teleatendimento?')) return;
+    setBusyId(s.id);
+    try {
+      const started = s.started_at ? new Date(s.started_at).getTime() : null;
+      const duration = started ? Math.max(0, Math.round((Date.now() - started) / 1000)) : s.duration_seconds;
+      const { error } = await supabase
+        .from('video_sessions')
+        .update({
+          status: 'ended',
+          ended_at: new Date().toISOString(),
+          duration_seconds: duration,
+        })
+        .eq('id', s.id);
+      if (error) throw error;
+      if (call?.sessionId === s.id) endCall();
+      toast.success('Sessão encerrada e salva no histórico');
+      load();
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao encerrar sessão');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-6 text-muted-foreground text-sm gap-2">
