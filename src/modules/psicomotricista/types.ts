@@ -33,6 +33,8 @@ export interface PdiObjetivo {
   meta: string;
   prazo?: string;
   atingida: boolean;
+  video_url?: string;
+  idade_alvo?: string;
 }
 
 export interface PDI {

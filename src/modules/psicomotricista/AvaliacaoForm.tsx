@@ -16,6 +16,7 @@ import {
   type Avaliacao,
   type AvaliacaoTipoCustom,
 } from './types';
+import { BPM_FONSECA_FATORES, BPM_ESCALA } from './presets';
 
 interface Props {
   patientId: string;
@@ -189,6 +190,12 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
     if (tipo?.metricas_padrao?.length) {
       const m: Record<string, number> = { ...metricas };
       for (const k of tipo.metricas_padrao) if (m[k] === undefined) m[k] = 0;
+      setMetricas(m);
+    }
+    // BPM (Fonseca): aplica os 7 fatores psicomotores
+    if (valor === 'BPM (Fonseca)') {
+      const m: Record<string, number> = { ...metricas };
+      for (const f of BPM_FONSECA_FATORES) if (m[f] === undefined) m[f] = 0;
       setMetricas(m);
     }
   }
@@ -391,6 +398,19 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
             </Button>
           )}
         </div>
+
+        {instrumento === 'BPM (Fonseca)' && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-xs space-y-1.5">
+            <div className="font-semibold text-primary">Escala BPM (Fonseca) — 1 a 4</div>
+            <div className="grid sm:grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+              {BPM_ESCALA.map((e) => (
+                <div key={e.valor}>
+                  <span className="font-semibold text-foreground">{e.valor} · {e.label}</span> — {e.desc}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2 rounded-lg border border-border p-3">
           {Object.keys(metricas).length === 0 && (
