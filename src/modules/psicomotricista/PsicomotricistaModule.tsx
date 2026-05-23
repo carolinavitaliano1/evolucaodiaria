@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Activity, Target, FileText, FolderOpen, Calendar } from 'lucide-react';
+import { Plus, Activity, Target, FileText, FolderOpen, Calendar, Radar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +14,7 @@ import { RelatorioPanel } from './RelatorioPanel';
 import { RegistrosPanel } from './RegistrosPanel';
 import { ReunioesPanel } from './ReunioesPanel';
 import { StatsCards } from './StatsCards';
+import { PerfilMotorPanel } from './PerfilMotorPanel';
 import type { Avaliacao, PDI } from './types';
 
 interface Props {
@@ -21,7 +22,7 @@ interface Props {
 }
 
 export function PsicomotricistaModule({ patientId }: Props) {
-  const [tab, setTab] = useState<'avaliacoes' | 'registros' | 'pdi' | 'reunioes' | 'relatorios'>('avaliacoes');
+  const [tab, setTab] = useState<'avaliacoes' | 'perfil' | 'registros' | 'pdi' | 'reunioes' | 'relatorios'>('avaliacoes');
   const [avals, setAvals] = useState<Avaliacao[]>([]);
   const [pdis, setPdis] = useState<PDI[]>([]);
   const [filterTipo, setFilterTipo] = useState<string>('TODOS');
@@ -61,8 +62,9 @@ export function PsicomotricistaModule({ patientId }: Props) {
   return (
     <div className="space-y-4">
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto p-1 gap-1">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto p-1 gap-1">
           <TabsTrigger value="avaliacoes" className="gap-1.5"><Activity className="w-3.5 h-3.5" /> Avaliações</TabsTrigger>
+          <TabsTrigger value="perfil" className="gap-1.5"><Radar className="w-3.5 h-3.5" /> Perfil Motor</TabsTrigger>
           <TabsTrigger value="registros" className="gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Registros</TabsTrigger>
           <TabsTrigger value="pdi" className="gap-1.5"><Target className="w-3.5 h-3.5" /> PDI</TabsTrigger>
           <TabsTrigger value="reunioes" className="gap-1.5"><Calendar className="w-3.5 h-3.5" /> Reuniões</TabsTrigger>
@@ -114,6 +116,10 @@ export function PsicomotricistaModule({ patientId }: Props) {
 
         <TabsContent value="registros">
           <RegistrosPanel patientId={patientId} />
+        </TabsContent>
+
+        <TabsContent value="perfil">
+          <PerfilMotorPanel patientId={patientId} avaliacoes={avals} />
         </TabsContent>
 
         <TabsContent value="pdi" className="space-y-3">
