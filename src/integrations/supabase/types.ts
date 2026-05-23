@@ -1303,6 +1303,71 @@ export type Database = {
         }
         Relationships: []
       }
+      in_person_recordings: {
+        Row: {
+          clinic_id: string | null
+          created_at: string
+          duration_seconds: number | null
+          file_size_bytes: number | null
+          id: string
+          mime_type: string | null
+          patient_id: string
+          source: string
+          storage_path: string
+          therapist_user_id: string
+          title: string | null
+          transcription_error: string | null
+          transcription_speakers: Json | null
+          transcription_status: string
+          transcription_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          clinic_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          patient_id: string
+          source?: string
+          storage_path: string
+          therapist_user_id: string
+          title?: string | null
+          transcription_error?: string | null
+          transcription_speakers?: Json | null
+          transcription_status?: string
+          transcription_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          patient_id?: string
+          source?: string
+          storage_path?: string
+          therapist_user_id?: string
+          title?: string | null
+          transcription_error?: string | null
+          transcription_speakers?: Json | null
+          transcription_status?: string
+          transcription_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_person_recordings_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       intake_custom_questions: {
         Row: {
           created_at: string
