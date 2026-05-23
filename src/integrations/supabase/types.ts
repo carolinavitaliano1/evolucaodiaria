@@ -3990,6 +3990,7 @@ export type Database = {
           patient_consented_at: string | null
           patient_id: string
           recording_enabled: boolean
+          recording_layout: string
           room_expires_at: string | null
           scheduled_for: string | null
           started_at: string | null
@@ -4015,6 +4016,7 @@ export type Database = {
           patient_consented_at?: string | null
           patient_id: string
           recording_enabled?: boolean
+          recording_layout?: string
           room_expires_at?: string | null
           scheduled_for?: string | null
           started_at?: string | null
@@ -4040,6 +4042,7 @@ export type Database = {
           patient_consented_at?: string | null
           patient_id?: string
           recording_enabled?: boolean
+          recording_layout?: string
           room_expires_at?: string | null
           scheduled_for?: string | null
           started_at?: string | null

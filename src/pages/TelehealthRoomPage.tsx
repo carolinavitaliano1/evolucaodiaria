@@ -26,7 +26,7 @@ export default function TelehealthRoomPage() {
         }
         const { data, error } = await supabase
           .from('video_sessions')
-          .select('daily_room_url, patient_id, status, therapist_user_id')
+          .select('daily_room_url, patient_id, status, therapist_user_id, recording_enabled, recording_layout')
           .eq('id', sessionId)
           .maybeSingle();
         if (error) throw error;
@@ -36,11 +36,16 @@ export default function TelehealthRoomPage() {
           .from('video_sessions')
           .update({ status: 'active', started_at: new Date().toISOString() })
           .eq('id', sessionId);
+        const layoutValue = (data as any).recording_layout as string | null;
+        const recordingLayout: 'audio-only' | 'default' | undefined = data.recording_enabled
+          ? (layoutValue === 'video' ? 'default' : 'audio-only')
+          : undefined;
         startCall({
           sessionId,
           roomUrl: data.daily_room_url,
           userName: 'Terapeuta',
           returnPath: `/patients/${data.patient_id}#teleatendimento`,
+          recordingLayout,
           onLeft: async () => {
             await supabase
               .from('video_sessions')

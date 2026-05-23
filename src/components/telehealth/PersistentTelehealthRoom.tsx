@@ -56,6 +56,18 @@ export function PersistentTelehealthRoom() {
         navigate(returnPath, { replace: true });
       }
     });
+    // Inicia gravação automática (geralmente audio-only) após entrar na sala.
+    if (call.recordingLayout) {
+      const layoutPreset = call.recordingLayout;
+      frame.on('joined-meeting', () => {
+        try {
+          // @ts-ignore — startRecording aceita layout no Daily prebuilt
+          frame.startRecording({ layout: { preset: layoutPreset } });
+        } catch (e) {
+          console.warn('Falha ao iniciar gravação automática:', e);
+        }
+      });
+    }
     frame.join({ url: call.roomUrl, userName: call.userName || 'Participante' }).catch((e) => {
       console.error('Failed to join Daily room:', e);
     });

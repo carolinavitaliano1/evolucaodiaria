@@ -6,6 +6,8 @@ interface ActiveCall {
   userName?: string;
   returnPath?: string;
   onLeft?: () => void | Promise<void>;
+  /** Quando definido, inicia a gravação automaticamente após entrar na sala. */
+  recordingLayout?: 'audio-only' | 'default';
 }
 
 interface Ctx {
