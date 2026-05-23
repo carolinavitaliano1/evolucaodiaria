@@ -164,7 +164,9 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Histórico</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          {therapySessionId ? 'Teleatendimento desta sessão' : 'Histórico'}
+        </p>
         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={load}>
           <RefreshCcw className="w-3 h-3" /> Atualizar
         </Button>
