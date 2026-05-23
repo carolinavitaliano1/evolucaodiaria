@@ -5,6 +5,7 @@ import { SPECIALTY_MODULES, type ModuleId } from './config';
 import { useModuleAccess } from './useModuleAccess';
 import { ModulePaywall } from './ModulePaywall';
 import { PsicopedagogoModule } from '../psicopedagogo/PsicopedagogoModule';
+import { PsicomotricistaModule } from '../psicomotricista/PsicomotricistaModule';
 
 interface Props {
   patientId: string;
@@ -22,6 +23,9 @@ function ModuleContent({ patientId, moduleId }: { patientId: string; moduleId: M
   }
   if (moduleId === 'psicopedagogo') {
     return <PsicopedagogoModule patientId={patientId} />;
+  }
+  if (moduleId === 'psicomotricista') {
+    return <PsicomotricistaModule patientId={patientId} />;
   }
   return (
     <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
