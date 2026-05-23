@@ -3,16 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Download, Trash2, Video, Loader2, RefreshCcw, FileText, PhoneOff } from 'lucide-react';
+import { Download, Trash2, Video, Loader2, RefreshCcw, FileText, PhoneOff, Play, Mic } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { TranscriptionDialog } from './TranscriptionDialog';
 import { useTelehealthCall } from '@/contexts/TelehealthCallContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface VideoSession {
   id: string;
   status: string;
   recording_enabled: boolean;
+  recording_layout?: string | null;
   patient_consented_at: string | null;
   started_at: string | null;
   ended_at: string | null;
@@ -48,6 +50,7 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [transcribeRec, setTranscribeRec] = useState<{ id: string; label: string } | null>(null);
+  const [playerRec, setPlayerRec] = useState<{ id: string; url: string; isVideo: boolean; label: string } | null>(null);
   const { call, endCall } = useTelehealthCall();
 
   async function load() {
@@ -55,7 +58,7 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
     try {
       let query = supabase
         .from('video_sessions')
-        .select('id, status, recording_enabled, patient_consented_at, started_at, ended_at, duration_seconds, created_at, video_recordings(id, status, daily_recording_id, duration_seconds, file_size_bytes, created_at)')
+        .select('id, status, recording_enabled, recording_layout, patient_consented_at, started_at, ended_at, duration_seconds, created_at, video_recordings(id, status, daily_recording_id, duration_seconds, file_size_bytes, created_at)')
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false });
 
@@ -107,6 +110,34 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
   }
 
   async function handleDelete(rec: Recording) {
+    // handled separately
+    return _handleDelete(rec);
+  }
+
+  async function handlePlay(rec: Recording, s: VideoSession) {
+    setBusyId(rec.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-recording-url', {
+        body: { recording_id: rec.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any).download_url;
+      if (!url) throw new Error('Sem link disponível');
+      setPlayerRec({
+        id: rec.id,
+        url,
+        isVideo: s.recording_layout !== 'audio',
+        label: format(new Date(s.created_at), "d MMM yyyy, HH:mm", { locale: ptBR }),
+      });
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao abrir player');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function _handleDelete(rec: Recording) {
     if (!confirm('Excluir esta gravação? Esta ação não pode ser desfeita.')) return;
     setBusyId(rec.id);
     try {
@@ -221,11 +252,28 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
                       >
                         {r.status === 'ready' ? 'Pronta' : r.status === 'recording' ? 'Gravando' : r.status === 'error' ? 'Erro' : 'Processando'}
                       </Badge>
+                      <Badge variant="outline" className="text-[10px] shrink-0 gap-1">
+                        {s.recording_layout === 'audio' ? (
+                          <><Mic className="w-2.5 h-2.5" /> Áudio</>
+                        ) : (
+                          <><Video className="w-2.5 h-2.5" /> Vídeo</>
+                        )}
+                      </Badge>
                       <span className="text-muted-foreground truncate">
                         {fmtDur(r.duration_seconds)} {fmtSize(r.file_size_bytes) && `• ${fmtSize(r.file_size_bytes)}`}
                       </span>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-primary hover:text-primary"
+                        disabled={r.status !== 'ready' || busyId === r.id}
+                        onClick={() => handlePlay(r, s)}
+                        title={s.recording_layout === 'audio' ? 'Reproduzir áudio' : 'Reproduzir vídeo'}
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -282,6 +330,23 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
         patientId={patientId}
         clinicId={clinicId}
       />
+      <Dialog open={!!playerRec} onOpenChange={(v) => { if (!v) setPlayerRec(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              {playerRec?.isVideo ? <Video className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {playerRec?.isVideo ? 'Vídeo' : 'Áudio'} — {playerRec?.label}
+            </DialogTitle>
+          </DialogHeader>
+          {playerRec && (
+            playerRec.isVideo ? (
+              <video src={playerRec.url} controls autoPlay className="w-full rounded-md bg-black" />
+            ) : (
+              <audio src={playerRec.url} controls autoPlay className="w-full" />
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
