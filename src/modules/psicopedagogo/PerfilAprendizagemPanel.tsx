@@ -6,13 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   AlertTriangle, CheckCircle2, BookOpen, Home, GraduationCap, Activity,
-  Mail, Copy, ClipboardCheck,
+  Mail, Copy,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DOMINIOS, type Avaliacao } from './types';
 import {
-  ANAMNESE_ESCOLAR, ANAMNESE_FAMILIAR, PROTOCOLO_RASTREIO,
+  ANAMNESE_ESCOLAR, ANAMNESE_FAMILIAR,
   REGRESSAO_LIMIAR, modeloCartaEncaminhamento,
 } from './presets';
 
@@ -73,21 +73,6 @@ export function PerfilAprendizagemPanel({ patientId, avaliacoes }: Props) {
   function copiar(texto: string) {
     navigator.clipboard.writeText(texto);
     toast.success('Copiado para a área de transferência');
-  }
-
-  function copiarRastreio() {
-    const linhas = ['Protocolo de rastreio — dificuldades de aprendizagem', ''];
-    const agrup = new Map<string, string[]>();
-    PROTOCOLO_RASTREIO.forEach((it) => {
-      if (!agrup.has(it.area)) agrup.set(it.area, []);
-      agrup.get(it.area)!.push(`(  ) ${it.pergunta}`);
-    });
-    agrup.forEach((perguntas, area) => {
-      linhas.push(`# ${area.toUpperCase()}`);
-      perguntas.forEach((p) => linhas.push(p));
-      linhas.push('');
-    });
-    copiar(linhas.join('\n'));
   }
 
   return (
@@ -168,21 +153,6 @@ export function PerfilAprendizagemPanel({ patientId, avaliacoes }: Props) {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Protocolo de rastreio */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <ClipboardCheck className="w-3.5 h-3.5" /> Protocolo de rastreio
-          </h4>
-          <Button size="sm" variant="outline" onClick={copiarRastreio} className="gap-1.5 h-7 text-xs">
-            <Copy className="w-3.5 h-3.5" /> Copiar checklist
-          </Button>
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          {PROTOCOLO_RASTREIO.length} itens organizados por área. Use como apoio em anamnese ou triagem.
-        </p>
       </div>
 
       {/* Anamnese */}
