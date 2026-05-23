@@ -145,8 +145,8 @@ export function ReunioesPanel({ patientId, patientName, clinicId }: Props) {
                   {r.modalidade === 'teleatendimento' && (
                     <TelehealthButton
                       patientId={patientId}
-                      patientName={patientName}
-                      clinicId={clinicId ?? null}
+                      patientName={patientInfo.name}
+                      clinicId={patientInfo.clinic_id ?? null}
                       size="sm"
                       className="h-7 text-xs"
                     />
