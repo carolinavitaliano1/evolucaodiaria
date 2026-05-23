@@ -22,6 +22,9 @@ const STATUS_COLOR: Record<ReuniaoStatus, string> = {
   realizada: 'bg-emerald-500/10 text-emerald-600',
   cancelada: 'bg-muted text-muted-foreground line-through',
 };
+const MODALIDADE_LABEL: Record<ReuniaoModalidade, string> = {
+  presencial: 'Presencial', online: 'Online', teleatendimento: 'Teleatendimento',
+};
 
 export function ReunioesPanel({ patientId }: Props) {
   const [reunioes, setReunioes] = useState<Reuniao[]>([]);
