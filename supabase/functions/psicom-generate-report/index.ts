@@ -38,15 +38,13 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    const [{ data: patient }, { data: avals }, { data: pdis }, { data: evos }] =
+    const [{ data: patient }, { data: avals }, { data: pdis }] =
       await Promise.all([
         supabaseAdmin.from("patients").select("name, birthdate").eq("id", patient_id).maybeSingle(),
         supabaseAdmin.from("psicom_avaliacoes").select("*").eq("patient_id", patient_id)
           .order("data_avaliacao", { ascending: false }).limit(3),
         supabaseAdmin.from("psicom_pdi").select("*").eq("patient_id", patient_id)
           .order("created_at", { ascending: false }).limit(5),
-        supabaseAdmin.from("psico_evolucoes").select("*").eq("patient_id", patient_id)
-          .order("data_sessao", { ascending: false }).limit(15),
       ]);
 
     const contexto = {
@@ -54,7 +52,6 @@ serve(async (req) => {
       nascimento: patient?.birthdate ?? null,
       avaliacoes: avals ?? [],
       pdis: pdis ?? [],
-      evolucoes_recentes: evos ?? [],
     };
 
     const system = `Você é uma(o) psicomotricista experiente, redigindo um ${TIPO_LABEL[tipo]} com clareza, ética e linguagem acessível.
