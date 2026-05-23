@@ -35,3 +35,5 @@ project_id = "uhhpnjyceobdcxqviouy"
     verify_jwt = false
   [functions.generate-referral-letter]
     verify_jwt = false
+  [functions.generate-orientacoes]
+    verify_jwt = false

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Activity, Target, FileText, FolderOpen, Calendar, Radar, ScanLine, ClipboardList } from 'lucide-react';
+import { Plus, Activity, Target, FileText, FolderOpen, Calendar, Radar, ScanLine, ClipboardList, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,7 @@ import { AnamnesePanel } from './AnamnesePanel';
 import { ProtocoloRastreioPanel } from './ProtocoloRastreioPanel';
 import { DigitalizarAvaliacaoDialog } from '@/modules/shared/DigitalizarAvaliacaoDialog';
 import { AvaliacaoDocumentosPanel } from '@/modules/shared/AvaliacaoDocumentosPanel';
+import { OrientacoesPanel } from '@/modules/shared/OrientacoesPanel';
 import type { Avaliacao, PDI } from './types';
 
 interface Props {
@@ -26,7 +27,7 @@ interface Props {
 }
 
 export function PsicopedagogoModule({ patientId }: Props) {
-  const [tab, setTab] = useState<'avaliacoes' | 'anamnese' | 'perfil' | 'registros' | 'pdi' | 'reunioes' | 'relatorios'>('avaliacoes');
+  const [tab, setTab] = useState<'avaliacoes' | 'anamnese' | 'perfil' | 'registros' | 'pdi' | 'orientacoes' | 'reunioes' | 'relatorios'>('avaliacoes');
   const [avals, setAvals] = useState<Avaliacao[]>([]);
   const [pdis, setPdis] = useState<PDI[]>([]);
   const [filterTipo, setFilterTipo] = useState<string>('TODOS');
@@ -67,12 +68,13 @@ export function PsicopedagogoModule({ patientId }: Props) {
   return (
     <div className="space-y-4">
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-7 h-auto p-1 gap-1">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-8 h-auto p-1 gap-1">
           <TabsTrigger value="avaliacoes" className="gap-1.5"><Activity className="w-3.5 h-3.5" /> Avaliações</TabsTrigger>
           <TabsTrigger value="anamnese" className="gap-1.5"><ClipboardList className="w-3.5 h-3.5" /> Anamnese</TabsTrigger>
           <TabsTrigger value="perfil" className="gap-1.5"><Radar className="w-3.5 h-3.5" /> Perfil</TabsTrigger>
           <TabsTrigger value="registros" className="gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Registros</TabsTrigger>
           <TabsTrigger value="pdi" className="gap-1.5"><Target className="w-3.5 h-3.5" /> PDI</TabsTrigger>
+          <TabsTrigger value="orientacoes" className="gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> Orientações</TabsTrigger>
           <TabsTrigger value="reunioes" className="gap-1.5"><Calendar className="w-3.5 h-3.5" /> Reuniões</TabsTrigger>
           <TabsTrigger value="relatorios" className="gap-1.5"><FileText className="w-3.5 h-3.5" /> Relatórios IA</TabsTrigger>
         </TabsList>
@@ -167,6 +169,10 @@ export function PsicopedagogoModule({ patientId }: Props) {
 
         <TabsContent value="relatorios">
           <RelatorioPanel patientId={patientId} />
+        </TabsContent>
+
+        <TabsContent value="orientacoes">
+          <OrientacoesPanel patientId={patientId} kind="psico" />
         </TabsContent>
 
         <TabsContent value="reunioes">
