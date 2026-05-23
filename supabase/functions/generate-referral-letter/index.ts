@@ -19,25 +19,81 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const [paciente, anamnese, avaliacoes, pdis, evos] = await Promise.all([
-      sb.from('patients').select('name, birthdate, observations').eq('id', patientId).maybeSingle(),
-      sb.from('psico_anamnese').select('escolar, familiar').eq('patient_id', patientId).maybeSingle(),
-      sb.from('psico_avaliacoes').select('*').eq('patient_id', patientId).order('data_avaliacao', { ascending: false }).limit(5),
-      sb.from('psico_pdi').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(3),
-      sb.from('psico_evolucoes').select('date, content').eq('patient_id', patientId).order('date', { ascending: false }).limit(10),
+    const [
+      paciente, intake, anamnesePsico, anamnesePsicom,
+      avalsPsico, avalsPsicom, pdisPsico, pdisPsicom,
+      evosPsico, evosPsicom, evolucoesGerais,
+      registrosPsico, registrosPsicom,
+      relatoriosPsico, relatoriosPsicom,
+      reunioesPsico, reunioesPsicom,
+      feedbacks, savedReports, documentos,
+    ] = await Promise.all([
+      sb.from('patients').select('name, birthdate, cpf, email, phone, whatsapp, diagnosis, clinical_area, professionals, observations, responsible_name, responsible_whatsapp, guardian_name, guardian_kinship, is_minor, contract_start_date, health_plan_id, health_plan_authorized_sessions').eq('id', patientId).maybeSingle(),
+        sb.from('patient_intake_forms').select('*').eq('patient_id', patientId).maybeSingle(),
+        sb.from('psico_anamnese').select('escolar, familiar').eq('patient_id', patientId).maybeSingle(),
+        sb.from('psicom_anamnese').select('motor, familiar').eq('patient_id', patientId).maybeSingle(),
+        sb.from('psico_avaliacoes').select('*').eq('patient_id', patientId).order('data_avaliacao', { ascending: false }).limit(10),
+        sb.from('psicom_avaliacoes').select('*').eq('patient_id', patientId).order('data_avaliacao', { ascending: false }).limit(10),
+        sb.from('psico_pdi').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
+        sb.from('psicom_pdi').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
+        sb.from('psico_evolucoes').select('date, content').eq('patient_id', patientId).order('date', { ascending: false }).limit(20),
+        // psicom_evolucoes can be absent; try generic via evolutions table instead
+        sb.from('evolutions').select('date, content, ai_evolution, attendance_status').eq('patient_id', patientId).order('date', { ascending: false }).limit(30),
+        sb.from('evolutions').select('date, content, attendance_status').eq('patient_id', patientId).order('date', { ascending: false }).limit(30),
+        sb.from('psico_registros').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(10),
+        sb.from('psicom_registros').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(10),
+        sb.from('psico_relatorios').select('titulo, conteudo, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
+        sb.from('psicom_relatorios').select('titulo, conteudo, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
+        sb.from('psico_reunioes').select('data, modalidade, objetivos, conclusoes').eq('patient_id', patientId).order('data', { ascending: false }).limit(5),
+        sb.from('psicom_reunioes').select('data, modalidade, objetivos, conclusoes').eq('patient_id', patientId).order('data', { ascending: false }).limit(5),
+        sb.from('evolution_feedbacks').select('content, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
+        sb.from('saved_reports').select('title, content, mode, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
+        sb.from('patient_documents').select('name, document_type, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(10),
     ]);
 
+    // Compute idade (anos) se houver birthdate
+    let idade: number | null = null;
+    const bd = (paciente.data as any)?.birthdate;
+    if (bd) {
+      const d = new Date(bd + 'T12:00:00');
+      const diff = Date.now() - d.getTime();
+      idade = Math.floor(diff / (365.25 * 24 * 3600 * 1000));
+    }
+
     const prontuario = {
-      paciente: paciente.data || null,
-      anamnese: anamnese.data || null,
-      avaliacoes: avaliacoes.data || [],
-      pdis: pdis.data || [],
-      evolucoes: evos.data || [],
+      paciente: paciente.data ? { ...paciente.data, idade_calculada_anos: idade } : null,
+      ficha_admissao: intake.data || null,
+      anamnese_psicopedagogica: anamnesePsico.data || null,
+      anamnese_psicomotora: anamnesePsicom.data || null,
+      avaliacoes_psicopedagogicas: avalsPsico.data || [],
+      avaliacoes_psicomotoras: avalsPsicom.data || [],
+      pdis_psicopedagogicos: pdisPsico.data || [],
+      pdis_psicomotores: pdisPsicom.data || [],
+      evolucoes_psicopedagogicas: evosPsico.data || [],
+      evolucoes_clinicas: evolucoesGerais.data || [],
+      evolucoes_complementares: evosPsicom.data || [],
+      registros_psicopedagogicos: registrosPsico.data || [],
+      registros_psicomotores: registrosPsicom.data || [],
+      relatorios_psicopedagogicos: relatoriosPsico.data || [],
+      relatorios_psicomotores: relatoriosPsicom.data || [],
+      reunioes_psicopedagogicas: reunioesPsico.data || [],
+      reunioes_psicomotoras: reunioesPsicom.data || [],
+      feedbacks_familia: feedbacks.data || [],
+      relatorios_salvos: savedReports.data || [],
+      documentos_anexados: documentos.data || [],
     };
 
-    const systemPrompt = `Você é um(a) psicopedagogo(a) experiente redigindo cartas formais de encaminhamento interdisciplinar. Use linguagem técnica, respeitosa e objetiva. Baseie-se EXCLUSIVAMENTE nas informações reais do prontuário fornecido — nunca invente diagnósticos, datas ou achados. Quando uma informação não estiver disponível, omita o item ao invés de preencher com "[...]". A carta deve ter entre 250 e 400 palavras, em português brasileiro.`;
+    const systemPrompt = `Você é um(a) psicopedagogo(a) experiente redigindo cartas formais de encaminhamento interdisciplinar.
 
-    const userPrompt = `Gere uma carta de encaminhamento formal a partir do prontuário psicopedagógico abaixo.
+REGRAS ABSOLUTAS DE FIDELIDADE CLÍNICA:
+- Baseie-se EXCLUSIVAMENTE nas informações reais contidas no prontuário JSON fornecido. O prontuário inclui: cadastro do paciente, ficha de admissão, anamneses (psicopedagógica e psicomotora), avaliações, PDIs, evoluções clínicas, registros, relatórios, reuniões, feedbacks à família e documentos anexados — todo o histórico do paciente dentro do sistema.
+- NUNCA invente diagnósticos, datas, escolas, profissionais, instrumentos, escores, medicações ou achados que não estejam explicitamente no JSON.
+- Se uma informação não estiver disponível, OMITA o item da carta. Nunca preencha com "[...]", "a confirmar" ou placeholders.
+- Use a idade calculada (idade_calculada_anos) e a data de nascimento reais; não estime.
+- Cite o(s) instrumento(s) e datas de avaliação somente se constarem nos campos.
+- Linguagem técnica, respeitosa, objetiva, português brasileiro. Entre 250 e 450 palavras.`;
+
+    const userPrompt = `Gere uma carta de encaminhamento formal a partir do prontuário completo do paciente abaixo. Considere TODAS as seções do JSON (cadastro, ficha de admissão, anamneses, avaliações, PDIs, evoluções, registros, relatórios, reuniões, feedbacks e documentos) — não use apenas a anamnese familiar/escolar.
 
 Destino: ${especialidade || 'profissional especialista'}
 Motivo declarado pelo terapeuta: ${motivo || '(não informado — inferir a partir do prontuário)'}
@@ -54,7 +110,7 @@ Estruture a carta exatamente assim:
 Devolva APENAS o texto final da carta, sem comentários e sem markdown.
 
 PRONTUÁRIO (JSON):
-${JSON.stringify(prontuario).slice(0, 18000)}`;
+${JSON.stringify(prontuario).slice(0, 60000)}`;
 
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
