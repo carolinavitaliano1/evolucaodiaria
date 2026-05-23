@@ -4228,6 +4228,10 @@ export default function PatientDetail() {
           </TabsContent>
         )}
 
+        <TabsContent value="especialidades" className="space-y-4">
+          <EspecialidadesTab patientId={patient.id} />
+        </TabsContent>
+
       </Tabs>
 
       {editingEvolution && (
