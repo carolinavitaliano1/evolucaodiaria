@@ -139,7 +139,7 @@ export interface Registro {
 export const REGISTRO_TIPOS_PADRAO = ['PEI', 'Atividade', 'Documento', 'Ocorrência', 'Relatório', 'Anotação'];
 
 export type ReuniaoStatus = 'agendada' | 'realizada' | 'cancelada';
-export type ReuniaoModalidade = 'presencial' | 'online';
+export type ReuniaoModalidade = 'presencial' | 'online' | 'teleatendimento';
 
 export interface Reuniao {
   id: string;

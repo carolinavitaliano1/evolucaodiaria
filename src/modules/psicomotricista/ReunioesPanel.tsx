@@ -22,6 +22,9 @@ const STATUS_COLOR: Record<ReuniaoStatus, string> = {
   realizada: 'bg-emerald-500/10 text-emerald-600',
   cancelada: 'bg-muted text-muted-foreground line-through',
 };
+const MODALIDADE_LABEL: Record<ReuniaoModalidade, string> = {
+  presencial: 'Presencial', online: 'Online', teleatendimento: 'Teleatendimento',
+};
 
 export function ReunioesPanel({ patientId }: Props) {
   const [reunioes, setReunioes] = useState<Reuniao[]>([]);
@@ -92,8 +95,8 @@ export function ReunioesPanel({ patientId }: Props) {
                       {r.duracao_min ? ` · ${r.duracao_min} min` : ''}
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      {r.modalidade === 'online' ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-                      {r.modalidade === 'online' ? 'Online' : 'Presencial'}
+                      {r.modalidade === 'presencial' ? <MapPin className="w-3 h-3" /> : <Video className="w-3 h-3" />}
+                      {MODALIDADE_LABEL[r.modalidade]}
                     </span>
                   </div>
                 </div>
@@ -108,8 +111,8 @@ export function ReunioesPanel({ patientId }: Props) {
               </div>
               {r.local_ou_link && (
                 <p className="text-xs text-muted-foreground truncate">
-                  <span className="font-medium">{r.modalidade === 'online' ? 'Link: ' : 'Local: '}</span>
-                  {r.modalidade === 'online' ? (
+                  <span className="font-medium">{r.modalidade === 'presencial' ? 'Local: ' : 'Link: '}</span>
+                  {r.modalidade !== 'presencial' ? (
                     <a href={r.local_ou_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{r.local_ou_link}</a>
                   ) : r.local_ou_link}
                 </p>
@@ -223,6 +226,7 @@ function ReuniaoForm({
             <SelectContent>
               <SelectItem value="presencial">Presencial</SelectItem>
               <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="teleatendimento">Teleatendimento</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -239,9 +243,9 @@ function ReuniaoForm({
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">{modalidade === 'online' ? 'Link da reunião' : 'Local'}</Label>
+        <Label className="text-xs">{modalidade === 'presencial' ? 'Local' : 'Link da reunião'}</Label>
         <Input value={localLink} onChange={(e) => setLocalLink(e.target.value)}
-          placeholder={modalidade === 'online' ? 'https://meet...' : 'Endereço ou sala'} />
+          placeholder={modalidade === 'presencial' ? 'Endereço ou sala' : 'https://meet...'} />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Participantes (separe por vírgula)</Label>
