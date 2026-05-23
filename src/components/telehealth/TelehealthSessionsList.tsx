@@ -50,6 +50,7 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [transcribeRec, setTranscribeRec] = useState<{ id: string; label: string } | null>(null);
+  const [playerRec, setPlayerRec] = useState<{ id: string; url: string; isVideo: boolean; label: string } | null>(null);
   const { call, endCall } = useTelehealthCall();
 
   async function load() {
