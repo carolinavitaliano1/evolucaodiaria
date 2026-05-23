@@ -152,37 +152,19 @@ II - MOTIVO DO ENCAMINHAMENTO
    Parágrafo técnico descrevendo a demanda inicial que motivou o acompanhamento, baseado no diagnóstico, observações e queixas registradas.
 
 III - OBSERVAÇÕES COMPORTAMENTAIS E COGNITIVAS
-   Esta seção descreve a EVOLUÇÃO do paciente no período (mensal, bimestral ou trimestral). NÃO é diário sessão-a-sessão: identifique padrões, constâncias, avanços e barreiras observados ao longo de todo o ciclo. Organize em DOIS blocos com subtítulos em **negrito** (sem numeração romana). Aborde TODAS as subcategorias abaixo; se não houver dado para alguma, omita-a discretamente — NUNCA invente. Use tom técnico, imparcial e acolhedor, com termos de evolução contínua ("demonstrou avanços", "manteve constância", "apresentou flutuações", "está em processo de aquisição").
+   Esta seção descreve a EVOLUÇÃO do paciente no período (mensal, bimestral ou trimestral). NÃO é diário sessão-a-sessão: identifique padrões, constâncias, avanços e barreiras observados ao longo de todo o ciclo. Organize em DOIS PARÁGRAFOS CORRIDOS (texto fluente, SEM listas, SEM bullets, SEM marcadores), cada um precedido por um subtítulo em **negrito** em linha própria. Use tom técnico, imparcial e acolhedor, com termos de evolução contínua ("demonstrou avanços", "manteve constância", "apresentou flutuações", "está em processo de aquisição"). NUNCA invente dados — quando não houver informação suficiente sobre uma subcategoria, omita-a discretamente.
 
    **1. Aspectos Cognitivos (Evolução no período)**
-   Descreva o perfil e os ganhos consolidados do paciente nas subcategorias abaixo, usando o nome de cada uma em **negrito** ao iniciar:
-   - **Atenção**: sustentada, seletiva e alternada.
-   - **Memória**: curto prazo, longo prazo e operacional (de trabalho).
-   - **Funções Executivas**: planejamento, organização, controle inibitório e flexibilidade cognitiva.
-   - **Linguagem e Comunicação**: aspectos receptivos e expressivos.
-   - **Percepção e Habilidades Visuoespaciais**: interpretação sensorial e relações de espaço/lateralidade.
-   - **Raciocínio e Resolução de Problemas**: abstração, categorização e pensamento lógico-dedutivo.
+   Redija UM ÚNICO PARÁGRAFO CORRIDO, em texto fluente e técnico, integrando ao longo da prosa a análise da atenção (sustentada, seletiva e alternada), memória (curto prazo, longo prazo e operacional), funções executivas (planejamento, organização, controle inibitório e flexibilidade cognitiva), linguagem e comunicação (receptiva e expressiva), percepção e habilidades visuoespaciais, e raciocínio e resolução de problemas. PROIBIDO usar bullets, hífens, asteriscos como marcadores ou quebrar em subitens — tudo deve fluir como um único parágrafo contínuo.
 
    **2. Aspectos Comportamentais e Socioemocionais (Padrões do período)**
-   Descreva os padrões observados ao longo do ciclo, usando o nome de cada subcategoria em **negrito**:
-   - **Regulação Emocional**: como lidou com frustrações ao longo do tempo, frequência de desorganização e modulação.
-   - **Habilidades Sociais**: evolução na interação, reciprocidade, empatia e leitura social.
-   - **Engajamento e Motivação**: flutuações de interesse, iniciativa e persistência.
-   - **Autonomia e Independência**: avanços em AVDs e execução autônoma de tarefas.
-   - **Comportamentos Desafiadores ou Atípicos**: frequência, gatilhos comuns e redução/aumento de estereotipias, rigidez ou agitação — OBRIGATÓRIA quando houver qualquer dado relacionado.
+   Redija UM ÚNICO PARÁGRAFO CORRIDO logo abaixo do anterior, em texto fluente e técnico, integrando ao longo da prosa a regulação emocional (manejo de frustrações, frequência de desorganização), habilidades sociais (interação, reciprocidade, empatia, leitura social), engajamento e motivação (flutuações de interesse, iniciativa e persistência), autonomia e independência (avanços em AVDs e execução autônoma) e comportamentos desafiadores ou atípicos (frequência, gatilhos, redução/aumento de estereotipias, rigidez ou agitação). PROIBIDO usar bullets, hífens, asteriscos como marcadores ou quebrar em subitens — tudo deve fluir como um único parágrafo contínuo.
 
 IV - RESUMO DOS ATENDIMENTOS (Desenvolvimento e Intervenções do Ciclo)
-   Sintetize as estratégias clínicas utilizadas no período. Use subtítulos em **negrito** para destacar cada item. Deve conter:
-   - **Objetivos terapêuticos** principais trabalhados nestes meses.
-   - **Abordagens e recursos terapêuticos** mais eficazes (ex.: apoios visuais, mediação física, pistas verbais, modelagem, reforçamento positivo).
-   - **Adesão e curva de aprendizagem** do paciente diante de novos desafios.
-   - **Adaptações de manejo clínico** implementadas de forma recorrente para garantir engajamento.
+   Sintetize as estratégias clínicas utilizadas no período em PARÁGRAFOS CORRIDOS (texto fluente, SEM bullets nem marcadores). Aborde, ao longo da prosa, os principais objetivos terapêuticos trabalhados nestes meses, as abordagens e recursos mais eficazes (ex.: apoios visuais, mediação física, pistas verbais, modelagem, reforçamento positivo), a adesão e curva de aprendizagem do paciente diante de novos desafios, e as adaptações de manejo clínico implementadas de forma recorrente para garantir engajamento.
 
 V - CONSIDERAÇÕES FINAIS E PLANEJAMENTO
-   Balanço do ciclo, com subtítulos em **negrito**. Deve conter OBRIGATORIAMENTE:
-   - **Avaliação global**: os objetivos previstos foram alcançados, parcialmente alcançados ou não alcançados? Quais foram os principais marcos e maiores barreiras?
-   - **Alinhamentos com a rede de apoio** (escola, família, equipe multidisciplinar) realizados no período.
-   - **Plano de ação**: focos e metas terapêuticas estabelecidas para o próximo ciclo de acompanhamento.
+   Balanço do ciclo redigido OBRIGATORIAMENTE em PARÁGRAFOS CORRIDOS (texto fluente, SEM bullets, SEM listas numeradas, SEM marcadores nem subtítulos). Integre na prosa: a avaliação global do período (se os objetivos foram alcançados, parcialmente alcançados ou não alcançados, principais marcos e barreiras), os alinhamentos realizados com a rede de apoio (escola, família, equipe multidisciplinar) e o plano de ação com os focos e metas terapêuticas estabelecidas para o próximo ciclo de acompanhamento.
 
 3) FECHAMENTO FORMAL OBRIGATÓRIO (após a Seção V, sem numeração romana):
    Inclua exatamente, em parágrafos separados:
