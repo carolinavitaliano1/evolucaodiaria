@@ -1,7 +1,8 @@
 // Presets clínicos do módulo Psicomotricista
 // - BPM (Fonseca): 7 fatores psicomotores, escala 1 a 4
 // - PDI: templates de objetivos por faixa etária
-// - Milestones motores e orientações para família/escola
+// - Milestones motores
+
 
 export const BPM_FONSECA_FATORES = [
   'Tonicidade',
@@ -95,58 +96,4 @@ export const MILESTONES_MOTORES: MotorMilestone[] = [
   { idade: 5, unidade: 'anos', habilidade: 'Pular corda, copiar quadrado, amarrar cadarço', area: 'coord_fina' },
   { idade: 6, unidade: 'anos', habilidade: 'Saltar em um pé, reconhecer direita/esquerda', area: 'lateralidade' },
   { idade: 7, unidade: 'anos', habilidade: 'Reproduzir ritmos, escrita cursiva inicial', area: 'org_espacial' },
-];
-
-export const ORIENTACOES_FAMILIA: { titulo: string; itens: string[] }[] = [
-  {
-    titulo: 'Rotina motora diária',
-    itens: [
-      'Reservar 30 minutos diários para brincadeiras ativas (correr, pular, escalar).',
-      'Reduzir tempo de tela e priorizar movimento livre em ambiente seguro.',
-      'Estimular tarefas de autocuidado: vestir-se, amarrar cadarço, escovar dentes.',
-    ],
-  },
-  {
-    titulo: 'Coordenação fina em casa',
-    itens: [
-      'Atividades com massinha, recorte, colagem e encaixe.',
-      'Brincar de pinça com pregadores, contas e quebra-cabeças.',
-      'Estimular o desenho livre antes de exigir produção escolar.',
-    ],
-  },
-  {
-    titulo: 'Consciência corporal e ritmo',
-    itens: [
-      'Dançar, imitar gestos e brincar de estátua para trabalhar tônus.',
-      'Trabalhar lateralidade usando referências de objetos do dia a dia.',
-      'Brincadeiras de imitação espelhada favorecem o esquema corporal.',
-    ],
-  },
-];
-
-export const ORIENTACOES_ESCOLA: { titulo: string; itens: string[] }[] = [
-  {
-    titulo: 'Adaptações em sala',
-    itens: [
-      'Permitir pausas motoras a cada 20-30 minutos de atividade sentada.',
-      'Oferecer apoio postural (almofadas, faixas) quando houver hipotonia.',
-      'Usar suportes visuais para apoiar a organização espaço-temporal.',
-    ],
-  },
-  {
-    titulo: 'Atividades pedagógicas',
-    itens: [
-      'Iniciar com tarefas grafomotoras amplas antes da escrita fina.',
-      'Trabalhar lateralidade e direção antes de exigir leitura/escrita formal.',
-      'Valorizar processo e esforço motor, não apenas o produto final.',
-    ],
-  },
-  {
-    titulo: 'Educação Física',
-    itens: [
-      'Incluir circuitos com equilíbrio, coordenação e praxia global.',
-      'Adaptar regras de jogos para garantir participação e sucesso motor.',
-      'Reforço positivo frente a tentativas, evitando exposição em competições.',
-    ],
-  },
 ];

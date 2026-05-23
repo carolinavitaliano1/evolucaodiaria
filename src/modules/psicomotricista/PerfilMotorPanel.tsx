@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Radar, RadarChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, CheckCircle2, BookOpen, Home, GraduationCap, Activity } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, BookOpen, Activity } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DOMINIOS, type Avaliacao } from './types';
-import { MILESTONES_MOTORES, ORIENTACOES_FAMILIA, ORIENTACOES_ESCOLA } from './presets';
+import { MILESTONES_MOTORES } from './presets';
 
 interface Props {
   patientId: string;
@@ -135,48 +135,10 @@ export function PerfilMotorPanel({ patientId, avaliacoes }: Props) {
         )}
       </div>
 
-      {/* Orientações */}
-      <div className="grid lg:grid-cols-2 gap-3">
-        <OrientacoesCard
-          icon={<Home className="w-4 h-4" />}
-          titulo="Orientações para a família"
-          grupos={ORIENTACOES_FAMILIA}
-        />
-        <OrientacoesCard
-          icon={<GraduationCap className="w-4 h-4" />}
-          titulo="Orientações para educadores"
-          grupos={ORIENTACOES_ESCOLA}
-        />
-      </div>
 
       <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
         <BookOpen className="w-3 h-3" /> Marcos baseados em referências da literatura em desenvolvimento psicomotor (apenas indicativos).
       </p>
-    </div>
-  );
-}
-
-function OrientacoesCard({ icon, titulo, grupos }: {
-  icon: React.ReactNode;
-  titulo: string;
-  grupos: { titulo: string; itens: string[] }[];
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-      <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-        <span className="text-primary">{icon}</span>
-        {titulo}
-      </h4>
-      {grupos.map((g) => (
-        <div key={g.titulo} className="space-y-1">
-          <p className="text-xs font-semibold text-foreground">{g.titulo}</p>
-          <ul className="space-y-0.5 pl-3">
-            {g.itens.map((it, i) => (
-              <li key={i} className="text-xs text-muted-foreground list-disc list-outside leading-relaxed">{it}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
     </div>
   );
 }
