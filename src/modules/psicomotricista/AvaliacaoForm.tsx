@@ -16,6 +16,7 @@ import {
   type Avaliacao,
   type AvaliacaoTipoCustom,
 } from './types';
+import { BPM_FONSECA_FATORES, BPM_ESCALA } from './presets';
 
 interface Props {
   patientId: string;
@@ -189,6 +190,12 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
     if (tipo?.metricas_padrao?.length) {
       const m: Record<string, number> = { ...metricas };
       for (const k of tipo.metricas_padrao) if (m[k] === undefined) m[k] = 0;
+      setMetricas(m);
+    }
+    // BPM (Fonseca): aplica os 7 fatores psicomotores
+    if (valor === 'BPM (Fonseca)') {
+      const m: Record<string, number> = { ...metricas };
+      for (const f of BPM_FONSECA_FATORES) if (m[f] === undefined) m[f] = 0;
       setMetricas(m);
     }
   }
