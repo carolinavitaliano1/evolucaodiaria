@@ -223,6 +223,7 @@ function ReuniaoForm({
             <SelectContent>
               <SelectItem value="presencial">Presencial</SelectItem>
               <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="teleatendimento">Teleatendimento</SelectItem>
             </SelectContent>
           </Select>
         </div>
