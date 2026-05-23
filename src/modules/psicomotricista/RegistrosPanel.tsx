@@ -15,7 +15,7 @@ interface Props {
   patientId: string;
 }
 
-const STORAGE_KEY = 'psico_registro_tipos_custom';
+const STORAGE_KEY = 'psicom_registro_tipos_custom';
 
 export function RegistrosPanel({ patientId }: Props) {
   const [registros, setRegistros] = useState<Registro[]>([]);

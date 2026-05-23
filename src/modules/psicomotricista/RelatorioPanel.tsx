@@ -42,7 +42,7 @@ export function RelatorioPanel({ patientId }: Props) {
   async function generate() {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('psico-generate-report', {
+      const { data, error } = await supabase.functions.invoke('psicom-generate-report', {
         body: { patient_id: patientId, tipo },
       });
       if (error) throw error;
