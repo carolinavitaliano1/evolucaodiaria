@@ -47,9 +47,12 @@ export function PersistentTelehealthRoom() {
       showLeaveButton: true,
       showFullscreenButton: true,
     });
-    frame.on('left-meeting', () => {
-      call.onLeft?.();
+    frame.on('left-meeting', async () => {
+      await call.onLeft?.();
       endCall();
+      if (call.returnPath && location.pathname.startsWith('/teleatendimento/sala/')) {
+        navigate(call.returnPath, { replace: true });
+      }
     });
     frame.join({ url: call.roomUrl, userName: call.userName || 'Participante' }).catch((e) => {
       console.error('Failed to join Daily room:', e);
@@ -89,8 +92,9 @@ export function PersistentTelehealthRoom() {
             onClick={() => {
               if (confirm('Encerrar a chamada?')) {
                 try { frameRef.current?.leave(); } catch {}
-                call.onLeft?.();
+                void call.onLeft?.();
                 endCall();
+                if (call.returnPath) navigate(call.returnPath, { replace: true });
               }
             }}
             title="Encerrar chamada"
