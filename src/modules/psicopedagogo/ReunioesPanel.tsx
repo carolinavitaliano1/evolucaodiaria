@@ -32,6 +32,19 @@ export function ReunioesPanel({ patientId, patientName, clinicId }: Props) {
   const [filterStatus, setFilterStatus] = useState<string>('TODOS');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Reuniao | null>(null);
+  const [patientInfo, setPatientInfo] = useState<{ name?: string; clinic_id?: string | null }>({
+    name: patientName,
+    clinic_id: clinicId ?? null,
+  });
+
+  useEffect(() => {
+    if (patientName && clinicId !== undefined) return;
+    (async () => {
+      const { data } = await supabase
+        .from('patients').select('name, clinic_id').eq('id', patientId).maybeSingle();
+      if (data) setPatientInfo({ name: data.name, clinic_id: data.clinic_id });
+    })();
+  }, [patientId, patientName, clinicId]);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
