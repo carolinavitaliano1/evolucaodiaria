@@ -2986,62 +2986,107 @@ export type Database = {
         }
         Relationships: []
       }
+      psico_avaliacao_tipos: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          metricas_padrao: string[] | null
+          nome: string
+          therapist_id: string
+          updated_at: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          metricas_padrao?: string[] | null
+          nome: string
+          therapist_id: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          metricas_padrao?: string[] | null
+          nome?: string
+          therapist_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       psico_avaliacoes: {
         Row: {
+          arquivo_nome: string | null
           arquivo_url: string | null
           atencao: number | null
           created_at: string
           data_avaliacao: string
           escrita: number | null
           id: string
+          instrumento: string | null
           leitura: number | null
           linguagem: number | null
           matematica: number | null
           memoria: number | null
+          metricas: Json | null
           observacoes: string | null
           patient_id: string
           status: string
           testes_aplicados: string[] | null
           therapist_id: string
           tipo: string
+          titulo: string | null
           updated_at: string
         }
         Insert: {
+          arquivo_nome?: string | null
           arquivo_url?: string | null
           atencao?: number | null
           created_at?: string
           data_avaliacao?: string
           escrita?: number | null
           id?: string
+          instrumento?: string | null
           leitura?: number | null
           linguagem?: number | null
           matematica?: number | null
           memoria?: number | null
+          metricas?: Json | null
           observacoes?: string | null
           patient_id: string
           status?: string
           testes_aplicados?: string[] | null
           therapist_id: string
           tipo: string
+          titulo?: string | null
           updated_at?: string
         }
         Update: {
+          arquivo_nome?: string | null
           arquivo_url?: string | null
           atencao?: number | null
           created_at?: string
           data_avaliacao?: string
           escrita?: number | null
           id?: string
+          instrumento?: string | null
           leitura?: number | null
           linguagem?: number | null
           matematica?: number | null
           memoria?: number | null
+          metricas?: Json | null
           observacoes?: string | null
           patient_id?: string
           status?: string
           testes_aplicados?: string[] | null
           therapist_id?: string
           tipo?: string
+          titulo?: string | null
           updated_at?: string
         }
         Relationships: [

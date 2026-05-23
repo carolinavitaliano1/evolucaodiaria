@@ -20,6 +20,10 @@ export interface Avaliacao {
   testes_aplicados: string[] | null;
   observacoes: string | null;
   arquivo_url: string | null;
+  arquivo_nome?: string | null;
+  titulo?: string | null;
+  instrumento?: string | null;
+  metricas?: Record<string, number> | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,6 +81,34 @@ export const TESTES_SUGERIDOS = [
   'WISC-V', 'WAIS-IV', 'Bender', 'Frostig', 'TDE-II', 'Provinha Brasil',
   'BPA-2', 'Trail Making Test', 'CONFIAS', 'Boehm', 'Raven', 'TONI-4'
 ];
+
+export const INSTRUMENTOS_PADRAO = [
+  'WISC-IV', 'WISC-V', 'IDADI', 'Raven', 'CARS-2',
+  'Avaliação Psicopedagógica', 'TDE-II', 'Bender', 'Outros',
+];
+
+export const CATEGORIAS_TIPO = [
+  'Avaliação Cognitiva',
+  'Avaliação Neuropsicológica',
+  'Avaliação Pedagógica',
+  'Avaliação Psicopedagógica',
+  'Outros',
+];
+
+export const METRICAS_PADRAO_SUGERIDAS = [
+  'Memória', 'Atenção', 'Linguagem', 'Raciocínio', 'Coordenação', 'Percepção',
+];
+
+export interface AvaliacaoTipoCustom {
+  id: string;
+  therapist_id: string;
+  nome: string;
+  descricao: string | null;
+  categoria: string | null;
+  metricas_padrao: string[];
+  created_at: string;
+  updated_at: string;
+}
 
 export const DOMINIOS: { key: keyof Pick<Avaliacao, 'leitura'|'escrita'|'matematica'|'atencao'|'memoria'|'linguagem'>; label: string }[] = [
   { key: 'leitura', label: 'Leitura' },
