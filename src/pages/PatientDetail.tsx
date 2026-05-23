@@ -60,6 +60,7 @@ import jsPDF from 'jspdf';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { PatientFeed } from '@/components/feed/PatientFeed';
 import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
+import { InPersonTranscriptionTab } from '@/components/patients/InPersonTranscriptionTab';
 import { Brain } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { UpgradeBlock } from '@/components/UpgradeBlock';
