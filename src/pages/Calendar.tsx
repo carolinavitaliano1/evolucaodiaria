@@ -232,6 +232,13 @@ export default function CalendarPage() {
     const slotItems: CalItem[] = scheduleSlots
       .filter(s => norm(s.weekday) === dayNorm)
       .filter(s => !scheduledPatientIds.has(s.patient_id))
+      .filter(s => {
+        const patient = patients.find(p => p.id === s.patient_id);
+        // Hide ghost slots: patient deleted/archived/inactive on this date
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const ref = new Date(y, (m || 1) - 1, d || 1);
+        return patient && isPatientActiveOn(patient, ref);
+      })
       .map(s => {
         const patient = patients.find(p => p.id === s.patient_id);
         const clinic = clinics.find(c => c.id === s.clinic_id);
@@ -239,7 +246,7 @@ export default function CalendarPage() {
         return {
           id: `slot-${s.id}-${dateStr}`,
           time: s.start_time,
-          title: patient?.name || 'Paciente',
+          title: patient!.name,
           sub: (clinic?.name || '') + ` · ${s.start_time}–${s.end_time}` + (hasEvolution ? ' ✓' : ''),
           type: 'atendimento',
           color: hasEvolution ? 'bg-emerald-500' : EVENT_COLORS.atendimento.bg,
