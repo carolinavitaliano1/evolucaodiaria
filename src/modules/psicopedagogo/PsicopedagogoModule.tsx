@@ -206,7 +206,6 @@ export function PsicopedagogoModule({ patientId }: Props) {
           </DialogHeader>
           <PDIForm
             patientId={patientId}
-            avaliacoes={avals}
             existing={editPdi}
             onSaved={() => { setPdiDialog(false); load(); }}
             onCancel={() => setPdiDialog(false)}
