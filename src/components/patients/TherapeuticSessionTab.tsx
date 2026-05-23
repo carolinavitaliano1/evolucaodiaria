@@ -22,6 +22,7 @@ import { SessionPlanForm } from './SessionPlanForm';
 import { SessionPlansList } from './SessionPlansList';
 import { SendActionPlanModal, type ActivityAttachment } from './SendActionPlanModal';
 import { TelehealthButton } from '@/components/telehealth/TelehealthButton';
+import { TelehealthSessionsList } from '@/components/telehealth/TelehealthSessionsList';
 
 interface TherapeuticSessionTabProps {
   patientId: string;
