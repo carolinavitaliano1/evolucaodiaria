@@ -3000,6 +3000,7 @@ export type Database = {
           memoria: number | null
           observacoes: string | null
           patient_id: string
+          status: string
           testes_aplicados: string[] | null
           therapist_id: string
           tipo: string
@@ -3018,6 +3019,7 @@ export type Database = {
           memoria?: number | null
           observacoes?: string | null
           patient_id: string
+          status?: string
           testes_aplicados?: string[] | null
           therapist_id: string
           tipo: string
@@ -3036,6 +3038,7 @@ export type Database = {
           memoria?: number | null
           observacoes?: string | null
           patient_id?: string
+          status?: string
           testes_aplicados?: string[] | null
           therapist_id?: string
           tipo?: string
@@ -3171,6 +3174,48 @@ export type Database = {
           },
         ]
       }
+      psico_registros: {
+        Row: {
+          arquivo_nome: string | null
+          arquivo_url: string | null
+          codigo: string | null
+          created_at: string
+          data_registro: string
+          descricao: string | null
+          id: string
+          patient_id: string
+          therapist_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          arquivo_url?: string | null
+          codigo?: string | null
+          created_at?: string
+          data_registro?: string
+          descricao?: string | null
+          id?: string
+          patient_id: string
+          therapist_id: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          arquivo_nome?: string | null
+          arquivo_url?: string | null
+          codigo?: string | null
+          created_at?: string
+          data_registro?: string
+          descricao?: string | null
+          id?: string
+          patient_id?: string
+          therapist_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       psico_relatorios: {
         Row: {
           conteudo: string
@@ -3214,6 +3259,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      psico_reunioes: {
+        Row: {
+          created_at: string
+          data_hora: string
+          duracao_min: number | null
+          id: string
+          local_ou_link: string | null
+          modalidade: string
+          notas: string | null
+          participantes: string[] | null
+          patient_id: string
+          pauta: string | null
+          status: string
+          therapist_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_hora: string
+          duracao_min?: number | null
+          id?: string
+          local_ou_link?: string | null
+          modalidade?: string
+          notas?: string | null
+          participantes?: string[] | null
+          patient_id: string
+          pauta?: string | null
+          status?: string
+          therapist_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_hora?: string
+          duracao_min?: number | null
+          id?: string
+          local_ou_link?: string | null
+          modalidade?: string
+          notas?: string | null
+          participantes?: string[] | null
+          patient_id?: string
+          pauta?: string | null
+          status?: string
+          therapist_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       push_tokens: {
         Row: {

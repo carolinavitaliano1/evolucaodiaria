@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Activity, Target, NotebookPen, FileText } from 'lucide-react';
+import { Plus, Activity, Target, NotebookPen, FileText, FolderOpen, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -13,6 +13,9 @@ import { PDICard } from './PDICard';
 import { PDIForm } from './PDIForm';
 import { EvolucaoForm } from './EvolucaoForm';
 import { RelatorioPanel } from './RelatorioPanel';
+import { RegistrosPanel } from './RegistrosPanel';
+import { ReunioesPanel } from './ReunioesPanel';
+import { StatsCards } from './StatsCards';
 import type { Avaliacao, PDI, PsicoEvolucao } from './types';
 
 interface Props {
@@ -24,7 +27,7 @@ const DESEMPENHO_LABEL: Record<string, string> = {
 };
 
 export function PsicopedagogoModule({ patientId }: Props) {
-  const [tab, setTab] = useState<'avaliacoes' | 'pdi' | 'evolucoes' | 'relatorios'>('avaliacoes');
+  const [tab, setTab] = useState<'avaliacoes' | 'registros' | 'pdi' | 'evolucoes' | 'reunioes' | 'relatorios'>('avaliacoes');
   const [avals, setAvals] = useState<Avaliacao[]>([]);
   const [pdis, setPdis] = useState<PDI[]>([]);
   const [evos, setEvos] = useState<PsicoEvolucao[]>([]);
@@ -71,14 +74,17 @@ export function PsicopedagogoModule({ patientId }: Props) {
   return (
     <div className="space-y-4">
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 gap-1">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto p-1 gap-1">
           <TabsTrigger value="avaliacoes" className="gap-1.5"><Activity className="w-3.5 h-3.5" /> Avaliações</TabsTrigger>
+          <TabsTrigger value="registros" className="gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Registros</TabsTrigger>
           <TabsTrigger value="pdi" className="gap-1.5"><Target className="w-3.5 h-3.5" /> PDI</TabsTrigger>
           <TabsTrigger value="evolucoes" className="gap-1.5"><NotebookPen className="w-3.5 h-3.5" /> Evoluções</TabsTrigger>
+          <TabsTrigger value="reunioes" className="gap-1.5"><Calendar className="w-3.5 h-3.5" /> Reuniões</TabsTrigger>
           <TabsTrigger value="relatorios" className="gap-1.5"><FileText className="w-3.5 h-3.5" /> Relatórios IA</TabsTrigger>
         </TabsList>
 
         <TabsContent value="avaliacoes" className="space-y-3">
+          <StatsCards avaliacoes={avals} />
           <div className="flex justify-between items-center">
             <p className="text-xs text-muted-foreground">
               {avals.length} avaliação{avals.length === 1 ? '' : 'ões'} registrada{avals.length === 1 ? '' : 's'}.
@@ -103,6 +109,10 @@ export function PsicopedagogoModule({ patientId }: Props) {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="registros">
+          <RegistrosPanel patientId={patientId} />
         </TabsContent>
 
         <TabsContent value="pdi" className="space-y-3">
@@ -182,6 +192,10 @@ export function PsicopedagogoModule({ patientId }: Props) {
 
         <TabsContent value="relatorios">
           <RelatorioPanel patientId={patientId} />
+        </TabsContent>
+
+        <TabsContent value="reunioes">
+          <ReunioesPanel patientId={patientId} />
         </TabsContent>
       </Tabs>
 

@@ -20,6 +20,7 @@ interface Props {
 
 export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props) {
   const [tipo, setTipo] = useState<AvaliacaoTipo>(existing?.tipo || 'inicial');
+  const [status, setStatus] = useState<'pendente' | 'concluida'>(existing?.status || 'concluida');
   const [data, setData] = useState(existing?.data_avaliacao || new Date().toISOString().slice(0, 10));
   const [scores, setScores] = useState({
     leitura: existing?.leitura ?? 5,
@@ -48,6 +49,7 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
         therapist_id: uid,
         data_avaliacao: data,
         tipo,
+        status,
         ...scores,
         testes_aplicados: testes,
         observacoes: obs || null,
@@ -67,7 +69,7 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
 
   return (
     <div className="space-y-5 p-1">
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-3 gap-4">
         <div className="space-y-1.5">
           <Label>Tipo</Label>
           <Select value={tipo} onValueChange={(v) => setTipo(v as AvaliacaoTipo)}>
@@ -76,6 +78,16 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
               <SelectItem value="inicial">Inicial</SelectItem>
               <SelectItem value="reavaliacao">Reavaliação</SelectItem>
               <SelectItem value="alta">Alta</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Status</Label>
+          <Select value={status} onValueChange={(v) => setStatus(v as 'pendente' | 'concluida')}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="concluida">Concluída</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
             </SelectContent>
           </Select>
         </div>
