@@ -16,6 +16,7 @@ import { ReunioesPanel } from './ReunioesPanel';
 import { StatsCards } from './StatsCards';
 import { PerfilAprendizagemPanel } from './PerfilAprendizagemPanel';
 import { AnamnesePanel } from './AnamnesePanel';
+import { ProtocoloRastreioPanel } from './ProtocoloRastreioPanel';
 import { DigitalizarAvaliacaoDialog } from '@/modules/shared/DigitalizarAvaliacaoDialog';
 import type { Avaliacao, PDI } from './types';
 
@@ -77,6 +78,7 @@ export function PsicopedagogoModule({ patientId }: Props) {
 
         <TabsContent value="avaliacoes" className="space-y-4">
           <StatsCards avaliacoes={avals} />
+          <ProtocoloRastreioPanel patientId={patientId} onSaved={load} />
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-muted/30">
               <div>
