@@ -125,12 +125,8 @@ Deno.serve(async (req) => {
       const { download_link } = await linkRes.json();
       if (!download_link) throw new Error('Daily did not return download link');
 
-      // 2) Download the media file
-      const mediaRes = await fetch(download_link);
-      if (!mediaRes.ok) throw new Error(`Failed to download recording: ${mediaRes.status}`);
-      const mediaBlob = await mediaRes.blob();
-
-      // 3) Send to Deepgram
+      // 2) Send URL directly to Deepgram (it downloads itself — muito mais rápido
+      //    do que baixar o vídeo na edge function e reenviar).
       const langMap: Record<string, string> = { pt: 'pt-BR', en: 'en-US', es: 'es' };
       const langCode = langMap[(language || 'pt') as string] || 'pt-BR';
 
@@ -144,16 +140,13 @@ Deno.serve(async (req) => {
         utterances: 'true',
       });
 
-      const audioBuffer = await mediaBlob.arrayBuffer();
-      const contentType = mediaBlob.type || 'video/mp4';
-
       const sttRes = await fetch(`https://api.deepgram.com/v1/listen?${params.toString()}`, {
         method: 'POST',
         headers: {
           Authorization: `Token ${DEEPGRAM_API_KEY}`,
-          'Content-Type': contentType,
+          'Content-Type': 'application/json',
         },
-        body: audioBuffer,
+        body: JSON.stringify({ url: download_link }),
       });
       if (!sttRes.ok) {
         const err = await sttRes.text();
