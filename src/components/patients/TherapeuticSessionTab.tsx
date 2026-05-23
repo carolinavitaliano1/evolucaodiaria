@@ -1356,8 +1356,6 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
 
           {/* Plan Summary (read-only) */}
           {activePlan && (
-
-          {/* nothing */}
             <Card className="border-primary/20 bg-primary/5">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -1392,6 +1390,25 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
               </CardContent>
             </Card>
           )}
+
+          {/* Teleatendimento desta sessão: gravações, transcrições e resumo IA */}
+          <Card className="border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" /> Teleatendimento — gravações e transcrições
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TelehealthSessionsList
+                patientId={patientId}
+                patientName={patientName}
+                clinicId={clinicId}
+              />
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Após encerrar a chamada, a gravação aparece aqui (~2 min). Clique no ícone de texto para transcrever e gerar um resumo clínico com IA.
+              </p>
+            </CardContent>
+          </Card>
 
           <Card className="border-border">
             <CardHeader className="pb-3"><CardTitle className="text-sm">Dados da Sessão</CardTitle></CardHeader>
