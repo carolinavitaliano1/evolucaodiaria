@@ -38,6 +38,7 @@ const DocIA = lazy(() => import("./pages/DocIA"));
 const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Mural = lazy(() => import("./pages/Mural"));
 const Team = lazy(() => import("./pages/Team"));
+const Modules = lazy(() => import("./pages/Modules"));
 const MyCommissions = lazy(() => import("./pages/MyCommissions"));
 const Support = lazy(() => import("./pages/Support"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
