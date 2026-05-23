@@ -53,12 +53,17 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
   async function load() {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('video_sessions')
         .select('id, status, recording_enabled, patient_consented_at, started_at, ended_at, duration_seconds, created_at, video_recordings(id, status, daily_recording_id, duration_seconds, file_size_bytes, created_at)')
         .eq('patient_id', patientId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
+
+      if (therapySessionId) {
+        query = query.eq('therapy_session_id', therapySessionId);
+      }
+
+      const { data, error } = await query.limit(10);
       if (error) throw error;
       setSessions(
         (data || []).map((s: any) => ({
