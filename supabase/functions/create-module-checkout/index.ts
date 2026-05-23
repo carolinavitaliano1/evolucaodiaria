@@ -11,7 +11,7 @@ const corsHeaders = {
 // Mapa de módulos pagos → Stripe price IDs.
 // Apenas Psicopedagogo está ativo no primeiro release.
 const MODULE_PRICES: Record<string, string> = {
-  psicopedagogo: "price_1TaGpSDl2hex55TCSanLMgLB",
+  psicopedagogo: "price_1TaH8mDl2hex55TCgAZrPg9r",
 };
 
 serve(async (req) => {
