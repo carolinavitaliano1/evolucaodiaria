@@ -6,7 +6,43 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Loader2, Eye, EyeOff, KeyRound, Check, X } from 'lucide-react';
+
+interface PasswordRequirement {
+  label: string;
+  test: (pwd: string) => boolean;
+}
+
+const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
+  { label: 'Pelo menos 6 caracteres', test: (pwd) => pwd.length >= 6 },
+  { label: 'Pelo menos 1 letra', test: (pwd) => /[a-zA-Z]/.test(pwd) },
+  { label: 'Pelo menos 1 número', test: (pwd) => /\d/.test(pwd) },
+];
+
+function PasswordChecklist({ password }: { password: string }) {
+  return (
+    <div className="space-y-1.5 mt-2">
+      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Requisitos da senha</p>
+      <div className="space-y-1">
+        {PASSWORD_REQUIREMENTS.map((req, i) => {
+          const met = req.test(password);
+          return (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <div className={`flex items-center justify-center w-4 h-4 rounded-full shrink-0 ${met ? 'bg-green-500/20 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                {met ? <Check className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}
+              </div>
+              <span className={met ? 'text-green-600' : 'text-muted-foreground'}>{req.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function isPasswordValid(password: string): boolean {
+  return PASSWORD_REQUIREMENTS.every((r) => r.test(password));
+}
 
 export default function PortalAuth() {
   const { user, sessionReady, signIn } = useAuth();
@@ -160,17 +196,18 @@ export default function PortalAuth() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Digite uma senha segura"
                     required
-                    minLength={6}
+                    autoComplete="new-password"
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <PasswordChecklist password={password} />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || !isPasswordValid(password)}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Criar conta e entrar
               </Button>
