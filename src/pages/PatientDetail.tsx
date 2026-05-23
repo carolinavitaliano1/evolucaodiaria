@@ -61,6 +61,7 @@ import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { PatientFeed } from '@/components/feed/PatientFeed';
 import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
 import { InPersonTranscriptionTab } from '@/components/patients/InPersonTranscriptionTab';
+import { TelehealthSessionsList } from '@/components/telehealth/TelehealthSessionsList';
 import { Brain } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { UpgradeBlock } from '@/components/UpgradeBlock';
@@ -2757,6 +2758,7 @@ export default function PatientDetail() {
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
             { value: 'session', icon: Brain, label: 'Sessão' },
             { value: 'transcricao', icon: Mic, label: 'Transcrição' },
+            { value: 'teleatendimento', icon: Video, label: 'Teleatendimento' },
             ...((!isOrgMember || isOrgOwner) ? [{ value: 'reports', icon: BarChart3, label: 'Rel. Mensal' }] : []),
             ...(canSeeFinancialTab ? [{ value: 'financial', icon: DollarSign, label: 'Financeiro' }] : []),
             { value: 'documents', icon: Paperclip, label: 'Documentos' },
@@ -3388,6 +3390,26 @@ export default function PatientDetail() {
               clinicId={clinic.id}
               clinicType={clinic.type}
             />
+          </TabsContent>
+        )}
+
+        {/* Teleatendimento Tab */}
+        {patient && (
+          <TabsContent value="teleatendimento" className="space-y-4">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Video className="w-5 h-5 text-primary" />
+                <h2 className="font-semibold text-foreground">Teleatendimento</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Histórico de videochamadas com este paciente: gravações, transcrições e evoluções geradas a partir das sessões ficam salvas aqui.
+              </p>
+              <TelehealthSessionsList
+                patientId={patient.id}
+                patientName={patient.name}
+                clinicId={clinic?.id}
+              />
+            </div>
           </TabsContent>
         )}
 
