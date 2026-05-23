@@ -1,12 +1,15 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, ArrowRight, BookOpen } from 'lucide-react';
 import { useEffect } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function CheckoutSuccess() {
   const navigate = useNavigate();
   const { refresh } = useSubscription();
+  const [params] = useSearchParams();
+  const moduleId = params.get('module');
 
   useEffect(() => {
     // Clear stale subscription cache so ProtectedRoute won't redirect back to /pricing
@@ -14,10 +17,16 @@ export default function CheckoutSuccess() {
     localStorage.removeItem('clinipro_subscription_cache');
     refresh();
 
-    // Auto-redirect to dashboard after 4 seconds
-    const timer = setTimeout(() => navigate('/dashboard', { replace: true }), 4000);
+    // Se veio de checkout de módulo, sincroniza assinatura de módulo
+    if (moduleId) {
+      supabase.functions.invoke('verify-module-subscription').catch(() => {});
+    }
+
+    // Auto-redirect após 4s — módulo volta para /modulos, principal para /dashboard
+    const dest = moduleId ? '/modulos' : '/dashboard';
+    const timer = setTimeout(() => navigate(dest, { replace: true }), 4000);
     return () => clearTimeout(timer);
-  }, [refresh, navigate]);
+  }, [refresh, navigate, moduleId]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
