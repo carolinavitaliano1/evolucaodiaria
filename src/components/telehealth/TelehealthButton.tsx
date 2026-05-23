@@ -10,6 +10,7 @@ interface Props {
   patientName?: string;
   clinicId?: string | null;
   appointmentId?: string;
+  therapySessionId?: string;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'icon';
   className?: string;
@@ -21,6 +22,7 @@ export function TelehealthButton({
   patientName,
   clinicId,
   appointmentId,
+  therapySessionId,
   variant = 'outline',
   size = 'sm',
   className,
@@ -53,6 +55,7 @@ export function TelehealthButton({
         patientName={patientName}
         clinicId={clinicId ?? null}
         appointmentId={appointmentId}
+        therapySessionId={therapySessionId}
       />
     </>
   );

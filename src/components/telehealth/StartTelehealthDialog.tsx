@@ -19,9 +19,10 @@ interface Props {
   appointmentId?: string;
   clinicId?: string | null;
   patientName?: string;
+  therapySessionId?: string;
 }
 
-export function StartTelehealthDialog({ open, onOpenChange, patientId, appointmentId, clinicId, patientName }: Props) {
+export function StartTelehealthDialog({ open, onOpenChange, patientId, appointmentId, clinicId, patientName, therapySessionId }: Props) {
   const navigate = useNavigate();
   // 'none' = não grava | 'audio' = somente áudio (padrão, mais leve, foco em transcrição)
   // 'video' = áudio + vídeo (consome muito mais armazenamento)
