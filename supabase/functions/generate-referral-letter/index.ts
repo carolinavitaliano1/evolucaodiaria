@@ -19,22 +19,19 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const [paciente, anamnese, avaliacoes, pdis, evolucoes] = await Promise.all([
-      sb.from('patients').select('name, birthdate, observations, school_name, school_grade, responsible_name').eq('id', patientId).maybeSingle(),
+    const [paciente, anamnese, avaliacoes, pdis, evos] = await Promise.all([
+      sb.from('patients').select('name, birthdate, observations').eq('id', patientId).maybeSingle(),
       sb.from('psico_anamnese').select('escolar, familiar').eq('patient_id', patientId).maybeSingle(),
       sb.from('psico_avaliacoes').select('*').eq('patient_id', patientId).order('data_avaliacao', { ascending: false }).limit(5),
       sb.from('psico_pdi').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(3),
-      sb.from('psico_evolucoes').select('date, content, mood').eq('patient_id', patientId).order('date', { ascending: false }).limit: 10 as any,
-    ] as any);
-
-    // Fallback se a chain acima quebrar pelo "limit:"
-    const evos = await sb.from('psico_evolucoes').select('date, content').eq('patient_id', patientId).order('date', { ascending: false }).limit(10);
+      sb.from('psico_evolucoes').select('date, content').eq('patient_id', patientId).order('date', { ascending: false }).limit(10),
+    ]);
 
     const prontuario = {
-      paciente: (paciente as any).data || null,
-      anamnese: (anamnese as any).data || null,
-      avaliacoes: (avaliacoes as any).data || [],
-      pdis: (pdis as any).data || [],
+      paciente: paciente.data || null,
+      anamnese: anamnese.data || null,
+      avaliacoes: avaliacoes.data || [],
+      pdis: pdis.data || [],
       evolucoes: evos.data || [],
     };
 
