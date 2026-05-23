@@ -152,30 +152,37 @@ II - MOTIVO DO ENCAMINHAMENTO
    Parágrafo técnico descrevendo a demanda inicial que motivou o acompanhamento, baseado no diagnóstico, observações e queixas registradas.
 
 III - OBSERVAÇÕES COMPORTAMENTAIS E COGNITIVAS
-   Esta é a seção MAIS IMPORTANTE e DETALHADA do relatório. Deve ser obrigatoriamente organizada em DOIS blocos com subtítulos em negrito (sem numeração romana, apenas o nome do bloco), e cada bloco com subcategorias em parágrafos técnicos consolidados (sem citar datas específicas). Aborde TODAS as subcategorias abaixo, mesmo que brevemente, baseando-se SEMPRE nas evoluções, avaliações e observações disponíveis. Quando não houver dado suficiente para uma subcategoria, registre "Sem dados suficientes para análise neste momento" — NUNCA invente.
+   Esta seção descreve a EVOLUÇÃO do paciente no período (mensal, bimestral ou trimestral). NÃO é diário sessão-a-sessão: identifique padrões, constâncias, avanços e barreiras observados ao longo de todo o ciclo. Organize em DOIS blocos com subtítulos em **negrito** (sem numeração romana). Aborde TODAS as subcategorias abaixo; se não houver dado para alguma, omita-a discretamente — NUNCA invente. Use tom técnico, imparcial e acolhedor, com termos de evolução contínua ("demonstrou avanços", "manteve constância", "apresentou flutuações", "está em processo de aquisição").
 
-   1. Aspectos Cognitivos
-   Trate, em parágrafos técnicos, das seguintes subcategorias (use os nomes como marcadores em itálico ou negrito ao iniciar cada análise):
-   - Atenção: capacidade de focar e manter o foco, diferenciando atenção sustentada (foco contínuo), seletiva (focar ignorando distratores) e alternada (mudar o foco entre tarefas).
-   - Memória: retenção e evocação de informações, contemplando memória de curto prazo, longo prazo e operacional (de trabalho), essencial para aprendizagem e resolução de problemas.
-   - Funções Executivas: planejamento, organização, controle inibitório (freio de impulsos) e flexibilidade cognitiva (adaptação do pensamento a novas situações).
-   - Linguagem e Comunicação: aspectos receptivos (compreensão) e expressivos (fala, vocabulário, formulação de frases) da linguagem estruturada.
-   - Percepção e Habilidades Visuoespaciais: interpretação de estímulos sensoriais (visuais, auditivos, táteis) e compreensão de relações de espaço, distância e lateralidade.
-   - Raciocínio e Resolução de Problemas: abstração, categorização, pensamento lógico e dedutivo na busca por soluções.
+   **1. Aspectos Cognitivos (Evolução no período)**
+   Descreva o perfil e os ganhos consolidados do paciente nas subcategorias abaixo, usando o nome de cada uma em **negrito** ao iniciar:
+   - **Atenção**: sustentada, seletiva e alternada.
+   - **Memória**: curto prazo, longo prazo e operacional (de trabalho).
+   - **Funções Executivas**: planejamento, organização, controle inibitório e flexibilidade cognitiva.
+   - **Linguagem e Comunicação**: aspectos receptivos e expressivos.
+   - **Percepção e Habilidades Visuoespaciais**: interpretação sensorial e relações de espaço/lateralidade.
+   - **Raciocínio e Resolução de Problemas**: abstração, categorização e pensamento lógico-dedutivo.
 
-   2. Aspectos Comportamentais (e Socioemocionais)
-   Trate, em parágrafos técnicos, das seguintes subcategorias (use os nomes como marcadores em itálico ou negrito ao iniciar cada análise):
-   - Regulação Emocional: manejo de frustrações, modulação das respostas emocionais e gerenciamento de ansiedade ou irritabilidade sem desorganização severa.
-   - Habilidades Sociais: interação com pares e figuras de autoridade, reciprocidade social, empatia, compreensão de regras sociais e leitura de expressões faciais.
-   - Engajamento e Motivação: interesse pelas atividades, iniciativa, persistência diante de desafios e tempo de permanência na tarefa.
-   - Autonomia e Independência: iniciativa para realizar atividades de vida diária (AVDs) e tomar decisões adequadas à idade e ao contexto.
-   - Comportamentos Desafiadores ou Atípicos: presença (ou ausência) de agitação motora excessiva, agressividade física/verbal, rigidez de rotina, autoagressão ou estereotipias — esta subcategoria é OBRIGATÓRIA e deve sempre constar no relatório.
+   **2. Aspectos Comportamentais e Socioemocionais (Padrões do período)**
+   Descreva os padrões observados ao longo do ciclo, usando o nome de cada subcategoria em **negrito**:
+   - **Regulação Emocional**: como lidou com frustrações ao longo do tempo, frequência de desorganização e modulação.
+   - **Habilidades Sociais**: evolução na interação, reciprocidade, empatia e leitura social.
+   - **Engajamento e Motivação**: flutuações de interesse, iniciativa e persistência.
+   - **Autonomia e Independência**: avanços em AVDs e execução autônoma de tarefas.
+   - **Comportamentos Desafiadores ou Atípicos**: frequência, gatilhos comuns e redução/aumento de estereotipias, rigidez ou agitação — OBRIGATÓRIA quando houver qualquer dado relacionado.
 
-IV - ANÁLISE DO DESENVOLVIMENTO CLÍNICO
-   Parágrafos descrevendo as habilidades trabalhadas, técnicas/abordagens utilizadas, progressos observados e áreas em desenvolvimento. Pode contemplar motricidade fina e global, comunicação verbal e não-verbal, aspectos socioemocionais e cognitivos.
+IV - RESUMO DOS ATENDIMENTOS (Desenvolvimento e Intervenções do Ciclo)
+   Sintetize as estratégias clínicas utilizadas no período. Use subtítulos em **negrito** para destacar cada item. Deve conter:
+   - **Objetivos terapêuticos** principais trabalhados nestes meses.
+   - **Abordagens e recursos terapêuticos** mais eficazes (ex.: apoios visuais, mediação física, pistas verbais, modelagem, reforçamento positivo).
+   - **Adesão e curva de aprendizagem** do paciente diante de novos desafios.
+   - **Adaptações de manejo clínico** implementadas de forma recorrente para garantir engajamento.
 
-V - CONSIDERAÇÕES FINAIS
-   Recomendações técnicas numeradas (1., 2., 3.) e conclusão sobre a continuidade do processo terapêutico.
+V - CONSIDERAÇÕES FINAIS E PLANEJAMENTO
+   Balanço do ciclo, com subtítulos em **negrito**. Deve conter OBRIGATORIAMENTE:
+   - **Avaliação global**: os objetivos previstos foram alcançados, parcialmente alcançados ou não alcançados? Quais foram os principais marcos e maiores barreiras?
+   - **Alinhamentos com a rede de apoio** (escola, família, equipe multidisciplinar) realizados no período.
+   - **Plano de ação**: focos e metas terapêuticas estabelecidas para o próximo ciclo de acompanhamento.
 
 3) FECHAMENTO FORMAL OBRIGATÓRIO (após a Seção V, sem numeração romana):
    Inclua exatamente, em parágrafos separados:
