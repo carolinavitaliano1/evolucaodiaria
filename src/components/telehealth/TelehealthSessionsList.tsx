@@ -110,6 +110,7 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
   }
 
   async function handleDelete(rec: Recording) {
+    // handled separately
     if (!confirm('Excluir esta gravação? Esta ação não pode ser desfeita.')) return;
     setBusyId(rec.id);
     try {
