@@ -6,7 +6,7 @@ interface Props {
 }
 
 function avgScore(a: Avaliacao): number | null {
-  const vals = [a.leitura, a.escrita, a.matematica, a.atencao, a.memoria, a.linguagem]
+  const vals = [a.equilibrio, a.coord_global, a.coord_fina, a.esquema_corporal, a.lateralidade, a.org_espacial]
     .filter((v): v is number => typeof v === 'number');
   if (!vals.length) return null;
   return vals.reduce((s, v) => s + v, 0) / vals.length;

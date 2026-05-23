@@ -24,7 +24,7 @@ interface Props {
   onCancel: () => void;
 }
 
-const METRICAS_INICIAIS = ['Memória', 'Atenção', 'Linguagem', 'Raciocínio'];
+const METRICAS_INICIAIS = ['Equilíbrio', 'Coord. Global', 'Coord. Fina', 'Esquema Corporal'];
 
 export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props) {
   // --- Dados principais ---
@@ -45,12 +45,12 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
     // Compat com avaliações antigas (campos fixos)
     if (existing) {
       const compat: Record<string, number> = {};
-      if (existing.memoria != null) compat['Memória'] = existing.memoria;
-      if (existing.atencao != null) compat['Atenção'] = existing.atencao;
-      if (existing.linguagem != null) compat['Linguagem'] = existing.linguagem;
-      if (existing.leitura != null) compat['Leitura'] = existing.leitura;
-      if (existing.escrita != null) compat['Escrita'] = existing.escrita;
-      if (existing.matematica != null) compat['Matemática'] = existing.matematica;
+      if (existing.equilibrio != null) compat['Equilíbrio'] = existing.equilibrio;
+      if (existing.coord_global != null) compat['Coord. Global'] = existing.coord_global;
+      if (existing.coord_fina != null) compat['Coord. Fina'] = existing.coord_fina;
+      if (existing.esquema_corporal != null) compat['Esquema Corporal'] = existing.esquema_corporal;
+      if (existing.lateralidade != null) compat['Lateralidade'] = existing.lateralidade;
+      if (existing.org_espacial != null) compat['Org. Espacial'] = existing.org_espacial;
       if (Object.keys(compat).length > 0) return compat;
     }
     return Object.fromEntries(METRICAS_INICIAIS.map((m) => [m, 0]));
@@ -217,12 +217,12 @@ export function AvaliacaoForm({ patientId, existing, onSaved, onCancel }: Props)
         arquivo_nome: arquivoNome,
         metricas,
         // espelha métricas conhecidas nos campos legados para compat com radar antigo
-        memoria: metricas['Memória'] ?? null,
-        atencao: metricas['Atenção'] ?? null,
-        linguagem: metricas['Linguagem'] ?? null,
-        leitura: metricas['Leitura'] ?? null,
-        escrita: metricas['Escrita'] ?? null,
-        matematica: metricas['Matemática'] ?? null,
+        equilibrio: metricas['Equilíbrio'] ?? null,
+        coord_global: metricas['Coord. Global'] ?? null,
+        coord_fina: metricas['Coord. Fina'] ?? null,
+        esquema_corporal: metricas['Esquema Corporal'] ?? null,
+        lateralidade: metricas['Lateralidade'] ?? null,
+        org_espacial: metricas['Org. Espacial'] ?? null,
       };
       const { error } = existing
         ? await supabase.from('psicom_avaliacoes').update(payload).eq('id', existing.id)
