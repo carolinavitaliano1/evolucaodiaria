@@ -23,7 +23,7 @@ export const SPECIALTY_MODULES: SpecialtyModule[] = [
     icon: School,
     color: 'text-violet-500',
     price: 39,
-    stripePriceId: 'price_1TaGpSDl2hex55TCSanLMgLB',
+    stripePriceId: 'price_1TaH8mDl2hex55TCgAZrPg9r',
     description: 'Avaliação e intervenção em aprendizagem',
     status: 'available',
     features: [
