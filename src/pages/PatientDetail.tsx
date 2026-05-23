@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 // @ts-ignore
 import { PortalTab } from '@/components/patients/PortalTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, LogOut, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink, Lock as LockIcon } from 'lucide-react';
+import { ArrowLeft, Phone, Cake, FileText, Plus, CheckCircle2, Image, Stamp as StampIcon, Download, CalendarRange, PenLine, Edit, X, Paperclip, ListTodo, Package, Sparkles, Pencil, Trash2, Loader2, Wand2, Archive, ArchiveRestore, LogOut, BarChart3, ChevronLeft, ChevronRight, TrendingUp, DollarSign, Users, Calendar, Receipt, UserCheck, Clock, MessageSquare, AlertCircle, Newspaper, ClipboardList, Video, Send, Link2, ExternalLink, Lock as LockIcon, Mic } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { generateEvolutionPdf, generateMultipleEvolutionsPdf } from '@/utils/generateEvolutionPdf';
 import { PatientAttendanceButton } from '@/components/attendance/PatientAttendanceButton';
@@ -60,6 +60,7 @@ import jsPDF from 'jspdf';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { PatientFeed } from '@/components/feed/PatientFeed';
 import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
+import { InPersonTranscriptionTab } from '@/components/patients/InPersonTranscriptionTab';
 import { Brain } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { UpgradeBlock } from '@/components/UpgradeBlock';
@@ -2755,6 +2756,7 @@ export default function PatientDetail() {
           {[
             { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
             { value: 'session', icon: Brain, label: 'Sessão' },
+            { value: 'transcricao', icon: Mic, label: 'Transcrição' },
             ...((!isOrgMember || isOrgOwner) ? [{ value: 'reports', icon: BarChart3, label: 'Rel. Mensal' }] : []),
             ...(canSeeFinancialTab ? [{ value: 'financial', icon: DollarSign, label: 'Financeiro' }] : []),
             { value: 'documents', icon: Paperclip, label: 'Documentos' },
@@ -3373,6 +3375,18 @@ export default function PatientDetail() {
               clinicId={clinic.id}
               paymentValue={patient.paymentValue}
               patientCpf={(patient as any).cpf}
+            />
+          </TabsContent>
+        )}
+
+        {/* In-Person Transcription Tab */}
+        {patient && clinic && (
+          <TabsContent value="transcricao" className="space-y-4">
+            <InPersonTranscriptionTab
+              patientId={patient.id}
+              patientName={patient.name}
+              clinicId={clinic.id}
+              clinicType={clinic.type}
             />
           </TabsContent>
         )}
