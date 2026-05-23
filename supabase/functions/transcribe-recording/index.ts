@@ -7,14 +7,18 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-function buildDiarizedTranscript(dgJson: any): string {
+function buildDiarizedTranscript(dgJson: any, speakerNames: Record<number, string> = {}): string {
+  const nameFor = (sp: number | undefined) => {
+    if (sp === undefined || sp === null) return 'Falante';
+    return speakerNames[sp] || `Falante ${sp + 1}`;
+  };
   try {
     const paragraphs =
       dgJson?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.paragraphs;
     if (Array.isArray(paragraphs) && paragraphs.length > 0) {
       return paragraphs
         .map((p: any) => {
-          const speaker = p.speaker !== undefined ? `Falante ${p.speaker + 1}` : 'Falante';
+          const speaker = nameFor(p.speaker);
           const sentences = (p.sentences || []).map((s: any) => s.text).join(' ');
           return `**${speaker}:** ${sentences}`;
         })
@@ -23,13 +27,38 @@ function buildDiarizedTranscript(dgJson: any): string {
     const utterances = dgJson?.results?.utterances;
     if (Array.isArray(utterances) && utterances.length > 0) {
       return utterances
-        .map((u: any) => `**Falante ${(u.speaker ?? 0) + 1}:** ${u.transcript}`)
+        .map((u: any) => `**${nameFor(u.speaker ?? 0)}:** ${u.transcript}`)
         .join('\n\n');
     }
     return dgJson?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
   } catch {
     return dgJson?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
   }
+}
+
+/**
+ * Mapeia IDs de falantes da Deepgram para nomes reais.
+ * Heurística: o primeiro a falar é o terapeuta (geralmente abre a sessão),
+ * o segundo distinto é o paciente. Demais ficam como "Falante N".
+ */
+function buildSpeakerMap(
+  dgJson: any,
+  therapistName: string | null,
+  patientName: string | null,
+): Record<number, string> {
+  const map: Record<number, string> = {};
+  const utterances = dgJson?.results?.utterances;
+  if (!Array.isArray(utterances) || utterances.length === 0) return map;
+  const orderedDistinct: number[] = [];
+  for (const u of utterances) {
+    const sp = u?.speaker;
+    if (typeof sp !== 'number') continue;
+    if (!orderedDistinct.includes(sp)) orderedDistinct.push(sp);
+    if (orderedDistinct.length >= 2) break;
+  }
+  if (orderedDistinct[0] !== undefined && therapistName) map[orderedDistinct[0]] = therapistName;
+  if (orderedDistinct[1] !== undefined && patientName) map[orderedDistinct[1]] = patientName;
+  return map;
 }
 
 Deno.serve(async (req) => {
@@ -56,7 +85,7 @@ Deno.serve(async (req) => {
     // Load recording + session for permission check
     const { data: rec, error: recErr } = await admin
       .from('video_recordings')
-      .select('id, daily_recording_id, status, video_session_id, video_sessions!inner(therapist_user_id, clinic_id)')
+      .select('id, daily_recording_id, status, video_session_id, video_sessions!inner(therapist_user_id, clinic_id, patient_id)')
       .eq('id', recording_id)
       .maybeSingle();
     if (recErr) throw recErr;
@@ -153,9 +182,28 @@ Deno.serve(async (req) => {
         throw new Error(`Deepgram STT error [${sttRes.status}]: ${err}`);
       }
       const sttJson = await sttRes.json();
-      const text: string = buildDiarizedTranscript(sttJson);
+
+      // Buscar nomes reais para substituir "Falante 1/2"
+      let therapistName: string | null = null;
+      let patientName: string | null = null;
+      try {
+        const [{ data: prof }, { data: pat }] = await Promise.all([
+          admin.from('profiles').select('name').eq('user_id', session.therapist_user_id).maybeSingle(),
+          session.patient_id
+            ? admin.from('patients').select('name').eq('id', session.patient_id).maybeSingle()
+            : Promise.resolve({ data: null } as any),
+        ]);
+        therapistName = (prof?.name as string) || 'Terapeuta';
+        patientName = (pat?.name as string) || 'Paciente';
+      } catch {
+        therapistName = 'Terapeuta';
+        patientName = 'Paciente';
+      }
+
+      const speakerMap = buildSpeakerMap(sttJson, therapistName, patientName);
+      const text: string = buildDiarizedTranscript(sttJson, speakerMap);
       const speakersJson = sttJson?.results?.utterances
-        ? { utterances: sttJson.results.utterances }
+        ? { utterances: sttJson.results.utterances, speaker_map: speakerMap }
         : null;
 
       await admin
