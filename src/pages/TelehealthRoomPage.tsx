@@ -26,7 +26,7 @@ export default function TelehealthRoomPage() {
         }
         const { data, error } = await supabase
           .from('video_sessions')
-          .select('daily_room_url, status, therapist_user_id')
+          .select('daily_room_url, patient_id, status, therapist_user_id')
           .eq('id', sessionId)
           .maybeSingle();
         if (error) throw error;
