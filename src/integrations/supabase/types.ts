@@ -1527,6 +1527,42 @@ export type Database = {
         }
         Relationships: []
       }
+      module_orientacoes: {
+        Row: {
+          audience: string
+          content: string
+          created_at: string
+          id: string
+          kind: string
+          patient_id: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audience: string
+          content?: string
+          created_at?: string
+          id?: string
+          kind: string
+          patient_id: string
+          titulo?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audience?: string
+          content?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          patient_id?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       module_subscriptions: {
         Row: {
           created_at: string
@@ -3383,6 +3419,36 @@ export type Database = {
           therapist_id?: string
           titulo?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      psicom_anamnese: {
+        Row: {
+          created_at: string
+          familiar: Json
+          id: string
+          motor: Json
+          patient_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          familiar?: Json
+          id?: string
+          motor?: Json
+          patient_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          familiar?: Json
+          id?: string
+          motor?: Json
+          patient_id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
