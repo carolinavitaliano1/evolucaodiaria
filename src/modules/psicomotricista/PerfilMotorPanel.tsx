@@ -142,28 +142,3 @@ export function PerfilMotorPanel({ patientId, avaliacoes }: Props) {
     </div>
   );
 }
-
-function OrientacoesCard({ icon, titulo, grupos }: {
-  icon: React.ReactNode;
-  titulo: string;
-  grupos: { titulo: string; itens: string[] }[];
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-      <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-        <span className="text-primary">{icon}</span>
-        {titulo}
-      </h4>
-      {grupos.map((g) => (
-        <div key={g.titulo} className="space-y-1">
-          <p className="text-xs font-semibold text-foreground">{g.titulo}</p>
-          <ul className="space-y-0.5 pl-3">
-            {g.itens.map((it, i) => (
-              <li key={i} className="text-xs text-muted-foreground list-disc list-outside leading-relaxed">{it}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  );
-}
