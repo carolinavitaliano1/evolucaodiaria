@@ -81,12 +81,12 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
   useEffect(() => {
     load();
     const channel = supabase
-      .channel(`telehealth-recordings-${patientId}`)
+      .channel(`telehealth-recordings-${patientId}-${therapySessionId || 'all'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'video_recordings' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId]);
+  }, [patientId, therapySessionId]);
 
   async function handleDownload(rec: Recording) {
     setBusyId(rec.id);
