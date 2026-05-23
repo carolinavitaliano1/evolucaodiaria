@@ -3379,6 +3379,18 @@ export default function PatientDetail() {
           </TabsContent>
         )}
 
+        {/* In-Person Transcription Tab */}
+        {patient && clinic && (
+          <TabsContent value="transcricao" className="space-y-4">
+            <InPersonTranscriptionTab
+              patientId={patient.id}
+              patientName={patient.name}
+              clinicId={clinic.id}
+              clinicType={clinic.type}
+            />
+          </TabsContent>
+        )}
+
         {/* Monthly Report Tab */}
         <TabsContent value="reports" className="space-y-4">
           <div className="bg-card rounded-xl shadow-sm border border-border">
