@@ -11,6 +11,8 @@ import { PortalProvider } from "@/contexts/PortalContext";
 import { PortalRoute } from "@/components/portal/PortalRoute";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { TelehealthCallProvider } from "@/contexts/TelehealthCallContext";
+import { PersistentTelehealthRoom } from "@/components/telehealth/PersistentTelehealthRoom";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -105,8 +107,10 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <Suspense fallback={<RouteFallback />}>
-                <Routes>
+              <TelehealthCallProvider>
+                <PersistentTelehealthRoom />
+                <Suspense fallback={<RouteFallback />}>
+                  <Routes>
                   <Route path="/" element={<RootRedirect />} />
                   <Route path="/landing" element={<Landing />} />
                   <Route path="/privacidade" element={<PrivacyPolicy />} />
@@ -161,9 +165,10 @@ const App = () => (
                     <Route path="/suporte" element={<Support />} />
                     <Route path="/admin/suporte" element={<AdminSupport />} />
                   </Route>
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </TelehealthCallProvider>
             </BrowserRouter>
           </AppProvider>
         </PortalProvider>
