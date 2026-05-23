@@ -2,55 +2,45 @@ import { useCallback, useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Activity, Target, NotebookPen, FileText, FolderOpen, Calendar } from 'lucide-react';
+import { Plus, Activity, Target, FileText, FolderOpen, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AvaliacaoCard } from './AvaliacaoCard';
 import { AvaliacaoForm } from './AvaliacaoForm';
 import { PDICard } from './PDICard';
 import { PDIForm } from './PDIForm';
-import { EvolucaoForm } from './EvolucaoForm';
 import { RelatorioPanel } from './RelatorioPanel';
 import { RegistrosPanel } from './RegistrosPanel';
 import { ReunioesPanel } from './ReunioesPanel';
 import { StatsCards } from './StatsCards';
-import type { Avaliacao, PDI, PsicoEvolucao } from './types';
+import type { Avaliacao, PDI } from './types';
 
 interface Props {
   patientId: string;
 }
 
-const DESEMPENHO_LABEL: Record<string, string> = {
-  otimo: 'Ótimo', bom: 'Bom', regular: 'Regular', dificuldade: 'Com dificuldade',
-};
-
 export function PsicopedagogoModule({ patientId }: Props) {
-  const [tab, setTab] = useState<'avaliacoes' | 'registros' | 'pdi' | 'evolucoes' | 'reunioes' | 'relatorios'>('avaliacoes');
+  const [tab, setTab] = useState<'avaliacoes' | 'registros' | 'pdi' | 'reunioes' | 'relatorios'>('avaliacoes');
   const [avals, setAvals] = useState<Avaliacao[]>([]);
   const [pdis, setPdis] = useState<PDI[]>([]);
-  const [evos, setEvos] = useState<PsicoEvolucao[]>([]);
+  const [filterTipo, setFilterTipo] = useState<string>('TODOS');
 
   const [avalDialog, setAvalDialog] = useState(false);
   const [editAval, setEditAval] = useState<Avaliacao | null>(null);
   const [pdiDialog, setPdiDialog] = useState(false);
   const [editPdi, setEditPdi] = useState<PDI | null>(null);
-  const [evoDialog, setEvoDialog] = useState(false);
 
   const load = useCallback(async () => {
-    const [a, p, e] = await Promise.all([
+    const [a, p] = await Promise.all([
       supabase.from('psico_avaliacoes').select('*').eq('patient_id', patientId)
         .order('data_avaliacao', { ascending: false }),
       supabase.from('psico_pdi').select('*').eq('patient_id', patientId)
         .order('created_at', { ascending: false }),
-      supabase.from('psico_evolucoes').select('*').eq('patient_id', patientId)
-        .order('data_sessao', { ascending: false }),
     ]);
-    if (a.error || p.error || e.error) toast.error('Erro ao carregar dados');
+    if (a.error || p.error) toast.error('Erro ao carregar dados');
     setAvals((a.data || []) as Avaliacao[]);
     setPdis((p.data || []) as PDI[]);
-    setEvos((e.data || []) as PsicoEvolucao[]);
   }, [patientId]);
 
   useEffect(() => { load(); }, [load]);
@@ -65,50 +55,61 @@ export function PsicopedagogoModule({ patientId }: Props) {
     const { error } = await supabase.from('psico_pdi').delete().eq('id', id);
     if (error) toast.error('Erro ao excluir'); else { toast.success('Excluído'); load(); }
   }
-  async function deleteEvo(id: string) {
-    if (!confirm('Excluir esta evolução?')) return;
-    const { error } = await supabase.from('psico_evolucoes').delete().eq('id', id);
-    if (error) toast.error('Erro ao excluir'); else { toast.success('Excluída'); load(); }
-  }
+
+  const filteredAvals = filterTipo === 'TODOS' ? avals : avals.filter((a) => a.tipo === filterTipo);
 
   return (
     <div className="space-y-4">
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto p-1 gap-1">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto p-1 gap-1">
           <TabsTrigger value="avaliacoes" className="gap-1.5"><Activity className="w-3.5 h-3.5" /> Avaliações</TabsTrigger>
           <TabsTrigger value="registros" className="gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Registros</TabsTrigger>
           <TabsTrigger value="pdi" className="gap-1.5"><Target className="w-3.5 h-3.5" /> PDI</TabsTrigger>
-          <TabsTrigger value="evolucoes" className="gap-1.5"><NotebookPen className="w-3.5 h-3.5" /> Evoluções</TabsTrigger>
           <TabsTrigger value="reunioes" className="gap-1.5"><Calendar className="w-3.5 h-3.5" /> Reuniões</TabsTrigger>
           <TabsTrigger value="relatorios" className="gap-1.5"><FileText className="w-3.5 h-3.5" /> Relatórios IA</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="avaliacoes" className="space-y-3">
+        <TabsContent value="avaliacoes" className="space-y-4">
           <StatsCards avaliacoes={avals} />
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-muted-foreground">
-              {avals.length} avaliação{avals.length === 1 ? '' : 'ões'} registrada{avals.length === 1 ? '' : 's'}.
-            </p>
-            <Button size="sm" onClick={() => { setEditAval(null); setAvalDialog(true); }} className="gap-1.5">
-              <Plus className="w-3.5 h-3.5" /> Nova avaliação
-            </Button>
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-muted/30">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Registros recentes</h3>
+                <p className="text-[11px] text-muted-foreground">Clique para expandir e ver o radar e detalhes.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={filterTipo} onValueChange={setFilterTipo}>
+                  <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TODOS">Todos os tipos</SelectItem>
+                    <SelectItem value="inicial">Inicial</SelectItem>
+                    <SelectItem value="reavaliacao">Reavaliação</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={() => { setEditAval(null); setAvalDialog(true); }} className="gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Nova avaliação
+                </Button>
+              </div>
+            </div>
+            {filteredAvals.length === 0 ? (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                {avals.length === 0 ? 'Nenhuma avaliação ainda. Comece com a avaliação inicial.' : `Nenhuma avaliação do tipo selecionado.`}
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {filteredAvals.map((a) => (
+                  <div key={a.id} className="p-2">
+                    <AvaliacaoCard
+                      avaliacao={a}
+                      onEdit={() => { setEditAval(a); setAvalDialog(true); }}
+                      onDelete={() => deleteAval(a.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {avals.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              Nenhuma avaliação ainda. Comece com a avaliação inicial.
-            </div>
-          ) : (
-            <div className="grid lg:grid-cols-2 gap-3">
-              {avals.map((a) => (
-                <AvaliacaoCard
-                  key={a.id}
-                  avaliacao={a}
-                  onEdit={() => { setEditAval(a); setAvalDialog(true); }}
-                  onDelete={() => deleteAval(a.id)}
-                />
-              ))}
-            </div>
-          )}
         </TabsContent>
 
         <TabsContent value="registros">
@@ -138,53 +139,6 @@ export function PsicopedagogoModule({ patientId }: Props) {
                   onDelete={() => deletePdi(p.id)}
                   onChanged={load}
                 />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="evolucoes" className="space-y-3">
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-muted-foreground">
-              {evos.length} sessão{evos.length === 1 ? '' : 'ões'} registrada{evos.length === 1 ? '' : 's'}.
-            </p>
-            <Button size="sm" onClick={() => setEvoDialog(true)} className="gap-1.5">
-              <Plus className="w-3.5 h-3.5" /> Nova evolução
-            </Button>
-          </div>
-          {evos.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              Nenhuma evolução de sessão ainda.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {evos.map((e) => (
-                <div key={e.id} className="rounded-xl border border-border bg-card p-3 space-y-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="text-sm font-medium text-foreground">
-                      {format(new Date(e.data_sessao + 'T12:00:00'), "d 'de' MMM yyyy", { locale: ptBR })}
-                      {e.duracao_min ? <span className="text-xs text-muted-foreground"> · {e.duracao_min} min</span> : null}
-                    </div>
-                    <div className="flex gap-2 text-[10px]">
-                      {e.desempenho && <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{DESEMPENHO_LABEL[e.desempenho]}</span>}
-                      {e.humor && <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{e.humor}</span>}
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={() => deleteEvo(e.id)}>×</Button>
-                    </div>
-                  </div>
-                  {e.atividades && e.atividades.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {e.atividades.map((at, i) => (
-                        <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{at}</span>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-xs text-foreground/80 whitespace-pre-wrap">{e.descricao}</p>
-                  {e.tarefas_casa && (
-                    <p className="text-xs text-muted-foreground border-t pt-1.5">
-                      <span className="font-medium">Tarefa de casa:</span> {e.tarefas_casa}
-                    </p>
-                  )}
-                </div>
               ))}
             </div>
           )}
@@ -227,19 +181,6 @@ export function PsicopedagogoModule({ patientId }: Props) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={evoDialog} onOpenChange={setEvoDialog}>
-        <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nova evolução</DialogTitle>
-          </DialogHeader>
-          <EvolucaoForm
-            patientId={patientId}
-            pdis={pdis}
-            onSaved={() => { setEvoDialog(false); load(); }}
-            onCancel={() => setEvoDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
