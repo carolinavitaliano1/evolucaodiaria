@@ -11,12 +11,12 @@ export interface Avaliacao {
   data_avaliacao: string;
   tipo: AvaliacaoTipo;
   status: 'pendente' | 'concluida';
-  leitura: number | null;
-  escrita: number | null;
-  matematica: number | null;
-  atencao: number | null;
-  memoria: number | null;
-  linguagem: number | null;
+  equilibrio: number | null;
+  coord_global: number | null;
+  coord_fina: number | null;
+  esquema_corporal: number | null;
+  lateralidade: number | null;
+  org_espacial: number | null;
   testes_aplicados: string[] | null;
   observacoes: string | null;
   arquivo_url: string | null;
@@ -78,25 +78,26 @@ export interface Relatorio {
 }
 
 export const TESTES_SUGERIDOS = [
-  'WISC-V', 'WAIS-IV', 'Bender', 'Frostig', 'TDE-II', 'Provinha Brasil',
-  'BPA-2', 'Trail Making Test', 'CONFIAS', 'Boehm', 'Raven', 'TONI-4'
+  'BPM (Fonseca)', 'EDM (Rosa Neto)', 'TGMD-2', 'Movement ABC-2',
+  'Beery VMI', 'Bender', 'Bruininks-Oseretsky', 'Perfil Sensorial'
 ];
 
 export const INSTRUMENTOS_PADRAO = [
-  'WISC-IV', 'WISC-V', 'IDADI', 'Raven', 'CARS-2',
-  'Avaliação Psicopedagógica', 'TDE-II', 'Bender', 'Outros',
+  'BPM (Fonseca)', 'EDM', 'TGMD-2', 'Movement ABC-2',
+  'Beery VMI', 'Bender', 'Avaliação Psicomotora', 'Outros',
 ];
 
 export const CATEGORIAS_TIPO = [
-  'Avaliação Cognitiva',
-  'Avaliação Neuropsicológica',
-  'Avaliação Pedagógica',
-  'Avaliação Psicopedagógica',
+  'Avaliação Psicomotora',
+  'Integração Sensorial',
+  'Motora Global',
+  'Motora Fina',
   'Outros',
 ];
 
 export const METRICAS_PADRAO_SUGERIDAS = [
-  'Memória', 'Atenção', 'Linguagem', 'Raciocínio', 'Coordenação', 'Percepção',
+  'Equilíbrio', 'Coord. Global', 'Coord. Fina', 'Esquema Corporal',
+  'Lateralidade', 'Org. Espacial', 'Org. Temporal', 'Tônus',
 ];
 
 export interface AvaliacaoTipoCustom {
@@ -110,13 +111,13 @@ export interface AvaliacaoTipoCustom {
   updated_at: string;
 }
 
-export const DOMINIOS: { key: keyof Pick<Avaliacao, 'leitura'|'escrita'|'matematica'|'atencao'|'memoria'|'linguagem'>; label: string }[] = [
-  { key: 'leitura', label: 'Leitura' },
-  { key: 'escrita', label: 'Escrita' },
-  { key: 'matematica', label: 'Matemática' },
-  { key: 'atencao', label: 'Atenção' },
-  { key: 'memoria', label: 'Memória' },
-  { key: 'linguagem', label: 'Linguagem' },
+export const DOMINIOS: { key: keyof Pick<Avaliacao, 'equilibrio'|'coord_global'|'coord_fina'|'esquema_corporal'|'lateralidade'|'org_espacial'>; label: string }[] = [
+  { key: 'equilibrio', label: 'Equilíbrio' },
+  { key: 'coord_global', label: 'Coord. Global' },
+  { key: 'coord_fina', label: 'Coord. Fina' },
+  { key: 'esquema_corporal', label: 'Esquema Corporal' },
+  { key: 'lateralidade', label: 'Lateralidade' },
+  { key: 'org_espacial', label: 'Org. Espacial' },
 ];
 
 export interface Registro {
