@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Mic, Square, Upload, Loader2, Wand2, Trash2, Sparkles, FileAudio, Copy } from 'lucide-react';
+import { Mic, Square, Upload, Loader2, Wand2, Trash2, Sparkles, FileAudio, Copy, UserCog } from 'lucide-react';
 
 interface Recording {
   id: string;
@@ -385,6 +385,12 @@ export function InPersonTranscriptionTab({ patientId, patientName, clinicId, cli
 
                 {rec.transcription_status === 'ready' && (
                   <>
+                    <SpeakerRenamer
+                      text={text}
+                      onApply={(newText) =>
+                        setEditingText((s) => ({ ...s, [rec.id]: newText }))
+                      }
+                    />
                     <Textarea
                       value={text}
                       onChange={(e) => setEditingText((s) => ({ ...s, [rec.id]: e.target.value }))}
