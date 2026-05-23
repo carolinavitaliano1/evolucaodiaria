@@ -5,14 +5,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  AlertTriangle, CheckCircle2, BookOpen, Home, GraduationCap, Activity,
+  AlertTriangle, CheckCircle2, BookOpen, Activity,
   Mail, Copy,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DOMINIOS, type Avaliacao } from './types';
 import {
-  ANAMNESE_ESCOLAR, ANAMNESE_FAMILIAR,
   REGRESSAO_LIMIAR, modeloCartaEncaminhamento,
 } from './presets';
 
@@ -155,19 +154,6 @@ export function PerfilAprendizagemPanel({ patientId, avaliacoes }: Props) {
         )}
       </div>
 
-      {/* Anamnese */}
-      <div className="grid lg:grid-cols-2 gap-3">
-        <AnamneseCard
-          icon={<GraduationCap className="w-4 h-4" />}
-          titulo="Anamnese escolar"
-          grupos={ANAMNESE_ESCOLAR}
-        />
-        <AnamneseCard
-          icon={<Home className="w-4 h-4" />}
-          titulo="Anamnese familiar"
-          grupos={ANAMNESE_FAMILIAR}
-        />
-      </div>
 
       {/* Carta de encaminhamento */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
@@ -206,31 +192,6 @@ export function PerfilAprendizagemPanel({ patientId, avaliacoes }: Props) {
       <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
         <BookOpen className="w-3 h-3" /> Ferramentas de apoio à prática psicopedagógica (uso clínico complementar).
       </p>
-    </div>
-  );
-}
-
-function AnamneseCard({ icon, titulo, grupos }: {
-  icon: React.ReactNode;
-  titulo: string;
-  grupos: { titulo: string; itens: string[] }[];
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-      <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-        <span className="text-primary">{icon}</span>
-        {titulo}
-      </h4>
-      {grupos.map((g) => (
-        <div key={g.titulo} className="space-y-1">
-          <p className="text-xs font-semibold text-foreground">{g.titulo}</p>
-          <ul className="space-y-0.5 pl-3">
-            {g.itens.map((it, i) => (
-              <li key={i} className="text-xs text-muted-foreground list-disc list-outside leading-relaxed">{it}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
     </div>
   );
 }
