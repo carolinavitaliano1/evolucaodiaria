@@ -111,6 +111,33 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
 
   async function handleDelete(rec: Recording) {
     // handled separately
+    return _handleDelete(rec);
+  }
+
+  async function handlePlay(rec: Recording, s: VideoSession) {
+    setBusyId(rec.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-recording-url', {
+        body: { recording_id: rec.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any).download_url;
+      if (!url) throw new Error('Sem link disponível');
+      setPlayerRec({
+        id: rec.id,
+        url,
+        isVideo: s.recording_layout !== 'audio',
+        label: format(new Date(s.created_at), "d MMM yyyy, HH:mm", { locale: ptBR }),
+      });
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao abrir player');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function _handleDelete(rec: Recording) {
     if (!confirm('Excluir esta gravação? Esta ação não pode ser desfeita.')) return;
     setBusyId(rec.id);
     try {
