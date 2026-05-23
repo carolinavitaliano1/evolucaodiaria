@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   AlertTriangle, CheckCircle2, BookOpen, Activity,
-  Mail, Copy,
+  Mail, Copy, Sparkles, Loader2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -24,6 +24,8 @@ export function PerfilAprendizagemPanel({ patientId, avaliacoes }: Props) {
   const [patientName, setPatientName] = useState<string>('');
   const [carta, setCarta] = useState('');
   const [especialidade, setEspecialidade] = useState('Neuropediatra');
+  const [motivo, setMotivo] = useState('');
+  const [iaLoading, setIaLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -67,6 +69,25 @@ export function PerfilAprendizagemPanel({ patientId, avaliacoes }: Props) {
   function gerarCarta() {
     const texto = modeloCartaEncaminhamento({ patient_name: patientName || '[Nome do Paciente]', especialidade });
     setCarta(texto);
+  }
+
+  async function gerarCartaIA() {
+    setIaLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-referral-letter', {
+        body: { patientId, especialidade, motivo },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const texto = (data as any)?.carta?.trim();
+      if (!texto) throw new Error('IA não retornou conteúdo');
+      setCarta(texto);
+      toast.success('Carta gerada com base no prontuário');
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao gerar carta com IA');
+    } finally {
+      setIaLoading(false);
+    }
   }
 
   function copiar(texto: string) {
@@ -160,7 +181,7 @@ export function PerfilAprendizagemPanel({ patientId, avaliacoes }: Props) {
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
           <Mail className="w-3.5 h-3.5" /> Modelo de carta de encaminhamento
         </h4>
-        <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
+        <div className="grid sm:grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Especialidade de destino</Label>
             <Input
@@ -170,8 +191,23 @@ export function PerfilAprendizagemPanel({ patientId, avaliacoes }: Props) {
               placeholder="Neuropediatra, Fonoaudiólogo..."
             />
           </div>
-          <Button size="sm" onClick={gerarCarta} className="gap-1.5 h-8">
-            <Mail className="w-3.5 h-3.5" /> Gerar modelo
+          <div className="space-y-1">
+            <Label className="text-xs">Motivo do encaminhamento (opcional)</Label>
+            <Input
+              className="h-8 text-xs"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ex.: investigar TDAH, avaliar fala..."
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={gerarCartaIA} disabled={iaLoading} className="gap-1.5 h-8">
+            {iaLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {iaLoading ? 'Analisando prontuário...' : 'Gerar com IA (prontuário)'}
+          </Button>
+          <Button size="sm" variant="outline" onClick={gerarCarta} className="gap-1.5 h-8">
+            <Mail className="w-3.5 h-3.5" /> Modelo em branco
           </Button>
           {carta && (
             <Button size="sm" variant="outline" onClick={() => copiar(carta)} className="gap-1.5 h-8">
