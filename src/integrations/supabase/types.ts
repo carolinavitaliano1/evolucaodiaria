@@ -3356,6 +3356,319 @@ export type Database = {
         }
         Relationships: []
       }
+      psicom_avaliacao_tipos: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          metricas_padrao: string[] | null
+          nome: string
+          therapist_id: string
+          updated_at: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          metricas_padrao?: string[] | null
+          nome: string
+          therapist_id: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          metricas_padrao?: string[] | null
+          nome?: string
+          therapist_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      psicom_avaliacoes: {
+        Row: {
+          arquivo_nome: string | null
+          arquivo_url: string | null
+          coord_fina: number | null
+          coord_global: number | null
+          created_at: string
+          data_avaliacao: string
+          equilibrio: number | null
+          esquema_corporal: number | null
+          id: string
+          instrumento: string | null
+          lateralidade: number | null
+          metricas: Json | null
+          observacoes: string | null
+          org_espacial: number | null
+          org_temporal: number | null
+          patient_id: string
+          status: string
+          testes_aplicados: string[] | null
+          therapist_id: string
+          tipo: string
+          titulo: string | null
+          updated_at: string
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          arquivo_url?: string | null
+          coord_fina?: number | null
+          coord_global?: number | null
+          created_at?: string
+          data_avaliacao?: string
+          equilibrio?: number | null
+          esquema_corporal?: number | null
+          id?: string
+          instrumento?: string | null
+          lateralidade?: number | null
+          metricas?: Json | null
+          observacoes?: string | null
+          org_espacial?: number | null
+          org_temporal?: number | null
+          patient_id: string
+          status?: string
+          testes_aplicados?: string[] | null
+          therapist_id: string
+          tipo: string
+          titulo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arquivo_nome?: string | null
+          arquivo_url?: string | null
+          coord_fina?: number | null
+          coord_global?: number | null
+          created_at?: string
+          data_avaliacao?: string
+          equilibrio?: number | null
+          esquema_corporal?: number | null
+          id?: string
+          instrumento?: string | null
+          lateralidade?: number | null
+          metricas?: Json | null
+          observacoes?: string | null
+          org_espacial?: number | null
+          org_temporal?: number | null
+          patient_id?: string
+          status?: string
+          testes_aplicados?: string[] | null
+          therapist_id?: string
+          tipo?: string
+          titulo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psicom_avaliacoes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psicom_pdi: {
+        Row: {
+          avaliacao_id: string | null
+          created_at: string
+          id: string
+          objetivos: Json
+          observacoes: string | null
+          patient_id: string
+          periodo_fim: string | null
+          periodo_inicio: string
+          status: string
+          therapist_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          created_at?: string
+          id?: string
+          objetivos?: Json
+          observacoes?: string | null
+          patient_id: string
+          periodo_fim?: string | null
+          periodo_inicio?: string
+          status?: string
+          therapist_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          avaliacao_id?: string | null
+          created_at?: string
+          id?: string
+          objetivos?: Json
+          observacoes?: string | null
+          patient_id?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string
+          status?: string
+          therapist_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psicom_pdi_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "psicom_avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "psicom_pdi_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psicom_registros: {
+        Row: {
+          arquivo_nome: string | null
+          arquivo_url: string | null
+          codigo: string | null
+          created_at: string
+          data_registro: string
+          descricao: string | null
+          id: string
+          patient_id: string
+          therapist_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          arquivo_url?: string | null
+          codigo?: string | null
+          created_at?: string
+          data_registro?: string
+          descricao?: string | null
+          id?: string
+          patient_id: string
+          therapist_id: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          arquivo_nome?: string | null
+          arquivo_url?: string | null
+          codigo?: string | null
+          created_at?: string
+          data_registro?: string
+          descricao?: string | null
+          id?: string
+          patient_id?: string
+          therapist_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      psicom_relatorios: {
+        Row: {
+          conteudo: string
+          created_at: string
+          enviado_em: string | null
+          id: string
+          patient_id: string
+          pdf_url: string | null
+          therapist_id: string
+          tipo: string
+          titulo: string | null
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          enviado_em?: string | null
+          id?: string
+          patient_id: string
+          pdf_url?: string | null
+          therapist_id: string
+          tipo: string
+          titulo?: string | null
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          enviado_em?: string | null
+          id?: string
+          patient_id?: string
+          pdf_url?: string | null
+          therapist_id?: string
+          tipo?: string
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psicom_relatorios_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psicom_reunioes: {
+        Row: {
+          created_at: string
+          data_hora: string
+          duracao_min: number | null
+          id: string
+          local_ou_link: string | null
+          modalidade: string
+          notas: string | null
+          participantes: string[] | null
+          patient_id: string
+          pauta: string | null
+          status: string
+          therapist_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_hora: string
+          duracao_min?: number | null
+          id?: string
+          local_ou_link?: string | null
+          modalidade?: string
+          notas?: string | null
+          participantes?: string[] | null
+          patient_id: string
+          pauta?: string | null
+          status?: string
+          therapist_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_hora?: string
+          duracao_min?: number | null
+          id?: string
+          local_ou_link?: string | null
+          modalidade?: string
+          notas?: string | null
+          participantes?: string[] | null
+          patient_id?: string
+          pauta?: string | null
+          status?: string
+          therapist_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       push_tokens: {
         Row: {
           created_at: string
