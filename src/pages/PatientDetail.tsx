@@ -226,12 +226,13 @@ export default function PatientDetail() {
   const location = useLocation();
   const aliasMap: Record<string, string> = {
     financeiro: 'financial',
+    teleatendimento: 'teleatendimento',
     documentos: 'documents',
     tarefas: 'tasks',
     notas: 'notes',
     frequencia: 'attendance',
   };
-  const validTabValues = ['evolutions', 'session', 'reports', 'financial', 'documents', 'tasks', 'notes', 'portal', 'mural', 'attendance', 'therapists'];
+  const validTabValues = ['evolutions', 'session', 'transcricao', 'teleatendimento', 'reports', 'financial', 'documents', 'tasks', 'notes', 'portal', 'mural', 'attendance', 'therapists'];
 
   const resolveHash = (hash: string) => {
     const h = hash.replace('#', '');

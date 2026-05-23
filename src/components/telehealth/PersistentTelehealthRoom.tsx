@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import DailyIframe, { DailyCall } from '@daily-co/daily-js';
 import { useTelehealthCall } from '@/contexts/TelehealthCallContext';
 import { Button } from '@/components/ui/button';
-import { Maximize2, PhoneOff } from 'lucide-react';
+import { ArrowLeft, Maximize2, PhoneOff } from 'lucide-react';
 
 /**
  * Mantém a chamada do Daily montada globalmente para que o terapeuta possa
@@ -47,9 +47,12 @@ export function PersistentTelehealthRoom() {
       showLeaveButton: true,
       showFullscreenButton: true,
     });
-    frame.on('left-meeting', () => {
-      call.onLeft?.();
+    frame.on('left-meeting', async () => {
+      await call.onLeft?.();
       endCall();
+      if (call.returnPath && location.pathname.startsWith('/teleatendimento/sala/')) {
+        navigate(call.returnPath, { replace: true });
+      }
     });
     frame.join({ url: call.roomUrl, userName: call.userName || 'Participante' }).catch((e) => {
       console.error('Failed to join Daily room:', e);
@@ -71,6 +74,37 @@ export function PersistentTelehealthRoom() {
       }
     >
       <div ref={containerRef} className="w-full h-full" />
+      {onRoomRoute && (
+        <div className="absolute top-3 right-3 flex gap-2 z-10">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 gap-1.5 shadow-md"
+            onClick={() => navigate(call.returnPath || '/dashboard')}
+            title="Voltar ao app sem encerrar"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Voltar ao app
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="h-8 gap-1.5 shadow-md"
+            onClick={async () => {
+              if (confirm('Encerrar a chamada?')) {
+                try { await frameRef.current?.leave(); } catch {}
+                await call.onLeft?.();
+                endCall();
+                navigate(call.returnPath || '/dashboard', { replace: true });
+              }
+            }}
+            title="Encerrar chamada e salvar no histórico"
+          >
+            <PhoneOff className="w-3.5 h-3.5" />
+            Encerrar sessão
+          </Button>
+        </div>
+      )}
       {!onRoomRoute && (
         <div className="absolute top-1.5 right-1.5 flex gap-1 z-10">
           <Button
@@ -89,8 +123,9 @@ export function PersistentTelehealthRoom() {
             onClick={() => {
               if (confirm('Encerrar a chamada?')) {
                 try { frameRef.current?.leave(); } catch {}
-                call.onLeft?.();
+                void call.onLeft?.();
                 endCall();
+                if (call.returnPath) navigate(call.returnPath, { replace: true });
               }
             }}
             title="Encerrar chamada"
