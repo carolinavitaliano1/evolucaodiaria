@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Activity, Target, FileText, FolderOpen, Calendar, Radar } from 'lucide-react';
+import { Plus, Activity, Target, FileText, FolderOpen, Calendar, Radar, ScanLine } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,7 @@ import { RegistrosPanel } from './RegistrosPanel';
 import { ReunioesPanel } from './ReunioesPanel';
 import { StatsCards } from './StatsCards';
 import { PerfilAprendizagemPanel } from './PerfilAprendizagemPanel';
+import { DigitalizarAvaliacaoDialog } from '@/modules/shared/DigitalizarAvaliacaoDialog';
 import type { Avaliacao, PDI } from './types';
 
 interface Props {
@@ -31,6 +32,7 @@ export function PsicopedagogoModule({ patientId }: Props) {
   const [editAval, setEditAval] = useState<Avaliacao | null>(null);
   const [pdiDialog, setPdiDialog] = useState(false);
   const [editPdi, setEditPdi] = useState<PDI | null>(null);
+  const [digitDialog, setDigitDialog] = useState(false);
 
   const load = useCallback(async () => {
     const [a, p] = await Promise.all([
@@ -91,6 +93,9 @@ export function PsicopedagogoModule({ patientId }: Props) {
                 </Select>
                 <Button size="sm" onClick={() => { setEditAval(null); setAvalDialog(true); }} className="gap-1.5">
                   <Plus className="w-3.5 h-3.5" /> Nova avaliação
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setDigitDialog(true)} className="gap-1.5">
+                  <ScanLine className="w-3.5 h-3.5" /> Digitalizar
                 </Button>
               </div>
             </div>
