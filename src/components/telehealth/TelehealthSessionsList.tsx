@@ -57,7 +57,7 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
     try {
       let query = supabase
         .from('video_sessions')
-        .select('id, status, recording_enabled, patient_consented_at, started_at, ended_at, duration_seconds, created_at, video_recordings(id, status, daily_recording_id, duration_seconds, file_size_bytes, created_at)')
+        .select('id, status, recording_enabled, recording_layout, patient_consented_at, started_at, ended_at, duration_seconds, created_at, video_recordings(id, status, daily_recording_id, duration_seconds, file_size_bytes, created_at)')
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false });
 
