@@ -12,6 +12,7 @@ const corsHeaders = {
 // Apenas Psicopedagogo está ativo no primeiro release.
 const MODULE_PRICES: Record<string, string> = {
   psicopedagogo: "price_1TaH8mDl2hex55TCgAZrPg9r",
+  psicomotricista: "price_1TaI25Dl2hex55TCtn8gmcgX",
 };
 
 serve(async (req) => {

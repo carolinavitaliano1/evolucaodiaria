@@ -91,8 +91,9 @@ export const SPECIALTY_MODULES: SpecialtyModule[] = [
     icon: Activity,
     color: 'text-amber-600',
     price: 39,
+    stripePriceId: 'price_1TaI25Dl2hex55TCtn8gmcgX',
     description: 'Desenvolvimento motor e corporal',
-    status: 'coming_soon',
+    status: 'available',
     features: [
       { title: 'Avaliação Psicomotora', items: ['Bateria Psicomotora (BPM – Fonseca)', 'Esquema corporal, lateralidade, equilíbrio', 'Coordenação motora grossa e fina'] },
       { title: 'Plano de Intervenção', items: ['Objetivos motores por faixa etária', 'Sessões com circuitos e jogos', 'Progresso por habilidade'] },
