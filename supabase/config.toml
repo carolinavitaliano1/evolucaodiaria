@@ -33,3 +33,5 @@ project_id = "uhhpnjyceobdcxqviouy"
     verify_jwt = false
   [functions.digitize-assessment]
     verify_jwt = false
+  [functions.generate-referral-letter]
+    verify_jwt = false
