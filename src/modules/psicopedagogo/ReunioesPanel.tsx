@@ -11,8 +11,9 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Reuniao, ReuniaoModalidade, ReuniaoStatus } from './types';
+import { TelehealthButton } from '@/components/telehealth/TelehealthButton';
 
-interface Props { patientId: string; }
+interface Props { patientId: string; patientName?: string; clinicId?: string | null; }
 
 const STATUS_LABEL: Record<ReuniaoStatus, string> = {
   agendada: 'Agendada', realizada: 'Realizada', cancelada: 'Cancelada',
@@ -26,11 +27,24 @@ const MODALIDADE_LABEL: Record<ReuniaoModalidade, string> = {
   presencial: 'Presencial', online: 'Online', teleatendimento: 'Teleatendimento',
 };
 
-export function ReunioesPanel({ patientId }: Props) {
+export function ReunioesPanel({ patientId, patientName, clinicId }: Props) {
   const [reunioes, setReunioes] = useState<Reuniao[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('TODOS');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Reuniao | null>(null);
+  const [patientInfo, setPatientInfo] = useState<{ name?: string; clinic_id?: string | null }>({
+    name: patientName,
+    clinic_id: clinicId ?? null,
+  });
+
+  useEffect(() => {
+    if (patientName && clinicId !== undefined) return;
+    (async () => {
+      const { data } = await supabase
+        .from('patients').select('name, clinic_id').eq('id', patientId).maybeSingle();
+      if (data) setPatientInfo({ name: data.name, clinic_id: data.clinic_id });
+    })();
+  }, [patientId, patientName, clinicId]);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -128,6 +142,15 @@ export function ReunioesPanel({ patientId }: Props) {
               {r.notas && <p className="text-xs text-foreground/80 whitespace-pre-wrap border-t pt-1.5"><span className="font-medium">Notas:</span> {r.notas}</p>}
               {r.status === 'agendada' && (
                 <div className="flex gap-1.5 pt-1 border-t">
+                  {r.modalidade === 'teleatendimento' && (
+                    <TelehealthButton
+                      patientId={patientId}
+                      patientName={patientInfo.name}
+                      clinicId={patientInfo.clinic_id ?? null}
+                      size="sm"
+                      className="h-7 text-xs"
+                    />
+                  )}
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus(r, 'realizada')}>Marcar realizada</Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus(r, 'cancelada')}>Cancelar</Button>
                 </div>
