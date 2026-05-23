@@ -29,7 +29,7 @@ interface Recording {
   created_at: string;
 }
 
-interface Props { patientId: string; patientName?: string; clinicId?: string; }
+interface Props { patientId: string; patientName?: string; clinicId?: string; therapySessionId?: string; }
 
 function fmtSize(b?: number | null) {
   if (!b) return '';
@@ -43,7 +43,7 @@ function fmtDur(s?: number | null) {
   return `${m}:${String(r).padStart(2, '0')}`;
 }
 
-export function TelehealthSessionsList({ patientId, patientName, clinicId }: Props) {
+export function TelehealthSessionsList({ patientId, patientName, clinicId, therapySessionId }: Props) {
   const [sessions, setSessions] = useState<VideoSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -53,12 +53,17 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId }: Pro
   async function load() {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('video_sessions')
         .select('id, status, recording_enabled, patient_consented_at, started_at, ended_at, duration_seconds, created_at, video_recordings(id, status, daily_recording_id, duration_seconds, file_size_bytes, created_at)')
         .eq('patient_id', patientId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
+
+      if (therapySessionId) {
+        query = query.eq('therapy_session_id', therapySessionId);
+      }
+
+      const { data, error } = await query.limit(10);
       if (error) throw error;
       setSessions(
         (data || []).map((s: any) => ({
@@ -76,12 +81,12 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId }: Pro
   useEffect(() => {
     load();
     const channel = supabase
-      .channel(`telehealth-recordings-${patientId}`)
+      .channel(`telehealth-recordings-${patientId}-${therapySessionId || 'all'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'video_recordings' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId]);
+  }, [patientId, therapySessionId]);
 
   async function handleDownload(rec: Recording) {
     setBusyId(rec.id);
@@ -153,13 +158,21 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId }: Pro
   }
 
   if (sessions.length === 0) {
-    return <p className="text-xs text-muted-foreground text-center py-4">Nenhuma sessão anterior.</p>;
+    return (
+      <p className="text-xs text-muted-foreground text-center py-4">
+        {therapySessionId
+          ? 'Nenhuma chamada de teleatendimento vinculada a esta sessão.'
+          : 'Nenhuma sessão anterior.'}
+      </p>
+    );
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Histórico</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          {therapySessionId ? 'Teleatendimento desta sessão' : 'Histórico'}
+        </p>
         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={load}>
           <RefreshCcw className="w-3 h-3" /> Atualizar
         </Button>

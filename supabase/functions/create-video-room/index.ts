@@ -45,12 +45,13 @@ Deno.serve(async (req) => {
     const userEmail = (claimsRes.claims.email as string | undefined)?.toLowerCase() ?? '';
 
     const body = await req.json().catch(() => ({}));
-    const { patient_id, appointment_id, clinic_id, recording_enabled, recording_layout } = body as {
+    const { patient_id, appointment_id, clinic_id, recording_enabled, recording_layout, therapy_session_id } = body as {
       patient_id?: string;
       appointment_id?: string;
       clinic_id?: string;
       recording_enabled?: boolean;
       recording_layout?: 'audio' | 'video';
+      therapy_session_id?: string;
     };
     if (!patient_id) throw new Error('patient_id is required');
 
@@ -181,6 +182,7 @@ Deno.serve(async (req) => {
         status: 'scheduled',
         recording_enabled: effectiveRecording,
         recording_layout: recording_layout === 'video' ? 'video' : 'audio',
+        therapy_session_id: therapy_session_id || null,
         room_expires_at: new Date(expiresAt * 1000).toISOString(),
         scheduled_for: scheduledFor,
       })

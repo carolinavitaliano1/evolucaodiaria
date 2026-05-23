@@ -1327,6 +1327,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                     patientId={patientId}
                     patientName={patientName}
                     clinicId={clinicId}
+                    therapySessionId={sessionId ?? undefined}
                     variant="outline"
                     size="sm"
                   />
@@ -1403,6 +1404,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                 patientId={patientId}
                 patientName={patientName}
                 clinicId={clinicId}
+                therapySessionId={sessionId ?? undefined}
               />
               <p className="text-[11px] text-muted-foreground mt-2">
                 Após encerrar a chamada, a gravação aparece aqui (~2 min). Clique no ícone de texto para transcrever e gerar um resumo clínico com IA.

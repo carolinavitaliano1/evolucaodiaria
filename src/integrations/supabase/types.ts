@@ -3996,6 +3996,7 @@ export type Database = {
           started_at: string | null
           status: string
           therapist_user_id: string
+          therapy_session_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4022,6 +4023,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           therapist_user_id: string
+          therapy_session_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4048,6 +4050,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           therapist_user_id?: string
+          therapy_session_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4070,6 +4073,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_sessions_therapy_session_id_fkey"
+            columns: ["therapy_session_id"]
+            isOneToOne: false
+            referencedRelation: "therapy_sessions"
             referencedColumns: ["id"]
           },
         ]
