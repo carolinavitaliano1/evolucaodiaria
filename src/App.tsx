@@ -162,6 +162,7 @@ const App = () => (
                     <Route path="/install" element={<InstallApp />} />
                     <Route path="/mural" element={<Mural />} />
                     <Route path="/team" element={<Team />} />
+                    <Route path="/modulos" element={<Modules />} />
                     <Route path="/minhas-comissoes" element={<MyCommissions />} />
                     <Route path="/suporte" element={<Support />} />
                     <Route path="/admin/suporte" element={<AdminSupport />} />
