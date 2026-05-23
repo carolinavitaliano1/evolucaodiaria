@@ -192,6 +192,14 @@ export function PsicopedagogoModule({ patientId }: Props) {
         </DialogContent>
       </Dialog>
 
+      <DigitalizarAvaliacaoDialog
+        open={digitDialog}
+        onOpenChange={setDigitDialog}
+        patientId={patientId}
+        kind="psico"
+        onSaved={load}
+      />
+
     </div>
   );
 }
