@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Mic, Square, Upload, Loader2, Wand2, Trash2, Sparkles, FileAudio, Copy } from 'lucide-react';
+import { Mic, Square, Upload, Loader2, Wand2, Trash2, Sparkles, FileAudio, Copy, UserCog } from 'lucide-react';
 
 interface Recording {
   id: string;
@@ -385,6 +385,12 @@ export function InPersonTranscriptionTab({ patientId, patientName, clinicId, cli
 
                 {rec.transcription_status === 'ready' && (
                   <>
+                    <SpeakerRenamer
+                      text={text}
+                      onApply={(newText) =>
+                        setEditingText((s) => ({ ...s, [rec.id]: newText }))
+                      }
+                    />
                     <Textarea
                       value={text}
                       onChange={(e) => setEditingText((s) => ({ ...s, [rec.id]: e.target.value }))}
@@ -476,4 +482,73 @@ async function estimateDuration(blob: Blob): Promise<number | null> {
       resolve(null);
     }
   });
+}
+
+function SpeakerRenamer({ text, onApply }: { text: string; onApply: (next: string) => void }) {
+  // Detecta rótulos "Falante N:" presentes no texto
+  const labels = Array.from(new Set(
+    (text.match(/\*?\*?Falante\s+\d+\*?\*?\s*:/gi) || [])
+      .map((m) => m.replace(/[*:]/g, '').trim())
+  )).slice(0, 6);
+
+  if (labels.length === 0) return null;
+
+  const rename = (from: string, to: string) => {
+    // Substitui "Falante N" (com ou sem **) por novo rótulo, preservando ":" e quebras
+    const re = new RegExp(`\\*\\*${from.replace(/\s+/g, '\\s+')}\\*\\*|${from.replace(/\s+/g, '\\s+')}`, 'gi');
+    const next = text.replace(re, `**${to}**`);
+    onApply(next);
+  };
+
+  return (
+    <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 space-y-2">
+      <p className="text-xs font-semibold text-primary flex items-center gap-1">
+        <UserCog className="w-3.5 h-3.5" />
+        Quem é quem? (clique para renomear no texto)
+      </p>
+      <div className="space-y-1.5">
+        {labels.map((lbl) => (
+          <div key={lbl} className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-medium min-w-20">{lbl}:</span>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => rename(lbl, 'Terapeuta')}>
+              Terapeuta
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => rename(lbl, 'Paciente')}>
+              Paciente
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => rename(lbl, 'Responsável')}>
+              Responsável
+            </Button>
+            <CustomRenameInput onApply={(v) => rename(lbl, v)} />
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        Dica: se não renomear, a IA tenta inferir pelos sinais do diálogo ao gerar a evolução.
+      </p>
+    </div>
+  );
+}
+
+function CustomRenameInput({ onApply }: { onApply: (v: string) => void }) {
+  const [val, setVal] = useState('');
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Input
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        placeholder="Outro nome"
+        className="h-7 w-28 text-xs"
+      />
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs"
+        disabled={!val.trim()}
+        onClick={() => { onApply(val.trim()); setVal(''); }}
+      >
+        Aplicar
+      </Button>
+    </span>
+  );
 }
