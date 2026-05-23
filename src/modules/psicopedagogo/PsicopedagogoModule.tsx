@@ -193,6 +193,10 @@ export function PsicopedagogoModule({ patientId }: Props) {
         <TabsContent value="relatorios">
           <RelatorioPanel patientId={patientId} />
         </TabsContent>
+
+        <TabsContent value="reunioes">
+          <ReunioesPanel patientId={patientId} />
+        </TabsContent>
       </Tabs>
 
       <Dialog open={avalDialog} onOpenChange={setAvalDialog}>
