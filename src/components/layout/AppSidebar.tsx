@@ -48,6 +48,7 @@ const allNavItems = [
   { to: '/doc-ia',    icon: FileSignature,   label: 'Doc IA',       perm: null             },
   { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const },
   { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: 'notices' as const },
+  { to: '/modulos',   icon: Layers,          label: 'Módulos',      perm: null             },
   { to: '/suporte',   icon: HeadphonesIcon,  label: 'Suporte',      perm: null,            badge: 'support' as const },
   { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null             },
   { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null             },
