@@ -14,6 +14,7 @@ interface VideoSession {
   id: string;
   status: string;
   recording_enabled: boolean;
+  recording_layout?: string | null;
   patient_consented_at: string | null;
   started_at: string | null;
   ended_at: string | null;
