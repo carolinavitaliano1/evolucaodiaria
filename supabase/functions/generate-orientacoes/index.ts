@@ -28,9 +28,9 @@ Deno.serve(async (req) => {
       registrosPsico, registrosPsicom,
       relatoriosPsico, relatoriosPsicom,
       reunioesPsico, reunioesPsicom,
-      feedbacks, savedReports,
+      feedbacks, savedReports, documentos,
     ] = await Promise.all([
-      sb.from('patients').select('name, birthdate, diagnosis, clinical_area, observations, is_minor, guardian_name, guardian_kinship').eq('id', patientId).maybeSingle(),
+      sb.from('patients').select('name, birthdate, cpf, email, phone, whatsapp, diagnosis, clinical_area, professionals, observations, responsible_name, responsible_whatsapp, financial_responsible_name, financial_responsible_whatsapp, guardian_name, guardian_kinship, is_minor, contract_start_date, health_plan_id, health_plan_authorized_sessions, education_level, school_name').eq('id', patientId).maybeSingle(),
       sb.from('patient_intake_forms').select('*').eq('patient_id', patientId).maybeSingle(),
       sb.from('psico_anamnese').select('escolar, familiar').eq('patient_id', patientId).maybeSingle(),
       sb.from('psicom_anamnese').select('motor, familiar').eq('patient_id', patientId).maybeSingle(),
@@ -48,10 +48,19 @@ Deno.serve(async (req) => {
       sb.from('psicom_reunioes').select('data, modalidade, objetivos, conclusoes').eq('patient_id', patientId).order('data', { ascending: false }).limit(5),
       sb.from('evolution_feedbacks').select('content, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
       sb.from('saved_reports').select('title, content, mode, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
+      sb.from('patient_documents').select('name, document_type, description, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(10),
     ]);
 
+    // Idade calculada (anos)
+    let idade: number | null = null;
+    const bd = (paciente.data as any)?.birthdate;
+    if (bd) {
+      const d = new Date(bd + 'T12:00:00');
+      idade = Math.floor((Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
+    }
+
     const prontuario = {
-      paciente: paciente.data || null,
+      paciente: paciente.data ? { ...paciente.data, idade_calculada_anos: idade } : null,
       ficha_admissao: intake.data || null,
       anamnese_psicopedagogica: anamnesePsico.data || null,
       anamnese_psicomotora: anamnesePsicom.data || null,
@@ -69,6 +78,7 @@ Deno.serve(async (req) => {
       reunioes_psicomotoras: reunioesPsicom.data || [],
       feedbacks_familia: feedbacks.data || [],
       relatorios_salvos: savedReports.data || [],
+      documentos_anexados: documentos.data || [],
     };
 
     const especialidade = kind === 'psicom' ? 'psicomotricista' : 'psicopedagogo(a)';
