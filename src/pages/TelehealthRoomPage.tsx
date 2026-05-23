@@ -40,6 +40,7 @@ export default function TelehealthRoomPage() {
           sessionId,
           roomUrl: data.daily_room_url,
           userName: 'Terapeuta',
+          returnPath: `/patients/${data.patient_id}#teleatendimento`,
           onLeft: async () => {
             await supabase
               .from('video_sessions')
