@@ -2986,6 +2986,36 @@ export type Database = {
         }
         Relationships: []
       }
+      psico_anamnese: {
+        Row: {
+          created_at: string
+          escolar: Json
+          familiar: Json
+          id: string
+          patient_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          escolar?: Json
+          familiar?: Json
+          id?: string
+          patient_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          escolar?: Json
+          familiar?: Json
+          id?: string
+          patient_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       psico_avaliacao_tipos: {
         Row: {
           categoria: string | null
