@@ -86,3 +86,39 @@ export const DOMINIOS: { key: keyof Pick<Avaliacao, 'leitura'|'escrita'|'matemat
   { key: 'memoria', label: 'Memória' },
   { key: 'linguagem', label: 'Linguagem' },
 ];
+
+export interface Registro {
+  id: string;
+  patient_id: string;
+  therapist_id: string;
+  tipo: string;
+  codigo: string | null;
+  data_registro: string;
+  descricao: string | null;
+  arquivo_url: string | null;
+  arquivo_nome: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const REGISTRO_TIPOS_PADRAO = ['PEI', 'Atividade', 'Documento', 'Ocorrência', 'Relatório', 'Anotação'];
+
+export type ReuniaoStatus = 'agendada' | 'realizada' | 'cancelada';
+export type ReuniaoModalidade = 'presencial' | 'online';
+
+export interface Reuniao {
+  id: string;
+  patient_id: string;
+  therapist_id: string;
+  titulo: string;
+  data_hora: string;
+  duracao_min: number | null;
+  modalidade: ReuniaoModalidade;
+  local_ou_link: string | null;
+  participantes: string[] | null;
+  pauta: string | null;
+  status: ReuniaoStatus;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
