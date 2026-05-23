@@ -1327,6 +1327,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
                     patientId={patientId}
                     patientName={patientName}
                     clinicId={clinicId}
+                    therapySessionId={sessionId ?? undefined}
                     variant="outline"
                     size="sm"
                   />
