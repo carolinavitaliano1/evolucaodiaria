@@ -8,11 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
-import { BASIC_PRICE_ID, PRO_PRICE_ID, CLINICA_PRO_PRICE_ID } from '@/lib/plans';
+import { BASIC_PRICE_ID, PRO_PRICE_ID } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
 interface PlanDef {
-  key: 'basic' | 'pro' | 'clinica_pro';
+  key: 'basic' | 'pro';
   name: string;
   price: string;
   description: string;
@@ -50,36 +50,15 @@ const PLANS: PlanDef[] = [
       '30 dias grátis para testar',
     ],
   },
-  {
-    key: 'clinica_pro',
-    name: 'Clínica Pro',
-    price: 'R$ 80,00',
-    description: 'Para donos de clínica com equipe',
-    priceId: CLINICA_PRO_PRICE_ID,
-    features: [
-      'Tudo do plano Pro',
-      'Cadastro de Clínicas (multi-unidade com equipe)',
-      'Equipe ilimitada de profissionais',
-      'Permissões granulares por colaborador',
-      'Dashboard financeiro de equipe',
-      'Relatórios de remuneração',
-      'Painel de conformidade da equipe',
-      '30 dias grátis para testar',
-    ],
-  },
 ];
 
-const COMPARISON: { label: string; basic: boolean; pro: boolean; clinicaPro: boolean }[] = [
-  { label: 'Pacientes, agenda e evoluções', basic: true, pro: true, clinicaPro: true },
-  { label: 'Controle financeiro', basic: true, pro: true, clinicaPro: true },
-  { label: 'WhatsApp, anexos e notas', basic: true, pro: true, clinicaPro: true },
-  { label: 'Consultório / Contratante (autônomo)', basic: true, pro: true, clinicaPro: false },
-  { label: 'Doc IA, Melhorar Evolução, Feedbacks IA', basic: false, pro: true, clinicaPro: true },
-  { label: 'Portal do Paciente', basic: false, pro: true, clinicaPro: true },
-  { label: 'Cadastro de Clínicas (multi-unidade)', basic: false, pro: false, clinicaPro: true },
-  { label: 'Equipe ilimitada de profissionais', basic: false, pro: false, clinicaPro: true },
-  { label: 'Dashboard financeiro de equipe', basic: false, pro: false, clinicaPro: true },
-  { label: 'Painel de conformidade da equipe', basic: false, pro: false, clinicaPro: true },
+const COMPARISON: { label: string; basic: boolean; pro: boolean }[] = [
+  { label: 'Pacientes, agenda e evoluções', basic: true, pro: true },
+  { label: 'Controle financeiro', basic: true, pro: true },
+  { label: 'WhatsApp, anexos e notas', basic: true, pro: true },
+  { label: 'Consultório / Contratante (autônomo)', basic: true, pro: true },
+  { label: 'Doc IA, Melhorar Evolução, Feedbacks IA', basic: false, pro: true },
+  { label: 'Portal do Paciente', basic: false, pro: true },
 ];
 
 export default function Pricing() {
@@ -110,10 +89,9 @@ export default function Pricing() {
     }
   }
 
-  function buttonLabelFor(planKey: 'basic' | 'pro' | 'clinica_pro') {
+  function buttonLabelFor(planKey: 'basic' | 'pro') {
     if (!subscribed) return 'Começar Teste Grátis';
     if (tier === planKey) return 'Plano atual';
-    if (planKey === 'clinica_pro') return 'Fazer upgrade para Clínica Pro';
     if (tier === 'basic' && planKey === 'pro') return 'Fazer upgrade para Pro';
     if (tier === 'pro' && planKey === 'basic') return 'Mudar para Básico';
     if (tier === 'clinica_pro') return planKey === 'pro' ? 'Mudar para Pro' : 'Mudar para Básico';
@@ -143,15 +121,10 @@ export default function Pricing() {
             ✓ Você está no plano {tier === 'pro' ? 'Pro' : 'Básico'}
           </Badge>
         )}
-        {subscribed && tier === 'clinica_pro' && (
-          <Badge variant="outline" className="mt-3 ml-2 text-primary border-primary">
-            ✓ Você está no plano Clínica Pro
-          </Badge>
-        )}
       </div>
 
       {/* Plans */}
-      <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
         {PLANS.map((plan) => {
           const isCurrent = subscribed && tier === plan.key;
           return (
@@ -187,21 +160,7 @@ export default function Pricing() {
                 </ul>
               </CardContent>
               <CardFooter>
-                {plan.key === 'clinica_pro' ? (
-                  <div className="w-full flex flex-col items-center gap-2">
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      disabled
-                    >
-                      Em breve disponível
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Estamos finalizando os últimos detalhes. Em breve você poderá assinar este plano.
-                    </p>
-                  </div>
-                ) : (
-                  <Button
+                <Button
                     className="w-full"
                     variant={plan.popular ? 'default' : 'outline'}
                     onClick={() => handleSubscribe(plan.priceId)}
@@ -215,8 +174,7 @@ export default function Pricing() {
                     ) : (
                       buttonLabelFor(plan.key)
                     )}
-                  </Button>
-                )}
+                </Button>
               </CardFooter>
             </Card>
           );
@@ -235,7 +193,6 @@ export default function Pricing() {
                     <th className="text-left px-4 py-3 font-semibold text-foreground">Recurso</th>
                     <th className="text-center px-4 py-3 font-semibold text-foreground w-32">Básico</th>
                     <th className="text-center px-4 py-3 font-semibold text-primary w-32">Pro</th>
-                    <th className="text-center px-4 py-3 font-semibold text-primary w-32">Clínica Pro</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -251,13 +208,6 @@ export default function Pricing() {
                       </td>
                       <td className="px-4 py-2.5 text-center">
                         {row.pro ? (
-                          <Check className="w-4 h-4 text-primary mx-auto" />
-                        ) : (
-                          <Lock className="w-4 h-4 text-muted-foreground/50 mx-auto" />
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        {row.clinicaPro ? (
                           <Check className="w-4 h-4 text-primary mx-auto" />
                         ) : (
                           <Lock className="w-4 h-4 text-muted-foreground/50 mx-auto" />
