@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import Stripe from "npm:stripe@18.5.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +10,44 @@ const corsHeaders = {
 const OWNER_EMAILS = ["carolinavitaliano1@gmail.com", "gabriellajf83@gmail.com"];
 const APP_URL = "https://evolucaodiaria.app.br";
 
-const buildHtml = (name: string, subject: string, message: string) => `
+const BASIC_PRODUCT_ID = "prod_UN5zsXIUOrZTbq";
+const PRO_PRODUCT_ID = "prod_UN67H1phk2js4F";
+const CLINICA_PRO_PRODUCT_ID = "prod_UNv69FFEc8eE8h";
+const LEGACY_PRICE_IDS = new Set([
+  "price_1Sz87xDl2hex55TCI3ONELuq",
+  "price_1Sz88ADl2hex55TCABAFO3OL",
+  "price_1Sz88LDl2hex55TCwzGTUplF",
+]);
+
+function tierFromSub(sub: Stripe.Subscription): { tier: string; product_id: string | null } {
+  const item = sub.items.data[0];
+  const priceId = item?.price?.id ?? null;
+  const productId = (item?.price?.product as string) ?? null;
+  if (priceId && LEGACY_PRICE_IDS.has(priceId)) return { tier: "legacy", product_id: productId };
+  if (productId === CLINICA_PRO_PRODUCT_ID) return { tier: "clinica_pro", product_id: productId };
+  if (productId === PRO_PRODUCT_ID) return { tier: "pro", product_id: productId };
+  if (productId === BASIC_PRODUCT_ID) return { tier: "basic", product_id: productId };
+  return { tier: "legacy", product_id: productId };
+}
+
+const TIER_LABEL: Record<string, string> = {
+  owner: "Owner",
+  trial: "Trial",
+  legacy: "Legacy",
+  clinica_pro: "Clínica Pro",
+  pro: "Pro",
+  basic: "Basic",
+  free: "Free",
+};
+
+const buildHtml = (name: string, subject: string, message: string, mode: "text" | "html" = "text") => {
+  const body =
+    mode === "html"
+      ? message
+      : `<div style="font-size:15px;line-height:1.7;white-space:pre-wrap;color:#374151;margin-top:12px;">${message
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")}</div>`;
+  return `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f1f1f;">
@@ -20,7 +58,7 @@ const buildHtml = (name: string, subject: string, message: string) => `
     <div style="padding:24px 0;">
       <p style="font-size:16px;line-height:1.6;">Olá <strong>${name || "usuário(a)"}</strong>,</p>
       <h2 style="font-size:18px;color:#5b21b6;margin-top:16px;">${subject}</h2>
-      <div style="font-size:15px;line-height:1.7;white-space:pre-wrap;color:#374151;margin-top:12px;">${message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+      ${body}
     </div>
     <div style="text-align:center;margin:24px 0;">
       <a href="${APP_URL}" style="display:inline-block;background:#7c3aed;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Acessar o App</a>
@@ -34,6 +72,7 @@ const buildHtml = (name: string, subject: string, message: string) => `
 </body>
 </html>
 `;
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -66,7 +105,75 @@ serve(async (req) => {
         .select("user_id, name, email, phone, trial_until, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return new Response(JSON.stringify({ users: data ?? [] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      // Map active Stripe subscriptions per email
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      const emailToPlan = new Map<string, { tier: string; status: string; subscription_end: string | null; product_id: string | null }>();
+      if (stripeKey) {
+        try {
+          const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+          // Pull all active + trialing + past_due subs (paginated). Most apps have <500.
+          for (const status of ["active", "trialing", "past_due"] as const) {
+            let startingAfter: string | undefined;
+            for (let page = 0; page < 20; page++) {
+              const res: Stripe.ApiList<Stripe.Subscription> = await stripe.subscriptions.list({
+                status,
+                limit: 100,
+                starting_after: startingAfter,
+                expand: ["data.customer"],
+              });
+              for (const sub of res.data) {
+                const cust = sub.customer as Stripe.Customer | null;
+                const email = (cust && "email" in cust ? cust.email : null)?.toLowerCase();
+                if (!email) continue;
+                const { tier, product_id } = tierFromSub(sub);
+                const existing = emailToPlan.get(email);
+                // Prefer higher tier or active over past_due
+                const rank = (t: string) => ["free","basic","pro","clinica_pro","legacy","trial","owner"].indexOf(t);
+                if (!existing || rank(tier) > rank(existing.tier)) {
+                  emailToPlan.set(email, {
+                    tier,
+                    status: sub.status,
+                    subscription_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+                    product_id,
+                  });
+                }
+              }
+              if (!res.has_more) break;
+              startingAfter = res.data[res.data.length - 1]?.id;
+              if (!startingAfter) break;
+            }
+          }
+        } catch (e) {
+          console.error("[admin-users] Stripe list error", e);
+        }
+      }
+
+      const enriched = (data ?? []).map((u: any) => {
+        const email = (u.email ?? "").toLowerCase();
+        const isOwnerAcct = OWNER_EMAILS.includes(email);
+        const trialActive = u.trial_until && new Date(u.trial_until) > new Date();
+        const plan = emailToPlan.get(email);
+        let tier = "free";
+        let status: string | null = null;
+        let subscription_end: string | null = null;
+        let product_id: string | null = null;
+        if (isOwnerAcct) {
+          tier = "owner";
+        } else if (plan) {
+          tier = plan.tier;
+          status = plan.status;
+          subscription_end = plan.subscription_end;
+          product_id = plan.product_id;
+        } else if (trialActive) {
+          tier = "trial";
+          status = "trialing";
+          subscription_end = u.trial_until;
+        }
+        return { ...u, tier, tier_label: TIER_LABEL[tier] ?? tier, status, subscription_end, product_id };
+      });
+
+      return new Response(JSON.stringify({ users: enriched }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "send_email") {
@@ -75,6 +182,7 @@ serve(async (req) => {
       const recipients = (body.recipients ?? []) as Array<{ email: string; name?: string }>;
       const subject = (body.subject ?? "").toString().trim();
       const message = (body.message ?? "").toString();
+      const mode = body.mode === "html" ? "html" : "text";
       if (!recipients.length || !subject || !message) {
         return new Response(JSON.stringify({ error: "recipients, subject e message são obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -89,7 +197,7 @@ serve(async (req) => {
               from: "Evolução Diária <notify@evolucaodiaria.app.br>",
               to: [r.email],
               subject,
-              html: buildHtml(r.name ?? "", subject, message),
+              html: buildHtml(r.name ?? "", subject, message, mode),
             }),
           });
           if (!res.ok) {
