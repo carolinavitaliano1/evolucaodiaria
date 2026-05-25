@@ -65,11 +65,8 @@ export default function Clinics() {
   const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic, loadAllEvolutions } = useApp();
   const { user } = useAuth();
   const { hasTeam } = useFeatureAccess();
-  // Admin override: contas específicas podem cadastrar Clínica mesmo com Consultório/Contratante (para testes)
-  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
-  // Força modo Pro individual (apenas Consultório/Contratante) mesmo que hasTeam seja true
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
-  const canCreateClinica = (hasTeam || isAdminOverride) && !forceIndividualPro;
+  const canCreateClinica = hasTeam && !forceIndividualPro;
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);

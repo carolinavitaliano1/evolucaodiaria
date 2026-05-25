@@ -4,7 +4,6 @@ import { useSubscription } from '@/hooks/useSubscription';
 
 const OWNER_EMAILS = new Set([
   'carolinavitaliano1@gmail.com',
-  'gabriellajf83@gmail.com',
 ]);
 
 /**

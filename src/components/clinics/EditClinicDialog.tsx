@@ -33,10 +33,9 @@ interface EditClinicDialogProps {
 export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditClinicDialogProps) {
   const { hasTeam } = useFeatureAccess();
   const { user } = useAuth();
-  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
-  const canCreateClinica = (hasTeam || isAdminOverride) && !forceIndividualPro;
-  const isClinicaProOnly = canCreateClinica && !isAdminOverride;
+  const canCreateClinica = hasTeam && !forceIndividualPro;
+  const isClinicaProOnly = canCreateClinica;
   const [formData, setFormData] = useState({
     name: '',
     type: 'propria' as 'propria' | 'terceirizada' | 'clinica',

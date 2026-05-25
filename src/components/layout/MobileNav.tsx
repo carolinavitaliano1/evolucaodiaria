@@ -60,9 +60,8 @@ export function MobileNav() {
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
   const { user } = useAuth();
-  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
-  const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
+  const isClinicaProOnly = hasTeam && !forceIndividualPro;
 
   const trialDaysLeft = (() => {
     if (productId !== 'trial' || !subscriptionEnd) return null;
