@@ -21,6 +21,7 @@ import {
   Clock,
   Lock,
   Layers,
+  Video,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -33,6 +34,7 @@ import { usePendingEnrollments } from '@/hooks/usePendingEnrollments';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { useTelehealthAccess } from '@/hooks/useTelehealthAccess';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -76,6 +78,7 @@ export function AppSidebar() {
   const { isOrgMember, isOwner, role, permissions, loading: permsLoading } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
+  const telehealth = useTelehealthAccess();
   const { user } = useAuth();
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
   const isClinicaProOnly = hasTeam && !forceIndividualPro;
@@ -139,6 +142,18 @@ export function AppSidebar() {
       to: '/admin/usuarios',
       icon: Users,
       label: 'Admin · Usuários',
+      perm: null,
+      locked: false,
+      hidden: false,
+    } as any);
+  }
+
+  // Telechamadas: disponível para owners e usuários com plano Pro/trial/legacy
+  if (telehealth.enabled) {
+    navItemsWithAccess.push({
+      to: '/telechamadas',
+      icon: Video,
+      label: 'Telechamadas',
       perm: null,
       locked: false,
       hidden: false,
