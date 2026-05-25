@@ -62,6 +62,7 @@ const PortalMural = lazy(() => import("./pages/portal/PortalMural"));
 const PortalActivities = lazy(() => import("./pages/portal/PortalActivities"));
 const TelehealthPatient = lazy(() => import("./pages/TelehealthPatient"));
 const TelehealthRoomPage = lazy(() => import("./pages/TelehealthRoomPage"));
+const Telechamadas = lazy(() => import("./pages/Telechamadas"));
 
 // Tuned defaults: avoid refetch storms when user switches tabs/windows.
 // Most app data is loaded via AppContext + Supabase realtime, so we keep
@@ -168,6 +169,7 @@ const App = () => (
                     <Route path="/suporte" element={<Support />} />
                     <Route path="/admin/suporte" element={<AdminSupport />} />
                     <Route path="/admin/usuarios" element={<AdminUsers />} />
+                    <Route path="/telechamadas" element={<Telechamadas />} />
                   </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
