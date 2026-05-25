@@ -8,11 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
-import { BASIC_PRICE_ID, PRO_PRICE_ID, CLINICA_PRO_PRICE_ID } from '@/lib/plans';
+import { BASIC_PRICE_ID, PRO_PRICE_ID } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 
 interface PlanDef {
-  key: 'basic' | 'pro' | 'clinica_pro';
+  key: 'basic' | 'pro';
   name: string;
   price: string;
   description: string;
@@ -89,10 +89,9 @@ export default function Pricing() {
     }
   }
 
-  function buttonLabelFor(planKey: 'basic' | 'pro' | 'clinica_pro') {
+  function buttonLabelFor(planKey: 'basic' | 'pro') {
     if (!subscribed) return 'Começar Teste Grátis';
     if (tier === planKey) return 'Plano atual';
-    if (planKey === 'clinica_pro') return 'Fazer upgrade para Clínica Pro';
     if (tier === 'basic' && planKey === 'pro') return 'Fazer upgrade para Pro';
     if (tier === 'pro' && planKey === 'basic') return 'Mudar para Básico';
     if (tier === 'clinica_pro') return planKey === 'pro' ? 'Mudar para Pro' : 'Mudar para Básico';
