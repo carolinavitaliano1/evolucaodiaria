@@ -17,7 +17,14 @@ export function ModulePaywall({ module, onSubscribed, compact }: Props) {
   const [loading, setLoading] = useState(false);
   const Icon = module.icon;
   const { tier } = useSubscription();
-  const includedByPlan = tier === 'clinica_pro';
+  const includedByPlan =
+    tier === 'pro' ||
+    tier === 'clinica_pro' ||
+    tier === 'legacy' ||
+    tier === 'trial' ||
+    tier === 'owner';
+  const planLabel =
+    tier === 'clinica_pro' ? 'Clínica Pro' : tier === 'pro' ? 'Pro' : 'atual';
 
   async function handleSubscribe() {
     if (module.status !== 'available' || !module.stripePriceId) {
@@ -102,7 +109,7 @@ export function ModulePaywall({ module, onSubscribed, compact }: Props) {
         {includedByPlan ? (
           <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
             <Check className="w-4 h-4" />
-            Já incluído na sua assinatura Clínica Pro — acesso liberado.
+            Já incluído na sua assinatura {planLabel} — acesso liberado.
           </p>
         ) : (
           <>

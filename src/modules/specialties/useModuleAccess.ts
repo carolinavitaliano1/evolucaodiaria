@@ -8,9 +8,15 @@ export function useModuleAccess(moduleId: ModuleId) {
   const [loading, setLoading] = useState<boolean>(true);
   const { tier, loading: subLoading } = useSubscription();
 
-  // Plano mais caro (Clínica Pro) inclui todos os módulos de especialidade
-  // gratuitamente, sem necessidade de assinatura adicional.
-  const includedByPlan = tier === 'clinica_pro';
+  // Planos pagos (Pro de Contratante/Consultório e Clínica Pro) incluem todos
+  // os módulos de especialidade gratuitamente, sem necessidade de assinatura
+  // adicional. Legacy/trial/owner também mantêm acesso liberado.
+  const includedByPlan =
+    tier === 'pro' ||
+    tier === 'clinica_pro' ||
+    tier === 'legacy' ||
+    tier === 'trial' ||
+    tier === 'owner';
 
   const refresh = async () => {
     setLoading(true);
