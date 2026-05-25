@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSubscription } from '@/hooks/useSubscription';
 import type { SpecialtyModule } from './config';
 
 interface Props {
@@ -15,6 +16,8 @@ interface Props {
 export function ModulePaywall({ module, onSubscribed, compact }: Props) {
   const [loading, setLoading] = useState(false);
   const Icon = module.icon;
+  const { tier } = useSubscription();
+  const includedByPlan = tier === 'clinica_pro';
 
   async function handleSubscribe() {
     if (module.status !== 'available' || !module.stripePriceId) {
@@ -50,6 +53,10 @@ export function ModulePaywall({ module, onSubscribed, compact }: Props) {
               <Badge variant="secondary" className="gap-1">
                 <Sparkles className="w-3 h-3" /> Em breve
               </Badge>
+            ) : includedByPlan ? (
+              <Badge variant="default" className="gap-1 bg-green-600 hover:bg-green-600">
+                <Check className="w-3 h-3" /> Incluído no seu plano
+              </Badge>
             ) : (
               <Badge variant="default" className="gap-1">
                 <Lock className="w-3 h-3" /> Bloqueado
@@ -59,8 +66,17 @@ export function ModulePaywall({ module, onSubscribed, compact }: Props) {
           <p className="text-sm text-muted-foreground mt-1">{module.description}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-2xl font-bold text-foreground">R$ {module.price}</p>
-          <p className="text-xs text-muted-foreground">/mês</p>
+          {includedByPlan ? (
+            <>
+              <p className="text-lg font-bold text-green-600">Grátis</p>
+              <p className="text-xs text-muted-foreground line-through">R$ {module.price}/mês</p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-foreground">R$ {module.price}</p>
+              <p className="text-xs text-muted-foreground">/mês</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -83,6 +99,13 @@ export function ModulePaywall({ module, onSubscribed, compact }: Props) {
       )}
 
       <div className="flex flex-wrap items-center gap-3 pt-2">
+        {includedByPlan ? (
+          <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+            <Check className="w-4 h-4" />
+            Já incluído na sua assinatura Clínica Pro — acesso liberado.
+          </p>
+        ) : (
+          <>
         <Button
           onClick={handleSubscribe}
           disabled={loading || module.status !== 'available'}
@@ -95,6 +118,8 @@ export function ModulePaywall({ module, onSubscribed, compact }: Props) {
         <p className="text-xs text-muted-foreground">
           Add-on da sua assinatura principal. Cancele quando quiser.
         </p>
+          </>
+        )}
       </div>
     </div>
   );
