@@ -42,6 +42,7 @@ const Modules = lazy(() => import("./pages/Modules"));
 const MyCommissions = lazy(() => import("./pages/MyCommissions"));
 const Support = lazy(() => import("./pages/Support"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const PatientIntakePublic = lazy(() => import("./pages/PatientIntakePublic"));
 const Enrollment = lazy(() => import("./pages/Enrollment"));
 const WaitlistPublic = lazy(() => import("./pages/WaitlistPublic"));
@@ -166,6 +167,7 @@ const App = () => (
                     <Route path="/minhas-comissoes" element={<MyCommissions />} />
                     <Route path="/suporte" element={<Support />} />
                     <Route path="/admin/suporte" element={<AdminSupport />} />
+                    <Route path="/admin/usuarios" element={<AdminUsers />} />
                   </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>

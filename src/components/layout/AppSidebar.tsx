@@ -81,6 +81,8 @@ export function AppSidebar() {
   const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
   const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
+  const OWNER_EMAILS = ['carolinavitaliano1@gmail.com', 'gabriellajf83@gmail.com'];
+  const isAppOwner = !!user?.email && OWNER_EMAILS.includes(user.email.toLowerCase());
 
   // Calculate trial days remaining
   const trialDaysLeft = (() => {
@@ -132,6 +134,18 @@ export function AppSidebar() {
   }).filter(i => !i.hidden)
     // Clínica Pro só pode ter UMA clínica → singular no menu
     .map(i => i.to === '/clinics' && isClinicaProOnly ? { ...i, label: 'Clínica' } : i);
+
+  // Item exclusivo para administradores do app (owners)
+  if (isAppOwner) {
+    navItemsWithAccess.push({
+      to: '/admin/usuarios',
+      icon: Users,
+      label: 'Admin · Usuários',
+      perm: null,
+      locked: false,
+      hidden: false,
+    } as any);
+  }
 
   // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
   // Mantém-se a rota /team acessível via botão dentro da clínica.
