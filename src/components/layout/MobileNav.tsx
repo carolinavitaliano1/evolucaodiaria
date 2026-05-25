@@ -62,6 +62,8 @@ export function MobileNav() {
   const { user } = useAuth();
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
   const isClinicaProOnly = hasTeam && !forceIndividualPro;
+  const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
+  const isAppOwner = !!user?.email && OWNER_EMAILS.includes(user.email.toLowerCase());
 
   const trialDaysLeft = (() => {
     if (productId !== 'trial' || !subscriptionEnd) return null;
@@ -105,7 +107,9 @@ export function MobileNav() {
 
   // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
   const baseMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any, badge: null as any }, ...allowedMore.filter(i => i.to !== '/profile')];
-  const finalMore = baseMore;
+  const finalMore = isAppOwner
+    ? [...baseMore, { to: '/admin/usuarios', icon: Users, label: 'Admin · Usuários', perm: null as any, badge: null as any }]
+    : baseMore;
 
   // Total unread for the "Mais" button dot
   const totalMoreUnread = noticesCount + supportCount;
