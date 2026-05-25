@@ -62,6 +62,7 @@ export function MobileNav() {
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
   const { user } = useAuth();
+  const telehealth = useTelehealthAccess();
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
   const isClinicaProOnly = hasTeam && !forceIndividualPro;
   const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
@@ -109,9 +110,12 @@ export function MobileNav() {
 
   // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
   const baseMore = [{ to: '/profile', icon: User, label: 'Perfil', perm: null as any, badge: null as any }, ...allowedMore.filter(i => i.to !== '/profile')];
-  const finalMore = isAppOwner
-    ? [...baseMore, { to: '/admin/usuarios', icon: Users, label: 'Admin · Usuários', perm: null as any, badge: null as any }]
+  const withTelehealth = telehealth.enabled
+    ? [...baseMore, { to: '/telechamadas', icon: Video, label: 'Telechamadas', perm: null as any, badge: null as any }]
     : baseMore;
+  const finalMore = isAppOwner
+    ? [...withTelehealth, { to: '/admin/usuarios', icon: Users, label: 'Admin · Usuários', perm: null as any, badge: null as any }]
+    : withTelehealth;
 
   // Total unread for the "Mais" button dot
   const totalMoreUnread = noticesCount + supportCount;
