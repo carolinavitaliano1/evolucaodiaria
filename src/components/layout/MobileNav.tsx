@@ -7,6 +7,7 @@ import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTelehealthAccess } from '@/hooks/useTelehealthAccess';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -24,7 +25,8 @@ import {
   UsersRound,
   HeadphonesIcon,
   Clock,
-  FileSignature
+  FileSignature,
+  Video
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
