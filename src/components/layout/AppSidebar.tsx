@@ -44,7 +44,6 @@ const allNavItems = [
   { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const, badge: 'pending' as const },
   { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const },
   { to: '/evolucoes', icon: NotebookPen,     label: 'Evoluções',    perm: 'evolutions.view' as const },
-  { to: '/telechamadas', icon: Video,        label: 'Telechamadas', perm: null             },
   { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const },
   { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const },
   { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const },
@@ -64,7 +63,6 @@ const therapistNavItems = [
   { to: '/calendar',          icon: Calendar,        label: 'Agenda',           perm: 'calendar.view'   as const },
   { to: '/patients',          icon: Users,           label: 'Pacientes',        perm: 'patients.view'   as const, badge: 'pending' as const },
   { to: '/evolucoes',         icon: NotebookPen,     label: 'Evoluções',        perm: 'evolutions.view' as const },
-  { to: '/telechamadas',      icon: Video,           label: 'Telechamadas',     perm: null             },
   { to: '/tasks',             icon: ClipboardList,   label: 'Tarefas',          perm: 'tasks.view'      as const },
   { to: '/minhas-comissoes',  icon: DollarSign,      label: 'Minhas Comissões', perm: 'commissions.view' as const },
   { to: '/suporte',           icon: HeadphonesIcon,  label: 'Suporte',          perm: null,             badge: 'support' as const },
@@ -80,6 +78,7 @@ export function AppSidebar() {
   const { isOrgMember, isOwner, role, permissions, loading: permsLoading } = useOrgPermissions();
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
+  const telehealth = useTelehealthAccess();
   const { user } = useAuth();
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
   const isClinicaProOnly = hasTeam && !forceIndividualPro;
@@ -143,6 +142,18 @@ export function AppSidebar() {
       to: '/admin/usuarios',
       icon: Users,
       label: 'Admin · Usuários',
+      perm: null,
+      locked: false,
+      hidden: false,
+    } as any);
+  }
+
+  // Telechamadas: disponível para owners e usuários com plano Pro/trial/legacy
+  if (telehealth.enabled) {
+    navItemsWithAccess.push({
+      to: '/telechamadas',
+      icon: Video,
+      label: 'Telechamadas',
       perm: null,
       locked: false,
       hidden: false,
