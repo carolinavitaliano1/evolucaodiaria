@@ -82,7 +82,7 @@ const emptyForm = {
   image_url: '',
 };
 
-const OWNER_EMAILS = ['carolinavitaliano1@gmail.com', 'gabriellajf83@gmail.com'];
+const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
 
 export default function Mural() {
   const { user } = useAuth();

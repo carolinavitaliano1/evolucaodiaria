@@ -74,9 +74,8 @@ export default function CalendarPage() {
   const { selectedDate, setSelectedDate, appointments, clinics, patients, addAppointment, deleteAppointment, evolutions, clinicPackages } = useApp();
   const { user } = useAuth();
   const { hasTeam } = useFeatureAccess();
-  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
-  const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
+  const isClinicaProOnly = hasTeam && !forceIndividualPro;
   const { getAppointmentsForDate, refetch: refetchPrivate } = usePrivateAppointments();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

@@ -65,11 +65,8 @@ export default function Clinics() {
   const { clinics, patients, addClinic, updateClinic, deleteClinic, setCurrentClinic, loadAllEvolutions } = useApp();
   const { user } = useAuth();
   const { hasTeam } = useFeatureAccess();
-  // Admin override: contas específicas podem cadastrar Clínica mesmo com Consultório/Contratante (para testes)
-  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
-  // Força modo Pro individual (apenas Consultório/Contratante) mesmo que hasTeam seja true
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
-  const canCreateClinica = (hasTeam || isAdminOverride) && !forceIndividualPro;
+  const canCreateClinica = hasTeam && !forceIndividualPro;
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
@@ -92,8 +89,8 @@ export default function Clinics() {
   const [deleteServiceOpen, setDeleteServiceOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<ServiceRecord | null>(null);
 
-  // Clínica Pro puro (sem admin override): cadastra apenas Clínicas com equipe
-  const isClinicaProOnly = canCreateClinica && !isAdminOverride;
+  // Clínica Pro puro: cadastra apenas Clínicas com equipe
+  const isClinicaProOnly = canCreateClinica;
 
   // Clínica Pro só pode ter UMA clínica → ao acessar /clinics, vai direto para o
   // dashboard interno da clínica cadastrada. Se ainda não tiver clínica, mostra
@@ -217,8 +214,8 @@ export default function Clinics() {
       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
       const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
       let defaultType: 'propria' | 'terceirizada' | 'clinica' = 'propria';
-      // Clínica Pro (sem admin override) só pode cadastrar Clínica
-      if (canCreateClinica && !isAdminOverride) defaultType = 'clinica';
+      // Clínica Pro só pode cadastrar Clínica
+      if (canCreateClinica) defaultType = 'clinica';
       else if (canCreateClinica && activeClinica) defaultType = 'clinica';
       else if (canCreateClinica && !activeAutonomo) defaultType = 'clinica';
       setFormData(prev => ({ ...prev, type: defaultType }));
@@ -526,9 +523,8 @@ export default function Clinics() {
                       const activeAutonomo = clinics.some(c => !c.isArchived && (c.type === 'propria' || c.type === 'terceirizada'));
                       const activeClinica = clinics.some(c => !c.isArchived && c.type === 'clinica');
                       // Mutually exclusive: Consultório/Contratante (autônomo) cannot coexist with Clínica
-                      // Admin override bypasses ambas as restrições para testes
-                      const autonomoDisabled = activeClinica && !isAdminOverride;
-                      const clinicaDisabled = (activeAutonomo && !isAdminOverride) || !canCreateClinica;
+                      const autonomoDisabled = activeClinica;
+                      const clinicaDisabled = activeAutonomo || !canCreateClinica;
                       return (
                         <>
                           <RadioGroup

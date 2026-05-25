@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Loader2, Mail, MessageCircle, Search, Send, Users } from "lucide-react";
 import { toast } from "sonner";
 
-const OWNER_EMAILS = ["carolinavitaliano1@gmail.com", "gabriellajf83@gmail.com"];
+const OWNER_EMAILS = ["carolinavitaliano1@gmail.com"];
 
 interface AppUser {
   user_id: string;

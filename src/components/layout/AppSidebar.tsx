@@ -77,11 +77,9 @@ export function AppSidebar() {
   const { productId, subscriptionEnd } = useSubscription();
   const { hasAI, hasTeam } = useFeatureAccess();
   const { user } = useAuth();
-  // Mesma regra usada em Clinics.tsx: pode criar clínica com equipe e não é admin override
-  const isAdminOverride = user?.email === 'gabriellajf83@gmail.com';
   const forceIndividualPro = user?.email === 'carolinavitaliano1@gmail.com';
-  const isClinicaProOnly = hasTeam && !isAdminOverride && !forceIndividualPro;
-  const OWNER_EMAILS = ['carolinavitaliano1@gmail.com', 'gabriellajf83@gmail.com'];
+  const isClinicaProOnly = hasTeam && !forceIndividualPro;
+  const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
   const isAppOwner = !!user?.email && OWNER_EMAILS.includes(user.email.toLowerCase());
 
   // Calculate trial days remaining
