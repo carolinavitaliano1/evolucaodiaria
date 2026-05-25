@@ -44,7 +44,7 @@ function fmtDur(s?: number | null) {
 export default function Telechamadas() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { state } = useApp();
+  const app = useApp();
   const access = useTelehealthAccess();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,9 +55,9 @@ export default function Telechamadas() {
 
   const patientMap = useMemo(() => {
     const m = new Map<string, { name: string; clinicId?: string | null }>();
-    state.patients.forEach((p: any) => m.set(p.id, { name: p.name, clinicId: p.clinic_id ?? p.clinicId ?? null }));
+    app.patients.forEach((p: any) => m.set(p.id, { name: p.name, clinicId: p.clinic_id ?? p.clinicId ?? null }));
     return m;
-  }, [state.patients]);
+  }, [app.patients]);
 
   async function load() {
     if (!user) return;
@@ -224,7 +224,7 @@ export default function Telechamadas() {
             <DialogTitle>Selecionar paciente</DialogTitle>
           </DialogHeader>
           <PatientPicker
-            patients={state.patients}
+            patients={app.patients}
             onPick={(p) => {
               setPickedPatient({ id: p.id, name: p.name, clinicId: (p as any).clinic_id ?? (p as any).clinicId ?? null });
               setPickerOpen(false);
