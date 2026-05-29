@@ -9,7 +9,6 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const OWNER_EMAILS = new Set([
   'carolinavitaliano1@gmail.com',
-  'gabriellajf83@gmail.com',
 ]);
 
 function randomSlug(len = 14) {

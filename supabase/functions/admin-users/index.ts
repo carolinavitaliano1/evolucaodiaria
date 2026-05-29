@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const OWNER_EMAILS = ["carolinavitaliano1@gmail.com", "gabriellajf83@gmail.com"];
+const OWNER_EMAILS = ["carolinavitaliano1@gmail.com"];
 const APP_URL = "https://evolucaodiaria.app.br";
 
 const BASIC_PRODUCT_ID = "prod_UN5zsXIUOrZTbq";
