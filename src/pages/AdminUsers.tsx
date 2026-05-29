@@ -27,6 +27,8 @@ interface AppUser {
   tier_label?: string;
   status?: string | null;
   subscription_end?: string | null;
+  last_status?: string | null;
+  last_status_ended_at?: string | null;
 }
 
 const onlyDigits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
@@ -46,7 +48,13 @@ const TIER_BADGE: Record<string, { label: string; className: string }> = {
   basic: { label: "Basic", className: "bg-blue-100 text-blue-800 border-blue-300" },
   legacy: { label: "Legacy", className: "bg-indigo-100 text-indigo-800 border-indigo-300" },
   trial: { label: "Trial", className: "bg-emerald-100 text-emerald-800 border-emerald-300" },
-  free: { label: "Free", className: "bg-muted text-muted-foreground border-border" },
+  free: { label: "Sem assinatura", className: "bg-muted text-muted-foreground border-border" },
+};
+
+const LAST_STATUS_LABEL: Record<string, string> = {
+  canceled: "cancelado",
+  incomplete_expired: "trial expirado",
+  unpaid: "não pago",
 };
 
 const EMAIL_TEMPLATES: Array<{ id: string; label: string; subject: string; html: string }> = [
@@ -374,6 +382,12 @@ export default function AdminUsers() {
                             {u.subscription_end && (
                               <span className="text-[10px] text-muted-foreground">
                                 até {new Date(u.subscription_end).toLocaleDateString("pt-BR")}
+                              </span>
+                            )}
+                            {u.tier === "free" && u.last_status && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Stripe: {LAST_STATUS_LABEL[u.last_status] ?? u.last_status}
+                                {u.last_status_ended_at && ` em ${new Date(u.last_status_ended_at).toLocaleDateString("pt-BR")}`}
                               </span>
                             )}
                           </div>

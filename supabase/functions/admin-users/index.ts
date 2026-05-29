@@ -37,7 +37,7 @@ const TIER_LABEL: Record<string, string> = {
   clinica_pro: "Clínica Pro",
   pro: "Pro",
   basic: "Basic",
-  free: "Free",
+  free: "Sem assinatura",
 };
 
 const buildHtml = (name: string, subject: string, message: string, mode: "text" | "html" = "text") => {
@@ -109,11 +109,14 @@ serve(async (req) => {
       // Map active Stripe subscriptions per email
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       const emailToPlan = new Map<string, { tier: string; status: string; subscription_end: string | null; product_id: string | null }>();
+      const emailToLastStatus = new Map<string, { status: string; ended_at: string | null }>();
       if (stripeKey) {
         try {
           const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-          // Pull all active + trialing + past_due subs (paginated). Most apps have <500.
-          for (const status of ["active", "trialing", "past_due"] as const) {
+          // Pull active/trialing/past_due (for current plan) + canceled/incomplete_expired/unpaid (for last status).
+          const ACTIVE_STATUSES = ["active", "trialing", "past_due"] as const;
+          const INACTIVE_STATUSES = ["canceled", "incomplete_expired", "unpaid"] as const;
+          for (const status of [...ACTIVE_STATUSES, ...INACTIVE_STATUSES] as const) {
             let startingAfter: string | undefined;
             for (let page = 0; page < 20; page++) {
               const res: Stripe.ApiList<Stripe.Subscription> = await stripe.subscriptions.list({
@@ -127,16 +130,25 @@ serve(async (req) => {
                 const email = (cust && "email" in cust ? cust.email : null)?.toLowerCase();
                 if (!email) continue;
                 const { tier, product_id } = tierFromSub(sub);
-                const existing = emailToPlan.get(email);
-                // Prefer higher tier or active over past_due
-                const rank = (t: string) => ["free","basic","pro","clinica_pro","legacy","trial","owner"].indexOf(t);
-                if (!existing || rank(tier) > rank(existing.tier)) {
-                  emailToPlan.set(email, {
-                    tier,
-                    status: sub.status,
-                    subscription_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
-                    product_id,
-                  });
+                const isActiveLike = (ACTIVE_STATUSES as readonly string[]).includes(sub.status);
+                if (isActiveLike) {
+                  const existing = emailToPlan.get(email);
+                  const rank = (t: string) => ["free","basic","pro","clinica_pro","legacy","trial","owner"].indexOf(t);
+                  if (!existing || rank(tier) > rank(existing.tier)) {
+                    emailToPlan.set(email, {
+                      tier,
+                      status: sub.status,
+                      subscription_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+                      product_id,
+                    });
+                  }
+                } else {
+                  const endedAt = (sub as any).ended_at ?? sub.canceled_at ?? sub.current_period_end ?? null;
+                  const endedIso = endedAt ? new Date(endedAt * 1000).toISOString() : null;
+                  const existing = emailToLastStatus.get(email);
+                  if (!existing || (endedIso && (!existing.ended_at || endedIso > existing.ended_at))) {
+                    emailToLastStatus.set(email, { status: sub.status, ended_at: endedIso });
+                  }
                 }
               }
               if (!res.has_more) break;
@@ -158,6 +170,8 @@ serve(async (req) => {
         let status: string | null = null;
         let subscription_end: string | null = null;
         let product_id: string | null = null;
+        let last_status: string | null = null;
+        let last_status_ended_at: string | null = null;
         if (isOwnerAcct) {
           tier = "owner";
         } else if (plan) {
@@ -169,8 +183,14 @@ serve(async (req) => {
           tier = "trial";
           status = "trialing";
           subscription_end = u.trial_until;
+        } else {
+          const last = emailToLastStatus.get(email);
+          if (last) {
+            last_status = last.status;
+            last_status_ended_at = last.ended_at;
+          }
         }
-        return { ...u, tier, tier_label: TIER_LABEL[tier] ?? tier, status, subscription_end, product_id };
+        return { ...u, tier, tier_label: TIER_LABEL[tier] ?? tier, status, subscription_end, product_id, last_status, last_status_ended_at };
       });
 
       return new Response(JSON.stringify({ users: enriched }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
