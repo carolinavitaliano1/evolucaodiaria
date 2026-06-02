@@ -346,9 +346,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       setState(prev => ({
         ...prev, clinics, patients, tasks, clinicPackages, isLoading: false,
-        loadedEvolutionsForClinics: new Set(),
-        loadedAppointmentsForClinics: new Set(),
-        loadedAttachmentsForPatients: new Set(),
+        // Preserve lazy-load tracking across background refreshes so we don't
+        // re-fetch evolutions/appointments/attachments the user already viewed.
+        // These sets are only reset on user logout (see the `if (!user)` branch above).
       }));
     } catch (error) {
       console.error('Error loading initial data:', error);
