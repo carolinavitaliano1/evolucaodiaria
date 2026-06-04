@@ -26,7 +26,9 @@ import {
   HeadphonesIcon,
   Clock,
   FileSignature,
-  Video
+  Video,
+  NotebookPen,
+  Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -41,11 +43,13 @@ const mainNavItems = [
 
 const moreNavItems = [
   { to: '/financial',  icon: DollarSign,     label: 'Finanças',      perm: 'financial.view'  as const, badge: null },
+  { to: '/evolucoes',  icon: NotebookPen,    label: 'Evoluções',     perm: 'evolutions.view' as const, badge: null },
   { to: '/reports',    icon: BarChart3,      label: 'Relatórios',    perm: 'reports.view'    as const, badge: null },
   { to: '/ai-reports', icon: Sparkles,       label: 'Relatórios IA', perm: 'ai_reports.view' as const, badge: null },
   { to: '/doc-ia',     icon: FileSignature,  label: 'Doc IA',        perm: null,                       badge: null },
   { to: '/tasks',      icon: ClipboardList,  label: 'Tarefas',       perm: 'tasks.view'      as const, badge: null },
   { to: '/mural',      icon: Megaphone,      label: 'Mural',         perm: 'mural.view'      as const, badge: 'notices' as const },
+  { to: '/modulos',    icon: Layers,         label: 'Módulos',       perm: null,                       badge: null },
   { to: '/suporte',    icon: HeadphonesIcon, label: 'Suporte',       perm: null,                       badge: 'support' as const },
   { to: '/pricing',    icon: CreditCard,     label: 'Planos',        perm: null,                       badge: null },
   { to: '/install',    icon: Smartphone,     label: 'Instalar App',  perm: null,                       badge: null },
@@ -104,6 +108,7 @@ export function MobileNav() {
     if (!isOrgMember) return true;
     if (i.to === '/profile') return true;
     if (i.to === '/doc-ia' && !isTherapistView) return true;
+    if (i.to === '/modulos' && !isTherapistView) return true;
     if (i.perm === null) return false;
     return permissions.includes(i.perm as any);
   });
