@@ -108,6 +108,7 @@ export function MobileNav() {
     if (!isOrgMember) return true;
     if (i.to === '/profile') return true;
     if (i.to === '/doc-ia' && !isTherapistView) return true;
+    if (i.to === '/modulos' && !isTherapistView) return true;
     if (i.perm === null) return false;
     return permissions.includes(i.perm as any);
   });
