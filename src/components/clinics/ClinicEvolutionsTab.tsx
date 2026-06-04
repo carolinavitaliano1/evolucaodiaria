@@ -66,7 +66,7 @@ export function ClinicEvolutionsTab({ clinicId, clinic }: Props) {
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-  const clinicPatients = useMemo(() => patients.filter(p => p.clinicId === clinicId && isPatientActiveOn(p)), [patients, clinicId]);
+  const clinicPatients = useMemo(() => patients.filter(p => p.clinicId === clinicId && !p.isArchived && isPatientActiveOn(p)), [patients, clinicId]);
 
   const dayEvolutions = useMemo(() => {
     return evolutions.filter(e =>
