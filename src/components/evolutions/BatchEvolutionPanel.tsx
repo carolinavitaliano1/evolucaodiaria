@@ -71,7 +71,7 @@ export function BatchEvolutionPanel({ clinic }: Props) {
   }, [clinic?.id]);
 
   const clinicPatients = useMemo(
-    () => patients.filter(p => p.clinicId === clinic.id && isPatientActiveOn(p)),
+    () => patients.filter(p => p.clinicId === clinic.id && !p.isArchived && isPatientActiveOn(p)),
     [patients, clinic.id],
   );
 
