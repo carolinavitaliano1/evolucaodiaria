@@ -74,6 +74,58 @@ const buildHtml = (name: string, subject: string, message: string, mode: "text" 
 `;
 };
 
+const buildInviteHtml = (name: string) => `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f1f1f;">
+  <div style="max-width:600px;margin:0 auto;padding:24px;background:#ffffff;">
+    <div style="text-align:center;padding:16px 0;border-bottom:2px solid #7c3aed;">
+      <h1 style="font-size:22px;color:#7c3aed;margin:0;">Evolução Diária 💜</h1>
+    </div>
+    <div style="padding:24px 0;">
+      <p style="font-size:16px;line-height:1.6;">Olá <strong>${name || "tudo bem"}</strong>,</p>
+      <h2 style="font-size:20px;color:#5b21b6;margin-top:16px;">Você foi convidado(a) a conhecer a Evolução Diária ✨</h2>
+      <p style="font-size:15px;line-height:1.7;color:#374151;">
+        Sistema completo de gestão para psicólogos, fonoaudiólogos, terapeutas e clínicas:
+        agenda, pacientes, evoluções, financeiro, portal do paciente e IA — tudo em um só lugar.
+      </p>
+      <ul style="font-size:14px;line-height:1.8;color:#374151;">
+        <li>📅 Agenda inteligente e portal do paciente</li>
+        <li>📝 Evoluções com IA</li>
+        <li>💰 Controle financeiro completo</li>
+        <li>🎁 <strong>15 dias grátis, sem cartão</strong></li>
+      </ul>
+    </div>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${APP_URL}/auth?ref=convite" style="display:inline-block;background:#7c3aed;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">Criar minha conta grátis</a>
+    </div>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+    <p style="font-size:12px;color:#6b7280;text-align:center;">
+      Equipe Evolução Diária<br/>
+      <a href="${APP_URL}" style="color:#7c3aed;">${APP_URL}</a>
+    </p>
+  </div>
+</body>
+</html>
+`;
+
+async function sendOneEmail(resendKey: string, to: string, subject: string, html: string) {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Evolução Diária <notify@evolucaodiaria.app.br>",
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -232,6 +284,56 @@ serve(async (req) => {
       }
       const okCount = results.filter(r => r.ok).length;
       return new Response(JSON.stringify({ success: true, sent: okCount, total: results.length, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "send_contact_email") {
+      const resendKey = Deno.env.get("RESEND_API_KEY");
+      if (!resendKey) throw new Error("RESEND_API_KEY not set");
+      const contactIds = (body.contact_ids ?? []) as string[];
+      const isInvite = !!body.is_invite;
+      const subject = isInvite
+        ? "Conheça a Evolução Diária — 15 dias grátis ✨"
+        : (body.subject ?? "").toString().trim();
+      const message = (body.message ?? "").toString();
+      const mode = body.mode === "html" ? "html" : "text";
+
+      if (!contactIds.length) {
+        return new Response(JSON.stringify({ error: "contact_ids obrigatório" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (!isInvite && (!subject || !message)) {
+        return new Response(JSON.stringify({ error: "subject e message obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: contacts, error: cErr } = await admin
+        .from("admin_contacts")
+        .select("id, email, name, status")
+        .in("id", contactIds);
+      if (cErr) throw cErr;
+
+      let sent = 0;
+      const failures: Array<{ email: string; error: string }> = [];
+      const nowIso = new Date().toISOString();
+      for (const c of contacts ?? []) {
+        if (!c.email) continue;
+        if (c.status === "unsubscribed") continue;
+        try {
+          const html = isInvite
+            ? buildInviteHtml(c.name ?? "")
+            : buildHtml(c.name ?? "", subject, message, mode);
+          await sendOneEmail(resendKey, c.email, subject, html);
+          sent++;
+          await admin.from("admin_contacts").update({
+            status: isInvite ? "invited" : (c.status === "registered" ? c.status : c.status),
+            invited_at: isInvite ? nowIso : undefined,
+            last_email_at: nowIso,
+            last_email_subject: subject,
+          }).eq("id", c.id);
+        } catch (e) {
+          failures.push({ email: c.email, error: (e as Error).message });
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, sent, total: contacts?.length ?? 0, failures }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
