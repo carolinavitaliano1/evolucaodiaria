@@ -13,6 +13,7 @@ import { Loader2, Mail, MessageCircle, Search, Send, Users, Image as ImageIcon, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { AdminContactsPanel } from "@/components/admin/AdminContactsPanel";
 
 const OWNER_EMAILS = ["carolinavitaliano1@gmail.com"];
 
@@ -293,28 +294,35 @@ export default function AdminUsers() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-7xl">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary" /> Usuários do App
+            <Users className="w-6 h-6 text-primary" /> Administração
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Lista completa de usuários. Envie email ou WhatsApp para um ou vários.
+            Gerencie usuários cadastrados e a base de contatos para convites.
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="default"
-            disabled={selectedUsers.length === 0}
-            onClick={() => openEmailFor(selectedUsers)}
-          >
-            <Mail className="w-4 h-4 mr-2" />
-            Email em massa ({selectedUsers.length})
-          </Button>
         </div>
       </div>
 
-      <Card>
+      <Tabs defaultValue="users" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="users">Usuários</TabsTrigger>
+          <TabsTrigger value="contacts">Contatos & Convites</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              variant="default"
+              disabled={selectedUsers.length === 0}
+              onClick={() => openEmailFor(selectedUsers)}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Email em massa ({selectedUsers.length})
+            </Button>
+          </div>
+          <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col md:flex-row md:items-center gap-2">
             <Search className="w-4 h-4 text-muted-foreground" />
@@ -430,8 +438,14 @@ export default function AdminUsers() {
               </table>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        </TabsContent>
+
+        <TabsContent value="contacts">
+          <AdminContactsPanel />
+        </TabsContent>
+      </Tabs>
 
       {/* Email Dialog */}
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
