@@ -18,51 +18,71 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
+// Retry lazy import once and reload the page on persistent failure.
+// Fixes "Importing a module script failed" after a new deploy invalidates old chunk hashes.
+function lazyWithReload<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (err) {
+      const key = `__chunk_reload_${factory.toString().slice(0, 80)}`;
+      if (typeof window !== "undefined" && !sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {});
+      }
+      throw err;
+    }
+  });
+}
+
 // Lazy-loaded heavy routes — keeps initial bundle small for faster startup
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Clinics = lazy(() => import("./pages/Clinics"));
-const ClinicDetail = lazy(() => import("./pages/ClinicDetail"));
-const PatientDetail = lazy(() => import("./pages/PatientDetail"));
-const GroupDetail = lazy(() => import("./pages/GroupDetail"));
-const Patients = lazy(() => import("./pages/Patients"));
-const Financial = lazy(() => import("./pages/Financial"));
-const Reports = lazy(() => import("./pages/Reports"));
-const Tasks = lazy(() => import("./pages/Tasks"));
-const CalendarPage = lazy(() => import("./pages/Calendar"));
-const Evolutions = lazy(() => import("./pages/Evolutions"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Pricing = lazy(() => import("./pages/Pricing"));
-const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
-const AIReports = lazy(() => import("./pages/AIReports"));
-const DocIA = lazy(() => import("./pages/DocIA"));
-const InstallApp = lazy(() => import("./pages/InstallApp"));
-const Mural = lazy(() => import("./pages/Mural"));
-const Team = lazy(() => import("./pages/Team"));
-const Modules = lazy(() => import("./pages/Modules"));
-const MyCommissions = lazy(() => import("./pages/MyCommissions"));
-const Support = lazy(() => import("./pages/Support"));
-const AdminSupport = lazy(() => import("./pages/AdminSupport"));
-const AdminUsers = lazy(() => import("./pages/AdminUsers"));
-const PatientIntakePublic = lazy(() => import("./pages/PatientIntakePublic"));
-const Enrollment = lazy(() => import("./pages/Enrollment"));
-const WaitlistPublic = lazy(() => import("./pages/WaitlistPublic"));
-const TeamApplicationPublic = lazy(() => import("./pages/TeamApplicationPublic"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const TermsOfUse = lazy(() => import("./pages/TermsOfUse"));
-const PortalAuth = lazy(() => import("./pages/portal/PortalAuth"));
-const PortalHome = lazy(() => import("./pages/portal/PortalHome"));
-const PortalMessages = lazy(() => import("./pages/portal/PortalMessages"));
-const PortalIntakeForm = lazy(() => import("./pages/portal/PortalIntakeForm"));
-const PortalNotices = lazy(() => import("./pages/portal/PortalNotices"));
-const PortalContract = lazy(() => import("./pages/portal/PortalContract"));
-const PortalEvolutions = lazy(() => import("./pages/portal/PortalEvolutions"));
-const PortalFinancial = lazy(() => import("./pages/portal/PortalFinancial"));
-const PortalDocuments = lazy(() => import("./pages/portal/PortalDocuments"));
-const PortalMural = lazy(() => import("./pages/portal/PortalMural"));
-const PortalActivities = lazy(() => import("./pages/portal/PortalActivities"));
-const TelehealthPatient = lazy(() => import("./pages/TelehealthPatient"));
-const TelehealthRoomPage = lazy(() => import("./pages/TelehealthRoomPage"));
-const Telechamadas = lazy(() => import("./pages/Telechamadas"));
+const Dashboard = lazyWithReload(() => import("./pages/Dashboard"));
+const Clinics = lazyWithReload(() => import("./pages/Clinics"));
+const ClinicDetail = lazyWithReload(() => import("./pages/ClinicDetail"));
+const PatientDetail = lazyWithReload(() => import("./pages/PatientDetail"));
+const GroupDetail = lazyWithReload(() => import("./pages/GroupDetail"));
+const Patients = lazyWithReload(() => import("./pages/Patients"));
+const Financial = lazyWithReload(() => import("./pages/Financial"));
+const Reports = lazyWithReload(() => import("./pages/Reports"));
+const Tasks = lazyWithReload(() => import("./pages/Tasks"));
+const CalendarPage = lazyWithReload(() => import("./pages/Calendar"));
+const Evolutions = lazyWithReload(() => import("./pages/Evolutions"));
+const Profile = lazyWithReload(() => import("./pages/Profile"));
+const Pricing = lazyWithReload(() => import("./pages/Pricing"));
+const CheckoutSuccess = lazyWithReload(() => import("./pages/CheckoutSuccess"));
+const AIReports = lazyWithReload(() => import("./pages/AIReports"));
+const DocIA = lazyWithReload(() => import("./pages/DocIA"));
+const InstallApp = lazyWithReload(() => import("./pages/InstallApp"));
+const Mural = lazyWithReload(() => import("./pages/Mural"));
+const Team = lazyWithReload(() => import("./pages/Team"));
+const Modules = lazyWithReload(() => import("./pages/Modules"));
+const MyCommissions = lazyWithReload(() => import("./pages/MyCommissions"));
+const Support = lazyWithReload(() => import("./pages/Support"));
+const AdminSupport = lazyWithReload(() => import("./pages/AdminSupport"));
+const AdminUsers = lazyWithReload(() => import("./pages/AdminUsers"));
+const PatientIntakePublic = lazyWithReload(() => import("./pages/PatientIntakePublic"));
+const Enrollment = lazyWithReload(() => import("./pages/Enrollment"));
+const WaitlistPublic = lazyWithReload(() => import("./pages/WaitlistPublic"));
+const TeamApplicationPublic = lazyWithReload(() => import("./pages/TeamApplicationPublic"));
+const PrivacyPolicy = lazyWithReload(() => import("./pages/PrivacyPolicy"));
+const TermsOfUse = lazyWithReload(() => import("./pages/TermsOfUse"));
+const PortalAuth = lazyWithReload(() => import("./pages/portal/PortalAuth"));
+const PortalHome = lazyWithReload(() => import("./pages/portal/PortalHome"));
+const PortalMessages = lazyWithReload(() => import("./pages/portal/PortalMessages"));
+const PortalIntakeForm = lazyWithReload(() => import("./pages/portal/PortalIntakeForm"));
+const PortalNotices = lazyWithReload(() => import("./pages/portal/PortalNotices"));
+const PortalContract = lazyWithReload(() => import("./pages/portal/PortalContract"));
+const PortalEvolutions = lazyWithReload(() => import("./pages/portal/PortalEvolutions"));
+const PortalFinancial = lazyWithReload(() => import("./pages/portal/PortalFinancial"));
+const PortalDocuments = lazyWithReload(() => import("./pages/portal/PortalDocuments"));
+const PortalMural = lazyWithReload(() => import("./pages/portal/PortalMural"));
+const PortalActivities = lazyWithReload(() => import("./pages/portal/PortalActivities"));
+const TelehealthPatient = lazyWithReload(() => import("./pages/TelehealthPatient"));
+const TelehealthRoomPage = lazyWithReload(() => import("./pages/TelehealthRoomPage"));
+const Telechamadas = lazyWithReload(() => import("./pages/Telechamadas"));
 
 // Tuned defaults: avoid refetch storms when user switches tabs/windows.
 // Most app data is loaded via AppContext + Supabase realtime, so we keep
