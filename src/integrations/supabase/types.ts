@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_contacts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          invited_at: string | null
+          last_email_at: string | null
+          last_email_subject: string | null
+          name: string | null
+          notes: string | null
+          registered_at: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          invited_at?: string | null
+          last_email_at?: string | null
+          last_email_subject?: string | null
+          name?: string | null
+          notes?: string | null
+          registered_at?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          invited_at?: string | null
+          last_email_at?: string | null
+          last_email_subject?: string | null
+          name?: string | null
+          notes?: string | null
+          registered_at?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           clinic_id: string
