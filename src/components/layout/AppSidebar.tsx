@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -22,6 +23,7 @@ import {
   Lock,
   Layers,
   Video,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -38,34 +40,50 @@ import { useTelehealthAccess } from '@/hooks/useTelehealthAccess';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const allNavItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard',    perm: 'dashboard.view' as const },
-  { to: '/clinics',   icon: Building2,       label: 'Clínicas',     perm: 'clinics.view'   as const },
-  { to: '/patients',  icon: Users,           label: 'Pacientes',    perm: 'patients.view'  as const, badge: 'pending' as const },
-  { to: '/calendar',  icon: Calendar,        label: 'Agenda',       perm: 'calendar.view'  as const },
-  { to: '/evolucoes', icon: NotebookPen,     label: 'Evoluções',    perm: 'evolutions.view' as const },
-  { to: '/financial', icon: DollarSign,      label: 'Financeiro',   perm: 'financial.view' as const },
-  { to: '/reports',   icon: BarChart3,       label: 'Relatórios',   perm: 'reports.view'   as const },
-  { to: '/ai-reports',icon: Sparkles,        label: 'Relatórios IA',perm: 'ai_reports.view'as const },
-  { to: '/doc-ia',    icon: FileSignature,   label: 'Doc IA',       perm: null             },
-  { to: '/tasks',     icon: ClipboardList,   label: 'Tarefas',      perm: 'tasks.view'     as const },
-  { to: '/mural',     icon: Megaphone,       label: 'Mural',        perm: 'mural.view'     as const, badge: 'notices' as const },
-  { to: '/modulos',   icon: Layers,          label: 'Módulos',      perm: null             },
-  { to: '/suporte',   icon: HeadphonesIcon,  label: 'Suporte',      perm: null,            badge: 'support' as const },
-  { to: '/pricing',   icon: CreditCard,      label: 'Planos',       perm: null             },
-  { to: '/install',   icon: Smartphone,      label: 'Instalar App', perm: null             },
+// Destinos individuais (sem ordem). Agrupamento e ordem ficam em NAV_GROUPS abaixo.
+type NavItem = {
+  to: string;
+  icon: any;
+  label: string;
+  perm: string | null;
+  badge?: 'pending' | 'notices' | 'support';
+  ai?: boolean;
+};
+
+const NAV_DEST: Record<string, NavItem> = {
+  dashboard:    { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard',     perm: 'dashboard.view' },
+  patients:     { to: '/patients',   icon: Users,           label: 'Pacientes',     perm: 'patients.view', badge: 'pending' },
+  calendar:     { to: '/calendar',   icon: Calendar,        label: 'Agenda',        perm: 'calendar.view' },
+  evolucoes:    { to: '/evolucoes',  icon: NotebookPen,     label: 'Evoluções',     perm: 'evolutions.view' },
+  tasks:        { to: '/tasks',      icon: ClipboardList,   label: 'Tarefas',       perm: 'tasks.view' },
+  telechamadas: { to: '/telechamadas', icon: Video,         label: 'Telechamadas',  perm: null },
+  clinics:      { to: '/clinics',    icon: Building2,       label: 'Clínicas',      perm: 'clinics.view' },
+  financial:    { to: '/financial',  icon: DollarSign,      label: 'Financeiro',    perm: 'financial.view' },
+  reports:      { to: '/reports',    icon: BarChart3,       label: 'Relatórios',    perm: 'reports.view' },
+  mural:        { to: '/mural',      icon: Megaphone,       label: 'Mural',         perm: 'mural.view', badge: 'notices' },
+  aiReports:    { to: '/ai-reports', icon: Sparkles,        label: 'Relatórios IA', perm: 'ai_reports.view', ai: true },
+  docIa:        { to: '/doc-ia',     icon: FileSignature,   label: 'Doc IA',        perm: null, ai: true },
+  profile:      { to: '/profile',    icon: User,            label: 'Meu Perfil',    perm: null },
+  modulos:      { to: '/modulos',    icon: Layers,          label: 'Módulos',       perm: null },
+  pricing:      { to: '/pricing',    icon: CreditCard,      label: 'Planos',        perm: null },
+  install:      { to: '/install',    icon: Smartphone,      label: 'Instalar App',  perm: null },
+  suporte:      { to: '/suporte',    icon: HeadphonesIcon,  label: 'Suporte',       perm: null, badge: 'support' },
+  admin:        { to: '/admin/usuarios', icon: Users,       label: 'Admin · Usuários', perm: null },
+  minhasComissoes: { to: '/minhas-comissoes', icon: DollarSign, label: 'Minhas Comissões', perm: 'commissions.view' },
+};
+
+const NAV_GROUPS: { label: string; items: string[] }[] = [
+  { label: 'Início',         items: ['dashboard'] },
+  { label: 'Atendimento',    items: ['patients', 'calendar', 'evolucoes', 'tasks', 'telechamadas'] },
+  { label: 'Gestão',         items: ['clinics', 'financial', 'reports', 'mural'] },
+  { label: 'Inteligência',   items: ['aiReports', 'docIa'] },
+  { label: 'Conta & Ajuda',  items: ['profile', 'modulos', 'pricing', 'install', 'suporte', 'admin'] },
 ];
 
-// Visão dedicada — terapeuta convidado (não-owner, role=professional).
-// Menu enxuto e focado: agenda, pacientes, evoluções, tarefas e ganhos pessoais.
-const therapistNavItems = [
-  { to: '/dashboard',         icon: LayoutDashboard, label: 'Dashboard',        perm: 'dashboard.view'  as const },
-  { to: '/calendar',          icon: Calendar,        label: 'Agenda',           perm: 'calendar.view'   as const },
-  { to: '/patients',          icon: Users,           label: 'Pacientes',        perm: 'patients.view'   as const, badge: 'pending' as const },
-  { to: '/evolucoes',         icon: NotebookPen,     label: 'Evoluções',        perm: 'evolutions.view' as const },
-  { to: '/tasks',             icon: ClipboardList,   label: 'Tarefas',          perm: 'tasks.view'      as const },
-  { to: '/minhas-comissoes',  icon: DollarSign,      label: 'Minhas Comissões', perm: 'commissions.view' as const },
-  { to: '/suporte',           icon: HeadphonesIcon,  label: 'Suporte',          perm: null,             badge: 'support' as const },
+const THERAPIST_GROUPS: { label: string; items: string[] }[] = [
+  { label: 'Início',      items: ['dashboard'] },
+  { label: 'Atendimento', items: ['patients', 'calendar', 'evolucoes', 'tasks'] },
+  { label: 'Conta & Ajuda', items: ['profile', 'minhasComissoes', 'suporte'] },
 ];
 
 export function AppSidebar() {
@@ -84,6 +102,7 @@ export function AppSidebar() {
   const isClinicaProOnly = hasTeam && !forceIndividualPro;
   const OWNER_EMAILS = ['carolinavitaliano1@gmail.com'];
   const isAppOwner = !!user?.email && OWNER_EMAILS.includes(user.email.toLowerCase());
+  const [query, setQuery] = useState('');
 
   // Calculate trial days remaining
   const trialDaysLeft = (() => {
@@ -118,50 +137,42 @@ export function AppSidebar() {
     );
   }
 
-  // Terapeuta convidado (profissional, não-owner): visão dedicada e enxuta
   const isTherapistView = isOrgMember && !isOwner && role === 'professional';
-  const sourceNavItems = isTherapistView ? therapistNavItems : allNavItems;
+  const sourceGroups = isTherapistView ? THERAPIST_GROUPS : NAV_GROUPS;
 
-  // Build nav list: org members see all items but restricted ones are shown as locked
-  // Non-org users / owners see everything normally; pricing/install hidden for org members
-  const navItemsWithAccess = sourceNavItems.map(item => {
-    // AI feature pages stay clickable so Basic users can see the upgrade message inside the page
+  // Decide visibilidade/bloqueio por id de destino, preservando regras existentes.
+  const resolveItem = (id: string): (NavItem & { locked: boolean; hidden: boolean }) | null => {
+    const base = NAV_DEST[id];
+    if (!base) return null;
+    let item = { ...base };
+
+    if (id === 'clinics' && isClinicaProOnly) item.label = 'Clínica';
+    if (id === 'admin' && !isAppOwner) return { ...item, locked: false, hidden: true };
+    if (id === 'telechamadas' && !telehealth.enabled) return { ...item, locked: false, hidden: true };
+
     if (!isOrgMember) return { ...item, locked: false, hidden: false };
-    if (item.perm === null) return { ...item, locked: false, hidden: true }; // hide pricing/install
+
+    // Itens utilitários sem permissão escondem para colaboradores (mantém comportamento antigo)
+    if (item.perm === null) {
+      const utilHidden = ['modulos', 'pricing', 'install'];
+      if (utilHidden.includes(id)) return { ...item, locked: false, hidden: true };
+      return { ...item, locked: false, hidden: false };
+    }
     const hasAccess = permissions.includes(item.perm as any);
-    // Na visão de terapeuta, escondemos itens sem acesso (em vez de mostrá-los trancados)
     if (isTherapistView && !hasAccess) return { ...item, locked: true, hidden: true };
     return { ...item, locked: !hasAccess, hidden: false };
-  }).filter(i => !i.hidden)
-    // Clínica Pro só pode ter UMA clínica → singular no menu
-    .map(i => i.to === '/clinics' && isClinicaProOnly ? { ...i, label: 'Clínica' } : i);
+  };
 
-  // Item exclusivo para administradores do app (owners)
-  if (isAppOwner) {
-    navItemsWithAccess.push({
-      to: '/admin/usuarios',
-      icon: Users,
-      label: 'Admin · Usuários',
-      perm: null,
-      locked: false,
-      hidden: false,
-    } as any);
-  }
-
-  // Telechamadas: disponível para owners e usuários com plano Pro/trial/legacy
-  if (telehealth.enabled) {
-    navItemsWithAccess.push({
-      to: '/telechamadas',
-      icon: Video,
-      label: 'Telechamadas',
-      perm: null,
-      locked: false,
-      hidden: false,
-    } as any);
-  }
-
-  // "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe).
-  // Mantém-se a rota /team acessível via botão dentro da clínica.
+  const q = query.trim().toLowerCase();
+  const groupsResolved = sourceGroups
+    .map(g => ({
+      label: g.label,
+      items: g.items
+        .map(resolveItem)
+        .filter((i): i is NavItem & { locked: boolean; hidden: boolean } => !!i && !i.hidden)
+        .filter(i => !q || i.label.toLowerCase().includes(q)),
+    }))
+    .filter(g => g.items.length > 0);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -182,88 +193,101 @@ export function AppSidebar() {
         <ThemeToggle />
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {/* Perfil — primeiro item */}
-        <NavLink
-          to="/profile"
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-            'hover:bg-accent group',
-            location.pathname === '/profile' && 'bg-primary text-primary-foreground'
-          )}
-        >
-          <User className={cn(
-            'w-[18px] h-[18px]',
-            location.pathname === '/profile' ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
-          )} />
-          <span className={cn(
-            'text-sm font-medium flex-1',
-            location.pathname === '/profile' ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
-          )}>
-            Meu Perfil
-          </span>
-        </NavLink>
+      {/* Busca */}
+      <div className="px-3 pt-3">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Buscar no menu..."
+            className="w-full h-9 pl-8 pr-2.5 text-sm rounded-lg bg-muted/50 border border-transparent focus:border-primary/40 focus:bg-background focus:outline-none placeholder:text-muted-foreground/70"
+          />
+        </div>
+      </div>
 
-        {navItemsWithAccess.map(({ to, icon: Icon, label, badge, locked }) => {
-          const isActive = !locked && (location.pathname === to || 
-            (to !== '/' && location.pathname.startsWith(to)));
-          const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : badge === 'pending' ? pendingCount : 0;
-          const showBadge = badgeCount > 0 && !locked;
-          
-          return (
-            <div key={to}>
-              {locked ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-40 cursor-not-allowed select-none">
-                      <Icon className="w-[18px] h-[18px] text-muted-foreground" />
-                      <span className="text-sm font-medium flex-1 text-foreground">{label}</span>
-                      <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+      {/* Navigation */}
+      <nav className="flex-1 p-3 overflow-y-auto">
+        {groupsResolved.length === 0 && (
+          <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+            Nada encontrado para "{query}"
+          </p>
+        )}
+        {groupsResolved.map(group => (
+          <div key={group.label} className="mb-3 last:mb-0">
+            <div className="px-2 pb-1.5 text-[11px] font-bold tracking-[0.06em] uppercase text-muted-foreground/80">
+              {group.label}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map(({ to, icon: Icon, label, badge, locked, ai }) => {
+                const isActive = !locked && (location.pathname === to ||
+                  (to !== '/' && location.pathname.startsWith(to)));
+                const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : badge === 'pending' ? pendingCount : 0;
+                const showBadge = badgeCount > 0 && !locked;
+
+                if (locked) {
+                  return (
+                    <Tooltip key={to}>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-40 cursor-not-allowed select-none">
+                          <Icon className="w-[18px] h-[18px] text-muted-foreground" />
+                          <span className="text-sm font-medium flex-1 text-foreground">{label}</span>
+                          <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs">
+                        Sem permissão para acessar {label}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors',
+                      'hover:bg-accent group',
+                      isActive && 'bg-primary text-primary-foreground shadow-[0_8px_20px_-8px_hsl(var(--primary)/0.6)]'
+                    )}
+                  >
+                    <div className="relative shrink-0">
+                      <Icon className={cn(
+                        'w-[18px] h-[18px]',
+                        isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
+                      )} />
+                      {showBadge && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                          {badgeCount > 9 ? '9+' : badgeCount}
+                        </span>
+                      )}
                     </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Sem permissão para acessar {label}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <NavLink
-                  to={to}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                    'hover:bg-accent group',
-                    isActive && 'bg-primary text-primary-foreground'
-                  )}
-                >
-                  <div className="relative shrink-0">
-                    <Icon className={cn(
-                      'w-[18px] h-[18px]',
-                      isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-accent-foreground'
-                    )} />
+                    <span className={cn(
+                      'text-sm font-medium flex-1 truncate',
+                      isActive ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
+                    )}>
+                      {label}
+                    </span>
+                    {ai && (
+                      <span className={cn(
+                        'text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded',
+                        isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary'
+                      )}>
+                        IA
+                      </span>
+                    )}
                     {showBadge && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                      <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                         {badgeCount > 9 ? '9+' : badgeCount}
                       </span>
                     )}
-                  </div>
-                  <span className={cn(
-                    'text-sm font-medium flex-1',
-                    isActive ? 'text-primary-foreground' : 'text-foreground group-hover:text-accent-foreground'
-                  )}>
-                    {label}
-                  </span>
-                  {showBadge && (
-                    <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                      {badgeCount > 9 ? '9+' : badgeCount}
-                    </span>
-                  )}
-                </NavLink>
-              )}
-
-              {/* "Equipe" foi movida para dentro do detalhe da Clínica (aba Equipe). */}
+                  </NavLink>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
