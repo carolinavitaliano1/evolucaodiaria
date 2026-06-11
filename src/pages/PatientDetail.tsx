@@ -233,13 +233,13 @@ export default function PatientDetail() {
     notas: 'notes',
     frequencia: 'attendance',
   };
-  const validTabValues = ['evolutions', 'session', 'transcricao', 'teleatendimento', 'reports', 'financial', 'documents', 'tasks', 'notes', 'portal', 'mural', 'attendance', 'therapists'];
+  const validTabValues = ['overview', 'evolutions', 'session', 'transcricao', 'teleatendimento', 'reports', 'financial', 'documents', 'tasks', 'notes', 'portal', 'mural', 'attendance', 'especialidades', 'therapists'];
 
   const resolveHash = (hash: string) => {
     const h = hash.replace('#', '');
     if (!h) return 'evolutions';
     const mapped = aliasMap[h] || h;
-    return validTabValues.includes(mapped) ? mapped : 'evolutions';
+    return validTabValues.includes(mapped) ? mapped : 'overview';
   };
 
   const [activeTab, setActiveTab] = useState(() => resolveHash(window.location.hash));
@@ -442,6 +442,9 @@ export default function PatientDetail() {
   const [prUseResponsible, setPrUseResponsible] = useState(false);
   const [isExportingPR, setIsExportingPR] = useState(false);
   const [isExportingPRWord, setIsExportingPRWord] = useState(false);
+
+  // Mobile navigation drawer
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Virtual consultation state
   const [isVirtual, setIsVirtual] = useState(false);
@@ -2357,13 +2360,218 @@ export default function PatientDetail() {
 
   const age = calculateAge(patient.birthdate);
 
-  return (
-    <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-6">
+  // Nav groups for the sidebar rail (matches prototype)
+  const NAV_GROUPS_PATIENT = [
+    {
+      id: 'geral', label: 'Visão Geral',
+      items: [{ id: 'overview', label: 'Visão Geral', icon: FileText, desc: 'Resumo, humor e próximas sessões' }],
+    },
+    {
+      id: 'atendimento', label: 'Atendimento',
+      items: [
+        { id: 'evolutions', label: 'Evoluções', icon: TrendingUp, desc: 'Registro diário de sessões' },
+        { id: 'attendance', label: 'Frequência', icon: ClipboardList, desc: 'Presenças, faltas e reposições' },
+        { id: 'session', label: 'Sessão Terapêutica', icon: Brain, desc: 'Roteiro e metas da sessão' },
+        { id: 'transcricao', label: 'Transcrição', icon: Mic, desc: 'Áudio da sessão em texto' },
+        { id: 'teleatendimento', label: 'Teleatendimento', icon: Video, desc: 'Sala online e confirmações' },
+      ],
+    },
+    {
+      id: 'documentos', label: 'Documentos & Relatórios',
+      items: [
+        ...(!isOrgMember || isOrgOwner ? [{ id: 'reports', label: 'Rel. Mensal', icon: BarChart3, desc: 'Compilado do mês para impressão' }] : []),
+        { id: 'documents', label: 'Documentos', icon: Paperclip, desc: 'Anexos, laudos e exames' },
+        { id: 'notes', label: 'Notas', icon: PenLine, desc: 'Anotações internas da equipe' },
+        { id: 'especialidades', label: 'Especialidades', icon: Layers, desc: 'Áreas e planos terapêuticos' },
+      ],
+    },
+    ...(canSeeFinancialTab ? [{
+      id: 'financeiro', label: 'Financeiro',
+      items: [{ id: 'financial', label: 'Financeiro', icon: DollarSign, desc: 'Cobranças, pagamentos e recibos' }],
+    }] : []),
+    {
+      id: 'comunicacao', label: 'Comunicação',
+      items: [
+        ...(canManagePortal ? [{ id: 'portal', label: 'Portal do Paciente', icon: Users, desc: 'Acesso da família e atividades' }] : []),
+        { id: 'mural', label: 'Mural', icon: Newspaper, desc: 'Avisos e comunicados' },
+        { id: 'tasks', label: 'Tarefas', icon: ListTodo, desc: 'Pendências ligadas ao paciente' },
+      ],
+    },
+    ...(isOrg && clinic?.type !== 'propria' ? [{
+      id: 'equipe', label: 'Equipe',
+      items: [{ id: 'therapists', label: 'Terapeutas', icon: UserCheck, desc: 'Profissionais responsáveis' }],
+    }] : []),
+  ];
 
-      {/* Back button */}
-      <Button variant="ghost" onClick={handleBack} className="gap-2 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Voltar
-      </Button>
+  const activeGroup = NAV_GROUPS_PATIENT.find(g => g.items.some(i => i.id === activeTab));
+  const activeItem = NAV_GROUPS_PATIENT.flatMap(g => g.items).find(i => i.id === activeTab);
+
+  const patientInitials = patient.name.split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase();
+
+  const RailNav = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <nav className="py-2">
+      {NAV_GROUPS_PATIENT.map(group => (
+        <div key={group.id} className="mb-4">
+          <p className="px-3 mb-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+            {group.label}
+          </p>
+          {group.items.map(item => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setActiveTab(item.id); onNavigate?.(); }}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all mb-0.5',
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-[0_8px_20px_-8px_hsl(var(--primary)/0.6)]'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <span className={cn('flex items-center justify-center w-[34px] h-[34px] rounded-xl shrink-0',
+                  isActive ? 'bg-white/20' : 'bg-muted'
+                )}>
+                  <Icon className="w-4 h-4" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13.5px] font-semibold leading-tight">{item.label}</span>
+                  <span className={cn('block text-[11px] leading-tight mt-0.5 truncate', isActive ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                    {item.desc}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+
+  return (
+    <>
+    <div className="min-h-screen bg-background flex flex-col">
+
+      {/* Sticky identity header */}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
+        <div className="flex items-center gap-3 px-4 h-[72px]">
+          <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1.5 shrink-0 -ml-1">
+            <ChevronLeft className="w-4 h-4" /> Pacientes
+          </Button>
+
+          {/* Avatar */}
+          <label className="relative cursor-pointer group shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-border overflow-hidden flex items-center justify-center">
+              {patient.avatarUrl ? (
+                <img src={patient.avatarUrl} alt={patient.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm font-bold text-primary">{patientInitials}</span>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                <Image className="w-3 h-3 text-white" />
+              </div>
+            </div>
+            <input type="file" accept="image/*" className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !user) return;
+                const ext = file.name.split('.').pop();
+                const path = `patient-avatars/${patient.id}.${ext}`;
+                const { error } = await supabase.storage.from('attachments').upload(path, file, { upsert: true });
+                if (error) { toast.error('Erro ao enviar foto'); return; }
+                const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
+                updatePatient(patient.id, { avatarUrl: urlData.publicUrl });
+                toast.success('Foto atualizada!');
+              }} />
+          </label>
+
+          {/* Name + meta */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold text-foreground truncate">{patient.name}</h1>
+              {!(patient.departureDate || patient.isArchived) && (
+                <span className="w-2 h-2 rounded-full bg-success shrink-0" title="Ativo" />
+              )}
+              {(patient.departureDate || patient.isArchived) && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-warning/20 text-warning shrink-0">
+                  {patient.departureDate ? 'Saiu' : 'Arquivado'}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              {age !== null && <span>{age} anos</span>}
+              {patient.clinicalArea && <><span>·</span><span>{patient.clinicalArea}</span></>}
+              {clinic && <><span>·</span><span>{clinic.name}</span></>}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            {(patient.whatsapp || patient.guardianPhone || patient.responsibleWhatsapp || patient.phone) && (
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10"
+                onClick={() => {
+                  if (patient.isMinor && patient.guardianPhone) {
+                    const cleaned = patient.guardianPhone.replace(/\D/g, '');
+                    const number = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+                    window.open(`https://wa.me/${number}`, '_blank'); return;
+                  }
+                  const hasPatientNum = !!(patient.whatsapp || patient.phone);
+                  const hasResponsible = !!patient.responsibleWhatsapp;
+                  if (hasPatientNum && hasResponsible) { setWhatsAppRecipientOpen(true); }
+                  else if (hasPatientNum) { const num = patient.whatsapp || patient.phone!; const cleaned = num.replace(/\D/g, ''); window.open(`https://wa.me/${cleaned.startsWith('55') ? cleaned : `55${cleaned}`}`, '_blank'); }
+                  else if (hasResponsible) { const cleaned = patient.responsibleWhatsapp!.replace(/\D/g, ''); window.open(`https://wa.me/${cleaned.startsWith('55') ? cleaned : `55${cleaned}`}`, '_blank'); }
+                }}
+              >
+                <WhatsAppIcon className="w-4 h-4" />
+              </Button>
+            )}
+            {patient.phone && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex" title="Ligar">
+                <Phone className="w-4 h-4" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex" onClick={() => setEditPatientOpen(true)} title="Editar">
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              className="gap-1.5 h-8 text-xs hidden sm:flex"
+              onClick={() => { setActiveTab('evolutions'); setTimeout(() => { document.getElementById('nova-evolucao-btn')?.click(); }, 100); }}
+            >
+              <Plus className="w-3.5 h-3.5" /> Nova evolução
+            </Button>
+            {/* Mobile menu button */}
+            <Button variant="ghost" size="icon" className="h-8 w-8 lg:hidden" onClick={() => setMobileDrawerOpen(true)}>
+              <ChevronRight className="w-4 h-4 rotate-90" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Body: rail + content */}
+      <div className="flex flex-1 min-h-0">
+
+        {/* Desktop sidebar rail */}
+        <aside className="hidden lg:block w-[272px] shrink-0 border-r border-border sticky top-[72px] h-[calc(100vh-72px)] overflow-y-auto">
+          <RailNav />
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 min-w-0 pb-20 lg:pb-8">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 px-4 lg:px-6 pt-4 pb-2 text-xs text-muted-foreground">
+            <span className="font-medium">{activeGroup?.label}</span>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-foreground font-semibold">{activeItem?.label}</span>
+          </div>
+
+          <div className="px-4 lg:px-6 space-y-4">
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+
+        {/* Overview Tab — patient info, mood chart, schedule */}
+        <TabsContent value="overview" className="space-y-4">
 
       {/* Hero Card */}
       <div className="relative bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -2738,42 +2946,14 @@ export default function PatientDetail() {
         </div>
       )}
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-        {clinic?.type === 'clinica' && (!isOrgMember || isOrgOwner) && (
-          <PatientScheduleCard
-            patientId={patient.id}
-            clinicId={patient.clinicId}
-            organizationId={clinic?.organizationId || (clinic as any)?.organization_id || null}
-          />
-        )}
-        <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-11 gap-2.5">
-          {[
-            { value: 'evolutions', icon: TrendingUp, label: 'Evoluções' },
-            { value: 'session', icon: Brain, label: 'Sessão' },
-            { value: 'transcricao', icon: Mic, label: 'Transcrição' },
-            { value: 'teleatendimento', icon: Video, label: 'Teleatendimento' },
-            ...((!isOrgMember || isOrgOwner) ? [{ value: 'reports', icon: BarChart3, label: 'Rel. Mensal' }] : []),
-            ...(canSeeFinancialTab ? [{ value: 'financial', icon: DollarSign, label: 'Financeiro' }] : []),
-            { value: 'documents', icon: Paperclip, label: 'Documentos' },
-            { value: 'tasks', icon: ListTodo, label: 'Tarefas' },
-            { value: 'notes', icon: PenLine, label: 'Notas' },
-            ...(canManagePortal ? [{ value: 'portal', icon: Users, label: 'Portal' }] : []),
-            { value: 'mural', icon: Newspaper, label: 'Mural' },
-            { value: 'attendance', icon: ClipboardList, label: 'Frequência' },
-            { value: 'especialidades', icon: Layers, label: 'Especialidades' },
-            ...(isOrg && clinic?.type !== 'propria' ? [{ value: 'therapists', icon: UserCheck, label: 'Terapeutas' }] : []),
-          ].map(({ value, icon: Icon, label }) => (
-            <TabsTrigger
-              key={value}
-              value={value}
-              className="flex flex-col items-center justify-center gap-1.5 h-16 rounded-xl border border-border bg-card shadow-sm text-muted-foreground text-[11px] font-medium transition-all hover:border-primary/30 hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:border-primary/40 data-[state=active]:text-primary data-[state=active]:shadow-none"
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span>{label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+          {clinic?.type === 'clinica' && (!isOrgMember || isOrgOwner) && (
+            <PatientScheduleCard
+              patientId={patient.id}
+              clinicId={patient.clinicId}
+              organizationId={clinic?.organizationId || (clinic as any)?.organization_id || null}
+            />
+          )}
+        </TabsContent>
 
         {/* Evolutions Tab */}
         <TabsContent value="evolutions" className="space-y-4">
@@ -4234,6 +4414,54 @@ export default function PatientDetail() {
 
       </Tabs>
 
+          </div>{/* end px-4 lg:px-6 space-y-4 */}
+        </main>
+
+      </div>{/* end flex body */}
+
+      {/* Mobile bottom bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-background/90 backdrop-blur border-t border-border flex items-center">
+        {(['overview', 'evolutions', 'attendance', 'financial'] as const).map((id) => {
+          const item = NAV_GROUPS_PATIENT.flatMap(g => g.items).find(i => i.id === id);
+          if (!item) return null;
+          const Icon = item.icon;
+          const isActive = activeTab === id;
+          return (
+            <button key={id} onClick={() => setActiveTab(id)}
+              className={cn('flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-semibold transition-colors',
+                isActive ? 'text-primary' : 'text-muted-foreground')}>
+              <Icon className="w-5 h-5" />
+              <span>{item.label.split(' ')[0]}</span>
+            </button>
+          );
+        })}
+        <button onClick={() => setMobileDrawerOpen(true)}
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-semibold text-muted-foreground">
+          <ChevronRight className="w-5 h-5 rotate-90" />
+          <span>Mais</span>
+        </button>
+      </nav>
+
+      {/* Mobile drawer */}
+      {mobileDrawerOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileDrawerOpen(false)} />
+          <div className="relative ml-auto w-[300px] bg-background h-full overflow-y-auto shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="font-semibold text-sm">Navegar na ficha</span>
+              <button onClick={() => setMobileDrawerOpen(false)} className="p-1 rounded-lg hover:bg-muted">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <RailNav onNavigate={() => setMobileDrawerOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>{/* end min-h-screen */}
+
       {editingEvolution && (
         <EditEvolutionDialog evolution={editingEvolution} open={!!editingEvolution}
           onOpenChange={(open) => !open && setEditingEvolution(null)}
@@ -4902,6 +5130,6 @@ export default function PatientDetail() {
             : []),
         ]}
       />
-    </div>
+    </> {/* end fragment */}
   );
 }
