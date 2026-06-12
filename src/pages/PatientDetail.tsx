@@ -2395,6 +2395,7 @@ export default function PatientDetail() {
       items: [
         ...(canManagePortal ? [{ id: 'portal', label: 'Portal do Paciente', icon: Users, desc: 'Acesso da família e atividades' }] : []),
         { id: 'mural', label: 'Mural', icon: Newspaper, desc: 'Avisos e comunicados' },
+        { id: 'diario', label: 'Diário do Paciente', icon: BookHeart, desc: 'Anotações e humor compartilhados pelo paciente' },
         { id: 'tasks', label: 'Tarefas', icon: ListTodo, desc: 'Pendências ligadas ao paciente' },
       ],
     },
