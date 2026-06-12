@@ -16,7 +16,6 @@ import { ClinicAlertsCard } from '@/components/dashboard/ClinicAlertsCard';
 import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { Link } from 'react-router-dom';
@@ -41,22 +40,14 @@ function getGreeting(): string {
 
 export default function Dashboard() {
   const { selectedDate, appointments, tasks, evolutions, clinics, loadAllEvolutions } = useApp();
-  const { theme } = useTheme();
   const { user } = useAuth();
   const { subscribed, productId, subscriptionEnd, loading: subLoading } = useSubscription();
   const { isOrgMember, isOwner, role } = useOrgPermissions();
   const isTherapistView = isOrgMember && !isOwner && role === 'professional';
 
-  const todayStr = toLocalDateString(new Date());
-  const todayEvolutions = evolutions.filter(e => e.date === todayStr);
-  const todayPresentes = todayEvolutions.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao'));
-  const todayFaltas = todayEvolutions.filter(e => e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_remunerada');
-  const pendingTasks = tasks.filter(t => !t.completed);
-
-  const [todayEvents, setTodayEvents] = useState<any[]>([]);
   const [todayPrivate, setTodayPrivate] = useState<number>(0);
+  const todayStr = toLocalDateString(new Date());
 
-  // Load evolutions once when clinics are ready — appointments loaded on demand per clinic page
   useEffect(() => {
     if (!user || clinics.length === 0) return;
     loadAllEvolutions();
@@ -64,13 +55,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('events').select('*').eq('user_id', user.id).eq('date', todayStr)
-      .then(({ data }) => { if (data) setTodayEvents(data); });
     supabase.from('private_appointments').select('id', { count: 'exact', head: true })
       .eq('user_id', user.id).eq('date', todayStr)
       .then(({ count }) => { setTodayPrivate(count ?? 0); });
   }, [user, todayStr]);
-
 
   const planName = productId ? (PLAN_NAMES[productId] || 'Ativo') : null;
   const endDateStr = subscriptionEnd
@@ -78,9 +66,10 @@ export default function Dashboard() {
     : null;
 
   return (
-    <div className="p-4 lg:p-6 max-w-7xl mx-auto pb-24">
-      {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto pb-24 space-y-6">
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl lg:text-2xl font-semibold text-foreground mb-0.5">
             {getGreeting()}! 👋
@@ -91,12 +80,9 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Mural bell icon */}
           <MuralNoticesBell />
-          {/* Internal compliance alerts */}
           <InternalAlertsBell />
 
-          {/* Subscription badge */}
           {!subLoading && (
             <div className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-xl border text-sm",
@@ -106,14 +92,11 @@ export default function Dashboard() {
             )}>
               <Crown className="w-4 h-4" />
               <span className="font-medium">
-                {subscribed
-                  ? `Plano ${planName || 'Ativo'}`
-                  : 'Teste Gratuito'}
+                {subscribed ? `Plano ${planName || 'Ativo'}` : 'Teste Gratuito'}
               </span>
               {subscribed && endDateStr && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <CalendarClock className="w-3 h-3" />
-                  até {endDateStr}
+                  <CalendarClock className="w-3 h-3" /> até {endDateStr}
                 </span>
               )}
               {!subscribed && (
@@ -124,90 +107,53 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="mb-6">
-        <StatsCards />
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Column - Calendar + Summary */}
-        <div className="lg:col-span-4 space-y-5">
-          <MiniCalendar />
-
-          {/* Day Summary */}
-          <div className={cn(
-            "rounded-xl p-4 border",
-            theme === 'lilas' ? 'calendar-grid border-0' : 'bg-card border-border'
-          )}>
-            <h3 className="font-medium text-foreground mb-3 text-sm">Resumo do Dia</h3>
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">✅ Atendimentos</span>
-                <span className="text-foreground font-semibold">{todayPresentes.length}</span>
-              </div>
-              {todayPrivate > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">💼 Serviços</span>
-                  <span className="text-foreground font-semibold">{todayPrivate}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">❌ Faltas</span>
-                <span className="text-foreground font-semibold">{todayFaltas.length}</span>
-              </div>
-              {todayEvents.length > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">📅 Eventos</span>
-                  <span className="text-foreground font-semibold">{todayEvents.length}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">📋 Tarefas Pendentes</span>
-                <span className="text-foreground font-semibold">{pendingTasks.length}</span>
-              </div>
-              {(todayPresentes.length + todayPrivate) > 0 && (
-                <div className="flex items-center justify-between pt-1 border-t border-border">
-                  <span className="text-muted-foreground text-sm font-medium">Total do Dia</span>
-                  <span className="text-foreground font-bold">{todayPresentes.length + todayPrivate}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Alerts & Pending */}
-          {!isTherapistView && <ClinicAlertsCard />}
-
-          {/* Birthdays */}
-          <BirthdayCard />
-        </div>
-
-        {/* Right Column - Appointments + Tasks + Notifications */}
-        <div className="lg:col-span-8 space-y-5">
-          {!isTherapistView && <PendingEnrollmentsCard />}
-          {!isTherapistView && <PaymentReminders />}
-          {isTherapistView && (
-            <Link
-              to="/minhas-comissoes"
-              className="block rounded-xl border border-primary/20 bg-primary/5 p-4 hover:bg-primary/10 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Minhas Comissões</p>
-                    <p className="text-xs text-muted-foreground">Veja seus ganhos e sessões do mês</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-primary" />
-              </div>
-            </Link>
-          )}
+      {/* ── Faixa de pendências (colapsa quando vazia) ─────────────────── */}
+      {!isTherapistView && (
+        <div className="space-y-3">
+          {/* Cada componente abaixo só renderiza quando há pendências */}
           <MissingEvolutionsAlert />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <PaymentReminders />
+            <PendingEnrollmentsCard />
+          </div>
+          <ClinicAlertsCard />
+        </div>
+      )}
+
+      {isTherapistView && (
+        <Link
+          to="/minhas-comissoes"
+          className="block rounded-xl border border-primary/20 bg-primary/5 p-4 hover:bg-primary/10 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Minhas Comissões</p>
+                <p className="text-xs text-muted-foreground">Veja seus ganhos e sessões do mês</p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-primary" />
+          </div>
+        </Link>
+      )}
+
+      {/* ── Grade principal ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        {/* Coluna principal — "Hoje" como herói */}
+        <div className="lg:col-span-8 space-y-5">
           <TodayAppointments />
           <TaskList />
+        </div>
+
+        {/* Coluna lateral — stats + calendário + aniversários + notificações */}
+        <div className="lg:col-span-4 space-y-5">
+          <StatsCards />
+          <MiniCalendar />
+          <BirthdayCard />
           <NotificationSettings />
         </div>
       </div>
