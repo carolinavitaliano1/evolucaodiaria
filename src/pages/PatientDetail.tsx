@@ -5130,6 +5130,6 @@ export default function PatientDetail() {
             : []),
         ]}
       />
-    </> {/* end fragment */}
+      </>
   );
 }
