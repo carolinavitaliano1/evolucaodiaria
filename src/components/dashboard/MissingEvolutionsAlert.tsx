@@ -32,7 +32,7 @@ function dayLabel(dateStr: string): string {
   return format(d, "EEE d/MM", { locale: ptBR });
 }
 
-export function MissingEvolutionsAlert() {
+export function MissingEvolutionsAlert({ onCount }: { onCount?: (n: number) => void } = {}) {
   const { patients } = useApp();
   const { user } = useAuth();
   const { isDateBlocked, loading: blocksLoading } = useCalendarBlocks();
@@ -186,6 +186,11 @@ export function MissingEvolutionsAlert() {
     setComputed(true);
   }
 
+  // Reporta a contagem para a faixa de pendências do Dashboard.
+  useEffect(() => {
+    if (onCount) onCount(computed ? missing.length : 0);
+  }, [computed, missing.length, onCount]);
+
   if (!computed || missing.length === 0) return null;
 
   const todayMissing = missing.filter(s => s.date === toLocalDateString(new Date()));
@@ -248,3 +253,4 @@ export function MissingEvolutionsAlert() {
     </div>
   );
 }
+
