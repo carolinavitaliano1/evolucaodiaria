@@ -36,7 +36,7 @@ interface RecipientOption {
   phone: string;
 }
 
-export function PaymentReminders() {
+export function PaymentReminders({ onCount }: { onCount?: (n: number) => void } = {}) {
   const { patients, clinics } = useApp();
   const { user } = useAuth();
   const [paidPatientIds, setPaidPatientIds] = useState<Set<string>>(new Set());
@@ -101,6 +101,10 @@ export function PaymentReminders() {
       };
     })
     .sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+
+  useEffect(() => {
+    if (onCount) onCount(loading ? 0 : reminders.length);
+  }, [loading, reminders.length, onCount]);
 
   if (loading || reminders.length === 0) return null;
 
@@ -346,3 +350,4 @@ export function PaymentReminders() {
     </>
   );
 }
+
