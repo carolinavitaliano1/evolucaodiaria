@@ -63,7 +63,7 @@ import { PatientFeed } from '@/components/feed/PatientFeed';
 import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
 import { InPersonTranscriptionTab } from '@/components/patients/InPersonTranscriptionTab';
 import { TelehealthSessionsList } from '@/components/telehealth/TelehealthSessionsList';
-import { Brain } from 'lucide-react';
+import { Brain, BookHeart } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { UpgradeBlock } from '@/components/UpgradeBlock';
 import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
