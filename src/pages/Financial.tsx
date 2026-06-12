@@ -1,4 +1,4 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck, CheckCircle2, Clock, XCircle, User, Repeat, Wallet } from 'lucide-react';
 import { TeamFinancialReport } from '@/components/clinics/TeamFinancialReport';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
@@ -1204,9 +1204,474 @@ export default function Financial() {
 
   const paidTotal = paidPatientTotal + clinicPaidTotal;
   const pendingTotal = Math.max(0, grandTotal - paidTotal);
+  const pendingCount = allPatientStats.filter(({ pr }) => !pr?.paid).length;
+
+  const [activeFinTab, setActiveFinTab] = useState<'visao' | 'pagamentos' | 'notas'>('visao');
+
+  // Fontes de receita (grid 2 col com tile de ícone, sub · contagem e barra de %)
+  const privateServicesTotal = monthlyPrivateAppointments.reduce((s, a) => s + (a.value || 0), 0);
+  const revenueSources = [
+    { label: 'Receita Contratante', sub: 'Clínicas terceirizadas', count: `${contratanteClinics.length} clínica(s)`, value: revenueContratante, color: 'hsl(217 80% 56%)', icon: Building2 },
+    { label: 'Receita Consultórios', sub: 'Consultórios próprios', count: `${propriaClinics.length} consultório(s)`, value: revenuePropriaClinicas, color: 'hsl(152 60% 42%)', icon: Stethoscope },
+    { label: 'Sessões Individuais', sub: 'Por sessão (1 a 1)', count: 'Por sessão', value: revenueIndividualSession, color: 'hsl(252 56% 57%)', icon: User },
+    { label: 'Sessões em Grupo', sub: 'Grupos terapêuticos', count: 'Grupos', value: revenueGroup, color: 'hsl(280 55% 55%)', icon: Users },
+    { label: 'Receita Fixa', sub: 'Contratos mensais', count: 'Mensalidades', value: revenueFixo, color: 'hsl(32 85% 50%)', icon: Repeat },
+    { label: 'Serviços Particulares', sub: 'Fora de clínica', count: `${monthlyPrivateAppointments.length} lançamentos`, value: privateServicesTotal, color: 'hsl(190 70% 45%)', icon: Briefcase },
+    { label: 'Atendimentos Avulsos', sub: 'Sem clínica', count: 'Pontuais', value: standaloneRevenue, color: 'hsl(240 5% 50%)', icon: Wallet },
+  ].filter(s => s.value > 0);
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24">
+    <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24 space-y-0">
+
+      {/* ── Header com seletor de mês persistente ──────────────────────── */}
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            💰 Financeiro
+          </h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Visão consolidada das suas receitas</p>
+        </div>
+        {/* Month selector — persiste em todas as abas */}
+        <div className="flex items-center gap-2 bg-card border border-border rounded-xl p-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPreviousMonth}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <button
+            onClick={goToCurrentMonth}
+            className={cn(
+              'text-sm font-semibold px-3 py-1 rounded-lg transition-colors capitalize min-w-[140px] text-center',
+              isCurrentMonth ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {monthName}
+          </button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth} disabled={isCurrentMonth}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Sub-nav sticky ──────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border -mx-4 lg:-mx-8 px-4 lg:px-8 mb-6">
+        <div className="flex items-center gap-1 py-2">
+          {([
+            { id: 'visao', label: 'Visão Geral', icon: TrendingUp },
+            { id: 'pagamentos', label: 'Pagamentos', icon: DollarSign, badge: pendingCount > 0 ? pendingCount : undefined },
+            { id: 'notas', label: 'Notas Fiscais', icon: FileText },
+          ] as const).map(({ id, label, icon: Icon, badge }) => (
+            <button
+              key={id}
+              onClick={() => setActiveFinTab(id)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all',
+                activeFinTab === id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+              {badge !== undefined && (
+                <span className={cn(
+                  'text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center',
+                  activeFinTab === id ? 'bg-white/20 text-white' : 'bg-warning text-white'
+                )}>
+                  {badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Aba: Visão Geral ─────────────────────────────────────────────── */}
+      {activeFinTab === 'visao' && (
+        <div className="space-y-6">
+          {/* Hero */}
+          <div className="rounded-2xl p-6 sm:p-8 gradient-primary shadow-glow">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-primary-foreground/70 text-sm mb-1">Faturamento líquido · {monthName}</p>
+                <h2 className="text-3xl sm:text-5xl font-bold text-primary-foreground mb-2 break-words">
+                  R$ {grandNetTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </h2>
+                {totalDiscount > 0 && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-primary-foreground/80 mb-3">
+                    <span>Bruto: <strong>R$ {grandTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></span>
+                    <span className="text-amber-200">− Descontos: R$ {totalDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2 text-primary-foreground/80 text-xs">
+                  <span className="flex items-center gap-1.5 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
+                    <CalendarCheck className="w-3.5 h-3.5" /> {presentEvolutions.length} atend.
+                  </span>
+                  {reposicaoEvolutions.length > 0 && (
+                    <span className="flex items-center gap-1.5 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
+                      🔄 {reposicaoEvolutions.length} repos.
+                    </span>
+                  )}
+                  {paidAbsenceEvolutions.length > 0 && (
+                    <span className="flex items-center gap-1.5 bg-amber-500/20 px-2.5 py-1 rounded-full text-amber-200">
+                      {paidAbsenceEvolutions.length} faltas rem.
+                    </span>
+                  )}
+                  {absentEvolutions.length > 0 && (
+                    <span className="flex items-center gap-1.5 bg-red-500/20 px-2.5 py-1 rounded-full text-red-200">
+                      <TrendingDown className="w-3.5 h-3.5" /> {absentEvolutions.length} faltas
+                    </span>
+                  )}
+                </div>
+                {totalLoss > 0 && (
+                  <p className="text-red-200 text-xs mt-2 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Estimativa de perda por faltas: R$ {totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+              <DollarSign className="w-14 h-14 sm:w-20 sm:h-20 text-primary-foreground/20 shrink-0" />
+            </div>
+          </div>
+
+          {/* Fontes de receita — grid 2 colunas com tile de ícone + barra de % */}
+          {revenueSources.length > 0 && (
+            <div className="bg-card rounded-2xl border border-border p-5">
+              <h3 className="font-semibold text-foreground text-sm mb-4 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-primary" /> De onde vem a receita
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                {revenueSources.map((src, i) => {
+                  const pct = grandTotal > 0 ? Math.round((src.value / grandTotal) * 100) : 0;
+                  const Icon = src.icon;
+                  return (
+                    <div key={i}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span
+                          className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+                          style={{ background: `color-mix(in srgb, ${src.color} 12%, transparent)`, color: src.color }}
+                        >
+                          <Icon className="w-[18px] h-[18px]" />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13.5px] font-bold text-foreground truncate">{src.label}</p>
+                          <p className="text-[11.5px] text-muted-foreground truncate">{src.sub} · {src.count}</p>
+                        </div>
+                        <span className="text-[15px] font-extrabold text-foreground whitespace-nowrap">
+                          R$ {src.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="h-[7px] bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: src.color }} />
+                      </div>
+                      <span className="text-[11px] text-muted-foreground font-semibold mt-1.5 inline-block">{pct}% do total</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Por clínica */}
+          {(clinicStats.length > 0 || standaloneRevenue > 0) && (
+            <div className="bg-card rounded-2xl p-5 border border-border space-y-3">
+              <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                <Stethoscope className="w-4 h-4 text-primary" /> Por clínica
+              </h3>
+              {clinicStats.map(({ clinic, revenue, patientCount, sessions }) => (
+                <div key={clinic.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{clinic.name}</p>
+                    <p className="text-xs text-muted-foreground">{patientCount} pacientes · {sessions} sessões</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-foreground text-sm">R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    {grandTotal > 0 && <p className="text-xs text-muted-foreground">{((revenue / grandTotal) * 100).toFixed(0)}% do total</p>}
+                  </div>
+                </div>
+              ))}
+              {standaloneRevenue > 0 && (
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Sem clínica</p>
+                    <p className="text-xs text-muted-foreground">Atendimentos avulsos</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-foreground text-sm">R$ {standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    {grandTotal > 0 && <p className="text-xs text-muted-foreground">{((standaloneRevenue / grandTotal) * 100).toFixed(0)}% do total</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Team Financial Reports */}
+          {clinics.filter(c => !c.isArchived && (c as any).organization_id).map(orgClinic => (
+            <div key={orgClinic.id} className="bg-card rounded-2xl p-5 border border-border">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+                <Users className="w-4 h-4 text-primary" /> Equipe — {orgClinic.name}
+              </h3>
+              <TeamFinancialReport clinicId={orgClinic.id} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Aba: Pagamentos ──────────────────────────────────────────────── */}
+      {activeFinTab === 'pagamentos' && (
+        <div className="space-y-5">
+          {/* Summary cards */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-secondary/40 border border-border/50 p-3 text-center">
+              <p className="text-[10px] text-muted-foreground mb-0.5">Total Previsto</p>
+              <p className="font-bold text-foreground text-sm">R$ {(paidTotal + pendingTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+            </div>
+            <div className="rounded-xl bg-success/5 border border-success/20 p-3 text-center">
+              <p className="text-[10px] text-success/80 mb-0.5 flex items-center justify-center gap-1"><CheckCircle2 className="w-3 h-3" />Recebido</p>
+              <p className="font-bold text-success text-sm">R$ {paidTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+            </div>
+            <div className="rounded-xl bg-warning/5 border border-warning/20 p-3 text-center">
+              <p className="text-[10px] text-warning/80 mb-0.5 flex items-center justify-center gap-1"><Clock className="w-3 h-3" />Pendente</p>
+              <p className="font-bold text-warning text-sm">R$ {pendingTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+
+          {/* Table card */}
+          <div className="bg-card rounded-2xl p-5 border border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h2 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                💳 Controle de Pagamentos por Paciente
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="gap-2 text-xs h-8">
+                      <FileText className="w-3.5 h-3.5" /> Extrato PDF
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader><DialogTitle>Emitir Extrato Completo Interno</DialogTitle></DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 block">Clínica</label>
+                        <Select value={invoiceClinicId} onValueChange={setInvoiceClinicId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione a clínica" /></SelectTrigger>
+                          <SelectContent>
+                            {clinics.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Mês selecionado: <span className="font-medium capitalize">{monthName}</span>
+                      </p>
+                      <Button onClick={handleExportClinicInvoice} disabled={isExportingInvoice || !invoiceClinicId} className="w-full gap-2">
+                        {isExportingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        {isExportingInvoice ? 'Gerando...' : 'Exportar Extrato PDF'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Button variant="outline" className="gap-2 text-xs h-8" onClick={handleExportPDF} disabled={isExporting}>
+                  {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  {isExporting ? 'Exportando...' : 'PDF Geral'}
+                </Button>
+                <Button variant="outline" className="gap-2 text-xs h-8" onClick={handleExportCSV}>
+                  <Download className="w-3.5 h-3.5" /> CSV
+                </Button>
+              </div>
+            </div>
+
+            {/* Filtros segmented */}
+            <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-secondary/30 rounded-xl border border-border/50">
+              <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <div className="flex items-center gap-0.5 rounded-lg bg-card border border-border p-0.5">
+                {(['all', 'paid', 'pending'] as PaymentStatusFilter[]).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setPaymentStatusFilter(f)}
+                    className={cn(
+                      'text-xs px-3 py-1.5 rounded-md transition-colors font-medium',
+                      paymentStatusFilter === f
+                        ? f === 'paid' ? 'bg-success text-white' : f === 'pending' ? 'bg-warning text-white' : 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {f === 'all' ? 'Todos' : f === 'paid' ? '✓ Recebidos' : '⏳ Pendentes'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 ml-auto">
+                <label className="text-[10px] text-muted-foreground">Data pgto:</label>
+                <Input type="date" value={tableStartDate} onChange={e => setTableStartDate(e.target.value)} className="h-7 text-xs w-32 px-2" />
+                <span className="text-muted-foreground text-xs">–</span>
+                <Input type="date" value={tableEndDate} onChange={e => setTableEndDate(e.target.value)} className="h-7 text-xs w-32 px-2" />
+                {(tableStartDate || tableEndDate) && (
+                  <button onClick={() => { setTableStartDate(''); setTableEndDate(''); }} className="text-xs text-muted-foreground hover:text-foreground px-1.5">✕</button>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full min-w-[600px]">
+                <thead>
+                  <tr className="border-b-2 border-border">
+                    <th className="text-left py-3 px-3 font-semibold text-foreground text-xs">Paciente</th>
+                    <th className="text-left py-3 px-3 font-semibold text-foreground text-xs hidden sm:table-cell">Clínica</th>
+                    <th className="text-left py-3 px-3 font-semibold text-foreground text-xs">Tipo</th>
+                    <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Sess.</th>
+                    <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Faltas</th>
+                    <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Status Pgto</th>
+                    <th className="text-center py-3 px-3 font-semibold text-foreground text-xs hidden md:table-cell">Data Pgto</th>
+                    <th className="text-right py-3 px-3 font-semibold text-foreground text-xs">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr, tipoLabel, proportionalShare }) => (
+                    <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
+                      <td className="py-3 px-3 text-foreground text-xs font-medium">{patient.name}</td>
+                      <td className="py-3 px-3 text-muted-foreground text-xs hidden sm:table-cell">{clinic?.name}</td>
+                      <td className="py-3 px-3 text-xs">
+                        <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent')}>
+                          {tipoLabel || (paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-center text-foreground text-xs">{sessions}</td>
+                      <td className="py-3 px-3 text-center text-foreground text-xs">{absences}</td>
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
+                          disabled={savingPatientPayment === patient.id}
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors',
+                            pr?.paid
+                              ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                              : 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/20'
+                          )}
+                        >
+                          {savingPatientPayment === patient.id
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : pr?.paid
+                              ? <><CheckCircle2 className="w-3 h-3" />Pago</>
+                              : <><Clock className="w-3 h-3" />Receber</>}
+                        </button>
+                      </td>
+                      <td className="py-3 px-3 text-center text-xs text-muted-foreground hidden md:table-cell">
+                        {pr?.paid && pr.payment_date
+                          ? <span className="text-success font-medium">{format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy')}</span>
+                          : <span className="text-muted-foreground/50">—</span>}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex flex-col items-end">
+                          {proportionalShare?.isProportional ? (
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex flex-col items-end cursor-help">
+                                    <span className="font-bold text-xs text-muted-foreground">
+                                      R$ {proportionalShare.share.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground/70 italic">(rateio)</span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-xs text-xs">
+                                  Valor proporcional ao salário fixo da clínica ({proportionalShare.patientSessions}/{proportionalShare.totalSessions} sessões).
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <>
+                              <span className={cn('font-bold text-xs', loss > 0 ? 'text-foreground' : 'text-success')}>
+                                R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </span>
+                              {loss > 0 && <span className="text-xs text-destructive hidden sm:block">-R$ {loss.toFixed(2)}</span>}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {patientStats.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="text-center py-10 text-muted-foreground">
+                        {paymentStatusFilter !== 'all' || tableStartDate || tableEndDate
+                          ? 'Nenhum resultado para os filtros aplicados'
+                          : 'Nenhum paciente com valor configurado'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Aba: Notas Fiscais ───────────────────────────────────────────── */}
+      {activeFinTab === 'notas' && (
+        <div className="space-y-5">
+          <div className="bg-card rounded-2xl p-5 sm:p-6 border border-border max-w-lg">
+            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2 text-sm">
+              <FileText className="w-4 h-4 text-primary" /> Emitir extrato / recibo
+            </h3>
+            <div className="space-y-4">
+              {stamps.length > 0 && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                    <Stamp className="w-3.5 h-3.5" /> Carimbo profissional
+                  </label>
+                  <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sem carimbo</SelectItem>
+                      {stamps.map(s => <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5" /> Clínica
+                </label>
+                <Select value={invoiceClinicId} onValueChange={setInvoiceClinicId}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Selecione a clínica" /></SelectTrigger>
+                  <SelectContent>
+                    {clinics.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Período</label>
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={invoiceStartDate} onChange={e => setInvoiceStartDate(e.target.value)} className="h-9 text-sm" />
+                  <span className="text-muted-foreground text-sm">até</span>
+                  <Input type="date" value={invoiceEndDate} onChange={e => setInvoiceEndDate(e.target.value)} className="h-9 text-sm" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline" className="flex-1 gap-2"
+                  onClick={handleExportPDF} disabled={isExporting}
+                >
+                  {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  PDF Geral
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={handleExportClinicInvoice} disabled={isExportingInvoice || !invoiceClinicId}
+                >
+                  {isExportingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Extrato por Clínica
+                </Button>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 shrink-0" />
+            Os extratos gerados ficam registrados no histórico do paciente e da clínica.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
       {/* Header */}
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -1668,58 +2133,46 @@ export default function Financial() {
         </div>
 
         <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full min-w-[600px]">
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b-2 border-border">
                 <th className="text-left py-3 px-3 font-semibold text-foreground text-xs">Paciente</th>
                 <th className="text-left py-3 px-3 font-semibold text-foreground text-xs hidden sm:table-cell">Clínica</th>
-                <th className="text-left py-3 px-3 font-semibold text-foreground text-xs">Tipo</th>
-                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Sess.</th>
-                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Faltas</th>
-                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Status Pgto</th>
-                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs hidden md:table-cell">Data Pgto</th>
+                <th className="text-center py-3 px-3 font-semibold text-foreground text-xs">Sessões</th>
                 <th className="text-right py-3 px-3 font-semibold text-foreground text-xs">Valor</th>
+                <th className="text-right py-3 px-3 font-semibold text-foreground text-xs">Status</th>
               </tr>
             </thead>
             <tbody>
-              {patientStats.map(({ patient, clinic, revenue, loss, sessions, paidAbsences, absences, paymentType, paymentValue, pr, tipoLabel, proportionalShare }) => (
-                <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
-                  <td className="py-3 px-3 text-foreground text-xs font-medium">{patient.name}</td>
-                  <td className="py-3 px-3 text-muted-foreground text-xs hidden sm:table-cell">{clinic?.name}</td>
-                  <td className="py-3 px-3 text-xs">
-                    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', paymentType === 'fixo' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent')}>
-                      {tipoLabel || (paymentType === 'fixo' ? 'Fixo' : `R$${paymentValue}/sessão`)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-center text-foreground text-xs">{sessions}</td>
-                  <td className="py-3 px-3 text-center text-foreground text-xs">{absences}</td>
-                  <td className="py-3 px-3 text-center">
-                    <button
-                      onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
-                      disabled={savingPatientPayment === patient.id}
-                      className={cn(
-                        'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors',
-                        pr?.paid
-                          ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
-                          : 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/20'
-                      )}
-                    >
-                      {savingPatientPayment === patient.id
-                        ? <Loader2 className="w-3 h-3 animate-spin" />
-                        : pr?.paid
-                          ? <><CheckCircle2 className="w-3 h-3" />Pago</>
-                          : <><Clock className="w-3 h-3" />Pendente</>}
-                    </button>
-                  </td>
-                  {/* Payment date column */}
-                  <td className="py-3 px-3 text-center text-xs text-muted-foreground hidden md:table-cell">
-                    {pr?.paid && pr.payment_date
-                      ? <span className="text-success font-medium">{format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM/yyyy')}</span>
-                      : <span className="text-muted-foreground/50">—</span>
-                    }
-                  </td>
-                  <td className="py-3 px-3 text-right">
-                    <div className="flex flex-col items-end">
+              {patientStats.map(({ patient, clinic, revenue, loss, sessions, pr, proportionalShare }) => {
+                // Vencimento / atraso a partir do dia de cobrança do paciente
+                const dueDay = (patient as any).payment_due_day as number | undefined;
+                let dueText = '';
+                let isLate = false;
+                if (dueDay && !pr?.paid) {
+                  const dueDate = new Date(selectedYear, selectedMonth, dueDay);
+                  const today = new Date(); today.setHours(0, 0, 0, 0);
+                  const diffDays = Math.floor((today.getTime() - dueDate.getTime()) / 86400000);
+                  if (diffDays > 0) { isLate = true; dueText = `Atrasado ${diffDays}d`; }
+                  else { dueText = `Vence ${format(dueDate, 'dd/MM')}`; }
+                }
+                const initials = patient.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+                return (
+                  <tr key={patient.id} className="border-b border-border/60 hover:bg-secondary/40 transition-colors">
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-8 h-8 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">
+                          {initials}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{patient.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate sm:hidden">{clinic?.name}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-muted-foreground text-xs hidden sm:table-cell">{clinic?.name}</td>
+                    <td className="py-3 px-3 text-center text-foreground text-xs">{sessions}</td>
+                    <td className="py-3 px-3 text-right">
                       {proportionalShare?.isProportional ? (
                         <TooltipProvider delayDuration={150}>
                           <Tooltip>
@@ -1732,28 +2185,46 @@ export default function Financial() {
                               </div>
                             </TooltipTrigger>
                             <TooltipContent side="left" className="max-w-xs text-xs">
-                              Valor proporcional ao salário fixo da clínica
-                              {' '}(R$ {proportionalShare.clinicSalary.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).
-                              Não é receita adicional — apenas representa o peso deste paciente
-                              ({proportionalShare.patientSessions}/{proportionalShare.totalSessions} sessões) no salário.
+                              Valor proporcional ao salário fixo da clínica ({proportionalShare.patientSessions}/{proportionalShare.totalSessions} sessões).
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       ) : (
-                        <>
-                          <span className={cn('font-bold text-xs', loss > 0 ? 'text-foreground' : 'text-success')}>
-                            R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
-                          {loss > 0 && <span className="text-xs text-destructive hidden sm:block">-R$ {loss.toFixed(2)}</span>}
-                        </>
+                        <span className={cn('font-bold text-xs', loss > 0 ? 'text-foreground' : 'text-foreground')}>
+                          R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      {pr?.paid ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium bg-success/10 text-success">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {pr.payment_date ? `Recebido · ${format(new Date(pr.payment_date + 'T00:00:00'), 'dd/MM')}` : 'Recebido'}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleTogglePatientPayment(patient.id, pr, revenue)}
+                          disabled={savingPatientPayment === patient.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-bold bg-warning/[0.12] text-warning hover:bg-success hover:text-white transition-colors"
+                        >
+                          {savingPatientPayment === patient.id
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <CheckCircle2 className="w-3.5 h-3.5" />}
+                          Receber
+                          {dueText && (
+                            <small className={cn('text-[10px] font-medium ml-0.5', isLate ? 'text-destructive' : 'opacity-80')}>
+                              {dueText}
+                            </small>
+                          )}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {patientStats.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <td colSpan={5} className="text-center py-10 text-muted-foreground">
                     {paymentStatusFilter !== 'all' || tableStartDate || tableEndDate
                       ? 'Nenhum resultado para os filtros aplicados'
                       : 'Nenhum paciente com valor configurado'}
