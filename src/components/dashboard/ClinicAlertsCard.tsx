@@ -50,7 +50,7 @@ function isAlertDismissed(_key: string): boolean {
   return false;
 }
 
-export function ClinicAlertsCard() {
+export function ClinicAlertsCard({ onCount }: { onCount?: (n: number) => void } = {}) {
   const { patients, tasks, evolutions, clinics } = useApp();
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -380,6 +380,12 @@ export function ClinicAlertsCard() {
   }, [overduePaymentPatients, missingEvolutionPatients, unreadMessagePatients, pendingTasks, pendingEnrollments, pendingEnrollmentPatients, intakeReviewPatients, pendingReceiptPatients, navigate, dismissed]);
 
   const allClear = alerts.length === 0 && !loading;
+  const totalAlertCount = alerts.reduce((a, b) => a + b.count, 0);
+
+  // Reporta a contagem total para a faixa de pendências do Dashboard.
+  useEffect(() => {
+    if (onCount) onCount(loading ? 0 : totalAlertCount);
+  }, [loading, totalAlertCount, onCount]);
 
   return (
     <div className={cn(
