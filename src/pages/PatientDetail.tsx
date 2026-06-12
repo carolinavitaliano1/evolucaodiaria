@@ -4334,6 +4334,11 @@ export default function PatientDetail() {
           )}
         </TabsContent>
 
+        {/* Diário do Paciente */}
+        <TabsContent value="diario">
+          <PatientDiaryTab patientId={patient.id} userId={user.id} />
+        </TabsContent>
+
         {/* Frequência Tab */}
         <TabsContent value="attendance">
           {patient && clinic && (
