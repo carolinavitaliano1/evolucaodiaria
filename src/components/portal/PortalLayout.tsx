@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, MessageSquare, FileText, LogOut, Bell, DollarSign, FolderOpen, Newspaper, BookOpen, ClipboardList } from 'lucide-react';
+import { Home, MessageSquare, FileText, LogOut, Bell, DollarSign, FolderOpen, Newspaper, BookOpen, ClipboardList, BookHeart } from 'lucide-react';
 import { usePortal } from '@/contexts/PortalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/portal/home', icon: Home, label: 'Início' },
   { to: '/portal/mensagens', icon: MessageSquare, label: 'Chat' },
   { to: '/portal/atividades', icon: ClipboardList, label: 'Atividades' },
+  { to: '/portal/diario', icon: BookHeart, label: 'Diário' },
   { to: '/portal/avisos', icon: Bell, label: 'Avisos' },
   { to: '/portal/financeiro', icon: DollarSign, label: 'Financeiro' },
   { to: '/portal/mural', icon: Newspaper, label: 'Mural' },
