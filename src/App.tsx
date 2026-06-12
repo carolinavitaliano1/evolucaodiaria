@@ -80,6 +80,7 @@ const PortalFinancial = lazyWithReload(() => import("./pages/portal/PortalFinanc
 const PortalDocuments = lazyWithReload(() => import("./pages/portal/PortalDocuments"));
 const PortalMural = lazyWithReload(() => import("./pages/portal/PortalMural"));
 const PortalActivities = lazyWithReload(() => import("./pages/portal/PortalActivities"));
+const PortalDiary = lazyWithReload(() => import("./pages/portal/PortalDiary"));
 const TelehealthPatient = lazyWithReload(() => import("./pages/TelehealthPatient"));
 const TelehealthRoomPage = lazyWithReload(() => import("./pages/TelehealthRoomPage"));
 const Telechamadas = lazyWithReload(() => import("./pages/Telechamadas"));
@@ -152,6 +153,7 @@ const App = () => (
                   <Route path="/portal/documentos" element={<PortalRoute><PortalDocuments /></PortalRoute>} />
                   <Route path="/portal/mural" element={<PortalRoute><PortalMural /></PortalRoute>} />
                   <Route path="/portal/atividades" element={<PortalRoute><PortalActivities /></PortalRoute>} />
+                  <Route path="/portal/diario" element={<PortalRoute><PortalDiary /></PortalRoute>} />
                   {/* Public intake form — no auth required */}
                   <Route path="/cadastro-paciente/:token" element={<PatientIntakePublic />} />
                   {/* Self-service enrollment — no auth required */}

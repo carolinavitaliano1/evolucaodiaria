@@ -1922,6 +1922,63 @@ export type Database = {
           },
         ]
       }
+      patient_diary_entries: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          mood: string | null
+          patient_id: string
+          portal_account_id: string | null
+          shared_with_therapist: boolean
+          therapist_comment: string | null
+          therapist_commented_at: string | null
+          therapist_commented_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          mood?: string | null
+          patient_id: string
+          portal_account_id?: string | null
+          shared_with_therapist?: boolean
+          therapist_comment?: string | null
+          therapist_commented_at?: string | null
+          therapist_commented_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          mood?: string | null
+          patient_id?: string
+          portal_account_id?: string | null
+          shared_with_therapist?: boolean
+          therapist_comment?: string | null
+          therapist_commented_at?: string | null
+          therapist_commented_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_diary_entries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_diary_entries_portal_account_id_fkey"
+            columns: ["portal_account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_portal_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_documents: {
         Row: {
           clinic_id: string
@@ -5147,6 +5204,20 @@ export type Database = {
           id: string
           name: string
           status: string
+        }[]
+      }
+      get_patient_diary_for_therapist: {
+        Args: { _patient_id: string }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          mood: string
+          shared_with_therapist: boolean
+          therapist_comment: string
+          therapist_commented_at: string
+          therapist_commented_by: string
+          updated_at: string
         }[]
       }
       get_patient_monthly_revenue: {

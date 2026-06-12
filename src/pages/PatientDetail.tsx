@@ -60,10 +60,11 @@ import { PatientServicesSection } from '@/components/patients/PatientServicesSec
 import jsPDF from 'jspdf';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { PatientFeed } from '@/components/feed/PatientFeed';
+import { PatientDiaryTab } from '@/components/patients/PatientDiaryTab';
 import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
 import { InPersonTranscriptionTab } from '@/components/patients/InPersonTranscriptionTab';
 import { TelehealthSessionsList } from '@/components/telehealth/TelehealthSessionsList';
-import { Brain } from 'lucide-react';
+import { Brain, BookHeart } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { UpgradeBlock } from '@/components/UpgradeBlock';
 import { useCalendarBlocks } from '@/hooks/useCalendarBlocks';
@@ -2394,6 +2395,7 @@ export default function PatientDetail() {
       items: [
         ...(canManagePortal ? [{ id: 'portal', label: 'Portal do Paciente', icon: Users, desc: 'Acesso da família e atividades' }] : []),
         { id: 'mural', label: 'Mural', icon: Newspaper, desc: 'Avisos e comunicados' },
+        { id: 'diario', label: 'Diário do Paciente', icon: BookHeart, desc: 'Anotações e humor compartilhados pelo paciente' },
         { id: 'tasks', label: 'Tarefas', icon: ListTodo, desc: 'Pendências ligadas ao paciente' },
       ],
     },
@@ -4330,6 +4332,11 @@ export default function PatientDetail() {
               currentUserName={therapistProfile?.name ?? 'Terapeuta'}
             />
           )}
+        </TabsContent>
+
+        {/* Diário do Paciente */}
+        <TabsContent value="diario">
+          <PatientDiaryTab patientId={patient.id} userId={user.id} />
         </TabsContent>
 
         {/* Frequência Tab */}
