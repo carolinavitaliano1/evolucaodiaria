@@ -46,7 +46,7 @@ interface FinalizeForm {
 
 const WEEKDAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
-export function PendingEnrollmentsCard() {
+export function PendingEnrollmentsCard({ onCount }: { onCount?: (n: number) => void } = {}) {
   const { user } = useAuth();
   const { clinicPackages } = useApp();
   const [pending, setPending] = useState<PendingPatient[]>([]);
@@ -94,6 +94,11 @@ export function PendingEnrollmentsCard() {
 
     return () => { supabase.removeChannel(channel); };
   }, [user]);
+
+  // Reporta a contagem para a faixa de pendências do Dashboard.
+  useEffect(() => {
+    if (onCount) onCount(pending.length);
+  }, [pending.length, onCount]);
 
   const openFinalize = (p: PendingPatient) => {
     setSelectedPatient(p);
