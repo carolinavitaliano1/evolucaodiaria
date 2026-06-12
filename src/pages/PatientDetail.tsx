@@ -60,6 +60,7 @@ import { PatientServicesSection } from '@/components/patients/PatientServicesSec
 import jsPDF from 'jspdf';
 import { FeedbackIAModal } from '@/components/evolutions/FeedbackIAModal';
 import { PatientFeed } from '@/components/feed/PatientFeed';
+import { PatientDiaryTab } from '@/components/patients/PatientDiaryTab';
 import { TherapeuticSessionTab } from '@/components/patients/TherapeuticSessionTab';
 import { InPersonTranscriptionTab } from '@/components/patients/InPersonTranscriptionTab';
 import { TelehealthSessionsList } from '@/components/telehealth/TelehealthSessionsList';
