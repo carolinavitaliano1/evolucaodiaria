@@ -107,6 +107,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── Stats no topo (Clínicas, Pacientes, Hoje, Faturamento) ───── */}
+      <StatsCards />
+
       {/* ── Faixa de pendências (colapsa quando vazia) ──────────────────── */}
       {!isTherapistView && (
         <>
@@ -200,7 +203,6 @@ export default function Dashboard() {
 
         {/* Coluna lateral */}
         <div className="flex flex-col gap-4">
-          <StatsCards />
           <MiniCalendar />
           <BirthdayCard />
           <details className="rounded-2xl border border-dashed border-border group">
