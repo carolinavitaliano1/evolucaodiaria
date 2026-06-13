@@ -1617,10 +1617,10 @@ export default function Financial() {
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1.5">
                     <Stamp className="w-3.5 h-3.5" /> Carimbo profissional
                   </label>
-                  <Select value={selectedStampId} onValueChange={setSelectedStampId}>
+                  <Select value={selectedStampId || 'none'} onValueChange={(v) => setSelectedStampId(v === 'none' ? '' : v)}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem carimbo</SelectItem>
+                      <SelectItem value="none">Sem carimbo</SelectItem>
                       {stamps.map(s => <SelectItem key={s.id} value={s.id}>{s.name} — {s.clinical_area}{s.is_default ? ' ⭐' : ''}</SelectItem>)}
                     </SelectContent>
                   </Select>
