@@ -1277,7 +1277,6 @@ export default function ClinicDetail() {
   );
 
   return (
-    <>
     <div className="min-h-screen flex flex-col">
 
       {/* ── Sticky Header ───────────────────────────────────────────── */}
@@ -3347,6 +3346,5 @@ export default function ClinicDetail() {
         </div>
       )}
     </div>
-    </>
   );
 }
