@@ -3346,7 +3346,6 @@ export default function ClinicDetail() {
           </div>
         </div>
       )}
-    </div>
     </>
   );
 }
