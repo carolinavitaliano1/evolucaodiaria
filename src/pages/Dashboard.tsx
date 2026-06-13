@@ -107,6 +107,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── Stats no topo (Clínicas, Pacientes, Hoje, Faturamento) ───── */}
+      <StatsCards />
+
       {/* ── Faixa de pendências (colapsa quando vazia) ──────────────────── */}
       {!isTherapistView && (
         <>
