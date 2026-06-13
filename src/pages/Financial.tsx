@@ -1209,7 +1209,7 @@ export default function Financial() {
   const [activeFinTab, setActiveFinTab] = useState<'visao' | 'pagamentos' | 'notas'>('visao');
 
   // Fontes de receita (grid 2 col com tile de ícone, sub · contagem e barra de %)
-  const privateServicesTotal = monthlyPrivateAppointments.reduce((s, a) => s + (a.value || 0), 0);
+  const privateServicesTotal = monthlyPrivateAppointments.reduce((s, a) => s + (Number(a.price) || 0), 0);
   const revenueSources = [
     { label: 'Receita Contratante', sub: 'Clínicas terceirizadas', count: `${contratanteClinics.length} clínica(s)`, value: revenueContratante, color: 'hsl(217 80% 56%)', icon: Building2 },
     { label: 'Receita Consultórios', sub: 'Consultórios próprios', count: `${propriaClinics.length} consultório(s)`, value: revenuePropriaClinicas, color: 'hsl(152 60% 42%)', icon: Stethoscope },
@@ -1255,9 +1255,9 @@ export default function Financial() {
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border -mx-4 lg:-mx-8 px-4 lg:px-8 mb-6">
         <div className="flex items-center gap-1 py-2">
           {([
-            { id: 'visao', label: 'Visão Geral', icon: TrendingUp },
+            { id: 'visao', label: 'Visão Geral', icon: TrendingUp, badge: undefined as number | undefined },
             { id: 'pagamentos', label: 'Pagamentos', icon: DollarSign, badge: pendingCount > 0 ? pendingCount : undefined },
-            { id: 'notas', label: 'Notas Fiscais', icon: FileText },
+            { id: 'notas', label: 'Notas Fiscais', icon: FileText, badge: undefined as number | undefined },
           ] as const).map(({ id, label, icon: Icon, badge }) => (
             <button
               key={id}
