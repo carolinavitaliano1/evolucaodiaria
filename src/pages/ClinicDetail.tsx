@@ -1178,79 +1178,164 @@ export default function ClinicDetail() {
 
   const isPropria = clinic.type === 'propria';
   const isArchived = clinic.isArchived === true;
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // Clinic type label
+  const clinicTypeLabel = clinic.type === 'propria' ? 'Consultório' : clinic.type === 'clinica' ? 'Clínica Pro' : 'Parceira';
+
+  // Navigation groups for the rail sidebar (filtered by clinic type)
+  type ClinicNavItem = { id: string; label: string; icon: React.ReactNode; types: ('propria' | 'parceira' | 'clinica' | 'terceirizada')[] };
+  type ClinicNavGroup = { id: string; label: string; items: ClinicNavItem[] };
+
+  const NAV_GROUPS_CLINIC: ClinicNavGroup[] = [
+    {
+      id: 'geral', label: 'Visão Geral',
+      items: [
+        { id: 'today', label: 'Visão Geral', icon: <ClipboardList className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+      ],
+    },
+    {
+      id: 'atendimento', label: 'Atendimento',
+      items: [
+        { id: 'patients', label: 'Pacientes', icon: <Users className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+        { id: 'agenda', label: 'Agenda', icon: <Calendar className="w-[18px] h-[18px]" />, types: ['propria', 'parceira'] },
+        { id: 'evolutions', label: 'Evoluções', icon: <TrendingUp className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+        { id: 'attendance', label: 'Frequência', icon: <ClipboardList className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+        { id: 'attendances', label: 'Atendimentos', icon: <UserCheck className="w-[18px] h-[18px]" />, types: ['clinica'] },
+        { id: 'groups', label: 'Grupos', icon: <UsersRound className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+      ],
+    },
+    {
+      id: 'financeiro', label: 'Financeiro',
+      items: [
+        { id: 'financial', label: 'Financeiro', icon: <DollarSign className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+        { id: 'health-plans', label: 'Convênios', icon: <ShieldCheck className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+        { id: 'packages', label: 'Pacotes', icon: <Package className="w-[18px] h-[18px]" />, types: ['clinica'] },
+        { id: 'services', label: isPropria ? serviceTermPlural : 'Avulsos', icon: <Briefcase className="w-[18px] h-[18px]" />, types: ['propria', 'clinica'] },
+        { id: 'procedures', label: 'Procedimentos', icon: <StampIcon className="w-[18px] h-[18px]" />, types: ['clinica'] },
+      ],
+    },
+    {
+      id: 'equipe', label: 'Equipe & Acesso',
+      items: [
+        { id: 'team', label: 'Equipe', icon: <Users className="w-[18px] h-[18px]" />, types: ['clinica'] },
+        { id: 'collaborators', label: 'Colaboradores', icon: <UserCog className="w-[18px] h-[18px]" />, types: ['clinica'] },
+        { id: 'users', label: 'Usuários', icon: <UserCheck className="w-[18px] h-[18px]" />, types: ['clinica'] },
+      ],
+    },
+    {
+      id: 'comunicacao', label: 'Comunicação & Docs',
+      items: [
+        { id: 'whatsapp', label: 'WhatsApp', icon: <MessageSquare className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+        { id: 'reports', label: 'Documentos', icon: <Sparkles className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+        { id: 'notes', label: 'Notas', icon: <StickyNote className="w-[18px] h-[18px]" />, types: ['propria', 'parceira', 'clinica', 'terceirizada'] },
+      ],
+    },
+    {
+      id: 'configuracoes', label: 'Configurações',
+      items: [
+        { id: 'agenda-settings', label: 'Configurações de Agenda', icon: <Settings2 className="w-[18px] h-[18px]" />, types: ['clinica'] },
+      ],
+    },
+  ];
+
+  // Filter groups and items visible for this clinic type
+  const visibleGroups = NAV_GROUPS_CLINIC
+    .map(g => ({ ...g, items: g.items.filter(item => item.types.includes(clinic.type as any)) }))
+    .filter(g => g.items.length > 0);
+
+  // Mobile bottom bar items
+  const BOTTOM_CLINIC_ITEMS = ['today', 'patients', 'financial', 'evolutions'];
+
+  const ClinicRailNav = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <nav className="flex flex-col gap-1 p-3">
+      {visibleGroups.map(group => (
+        <div key={group.id} className="mb-2">
+          <p className="px-3 py-1 text-[10.5px] font-semibold uppercase tracking-widest text-muted-foreground/70 select-none">
+            {group.label}
+          </p>
+          {group.items.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setActiveTab(item.id); onNavigate?.(); }}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all',
+                activeTab === item.id
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+            >
+              <span className={cn('shrink-0', activeTab === item.id ? 'text-primary' : 'text-muted-foreground')}>
+                {item.icon}
+              </span>
+              <span className="text-[13px] truncate">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <Button variant="ghost" onClick={() => navigate('/clinics')} className="mb-4 gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Voltar para Clínicas
+    <>
+    <div className="min-h-screen flex flex-col">
+
+      {/* ── Sticky Header ───────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 h-[72px] bg-background/95 backdrop-blur border-b border-border flex items-center px-4 lg:px-6 gap-3 shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/clinics')} className="gap-1.5 text-muted-foreground hover:text-foreground shrink-0">
+          <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline text-sm">Clínicas</span>
         </Button>
 
-        {isArchived && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
-            <Archive className="w-4 h-4 shrink-0" />
-            <span>Esta clínica está <strong>arquivada</strong>. Você pode visualizar os dados, mas não é possível editar ou adicionar informações.</span>
-          </div>
-        )}
+        <div className="w-10 h-10 rounded-[13px] bg-primary/10 flex items-center justify-center shrink-0">
+          <Briefcase className="w-5 h-5 text-primary" />
+        </div>
 
-        <div className={cn(
-          'rounded-3xl p-6 lg:p-8',
-          isPropria ? 'gradient-primary' : 'gradient-secondary'
-        )}>
-          <span className={cn(
-            "inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3",
-            isPropria ? "bg-white/20 text-primary-foreground" : "bg-primary/10 text-primary"
-          )}>
-            {isPropria ? 'Consultório' : 'Clínica Contratante'}
-          </span>
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className={cn(
-                "text-2xl lg:text-3xl font-bold mb-2",
-                isPropria ? "text-primary-foreground" : "text-foreground"
-              )}>{clinic.name}</h1>
-              <div className={cn(
-                "flex flex-wrap gap-4",
-                isPropria ? "text-primary-foreground/80" : "text-muted-foreground"
-              )}>
-                {clinic.address && (
-                  <span className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    {clinic.address}
-                  </span>
-                )}
-                {clinic.scheduleTime && (
-                  <span className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    {clinic.scheduleTime}
-                  </span>
-                )}
-              </div>
-            </div>
-            {!isArchived && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  isPropria 
-                    ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/20" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                )}
-                onClick={() => setEditClinicOpen(true)}
-              >
-                <Pencil className="w-5 h-5" />
-              </Button>
-            )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-base font-bold text-foreground truncate">{clinic.name}</h1>
+            <Badge variant="secondary" className="text-[10px] shrink-0">{clinicTypeLabel}</Badge>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
+            {clinic.address && <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0" />{clinic.address}</span>}
+            <span className="flex items-center gap-1 shrink-0"><Users className="w-3 h-3" />{clinicPatients.length} pacientes</span>
           </div>
         </div>
-      </div>
 
-      {/* Stats */}
+        <div className="flex items-center gap-2 shrink-0">
+          {!isArchived && (
+            <Button variant="ghost" size="icon" className="hidden sm:flex" onClick={() => setEditClinicOpen(true)}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileDrawerOpen(true)}>
+            <MoreVertical className="w-5 h-5" />
+          </Button>
+        </div>
+      </header>
+
+      {/* ── Body: rail + main ───────────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0">
+
+        {/* Rail sidebar (desktop) */}
+        <aside className="hidden lg:flex w-[272px] flex-col border-r border-border bg-background overflow-y-auto shrink-0">
+          <ClinicRailNav />
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 min-w-0 overflow-auto pb-20 lg:pb-6">
+          <div className="p-4 lg:p-6 max-w-4xl mx-auto">
+
+            {isArchived && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+                <Archive className="w-4 h-4 shrink-0" />
+                <span>Esta clínica está <strong>arquivada</strong>. Você pode visualizar os dados, mas não é possível editar ou adicionar informações.</span>
+              </div>
+            )}
+
+      {/* Stats — kept as compact strip at top of main */}
       <div className={cn(
-        "grid gap-3 lg:gap-4 mb-6 lg:mb-8",
-        clinic.type === 'clinica' ? "grid-cols-2 lg:grid-cols-5" : "grid-cols-2 lg:grid-cols-4"
+        "grid gap-3 mb-5",
+        clinic.type === 'clinica' ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-4"
       )}>
         <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-border flex items-center gap-3 lg:block">
           <Users className="w-6 h-6 lg:w-8 lg:h-8 text-primary lg:mb-2 shrink-0" />
@@ -1330,50 +1415,8 @@ export default function ClinicDetail() {
         )}
       </div>
 
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="space-y-4 lg:space-y-6"
-      >
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-          {[
-            { value: 'today', icon: <ClipboardList className="w-5 h-5" />, label: 'Hoje', color: 'text-primary' },
-            // Aba "Agenda" foi unificada à Agenda da sidebar (Clínica Pro).
-            ...(clinic.type !== 'clinica' ? [{ value: 'agenda', icon: <Calendar className="w-5 h-5" />, label: 'Agenda', color: 'text-blue-500' }] : []),
-            { value: 'patients', icon: <Users className="w-5 h-5" />, label: 'Pacientes', color: 'text-violet-500' },
-            { value: 'financial', icon: <DollarSign className="w-5 h-5" />, label: 'Financeiro', color: 'text-success' },
-            { value: 'notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notas', color: 'text-yellow-500' },
-            { value: 'evolutions', icon: <TrendingUp className="w-5 h-5" />, label: 'Evoluções', color: 'text-teal-500' },
-            { value: 'health-plans', icon: <ShieldCheck className="w-5 h-5" />, label: 'Convênios', color: 'text-emerald-500' },
-            { value: 'attendance', icon: <ClipboardList className="w-5 h-5" />, label: 'Frequência', color: 'text-orange-500' },
-            { value: 'reports', icon: <Sparkles className="w-5 h-5" />, label: 'Docs', color: 'text-amber-500' },
-            { value: 'whatsapp', icon: <span className="w-5 h-5 flex items-center justify-center text-base">💬</span>, label: 'WhatsApp', color: 'text-green-500' },
-            ...((isPropria || clinic.type === 'clinica') ? [{ value: 'services', icon: <Briefcase className="w-5 h-5" />, label: isClinicaPro ? 'Avulsos' : serviceTermPlural, color: 'text-cyan-500' }] : []),
-            { value: 'groups', icon: <UsersRound className="w-5 h-5" />, label: 'Grupos', color: 'text-indigo-500' },
-            ...(clinic.type === 'clinica' ? [{ value: 'attendances', icon: <ClipboardList className="w-5 h-5" />, label: 'Atendimentos', color: 'text-rose-500' }] : []),
-            ...(clinic.type === 'clinica' ? [{ value: 'procedures', icon: <StampIcon className="w-5 h-5" />, label: 'Procedimentos', color: 'text-cyan-600' }] : []),
-            ...(clinic.type === 'clinica' ? [{ value: 'packages', icon: <Package className="w-5 h-5" />, label: 'Pacotes', color: 'text-pink-500' }] : []),
-            ...(clinic.type === 'clinica' ? [{ value: 'collaborators', icon: <UserCog className="w-5 h-5" />, label: 'Colaboradores', color: 'text-violet-500' }] : []),
-            ...(clinic.type === 'clinica' ? [{ value: 'users', icon: <UserCheck className="w-5 h-5" />, label: 'Usuários', color: 'text-sky-500' }] : []),
-            ...(clinic.type === 'clinica' ? [{ value: 'team', icon: <Users className="w-5 h-5" />, label: 'Equipe', color: 'text-fuchsia-500' }] : []),
-          ].map(tab => (
-            <TabsList key={tab.value} className="p-0 h-auto bg-transparent">
-              <TabsTrigger
-                value={tab.value}
-                className={cn(
-                  'flex flex-col items-center gap-1.5 w-full h-auto py-3 px-2 rounded-xl border border-border bg-card',
-                  'hover:bg-accent transition-all duration-150',
-                  'data-[state=active]:bg-primary/10 data-[state=active]:border-primary/40 data-[state=active]:shadow-sm',
-                  '[&[data-state=active]_svg]:scale-110 [&_svg]:transition-transform'
-                )}
-              >
-                <span className={tab.color}>{tab.icon}</span>
-                <span className="text-[10px] font-medium text-foreground leading-none">{tab.label}</span>
-              </TabsTrigger>
-            </TabsList>
-          ))}
-        </div>
+      {/* Tabs — no TabsList, controlled by sidebar rail */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
 
         <TabsContent value="today" className="space-y-4">
           {/* Alerts widget for this clinic */}
@@ -2887,8 +2930,10 @@ export default function ClinicDetail() {
         )}
       </Tabs>
 
-
-
+          </div>{/* end p-4 lg:p-6 div */}
+        </main>{/* end main content */}
+      </div>{/* end flex body */}
+    </div>{/* end min-h-screen */}
 
       {/* Quick Evolution Dialog */}
       <Dialog open={!!quickEvolutionPatient} onOpenChange={(open) => { if (!open) { setQuickEvolutionPatient(null); setSelectedTemplateId('none'); setTemplateFormValues({}); setQuickEvolutionMood(''); setQuickEvolutionDate(new Date()); setQuickEvolutionFiles([]); } }}>
@@ -3254,10 +3299,54 @@ export default function ClinicDetail() {
         />
       )}
       <AIUpgradeDialog open={aiUpgradeOpen} onOpenChange={setAiUpgradeOpen} />
+
+      {/* ── Mobile bottom bar ────────────────────────────────────── */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-background border-t border-border flex items-stretch">
+        {BOTTOM_CLINIC_ITEMS.map(tabId => {
+          const allItems = visibleGroups.flatMap(g => g.items);
+          const item = allItems.find(i => i.id === tabId);
+          if (!item) return null;
+          return (
+            <button
+              key={tabId}
+              onClick={() => setActiveTab(tabId)}
+              className={cn(
+                'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
+                activeTab === tabId ? 'text-primary' : 'text-muted-foreground'
+              )}
+            >
+              <span className={activeTab === tabId ? 'text-primary' : 'text-muted-foreground'}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setMobileDrawerOpen(true)}
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground"
+        >
+          <MoreVertical className="w-5 h-5" />
+          <span>Mais</span>
+        </button>
+      </nav>
+
+      {/* ── Mobile drawer ─────────────────────────────────────────── */}
+      {mobileDrawerOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex" onClick={() => setMobileDrawerOpen(false)}>
+          <div className="flex-1 bg-black/40" />
+          <div className="w-[280px] bg-background flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-sm font-semibold">Navegar</span>
+              <Button variant="ghost" size="icon" onClick={() => setMobileDrawerOpen(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <ClinicRailNav onNavigate={() => setMobileDrawerOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 }
-
-
-
-
