@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Upload, X } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -111,6 +112,12 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
 
     setSaving(true);
     try {
+      const newPaymentAmount = formData.type === 'terceirizada' && formData.paymentAmount
+        ? parseFloat(formData.paymentAmount)
+        : undefined;
+      const oldPaymentAmount = clinic.paymentAmount ?? undefined;
+      const newPaymentType = formData.type === 'terceirizada' ? formData.paymentType : undefined;
+
       await onSave(clinic.id, {
         name: formData.name,
         type: formData.type,
@@ -126,9 +133,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
         paymentType: formData.type === 'terceirizada'
           ? (formData.paymentType as 'fixo_mensal' | 'fixo_diario' | 'sessao' | undefined)
           : undefined,
-        paymentAmount: formData.type === 'terceirizada' && formData.paymentAmount
-          ? parseFloat(formData.paymentAmount)
-          : undefined,
+        paymentAmount: newPaymentAmount,
         discountPercentage: formData.type === 'terceirizada' && formData.discountPercentage
           ? parseFloat(formData.discountPercentage)
           : 0,
@@ -140,7 +145,45 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
           : undefined,
         letterhead: formData.letterhead || undefined,
       });
-      toast.success('Clínica atualizada!');
+
+      // Propaga novo valor de repasse para pacientes vinculados (Contratante / por sessão)
+      if (
+        formData.type === 'terceirizada' &&
+        newPaymentType === 'sessao' &&
+        typeof newPaymentAmount === 'number' &&
+        newPaymentAmount !== oldPaymentAmount
+      ) {
+        const { data: linked, error: fetchErr } = await supabase
+          .from('patients')
+          .select('id, payment_value')
+          .eq('clinic_id', clinic.id)
+          .eq('payment_type', 'sessao')
+          .is('package_id', null)
+          .or('is_archived.is.null,is_archived.eq.false');
+
+        if (!fetchErr && linked && linked.length > 0) {
+          const toUpdate = linked.filter(p => Number(p.payment_value) !== newPaymentAmount);
+          if (toUpdate.length > 0) {
+            const { error: updErr } = await supabase
+              .from('patients')
+              .update({ payment_value: newPaymentAmount })
+              .in('id', toUpdate.map(p => p.id));
+            if (updErr) {
+              console.error(updErr);
+              toast.warning(`Clínica salva, mas falhou ao sincronizar ${toUpdate.length} paciente(s).`);
+            } else {
+              toast.success(`Clínica atualizada! Valor de repasse sincronizado em ${toUpdate.length} paciente(s).`);
+            }
+          } else {
+            toast.success('Clínica atualizada!');
+          }
+        } else {
+          toast.success('Clínica atualizada!');
+        }
+      } else {
+        toast.success('Clínica atualizada!');
+      }
+
       onOpenChange(false);
     } catch (err) {
       console.error(err);
