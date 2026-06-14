@@ -159,7 +159,7 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
           .eq('clinic_id', clinic.id)
           .eq('payment_type', 'sessao')
           .is('package_id', null)
-          .is('is_archived', false);
+          .or('is_archived.is.null,is_archived.eq.false');
 
         if (!fetchErr && linked && linked.length > 0) {
           const toUpdate = linked.filter(p => Number(p.payment_value) !== newPaymentAmount);
