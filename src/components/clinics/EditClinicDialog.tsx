@@ -14,6 +14,7 @@ import { Upload, X } from 'lucide-react';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { ClinicPaymentHistorySection } from './ClinicPaymentHistorySection';
 
 const WEEKDAYS = [
   { value: 'Segunda', label: 'Seg' },
@@ -396,6 +397,13 @@ export function EditClinicDialog({ clinic, open, onOpenChange, onSave }: EditCli
                   </div>
                 )}
               </div>
+              {formData.paymentType === 'sessao' && (
+                <ClinicPaymentHistorySection
+                  clinicId={clinic.id}
+                  currentAmount={formData.paymentAmount}
+                  onApplied={(v) => setFormData((prev) => ({ ...prev, paymentAmount: v.toString() }))}
+                />
+              )}
               {formData.paymentType === 'variado' && (
                 <p className="text-xs text-muted-foreground p-3 rounded-lg bg-secondary/50">
                   Valor variado: o recebimento é definido individualmente por paciente ou pacote cadastrado na contratante.
