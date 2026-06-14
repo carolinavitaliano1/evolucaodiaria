@@ -377,6 +377,44 @@ export type Database = {
           },
         ]
       }
+      clinic_payment_history: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          id: string
+          payment_amount: number
+          payment_type: string | null
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          id?: string
+          payment_amount: number
+          payment_type?: string | null
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          id?: string
+          payment_amount?: number
+          payment_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_payment_history_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_payment_records: {
         Row: {
           amount: number
