@@ -1307,7 +1307,7 @@ export default function ClinicDetail() {
               <Pencil className="w-4 h-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileDrawerOpen(true)}>
+          <Button variant="ghost" size="icon" className="xl:hidden" onClick={() => setMobileDrawerOpen(true)}>
             <MoreVertical className="w-5 h-5" />
           </Button>
         </div>
@@ -1316,14 +1316,14 @@ export default function ClinicDetail() {
       {/* ── Body: rail + main ───────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
 
-        {/* Rail sidebar (desktop) */}
-        <aside className="hidden lg:flex w-[272px] flex-col border-r border-border bg-background overflow-y-auto shrink-0">
+        {/* Rail sidebar (desktop largo apenas — em telas médias colapsa no drawer) */}
+        <aside className="hidden xl:flex w-[240px] flex-col border-r border-border bg-background overflow-y-auto shrink-0">
           <ClinicRailNav />
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 min-w-0 overflow-auto pb-20 lg:pb-6">
-          <div className="p-4 lg:p-6 max-w-4xl mx-auto">
+        <main className="flex-1 min-w-0 overflow-auto pb-20 xl:pb-6">
+          <div className="p-4 xl:p-6 max-w-4xl mx-auto">
 
             {isArchived && (
               <div className="mb-4 flex items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
