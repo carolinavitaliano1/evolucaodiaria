@@ -3326,9 +3326,9 @@ export default function ClinicDetail() {
         </button>
       </nav>
 
-      {/* ── Mobile drawer ─────────────────────────────────────────── */}
+      {/* ── Drawer do menu interno (auto-fecha ao trocar de aba) ────── */}
       {mobileDrawerOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex" onClick={() => setMobileDrawerOpen(false)}>
+        <div className="fixed inset-0 z-50 flex" onClick={() => setMobileDrawerOpen(false)}>
           <div className="flex-1 bg-black/40" />
           <div className="w-[280px] bg-background flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
