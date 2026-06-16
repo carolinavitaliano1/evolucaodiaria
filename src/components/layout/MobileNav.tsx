@@ -113,8 +113,10 @@ export function MobileNav() {
 
   // Esconde a navegação principal mobile quando o usuário está dentro do detalhe
   // de uma clínica — o menu interno da clínica assume a navegação.
-  const isInsideClinicDetail = /^\/clinics\/[^/]+/.test(location.pathname);
-  if (isInsideClinicDetail) return null;
+  const isInsideDetail =
+    /^\/clinics\/[^/]+/.test(location.pathname) ||
+    /^\/patients\/[^/]+/.test(location.pathname);
+  if (isInsideDetail) return null;
 
   const resolveItem = (id: string): (NavItem & { locked: boolean; hidden: boolean }) | null => {
     const base = NAV_DEST[id];
