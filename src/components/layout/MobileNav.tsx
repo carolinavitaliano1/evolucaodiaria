@@ -111,6 +111,11 @@ export function MobileNav() {
   const isTherapistView = isOrgMember && !isOwner && role === 'professional';
   const sourceGroups = isTherapistView ? THERAPIST_GROUPS : NAV_GROUPS;
 
+  // Esconde a navegação principal mobile quando o usuário está dentro do detalhe
+  // de uma clínica — o menu interno da clínica assume a navegação.
+  const isInsideClinicDetail = /^\/clinics\/[^/]+/.test(location.pathname);
+  if (isInsideClinicDetail) return null;
+
   const resolveItem = (id: string): (NavItem & { locked: boolean; hidden: boolean }) | null => {
     const base = NAV_DEST[id];
     if (!base) return null;

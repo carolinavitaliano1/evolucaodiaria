@@ -1307,11 +1307,32 @@ export default function ClinicDetail() {
               <Pencil className="w-4 h-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileDrawerOpen(true)} title="Navegar">
-            <MoreVertical className="w-5 h-5" />
-          </Button>
         </div>
       </header>
+
+      {/* ── Mobile: barra de abas horizontal (substitui MobileNav dentro da clínica) ── */}
+      <div className="lg:hidden sticky top-[72px] z-30 bg-background/95 backdrop-blur border-b border-border">
+        <div className="flex gap-1.5 overflow-x-auto px-3 py-2 scrollbar-none">
+          {visibleGroups.flatMap(g => g.items).map(item => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                )}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ── Body: rail + main ───────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
