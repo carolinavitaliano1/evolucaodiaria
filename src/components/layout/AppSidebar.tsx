@@ -104,6 +104,11 @@ export function AppSidebar() {
   const isAppOwner = !!user?.email && OWNER_EMAILS.includes(user.email.toLowerCase());
   const [query, setQuery] = useState('');
 
+  // Esconde a sidebar principal quando estamos dentro de uma clínica específica
+  // (rota /clinics/:id). O menu interno da clínica (botão ⋮ no header) assume a navegação.
+  const isInsideClinicDetail = /^\/clinics\/[^/]+/.test(location.pathname);
+  if (isInsideClinicDetail) return null;
+
   // Calculate trial days remaining
   const trialDaysLeft = (() => {
     if (productId !== 'trial' || !subscriptionEnd) return null;
