@@ -106,8 +106,10 @@ export function AppSidebar() {
 
   // Esconde a sidebar principal quando estamos dentro de uma clínica específica
   // (rota /clinics/:id). O menu interno da clínica (botão ⋮ no header) assume a navegação.
-  const isInsideClinicDetail = /^\/clinics\/[^/]+/.test(location.pathname);
-  if (isInsideClinicDetail) return null;
+  const isInsideDetail =
+    /^\/clinics\/[^/]+/.test(location.pathname) ||
+    /^\/patients\/[^/]+/.test(location.pathname);
+  if (isInsideDetail) return null;
 
   // Calculate trial days remaining
   const trialDaysLeft = (() => {
