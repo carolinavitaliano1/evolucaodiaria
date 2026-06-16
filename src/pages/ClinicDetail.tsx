@@ -1307,7 +1307,7 @@ export default function ClinicDetail() {
               <Pencil className="w-4 h-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={() => setMobileDrawerOpen(true)} title="Navegar">
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileDrawerOpen(true)} title="Navegar">
             <MoreVertical className="w-5 h-5" />
           </Button>
         </div>
@@ -1316,7 +1316,12 @@ export default function ClinicDetail() {
       {/* ── Body: rail + main ───────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
 
-        {/* Menu interno colapsável via drawer em todas as resoluções (botão ⋮ no header) */}
+        {/* Sidebar interna (substitui a sidebar global do app dentro da clínica) */}
+        <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-border bg-card/40 overflow-y-auto">
+          <ClinicRailNav />
+        </aside>
+
+        {/* Em telas menores, o menu fica em drawer acionado pelo botão ⋮ do header */}
 
         {/* Main content */}
         <main className="flex-1 min-w-0 overflow-auto pb-20 lg:pb-6">
