@@ -2456,9 +2456,9 @@ export default function PatientDetail() {
 
       {/* Sticky identity header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="flex items-center gap-3 px-4 h-[72px]">
-          <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1.5 shrink-0 -ml-1">
-            <ChevronLeft className="w-4 h-4" /> Pacientes
+        <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 min-h-[64px] sm:h-[72px] py-2">
+          <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1.5 shrink-0 -ml-1 px-2">
+            <ChevronLeft className="w-4 h-4" /> <span className="hidden sm:inline">Pacientes</span>
           </Button>
 
           {/* Avatar */}
@@ -2490,7 +2490,7 @@ export default function PatientDetail() {
           {/* Name + meta */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-foreground truncate">{patient.name}</h1>
+              <h1 className="text-sm sm:text-base font-bold text-foreground truncate">{patient.name}</h1>
               {!(patient.departureDate || patient.isArchived) && (
                 <span className="w-2 h-2 rounded-full bg-success shrink-0" title="Ativo" />
               )}
@@ -2500,10 +2500,10 @@ export default function PatientDetail() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-[11px] text-muted-foreground leading-tight">
               {age !== null && <span>{age} anos</span>}
-              {patient.clinicalArea && <><span>·</span><span>{patient.clinicalArea}</span></>}
-              {clinic && <><span>·</span><span>{clinic.name}</span></>}
+              {patient.clinicalArea && <><span aria-hidden>·</span><span className="truncate max-w-[140px] sm:max-w-none">{patient.clinicalArea}</span></>}
+              {clinic && <><span aria-hidden>·</span><span className="truncate max-w-[140px] sm:max-w-none">{clinic.name}</span></>}
             </div>
           </div>
 
