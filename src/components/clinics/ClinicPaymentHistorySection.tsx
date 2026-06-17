@@ -4,12 +4,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { History, Trash2 } from 'lucide-react';
+import { History, Trash2, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface HistoryRow {
   id: string;
   effective_from: string;
   payment_amount: number;
+}
+
+interface AuditRow {
+  id: string;
+  action: 'insert' | 'update' | 'delete';
+  old_payment_amount: number | null;
+  new_payment_amount: number | null;
+  old_effective_from: string | null;
+  new_effective_from: string | null;
+  changed_by_email: string | null;
+  created_at: string;
 }
 
 interface Props {
@@ -24,6 +35,8 @@ export function ClinicPaymentHistorySection({ clinicId, currentAmount, onApplied
   const [date, setDate] = useState('');
   const [amount, setAmount] = useState('');
   const [saving, setSaving] = useState(false);
+  const [audit, setAudit] = useState<AuditRow[]>([]);
+  const [showAudit, setShowAudit] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -33,6 +46,15 @@ export function ClinicPaymentHistorySection({ clinicId, currentAmount, onApplied
       .eq('clinic_id', clinicId)
       .order('effective_from', { ascending: false });
     if (!error && data) setRows(data as HistoryRow[]);
+
+    const { data: auditData } = await supabase
+      .from('clinic_payment_history_audit')
+      .select('id, action, old_payment_amount, new_payment_amount, old_effective_from, new_effective_from, changed_by_email, created_at')
+      .eq('clinic_id', clinicId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (auditData) setAudit(auditData as AuditRow[]);
+
     setLoading(false);
   };
 
@@ -142,6 +164,59 @@ export function ClinicPaymentHistorySection({ clinicId, currentAmount, onApplied
         </div>
       )}
       {loading && <p className="text-[11px] text-muted-foreground">Carregando histórico...</p>}
+
+      <div className="pt-2 border-t border-primary/10">
+        <button
+          type="button"
+          onClick={() => setShowAudit((v) => !v)}
+          className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary"
+        >
+          <ClipboardList className="w-3.5 h-3.5" />
+          Log de auditoria ({audit.length})
+          {showAudit ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+        {showAudit && (
+          audit.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground mt-1.5">Sem alterações registradas.</p>
+          ) : (
+            <ul className="mt-1.5 space-y-1 max-h-56 overflow-y-auto">
+              {audit.map((a) => (
+                <li key={a.id} className="text-[11px] bg-background rounded px-2 py-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={
+                      a.action === 'insert' ? 'font-medium text-success'
+                      : a.action === 'delete' ? 'font-medium text-destructive'
+                      : 'font-medium text-primary'
+                    }>
+                      {a.action === 'insert' ? 'Criado' : a.action === 'delete' ? 'Removido' : 'Alterado'}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {new Date(a.created_at).toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground mt-0.5">
+                    {a.action === 'update' && (
+                      <>
+                        R$ {Number(a.old_payment_amount ?? 0).toFixed(2)} → R$ {Number(a.new_payment_amount ?? 0).toFixed(2)}
+                        {' · '}vigência {a.old_effective_from ? formatDate(a.old_effective_from) : '—'} → {a.new_effective_from ? formatDate(a.new_effective_from) : '—'}
+                      </>
+                    )}
+                    {a.action === 'insert' && (
+                      <>R$ {Number(a.new_payment_amount ?? 0).toFixed(2)} a partir de {a.new_effective_from ? formatDate(a.new_effective_from) : '—'}</>
+                    )}
+                    {a.action === 'delete' && (
+                      <>R$ {Number(a.old_payment_amount ?? 0).toFixed(2)} (vigência {a.old_effective_from ? formatDate(a.old_effective_from) : '—'})</>
+                    )}
+                  </div>
+                  {a.changed_by_email && (
+                    <div className="text-muted-foreground/70 mt-0.5 truncate">por {a.changed_by_email}</div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+      </div>
     </div>
   );
 }
