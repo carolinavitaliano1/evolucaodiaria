@@ -415,6 +415,48 @@ export type Database = {
           },
         ]
       }
+      clinic_payment_history_audit: {
+        Row: {
+          action: string
+          changed_by: string | null
+          changed_by_email: string | null
+          clinic_id: string
+          created_at: string
+          id: string
+          new_effective_from: string | null
+          new_payment_amount: number | null
+          old_effective_from: string | null
+          old_payment_amount: number | null
+          payment_history_id: string | null
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          clinic_id: string
+          created_at?: string
+          id?: string
+          new_effective_from?: string | null
+          new_payment_amount?: number | null
+          old_effective_from?: string | null
+          old_payment_amount?: number | null
+          payment_history_id?: string | null
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          new_effective_from?: string | null
+          new_payment_amount?: number | null
+          old_effective_from?: string | null
+          old_payment_amount?: number | null
+          payment_history_id?: string | null
+        }
+        Relationships: []
+      }
       clinic_payment_records: {
         Row: {
           amount: number
