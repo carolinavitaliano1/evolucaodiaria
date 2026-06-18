@@ -922,6 +922,32 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      {/* ── COLOR LEGEND (oculta no mobile) ── */}
+      {!isClinicaProOnly && (
+        <div className="hidden sm:flex items-center gap-3 flex-wrap px-3 py-1.5 border-b border-border bg-card/60 shrink-0 text-[11px] text-muted-foreground">
+          {([
+            { label: 'Atendimento', dot: 'bg-blue-500' },
+            { label: 'Serviço', dot: 'bg-amber-500' },
+            { label: 'Evento', dot: 'bg-violet-500' },
+            { label: 'Tarefa', dot: 'bg-emerald-500' },
+            { label: 'Lembrete', dot: 'bg-amber-500' },
+            { label: 'Reunião', dot: 'bg-pink-500' },
+          ]).map(l => (
+            <span key={l.label} className="flex items-center gap-1.5">
+              <span className={cn('w-2.5 h-2.5 rounded-full', l.dot)} /> {l.label}
+            </span>
+          ))}
+          <span className="w-px h-3 bg-border" />
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full border border-dashed border-emerald-500" /> Concluído (✓)
+          </span>
+        </div>
+      )}
+
+      {/* ── Corpo: grade + painel "Hoje" ── */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
       {/* ══════════ MONTH VIEW ══════════ */}
       {viewMode === 'month' && (
         <div className="flex flex-col flex-1 overflow-hidden">
@@ -1147,6 +1173,92 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+
+        </div>{/* end main column */}
+
+        {/* ── Painel lateral "Hoje" (some < 1100px) ── */}
+        {!isClinicaProOnly && (() => {
+          const today = new Date();
+          const todayItems = getAllForDay(today);
+          // "A confirmar": atendimentos de hoje ainda sem evolução (sub sem ✓)
+          const pending = todayItems.filter(i => i.type === 'atendimento' && !(i.sub || '').includes('✓'));
+          return (
+            <aside className="hidden min-[1100px]:flex flex-col w-[300px] border-l border-border bg-card shrink-0 overflow-y-auto">
+              {/* Hoje */}
+              <div className="p-3 border-b border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-bold text-foreground capitalize">Hoje · {format(today, "EEE d", { locale: ptBR })}</h3>
+                  <span className="text-[11px] font-semibold text-muted-foreground">{todayItems.length} atend.</span>
+                </div>
+                {todayItems.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">Nenhum atendimento hoje.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {todayItems.map(item => {
+                      const done = (item.sub || '').includes('✓');
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={e => openPopup(item, e)}
+                          className={cn('w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-secondary/60 transition-colors', done && 'opacity-60')}
+                        >
+                          <span className="text-[11px] font-semibold text-muted-foreground w-9 shrink-0">{item.time ? item.time.slice(0, 5) : '—'}</span>
+                          <span className={cn('w-1 h-7 rounded-full shrink-0', item.color)} />
+                          <span className="text-xs text-foreground truncate flex-1">{item.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* A confirmar */}
+              <div className="p-3 border-b border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-bold text-foreground">A confirmar</h3>
+                  {pending.length > 0 && (
+                    <span className="text-[10px] font-extrabold text-white bg-warning rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{pending.length}</span>
+                  )}
+                </div>
+                {pending.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">Tudo confirmado. 🎉</p>
+                ) : (
+                  <div className="space-y-2">
+                    {pending.map(item => {
+                      const rawAppt = item.rawAppointment;
+                      const patient = rawAppt ? patients.find(p => p.id === rawAppt.patientId) : patients.find(p => p.name === item.title);
+                      return (
+                        <div key={item.id} className="flex items-center justify-between gap-2 p-2 rounded-lg border border-border">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">{item.title}</p>
+                            <p className="text-[11px] text-muted-foreground">{item.time ? item.time.slice(0, 5) : ''}{item.sub ? ` · ${item.sub.replace(' ✓', '')}` : ''}</p>
+                          </div>
+                          {patient?.phone && (
+                            <button
+                              onClick={() => setWhatsappTarget({ name: patient.name, phone: patient.phone!, date: format(today, 'dd/MM/yyyy', { locale: ptBR }), time: item.time?.slice(0, 5) || '' })}
+                              className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors shrink-0"
+                              title="Confirmar via WhatsApp"
+                            >
+                              <MessageSquare className="w-3 h-3" /> Confirmar
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Bloquear horário */}
+              <div className="p-3">
+                <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs" onClick={() => setBlockDialogOpen(true)}>
+                  <CalendarOff className="w-3.5 h-3.5" /> Bloquear horário
+                </Button>
+              </div>
+            </aside>
+          );
+        })()}
+      </div>{/* end corpo flex */}
 
       {/* ══════════ DAY DETAIL POPUP ("+N mais") ══════════ */}
       {dayDetailDate && (
