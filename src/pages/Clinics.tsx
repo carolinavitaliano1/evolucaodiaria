@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
-import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote } from 'lucide-react';
+import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote, Search, List, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,6 +72,8 @@ export default function Clinics() {
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [sendingSupportMsg, setSendingSupportMsg] = useState(false);
   const [filter, setFilter] = useState<'all' | 'propria' | 'clinica' | 'terceirizada' | 'archived'>('all');
+  const [clinicSearch, setClinicSearch] = useState('');
+  const [clinicDensity, setClinicDensity] = useState<'rows' | 'cards'>('rows');
   const [stampFile, setStampFile] = useState<UploadedFile | null>(null);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('clinics');
@@ -320,9 +322,16 @@ export default function Clinics() {
   const activeClinics = clinics.filter(c => !c.isArchived);
   const archivedClinics = clinics.filter(c => c.isArchived);
 
-  const filteredClinics = filter === 'archived' 
-    ? archivedClinics 
-    : activeClinics.filter(c => filter === 'all' || c.type === filter);
+  const filteredClinics = (filter === 'archived'
+    ? archivedClinics
+    : activeClinics.filter(c => filter === 'all' || c.type === filter)
+  ).filter(c => !clinicSearch.trim() || c.name.toLowerCase().includes(clinicSearch.toLowerCase()));
+
+  const typeMeta = (type: string) => {
+    if (type === 'propria') return { label: 'Consultório', color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/50' };
+    if (type === 'clinica') return { label: 'Clínica', color: 'text-emerald-600', bg: 'bg-emerald-600/10', border: 'border-emerald-600/50' };
+    return { label: 'Contratante', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/50' };
+  };
 
   const { evolutions, clinicPackages } = useApp();
   const totalPatients = patients.filter(p => isPatientActiveOn(p)).length;
@@ -783,36 +792,69 @@ export default function Clinics() {
 
         {/* Clinics Tab */}
         <TabsContent value="clinics" className="space-y-4">
-          {/* Filter Cards */}
+          {/* Busca + densidade */}
           {!isClinicaProOnly && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={clinicSearch}
+                  onChange={(e) => setClinicSearch(e.target.value)}
+                  placeholder="Buscar clínica…"
+                  className="pl-10 pr-9"
+                />
+                {clinicSearch && (
+                  <button onClick={() => setClinicSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center rounded-lg border border-border p-0.5 shrink-0">
+                <button onClick={() => setClinicDensity('rows')} title="Lista"
+                  className={cn('p-1.5 rounded-md transition-colors', clinicDensity === 'rows' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground')}>
+                  <List className="w-4 h-4" />
+                </button>
+                <button onClick={() => setClinicDensity('cards')} title="Cards"
+                  className={cn('p-1.5 rounded-md transition-colors', clinicDensity === 'cards' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground')}>
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Chips de filtro rápido */}
+          {!isClinicaProOnly && (
+          <div className="flex flex-wrap gap-1.5">
             {([
-              { key: 'all',          label: 'Ativas',       count: activeClinics.length,                                           icon: Building2,   color: 'text-primary',          bg: 'bg-primary/10' },
-              { key: 'propria',      label: 'Consultórios', count: activeClinics.filter(c => c.type === 'propria').length,          icon: Building2,   color: 'text-violet-500',       bg: 'bg-violet-500/10' },
-              { key: 'clinica',      label: 'Clínicas',     count: activeClinics.filter(c => c.type === 'clinica').length,          icon: Users,       color: 'text-emerald-600',      bg: 'bg-emerald-600/10' },
-              { key: 'terceirizada', label: 'Contratantes', count: activeClinics.filter(c => c.type === 'terceirizada').length,     icon: Briefcase,   color: 'text-blue-500',         bg: 'bg-blue-500/10' },
-              { key: 'archived',     label: 'Arquivadas',   count: archivedClinics.length,                                          icon: Archive,     color: 'text-muted-foreground', bg: 'bg-secondary' },
-            ] as const).map(({ key, label, count, icon: Icon, color, bg }) => (
+              { key: 'all',          label: 'Ativas',       count: activeClinics.length },
+              { key: 'propria',      label: 'Consultórios', count: activeClinics.filter(c => c.type === 'propria').length },
+              { key: 'clinica',      label: 'Clínicas',     count: activeClinics.filter(c => c.type === 'clinica').length },
+              { key: 'terceirizada', label: 'Contratantes', count: activeClinics.filter(c => c.type === 'terceirizada').length },
+              { key: 'archived',     label: 'Arquivadas',   count: archivedClinics.length },
+            ] as const).map(({ key, label, count }) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
                 className={cn(
-                  'flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all',
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
                   filter === key
-                    ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/30'
-                    : 'border-border bg-card hover:border-primary/30 hover:shadow-sm'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
                 )}
               >
-                <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center shrink-0', bg)}>
-                  <Icon className={cn('w-4 h-4', color)} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground leading-none">{count}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{label}</p>
-                </div>
+                {label}
+                <span className={cn('text-[10px] font-bold px-1.5 rounded-full', filter === key ? 'bg-primary-foreground/20' : 'bg-secondary')}>{count}</span>
               </button>
             ))}
           </div>
+          )}
+
+          {/* Contagem */}
+          {!isClinicaProOnly && (
+            <p className="text-xs text-muted-foreground font-medium">
+              {filteredClinics.length} {filteredClinics.length === 1 ? 'clínica' : 'clínicas'}
+              {clinicSearch || filter !== 'all' ? ' encontrada(s)' : ' no total'}
+            </p>
           )}
 
           {/* Clinics List */}
@@ -821,29 +863,71 @@ export default function Clinics() {
               <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">Nenhuma clínica</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {isClinicaProOnly ? 'Adicione sua clínica' : 'Adicione sua primeira clínica ou local de atendimento'}
+                {clinicSearch || filter !== 'all'
+                  ? 'Tente outro termo ou limpe os filtros.'
+                  : isClinicaProOnly ? 'Adicione sua clínica' : 'Adicione sua primeira clínica ou local de atendimento'}
               </p>
-              <Button onClick={() => setIsDialogOpen(true)} size="sm" className="gap-2">
-                <Plus className="w-4 h-4" />
-                {isClinicaProOnly ? 'Adicionar' : 'Nova Clínica'}
-              </Button>
+              {!(clinicSearch || filter !== 'all') && (
+                <Button onClick={() => setIsDialogOpen(true)} size="sm" className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  {isClinicaProOnly ? 'Adicionar' : 'Nova Clínica'}
+                </Button>
+              )}
             </div>
-          ) : (
-            <div className="grid gap-3">
+          ) : clinicDensity === 'rows' && !isClinicaProOnly ? (
+            /* ——— Densidade LISTA (linhas) ——— */
+            <div className="space-y-1.5">
               {filteredClinics.map((clinic) => {
                 const patientCount = patients.filter(p => p.clinicId === clinic.id).length;
-                const isPropria = clinic.type === 'propria';
-                const isClinica = clinic.type === 'clinica';
-
-                const quickActions = [
-                  { label: 'Hoje', icon: ClipboardList, color: 'text-primary', tab: 'today' },
-                  { label: 'Agenda', icon: Calendar, color: 'text-blue-500', tab: 'agenda' },
-                  { label: 'Pacientes', icon: Users, color: 'text-violet-500', tab: 'patients' },
-                  { label: 'Financeiro', icon: DollarSign, color: 'text-success', tab: 'financial' },
-                  { label: 'Notas', icon: StickyNote, color: 'text-yellow-500', tab: 'notes' },
-                  { label: 'Evoluções', icon: TrendingUp, color: 'text-teal-500', tab: 'evolutions-day' },
-                ];
-
+                const meta = typeMeta(clinic.type);
+                return (
+                  <div
+                    key={clinic.id}
+                    onClick={() => handleOpenClinic(clinic)}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl border bg-card cursor-pointer hover:border-primary/40 transition-colors',
+                      clinic.isArchived ? 'border-border opacity-60' : 'border-border'
+                    )}
+                  >
+                    <span className={cn('w-9 h-9 rounded-lg flex items-center justify-center shrink-0', meta.bg)}>
+                      <Building2 className={cn('w-[18px] h-[18px]', meta.color)} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-foreground truncate">{clinic.name}</span>
+                        <Badge variant="outline" className={cn('text-[10px] shrink-0', meta.border, meta.color)}>{meta.label}</Badge>
+                        {clinic.isArchived && <Badge variant="secondary" className="text-[10px] shrink-0">Arquivada</Badge>}
+                      </div>
+                      {clinic.address && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
+                          <MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{clinic.address}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div className="hidden sm:flex flex-col items-end shrink-0">
+                      <span className="text-xs text-foreground"><b className="font-semibold">{patientCount}</b> pac.</span>
+                    </div>
+                    <div className="hidden sm:flex flex-col items-end shrink-0 min-w-[60px]">
+                      {clinic.paymentType === 'variado'
+                        ? <span className="text-xs text-muted-foreground font-medium">Variado</span>
+                        : clinic.paymentAmount ? <span className="text-xs text-success font-medium">R$ {clinic.paymentAmount.toFixed(0)}</span> : null}
+                    </div>
+                    <ClinicActions
+                      clinic={clinic}
+                      onEdit={() => { setClinicToEdit(clinic); setEditClinicOpen(true); }}
+                      onArchive={(e) => handleArchiveClinic(clinic, e)}
+                      onDelete={(e) => handleDeleteClinic(clinic, e)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* ——— Densidade CARDS (e Clínica Pro) ——— */
+            <div className={cn('grid gap-3', !isClinicaProOnly && 'sm:grid-cols-2 lg:grid-cols-3')}>
+              {filteredClinics.map((clinic) => {
+                const patientCount = patients.filter(p => p.clinicId === clinic.id).length;
+                const meta = typeMeta(clinic.type);
                 return (
                   <div
                     key={clinic.id}
@@ -853,17 +937,14 @@ export default function Clinics() {
                       clinic.isArchived && "opacity-60"
                     )}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <span className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', meta.bg)}>
+                        <Building2 className={cn('w-5 h-5', meta.color)} />
+                      </span>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                           <h3 className="font-semibold text-foreground truncate">{clinic.name}</h3>
-                          <Badge variant="outline" className={cn("text-xs shrink-0",
-                            isPropria ? "border-primary/50 text-primary" :
-                            isClinica ? "border-success/60 text-success" :
-                            "border-muted-foreground/40 text-muted-foreground"
-                          )}>
-                            {isPropria ? 'Consultório' : isClinica ? 'Clínica' : 'Contratante'}
-                          </Badge>
+                          <Badge variant="outline" className={cn("text-xs shrink-0", meta.border, meta.color)}>{meta.label}</Badge>
                           {clinic.isArchived && <Badge variant="secondary" className="text-xs shrink-0">Arquivada</Badge>}
                         </div>
                         {clinic.address && (
@@ -874,31 +955,19 @@ export default function Clinics() {
                         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1"><Users className="w-3 h-3" />{patientCount} pac.</span>
                           {clinic.scheduleTime && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{clinic.scheduleTime}</span>}
-                           {clinic.paymentType === 'variado' ? (
-                              <span className="flex items-center gap-1 text-muted-foreground font-medium"><DollarSign className="w-3 h-3" />Variado</span>
-                            ) : clinic.paymentAmount ? (
-                              <span className="flex items-center gap-1 text-success font-medium"><DollarSign className="w-3 h-3" />R$ {clinic.paymentAmount.toFixed(0)}</span>
-                            ) : null}
+                          {clinic.paymentType === 'variado' ? (
+                            <span className="flex items-center gap-1 text-muted-foreground font-medium"><DollarSign className="w-3 h-3" />Variado</span>
+                          ) : clinic.paymentAmount ? (
+                            <span className="flex items-center gap-1 text-success font-medium"><DollarSign className="w-3 h-3" />R$ {clinic.paymentAmount.toFixed(0)}</span>
+                          ) : null}
                         </div>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setClinicToEdit(clinic); setEditClinicOpen(true); }}>
-                            <Edit className="w-4 h-4 mr-2" />Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => handleArchiveClinic(clinic, e as any)}>
-                            {clinic.isArchived ? <><ArchiveRestore className="w-4 h-4 mr-2" />Restaurar</> : <><Archive className="w-4 h-4 mr-2" />Arquivar</>}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => handleDeleteClinic(clinic, e as any)} className="text-destructive focus:text-destructive">
-                            <Trash2 className="w-4 h-4 mr-2" />Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <ClinicActions
+                        clinic={clinic}
+                        onEdit={() => { setClinicToEdit(clinic); setEditClinicOpen(true); }}
+                        onArchive={(e) => handleArchiveClinic(clinic, e)}
+                        onDelete={(e) => handleDeleteClinic(clinic, e)}
+                      />
                     </div>
                   </div>
                 );
@@ -1203,5 +1272,36 @@ export default function Clinics() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/* Menu de ações ⋯ por clínica (Abrir/Editar/Arquivar/Excluir) */
+function ClinicActions({
+  clinic, onEdit, onArchive, onDelete,
+}: {
+  clinic: Clinic;
+  onEdit: () => void;
+  onArchive: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+          <Edit className="w-4 h-4 mr-2" />Editar
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(e as any); }}>
+          {clinic.isArchived ? <><ArchiveRestore className="w-4 h-4 mr-2" />Restaurar</> : <><Archive className="w-4 h-4 mr-2" />Arquivar</>}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(e as any); }} className="text-destructive focus:text-destructive">
+          <Trash2 className="w-4 h-4 mr-2" />Excluir
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
