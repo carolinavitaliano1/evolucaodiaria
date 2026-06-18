@@ -205,14 +205,6 @@ export default function Dashboard() {
         <div className="flex flex-col gap-4">
           <MiniCalendar />
           <BirthdayCard />
-          <details className="rounded-2xl border border-dashed border-border group">
-            <summary className="flex items-center justify-center gap-2 p-3 text-xs font-semibold text-muted-foreground cursor-pointer hover:text-primary list-none">
-              <Settings className="w-4 h-4" /> Configurar notificações
-            </summary>
-            <div className="p-3 pt-0">
-              <NotificationSettings />
-            </div>
-          </details>
         </div>
       </div>
     </div>
