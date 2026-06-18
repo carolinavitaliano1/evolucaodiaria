@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock, Link2, Send, AlertTriangle, CheckCircle2, FileSpreadsheet, Clock } from 'lucide-react';
+import { Search, Users, Download, FileText, ClipboardList, DollarSign, Phone, Cake, Building2, EyeOff, Lock, Link2, Send, AlertTriangle, CheckCircle2, FileSpreadsheet, Clock, MoreVertical, LayoutGrid, List, TrendingUp, ChevronRight, X } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { PendingEnrollmentsCard } from '@/components/dashboard/PendingEnrollmentsCard';
 import { BatchPatientImport } from '@/components/patients/BatchPatientImport';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,10 @@ export default function Patients() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [packageFilter, setPackageFilter] = useState<string>('all'); // 'all' | 'none' | packageId
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'ativo' | 'pendente_revisao' | 'rascunho'>('todos');
+  const [clinicFilter, setClinicFilter] = useState<string>('all');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
+  const [density, setDensity] = useState<'rows' | 'cards'>('rows');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [exportType, setExportType] = useState<'evolutions' | 'attendance' | 'financial'>('evolutions');
@@ -91,6 +96,23 @@ export default function Patients() {
   const filteredPatients = useMemo(() => {
     let list = visiblePatients;
 
+    // Status chip filter (ativo = qualquer status diferente de pendente/rascunho)
+    if (statusFilter !== 'todos') {
+      list = list.filter(p => {
+        const st = (p as any).status;
+        if (statusFilter === 'ativo') return st !== 'pendente_revisao' && st !== 'rascunho';
+        return st === statusFilter;
+      });
+    }
+
+    if (clinicFilter !== 'all') {
+      list = list.filter(p => p.clinicId === clinicFilter);
+    }
+
+    if (areaFilter !== 'all') {
+      list = list.filter(p => p.clinicalArea === areaFilter);
+    }
+
     if (packageFilter !== 'all') {
       if (packageFilter === 'none') {
         list = list.filter(p => !p.packageId);
@@ -106,7 +128,28 @@ export default function Patients() {
       (canSeeClinical && p.clinicalArea?.toLowerCase().includes(term)) ||
       (canSeeClinical && p.diagnosis?.toLowerCase().includes(term))
     );
-  }, [visiblePatients, searchTerm, canSeeClinical, packageFilter]);
+  }, [visiblePatients, searchTerm, canSeeClinical, packageFilter, statusFilter, clinicFilter, areaFilter]);
+
+  // Distinct clinical areas for the area filter
+  const allAreas = useMemo(() => {
+    const set = new Set<string>();
+    visiblePatients.forEach(p => { if (p.clinicalArea) set.add(p.clinicalArea); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [visiblePatients]);
+
+  const pendingReviewCount = useMemo(
+    () => visiblePatients.filter((p: any) => p.status === 'pendente_revisao').length,
+    [visiblePatients]
+  );
+
+  // Open WhatsApp chat with the patient (or responsible)
+  const handleWhatsApp = (patient: typeof patients[0]) => {
+    const raw = patient.whatsapp || patient.phone || (patient as any).responsibleWhatsapp;
+    if (!raw) { toast.error('Paciente sem telefone cadastrado'); return; }
+    const num = String(raw).replace(/\D/g, '');
+    const phone = num.startsWith('55') ? num : `55${num}`;
+    window.open(`https://wa.me/${phone}`, '_blank', 'noopener,noreferrer');
+  };
 
   // All packages across visible clinics for the filter dropdown
   const allPackages = useMemo(() => {
@@ -711,15 +754,18 @@ export default function Patients() {
         <TabsContent value="patients" className="space-y-4 mt-0">
       {/* Pending Enrollments - same card as dashboard */}
       <PendingEnrollmentsCard />
-      {/* Pending review banner */}
-      {visiblePatients.some((p: any) => p.status === 'pendente_revisao') && (
-        <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning mb-4">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            <strong>{visiblePatients.filter((p: any) => p.status === 'pendente_revisao').length} paciente(s)</strong> com ficha de pré-cadastro pendente de revisão.
-            Clique no paciente para revisar e ativar.
+      {/* Pending review banner — clicável: aplica o chip "Pendentes" */}
+      {pendingReviewCount > 0 && statusFilter !== 'pendente_revisao' && (
+        <button
+          onClick={() => setStatusFilter('pendente_revisao')}
+          className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning mb-4 text-left hover:bg-warning/15 transition-colors"
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span className="flex-1">
+            <strong>{pendingReviewCount} paciente(s)</strong> com ficha de pré-cadastro pendente de revisão. Clique para ver.
           </span>
-        </div>
+          <ChevronRight className="w-4 h-4 shrink-0" />
+        </button>
       )}
 
       {/* Quick Registration Dialog */}
@@ -799,187 +845,218 @@ export default function Patients() {
         </div>
       )}
 
-      {/* Search + Filters */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-6">
+      {/* Search + density toggle */}
+      <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={canSeeClinical ? 'Buscar por nome, área clínica ou diagnóstico...' : 'Buscar por nome...'}
-            className="pl-10"
+            placeholder={canSeeClinical ? 'Buscar por nome, área ou diagnóstico…' : 'Buscar por nome...'}
+            className="pl-10 pr-9"
           />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <Select value={packageFilter} onValueChange={setPackageFilter}>
-          <SelectTrigger className="w-full sm:w-[240px]">
-            <SelectValue placeholder="Filtrar por pacote" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os pacotes</SelectItem>
-            <SelectItem value="none">Sem pacote</SelectItem>
-            {allPackages.map(pkg => (
-              <SelectItem key={pkg.id} value={pkg.id}>
-                {pkg.name} <span className="text-muted-foreground">· {pkg.clinicName}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center rounded-lg border border-border p-0.5 shrink-0">
+          <button
+            onClick={() => setDensity('rows')}
+            className={cn('p-1.5 rounded-md transition-colors', density === 'rows' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground')}
+            title="Lista"
+          >
+            <List className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setDensity('cards')}
+            className={cn('p-1.5 rounded-md transition-colors', density === 'cards' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground')}
+            title="Cards"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Users className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{visiblePatients.length}</p>
-              <p className="text-xs text-muted-foreground">{ownOnly ? 'Meus Pacientes' : 'Total de Pacientes'}</p>
-            </div>
-          </div>
+      {/* Quick filters: status chips + selects */}
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            { key: 'todos', label: 'Todos' },
+            { key: 'ativo', label: 'Ativos' },
+            { key: 'pendente_revisao', label: 'Pendentes', count: pendingReviewCount },
+            { key: 'rascunho', label: 'Rascunhos' },
+          ] as const).map(chip => (
+            <button
+              key={chip.key}
+              onClick={() => setStatusFilter(chip.key)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                statusFilter === chip.key
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
+              )}
+            >
+              {chip.label}
+              {'count' in chip && chip.count != null && chip.count > 0 && (
+                <span className={cn('text-[10px] font-bold px-1.5 rounded-full', statusFilter === chip.key ? 'bg-primary-foreground/20' : 'bg-warning/15 text-warning')}>
+                  {chip.count}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-secondary">
-              <Search className="w-4 h-4 text-foreground" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{filteredPatients.length}</p>
-              <p className="text-xs text-muted-foreground">Encontrados</p>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          <Select value={clinicFilter} onValueChange={setClinicFilter}>
+            <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs"><SelectValue placeholder="Clínica" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as clínicas</SelectItem>
+              {clinics.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          {canSeeClinical && allAreas.length > 0 && (
+            <Select value={areaFilter} onValueChange={setAreaFilter}>
+              <SelectTrigger className="w-full sm:w-[170px] h-9 text-xs"><SelectValue placeholder="Área" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as áreas</SelectItem>
+                {allAreas.map(a => (<SelectItem key={a} value={a}>{a}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={packageFilter} onValueChange={setPackageFilter}>
+            <SelectTrigger className="w-full sm:w-[190px] h-9 text-xs"><SelectValue placeholder="Pacote" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os pacotes</SelectItem>
+              <SelectItem value="none">Sem pacote</SelectItem>
+              {allPackages.map(pkg => (
+                <SelectItem key={pkg.id} value={pkg.id}>
+                  {pkg.name} <span className="text-muted-foreground">· {pkg.clinicName}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
+
+      {/* Results count */}
+      <p className="text-xs text-muted-foreground font-medium mb-3">
+        {filteredPatients.length} {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}
+        {(searchTerm || statusFilter !== 'todos' || clinicFilter !== 'all' || areaFilter !== 'all' || packageFilter !== 'all') ? ' encontrado(s)' : ' no total'}
+      </p>
 
       {/* Patients List */}
       {filteredPatients.length === 0 ? (
         <div className="text-center py-12 bg-card rounded-xl border border-border">
           <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            {searchTerm ? 'Nenhum paciente encontrado' : 'Nenhum paciente cadastrado'}
-          </h3>
+          <h3 className="text-lg font-medium text-foreground mb-2">Nada encontrado</h3>
           <p className="text-sm text-muted-foreground">
-            {searchTerm ? 'Tente buscar por outro termo' : 'Cadastre pacientes através das clínicas'}
+            {searchTerm || statusFilter !== 'todos' || clinicFilter !== 'all' || areaFilter !== 'all' || packageFilter !== 'all'
+              ? 'Tente outro termo ou limpe os filtros.'
+              : 'Cadastre pacientes através das clínicas.'}
           </p>
         </div>
-      ) : (
-        <div className="space-y-3">
+      ) : density === 'rows' ? (
+        /* ——— Densidade LISTA (linhas compactas) ——— */
+        <div className="space-y-1.5">
           {filteredPatients.map((patient) => {
             const patientEvolutions = evolutions.filter(e => e.patientId === patient.id);
-            
+            const status = (patient as any).status;
+            const age = patient.birthdate ? calculateAge(patient.birthdate) : null;
             return (
               <div
                 key={patient.id}
                 className={cn(
-                  "bg-card rounded-xl border p-4",
-                  (patient as any).status === 'pendente_revisao'
-                    ? 'border-warning/40 bg-warning/5'
-                    : (patient as any).status === 'rascunho'
-                    ? 'border-muted-foreground/20 opacity-75'
-                    : 'border-border'
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl border bg-card hover:border-primary/40 transition-colors cursor-pointer',
+                  status === 'pendente_revisao' ? 'border-warning/40' : status === 'rascunho' ? 'border-muted-foreground/20 opacity-80' : 'border-border'
                 )}
+                onClick={() => handleOpenPatient(patient.id)}
               >
-                <div 
-                  className="flex-1 min-w-0 cursor-pointer"
-                  onClick={() => handleOpenPatient(patient.id)}
-                >
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium text-foreground">{patient.name}</h3>
-                        {(patient as any).status === 'pendente_revisao' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/25">
-                            <AlertTriangle className="w-2.5 h-2.5" /> Pendente de Revisão
-                          </span>
-                        )}
-                        {(patient as any).status === 'rascunho' && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                            Rascunho
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                        <Building2 className="w-3.5 h-3.5" />
-                        {getClinicName(patient.clinicId)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      {patient.birthdate && calculateAge(patient.birthdate) !== null && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 justify-end">
-                          <Cake className="w-3.5 h-3.5" />
-                          {calculateAge(patient.birthdate)} anos
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-3">
-                    {patient.phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {patient.phone}
+                <span className="w-9 h-9 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">
+                  {patient.name.split(' ').filter(w => w.length > 2).map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-foreground truncate">{patient.name}</span>
+                    {status === 'pendente_revisao' && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-warning/15 text-warning shrink-0">
+                        <AlertTriangle className="w-2.5 h-2.5" /> Pendente
                       </span>
                     )}
+                    {status === 'rascunho' && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">Rascunho</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                    <span className="flex items-center gap-1 truncate"><Building2 className="w-3 h-3 shrink-0" />{getClinicName(patient.clinicId)}</span>
                     {patient.clinicalArea && canSeeClinical && (
-                      <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                        {patient.clinicalArea}
-                      </span>
-                    )}
-                    {!canSeeClinical && (
-                      <span className="flex items-center gap-1 text-muted-foreground/60 italic">
-                        <EyeOff className="w-3 h-3" /> Dados clínicos restritos
-                      </span>
-                    )}
-                    {canSeeClinical && (
-                      <span className="bg-secondary px-2 py-0.5 rounded-full">
-                        {patientEvolutions.length} evoluções
-                      </span>
+                      <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-full shrink-0">{patient.clinicalArea}</span>
                     )}
                   </div>
                 </div>
-                
-                {/* Export Buttons — only shown to users with clinical access */}
-                {canSeeClinical && (
-                <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openExportDialog(patient.id, 'evolutions');
-                    }}
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    Evoluções
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openExportDialog(patient.id, 'attendance');
-                    }}
-                  >
-                    <ClipboardList className="w-3.5 h-3.5" />
-                    Frequência
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openExportDialog(patient.id, 'financial');
-                    }}
-                  >
-                   <DollarSign className="w-3.5 h-3.5" />
-                    Financeiro
-                  </Button>
+                <div className="hidden sm:flex flex-col items-end shrink-0">
+                  {age !== null && <span className="text-xs text-foreground"><b className="font-semibold">{age}</b> anos</span>}
                 </div>
+                {canSeeClinical && (
+                  <div className="flex flex-col items-end shrink-0">
+                    <span className="text-xs text-foreground"><b className="font-semibold">{patientEvolutions.length}</b> evol.</span>
+                  </div>
                 )}
+                <PatientActions
+                  onClick={(e) => e.stopPropagation()}
+                  canSeeClinical={canSeeClinical}
+                  onOpen={() => handleOpenPatient(patient.id)}
+                  onExport={(type) => openExportDialog(patient.id, type)}
+                  onWhatsApp={() => handleWhatsApp(patient)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* ——— Densidade CARDS ——— */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredPatients.map((patient) => {
+            const patientEvolutions = evolutions.filter(e => e.patientId === patient.id);
+            const status = (patient as any).status;
+            const age = patient.birthdate ? calculateAge(patient.birthdate) : null;
+            return (
+              <div
+                key={patient.id}
+                className={cn(
+                  'rounded-xl border bg-card p-4 hover:border-primary/40 transition-colors cursor-pointer',
+                  status === 'pendente_revisao' ? 'border-warning/40 bg-warning/5' : status === 'rascunho' ? 'border-muted-foreground/20 opacity-80' : 'border-border'
+                )}
+                onClick={() => handleOpenPatient(patient.id)}
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="w-10 h-10 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                    {patient.name.split(' ').filter(w => w.length > 2).map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-foreground truncate">{patient.name}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 truncate"><Building2 className="w-3 h-3 shrink-0" />{getClinicName(patient.clinicId)}</p>
+                  </div>
+                  <PatientActions
+                    onClick={(e) => e.stopPropagation()}
+                    canSeeClinical={canSeeClinical}
+                    onOpen={() => handleOpenPatient(patient.id)}
+                    onExport={(type) => openExportDialog(patient.id, type)}
+                    onWhatsApp={() => handleWhatsApp(patient)}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                  {patient.clinicalArea && canSeeClinical && (
+                    <span className="text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{patient.clinicalArea}</span>
+                  )}
+                  {status === 'pendente_revisao' && <span className="text-[11px] bg-warning/15 text-warning px-2 py-0.5 rounded-full">Pendente</span>}
+                  {status === 'rascunho' && <span className="text-[11px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Rascunho</span>}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground pt-3 border-t border-border">
+                  {age !== null && <span className="flex items-center gap-1"><Cake className="w-3 h-3" />{age} anos</span>}
+                  {canSeeClinical && <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" />{patientEvolutions.length} evol.</span>}
+                  {patient.phone && <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 shrink-0" />{patient.phone}</span>}
+                </div>
               </div>
             );
           })}
@@ -1079,6 +1156,42 @@ export default function Patients() {
           <WaitlistManager />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/* Menu de ações ⋯ por paciente (Abrir ficha, Exportar, WhatsApp) */
+function PatientActions({
+  canSeeClinical, onOpen, onExport, onWhatsApp, onClick,
+}: {
+  canSeeClinical: boolean;
+  onOpen: () => void;
+  onExport: (type: 'evolutions' | 'attendance' | 'financial') => void;
+  onWhatsApp: () => void;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <div onClick={onClick} className="shrink-0">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreVertical className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onClick={onOpen} className="gap-2"><FileText className="w-3.5 h-3.5" /> Abrir ficha</DropdownMenuItem>
+          {canSeeClinical && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onExport('evolutions')} className="gap-2"><FileText className="w-3.5 h-3.5" /> Exportar evoluções</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport('attendance')} className="gap-2"><ClipboardList className="w-3.5 h-3.5" /> Exportar frequência</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport('financial')} className="gap-2"><DollarSign className="w-3.5 h-3.5" /> Exportar financeiro</DropdownMenuItem>
+            </>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onWhatsApp} className="gap-2"><Phone className="w-3.5 h-3.5" /> WhatsApp</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
