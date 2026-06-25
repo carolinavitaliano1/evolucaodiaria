@@ -339,7 +339,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
 
   const allClear = alerts.length === 0 && !loading;
 
-  const handlePatientClick = (patientId: string, alertKey: string) => {
+  const handlePatientClick = (patientId: string, alertKey: string, date?: string) => {
     // Navigate directly to the patient detail page
     // The hash helps indicate which section to focus on
     switch (alertKey) {
@@ -353,7 +353,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
         navigate(`/patients/${patientId}#portal`);
         break;
       case 'evolutions':
-        navigate(`/patients/${patientId}`);
+        navigate(`/patients/${patientId}${date ? `?date=${date}` : ''}#evolutions`);
         break;
       case 'enrollments':
         navigate(`/patients`);
@@ -408,7 +408,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
             <button
               onClick={() => {
                 if (alert.patients.length === 1) {
-                  handlePatientClick(alert.patients[0].id, alert.key);
+                  handlePatientClick(alert.patients[0].id, alert.key, alert.patients[0].date);
                 } else {
                   setExpanded(expanded === alert.key ? null : alert.key);
                 }
@@ -433,7 +433,7 @@ export function ClinicAlertsWidget({ clinicId }: ClinicAlertsWidgetProps) {
                 {alert.patients.map(p => (
                   <button
                     key={`${p.id}-${p.date || alert.key}`}
-                    onClick={() => handlePatientClick(p.id, alert.key)}
+                    onClick={() => handlePatientClick(p.id, alert.key, p.date)}
                     className="w-full flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted/80 transition-colors text-left group"
                   >
                     <span className="text-xs text-foreground truncate flex-1">
