@@ -251,6 +251,13 @@ export default function PatientDetail() {
     setActiveTab(newTab);
   }, [location.hash]);
 
+  // Pre-fill evolution date from ?date= query param (e.g. from pending evolutions alert)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const d = params.get('date');
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setEvolutionDate(d);
+  }, [location.search]);
+
   useEffect(() => {
     if (!patient?.clinicId) return;
     loadEvolutionsForClinic(patient.clinicId);
