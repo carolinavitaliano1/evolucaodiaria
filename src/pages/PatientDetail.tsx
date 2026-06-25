@@ -333,7 +333,12 @@ export default function PatientDetail() {
   const patientPackage = patient?.packageId ? clinicPackages.find(p => p.id === patient.packageId) : null;
 
   const [evolutionText, setEvolutionText] = useState('');
-  const [evolutionDate, setEvolutionDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [evolutionDate, setEvolutionDate] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const d = params.get('date');
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    return format(new Date(), 'yyyy-MM-dd');
+  });
   const [attendanceStatus, setAttendanceStatus] = useState<Evolution['attendanceStatus']>('presente');
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
