@@ -1,4 +1,4 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck, CheckCircle2, Clock, XCircle, User, Repeat, Wallet } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck, CheckCircle2, Clock, XCircle, User, Repeat, Wallet, Printer } from 'lucide-react';
 import { TeamFinancialReport } from '@/components/clinics/TeamFinancialReport';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
@@ -88,6 +88,8 @@ export default function Financial() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>('all');
   const [tableStartDate, setTableStartDate] = useState('');
   const [tableEndDate, setTableEndDate] = useState('');
+  const [tableClinicFilter, setTableClinicFilter] = useState<string>('all');
+  const [tablePatientFilter, setTablePatientFilter] = useState<string>('all');
 
   // Patient payment records keyed by patient_id
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, any>>({});
@@ -359,6 +361,10 @@ export default function Financial() {
     if (tableEndDate && pr?.payment_date && pr.payment_date > tableEndDate) return false;
     // If filtering by date range and patient has no payment_date, hide when filter is active
     if ((tableStartDate || tableEndDate) && paymentStatusFilter === 'paid' && !pr?.payment_date) return false;
+    // Clinic filter
+    if (tableClinicFilter !== 'all' && patient.clinicId !== tableClinicFilter) return false;
+    // Patient filter
+    if (tablePatientFilter !== 'all' && patient.id !== tablePatientFilter) return false;
     return true;
   });
 
@@ -1476,6 +1482,9 @@ export default function Financial() {
                 <Button variant="outline" className="gap-2 text-xs h-8" onClick={handleExportCSV}>
                   <Download className="w-3.5 h-3.5" /> CSV
                 </Button>
+                <Button variant="outline" className="gap-2 text-xs h-8" onClick={() => window.print()}>
+                  <Printer className="w-3.5 h-3.5" /> Imprimir
+                </Button>
               </div>
             </div>
 
@@ -1498,13 +1507,41 @@ export default function Financial() {
                   </button>
                 ))}
               </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] text-muted-foreground">Clínica:</label>
+                <Select value={tableClinicFilter} onValueChange={setTableClinicFilter}>
+                  <SelectTrigger className="h-7 text-xs w-40 px-2"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {clinics.filter(c => !c.isArchived).map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] text-muted-foreground">Paciente:</label>
+                <Select value={tablePatientFilter} onValueChange={setTablePatientFilter}>
+                  <SelectTrigger className="h-7 text-xs w-44 px-2"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {patients
+                      .filter(p => tableClinicFilter === 'all' || p.clinicId === tableClinicFilter)
+                      .slice()
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-1.5 ml-auto">
                 <label className="text-[10px] text-muted-foreground">Data pgto:</label>
                 <Input type="date" value={tableStartDate} onChange={e => setTableStartDate(e.target.value)} className="h-7 text-xs w-32 px-2" />
                 <span className="text-muted-foreground text-xs">–</span>
                 <Input type="date" value={tableEndDate} onChange={e => setTableEndDate(e.target.value)} className="h-7 text-xs w-32 px-2" />
-                {(tableStartDate || tableEndDate) && (
-                  <button onClick={() => { setTableStartDate(''); setTableEndDate(''); }} className="text-xs text-muted-foreground hover:text-foreground px-1.5">✕</button>
+                {(tableStartDate || tableEndDate || tableClinicFilter !== 'all' || tablePatientFilter !== 'all') && (
+                  <button onClick={() => { setTableStartDate(''); setTableEndDate(''); setTableClinicFilter('all'); setTablePatientFilter('all'); }} className="text-xs text-muted-foreground hover:text-foreground px-1.5">✕</button>
                 )}
               </div>
             </div>
