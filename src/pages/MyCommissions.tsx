@@ -128,6 +128,7 @@ export default function MyCommissions() {
     const evoList = (evos ?? []).map(e => ({
       id: e.id,
       patientId: e.patient_id,
+      clinicId: e.clinic_id,
       date: e.date,
       attendanceStatus: e.attendance_status,
       groupId: e.group_id,
@@ -152,15 +153,27 @@ export default function MyCommissions() {
       setApptValueMap({});
     }
 
-    const clinicIds = Array.from(new Set(evoList.map(e => (e as any).clinic_id || (e as any).clinicId).filter(Boolean)));
+    // Histórico últimos 6 meses (precisa de patient_id para resolver plano por paciente)
+    const sixAgo = startOfMonth(subMonths(refDate, 5));
+    const { data: histEvos } = await supabase
+      .from('evolutions')
+      .select('patient_id, date, attendance_status, group_id, clinic_id')
+      .eq('user_id', user.id)
+      .gte('date', toLocalDateString(sixAgo))
+      .lte('date', toLocalDateString(monthEnd));
+
+    const clinicIds = Array.from(new Set([
+      ...evoList.map(e => e.clinicId),
+      ...(histEvos ?? []).map(e => e.clinic_id),
+    ].filter(Boolean)));
+    let loadedClinicsMap: Record<string, any> = {};
     if (clinicIds.length) {
       const { data: clinicRows } = await supabase
         .from('clinics')
         .select('id, payment_type, payment_amount, absence_payment_type, pays_on_absence, absence_charge_mode, absence_charge_amount')
         .in('id', clinicIds);
-      const cmap: Record<string, any> = {};
       (clinicRows || []).forEach((c: any) => {
-        cmap[c.id] = {
+        loadedClinicsMap[c.id] = {
           paymentType: c.payment_type,
           paymentAmount: c.payment_amount,
           absencePaymentType: c.absence_payment_type,
@@ -169,19 +182,9 @@ export default function MyCommissions() {
           absenceChargeAmount: c.absence_charge_amount,
         };
       });
-      setClinicsMap(cmap);
-    } else {
-      setClinicsMap({});
     }
+    setClinicsMap(loadedClinicsMap);
 
-    // Histórico últimos 6 meses (precisa de patient_id para resolver plano por paciente)
-    const sixAgo = startOfMonth(subMonths(refDate, 5));
-    const { data: histEvos } = await supabase
-      .from('evolutions')
-      .select('patient_id, date, attendance_status, group_id')
-      .eq('user_id', user.id)
-      .gte('date', toLocalDateString(sixAgo))
-      .lte('date', toLocalDateString(monthEnd));
     const histMap: Record<string, any[]> = {};
     (histEvos ?? []).forEach(e => {
       const key = e.date.slice(0, 7);
@@ -191,6 +194,7 @@ export default function MyCommissions() {
         attendanceStatus: e.attendance_status,
         date: e.date,
         groupId: e.group_id,
+        clinicId: e.clinic_id,
       });
     });
     const hist: { month: string; total: number }[] = [];
@@ -212,7 +216,7 @@ export default function MyCommissions() {
         return acc;
       }, {});
       const total = Object.entries(evosByClinic).reduce((sum, [clinicId, rows]) => {
-        const clinic = clinicsMap[clinicId] || null;
+        const clinic = loadedClinicsMap[clinicId] || null;
         return sum + calculateMemberRemunerationByPlans({
           plans: memberPlans,
           assignmentPlanMap: planMap,
