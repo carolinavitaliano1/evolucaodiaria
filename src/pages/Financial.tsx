@@ -361,6 +361,10 @@ export default function Financial() {
     if (tableEndDate && pr?.payment_date && pr.payment_date > tableEndDate) return false;
     // If filtering by date range and patient has no payment_date, hide when filter is active
     if ((tableStartDate || tableEndDate) && paymentStatusFilter === 'paid' && !pr?.payment_date) return false;
+    // Clinic filter
+    if (tableClinicFilter !== 'all' && patient.clinicId !== tableClinicFilter) return false;
+    // Patient filter
+    if (tablePatientFilter !== 'all' && patient.id !== tablePatientFilter) return false;
     return true;
   });
 
