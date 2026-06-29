@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import { calculateMemberRemunerationByPlans, type PlanBreakdownEntry } from '@/utils/financialHelpers';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 interface TeamFinancialReportProps {
   clinicId: string;
@@ -35,6 +36,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [filterMemberId, setFilterMemberId] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
 
   const clinic = clinics.find(c => c.id === clinicId);
   const selectedMonth = selectedDate.getMonth();
@@ -54,6 +56,16 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
     });
   }, [evolutions, clinicPatients, selectedMonth, selectedYear]);
 
+  useEffect(() => {
+    const ids = clinicPatients.map(p => p.id);
+    if (!ids.length) { setApptValueMap({}); return; }
+    loadAppointmentValueMap({
+      patientIds: ids,
+      startDate: format(startOfMonth(selectedDate), 'yyyy-MM-dd'),
+      endDate: format(endOfMonth(selectedDate), 'yyyy-MM-dd'),
+    }).then(setApptValueMap).catch(() => setApptValueMap({}));
+  }, [clinicPatients, selectedDate]);
+
   const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
 
   // Calcula remuneração e breakdown por planos. Inclui fallback legacy.
@@ -68,6 +80,10 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       })),
       legacyType: member.remunerationType,
       legacyValue: member.remunerationValue,
+      clinic,
+      appointmentValueByPatient: apptValueMap,
+      month: selectedMonth,
+      year: selectedYear,
     });
   };
   const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof monthlyEvolutions) => {
@@ -84,7 +100,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       const calc = calculateMemberBreakdown(member, memberEvos);
       return { member, sessions, absences, paidAbsences, revenue: calc.total, breakdown: calc.breakdown, evos: memberEvos };
     });
-  }, [members, monthlyEvolutions]);
+  }, [members, monthlyEvolutions, apptValueMap, clinic]);
 
   // Filtered evolutions for consolidated view
   const filteredEvolutions = useMemo(() => {
@@ -110,7 +126,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       if (!member) return 0;
       return calculateMemberRemuneration(member, filteredEvolutions);
     }
-  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId]);
+  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId, apptValueMap, clinic]);
 
   const patientBreakdown = useMemo(() => {
     return patientIdsInFilter

@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { calculatePatientMonthlyRevenue } from '@/utils/financialHelpers';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 const CHART_COLORS = ['#6366f1', '#ef4444', '#eab308'];
 const PDF_COLORS = { primary: '#6366f1', destructive: '#ef4444', green: '#22c55e', yellow: '#eab308' };
@@ -52,6 +53,7 @@ export default function Reports() {
   const [isExporting, setIsExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const [profile, setProfile] = useState<{ name: string | null; professional_id: string | null } | null>(null);
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -91,6 +93,17 @@ export default function Reports() {
       return matchesClinic && withinRange;
     });
   }, [evolutions, selectedClinic, dateRange]);
+
+  useEffect(() => {
+    if (!user) { setApptValueMap({}); return; }
+    const patientIds = [...new Set(filteredEvolutions.map(e => e.patientId))].filter(Boolean);
+    if (!patientIds.length) { setApptValueMap({}); return; }
+    loadAppointmentValueMap({
+      patientIds,
+      startDate: format(dateRange.start, 'yyyy-MM-dd'),
+      endDate: format(dateRange.end, 'yyyy-MM-dd'),
+    }).then(setApptValueMap).catch(() => setApptValueMap({}));
+  }, [user, filteredEvolutions, dateRange]);
 
   const attendanceStats = useMemo(() => {
     const present = filteredEvolutions.filter(e => e.attendanceStatus === 'presente').length;
@@ -142,6 +155,7 @@ export default function Reports() {
           patient, clinic, evolutions: evosLike,
           month: refDate.getMonth() + 1, year: refDate.getFullYear(),
           packages: clinicPackages,
+          appointmentValueByDate: apptValueMap[pid] || {},
         }).total;
       }
 
@@ -166,7 +180,7 @@ export default function Reports() {
         moods,
       };
     }).sort((a, b) => a.clinicName.localeCompare(b.clinicName) || b.total - a.total);
-  }, [filteredEvolutions, patients, clinics, clinicPackages]);
+  }, [filteredEvolutions, patients, clinics, clinicPackages, apptValueMap]);
 
   const dailyData = useMemo(() => {
     const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });

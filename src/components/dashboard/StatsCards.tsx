@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { startOfMonth } from 'date-fns';
 import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 export function StatsCards() {
   const { clinics, patients: allPatients, appointments, evolutions: allEvolutions, clinicPackages } = useApp();
@@ -44,6 +45,7 @@ export function StatsCards() {
   const [privateMonthlyRevenue, setPrivateMonthlyRevenue] = useState(0);
   const [groupBillingMap, setGroupBillingMap] = useState<GroupBillingMap>({});
   const [memberPaymentMap, setMemberPaymentMap] = useState<GroupMemberPaymentMap>({});
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
 
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -131,6 +133,15 @@ export function StatsCards() {
     return () => { supabase.removeChannel(channel); };
   }, [user, today]);
 
+  useEffect(() => {
+    if (!user || !patients.length) { setApptValueMap({}); return; }
+    const start = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+    const end = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(new Date(currentYear, currentMonth + 1, 0).getDate()).padStart(2, '0')}`;
+    loadAppointmentValueMap({ patientIds: patients.map(p => p.id), startDate: start, endDate: end })
+      .then(setApptValueMap)
+      .catch(() => setApptValueMap({}));
+  }, [user, patients, currentMonth, currentYear]);
+
   const totalTodayCount = clinicTodayCount + privateToday;
 
   const monthlyEvolutions = evolutions.filter(e => {
@@ -174,6 +185,7 @@ export function StatsCards() {
         clinic, patients: cPatients, evolutions: cEvos,
         month: currentMonth + 1, year: currentYear, packages: clinicPackages,
         groupBillingMap, memberPaymentMap,
+        appointmentValueByPatient: apptValueMap,
       }).total;
     }
     return total;

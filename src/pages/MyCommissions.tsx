@@ -20,6 +20,7 @@ import {
   calculateCommissionFromAppointments,
   type AppointmentCommissionRow,
 } from '@/utils/appointmentCommission';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 interface MemberRow {
   id: string;
@@ -51,6 +52,8 @@ export default function MyCommissions() {
   const [loading, setLoading] = useState(true);
   const [evolutions, setEvolutions] = useState<any[]>([]);
   const [patientsMap, setPatientsMap] = useState<Record<string, { name: string }>>({});
+  const [clinicsMap, setClinicsMap] = useState<Record<string, any>>({});
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
   const [history, setHistory] = useState<{ month: string; total: number }[]>([]);
   const [plans, setPlans] = useState<RemunerationPlan[]>([]);
   const [assignmentPlanMap, setAssignmentPlanMap] = useState<Record<string, string | null>>({});
@@ -125,6 +128,7 @@ export default function MyCommissions() {
     const evoList = (evos ?? []).map(e => ({
       id: e.id,
       patientId: e.patient_id,
+      clinicId: e.clinic_id,
       date: e.date,
       attendanceStatus: e.attendance_status,
       groupId: e.group_id,
@@ -133,25 +137,54 @@ export default function MyCommissions() {
 
     const patientIds = Array.from(new Set(evoList.map(e => e.patientId).filter(Boolean)));
     if (patientIds.length) {
-      const { data: pats } = await supabase
+      const [patsRes, apptMap] = await Promise.all([
+        supabase
         .from('patients')
         .select('id, name')
-        .in('id', patientIds);
+        .in('id', patientIds),
+        loadAppointmentValueMap({ patientIds, startDate: startStr, endDate: endStr }).catch(() => ({} as Record<string, Record<string, number>>)),
+      ]);
       const map: Record<string, { name: string }> = {};
-      (pats ?? []).forEach(p => { map[p.id] = { name: p.name }; });
+      (patsRes.data ?? []).forEach(p => { map[p.id] = { name: p.name }; });
       setPatientsMap(map);
+      setApptValueMap(apptMap);
     } else {
       setPatientsMap({});
+      setApptValueMap({});
     }
 
     // Histórico últimos 6 meses (precisa de patient_id para resolver plano por paciente)
     const sixAgo = startOfMonth(subMonths(refDate, 5));
     const { data: histEvos } = await supabase
       .from('evolutions')
-      .select('patient_id, date, attendance_status, group_id')
+      .select('patient_id, date, attendance_status, group_id, clinic_id')
       .eq('user_id', user.id)
       .gte('date', toLocalDateString(sixAgo))
       .lte('date', toLocalDateString(monthEnd));
+
+    const clinicIds = Array.from(new Set([
+      ...evoList.map(e => e.clinicId),
+      ...(histEvos ?? []).map(e => e.clinic_id),
+    ].filter(Boolean)));
+    let loadedClinicsMap: Record<string, any> = {};
+    if (clinicIds.length) {
+      const { data: clinicRows } = await supabase
+        .from('clinics')
+        .select('id, payment_type, payment_amount, absence_payment_type, pays_on_absence, absence_charge_mode, absence_charge_amount')
+        .in('id', clinicIds);
+      (clinicRows || []).forEach((c: any) => {
+        loadedClinicsMap[c.id] = {
+          paymentType: c.payment_type,
+          paymentAmount: c.payment_amount,
+          absencePaymentType: c.absence_payment_type,
+          paysOnAbsence: c.pays_on_absence,
+          absenceChargeMode: c.absence_charge_mode,
+          absenceChargeAmount: c.absence_charge_amount,
+        };
+      });
+    }
+    setClinicsMap(loadedClinicsMap);
+
     const histMap: Record<string, any[]> = {};
     (histEvos ?? []).forEach(e => {
       const key = e.date.slice(0, 7);
@@ -161,6 +194,7 @@ export default function MyCommissions() {
         attendanceStatus: e.attendance_status,
         date: e.date,
         groupId: e.group_id,
+        clinicId: e.clinic_id,
       });
     });
     const hist: { month: string; total: number }[] = [];
@@ -168,13 +202,31 @@ export default function MyCommissions() {
       const d = subMonths(refDate, i);
       const key = format(d, 'yyyy-MM');
       const evList = histMap[key] ?? [];
-      const { total } = calculateMemberRemunerationByPlans({
-        plans: memberPlans,
-        assignmentPlanMap: planMap,
-        evolutions: evList as any,
-        legacyType: m?.remuneration_type ?? null,
-        legacyValue: m?.remuneration_value ? Number(m.remuneration_value) : null,
-      });
+      const histPatientIds = Array.from(new Set(evList.map((e: any) => e.patientId).filter(Boolean)));
+      const histApptMap = histPatientIds.length
+        ? await loadAppointmentValueMap({
+            patientIds: histPatientIds,
+            startDate: format(startOfMonth(d), 'yyyy-MM-dd'),
+            endDate: format(endOfMonth(d), 'yyyy-MM-dd'),
+          }).catch(() => ({} as Record<string, Record<string, number>>))
+        : {};
+      const evosByClinic = evList.reduce((acc: Record<string, any[]>, e: any) => {
+        const key = e.clinicId || '__none__';
+        (acc[key] ||= []).push(e);
+        return acc;
+      }, {});
+      const total = Object.entries(evosByClinic).reduce((sum, [clinicId, rows]) => {
+        const clinic = loadedClinicsMap[clinicId] || null;
+        return sum + calculateMemberRemunerationByPlans({
+          plans: memberPlans,
+          assignmentPlanMap: planMap,
+          evolutions: rows as any,
+          legacyType: m?.remuneration_type ?? null,
+          legacyValue: m?.remuneration_value ? Number(m.remuneration_value) : null,
+          clinic,
+          appointmentValueByPatient: histApptMap,
+        }).total;
+      }, 0);
       hist.push({ month: format(d, 'MMM/yy', { locale: ptBR }), total });
     }
     setHistory(hist);
@@ -255,14 +307,26 @@ export default function MyCommissions() {
 
   // Cálculo principal usando múltiplos planos
   const remunerationCalc = useMemo(() => {
-    return calculateMemberRemunerationByPlans({
+    const evosByClinic = evolutions.reduce((acc: Record<string, any[]>, e: any) => {
+      const key = e.clinicId || '__none__';
+      (acc[key] ||= []).push(e);
+      return acc;
+    }, {});
+    const breakdowns = Object.entries(evosByClinic).map(([clinicId, rows]) => calculateMemberRemunerationByPlans({
       plans,
       assignmentPlanMap,
-      evolutions: evolutions as any,
+      evolutions: rows as any,
       legacyType: member?.remuneration_type ?? null,
       legacyValue: member?.remuneration_value ? Number(member.remuneration_value) : null,
-    });
-  }, [plans, assignmentPlanMap, evolutions, member]);
+      clinic: clinicsMap[clinicId] || null,
+      appointmentValueByPatient: apptValueMap,
+    }));
+    return {
+      total: breakdowns.reduce((sum, item) => sum + item.total, 0),
+      breakdown: breakdowns.flatMap(item => item.breakdown),
+      usedLegacy: breakdowns.some(item => item.usedLegacy),
+    };
+  }, [plans, assignmentPlanMap, evolutions, member, clinicsMap, apptValueMap]);
 
   const hasApptData = apptCommission.rows.length > 0;
   const totalCommission = hasApptData ? apptCommission.totalCommission : remunerationCalc.total;

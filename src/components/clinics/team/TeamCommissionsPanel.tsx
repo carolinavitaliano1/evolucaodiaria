@@ -10,9 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ChevronLeft, ChevronRight, Search, DollarSign, CheckCircle2, Circle, ChevronDown, ChevronUp, AlertTriangle, Stamp, Package, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { calculateMemberRemunerationByPlans } from '@/utils/financialHelpers';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -45,6 +46,7 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
   const [payments, setPayments] = useState<Record<string, PaymentRecord>>({});
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [savingMember, setSavingMember] = useState<string | null>(null);
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
 
   const clinic = clinics.find(c => c.id === clinicId);
   const year = selectedDate.getFullYear();
@@ -64,6 +66,16 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
     }),
     [evolutions, clinicPatients, month, year]
   );
+
+  useEffect(() => {
+    const ids = clinicPatients.map(p => p.id);
+    if (!ids.length) { setApptValueMap({}); return; }
+    loadAppointmentValueMap({
+      patientIds: ids,
+      startDate: format(startOfMonth(selectedDate), 'yyyy-MM-dd'),
+      endDate: format(endOfMonth(selectedDate), 'yyyy-MM-dd'),
+    }).then(setApptValueMap).catch(() => setApptValueMap({}));
+  }, [clinicPatients, selectedDate]);
 
   // ── Load payment records for the period ──
   useEffect(() => {
@@ -115,6 +127,7 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
         legacyType: member.remunerationType,
         legacyValue: member.remunerationValue,
         clinic,
+        appointmentValueByPatient: apptValueMap,
         packages: clinicPackages.filter(p => p.clinicId === clinicId).map(p => ({
           id: p.id, price: p.price, packageType: p.packageType,
           sessionLimit: p.sessionLimit,
@@ -129,7 +142,7 @@ export function TeamCommissionsPanel({ clinicId, organizationId }: Props) {
         sessions: memberEvos,
       };
     });
-  }, [members, monthlyEvolutions, clinic, clinicPackages, clinicId, clinicPatients]);
+  }, [members, monthlyEvolutions, clinic, clinicPackages, clinicId, clinicPatients, apptValueMap]);
 
   const filteredRows = useMemo(() => {
     if (!search.trim()) return memberRows;

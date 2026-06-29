@@ -597,11 +597,17 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   // Quando a clínica usa modo parcial, cada falta cobrada também perde
   // (perSession − partialAbsenceValue) em relação ao valor cheio.
   const fullSessionValue = perSession || baseValue || 0;
-  const uncoveredLoss = uncoveredAbsences * fullSessionValue;
+  const getFullSessionValueForDate = (e: EvolutionLike) => {
+    const apptValue = appointmentValueByDate[e.date];
+    return (apptValue != null && apptValue > 0) ? apptValue : fullSessionValue;
+  };
+  const uncoveredLoss = absences
+    .filter(e => !chargedAbsences.includes(e))
+    .reduce((sum, e) => sum + getFullSessionValueForDate(e), 0);
   const partialAbsenceLoss = isParcialAbsence
     ? chargedAbsences
         .filter(e => !e.groupId)
-        .reduce((sum) => sum + Math.max(0, fullSessionValue - partialAbsenceValue), 0)
+        .reduce((sum, e) => sum + Math.max(0, getFullSessionValueForDate(e) - partialAbsenceValue), 0)
     : 0;
   const loss = uncoveredLoss + partialAbsenceLoss;
 
@@ -711,6 +717,8 @@ export interface MemberRemunerationByPlansContext {
   /** Mês (0-indexed) e ano para cálculo de pacotes mensais (ocorrências). */
   month?: number;
   year?: number;
+  /** patientId → date → valor de repasse vigente/procedimento naquela sessão. */
+  appointmentValueByPatient?: Record<string, Record<string, number>>;
 }
 
 export interface MemberRemunerationBreakdown {
@@ -734,24 +742,28 @@ export interface MemberRemunerationBreakdown {
 export function calculateMemberRemunerationByPlans(
   ctx: MemberRemunerationByPlansContext,
 ): MemberRemunerationBreakdown {
-  const { plans, assignmentPlanMap, evolutions, legacyType, legacyValue, clinic, packages = [], month, year } = ctx;
+  const { plans, assignmentPlanMap, evolutions, legacyType, legacyValue, clinic, packages = [], month, year, appointmentValueByPatient = {} } = ctx;
 
   // 🔒 Override: quando a clínica define um modelo fixo, ignora planos do
   // membro e usa o cadastro da clínica como fonte única.
   if (clinic) {
     const clinicAmount = clinic.paymentAmount ?? 0;
     const billable = evolutions.filter(e => isBillableStatus(e.attendanceStatus));
+    const getDatedClinicAmount = (e: EvolutionLike) => {
+      const value = appointmentValueByPatient[e.patientId]?.[e.date];
+      return value != null && value > 0 ? value : clinicAmount;
+    };
 
     if (isClinicFixedMonthly(clinic.paymentType)) {
       // Salário mensal: terapeuta recebe o valor cheio se teve qualquer atividade.
-      const subtotal = billable.length > 0 ? clinicAmount : 0;
+      const subtotal = billable.length > 0 ? getDatedClinicAmount(billable[0]) : 0;
       return {
         total: subtotal,
         breakdown: subtotal > 0 ? [{
           planId: 'clinic-fixed-monthly',
           planName: 'Modelo da clínica · Mensal',
           type: 'fixo_mensal',
-          value: clinicAmount,
+          value: subtotal,
           sessionsCount: billable.length,
           patientsCount: new Set(billable.map(e => e.patientId)).size,
           subtotal,
@@ -760,15 +772,18 @@ export function calculateMemberRemunerationByPlans(
       };
     }
     if (isClinicFixedDaily(clinic.paymentType)) {
-      const days = new Set(billable.map(e => e.date)).size;
-      const subtotal = days * clinicAmount;
+      const valueByDay = new Map<string, number>();
+      billable.forEach(e => {
+        if (!valueByDay.has(e.date)) valueByDay.set(e.date, getDatedClinicAmount(e));
+      });
+      const subtotal = Array.from(valueByDay.values()).reduce((sum, value) => sum + value, 0);
       return {
         total: subtotal,
         breakdown: subtotal > 0 ? [{
           planId: 'clinic-fixed-daily',
           planName: 'Modelo da clínica · Diário',
           type: 'fixo_dia',
-          value: clinicAmount,
+          value: valueByDay.size > 0 ? subtotal / valueByDay.size : clinicAmount,
           sessionsCount: billable.length,
           patientsCount: new Set(billable.map(e => e.patientId)).size,
           subtotal,
@@ -779,15 +794,20 @@ export function calculateMemberRemunerationByPlans(
     if (clinic.paymentType === 'sessao') {
       // Quando a clínica cobra falta em modo 'parcial', as faltas cobradas
       // remuneram o terapeuta pelo valor fixo informado, não pelo valor cheio.
-      const adj = partialAbsenceAdjustment(billable, clinicAmount, clinic);
-      const subtotal = adj.total;
+      const subtotal = billable.reduce((sum, e) => {
+        const isChargedAbsence = e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_cobrada' || e.attendanceStatus === 'falta_remunerada';
+        if (clinic.absenceChargeMode === 'parcial' && isChargedAbsence) {
+          return sum + Number(clinic.absenceChargeAmount ?? 0);
+        }
+        return sum + getDatedClinicAmount(e);
+      }, 0);
       return {
         total: subtotal,
         breakdown: subtotal > 0 ? [{
           planId: 'clinic-per-session',
           planName: 'Modelo da clínica · Por sessão',
           type: 'por_sessao',
-          value: clinicAmount,
+          value: billable.length > 0 ? subtotal / billable.length : clinicAmount,
           sessionsCount: billable.length,
           patientsCount: new Set(billable.map(e => e.patientId)).size,
           subtotal,
@@ -951,6 +971,11 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
   const { clinic, patients, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {}, appointmentValueByPatient = {} } = ctx;
 
   const baseValue = clinic.paymentAmount ?? 0;
+  const getDatedClinicAmount = (e?: EvolutionLike) => {
+    if (!e) return baseValue;
+    const value = appointmentValueByPatient[e.patientId]?.[e.date];
+    return value != null && value > 0 ? value : baseValue;
+  };
 
   // Sessões billable (presente/reposição) desta clínica no mês — para informação
   const billableEvos = evolutions.filter(e => isSessionStatus(e.attendanceStatus));
@@ -958,8 +983,9 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
 
   // Modelo: salário fixo mensal
   if (isClinicFixedMonthly(clinic.paymentType)) {
+    const monthlyValue = billableEvos.length > 0 ? getDatedClinicAmount(billableEvos[0]) : baseValue;
     return {
-      total: baseValue,
+      total: monthlyValue,
       model: 'fixo_mensal',
       workDays,
       sessionsCount: billableEvos.length,
@@ -969,8 +995,12 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
 
   // Modelo: fixo por dia trabalhado
   if (isClinicFixedDaily(clinic.paymentType)) {
+    const valueByDay = new Map<string, number>();
+    billableEvos.forEach(e => {
+      if (!valueByDay.has(e.date)) valueByDay.set(e.date, getDatedClinicAmount(e));
+    });
     return {
-      total: workDays * baseValue,
+      total: Array.from(valueByDay.values()).reduce((sum, value) => sum + value, 0),
       model: 'fixo_diario',
       workDays,
       sessionsCount: billableEvos.length,
