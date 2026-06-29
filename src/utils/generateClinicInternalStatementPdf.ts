@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getDynamicSessionValue } from '@/utils/dateHelpers';
 import { calculatePatientMonthlyRevenue } from '@/utils/financialHelpers';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 interface PatientLite {
   id: string;
@@ -222,6 +223,9 @@ export async function generateClinicInternalStatementPdf(
     if (!patientMap.has(p.id))
       patientMap.set(p.id, { id: p.id, name: p.name, payment_type: null, payment_value: null, weekdays: null, package_id: null, package_assigned_at: null, departure_date: null });
   });
+  const appointmentValueByPatient = patientMap.size > 0
+    ? await loadAppointmentValueMap({ patientIds: Array.from(patientMap.keys()), startDate: startStr, endDate: endStr }).catch(() => ({} as Record<string, Record<string, number>>))
+    : {};
   const pkgMap = new Map<string, PackageRow>();
   packages.forEach(p => pkgMap.set(p.id, p));
 
@@ -329,6 +333,7 @@ export async function generateClinicInternalStatementPdf(
     const pPay = payments.find(x => x.patient_id === p.id);
     const pkg = info.package_id ? pkgMap.get(info.package_id) || null : null;
     const isMensal = isMensalType(info.payment_type, pkg?.package_type);
+    const valueByDate = appointmentValueByPatient[p.id] || {};
 
     const monthlyValue = pPay?.amount ?? Number(info.payment_value || 0);
     let perSession = 0;
@@ -423,6 +428,7 @@ export async function generateClinicInternalStatementPdf(
           lancamentoTipo: pk.lancamento_tipo,
           valorTotal: pk.valor_total,
         })),
+        appointmentValueByDate: valueByDate,
       });
 
       const dynInfo = getDynamicSessionValue(monthlyValue, info.weekdays || undefined, month, year);
@@ -468,8 +474,9 @@ export async function generateClinicInternalStatementPdf(
       pEvos.forEach(e => {
         const billable = shouldBillEvolution(e);
         const isParcialAbsence = isPartialChargedAbsence(e);
+        const datedSessionValue = valueByDate[e.date] ?? perSession;
         const amount = billable
-          ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : perSession)
+          ? (isParcialAbsence ? Number(clinicPayInfo?.absence_charge_amount ?? 0) : datedSessionValue)
           : 0;
         sessionsTotal += amount;
         rows.push({

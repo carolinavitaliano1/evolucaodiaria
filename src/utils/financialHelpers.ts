@@ -597,11 +597,17 @@ export function calculatePatientMonthlyRevenue(ctx: PatientRevenueContext): Pati
   // Quando a clínica usa modo parcial, cada falta cobrada também perde
   // (perSession − partialAbsenceValue) em relação ao valor cheio.
   const fullSessionValue = perSession || baseValue || 0;
-  const uncoveredLoss = uncoveredAbsences * fullSessionValue;
+  const getFullSessionValueForDate = (e: EvolutionLike) => {
+    const apptValue = appointmentValueByDate[e.date];
+    return (apptValue != null && apptValue > 0) ? apptValue : fullSessionValue;
+  };
+  const uncoveredLoss = absences
+    .filter(e => !chargedAbsences.includes(e))
+    .reduce((sum, e) => sum + getFullSessionValueForDate(e), 0);
   const partialAbsenceLoss = isParcialAbsence
     ? chargedAbsences
         .filter(e => !e.groupId)
-        .reduce((sum) => sum + Math.max(0, fullSessionValue - partialAbsenceValue), 0)
+        .reduce((sum, e) => sum + Math.max(0, getFullSessionValueForDate(e) - partialAbsenceValue), 0)
     : 0;
   const loss = uncoveredLoss + partialAbsenceLoss;
 

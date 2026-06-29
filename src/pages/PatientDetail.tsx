@@ -685,25 +685,24 @@ export default function PatientDetail() {
       const d = new Date(evo.date + 'T12:00:00');
       return d >= start && d <= end;
     });
-    const STATUS_BILLABLE: Record<string, boolean> = {
-      presente: true, reposicao: true, falta_remunerada: true, feriado_remunerado: true,
-      falta: false, feriado_nao_remunerado: false,
-    };
-    const billable = evos.filter(e => STATUS_BILLABLE[e.attendanceStatus] ?? false);
-    const rawVal = patient.paymentValue || 0;
-
-    if (isPackageMensal && isFixoMensal && rawVal > 0) {
+    const rawVal = paymentValue || 0;
+    let fiscalPerSession = isPackagePersonalizado ? perSessionValue : rawVal;
+    if ((isPackageMensal || isFixoMensal) && rawVal > 0) {
       const patientWeekdays = patient.weekdays || (patient.scheduleByDay ? Object.keys(patient.scheduleByDay) : []);
       const dynResult = getDynamicSessionValue(rawVal, patientWeekdays, fiscalStartDate.getMonth(), fiscalStartDate.getFullYear());
-      return billable.length * dynResult.perSession;
+      fiscalPerSession = dynResult.perSession;
     }
-    if (isPackagePersonalizado) {
-      return billable.length * perSessionValue;
-    }
-    if (patient.paymentType === 'fixo') {
-      return rawVal;
-    }
-    return billable.length * rawVal;
+    const shouldUseDatedValue = !isPackagePersonalizado && !(isPackageMensal || isFixoMensal);
+    const totals = computeFiscalTotals({
+      evolutions: evos.map(e => ({
+        attendanceStatus: e.attendanceStatus as any,
+        confirmedAttendance: e.confirmedAttendance,
+        amount: shouldUseDatedValue ? (appointmentValueByDate[e.date] ?? fiscalPerSession) : fiscalPerSession,
+      })),
+      perSession: fiscalPerSession,
+      clinic: clinic as any,
+    });
+    return totals.totalFaturado;
   };
 
   // Auto-fetch payment record when fiscal period is selected
@@ -1633,6 +1632,10 @@ export default function PatientDetail() {
       const dynResult = getDynamicSessionValue(rawPaymentValue, patientWeekdays, fiscalStartDate.getMonth(), fiscalStartDate.getFullYear());
       fiscalPerSession = dynResult.perSession;
     }
+    const shouldUseDatedValue = !isPackagePersonalizado && !(isPackageMensal || isFixoMensal);
+    const getFiscalBaseAmount = (e: Evolution) => shouldUseDatedValue
+      ? (appointmentValueByDate[e.date] ?? fiscalPerSession)
+      : fiscalPerSession;
     // Total faturado = sessões cobráveis + serviços avulsos do período (com valor)
     // Regra única: sempre contabiliza apenas o que efetivamente aconteceu (sessões cobráveis × valor/sessão).
     // Mensal/Fixo usam fiscalPerSession dinâmico (valor mensal ÷ sessões agendadas no mês).
@@ -1643,7 +1646,7 @@ export default function PatientDetail() {
     const getFiscalEvolutionAmount = (e: Evolution) => {
       const isChargedAbsence = e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_cobrada' || e.attendanceStatus === 'falta_remunerada';
       if (isParcialAbsenceMode && isChargedAbsence) return partialAbsenceValue;
-      return fiscalPerSession;
+      return getFiscalBaseAmount(e);
     };
     const servicesInRange = patientServices.filter(s => {
       if (!fiscalStartDate || !fiscalEndDate) return false;
@@ -1652,7 +1655,11 @@ export default function PatientDetail() {
     });
     // Centralized fiscal totals (covered by tests in src/utils/fiscalTotals.test.ts)
     const fiscalTotals = computeFiscalTotals({
-      evolutions: evos as any,
+      evolutions: evos.map(e => ({
+        attendanceStatus: e.attendanceStatus as any,
+        confirmedAttendance: e.confirmedAttendance,
+        amount: getFiscalBaseAmount(e),
+      })),
       services: servicesInRange.map(s => ({ price: s.price || 0 })),
       perSession: fiscalPerSession,
       clinic: clinic as any,
@@ -1662,7 +1669,7 @@ export default function PatientDetail() {
     if (typeof window !== 'undefined' && (window as any).__DEBUG_FISCAL__) {
       console.assert(
         Math.abs(fiscalTotals.sessionsBilled + totalDescontado -
-          evos.filter(e => e.attendanceStatus !== 'feriado_nao_remunerado').length * fiscalPerSession) < 0.01,
+          evos.filter(e => e.attendanceStatus !== 'feriado_nao_remunerado').reduce((sum, e) => sum + getFiscalBaseAmount(e), 0)) < 0.01,
         'Fiscal invariant violated: faturado_sessoes + descontado != total_esperado'
       );
     }
@@ -1768,13 +1775,19 @@ export default function PatientDetail() {
         const dynResult = getDynamicSessionValue(rawPayVal, patientWeekdays, fiscalStartDate.getMonth(), fiscalStartDate.getFullYear());
         payVal = dynResult.perSession;
       }
+      const shouldUseDatedWordValue = !isPackagePersonalizado && !(isPackageMensal || isFixoMensal);
+      const getWordSessionValue = (e: Evolution) => shouldUseDatedWordValue
+        ? (appointmentValueByDate[e.date] ?? payVal)
+        : payVal;
       const areaLabel = patient.clinicalArea || fiscalStamp?.clinical_area || 'Atendimento';
 
       let sessionTotal = 0;
       let sessionCount = 0;
       const rows = fiscalEvos.map(e => {
         const st = STATUS_LABELS[e.attendanceStatus] ?? { label: e.attendanceStatus, billable: false };
-        const val = st.billable ? payVal : 0;
+        const baseVal = getWordSessionValue(e);
+        const isChargedAbsence = e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_cobrada' || e.attendanceStatus === 'falta_remunerada';
+        const val = st.billable ? ((clinic?.absenceChargeMode === 'parcial' && isChargedAbsence) ? Number(clinic?.absenceChargeAmount ?? 0) : baseVal) : 0;
         const dateStr = format(new Date(e.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
         if (st.billable) { sessionTotal += val; sessionCount++; }
         return `<tr style="border-bottom:1px solid #eee"><td style="padding:4px 8px">${dateStr}</td><td style="padding:4px 8px">${areaLabel}</td><td style="padding:4px 8px">${st.label}</td><td style="padding:4px 8px;text-align:right">${val > 0 ? `R$ ${val.toFixed(2)}` : '—'}</td></tr>`;
@@ -1791,7 +1804,7 @@ export default function PatientDetail() {
       const wServicesBilled = wServicesInRange.reduce((sum, s) => sum + (s.price || 0), 0);
       const wTotalFaturado = sessionTotal + wServicesBilled;
       const wNonBillable = fiscalEvos.filter(e => !(STATUS_LABELS[e.attendanceStatus]?.billable));
-      const wTotalDescontado = (isPackageMensal || isFixoMensal) ? 0 : wNonBillable.length * payVal;
+      const wTotalDescontado = (isPackageMensal || isFixoMensal) ? 0 : wNonBillable.reduce((sum, e) => sum + getWordSessionValue(e), 0);
       const wTotalPago = fiscalPaymentStatus === 'paid' ? (fiscalTotalPaidFromApp ?? 0) : 0;
       const patCpf = (patient as any).cpf;
       const respCpf = (patient as any).responsible_cpf || (patient as any).responsibleCpf;
@@ -2184,6 +2197,7 @@ export default function PatientDetail() {
         packages: clinicPackages,
         groupBillingMap,
         memberPaymentMap,
+        appointmentValueByDate,
       });
       let remainingIndividualCharged = revenueBreakdown.individualRevenue + revenueBreakdown.chargedAbsenceRevenue;
       const sessionRows: UnifiedRow[] = targetEvolutions.map(evo => {
@@ -2200,7 +2214,10 @@ export default function PatientDetail() {
               packages: clinicPackages.map(pkg => ({ id: pkg.id, price: pkg.price, sessionLimit: pkg.sessionLimit })),
             });
           } else {
-            sessionValue = Math.min(pdfPerSession, remainingIndividualCharged);
+            const datedSessionValue = (!isPackagePersonalizado && !(isPackageMensal || isFixoMensal))
+              ? (appointmentValueByDate[evo.date] ?? pdfPerSession)
+              : pdfPerSession;
+            sessionValue = Math.min(datedSessionValue, remainingIndividualCharged);
             remainingIndividualCharged = Math.max(0, remainingIndividualCharged - sessionValue);
           }
         }

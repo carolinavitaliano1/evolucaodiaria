@@ -405,6 +405,7 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
       const breakdown = calculatePatientMonthlyRevenue({
         patient, clinic, evolutions: [single], month: selectedMonth + 1, year: selectedYear,
         packages: clinicPackages, groupBillingMap, memberPaymentMap,
+        appointmentValueByDate: apptValueMap[patient.id] || {},
       });
       return breakdown.total + breakdown.chargedAbsenceRevenue - breakdown.chargedAbsenceRevenue;
     }

@@ -17,6 +17,8 @@ export type AttendanceStatus =
 export interface FiscalEvolution {
   attendanceStatus: AttendanceStatus;
   confirmedAttendance?: boolean | null;
+  /** Valor cheio da sessão nesta data. Quando informado, prevalece sobre perSession. */
+  amount?: number | null;
 }
 
 export interface FiscalClinicConfig {
@@ -70,6 +72,7 @@ export function getFiscalEvolutionAmount(
   perSession: number,
   clinic?: FiscalClinicConfig | null,
 ): number {
+  const sessionBase = Number(e.amount ?? perSession ?? 0);
   const isParcial = clinic?.absenceChargeMode === 'parcial';
   const partialValue = isParcial ? Number(clinic?.absenceChargeAmount ?? 0) : 0;
   const isChargedAbsence =
@@ -77,7 +80,7 @@ export function getFiscalEvolutionAmount(
     e.attendanceStatus === 'falta_cobrada' ||
     e.attendanceStatus === 'falta_remunerada';
   if (isParcial && isChargedAbsence) return partialValue;
-  return perSession;
+  return sessionBase;
 }
 
 export function computeFiscalTotals(input: FiscalTotalsInput): FiscalTotalsResult {
@@ -106,7 +109,7 @@ export function computeFiscalTotals(input: FiscalTotalsInput): FiscalTotalsResul
   }, 0);
 
   const totalDescontado =
-    nonBillableAbsences.length * perSession + partialAbsenceDiscount;
+    nonBillableAbsences.reduce((sum, e) => sum + Number(e.amount ?? perSession ?? 0), 0) + partialAbsenceDiscount;
 
   return {
     totalFaturado: sessionsBilled + servicesBilled,
