@@ -393,7 +393,8 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
   // Helper for day-by-day display (mantém compatibilidade com a tabela "Dias específicos")
   const getDayEvolutionValue = (evolution: typeof dayEvolutions[number], patient: typeof clinicPatients[0]) => {
     const pkg = patient.packageId ? clinicPackages.find(pk => pk.id === patient.packageId) : null;
-    const perSession = getIndividualPerSessionValue(patient, selectedMonth + 1, selectedYear, pkg);
+    const datedSessionValue = apptValueMap[patient.id]?.[evolution.date];
+    const perSession = datedSessionValue ?? getIndividualPerSessionValue(patient, selectedMonth + 1, selectedYear, pkg);
 
     if (evolution.groupId) {
       // Para grupo, usa helper centralizado via cálculo do paciente da única evolução
@@ -1112,9 +1113,9 @@ export function ClinicFinancial({ clinicId }: ClinicFinancialProps) {
             doc.text(`• ${p.name}`, margin + 4, y + 3);
             doc.setTextColor(120, 120, 120);
             doc.text(statusMap[e.attendanceStatus] || e.attendanceStatus, margin + 70, y + 3);
-            const val = calculateDayPatientRevenue(p.id);
+            const val = getDayEvolutionValue(e, p);
             doc.setTextColor(30, 30, 30);
-            if (val > 0) doc.text(fmt(val / (dayPatientBreakdown.find(x => x.patient.id === p.id)?.sessions || 1 )), pw - margin, y + 3, { align: 'right' });
+            if (val > 0) doc.text(fmt(val), pw - margin, y + 3, { align: 'right' });
             y += 6;
           });
         }
