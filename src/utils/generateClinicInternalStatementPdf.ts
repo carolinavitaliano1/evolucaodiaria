@@ -226,6 +226,14 @@ export async function generateClinicInternalStatementPdf(
   const appointmentValueByPatient = patientMap.size > 0
     ? await loadAppointmentValueMap({ patientIds: Array.from(patientMap.keys()), startDate: startStr, endDate: endStr }).catch(() => ({} as Record<string, Record<string, number>>))
     : {};
+  const clinicValueForEvolution = (e: EvolutionRow) => {
+    const value = appointmentValueByPatient[e.patient_id]?.[e.date];
+    return value != null && value > 0 ? value : Number(clinicPayInfo?.payment_amount || 0);
+  };
+  const firstBillableEvolution = evolutions.find(shouldBillEvolution);
+  const clinicFixedDisplayAmount = firstBillableEvolution
+    ? clinicValueForEvolution(firstBillableEvolution)
+    : Number(clinicPayInfo?.payment_amount || 0);
   const pkgMap = new Map<string, PackageRow>();
   packages.forEach(p => pkgMap.set(p.id, p));
 
@@ -278,7 +286,7 @@ export async function generateClinicInternalStatementPdf(
 
   // Nota de modelo de remuneração da clínica (quando fixo)
   const clPay = clinicPayInfo?.payment_type;
-  const clAmt = clinicPayInfo?.payment_amount ?? 0;
+  const clAmt = clinicFixedDisplayAmount;
   if (clPay === 'fixo_mensal' || clPay === 'fixo' || clPay === 'mensal') {
     doc.setFontSize(8); doc.setTextColor(...accent); doc.setFont('helvetica', 'bold');
     doc.text(
@@ -560,12 +568,16 @@ export async function generateClinicInternalStatementPdf(
   if (isClinicFixedSalary) {
     if (clinicPayInfo?.payment_type === 'fixo_diario' || clinicPayInfo?.payment_type === 'fixo_dia') {
       const billableDays = new Set<string>();
+      const valueByDay = new Map<string, number>();
       evolutions.forEach(e => {
-        if (shouldBillEvolution(e)) billableDays.add(e.date);
+        if (shouldBillEvolution(e)) {
+          billableDays.add(e.date);
+          if (!valueByDay.has(e.date)) valueByDay.set(e.date, clinicValueForEvolution(e));
+        }
       });
-      clinicFixedRevenue = Number(clinicPayInfo?.payment_amount || 0) * billableDays.size;
+      clinicFixedRevenue = Array.from(valueByDay.values()).reduce((sum, value) => sum + value, 0);
     } else {
-      clinicFixedRevenue = Number(clinicPayInfo?.payment_amount || 0);
+      clinicFixedRevenue = clinicFixedDisplayAmount;
     }
   }
 
