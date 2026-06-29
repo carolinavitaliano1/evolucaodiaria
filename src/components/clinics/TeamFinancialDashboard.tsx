@@ -134,7 +134,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       if (!member) return 0;
       return calculateMemberRemuneration(member, filteredEvolutions);
     }
-  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId]);
+  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId, apptValueMap, clinic, clinicPackages]);
 
   // Per-member stats — inclui o breakdown por plano para exibição
   const memberStats = useMemo(() => {
@@ -146,7 +146,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       const calc = calculateMemberBreakdown(member, memberEvos);
       return { member, sessions, absences, paidAbsences, revenue: calc.total, breakdown: calc.breakdown };
     }).sort((a, b) => b.revenue - a.revenue);
-  }, [members, monthlyEvolutions]);
+  }, [members, monthlyEvolutions, apptValueMap, clinic, clinicPackages]);
 
   const maxMemberRevenue = memberStats[0]?.revenue || 1;
 
@@ -202,7 +202,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
         sessoes: sessions,
       };
     });
-  }, [evolutions, clinicPatients, selectedDate, filterMemberId]);
+  }, [evolutions, clinicPatients, selectedDate, filterMemberId, members, apptValueMap, clinic, clinicPackages]);
 
   const myMember = members.find(m => m.userId === user?.id);
   const canSeeAll = myMember?.role === 'owner' || myMember?.role === 'admin';

@@ -971,6 +971,11 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
   const { clinic, patients, evolutions, month, year, packages = [], groupBillingMap = {}, memberPaymentMap = {}, appointmentValueByPatient = {} } = ctx;
 
   const baseValue = clinic.paymentAmount ?? 0;
+  const getDatedClinicAmount = (e?: EvolutionLike) => {
+    if (!e) return baseValue;
+    const value = appointmentValueByPatient[e.patientId]?.[e.date];
+    return value != null && value > 0 ? value : baseValue;
+  };
 
   // Sessões billable (presente/reposição) desta clínica no mês — para informação
   const billableEvos = evolutions.filter(e => isSessionStatus(e.attendanceStatus));
@@ -978,8 +983,9 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
 
   // Modelo: salário fixo mensal
   if (isClinicFixedMonthly(clinic.paymentType)) {
+    const monthlyValue = billableEvos.length > 0 ? getDatedClinicAmount(billableEvos[0]) : baseValue;
     return {
-      total: baseValue,
+      total: monthlyValue,
       model: 'fixo_mensal',
       workDays,
       sessionsCount: billableEvos.length,
@@ -989,8 +995,12 @@ export function calculateClinicMonthlyRevenue(ctx: ClinicRevenueContext): Clinic
 
   // Modelo: fixo por dia trabalhado
   if (isClinicFixedDaily(clinic.paymentType)) {
+    const valueByDay = new Map<string, number>();
+    billableEvos.forEach(e => {
+      if (!valueByDay.has(e.date)) valueByDay.set(e.date, getDatedClinicAmount(e));
+    });
     return {
-      total: workDays * baseValue,
+      total: Array.from(valueByDay.values()).reduce((sum, value) => sum + value, 0),
       model: 'fixo_diario',
       workDays,
       sessionsCount: billableEvos.length,

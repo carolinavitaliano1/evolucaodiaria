@@ -100,7 +100,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       const calc = calculateMemberBreakdown(member, memberEvos);
       return { member, sessions, absences, paidAbsences, revenue: calc.total, breakdown: calc.breakdown, evos: memberEvos };
     });
-  }, [members, monthlyEvolutions]);
+  }, [members, monthlyEvolutions, apptValueMap, clinic]);
 
   // Filtered evolutions for consolidated view
   const filteredEvolutions = useMemo(() => {
@@ -126,7 +126,7 @@ export function TeamFinancialReport({ clinicId }: TeamFinancialReportProps) {
       if (!member) return 0;
       return calculateMemberRemuneration(member, filteredEvolutions);
     }
-  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId]);
+  }, [members, monthlyEvolutions, filteredEvolutions, filterMemberId, apptValueMap, clinic]);
 
   const patientBreakdown = useMemo(() => {
     return patientIdsInFilter
