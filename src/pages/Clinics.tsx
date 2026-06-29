@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 import { Plus, Building2, Users, MapPin, Clock, DollarSign, Stamp, Briefcase, Phone, Mail, Check, X, Calendar, MoreVertical, Archive, Trash2, ArchiveRestore, Edit, AlertTriangle, MessageCircle, ClipboardList, TrendingUp, BarChart3, StickyNote, Search, List, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,6 +91,7 @@ export default function Clinics() {
   const [registeredServices, setRegisteredServices] = useState<ServiceRecord[]>([]);
   const [deleteServiceOpen, setDeleteServiceOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<ServiceRecord | null>(null);
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
 
   // Clínica Pro puro: cadastra apenas Clínicas com equipe
   const isClinicaProOnly = canCreateClinica;
@@ -160,6 +162,17 @@ export default function Clinics() {
     if (!user || clinics.length === 0) return;
     loadAllEvolutions();
   }, [user, clinics.length, loadAllEvolutions]);
+
+  // Carrega mapeamento histórico de valores por sessão (clinic_payment_history) — mês atual
+  useEffect(() => {
+    if (!user || patients.length === 0) return;
+    const now = new Date();
+    const start = format(startOfMonth(now), 'yyyy-MM-dd');
+    const end = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd');
+    loadAppointmentValueMap({ patientIds: patients.map(p => p.id), startDate: start, endDate: end })
+      .then(setApptValueMap)
+      .catch((err) => console.warn('[Clinics] loadAppointmentValueMap failed', err));
+  }, [user, patients]);
 
   const loadPrivateAppointments = async () => {
     try {
@@ -374,6 +387,7 @@ export default function Clinics() {
       clinicRevenue += calculateClinicMonthlyRevenue({
         clinic, patients: cPatients, evolutions: cEvos,
         month: currentMonth + 1, year: currentYear, packages: clinicPackages,
+        appointmentValueByPatient: apptValueMap,
       }).total;
     }
 
@@ -387,7 +401,7 @@ export default function Clinics() {
       .reduce((sum, a) => sum + Number(a.price || 0), 0);
 
     return clinicRevenue + servicesRevenue;
-  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds, privateAppointments]);
+  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds, privateAppointments, apptValueMap]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
