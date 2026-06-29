@@ -717,6 +717,8 @@ export interface MemberRemunerationByPlansContext {
   /** Mês (0-indexed) e ano para cálculo de pacotes mensais (ocorrências). */
   month?: number;
   year?: number;
+  /** patientId → date → valor de repasse vigente/procedimento naquela sessão. */
+  appointmentValueByPatient?: Record<string, Record<string, number>>;
 }
 
 export interface MemberRemunerationBreakdown {
@@ -740,24 +742,28 @@ export interface MemberRemunerationBreakdown {
 export function calculateMemberRemunerationByPlans(
   ctx: MemberRemunerationByPlansContext,
 ): MemberRemunerationBreakdown {
-  const { plans, assignmentPlanMap, evolutions, legacyType, legacyValue, clinic, packages = [], month, year } = ctx;
+  const { plans, assignmentPlanMap, evolutions, legacyType, legacyValue, clinic, packages = [], month, year, appointmentValueByPatient = {} } = ctx;
 
   // 🔒 Override: quando a clínica define um modelo fixo, ignora planos do
   // membro e usa o cadastro da clínica como fonte única.
   if (clinic) {
     const clinicAmount = clinic.paymentAmount ?? 0;
     const billable = evolutions.filter(e => isBillableStatus(e.attendanceStatus));
+    const getDatedClinicAmount = (e: EvolutionLike) => {
+      const value = appointmentValueByPatient[e.patientId]?.[e.date];
+      return value != null && value > 0 ? value : clinicAmount;
+    };
 
     if (isClinicFixedMonthly(clinic.paymentType)) {
       // Salário mensal: terapeuta recebe o valor cheio se teve qualquer atividade.
-      const subtotal = billable.length > 0 ? clinicAmount : 0;
+      const subtotal = billable.length > 0 ? getDatedClinicAmount(billable[0]) : 0;
       return {
         total: subtotal,
         breakdown: subtotal > 0 ? [{
           planId: 'clinic-fixed-monthly',
           planName: 'Modelo da clínica · Mensal',
           type: 'fixo_mensal',
-          value: clinicAmount,
+          value: subtotal,
           sessionsCount: billable.length,
           patientsCount: new Set(billable.map(e => e.patientId)).size,
           subtotal,
@@ -766,15 +772,18 @@ export function calculateMemberRemunerationByPlans(
       };
     }
     if (isClinicFixedDaily(clinic.paymentType)) {
-      const days = new Set(billable.map(e => e.date)).size;
-      const subtotal = days * clinicAmount;
+      const valueByDay = new Map<string, number>();
+      billable.forEach(e => {
+        if (!valueByDay.has(e.date)) valueByDay.set(e.date, getDatedClinicAmount(e));
+      });
+      const subtotal = Array.from(valueByDay.values()).reduce((sum, value) => sum + value, 0);
       return {
         total: subtotal,
         breakdown: subtotal > 0 ? [{
           planId: 'clinic-fixed-daily',
           planName: 'Modelo da clínica · Diário',
           type: 'fixo_dia',
-          value: clinicAmount,
+          value: valueByDay.size > 0 ? subtotal / valueByDay.size : clinicAmount,
           sessionsCount: billable.length,
           patientsCount: new Set(billable.map(e => e.patientId)).size,
           subtotal,
@@ -785,15 +794,20 @@ export function calculateMemberRemunerationByPlans(
     if (clinic.paymentType === 'sessao') {
       // Quando a clínica cobra falta em modo 'parcial', as faltas cobradas
       // remuneram o terapeuta pelo valor fixo informado, não pelo valor cheio.
-      const adj = partialAbsenceAdjustment(billable, clinicAmount, clinic);
-      const subtotal = adj.total;
+      const subtotal = billable.reduce((sum, e) => {
+        const isChargedAbsence = e.attendanceStatus === 'falta' || e.attendanceStatus === 'falta_cobrada' || e.attendanceStatus === 'falta_remunerada';
+        if (clinic.absenceChargeMode === 'parcial' && isChargedAbsence) {
+          return sum + Number(clinic.absenceChargeAmount ?? 0);
+        }
+        return sum + getDatedClinicAmount(e);
+      }, 0);
       return {
         total: subtotal,
         breakdown: subtotal > 0 ? [{
           planId: 'clinic-per-session',
           planName: 'Modelo da clínica · Por sessão',
           type: 'por_sessao',
-          value: clinicAmount,
+          value: billable.length > 0 ? subtotal / billable.length : clinicAmount,
           sessionsCount: billable.length,
           patientsCount: new Set(billable.map(e => e.patientId)).size,
           subtotal,

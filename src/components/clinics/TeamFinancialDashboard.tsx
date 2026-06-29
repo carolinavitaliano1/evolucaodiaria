@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
@@ -13,7 +13,7 @@ import {
   ChevronLeft, ChevronRight, Crown, Shield, User, Download, Loader2,
   Trophy, Medal
 } from 'lucide-react';
-import { format, subMonths, addMonths } from 'date-fns';
+import { format, subMonths, addMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ import {
   calculateMemberRemunerationByPlans,
   type PlanBreakdownEntry,
 } from '@/utils/financialHelpers';
+import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
 
 interface TeamFinancialDashboardProps {
   clinicId: string;
@@ -48,6 +49,7 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [filterMemberId, setFilterMemberId] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [apptValueMap, setApptValueMap] = useState<Record<string, Record<string, number>>>({});
 
   const clinic = clinics.find(c => c.id === clinicId);
   const selectedMonth = selectedDate.getMonth();
@@ -61,10 +63,20 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
 
   const absenceType = clinic?.absencePaymentType || (clinic?.paysOnAbsence === false ? 'never' : 'always');
 
+  useEffect(() => {
+    const ids = clinicPatients.map(p => p.id);
+    if (!ids.length) { setApptValueMap({}); return; }
+    const start = format(startOfMonth(subMonths(selectedDate, 5)), 'yyyy-MM-dd');
+    const end = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+    loadAppointmentValueMap({ patientIds: ids, startDate: start, endDate: end })
+      .then(setApptValueMap)
+      .catch(() => setApptValueMap({}));
+  }, [clinicPatients, selectedDate]);
+
   // 🔒 Comissão delegada ao helper central. Quando o membro tem múltiplos planos
   // cadastrados, usa a função baseada em planos (com breakdown por modalidade);
   // caso contrário, cai no fallback legacy single-plan.
-  const calculateMemberBreakdown = (member: typeof members[0], memberEvos: typeof evolutions) => {
+  const calculateMemberBreakdown = (member: typeof members[0], memberEvos: typeof evolutions, month = selectedMonth, year = selectedYear) => {
     const evos = memberEvos.map(e => ({
       id: e.id, patientId: e.patientId, groupId: e.groupId,
       date: e.date, attendanceStatus: e.attendanceStatus,
@@ -77,11 +89,12 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       legacyType: member.remunerationType,
       legacyValue: member.remunerationValue,
       clinic,
+      appointmentValueByPatient: apptValueMap,
       packages: clinicPackages.filter(p => p.clinicId === clinicId).map(p => ({
         id: p.id, price: p.price, packageType: p.packageType, sessionLimit: p.sessionLimit,
       })),
-      month: selectedMonth,
-      year: selectedYear,
+      month,
+      year,
     });
   };
   const calculateMemberRemuneration = (member: typeof members[0], memberEvos: typeof evolutions) => {
@@ -174,12 +187,12 @@ export function TeamFinancialDashboard({ clinicId }: TeamFinancialDashboardProps
       const revenue = filterMemberId === 'all'
         ? members.reduce((sum, member) => {
             const memberEvos = monthEvos.filter(e => e.userId === member.userId);
-            return sum + calculateMemberRemuneration(member, memberEvos);
+            return sum + calculateMemberBreakdown(member, memberEvos, m, y).total;
           }, 0)
         : (() => {
             const member = members.find(m => m.userId === filterMemberId);
             if (!member) return 0;
-            return calculateMemberRemuneration(member, filteredMonthEvos);
+            return calculateMemberBreakdown(member, filteredMonthEvos, m, y).total;
           })();
       const sessions = filteredMonthEvos.filter(e => e.attendanceStatus === 'presente' || (e.attendanceStatus === 'reposicao' || e.attendanceStatus === 'anteposicao')).length;
 
