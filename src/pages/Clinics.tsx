@@ -387,6 +387,7 @@ export default function Clinics() {
       clinicRevenue += calculateClinicMonthlyRevenue({
         clinic, patients: cPatients, evolutions: cEvos,
         month: currentMonth + 1, year: currentYear, packages: clinicPackages,
+        appointmentValueByPatient: apptValueMap,
       }).total;
     }
 
@@ -400,7 +401,7 @@ export default function Clinics() {
       .reduce((sum, a) => sum + Number(a.price || 0), 0);
 
     return clinicRevenue + servicesRevenue;
-  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds, privateAppointments]);
+  }, [evolutions, patients, clinics, clinicPackages, activeClinicIds, privateAppointments, apptValueMap]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
