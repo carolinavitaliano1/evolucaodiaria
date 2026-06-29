@@ -1,4 +1,4 @@
-import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck, CheckCircle2, Clock, XCircle, User, Repeat, Wallet } from 'lucide-react';
+import { Building2, Users, DollarSign, TrendingUp, TrendingDown, Filter, Download, AlertTriangle, Briefcase, Loader2, FileText, Stamp, ChevronLeft, ChevronRight, Stethoscope, CalendarCheck, CheckCircle2, Clock, XCircle, User, Repeat, Wallet, Printer } from 'lucide-react';
 import { TeamFinancialReport } from '@/components/clinics/TeamFinancialReport';
 import { useClinicOrg } from '@/hooks/useClinicOrg';
 import { format, subMonths, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
@@ -88,6 +88,8 @@ export default function Financial() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>('all');
   const [tableStartDate, setTableStartDate] = useState('');
   const [tableEndDate, setTableEndDate] = useState('');
+  const [tableClinicFilter, setTableClinicFilter] = useState<string>('all');
+  const [tablePatientFilter, setTablePatientFilter] = useState<string>('all');
 
   // Patient payment records keyed by patient_id
   const [patientPaymentRecords, setPatientPaymentRecords] = useState<Record<string, any>>({});
