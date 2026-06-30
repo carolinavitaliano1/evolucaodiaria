@@ -400,6 +400,125 @@ export default function Financial() {
     }
   };
 
+  const handleExportFilteredPDF = () => {
+    try {
+      const doc = new jsPDF();
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 12;
+      let y = 16;
+
+      const monthName = new Date(selectedYear, selectedMonth).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Relatório Financeiro Filtrado', pageW / 2, y, { align: 'center' });
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Mês de referência: ${monthName}`, pageW / 2, y, { align: 'center' });
+      y += 5;
+
+      const filterLines: string[] = [];
+      filterLines.push(`Status: ${paymentStatusFilter === 'all' ? 'Todos' : paymentStatusFilter === 'paid' ? 'Recebidos' : 'Pendentes'}`);
+      if (tableClinicFilter !== 'all') {
+        const c = clinics.find(cc => cc.id === tableClinicFilter);
+        filterLines.push(`Clínica: ${c?.name || '-'}`);
+      }
+      if (tablePatientFilter !== 'all') {
+        const p = patients.find(pp => pp.id === tablePatientFilter);
+        filterLines.push(`Paciente: ${p?.name || '-'}`);
+      }
+      if (tableStartDate || tableEndDate) {
+        filterLines.push(`Período pgto: ${tableStartDate || '...'} a ${tableEndDate || '...'}`);
+      }
+      doc.setFontSize(8);
+      doc.setTextColor(110);
+      doc.text(filterLines.join('  ·  '), pageW / 2, y, { align: 'center' });
+      doc.setTextColor(0);
+      y += 7;
+
+      // Header row
+      const cols = { pac: margin + 2, cli: margin + 70, tipo: margin + 115, sess: margin + 142, st: margin + 155, val: pageW - margin - 2 };
+      const drawHeader = () => {
+        doc.setFillColor(99, 102, 241);
+        doc.rect(margin, y, pageW - margin * 2, 8, 'F');
+        doc.setTextColor(255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('PACIENTE', cols.pac, y + 5.5);
+        doc.text('CLÍNICA', cols.cli, y + 5.5);
+        doc.text('TIPO', cols.tipo, y + 5.5);
+        doc.text('SESS.', cols.sess, y + 5.5);
+        doc.text('STATUS', cols.st, y + 5.5);
+        doc.text('VALOR', cols.val, y + 5.5, { align: 'right' });
+        doc.setTextColor(0);
+        y += 9;
+      };
+      drawHeader();
+
+      let totalRecebido = 0;
+      let totalPendente = 0;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+
+      patientStats.forEach((s, i) => {
+        if (y > pageH - 30) { doc.addPage(); y = 16; drawHeader(); }
+        if (i % 2 === 0) {
+          doc.setFillColor(245, 245, 250);
+          doc.rect(margin, y - 1, pageW - margin * 2, 7, 'F');
+        }
+        const truncate = (str: string, max: number) => str.length > max ? str.slice(0, max - 1) + '…' : str;
+        doc.text(truncate(s.patient.name, 38), cols.pac, y + 4);
+        doc.text(truncate(s.clinic?.name || '-', 24), cols.cli, y + 4);
+        doc.text(truncate(s.tipoLabel || '-', 14), cols.tipo, y + 4);
+        doc.text(String(s.sessions), cols.sess, y + 4);
+        const paid = !!s.pr?.paid;
+        doc.setTextColor(paid ? 22 : 200, paid ? 163 : 130, paid ? 74 : 20);
+        doc.text(paid ? 'Recebido' : 'Pendente', cols.st, y + 4);
+        doc.setTextColor(0);
+        const val = s.revenue || 0;
+        doc.text(`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, cols.val, y + 4, { align: 'right' });
+        if (paid) totalRecebido += val; else totalPendente += val;
+        y += 7;
+      });
+
+      if (patientStats.length === 0) {
+        doc.setTextColor(140);
+        doc.text('Nenhum resultado para os filtros aplicados.', pageW / 2, y + 6, { align: 'center' });
+        doc.setTextColor(0);
+        y += 12;
+      }
+
+      // Totals
+      if (y > pageH - 30) { doc.addPage(); y = 16; }
+      y += 4;
+      const total = totalRecebido + totalPendente;
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageW - margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(`Total Recebido: R$ ${totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y);
+      doc.text(`Total Pendente: R$ ${totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageW / 2, y);
+      doc.text(`Total Geral: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageW - margin, y, { align: 'right' });
+
+      // Footer page numbers
+      const pages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${pages} · Gerado em ${new Date().toLocaleDateString('pt-BR')}`, pageW / 2, pageH - 6, { align: 'center' });
+      }
+
+      doc.save(`financeiro-filtrado-${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}.pdf`);
+      toast.success('PDF gerado');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao gerar PDF');
+    }
+  };
+
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
