@@ -1482,6 +1482,9 @@ export default function Financial() {
                 <Button variant="outline" className="gap-2 text-xs h-8" onClick={handleExportCSV}>
                   <Download className="w-3.5 h-3.5" /> CSV
                 </Button>
+                <Button variant="outline" className="gap-2 text-xs h-8" onClick={handleExportFilteredPDF}>
+                  <FileText className="w-3.5 h-3.5" /> PDF Filtrado
+                </Button>
                 <Button variant="outline" className="gap-2 text-xs h-8" onClick={() => window.print()}>
                   <Printer className="w-3.5 h-3.5" /> Imprimir
                 </Button>
