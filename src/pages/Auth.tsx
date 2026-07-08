@@ -407,6 +407,7 @@ export default function Auth() {
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Senha</Label>
                     <Input id="signup-password" type="password" placeholder="Mínimo 6 caracteres" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required />
+                    <p className="text-xs text-muted-foreground">A senha precisa ter no mínimo 6 caracteres.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-confirm-password">Confirmar Senha</Label>
