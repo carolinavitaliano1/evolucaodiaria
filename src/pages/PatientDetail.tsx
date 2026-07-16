@@ -3615,7 +3615,7 @@ export default function PatientDetail() {
             <div className="bg-card rounded-xl shadow-sm border border-border p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Video className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Teleatendimento</h2>
+                <h2 className="font-semibold text-foreground">Teleatendimento <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span></h2>
               </div>
               <p className="text-xs text-muted-foreground mb-4">
                 Histórico de videochamadas com este paciente: gravações, transcrições e evoluções geradas a partir das sessões ficam salvas aqui.
