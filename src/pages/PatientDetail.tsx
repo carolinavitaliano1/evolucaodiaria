@@ -2466,7 +2466,17 @@ export default function PatientDetail() {
                   <Icon className="w-4 h-4" />
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[13.5px] font-semibold leading-tight">{item.label}</span>
+                  <span className="block text-[13.5px] font-semibold leading-tight">
+                    {item.label}
+                    {(item as any).beta && (
+                      <span className={cn(
+                        'ml-1.5 text-[9px] font-bold tracking-wider px-1 py-0.5 rounded align-middle',
+                        isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-warning/10 text-warning'
+                      )}>
+                        BETA
+                      </span>
+                    )}
+                  </span>
                   <span className={cn('block text-[11px] leading-tight mt-0.5 truncate', isActive ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
                     {item.desc}
                   </span>
