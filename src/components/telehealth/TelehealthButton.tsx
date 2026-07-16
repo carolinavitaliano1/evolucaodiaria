@@ -43,10 +43,10 @@ export function TelehealthButton({
         size={size}
         className={className}
         onClick={() => setOpen(true)}
-        title={reason || 'Iniciar teleatendimento'}
+        title={reason || 'Iniciar teleatendimento (Beta)'}
       >
         <Video className={iconOnly ? 'w-4 h-4' : 'w-3.5 h-3.5 mr-1.5'} />
-        {!iconOnly && 'Teleatendimento'}
+        {!iconOnly && <>Teleatendimento <span className="text-[9px] align-top font-bold tracking-wider px-1 py-0.5 rounded bg-warning/10 text-warning">BETA</span></>}
       </Button>
       <StartTelehealthDialog
         open={open}
