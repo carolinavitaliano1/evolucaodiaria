@@ -125,7 +125,7 @@ export function TranscriptionDialog({ open, onOpenChange, recordingId, recording
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-primary" />
-            Transcrição da gravação
+            Transcrição da gravação <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span>
           </DialogTitle>
           <DialogDescription>
             {recordingLabel ? `Sessão de ${recordingLabel}.` : ''}{' '}

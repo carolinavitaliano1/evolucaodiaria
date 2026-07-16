@@ -1396,7 +1396,7 @@ export function TherapeuticSessionTab({ patientId, patientName, patientAvatar, c
           <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" /> Teleatendimento — gravações e transcrições
+                <FileText className="w-4 h-4 text-primary" /> Teleatendimento — gravações e transcrições <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span>
               </CardTitle>
             </CardHeader>
             <CardContent>

@@ -88,7 +88,7 @@ export default function TelehealthPatient() {
           <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
             <Video className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-xl font-semibold">Teleatendimento</h1>
+          <h1 className="text-xl font-semibold">Teleatendimento <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span></h1>
           <p className="text-sm text-muted-foreground">
             Olá, <strong>{session.patient_name}</strong>! Você foi convidado(a) para uma sessão online
             com <strong>{session.therapist_name}</strong>.

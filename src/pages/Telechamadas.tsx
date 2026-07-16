@@ -111,7 +111,7 @@ export default function Telechamadas() {
       <div className="p-6 max-w-2xl mx-auto">
         <Card className="p-8 text-center space-y-3">
           <Lock className="w-10 h-10 mx-auto text-muted-foreground" />
-          <h1 className="text-xl font-semibold">Telechamadas indisponíveis</h1>
+          <h1 className="text-xl font-semibold">Telechamadas <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span></h1>
           <p className="text-sm text-muted-foreground">{access.reason || 'Faça upgrade para usar o teleatendimento.'}</p>
           <Button onClick={() => navigate('/pricing')}>Ver planos</Button>
         </Card>
@@ -124,7 +124,7 @@ export default function Telechamadas() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Video className="w-6 h-6 text-primary" /> Telechamadas
+            <Video className="w-6 h-6 text-primary" /> Telechamadas <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span>
           </h1>
           <p className="text-sm text-muted-foreground">Inicie e gerencie atendimentos por vídeo dentro do app.</p>
         </div>

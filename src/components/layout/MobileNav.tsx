@@ -42,6 +42,7 @@ type NavItem = {
   perm: string | null;
   badge?: 'pending' | 'notices' | 'support' | null;
   ai?: boolean;
+  beta?: boolean;
 };
 
 const NAV_DEST: Record<string, NavItem> = {
@@ -50,7 +51,7 @@ const NAV_DEST: Record<string, NavItem> = {
   calendar:        { to: '/calendar',   icon: Calendar,        label: 'Agenda',        perm: 'calendar.view' },
   evolucoes:       { to: '/evolucoes',  icon: NotebookPen,     label: 'Evoluções',     perm: 'evolutions.view' },
   tasks:           { to: '/tasks',      icon: ClipboardList,   label: 'Tarefas',       perm: 'tasks.view' },
-  telechamadas:    { to: '/telechamadas', icon: Video,         label: 'Telechamadas',  perm: null },
+  telechamadas:    { to: '/telechamadas', icon: Video,         label: 'Telechamadas',  perm: null, beta: true },
   clinics:         { to: '/clinics',    icon: Building2,       label: 'Clínicas',      perm: 'clinics.view' },
   financial:       { to: '/financial',  icon: DollarSign,      label: 'Financeiro',    perm: 'financial.view' },
   reports:         { to: '/reports',    icon: BarChart3,       label: 'Relatórios',    perm: 'reports.view' },
@@ -177,7 +178,7 @@ export function MobileNav() {
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/98 backdrop-blur-sm border-t border-border">
       <div className="flex justify-around items-center py-1.5 px-2">
-        {allowedMain.map(({ to, icon: Icon, label, badge }) => {
+        {allowedMain.map(({ to, icon: Icon, label, badge, beta }) => {
           const isActive = location.pathname === to || 
             (to !== '/' && location.pathname.startsWith(to));
           const badgeCount = getBadgeCount(badge);
@@ -196,6 +197,11 @@ export function MobileNav() {
                 {badgeCount > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
                     {badgeCount > 9 ? '9+' : badgeCount}
+                  </span>
+                )}
+                {beta && (
+                  <span className="absolute -bottom-1.5 -right-1.5 text-[8px] font-bold px-0.5 rounded bg-warning/10 text-warning leading-none">
+                    BETA
                   </span>
                 )}
               </div>
@@ -271,7 +277,7 @@ export function MobileNav() {
                   </div>
                   <div className="space-y-1">
                     {group.items.map(item => {
-                      const { to, icon: Icon, label, badge, ai } = item;
+                      const { to, icon: Icon, label, badge, ai, beta } = item;
                       const isActive = location.pathname === to ||
                         (to !== '/' && location.pathname.startsWith(to));
                       const badgeCount = getBadgeCount(badge);
@@ -289,6 +295,14 @@ export function MobileNav() {
                           <span className={cn('font-medium flex-1', isActive ? 'text-primary-foreground' : 'text-foreground')}>
                             {label}
                           </span>
+                          {beta && (
+                            <span className={cn(
+                              'text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded',
+                              isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-warning/10 text-warning'
+                            )}>
+                              BETA
+                            </span>
+                          )}
                           {ai && (
                             <span className={cn(
                               'text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded',

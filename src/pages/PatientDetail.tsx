@@ -2402,8 +2402,8 @@ export default function PatientDetail() {
         { id: 'evolutions', label: 'Evoluções', icon: TrendingUp, desc: 'Registro diário de sessões' },
         { id: 'attendance', label: 'Frequência', icon: ClipboardList, desc: 'Presenças, faltas e reposições' },
         { id: 'session', label: 'Sessão Terapêutica', icon: Brain, desc: 'Roteiro e metas da sessão' },
-        { id: 'transcricao', label: 'Transcrição', icon: Mic, desc: 'Áudio da sessão em texto' },
-        { id: 'teleatendimento', label: 'Teleatendimento', icon: Video, desc: 'Sala online e confirmações' },
+        { id: 'transcricao', label: 'Transcrição', icon: Mic, desc: 'Áudio da sessão em texto', beta: true },
+        { id: 'teleatendimento', label: 'Teleatendimento', icon: Video, desc: 'Sala online e confirmações', beta: true },
       ],
     },
     {
@@ -2466,7 +2466,17 @@ export default function PatientDetail() {
                   <Icon className="w-4 h-4" />
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[13.5px] font-semibold leading-tight">{item.label}</span>
+                  <span className="block text-[13.5px] font-semibold leading-tight">
+                    {item.label}
+                    {(item as any).beta && (
+                      <span className={cn(
+                        'ml-1.5 text-[9px] font-bold tracking-wider px-1 py-0.5 rounded align-middle',
+                        isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-warning/10 text-warning'
+                      )}>
+                        BETA
+                      </span>
+                    )}
+                  </span>
                   <span className={cn('block text-[11px] leading-tight mt-0.5 truncate', isActive ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
                     {item.desc}
                   </span>
@@ -3605,7 +3615,7 @@ export default function PatientDetail() {
             <div className="bg-card rounded-xl shadow-sm border border-border p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Video className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Teleatendimento</h2>
+                <h2 className="font-semibold text-foreground">Teleatendimento <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span></h2>
               </div>
               <p className="text-xs text-muted-foreground mb-4">
                 Histórico de videochamadas com este paciente: gravações, transcrições e evoluções geradas a partir das sessões ficam salvas aqui.
