@@ -92,7 +92,7 @@ export function StartTelehealthDialog({ open, onOpenChange, patientId, appointme
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Video className="w-5 h-5 text-primary" />
-            Iniciar Teleatendimento
+            Iniciar Teleatendimento <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span>
           </DialogTitle>
           <DialogDescription>
             {patientName ? `Com ${patientName}` : 'Crie uma sala segura para o atendimento online.'}
